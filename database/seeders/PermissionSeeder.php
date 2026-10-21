@@ -299,6 +299,11 @@ class PermissionSeeder extends Seeder
             'staf_perizinan.report_view',
 
             // Inventory/Asset
+            'lab_view',
+            'lab_manage',
+            'lab_approve',
+            'lab_request',
+            'lab_master_manage',
             'inventory_view',
             'inventory_create',
             'inventory_edit',
@@ -710,6 +715,11 @@ class PermissionSeeder extends Seeder
             'pelatihan_create' => 'Can create training programs',
             'pelatihan_edit' => 'Can edit training data',
             'pelatihan_report' => 'Can view training reports',
+            'lab_view' => 'Laboratorium: lihat',
+            'lab_manage' => 'Laboratorium: kelola inventaris/operasional',
+            'lab_approve' => 'Laboratorium: setujui peminjaman/penghapusan',
+            'lab_request' => 'Laboratorium: ajukan izin penggunaan',
+            'lab_master_manage' => 'Laboratorium: kelola profil/master lab',
             'inventory_view' => 'Can view inventory',
             'inventory_create' => 'Can create inventory items',
             'inventory_edit' => 'Can edit inventory items',

@@ -106,6 +106,13 @@ final class PermissionRegistry
         // Coordinator monitoring
         'koordinator-rumpun.monitor' => 'Koordinator: monitor rumpun members',
 
+        // Laboratorium IPA (dipakai modul LabController)
+        'lab_view' => 'Laboratorium: lihat',
+        'lab_manage' => 'Laboratorium: kelola inventaris/operasional',
+        'lab_approve' => 'Laboratorium: setujui peminjaman/penghapusan',
+        'lab_request' => 'Laboratorium: ajukan izin penggunaan',
+        'lab_master_manage' => 'Laboratorium: kelola profil/master lab',
+
         // Full sarpras access groups (used by SarprasWorkspacePolicy)
         'sarpras_all_access' => 'Full sarpras admin access',
         'sarpras_create' => 'Sarpras: create',

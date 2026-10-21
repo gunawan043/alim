@@ -16,6 +16,14 @@ use App\Models\User;
  */
 class LabAccess
 {
+    private function hasPermission(?User $user, string $permission): bool
+    {
+        return $user !== null
+            && function_exists('canUserPermission')
+            && app()->bound(\App\Authorization\ValueObjects\OrganizationContext::class)
+            && canUserPermission($user, $permission);
+    }
+
     public function isSystemAdmin(?User $user = null): bool
     {
         $user ??= auth()->user();
@@ -32,7 +40,7 @@ class LabAccess
             return false;
         }
 
-        if ($this->isSystemAdmin($user)) {
+        if ($this->isSystemAdmin($user) || $this->hasPermission($user, 'lab_manage') || $this->hasPermission($user, 'lab_master_manage')) {
             return true;
         }
 
@@ -74,7 +82,7 @@ class LabAccess
             return false;
         }
 
-        if ($this->isSystemAdmin($user) || $this->isPrincipal($user)) {
+        if ($this->isSystemAdmin($user) || $this->isPrincipal($user) || $this->hasPermission($user, 'lab_view')) {
             return true;
         }
 
@@ -92,7 +100,7 @@ class LabAccess
             return false;
         }
 
-        if ($this->isSystemAdmin($user)) {
+        if ($this->isSystemAdmin($user) || $this->hasPermission($user, 'lab_manage') || $this->hasPermission($user, 'lab_master_manage')) {
             return true;
         }
 
@@ -111,6 +119,7 @@ class LabAccess
         }
 
         return $this->isSystemAdmin($user)
+            || $this->hasPermission($user, 'lab_approve')
             || ((string) $lab->head_user_id === (string) $user->id)
             || $this->isPrincipal($user);
     }
