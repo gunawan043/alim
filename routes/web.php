@@ -89,6 +89,7 @@ use App\Http\Controllers\GtkArabicNameController;
 use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HumasComplaintController;
 use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InstitutionDecreeController;
 use App\Http\Controllers\InterviewController;
@@ -1378,6 +1379,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             });
 
             // ── GTK REQUESTS ───────────────────────────────────────
+            Route::prefix('humas')->name('humas.')->group(function () {
+                Route::get('/complaints', [HumasComplaintController::class, 'index'])->name('complaints.index');
+                Route::post('/complaints', [HumasComplaintController::class, 'store'])->name('complaints.store');
+                Route::post('/complaints/{id}/respond', [HumasComplaintController::class, 'respond'])->name('complaints.respond');
+            });
+
             Route::prefix('gtk-requests')->name('gtk-requests.')->group(function () {
                 Route::get('/', [GtkRequestController::class, 'index'])->name('index');
                 Route::get('/create', [GtkRequestController::class, 'create'])->name('create');

@@ -661,12 +661,10 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Keluhan & Aduan Wali Santri --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-customer-service-line"></i>
-            <span>Keluhan & Aduan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.complaints.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.humas.complaints.index') }}">
+            <i class="ri-customer-service-2-line"></i><span>Keluhan &amp; Aduan</span>
         </a>
     </li>
 
