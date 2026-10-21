@@ -24,6 +24,8 @@ use App\Models\StructuralPosition;
 use App\Models\User;
 use App\Models\Village;
 use App\Models\WorkUnit;
+use App\Services\GtkFamilyService;
+use App\Services\SchoolGroupService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,7 +50,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+                $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -93,7 +95,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -134,7 +136,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+                $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -186,7 +188,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -227,7 +229,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+                $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -279,7 +281,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -305,6 +307,8 @@ class GtkWizardController extends Controller
 
     public function create()
     {
+        $this->authorizeGtkMutation();
+
         $provinces = Province::orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $jenisGtk = JenisGtk::active()->orderBy('urutan')->orderBy('nama')->get();
@@ -315,6 +319,8 @@ class GtkWizardController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorizeGtkMutation();
+
         try {
             DB::beginTransaction();
 
@@ -389,7 +395,7 @@ class GtkWizardController extends Controller
             'gtkProfile.addresses.city',
             'gtkProfile.addresses.district',
             'gtkProfile.addresses.village',
-            'gtkProfile.familyMembers',
+            'gtkProfile.familyMembers.linkedGtkProfile',
             'employment',
             'educations',
             'gtkContact',
@@ -404,7 +410,7 @@ class GtkWizardController extends Controller
     {
         $gtk = User::with([
             'gtkProfile.addresses',
-            'gtkProfile.familyMembers',
+            'gtkProfile.familyMembers.linkedGtkProfile',
             'employment',
             'educations',
             'gtkContact',
@@ -568,7 +574,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         if (! empty($request->input('search.value'))) {
@@ -714,12 +720,15 @@ class GtkWizardController extends Controller
     {
         $request->validate([
             'gtk_profile_id' => 'nullable|exists:gtk_profiles,id',
+            'gtk_id' => 'nullable|exists:users,id',
             'relationship' => 'required|string|max:50',
             'nama' => 'required|string|max:255',
             'jenis_kelamin' => 'required|in:L,P',
             'pekerjaan' => 'nullable|string|max:100',
             'pendidikan_terakhir' => 'nullable|string|max:100',
             'alamat' => 'nullable|string',
+            'tempat_lahir' => 'nullable|string|max:100',
+            'nama_satuan_pendidikan' => 'nullable|string|max:255',
             'tanggal_lahir' => 'nullable|date',
         ]);
 
@@ -736,17 +745,10 @@ class GtkWizardController extends Controller
                 ]);
             }
 
-            $member = GtkFamilyMember::create([
-                'id' => Str::uuid(),
-                'gtk_profile_id' => $profile->id,
-                'relationship' => $request->relationship,
-                'nama' => $request->nama,
-                'jenis_kelamin' => $request->jenis_kelamin,
-                'pekerjaan' => $request->pekerjaan,
-                'pendidikan_terakhir' => $request->pendidikan_terakhir,
-                'alamat' => $request->alamat,
-                'tanggal_lahir' => $request->tanggal_lahir,
-            ]);
+            $member = app(GtkFamilyService::class)->add($profile, $request->only([
+                'gtk_id', 'relationship', 'nama', 'jenis_kelamin', 'tempat_lahir',
+                'tanggal_lahir', 'pekerjaan', 'pendidikan_terakhir', 'alamat', 'nama_satuan_pendidikan',
+            ]));
 
             DB::commit();
 
@@ -784,22 +786,26 @@ class GtkWizardController extends Controller
     public function updateFamilyMember(Request $request, string $userId, string $uuid, string $id): JsonResponse
     {
         $request->validate([
+            'gtk_id' => 'nullable|exists:users,id',
             'relationship' => 'required|string|max:50',
             'nama' => 'required|string|max:255',
             'jenis_kelamin' => 'required|in:L,P',
             'pekerjaan' => 'nullable|string|max:100',
             'pendidikan_terakhir' => 'nullable|string|max:100',
             'alamat' => 'nullable|string',
+            'tempat_lahir' => 'nullable|string|max:100',
+            'nama_satuan_pendidikan' => 'nullable|string|max:255',
             'tanggal_lahir' => 'nullable|date',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $member = GtkFamilyMember::findOrFail($id);
-            $member->update($request->only([
-                'relationship', 'nama', 'jenis_kelamin',
-                'pekerjaan', 'pendidikan_terakhir', 'alamat', 'tanggal_lahir',
+            $gtk = User::findOrFail($uuid);
+            $profile = $gtk->gtkProfile;
+            $member = app(GtkFamilyService::class)->updateMember($profile, $id, $request->only([
+                'gtk_id', 'relationship', 'nama', 'jenis_kelamin', 'tempat_lahir',
+                'tanggal_lahir', 'pekerjaan', 'pendidikan_terakhir', 'alamat', 'nama_satuan_pendidikan',
             ]));
 
             DB::commit();
@@ -820,7 +826,8 @@ class GtkWizardController extends Controller
     {
         try {
             DB::beginTransaction();
-            GtkFamilyMember::findOrFail($id)->delete();
+            $gtk = User::findOrFail($uuid);
+            app(GtkFamilyService::class)->deleteMember($gtk->gtkProfile, $id);
             DB::commit();
 
             return response()->json(['success' => true, 'message' => 'Anggota keluarga berhasil dihapus']);
@@ -964,7 +971,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         if ($request->filled('search')) {
@@ -1099,9 +1106,9 @@ class GtkWizardController extends Controller
 
             if (! $isGlobalView) {
                 // Scope ke school context (work unit / kepegawaian)
-                $scopedSchoolId = $schoolId ?: optional(\App\Services\SchoolGroupService::getUserSchool(Auth::user()))->id;
+                $scopedSchoolId = $schoolId ?: optional(SchoolGroupService::getUserSchool(Auth::user()))->id;
                 if ($scopedSchoolId) {
-                    $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($scopedSchoolId));
+                    $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($scopedSchoolId));
                 }
             }
 
@@ -1549,37 +1556,8 @@ class GtkWizardController extends Controller
 
     private function createFamilyMembers(string $profileId, array $members): void
     {
-        foreach ($members as $member) {
-            if (empty($member['nama'])) {
-                continue;
-            }
-
-            $data = array_filter([
-                'relationship' => $member['relationship'] ?? null,
-                'nama' => $member['nama'] ?? null,
-                'jenis_kelamin' => $member['jenis_kelamin'] ?? null,
-                'tempat_lahir' => $member['tempat_lahir'] ?? null,
-                'tanggal_lahir' => $member['tanggal_lahir'] ?? null,
-                'pekerjaan' => $member['pekerjaan'] ?? null,
-                'pendidikan_terakhir' => $member['pendidikan_terakhir'] ?? null,
-                'alamat' => $member['alamat'] ?? null,
-                'gtk_profile_id' => $profileId,
-            ], fn ($v) => $v !== null);
-
-            if (! empty($member['id'])) {
-                $existing = GtkFamilyMember::where('id', $member['id'])
-                    ->where('gtk_profile_id', $profileId)
-                    ->first();
-                if ($existing) {
-                    $existing->update($data);
-
-                    continue;
-                }
-            }
-
-            $data['id'] = Str::uuid();
-            GtkFamilyMember::create($data);
-        }
+        $profile = GtkProfile::findOrFail($profileId);
+        app(GtkFamilyService::class)->sync($profile, $members);
     }
 
     private function syncAddresses(string $profileId, array $addresses): void
@@ -1678,19 +1656,8 @@ class GtkWizardController extends Controller
 
     private function syncFamilyMembers(string $profileId, array $members): void
     {
-        $existingIds = GtkFamilyMember::where('gtk_profile_id', $profileId)
-            ->pluck('id')->toArray();
-
-        $incomingIds = array_filter(array_column($members, 'id'));
-
-        $toDelete = array_diff($existingIds, $incomingIds);
-        if (! empty($toDelete)) {
-            GtkFamilyMember::where('gtk_profile_id', $profileId)
-                ->whereIn('id', $toDelete)
-                ->delete();
-        }
-
-        $this->createFamilyMembers($profileId, $members);
+        $profile = GtkProfile::findOrFail($profileId);
+        app(GtkFamilyService::class)->sync($profile, $members);
     }
 
     private function buildAddressData(array $raw, string $type): array
@@ -1815,8 +1782,6 @@ class GtkWizardController extends Controller
         return $value;
     }
 
-    
-
     /**
      * Accept UUID or name — return StructuralPosition UUID.
      * Case-insensitive, whitespace-insensitive, punctuation-insensitive.
@@ -1843,19 +1808,25 @@ class GtkWizardController extends Controller
             $id = StructuralPosition::where('jenis_gtk_id', $jenisGtkId)
                 ->whereRaw("{$sqlExpr} = ?", [$target])
                 ->value('id');
-            if ($id) return $id;
+            if ($id) {
+                return $id;
+            }
         }
 
         // Step 2: Exact global
         $id = StructuralPosition::whereRaw("{$sqlExpr} = ?", [$target])->value('id');
-        if ($id) return $id;
+        if ($id) {
+            return $id;
+        }
 
         // Step 3: LIKE + jenis filter
         if ($jenisGtkId) {
             $id = StructuralPosition::where('jenis_gtk_id', $jenisGtkId)
                 ->whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])
                 ->value('id');
-            if ($id) return $id;
+            if ($id) {
+                return $id;
+            }
         }
 
         // Step 4: LIKE global
@@ -1893,6 +1864,8 @@ class GtkWizardController extends Controller
 
     public function import()
     {
+        $this->authorizeGtkMutation();
+
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $jenisGtk = JenisGtk::where('is_active', true)->orderBy('urutan')->get();
 
@@ -1901,6 +1874,8 @@ class GtkWizardController extends Controller
 
     public function importTemplate(string $userId, string $workUnitId)
     {
+        $this->authorizeGtkMutation();
+
         $workUnit = WorkUnit::findOrFail($workUnitId);
 
         $filename = 'template-import-gtk-'.Str::slug($workUnit->name).'-'.now()->format('Ymd').'.xlsx';
@@ -1913,6 +1888,8 @@ class GtkWizardController extends Controller
 
     public function importStore(Request $request, string $userId): JsonResponse
     {
+        $this->authorizeGtkMutation();
+
         try {
             $validated = $request->validate([
                 'work_unit_id' => 'required|exists:work_units,id',
@@ -2017,7 +1994,7 @@ class GtkWizardController extends Controller
                     if ($jenisGtk) {
                         throw new \InvalidArgumentException(
                             "Jenis GTK '{$jenisGtk}' tidak ditemukan, dan juga tidak bisa di-resolve "
-                            . "dari jabatan '{$jabatan}'. Cek data master `jenis_gtk` & `structural_positions`."
+                            ."dari jabatan '{$jabatan}'. Cek data master `jenis_gtk` & `structural_positions`."
                         );
                     }
                     throw new \InvalidArgumentException(
@@ -2028,11 +2005,11 @@ class GtkWizardController extends Controller
                 if ($jabatan && ! $jabatanId) {
                     $debugInfo = $jenisGtkId
                         ? " di jenis GTK ID '{$jenisGtkId}'"
-                        : " (jenis GTK juga tidak ketemu)";
+                        : ' (jenis GTK juga tidak ketemu)';
 
                     throw new \InvalidArgumentException(
                         "Jabatan '{$jabatan}' tidak ditemukan{$debugInfo}. "
-                        . "Cek: apakah jabatan '{$jabatan}' sudah ada di tabel `structural_positions`?"
+                        ."Cek: apakah jabatan '{$jabatan}' sudah ada di tabel `structural_positions`?"
                     );
                 }
 
@@ -2040,14 +2017,14 @@ class GtkWizardController extends Controller
                 if ($jenisGtk && ! $jenisGtkId) {
                     throw new \InvalidArgumentException(
                         "Jenis GTK '{$jenisGtk}' tidak ditemukan di master data. "
-                        ."Cek: apakah nama jenis GTK di Excel sudah sesuai dengan tabel `jenis_gtk`?"
+                        .'Cek: apakah nama jenis GTK di Excel sudah sesuai dengan tabel `jenis_gtk`?'
                     );
                 }
 
                 if ($jabatan && ! $jabatanId) {
                     $debugInfo = $jenisGtkId
                         ? " di jenis GTK ID '{$jenisGtkId}'"
-                        : " (jenis GTK juga tidak ketemu)";
+                        : ' (jenis GTK juga tidak ketemu)';
 
                     throw new \InvalidArgumentException(
                         "Jabatan '{$jabatan}' tidak ditemukan{$debugInfo}. "
@@ -2556,6 +2533,22 @@ class GtkWizardController extends Controller
         }
     }
 
+    private function authorizeGtkMutation(): void
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user && (
+                (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+                || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+                || $user->hasRole('Super Admin')
+                || $user->hasRole('Humas Personalia')
+            ),
+            403,
+            'Import dan penambahan GTK hanya dapat dilakukan oleh Humas Personalia atau Super Admin.'
+        );
+    }
+
     public function massal(Request $request)
     {
         abort_unless(
@@ -2574,7 +2567,7 @@ class GtkWizardController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');

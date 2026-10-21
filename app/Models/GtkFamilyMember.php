@@ -31,6 +31,9 @@ class GtkFamilyMember extends Model
 
     protected $fillable = [
         'gtk_profile_id',
+        'household_id',
+        'linked_gtk_profile_id',
+        'member_key',
         'relationship',
         'nama',
         'tempat_lahir',
@@ -39,6 +42,7 @@ class GtkFamilyMember extends Model
         'pekerjaan',
         'pendidikan_terakhir',
         'alamat',
+        'nama_satuan_pendidikan',
     ];
 
     protected $hidden = [
@@ -50,6 +54,7 @@ class GtkFamilyMember extends Model
         'id' => 'string',
         'gtk_profile_id' => 'string',
         'tanggal_lahir' => 'date',
+        'linked_gtk_profile_id' => 'string',
     ];
 
     /*
@@ -75,6 +80,16 @@ class GtkFamilyMember extends Model
     public function gtkProfile()
     {
         return $this->belongsTo(GtkProfile::class);
+    }
+
+    public function household()
+    {
+        return $this->belongsTo(GtkHousehold::class, 'household_id');
+    }
+
+    public function linkedGtkProfile()
+    {
+        return $this->belongsTo(GtkProfile::class, 'linked_gtk_profile_id');
     }
 
     /*

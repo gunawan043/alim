@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\GtkAddress;
-use App\Models\GtkFamilyMember;
 use App\Models\GtkProfile;
 use App\Models\GtkTransferRequest;
 use App\Models\GtkWorkUnitHistory;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Services\GtkFamilyService;
+use App\Services\SecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ class PersonaliaController extends Controller
         $validated = $request->validate([
             'name' => 'required|string',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:8',
+            'password' => 'required|min:'.SecurityPolicy::passwordMinLength(),
 
             'nama_lengkap' => 'required|string',
             'nik' => 'required|string',
@@ -166,9 +167,11 @@ class PersonaliaController extends Controller
             'sekolah' => 'nullable|string',
         ]);
 
-        GtkFamilyMember::create([
-            'user_id' => $gtk->user_id,
-            ...$validated,
+        app(GtkFamilyService::class)->add($gtk, [
+            'relationship' => $validated['hubungan'],
+            'nama' => $validated['nama'],
+            'tanggal_lahir' => $validated['tanggal_lahir'] ?? null,
+            'nama_satuan_pendidikan' => $validated['sekolah'] ?? null,
         ]);
 
         AuditLog::create([

@@ -22,6 +22,8 @@ class GtkProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'household_id',
+        'spouse_gtk_profile_id',
         'nik',
         'no_kk',
         'tempat_lahir',
@@ -128,9 +130,24 @@ class GtkProfile extends Model
         return $this->hasOne(GtkAddress::class)->where('type', 'ktp');
     }
 
+    public function household()
+    {
+        return $this->belongsTo(GtkHousehold::class, 'household_id');
+    }
+
+    public function spouseProfile()
+    {
+        return $this->belongsTo(GtkProfile::class, 'spouse_gtk_profile_id');
+    }
+
     public function familyMembers()
     {
-        return $this->hasMany(GtkFamilyMember::class);
+        return $this->hasMany(GtkFamilyMember::class, 'household_id', 'household_id');
+    }
+
+    public function children()
+    {
+        return $this->familyMembers()->where('relationship', 'anak');
     }
 
     /**
