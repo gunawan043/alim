@@ -31,6 +31,7 @@ use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\Uks\UksPatient;
 use App\Models\Uks\UksReferral;
 use App\Services\Lab\LabAccess;
 use App\Services\Pdf\DocumentPdfService;
@@ -252,7 +253,7 @@ class LabController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        DB::transaction(function () use ($validated, $ctx, $lab) {
+        DB::transaction(function () use ($validated, $ctx, $lab, $request) {
             $asset = Asset::where('school_id', $ctx['schoolId'])->lockForUpdate()->findOrFail($validated['asset_id']);
             if (! LabItemProfile::where('asset_id', $asset->id)->where('lab_id', $lab->id)->exists()) {
                 throw ValidationException::withMessages(['asset_id' => 'Aset bukan inventaris laboratorium ini.']);
@@ -1053,8 +1054,9 @@ class LabController extends Controller
         $lab = $ctx['lab'];
         $incidents = $lab ? $lab->incidents()->latest('incident_date')->paginate(15)->withQueryString() : collect();
         $referrals = $lab ? UksReferral::where('school_id', $ctx['schoolId'])->latest('referred_at')->limit(50)->get() : collect();
+        $students = $lab ? \App\Models\Student::where('school_id', $ctx['schoolId'])->where('status', 'active')->orderBy('name')->get(['id', 'name', 'nis']) : collect();
 
-        return view('lab.incident', array_merge($ctx, compact('lab', 'incidents', 'referrals')));
+        return view('lab.incident', array_merge($ctx, compact('lab', 'incidents', 'referrals', 'students')));
     }
 
     public function incidentStore(Request $request)
@@ -1071,6 +1073,7 @@ class LabController extends Controller
             'chronology' => 'required|string',
             'location' => 'nullable|string|max:191',
             'victim_name' => 'nullable|string|max:191',
+            'victim_student_id' => 'nullable|uuid|exists:students,id',
             'injury_type' => 'nullable|string|max:191',
             'first_aid' => 'nullable|string',
             'equipment_involved' => 'nullable|string',
@@ -1079,15 +1082,54 @@ class LabController extends Controller
             'personnel' => 'nullable|string',
             'follow_up' => 'nullable|string',
             'uks_referral_id' => 'nullable|uuid|exists:uks_referrals,id',
+            'create_uks_referral' => 'nullable|boolean',
+            'facility_name' => 'nullable|required_if:create_uks_referral,1|string|max:191',
+            'facility_type' => 'nullable|string|max:30',
+            'urgency' => 'nullable|in:rutin,segera,darurat',
+            'referral_reason' => 'nullable|required_if:create_uks_referral,1|string|max:2000',
         ]);
 
-        LabIncident::create(array_merge($validated, [
-            'lab_id' => $lab->id,
-            'school_id' => $ctx['schoolId'],
-            'reporter_id' => auth()->id(),
-            'status' => 'reported',
-            'is_confidential' => true,
-        ]));
+        DB::transaction(function () use ($validated, $ctx, $lab, $request) {
+            $incidentData = $validated;
+            unset($incidentData['create_uks_referral'], $incidentData['facility_name'], $incidentData['facility_type'], $incidentData['urgency'], $incidentData['referral_reason']);
+            $incident = LabIncident::create(array_merge($incidentData, [
+                'lab_id' => $lab->id,
+                'school_id' => $ctx['schoolId'],
+                'reporter_id' => auth()->id(),
+                'status' => 'reported',
+                'is_confidential' => true,
+            ]));
+
+            if ($request->boolean('create_uks_referral') && ! empty($validated['victim_student_id'])) {
+                $patient = UksPatient::create([
+                    'student_id' => $validated['victim_student_id'],
+                    'school_id' => $ctx['schoolId'],
+                    'academic_year_id' => $ctx['yearId'],
+                    'patient_type' => 'rawat',
+                    'chief_complaint' => $validated['chronology'] ?? null,
+                    'diagnosis' => $validated['injury_type'] ?? null,
+                    'treatment' => $validated['first_aid'] ?? null,
+                    'admitted_at' => now(),
+                    'admitted_by' => auth()->id(),
+                    'notes' => 'Dibuat otomatis dari laporan insiden laboratorium.',
+                ]);
+
+                $referral = UksReferral::create([
+                    'patient_id' => $patient->id,
+                    'school_id' => $ctx['schoolId'],
+                    'facility_name' => $validated['facility_name'],
+                    'facility_type' => $validated['facility_type'] ?? null,
+                    'referred_at' => $incident->incident_date->setTimeFromTimeString($incident->incident_time ?: now()->format('H:i:s')),
+                    'urgency' => $validated['urgency'] ?? 'rutin',
+                    'diagnosis' => $validated['injury_type'] ?? null,
+                    'reason' => $validated['referral_reason'],
+                    'status' => UksReferral::STATUS_REFERRED,
+                    'referred_by' => auth()->id(),
+                ]);
+
+                $incident->update(['uks_referral_id' => $referral->id]);
+            }
+        });
 
         return back()->with('success', 'Laporan insiden berhasil disimpan.');
     }
