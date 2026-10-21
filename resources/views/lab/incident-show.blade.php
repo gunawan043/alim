@@ -1,0 +1,11 @@
+@extends('layouts.master')
+@section('title', 'Detail Insiden Laboratorium')
+@section('css') @include('shared._styles') @include('lab._styles') @endsection
+@section('content')
+@php $userId = request()->route('userId') ?? auth()->id(); @endphp
+@component('components.breadcrumb') @slot('li_1') Laboratorium @endslot @slot('li_2') <a href="{{ route('lab.incident.index', ['userId' => $userId, 'lab_id' => $lab?->id]) }}">Insiden</a> @endslot @slot('title') Detail Insiden @endslot @endcomponent
+@include('lab._nav')
+<div class="card"><div class="card-header d-flex justify-content-between"><h5 class="card-title mb-0">Laporan Insiden</h5><a href="{{ route('lab.incident.print', ['userId' => $userId, 'incident' => $incident->id]) }}" target="_blank" class="btn btn-sm btn-danger"><i class="ri-printer-line me-1"></i>Cetak PDF</a></div><div class="card-body">
+<table class="table table-sm"><tr><th style="width:180px">Laboratorium</th><td>{{ $lab?->name }}</td></tr><tr><th>Tanggal/Waktu</th><td>{{ $incident->incident_date?->translatedFormat('d F Y') }} {{ $incident->incident_time ? substr($incident->incident_time,0,5) : '' }}</td></tr><tr><th>Pelapor</th><td>{{ $incident->reporter?->name ?? '-' }} — {{ $incident->reporter_position ?: '-' }}</td></tr><tr><th>Jenis</th><td>{{ ucfirst(str_replace('_',' ',$incident->incident_type)) }}{{ $incident->other_type ? ' — '.$incident->other_type : '' }}</td></tr><tr><th>Lokasi</th><td>{{ $incident->location ?: '-' }}</td></tr><tr><th>Korban</th><td>{{ $incident->victim_name ?: '-' }}</td></tr><tr><th>Jenis Cedera</th><td>{{ $incident->injury_type ?: '-' }}</td></tr><tr><th>Pertolongan Pertama</th><td>{{ $incident->first_aid ?: '-' }}</td></tr><tr><th>Alat Terlibat</th><td>{{ $incident->equipment_involved ?: '-' }}</td></tr><tr><th>Kronologi</th><td>{!! nl2br(e($incident->chronology)) !!}</td></tr><tr><th>Tindakan Segera</th><td>{{ $incident->immediate_action ?: '-' }}</td></tr><tr><th>Pencegahan</th><td>{{ $incident->prevention ?: '-' }}</td></tr><tr><th>Personel</th><td>{{ $incident->personnel ?: '-' }}</td></tr><tr><th>Rujukan UKS</th><td>{{ $incident->uks_referral_id ?: '-' }}</td></tr><tr><th>Status</th><td>{{ $incident->status }}</td></tr></table>
+</div></div>
+@endsection

@@ -1,0 +1,13 @@
+@php $labId = $lab?->id; $userId = request()->route('userId') ?? auth()->id(); @endphp
+<div class="card mb-3"><div class="card-body py-2 d-flex flex-wrap gap-2">
+    <a href="{{ route('lab.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.index', 'lab.inventory') ? 'btn-primary' : 'btn-outline-primary' }}"><i class="ri-dashboard-2-line me-1"></i>Dashboard</a>
+    <a href="{{ route('lab.inspection.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.inspection.*') ? 'btn-primary' : 'btn-outline-primary' }}"><i class="ri-search-eye-line me-1"></i>Pemeriksaan</a>
+    <a href="{{ route('lab.calibration.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.calibration.*') ? 'btn-primary' : 'btn-outline-warning' }}"><i class="ri-timer-line me-1"></i>Kalibrasi</a>
+    <a href="{{ route('lab.loan.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.loan.*') ? 'btn-primary' : 'btn-outline-info' }}"><i class="ri-arrow-right-up-line me-1"></i>Peminjaman</a>
+    <a href="{{ route('lab.activity.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.activity.*') ? 'btn-primary' : 'btn-outline-success' }}"><i class="ri-flask-line me-1"></i>Kegiatan</a>
+    <a href="{{ route('lab.usage.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.usage.*') ? 'btn-primary' : 'btn-outline-secondary' }}"><i class="ri-file-shield-2-line me-1"></i>Izin</a>
+    <a href="{{ route('lab.schedule.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.schedule.*') ? 'btn-primary' : 'btn-outline-dark' }}"><i class="ri-calendar-schedule-line me-1"></i>Jadwal</a>
+    <a href="{{ route('lab.safety.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.safety.*') ? 'btn-primary' : 'btn-outline-danger' }}"><i class="ri-shield-check-line me-1"></i>K3</a>
+    <a href="{{ route('lab.incident.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.incident.*') ? 'btn-primary' : 'btn-outline-danger' }}"><i class="ri-alert-line me-1"></i>Insiden</a>
+    <a href="{{ route('lab.disposal.index', ['userId' => $userId, 'lab_id' => $labId]) }}" class="btn btn-sm {{ request()->routeIs('lab.disposal.*') ? 'btn-primary' : 'btn-outline-secondary' }}"><i class="ri-delete-bin-6-line me-1"></i>Penghapusan</a>
+</div></div>

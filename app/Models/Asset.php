@@ -178,6 +178,11 @@ class Asset extends Model
         return $this->belongsTo(AssetRoom::class, 'room_id');
     }
 
+    public function labItemProfile()
+    {
+        return $this->hasOne(\App\Models\Lab\LabItemProfile::class, 'asset_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(AssetCategory::class, 'asset_category_id');

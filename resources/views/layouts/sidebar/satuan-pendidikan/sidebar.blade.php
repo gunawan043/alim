@@ -154,7 +154,7 @@
     $addDashboard($isKoorEkskul, 'user.dashboard.koordinator-ekskul', 'Dashboard Ekstrakurikuler', 'ri-basketball-line');
     $addDashboard($isWaliKelas, 'user.dashboard.wali-kelas', 'Dashboard Wali Kelas', 'ri-parent-line');
     $addDashboard($isKoorMapel, 'user.dashboard.koordinator-guru', 'Dashboard Koordinator Mapel', 'ri-team-line');
-    $addDashboard($isKoorLab, 'user.dashboard.koordinator-lab', 'Dashboard Laboratorium', 'ri-flask-line');
+    $addDashboard($isKoorLab, 'lab.index', 'Dashboard Laboratorium', 'ri-flask-line');
     $addDashboard($isKoorSarpras, 'user.dashboard.koordinator-sarpras', 'Dashboard Koordinator Sarpras', 'ri-tools-line');
 
     if ($dashboardOptions === []) {
