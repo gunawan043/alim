@@ -543,7 +543,24 @@ class LabController extends Controller
             'items.*.notes' => 'nullable|string|max:500',
         ]);
 
-        DB::transaction(function () use ($validated, $ctx, $lab) {
+        $assetItems = collect($validated['items'])->map(function (array $row) {
+            $asset = Asset::findOrFail($row['asset_id']);
+            if (! LabItemProfile::where('asset_id', $asset->id)->exists()) {
+                throw ValidationException::withMessages(['items' => $asset->asset_name.' bukan inventaris laboratorium.']);
+            }
+            if (in_array($asset->condition, ['rusak_berat', 'hilang', 'dihapus'], true) || $asset->status === 'dihapus') {
+                throw ValidationException::withMessages(['items' => $asset->asset_name.' tidak layak dipinjam.']);
+            }
+            if ((int) $row['quantity'] > (int) $asset->quantity) {
+                throw ValidationException::withMessages(['items' => $asset->asset_name.' melebihi jumlah stok.']);
+            }
+
+            return ['asset' => $asset, 'row' => $row];
+        });
+
+        $crossSchool = $assetItems->contains(fn (array $item) => (string) $item['asset']->school_id !== (string) $ctx['schoolId']);
+
+        DB::transaction(function () use ($validated, $ctx, $lab, $assetItems, $crossSchool) {
             $loan = LabLoan::create([
                 'lab_id' => $lab->id,
                 'school_id' => $ctx['schoolId'],
@@ -555,34 +572,46 @@ class LabController extends Controller
                 'loan_date' => $validated['loan_date'],
                 'purpose' => $validated['purpose'],
                 'planned_return_date' => $validated['planned_return_date'] ?? null,
-                'status' => 'approved',
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
+                'status' => $crossSchool ? 'submitted' : 'approved',
+                'approved_by' => $crossSchool ? null : auth()->id(),
+                'approved_at' => $crossSchool ? null : now(),
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => auth()->id(),
             ]);
 
-            foreach ($validated['items'] as $row) {
-                $asset = Asset::findOrFail($row['asset_id']);
-                if (! LabItemProfile::where('asset_id', $asset->id)->exists()) {
-                    throw ValidationException::withMessages(['items' => $asset->asset_name.' bukan inventaris laboratorium.']);
-                }
-                if (in_array($asset->condition, ['rusak_berat', 'hilang', 'dihapus'], true) || $asset->status === 'dihapus') {
-                    throw ValidationException::withMessages(['items' => $asset->asset_name.' tidak layak dipinjam.']);
-                }
+            foreach ($assetItems as $item) {
+                $asset = $item['asset'];
                 $loan->items()->create([
                     'asset_id' => $asset->id,
                     'asset_school_id' => $asset->school_id,
                     'item_name' => $asset->asset_name,
-                    'quantity' => $row['quantity'],
+                    'quantity' => $item['row']['quantity'],
                     'unit' => $asset->unit ?: 'unit',
                     'condition_on_loan' => $this->conditionCode($asset->condition),
-                    'notes' => $row['notes'] ?? null,
+                    'notes' => $item['row']['notes'] ?? null,
                 ]);
             }
         });
 
-        return back()->with('success', 'Peminjaman berhasil dicatat.');
+        return back()->with('success', $crossSchool
+            ? 'Peminjaman lintas sekolah diajukan dan menunggu persetujuan pimpinan.'
+            : 'Peminjaman berhasil dicatat.');
+    }
+
+    public function loanApprove(Request $request, string $userId, string $loan)
+    {
+        $ctx = $this->context($request);
+        $lab = $this->requireLab($ctx);
+        $record = LabLoan::where('lab_id', $lab->id)->findOrFail($loan);
+
+        if (! $this->access->canManage($request->user(), $lab) && ! $this->access->canApprove($request->user(), $lab)) {
+            abort(403, 'Anda tidak berwenang menyetujui peminjaman ini.');
+        }
+        abort_unless($record->status === 'submitted', 422, 'Peminjaman tidak dalam status menunggu persetujuan.');
+
+        $record->update(['status' => 'approved', 'approved_by' => auth()->id(), 'approved_at' => now()]);
+
+        return back()->with('success', 'Peminjaman disetujui.');
     }
 
     public function loanHandover(Request $request, string $userId, string $loan)

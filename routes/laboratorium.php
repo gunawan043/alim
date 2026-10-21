@@ -37,6 +37,7 @@ Route::middleware(['auth', 'lab.access'])->prefix('{userId}/laboratorium')->name
 
     Route::get('/peminjaman', [LabController::class, 'loanIndex'])->name('loan.index');
     Route::post('/peminjaman', [LabController::class, 'loanStore'])->name('loan.store');
+    Route::post('/peminjaman/{loan}/setujui', [LabController::class, 'loanApprove'])->name('loan.approve');
     Route::post('/peminjaman/{loan}/serah', [LabController::class, 'loanHandover'])->name('loan.handover');
     Route::post('/peminjaman/{loan}/kembali', [LabController::class, 'loanReturn'])->name('loan.return');
     Route::get('/peminjaman/{loan}/cetak', [LabController::class, 'loanPrint'])->name('loan.print');
