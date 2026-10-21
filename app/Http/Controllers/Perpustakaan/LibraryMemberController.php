@@ -33,11 +33,6 @@ class LibraryMemberController extends Controller
             ->when($request->filled('member_type'), fn ($q) => $q->where('member_type', $request->member_type))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('member_number', 'like', '%'.$request->search.'%')->orWhereHas('student', fn ($st) => $st->where('name', 'like', '%'.$request->search.'%')->orWhere('nis', 'like', '%'.$request->search.'%'))))
             ->orderByDesc('created_at')->limit(200)->get();
-        $students = Student::with('currentClassHistory.studyGroup.gradeLevel')
-            ->where('status', 'active')->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->orderBy('name')->limit(1000)->get(['id', 'name', 'nis', 'nisn', 'gender', 'photo_path', 'school_id']);
-        $gtkUsers = User::whereHas('employment', fn ($q) => $q->when($schoolId, fn ($s) => $s->where('school_id', $schoolId)))
-            ->orderBy('name')->limit(500)->get(['id', 'name']);
 
         $baseMembers = LibraryMember::where('library_unit_id', $unit->id);
         $stats = [
@@ -47,7 +42,48 @@ class LibraryMemberController extends Controller
             'gtk' => (clone $baseMembers)->where('member_type', 'gtk')->count(),
         ];
 
-        return view('perpustakaan.members.index', compact('userId', 'units', 'unit', 'members', 'students', 'gtkUsers', 'stats'));
+        return view('perpustakaan.members.index', compact('userId', 'units', 'unit', 'members', 'stats'));
+    }
+
+    public function searchStudents(Request $request, string $userId)
+    {
+        abort_unless($this->access->canManage($request->user()), 403);
+        $unit = LibraryUnit::findOrFail($request->input('unit_id'));
+        abort_unless($this->access->canAccessUnit($request->user(), $unit), 403);
+        $search = trim((string) $request->input('q', ''));
+
+        $students = Student::with('currentClassHistory.studyGroup')
+            ->where('status', 'active')
+            ->when($unit->gender_scope !== 'mixed', fn ($q) => $q->whereRaw('UPPER(gender) = ?', [strtoupper((string) $unit->gender_scope)]))
+            ->when($search !== '', fn ($q) => $q->where(fn ($inner) => $inner->where('name', 'like', '%'.$search.'%')->orWhere('nis', 'like', '%'.$search.'%')->orWhere('nisn', 'like', '%'.$search.'%')))
+            ->orderBy('name')->limit(50)->get();
+
+        return response()->json([
+            'results' => $students->map(fn (Student $student) => [
+                'id' => $student->id,
+                'text' => trim(($student->nis ?: $student->nisn ?: '—').' — '.$student->name.($student->currentClassHistory?->studyGroup?->name ? ' ('.$student->currentClassHistory->studyGroup->name.')' : '')),
+            ])->values(),
+        ]);
+    }
+
+    public function searchGtk(Request $request, string $userId)
+    {
+        abort_unless($this->access->canManage($request->user()), 403);
+        $unit = LibraryUnit::findOrFail($request->input('unit_id'));
+        abort_unless($this->access->canAccessUnit($request->user(), $unit), 403);
+        $search = trim((string) $request->input('q', ''));
+
+        $users = User::with('gtkProfile')
+            ->whereHas('gtkProfile', fn ($q) => $q->when($unit->gender_scope !== 'mixed', fn ($p) => $p->whereRaw('UPPER(jenis_kelamin) = ?', [strtoupper((string) $unit->gender_scope)])))
+            ->when($search !== '', fn ($q) => $q->where(fn ($inner) => $inner->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
+            ->orderBy('name')->limit(50)->get(['id', 'name', 'email']);
+
+        return response()->json([
+            'results' => $users->map(fn (User $user) => [
+                'id' => $user->id,
+                'text' => trim($user->name.($user->email ? ' — '.$user->email : '')),
+            ])->values(),
+        ]);
     }
 
     public function store(Request $request, string $userId)
@@ -70,8 +106,12 @@ class LibraryMemberController extends Controller
             $this->assertEligible($student, $unit);
             abort_if(LibraryMember::where('library_unit_id', $unit->id)->where('student_id', $student->id)->exists(), 422, 'Santri sudah menjadi anggota unit ini.');
         } else {
-            $user = User::findOrFail($validated['user_id'] ?? null);
+            $user = User::with('gtkProfile')->findOrFail($validated['user_id'] ?? null);
             abort_if(LibraryMember::where('library_unit_id', $unit->id)->where('user_id', $user->id)->exists(), 422, 'GTK sudah menjadi anggota unit ini.');
+            if ($unit->gender_scope !== 'mixed') {
+                $gtkGender = strtoupper((string) $user->gtkProfile?->jenis_kelamin);
+                abort_if($gtkGender === '' || $gtkGender !== strtoupper((string) $unit->gender_scope), 422, 'GTK tidak sesuai gender unit perpustakaan.');
+            }
         }
 
         $member = DB::transaction(function () use ($validated, $unit, $student, $request) {

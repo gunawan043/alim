@@ -47,13 +47,54 @@
         </tbody></table></div></form>
     </div>
 
-    <div class="modal fade library-modal" id="memberModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form method="POST" action="{{ route('user.perpustakaan.members.store',['userId'=>$userId]) }}">@csrf<input type="hidden" name="library_unit_id" value="{{ $unit->id }}"><div class="modal-header bg-primary-subtle"><h5 class="modal-title">Daftar Anggota</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-md-4"><label class="form-label">Jenis Anggota</label><select name="member_type" id="memberType" class="form-select" onchange="toggleMemberType()"><option value="student">Santri</option><option value="gtk">GTK</option></select></div><div class="col-md-8" id="studentWrap"><label class="form-label">Santri</label><select name="student_id" id="studentSelect" class="form-select"><option value="">— Pilih Santri —</option>@foreach($students as $student)<option value="{{ $student->id }}">{{ $student->nis ?? $student->nisn }} — {{ $student->name }} ({{ $student->currentClassHistory?->studyGroup?->name ?? '—' }})</option>@endforeach</select></div><div class="col-md-8 d-none" id="gtkWrap"><label class="form-label">GTK</label><select name="user_id" id="gtkSelect" class="form-select"><option value="">— Pilih GTK —</option>@foreach($gtkUsers as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</select></div><div class="col-md-4"><label class="form-label">Nomor Anggota</label><input name="member_number" class="form-control" placeholder="Otomatis"></div><div class="col-md-4"><label class="form-label">Tanggal Daftar</label><input type="date" name="joined_at" class="form-control" value="{{ today()->toDateString() }}"></div></div><div class="alert alert-info py-2 mt-3 mb-0 small"><i class="ri-information-line me-1"></i>Kartu anggota aktif dibuat otomatis setelah pendaftaran.</div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary">Simpan &amp; Terbitkan Kartu</button></div></form></div></div></div>
+    <div class="modal fade library-modal" id="memberModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form method="POST" action="{{ route('user.perpustakaan.members.store',['userId'=>$userId]) }}">@csrf<input type="hidden" name="library_unit_id" value="{{ $unit->id }}"><div class="modal-header bg-primary-subtle"><h5 class="modal-title">Daftar Anggota</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3"><div class="col-md-4"><label class="form-label">Jenis Anggota</label><select name="member_type" id="memberType" class="form-select" onchange="toggleMemberType()"><option value="student">Santri</option><option value="gtk">GTK</option></select></div><div class="col-md-8" id="studentWrap"><label class="form-label">Santri</label><select name="student_id" id="studentSelect" class="form-select" data-placeholder="Cari nama, NIS, atau NISN..."><option value=""></option></select><div class="form-text">Ketik untuk mencari santri sesuai gender unit.</div></div><div class="col-md-8 d-none" id="gtkWrap"><label class="form-label">GTK</label><select name="user_id" id="gtkSelect" class="form-select" data-placeholder="Cari nama atau email GTK..."><option value=""></option></select><div class="form-text">GTK difilter sesuai gender unit perpustakaan.</div></div><div class="col-md-4"><label class="form-label">Nomor Anggota</label><input name="member_number" class="form-control" placeholder="Otomatis"></div><div class="col-md-4"><label class="form-label">Tanggal Daftar</label><input type="date" name="joined_at" class="form-control" value="{{ today()->toDateString() }}"></div></div><div class="alert alert-info py-2 mt-3 mb-0 small"><i class="ri-information-line me-1"></i>Kartu anggota aktif dibuat otomatis setelah pendaftaran.</div></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary">Simpan &amp; Terbitkan Kartu</button></div></form></div></div></div>
     @include('perpustakaan._filter-modal')
 @endsection
 @section('script')
 <script>
-function openMemberCreate(){document.getElementById('memberType').value='student';toggleMemberType();}
-function toggleMemberType(){const t=document.getElementById('memberType').value;document.getElementById('studentWrap').classList.toggle('d-none',t!=='student');document.getElementById('gtkWrap').classList.toggle('d-none',t!=='gtk');document.getElementById('studentSelect').disabled=t!=='student';document.getElementById('gtkSelect').disabled=t!=='gtk';}
-document.addEventListener('DOMContentLoaded',()=>{if(document.getElementById('memberType'))toggleMemberType();});
+const memberUnitId=@json($unit->id);
+const studentSearchUrl=@json(route('user.perpustakaan.members.students.search',['userId'=>$userId]));
+const gtkSearchUrl=@json(route('user.perpustakaan.members.gtk.search',['userId'=>$userId]));
+function initMemberSearch(selector, url, placeholder){
+    if (!window.jQuery || !$.fn.select2) return;
+    $(selector).select2({
+        width: '100%',
+        dropdownParent: $('#memberModal'),
+        placeholder: placeholder,
+        allowClear: true,
+        minimumInputLength: 1,
+        ajax: {
+            url: url,
+            dataType: 'json',
+            delay: 250,
+            data: function(params){ return {q: params.term || '', unit_id: memberUnitId}; },
+            processResults: function(data){ return data; },
+            cache: true
+        }
+    });
+}
+function openMemberCreate(){
+    document.getElementById('memberType').value='student';
+    toggleMemberType();
+    if (window.jQuery && $.fn.select2) {
+        $('#studentSelect').val(null).trigger('change');
+        $('#gtkSelect').val(null).trigger('change');
+    }
+}
+function toggleMemberType(){
+    const t=document.getElementById('memberType').value;
+    document.getElementById('studentWrap').classList.toggle('d-none',t!=='student');
+    document.getElementById('gtkWrap').classList.toggle('d-none',t!=='gtk');
+    document.getElementById('studentSelect').disabled=t!=='student';
+    document.getElementById('gtkSelect').disabled=t!=='gtk';
+    if (window.jQuery && $.fn.select2) {
+        $('#studentSelect, #gtkSelect').trigger('change.select2');
+    }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+    initMemberSearch('#studentSelect', studentSearchUrl, 'Cari nama, NIS, atau NISN...');
+    initMemberSearch('#gtkSelect', gtkSearchUrl, 'Cari nama atau email GTK...');
+    if(document.getElementById('memberType'))toggleMemberType();
+});
 </script>
 @endsection

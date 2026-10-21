@@ -584,6 +584,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/catalog/items/{id}', [LibraryCatalogController::class, 'updateItem'])->name('catalog.items.update');
                     Route::delete('/catalog/items/{id}', [LibraryCatalogController::class, 'destroyItem'])->name('catalog.items.destroy');
                     Route::get('/catalog/labels', [LibraryCatalogController::class, 'printLabels'])->name('catalog.labels');
+                Route::get('/members/students', [LibraryMemberController::class, 'searchStudents'])->name('members.students.search');
+                Route::get('/members/gtk', [LibraryMemberController::class, 'searchGtk'])->name('members.gtk.search');
                     Route::get('/members', [LibraryMemberController::class, 'index'])->name('members.index');
                     Route::post('/members', [LibraryMemberController::class, 'store'])->name('members.store');
                     Route::put('/members/{id}', [LibraryMemberController::class, 'update'])->name('members.update');

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\AssetRoom;
+use App\Models\GtkProfile;
 use App\Models\LibraryGenre;
 use App\Models\LibraryItem;
 use App\Models\LibraryMember;
@@ -205,5 +206,38 @@ class LibraryModuleTest extends TestCase
             'file' => UploadedFile::fake()->createWithContent('genre.csv', "nama,kode,deskripsi,status\nGenre Import,G-IMP,Genre dari import,aktif\n"),
         ])->assertRedirect()->assertSessionHas('import_result');
         $this->assertDatabaseHas('library_genres', ['name' => 'Genre Import', 'school_id' => $school->id]);
+    }
+
+    public function test_pencarian_anggota_dan_gtk_mengikuti_gender_unit(): void
+    {
+        $workUnit = WorkUnit::create(['name' => 'Unit Gender Perpus', 'code' => 'PERPUS-GENDER', 'type' => 'Unit Akademik', 'is_active' => true]);
+        $school = School::create(['work_unit_id' => $workUnit->id, 'npsn' => '55555555', 'name' => 'Sekolah Gender']);
+        $admin = User::create(['name' => 'Admin Gender', 'email' => 'admin.gender@test.local', 'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true]);
+        $unit = LibraryUnit::create(['work_unit_id' => $workUnit->id, 'school_id' => $school->id, 'code' => 'PERPUS-G', 'name' => 'Perpustakaan Putri', 'gender_scope' => 'P', 'level_scope' => 'sd_smp', 'is_active' => true]);
+        $putri = Student::create(['school_id' => $school->id, 'name' => 'Santri Putri', 'nis' => 'G-P-001', 'nisn' => 'G-P-N-001', 'gender' => 'P', 'status' => 'active']);
+        $putra = Student::create(['school_id' => $school->id, 'name' => 'Santri Putra', 'nis' => 'G-L-001', 'nisn' => 'G-L-N-001', 'gender' => 'L', 'status' => 'active']);
+        $gtkPutri = User::create(['name' => 'Guru Putri', 'email' => 'guru.putri@test.local', 'password' => bcrypt('password'), 'is_active' => true]);
+        $gtkPutra = User::create(['name' => 'Guru Putra', 'email' => 'guru.putra@test.local', 'password' => bcrypt('password'), 'is_active' => true]);
+        GtkProfile::create(['user_id' => $gtkPutri->id, 'jenis_kelamin' => 'P']);
+        GtkProfile::create(['user_id' => $gtkPutra->id, 'jenis_kelamin' => 'L']);
+
+        $students = $this->actingAs($admin)->getJson("/{$admin->id}/perpustakaan/members/students?unit_id={$unit->id}&q=santri")->assertOk()->json('results');
+        $this->assertSame([$putri->id], collect($students)->pluck('id')->all());
+
+        $gtk = $this->actingAs($admin)->getJson("/{$admin->id}/perpustakaan/members/gtk?unit_id={$unit->id}&q=guru")->assertOk()->json('results');
+        $this->assertSame([$gtkPutri->id], collect($gtk)->pluck('id')->all());
+
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/members", [
+            'library_unit_id' => $unit->id,
+            'member_type' => 'gtk',
+            'user_id' => $gtkPutra->id,
+        ])->assertStatus(422);
+
+        $this->actingAs($admin)->post("/{$admin->id}/perpustakaan/members", [
+            'library_unit_id' => $unit->id,
+            'member_type' => 'gtk',
+            'user_id' => $gtkPutri->id,
+        ])->assertRedirect();
+        $this->assertDatabaseHas('library_members', ['library_unit_id' => $unit->id, 'user_id' => $gtkPutri->id]);
     }
 }

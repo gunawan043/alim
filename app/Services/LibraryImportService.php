@@ -48,9 +48,15 @@ class LibraryImportService
                         if ($email === '') {
                             throw new \InvalidArgumentException('Email GTK wajib diisi.');
                         }
-                        $user = User::where('email', $email)->first();
+                        $user = User::with('gtkProfile')->where('email', $email)->first();
                         if (! $user) {
                             throw new \InvalidArgumentException('GTK dengan email '.$email.' tidak ditemukan.');
+                        }
+                        if ($unit->gender_scope !== 'mixed') {
+                            $gtkGender = strtoupper((string) $user->gtkProfile?->jenis_kelamin);
+                            if ($gtkGender === '' || $gtkGender !== strtoupper((string) $unit->gender_scope)) {
+                                throw new \InvalidArgumentException('GTK tidak sesuai gender unit perpustakaan.');
+                            }
                         }
                         if (LibraryMember::where('library_unit_id', $unit->id)->where('user_id', $user->id)->exists()) {
                             throw new \InvalidArgumentException('GTK sudah menjadi anggota unit ini.');
@@ -60,7 +66,6 @@ class LibraryImportService
                             throw new \InvalidArgumentException('NIS atau NISN wajib diisi untuk anggota santri.');
                         }
                         $student = Student::query()
-                            ->when($unit->school_id, fn ($q) => $q->where('school_id', $unit->school_id))
                             ->where(function ($q) use ($nis, $nisn) {
                                 if ($nis !== '') {
                                     $q->where('nis', $nis);
