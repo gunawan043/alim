@@ -1966,6 +1966,11 @@ class GtkWizardController extends Controller
                     'npwp' => $row['npwp'] ?? null,
                 ]);
 
+                $importedFamily = $this->familyMembersFromImportRow($row, $profile);
+                if ($importedFamily !== []) {
+                    app(\App\Services\GtkFamilyService::class)->sync($profile, $importedFamily);
+                }
+
                 $address = $this->resolveAddressFromNames($row);
                 if (! empty($address['province_code'])) {
                     $this->createAddress($profile->id, array_merge($address, ['type' => 'domisili']), 'domisili');
@@ -2159,6 +2164,41 @@ class GtkWizardController extends Controller
         return "Berhasil mengimport {$imported} data GTK, {$failed} gagal. Periksa detail error di bawah.";
     }
 
+    private function familyMembersFromImportRow(array $row, GtkProfile $profile): array
+    {
+        $members = [];
+        $spouseName = trim((string) ($row['nama_pasangan'] ?? ''));
+        $spouseNupy = trim((string) ($row['nupy_pasangan'] ?? ''));
+        $linkedProfile = $spouseNupy !== ''
+            ? GtkEmployment::where('nupy', $spouseNupy)->first()?->user?->gtkProfile
+            : null;
+
+        if ($spouseName !== '' || $linkedProfile) {
+            $members[] = [
+                'relationship' => $profile->jenis_kelamin === 'L' ? 'istri' : 'suami',
+                'nama' => $linkedProfile?->user?->name ?: $spouseName,
+                'jenis_kelamin' => $linkedProfile?->jenis_kelamin ?: ($profile->jenis_kelamin === 'L' ? 'P' : 'L'),
+                'tanggal_lahir' => $linkedProfile?->tanggal_lahir?->toDateString(),
+                'gtk_id' => $linkedProfile?->user_id,
+            ];
+        }
+
+        foreach ([1, 2, 3] as $index) {
+            $name = trim((string) ($row['nama_anak_'.$index] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $members[] = [
+                'relationship' => 'anak',
+                'nama' => $name,
+                'jenis_kelamin' => strtoupper((string) ($row['jenis_kelamin_anak_'.$index] ?? '')) ?: null,
+                'tanggal_lahir' => $row['tanggal_lahir_anak_'.$index] ?? null,
+            ];
+        }
+
+        return $members;
+    }
+
     private function normalizeImportRow(array $row): array
     {
         // Numeric ID fields from Excel may come as scientific notation floats — coerce to clean digit strings.
@@ -2219,7 +2259,7 @@ class GtkWizardController extends Controller
         }
 
         // Normalize date fields that may arrive as Excel serial numbers or non-standard strings.
-        foreach (['tanggal_lahir', 'tmt', 'tanggal_sk'] as $dateField) {
+        foreach (['tanggal_lahir', 'tmt', 'tanggal_sk', 'tanggal_lahir_anak_1', 'tanggal_lahir_anak_2', 'tanggal_lahir_anak_3'] as $dateField) {
             if (isset($row[$dateField]) && $row[$dateField] !== null && $row[$dateField] !== '') {
                 $val = $row[$dateField];
                 if (is_object($val) && method_exists($val, 'format')) {

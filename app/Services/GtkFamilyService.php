@@ -171,6 +171,10 @@ class GtkFamilyService
                 GtkHousehold::where('id', $source->id)->delete();
             }
 
+            GtkProfile::where('household_id', $source->id)->update([
+                'household_id' => $target->id,
+                'spouse_gtk_profile_id' => null,
+            ]);
             GtkProfile::whereIn('id', [$a->id, $b->id])->update([
                 'household_id' => $target->id,
                 'spouse_gtk_profile_id' => null,

@@ -428,7 +428,12 @@
 const REQUIRED = ['name','email','nik','nupy','no_hp'];
 const COL_MAP = {
     'name':'name','nama':'name','nama_lengkap':'name','email':'email','nik':'nik',
-    'no_kk':'no_kk','tempat_lahir':'tempat_lahir','tanggal_lahir':'tanggal_lahir',
+    'no_kk':'no_kk',
+    'nama_pasangan':'nama_pasangan','nupy_pasangan':'nupy_pasangan',
+    'nama_anak_1':'nama_anak_1','tanggal_lahir_anak_1':'tanggal_lahir_anak_1','jenis_kelamin_anak_1':'jenis_kelamin_anak_1',
+    'nama_anak_2':'nama_anak_2','tanggal_lahir_anak_2':'tanggal_lahir_anak_2','jenis_kelamin_anak_2':'jenis_kelamin_anak_2',
+    'nama_anak_3':'nama_anak_3','tanggal_lahir_anak_3':'tanggal_lahir_anak_3','jenis_kelamin_anak_3':'jenis_kelamin_anak_3',
+    'tempat_lahir':'tempat_lahir','tanggal_lahir':'tanggal_lahir',
     'tgl_lahir':'tanggal_lahir','jenis_kelamin':'jenis_kelamin','jk':'jenis_kelamin','golongan_darah':'golongan_darah',
     'agama':'agama','status_perkawinan':'status_perkawinan','npwp':'npwp',
     'no_hp':'no_hp','no_whatsapp':'no_whatsapp','nupy':'nupy','jenis_gtk':'jenis_gtk',

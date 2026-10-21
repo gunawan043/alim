@@ -48,7 +48,12 @@ class DataSheet implements FromCollection, WithColumnWidths, WithHeadings, WithS
         return collect([
             // Header
             [
-                'name', 'email', 'nik', 'no_kk', 'tempat_lahir', 'tanggal_lahir',
+                'name', 'email', 'nik', 'no_kk',
+                'nama_pasangan', 'nupy_pasangan',
+                'nama_anak_1', 'tanggal_lahir_anak_1', 'jenis_kelamin_anak_1',
+                'nama_anak_2', 'tanggal_lahir_anak_2', 'jenis_kelamin_anak_2',
+                'nama_anak_3', 'tanggal_lahir_anak_3', 'jenis_kelamin_anak_3',
+                'tempat_lahir', 'tanggal_lahir',
                 'jenis_kelamin', 'golongan_darah', 'agama', 'status_perkawinan', 'npwp',
                 'no_hp', 'no_whatsapp',
                 'nupy', 'jenis_gtk', 'jabatan', 'status_kepegawaian', 'tmt', 'nomor_sk',
@@ -60,6 +65,10 @@ class DataSheet implements FromCollection, WithColumnWidths, WithHeadings, WithS
             // Contoh baris
             [
                 'Fulan bin Abu', 'fulan.bin@example.com', '3201234567890123', '3201234567890001',
+                'Fulanah binti Abu', 'GTK2024002',
+                'Anak Pertama', '2015-01-15', 'P',
+                'Anak Kedua', '2018-06-10', 'L',
+                '', '', '',
                 'Mataram', '1990-01-15', 'L', 'A', 'Islam', 'Belum Kawin', '123456789012345',
                 '081234567890', '081234567890',
                 'GTK2024001', 'Pendidik / Guru', 'Guru Umum', 'Tetap', '2020-01-01',
@@ -84,12 +93,16 @@ class DataSheet implements FromCollection, WithColumnWidths, WithHeadings, WithS
     public function columnWidths(): array
     {
         return [
-            'A' => 22, 'B' => 26, 'C' => 20, 'D' => 20, 'E' => 16, 'F' => 14,
-            'G' => 5, 'H' => 5, 'I' => 10, 'J' => 12, 'K' => 18,
-            'L' => 18, 'M' => 18, 'N' => 14, 'O' => 14, 'P' => 14, 'Q' => 14,
-            'R' => 10, 'S' => 14, 'T' => 14, 'U' => 14, 'V' => 12,
-            'W' => 28, 'X' => 12, 'Y' => 22, 'Z' => 20, 'AA' => 18, 'AB' => 18,
-            'AC' => 16, 'AD' => 16, 'AE' => 12,
+            'A' => 22, 'B' => 26, 'C' => 20, 'D' => 20,
+            'E' => 22, 'F' => 16,
+            'G' => 20, 'H' => 16, 'I' => 10,
+            'J' => 20, 'K' => 16, 'L' => 10,
+            'M' => 20, 'N' => 16, 'O' => 10,
+            'P' => 16, 'Q' => 14, 'R' => 5, 'S' => 5, 'T' => 10, 'U' => 12, 'V' => 18,
+            'W' => 18, 'X' => 18, 'Y' => 14, 'Z' => 14, 'AA' => 14, 'AB' => 14,
+            'AC' => 10, 'AD' => 14, 'AE' => 14, 'AF' => 14, 'AG' => 12,
+            'AH' => 28, 'AI' => 12, 'AJ' => 22, 'AK' => 20, 'AL' => 18, 'AM' => 18,
+            'AN' => 16, 'AO' => 12,
         ];
     }
 
@@ -104,7 +117,7 @@ class DataSheet implements FromCollection, WithColumnWidths, WithHeadings, WithS
             2 => [
                 'font' => ['italic' => true, 'color' => ['argb' => 'FF888888']],
             ],
-            'A1:AE2' => [
+            'A1:AO2' => [
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             ],
         ];
