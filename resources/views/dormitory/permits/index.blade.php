@@ -113,18 +113,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
-    @if(session('token_error'))
-        <div class="alert alert-warning alert-dismissible fade show" role="alert">
-            <i class="ri-alert-line me-2"></i>{{ session('token_error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
-        </div>
-    @endif
-    @if(session('token_found'))
-        <div class="alert alert-info alert-dismissible fade show" role="alert">
-            <i class="ri-qr-code-line me-2"></i>Izin ditemukan!
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
-        </div>
-    @endif
 
     @php
         $totalApproved = ($stats['approved'] ?? 0) + ($stats['picked_up'] ?? 0);
@@ -351,6 +339,10 @@
                                class="btn btn-outline-info btn-sm">
                                 <i class="ri-qr-scan-2-line me-1"></i> Scan QR
                             </a>
+                            <a href="{{ route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                               class="btn btn-outline-warning btn-sm" title="Pengaturan kuota dan jenis izin">
+                                <i class="ri-settings-3-line me-1"></i> Pengaturan
+                            </a>
                             <a href="{{ route('user.asrama.permits.bulk-card', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
                                class="btn btn-outline-success btn-sm" title="Cetak Kartu Izin Massal">
                                 <i class="ri-printer-line me-1"></i> Cetak Kartu
@@ -364,101 +356,56 @@
                 </div>
 
                 <div class="card-body">
-                    {{-- Filter Section (gaya GTK) --}}
-                    <div class="filter-group">
-                        <div class="filter-group-title">
-                            <i class="ri-filter-3-line"></i> Filter & Pencarian
-                        </div>
-                        <form method="GET" class="row g-2 align-items-end">
-                            <div class="col-md-3">
-                                <label class="form-label mb-1" style="font-size:12px; font-weight:600;">
-                                    <i class="ri-search-line me-1"></i>Cari
-                                </label>
-                                <input type="text" name="search" class="form-control form-control-sm"
-                                       placeholder="Nama/NISN/tujuan..."
-                                       value="{{ request('search') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label mb-1" style="font-size:12px; font-weight:600;">
-                                    <i class="ri-flag-line me-1"></i>Status
-                                </label>
-                                <select name="status" class="form-select form-select-sm">
-                                    <option value="">Semua Status</option>
-                                    <option value="pending"   {{ request('status') == 'pending' ? 'selected' : '' }}>Menunggu</option>
-                                    <option value="approved"  {{ request('status') == 'approved' ? 'selected' : '' }}>Belum Keluar</option>
-                                    <option value="picked_up"  {{ request('status') == 'picked_up' ? 'selected' : '' }}>Sedang di Luar</option>
-                                    <option value="returned"  {{ request('status') == 'returned' ? 'selected' : '' }}>Sudah Kembali</option>
-                                    <option value="overdue"   {{ request('status') == 'overdue' ? 'selected' : '' }}>Melewati Jadwal</option>
-                                    <option value="rejected"  {{ request('status') == 'rejected' ? 'selected' : '' }}>Ditolak</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label mb-1" style="font-size:12px; font-weight:600;">
-                                    <i class="ri-bookmark-line me-1"></i>Jenis
-                                </label>
-                                <select name="permit_type" class="form-select form-select-sm">
-                                    <option value="">Semua Jenis</option>
-                                    <option value="pulang"           {{ request('permit_type') == 'pulang' ? 'selected' : '' }}>Pulang</option>
-                                    <option value="keluar_kota"       {{ request('permit_type') == 'keluar_kota' ? 'selected' : '' }}>Keluar Kota</option>
-                                    <option value="berobat"           {{ request('permit_type') == 'berobat' ? 'selected' : '' }}>Berobat</option>
-                                    <option value="sakit"            {{ request('permit_type') == 'sakit' ? 'selected' : '' }}>Sakit</option>
-                                    <option value="keperluan_keluarga" {{ request('permit_type') == 'keperluan_keluarga' ? 'selected' : '' }}>Keperluan Keluarga</option>
-                                    <option value="lainnya"           {{ request('permit_type') == 'lainnya' ? 'selected' : '' }}>Lainnya</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label mb-1" style="font-size:12px; font-weight:600;">
-                                    <i class="ri-calendar-line me-1"></i>Dari
-                                </label>
-                                <input type="date" name="start_date" class="form-control form-control-sm" value="{{ request('start_date') }}">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label mb-1" style="font-size:12px; font-weight:600;">
-                                    <i class="ri-calendar-line me-1"></i>Sampai
-                                </label>
-                                <input type="date" name="end_date" class="form-control form-control-sm" value="{{ request('end_date') }}">
-                            </div>
-                            <div class="col-md-1 d-grid">
-                                <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="ri-search-line me-1"></i> Cari
-                                </button>
-                            </div>
-                            @if(request()->hasAny(['search','status','permit_type','start_date','end_date']))
-                                <div class="col-12 mt-2">
-                                    <span class="text-muted" style="font-size:12px;">Filter Aktif:</span>
-                                    @if(request('search'))
-                                        <span class="filter-badge active">
-                                            <i class="ri-search-line"></i> "{{ request('search') }}"
-                                        </span>
-                                    @endif
-                                    @if(request('status'))
-                                        <span class="filter-badge active">
-                                            <i class="ri-flag-line"></i> {{ ucfirst(request('status')) }}
-                                        </span>
-                                    @endif
-                                    @if(request('permit_type'))
-                                        <span class="filter-badge active">
-                                            <i class="ri-bookmark-line"></i> {{ ucfirst(str_replace('_',' ',request('permit_type'))) }}
-                                        </span>
-                                    @endif
-                                    @if(request('start_date'))
-                                        <span class="filter-badge active">
-                                            <i class="ri-calendar-line"></i> ≥ {{ \Carbon\Carbon::parse(request('start_date'))->format('d/m/Y') }}
-                                        </span>
-                                    @endif
-                                    @if(request('end_date'))
-                                        <span class="filter-badge active">
-                                            <i class="ri-calendar-line"></i> ≤ {{ \Carbon\Carbon::parse(request('end_date'))->format('d/m/Y') }}
-                                        </span>
-                                    @endif
-                                    <a href="{{ route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                       class="btn btn-link btn-sm text-decoration-none">
-                                        <i class="ri-close-line"></i> Reset Filter
-                                    </a>
-                                </div>
-                            @endif
+                    {{-- Toolbar pencarian + filter modal (pola GTK) --}}
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <form method="GET" class="d-flex gap-2 flex-grow-1" style="max-width:520px;">
+                            <input type="text" name="search" class="form-control form-control-sm"
+                                   placeholder="Cari nama santri, NISN, tujuan..."
+                                   value="{{ request('search') }}">
+                            @foreach(['status', 'permit_type', 'start_date', 'end_date'] as $filterKey)
+                                @if(request($filterKey))
+                                    <input type="hidden" name="{{ $filterKey }}" value="{{ request($filterKey) }}">
+                                @endif
+                            @endforeach
+                            <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                <i class="ri-search-line"></i> Cari
+                            </button>
                         </form>
+
+                        <div class="toolbar-actions">
+                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#permitFilterModal">
+                                <i class="ri-filter-3-line me-1"></i> Filter Lanjutan
+                                @if(request()->hasAny(['status', 'permit_type', 'start_date', 'end_date']))
+                                    <span class="badge bg-light text-dark ms-1">Aktif</span>
+                                @endif
+                            </button>
+                            <a href="{{ route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                               class="btn btn-light btn-sm" title="Reset filter">
+                                <i class="ri-refresh-line"></i>
+                            </a>
+                        </div>
                     </div>
+
+                    @if(request()->hasAny(['search','status','permit_type','start_date','end_date']))
+                        <div class="mb-3">
+                            <span class="text-muted small">Filter aktif:</span>
+                            @if(request('search'))
+                                <span class="filter-badge active"><i class="ri-search-line"></i> "{{ request('search') }}"</span>
+                            @endif
+                            @if(request('status'))
+                                <span class="filter-badge active"><i class="ri-flag-line"></i> {{ ucfirst(str_replace('_', ' ', request('status'))) }}</span>
+                            @endif
+                            @if(request('permit_type'))
+                                <span class="filter-badge active"><i class="ri-bookmark-line"></i> {{ ucfirst(str_replace('_', ' ', request('permit_type'))) }}</span>
+                            @endif
+                            @if(request('start_date'))
+                                <span class="filter-badge active"><i class="ri-calendar-line"></i> ≥ {{ \Carbon\Carbon::parse(request('start_date'))->format('d/m/Y') }}</span>
+                            @endif
+                            @if(request('end_date'))
+                                <span class="filter-badge active"><i class="ri-calendar-line"></i> ≤ {{ \Carbon\Carbon::parse(request('end_date'))->format('d/m/Y') }}</span>
+                            @endif
+                        </div>
+                    @endif
 
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <small class="text-muted">
@@ -469,7 +416,7 @@
                     </div>
 
                     <div class="table-container">
-                        <table class="table table-hover align-middle">
+                        <table class="table table-hover align-middle table-freeze">
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center">No</th>
@@ -729,6 +676,77 @@
         </div>
     </div>
 
+    {{-- Modal filter lanjutan --}}
+    <div class="modal fade" id="permitFilterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="GET" action="{{ route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-filter-3-line me-2 text-primary"></i>Filter Perizinan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-search-line"></i>Pencarian</div>
+                                    <input type="text" name="search" class="form-control" value="{{ request('search') }}" placeholder="Nama santri, NISN, tujuan...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-flag-line"></i>Status</div>
+                                    <select name="status" class="form-select">
+                                        <option value="">Semua status</option>
+                                        @foreach([
+                                            'pending' => 'Menunggu Persetujuan',
+                                            'approved' => 'Belum Keluar',
+                                            'picked_up' => 'Sedang di Luar Asrama',
+                                            'returned' => 'Sudah Kembali',
+                                            'overdue' => 'Melewati Jadwal',
+                                            'rejected' => 'Ditolak',
+                                        ] as $value => $label)
+                                            <option value="{{ $value }}" {{ request('status') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-bookmark-line"></i>Jenis Izin</div>
+                                    <select name="permit_type" class="form-select">
+                                        <option value="">Semua jenis</option>
+                                        @foreach(($permitTypes ?? collect()) as $permitType)
+                                            <option value="{{ $permitType->code }}" {{ request('permit_type') === $permitType->code ? 'selected' : '' }}>{{ $permitType->label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-calendar-line"></i>Dari</div>
+                                    <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-calendar-line"></i>Sampai</div>
+                                    <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light">
+                            <i class="ri-refresh-line me-1"></i> Reset
+                        </a>
+                        <button type="submit" class="btn btn-primary"><i class="ri-filter-3-line me-1"></i> Terapkan Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal: Catat Kedatangan --}}
     <x-modal-confirm
         id="returnModal"
@@ -764,13 +782,7 @@
                     {{-- konten dinamis via JS --}}
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                    <a href="#" id="editPermitTypeLink" class="btn btn-primary">
-                        <i class="ri-edit-line"></i> Ubah Jenis Izin
-                    </a>
-                    <button type="button" class="btn btn-success d-none" id="forceApproveBtn">
-                        <i class="ri-check-line"></i> Setujui Paksa
-                    </button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Mengerti</button>
                 </div>
             </div>
         </div>
@@ -855,20 +867,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!modal) return;
 
     const warningContent = document.getElementById('quotaWarningContent');
-    const forceApproveBtn = document.getElementById('forceApproveBtn');
-    const editPermitTypeLink = document.getElementById('editPermitTypeLink');
-
-    function resetWarningButtons() {
-        forceApproveBtn.classList.add('d-none');
-        editPermitTypeLink.classList.remove('d-none');
-    }
 
     document.querySelectorAll('.approveForm').forEach(function (form) {
         const approveBtn = document.querySelector(`button.approveSubmitBtn[form="${form.id}"]`);
         const studentId = form.querySelector('[name="student_id"]').value;
         const originalPermitType = form.querySelector('[name="permit_type_original"]').value;
         const departureDatetime = form.querySelector('[name="departure_datetime"]').value;
-        const selectPermitType = form.querySelector('select[name="permit_type"]');
         const baseUrl = form.getAttribute('data-quota-check-url');
 
         let isSubmitting = false;
@@ -881,11 +885,8 @@ document.addEventListener('DOMContentLoaded', function () {
             approveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memproses...';
             approveBtn.disabled = true;
 
-            const newPermitType = selectPermitType ? selectPermitType.value : originalPermitType;
-            const permitTypeChanged = selectPermitType ? (selectPermitType.value !== originalPermitType) : false;
-
             try {
-                if (!permitTypeChanged) {
+                {
                     const response = await fetch(baseUrl, {
                         method: 'POST',
                         headers: {
@@ -915,11 +916,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             } else {
                                 html += '<br>Sisa kuota tidak tersedia.';
                             }
-                            html += '<br><br>Ubah jenis izin (misal darurat) untuk melewati batasan.';
+                            html += '<br><br>Kuota tidak dapat dilampaui tanpa izin darurat/khusus sesuai prosedur asrama.';
 
                             warningContent.innerHTML = html;
-                            resetWarningButtons();
-                            modal.setAttribute('data-active-form', form.id);
                             new bootstrap.Modal(modal).show();
                             approveBtn.innerHTML = originalHTML;
                             approveBtn.disabled = false;
@@ -941,30 +940,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    editPermitTypeLink.addEventListener('click', function (e) {
-        e.preventDefault();
-        const activeFormId = modal.getAttribute('data-active-form');
-        if (!activeFormId) return;
-        const approveModal = document.getElementById(activeFormId.replace('approveForm-', 'approveModal-'));
-        if (approveModal) {
-            bootstrap.Modal.getInstance(modal).hide();
-            setTimeout(() => {
-                new bootstrap.Modal(approveModal).show();
-                const select = approveModal.querySelector('select[name="permit_type"]');
-                if (select) select.focus();
-            }, 300);
-        }
-    });
-
-    forceApproveBtn.addEventListener('click', function () {
-        const activeFormId = modal.getAttribute('data-active-form');
-        if (!activeFormId) return;
-        const form = document.getElementById(activeFormId);
-        if (form) {
-            bootstrap.Modal.getInstance(modal).hide();
-            form.submit();
-        }
-    });
 });
 </script>
 @endsection

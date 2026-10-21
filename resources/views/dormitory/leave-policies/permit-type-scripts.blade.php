@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (addBtn) {
         addBtn.addEventListener('click', function() {
             // Reset form ke mode create
-            document.getElementById('permitTypeForm').action = '';
+            document.getElementById('permitTypeForm').action = baseUrl + '/permit-types';
             document.getElementById('permitTypeFormMethod').value = 'POST';
             document.getElementById('permitTypeId').value = '';
             document.getElementById('ptLabel').value = '';
@@ -88,6 +88,75 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // ── Edit master jenis izin ───
+    document.querySelectorAll('.js-edit-master').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const form = document.getElementById('permitTypeForm');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ri-loader-4-line me-1"></i> Memuat...';
+
+            fetch(`${baseUrl}/permit-types/${id}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Gagal memuat jenis izin.');
+                return res.json();
+            })
+            .then(({ data }) => {
+                form.action = `${baseUrl}/permit-types/${id}`;
+                document.getElementById('permitTypeFormMethod').value = 'PUT';
+                document.getElementById('permitTypeId').value = data.id;
+                document.getElementById('ptLabel').value = data.label || '';
+                document.getElementById('ptCode').value = data.code || '';
+                document.getElementById('ptCategory').value = data.category || 'custom';
+                document.getElementById('ptSortOrder').value = data.sort_order ?? 100;
+                document.getElementById('ptIcon').value = data.icon || 'ri-file-list-3-line';
+                document.getElementById('ptColor').value = data.color || 'primary';
+                document.getElementById('ptDescription').value = data.description || '';
+                document.getElementById('ptIsActive').checked = !!data.is_active;
+                document.getElementById('permitTypeModalTitle').textContent = 'Edit Jenis Izin';
+                new bootstrap.Modal(document.getElementById('permitTypeModal')).show();
+            })
+            .catch(err => alert(err.message))
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        });
+    });
+
+    // ── Toggle aktif/nonaktif master ───
+    document.querySelectorAll('.js-toggle-active').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const id = this.dataset.id;
+            const original = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            try {
+                const response = await fetch(`${baseUrl}/permit-types/${id}/toggle-active`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Gagal mengubah status.');
+                window.location.reload();
+            } catch (err) {
+                alert(err.message);
+                this.disabled = false;
+                this.innerHTML = original;
+            }
+        });
+    });
 
     // ── Open Delete Modal (isi action + label dinamis) ───
     document.querySelectorAll('.js-delete-permit').forEach(btn => {

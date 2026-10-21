@@ -190,14 +190,15 @@
                                 </label>
                                 <select name="permit_type" id="permit_type" class="form-select @error('permit_type') is-invalid @enderror" required>
                                     <option value="">-- Pilih Jenis Izin --</option>
-                                    <option value="pulang" {{ old('permit_type') == 'pulang' ? 'selected' : '' }}>Pulang</option>
-                                    <option value="keluar_kota" {{ old('permit_type') == 'keluar_kota' ? 'selected' : '' }}>Keluar Kota</option>
-                                    <option value="berobat" {{ old('permit_type') == 'berobat' ? 'selected' : '' }}>Berobat</option>
-                                    <option value="sakit" {{ old('permit_type') == 'sakit' ? 'selected' : '' }}>Sakit</option>
-                                    <option value="keperluan_keluarga" {{ old('permit_type') == 'keperluan_keluarga' ? 'selected' : '' }}>Keperluan Keluarga</option>
-                                    <option value="lainnya" {{ old('permit_type') == 'lainnya' ? 'selected' : '' }}>Lainnya</option>
-                                    <option value="darurat" {{ old('permit_type') == 'darurat' ? 'selected' : '' }}>🚨 Darurat</option>
+                                    @foreach(($permitTypes ?? collect()) as $permitType)
+                                        <option value="{{ $permitType->code }}" {{ old('permit_type') === $permitType->code ? 'selected' : '' }}>
+                                            {{ $permitType->label }}{{ $permitType->category === 'emergency' ? ' — Darurat' : '' }}
+                                        </option>
+                                    @endforeach
                                 </select>
+                                @if(($permitTypes ?? collect())->isEmpty())
+                                    <small class="text-danger d-block mt-1">Belum ada jenis izin aktif. Atur di Pengaturan Perizinan.</small>
+                                @endif
                                 @error('permit_type')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

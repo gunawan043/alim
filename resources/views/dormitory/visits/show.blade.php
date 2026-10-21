@@ -96,7 +96,7 @@
                                     </span>
                                 @else
                                     <span class="badge bg-secondary-subtle text-secondary">
-                                        {{ ucfirst(str_replace('_', ' ', $visit->visitor_relationship ?? '—')) }}
+                                        {{ $visit->visitor_relationship_text ?: '—' }}
                                     </span>
                                 @endif
                             </div>
@@ -300,7 +300,7 @@
                             @endif
                         </div>
                         <div class="fw-semibold mb-0">
-                            {{ $visit->status === 'rejected' ? 'Ditolak' : 'Disetujui' }}
+                            {{ $visit->status === 'rejected' ? 'Ditolak' : 'Santri Belum Keluar' }}
                         </div>
                         <div class="text-muted small">
                             @if($visit->approved_at)
@@ -322,7 +322,7 @@
                                 <i class="ri-check-line"></i>
                             @endif
                         </div>
-                        <div class="fw-semibold mb-0">Santri Keluar</div>
+                        <div class="fw-semibold mb-0">Sedang dalam Kunjungan</div>
                         <div class="text-muted small">
                             @if($visit->check_in_at)
                                 {{ $visit->check_in_at->format('d M Y, H:i') }}
@@ -339,7 +339,7 @@
                                 <i class="ri-check-line"></i>
                             @endif
                         </div>
-                        <div class="fw-semibold mb-0">Santri Kembali</div>
+                        <div class="fw-semibold mb-0">Kunjungan Selesai</div>
                         <div class="text-muted small">
                             @if($visit->check_out_at)
                                 {{ $visit->check_out_at->format('d M Y, H:i') }}

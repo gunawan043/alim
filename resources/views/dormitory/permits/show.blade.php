@@ -150,16 +150,16 @@
             'pending'   => ['icon' => 'ri-time-line', 'text' => 'Menunggu Persetujuan', 'color' => 'warning', 'bg' => '#fff3cd', 'border' => '#ffc107'],
             'approved'  => ['icon' => 'ri-logout-box-r-line', 'text' => 'Belum Keluar', 'color' => 'info', 'bg' => '#cff4fc', 'border' => '#0dcaf0'],
             'picked_up' => ['icon' => 'ri-walk-line', 'text' => 'Sedang di Luar Asrama', 'color' => 'warning', 'bg' => '#fff3cd', 'border' => '#ffc107'],
-            'returned'  => ['icon' => 'ri-login-box-line', 'text' => 'Sudah Kembali ke Asrama', 'color' => 'success', 'bg' => '#d1e7dd', 'border' => '#198754'],
+            'returned'  => ['icon' => 'ri-login-box-line', 'text' => 'Sudah Kembali', 'color' => 'success', 'bg' => '#d1e7dd', 'border' => '#198754'],
             'rejected'  => ['icon' => 'ri-close-circle-line', 'text' => 'Ditolak', 'color' => 'danger', 'bg' => '#f8d7da', 'border' => '#dc3545'],
-            'overdue'   => ['icon' => 'ri-alert-line', 'text' => 'Telat Pulang', 'color' => 'danger', 'bg' => '#f8d7da', 'border' => '#dc3545'],
+            'overdue'   => ['icon' => 'ri-alert-line', 'text' => 'Melewati Jadwal', 'color' => 'danger', 'bg' => '#f8d7da', 'border' => '#dc3545'],
         ];
         $st = $statusConfig[$permit->status] ?? ['icon' => 'ri-file-list-line', 'text' => ucfirst($permit->status), 'color' => 'secondary', 'bg' => '#e9ecef', 'border' => '#6c757d'];
         $isLive = in_array($permit->status, ['approved', 'overdue']) && !$permit->actual_return_datetime;
     @endphp
 
     {{-- Top Status Banner --}}
-    <div class="card mb-2 shadow-sm border-start border-2" style="border-left-color: {{ $st['border'] }} !important;">
+    <div class="card mb-2 shadow-sm border-start border-3 border-{{ $st['color'] }}">
         <div class="card-body py-3 px-4">
             <div class="row align-items-center g-3">
                 <div class="col-auto">
@@ -190,8 +190,7 @@
                     </div>
                 </div>
                 <div class="col-auto ms-auto">
-                    <span class="badge rounded-pill px-3 py-2 fs-14 fw-semibold border"
-                          style="background-color:{{ $st['bg'] }};color:#333;border-color:{{ $st['border'] }} !important;">
+                    <span class="badge rounded-pill px-3 py-2 fs-14 fw-semibold border border-{{ $st['color'] }} bg-{{ $st['color'] }}-subtle text-{{ $st['color'] }}">
                         <i class="ri-{{ $st['icon'] }} me-1"></i>{{ $st['text'] }}
                     </span>
                 </div>

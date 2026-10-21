@@ -3,7 +3,6 @@
 @section('title', 'Konfigurasi Izin — ' . ucfirst(str_replace('_', ' ', $permitType)))
 
 @section('content')
-<div class="container-fluid">
 
     @component('components.breadcrumb')
         @slot('li_1') Asrama @endslot
@@ -13,15 +12,26 @@
         @slot('title') {{ ucfirst(str_replace('_', ' ', $permitType)) }} @endslot
     @endcomponent
 
+    @if (empty($canManageQuota))
+        <div class="alert alert-info d-flex gap-2 align-items-start" role="alert">
+            <i class="ri-lock-line fs-5 mt-1" aria-hidden="true"></i>
+            <div>
+                <strong>Mode lihat saja.</strong>
+                Hanya Kepala Asrama, Wakil Kepala Asrama, atau admin sistem yang dapat mengubah konfigurasi ini.
+            </div>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('user.asrama.leave-policies.store', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
         @csrf
         <input type="hidden" name="permit_type" value="{{ $permitType }}" />
+        <fieldset class="border-0 p-0 m-0" @if (empty($canManageQuota)) disabled @endif>
 
         {{-- Row 1: Status & Approval --}}
         <div class="row">
             <div class="col-lg-8 mx-auto">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white border-bottom-0">
+                <div class="card">
+                    <div class="card-header border-bottom-dashed">
                         <h5 class="card-title mb-0 fw-semibold text-primary"><i class="ri-settings-3-line me-2"></i>Status & Approval</h5>
                     </div>
                     <div class="card-body">
@@ -44,8 +54,8 @@
                 </div>
 
                 {{-- Row 2: Kuota per Periode --}}
-                <div class="card border-0 shadow-sm mt-4">
-                    <div class="card-header bg-white border-bottom-0">
+                <div class="card mt-4">
+                    <div class="card-header border-bottom-dashed">
                         <h5 class="card-title mb-0 fw-semibold text-primary"><i class="ri-calendar-check-line me-2"></i>Kuota per Periode</h5>
                     </div>
                     <div class="card-body">
@@ -215,15 +225,17 @@
                 {{-- Actions --}}
                 <div class="d-flex justify-content-end gap-3 mt-4 mb-5">
                     <a href="{{ route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                       class="btn btn-secondary">
+                       class="btn btn-light">
                         <i class="ri-arrow-go-back-line me-1"></i> Batal
                     </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="ri-save-line me-1"></i> Simpan Konfigurasi
-                    </button>
+                    @if (! empty($canManageQuota))
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-save-line me-1"></i> Simpan Konfigurasi
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>
+        </fieldset>
     </form>
-</div>
 @endsection

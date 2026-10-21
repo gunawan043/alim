@@ -89,8 +89,8 @@
                                     <option value="mahrom" {{ old('visitor_relationship') === 'mahrom' ? 'selected' : '' }}>Mahrom</option>
                                     <option value="wali" {{ old('visitor_relationship') === 'wali' ? 'selected' : '' }}>Wali</option>
                                     <option value="keluarga" {{ old('visitor_relationship') === 'keluarga' ? 'selected' : '' }}>Keluarga</option>
-                                    <option value="pihak_pondok" {{ old('visitor_relationship') === 'pihak_pondok' ? 'selected' : '' }}>Pihak Pondok</option>
-                                    <option value="lainnya" {{ old('visitor_relationship') === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+                                    <option value="pihak_pondok" {{ in_array(old('visitor_relationship'), ['pihak_pondok', 'Pihak pondok'], true) ? 'selected' : '' }}>Pihak Pondok</option>
+                                    <option value="lainnya" {{ in_array(old('visitor_relationship'), ['lainnya', 'Lainnya', ' Lainnya'], true) ? 'selected' : '' }}>Lainnya</option>
                                 </select>
                                 @error('visitor_relationship')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -112,22 +112,30 @@
                                     <option value="bawa_bantuan" {{ old('purpose') === 'bawa_bantuan' ? 'selected' : '' }}>Membawa Bantuan</option>
                                     <option value="pertemuan_wali" {{ old('purpose') === 'pertemuan_wali' ? 'selected' : '' }}>Pertemuan Wali</option>
                                     <option value="antar_jemput" {{ old('purpose') === 'antar_jemput' ? 'selected' : '' }}>Antar / Jemput Santri</option>
-                                    <option value="lainnya" {{ old('purpose') === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+                                    <option value="lainnya" {{ in_array(old('purpose'), ['lainnya', 'Lainnya'], true) ? 'selected' : '' }}>Lainnya</option>
                                 </select>
                                 @error('purpose')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                            <div class="col-md-3">
-                                <label for="expected_arrival" class="form-label">Tanggal & Waktu Datang <span class="text-danger">*</span></label>
-                                <input type="datetime-local" name="expected_arrival" id="expected_arrival" class="form-control @error('expected_arrival') is-invalid @enderror"
-                                       value="{{ old('expected_arrival') }}" required>
-                                @error('expected_arrival')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div class="col-md-2">
+                                <label for="visitor_count" class="form-label">Jumlah Pengunjung</label>
+                                <input type="number" name="visitor_count" id="visitor_count" class="form-control @error('visitor_count') is-invalid @enderror"
+                                       value="{{ old('visitor_count', 1) }}" min="1" max="100">
+                                <small class="text-muted">Maks. {{ $visitPolicy->max_visitors_per_visit ?? 'tidak dibatasi' }} orang.</small>
+                                @error('visitor_count')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                            <div class="col-md-3">
-                                <label for="expected_duration_minutes" class="form-label">Durasi Rencana (menit)</label>
-                                <input type="number" name="expected_duration_minutes" id="expected_duration_minutes" class="form-control @error('expected_duration_minutes') is-invalid @enderror"
-                                       value="{{ old('expected_duration_minutes', 60) }}" min="5" max="480" step="5" aria-describedby="expected_duration_help">
+                            <div class="col-md-2">
+                                <label for="expected_arrival_datetime" class="form-label">Rencana Waktu Kunjungan <span class="text-danger">*</span></label>
+                                <input type="datetime-local" name="expected_arrival_datetime" id="expected_arrival_datetime" class="form-control @error('expected_arrival_datetime') is-invalid @enderror"
+                                       value="{{ old('expected_arrival_datetime') }}" required>
+                                <small class="text-muted">Santri akan dipanggil keluar saat waktu kunjungan tiba.</small>
+                                @error('expected_arrival_datetime')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-2">
+                                <label for="expected_meet_duration_minutes" class="form-label">Durasi Rencana (menit)</label>
+                                <input type="number" name="expected_meet_duration_minutes" id="expected_meet_duration_minutes" class="form-control @error('expected_meet_duration_minutes') is-invalid @enderror"
+                                       value="{{ old('expected_meet_duration_minutes', 60) }}" min="5" max="480" step="5" aria-describedby="expected_duration_help">
                                 <small id="expected_duration_help" class="text-muted">Minimal 5 menit, maksimal 480 menit (8 jam).</small>
-                                @error('expected_duration_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('expected_meet_duration_minutes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12">
                                 <label for="visit_notes" class="form-label">Catatan / Keterangan</label>
@@ -190,20 +198,36 @@
                         <ul class="list-unstyled mb-0 small">
                             <li class="d-flex gap-2 mb-2">
                                 <i class="ri-checkbox-circle-line text-success mt-1" aria-hidden="true"></i>
-                                <span>Kunjungan harus diajukan minimal 1 jam vorher.</span>
+                                <span>Kunjungan diajukan sebelum waktu kedatangan yang direncanakan.</span>
                             </li>
                             <li class="d-flex gap-2 mb-2">
-                                <i class="ri-checkbox-circle-line text-success mt-1" aria-hidden="true"></i>
-                                <span>Tamu harus menunjukkan identitas asli (KTP).</span>
+                                <i class="ri-shield-user-line text-success mt-1" aria-hidden="true"></i>
+                                <span>Tamu wajib menunjukkan identitas asli (KTP) saat tiba.</span>
                             </li>
                             <li class="d-flex gap-2 mb-2">
-                                <i class="ri-checkbox-circle-line text-success mt-1" aria-hidden="true"></i>
-                                <span>Hanya mahrom yang boleh menjenguk di dalam kamar.</span>
+                                <i class="ri-group-line text-success mt-1" aria-hidden="true"></i>
+                                <span>Maksimal pengunjung: <strong>{{ $visitPolicy->max_visitors_per_visit ?? 'tidak dibatasi' }}</strong>.</span>
                             </li>
                             <li class="d-flex gap-2 mb-2">
-                                <i class="ri-checkbox-circle-line text-success mt-1" aria-hidden="true"></i>
+                                <i class="ri-time-line text-success mt-1" aria-hidden="true"></i>
                                 <span>Lama kunjungan maksimal 8 jam.</span>
                             </li>
+                            @if($visitPolicy && $visitPolicy->visit_strategy === 'quota')
+                                <li class="d-flex gap-2 mb-2">
+                                    <i class="ri-bar-chart-line text-success mt-1" aria-hidden="true"></i>
+                                    <span>Kuota: <strong>{{ $visitPolicy->visit_quota }}x / {{ $visitPolicy->visit_quota_period }}</strong>.</span>
+                                </li>
+                            @elseif($visitPolicy && $visitPolicy->visit_strategy === 'banned')
+                                <li class="d-flex gap-2 mb-2 text-danger">
+                                    <i class="ri-close-circle-line mt-1" aria-hidden="true"></i>
+                                    <span>Kunjungan sedang dinonaktifkan untuk asrama ini.</span>
+                                </li>
+                            @else
+                                <li class="d-flex gap-2 mb-2">
+                                    <i class="ri-infinity-line text-success mt-1" aria-hidden="true"></i>
+                                    <span>Kuota kunjungan tidak dibatasi.</span>
+                                </li>
+                            @endif
                             <li class="d-flex gap-2 mb-0">
                                 <i class="ri-checkbox-circle-line text-success mt-1" aria-hidden="true"></i>
                                 <span>Kunjungan ditutup saat santri kembali ke asrama.</span>

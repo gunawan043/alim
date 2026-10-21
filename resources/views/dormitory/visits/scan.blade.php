@@ -315,7 +315,7 @@
                 </div>
             </div>
 
-            {{-- Wizard Tabs: 1) Santri belum keluar → 2) Santri sedang di luar menemui tamu → 3) Santri sudah kembali --}}
+            {{-- Wizard Tabs: 1) Santri belum keluar → 2) Sedang dalam kunjungan → 3) Kunjungan selesai --}}
             <div class="card">
                 <div class="card-header border-bottom-dashed pb-0">
                     <ul class="nav nav-tabs nav-tabs-custom" id="visitStepper" role="tablist" style="border-bottom: none;">
@@ -333,7 +333,7 @@
                                     data-bs-target="#step-arrived" type="button" role="tab">
                                 <span class="step-number">2</span>
                                 <i class="ri-user-unfollow-line me-1"></i>
-                                <span>Santri Sedang di Luar</span>
+                                <span>Sedang dalam Kunjungan</span>
                                 <span class="badge bg-warning-subtle text-warning ms-2">{{ $arrivedAwaiting->count() }}</span>
                             </button>
                         </li>
@@ -342,7 +342,7 @@
                                     data-bs-target="#step-done" type="button" role="tab">
                                 <span class="step-number">3</span>
                                 <i class="ri-home-heart-line me-1"></i>
-                                <span>Santri Sudah Kembali</span>
+                                <span>Kunjungan Selesai</span>
                                 <span class="badge bg-success-subtle text-success ms-2">{{ $returnedHome->count() }}</span>
                             </button>
                         </li>
@@ -401,7 +401,7 @@
                                             </td>
                                             <td data-label="Status">
                                                 <span class="badge bg-info-subtle text-info">
-                                                    <span class="status-dot bg-info"></span> Menunggu Santri Keluar
+                                                    <span class="status-dot bg-info"></span> Santri Belum Keluar
                                                 </span>
                                             </td>
                                             <td data-label="Aksi" class="text-center">
@@ -413,7 +413,7 @@
                                                             data-student-name="{{ $visit->student?->name ?? '—' }}"
                                                             data-action="check-in"
                                                             data-action-label="Catat Santri Keluar"
-                                                            title="Catat wali tiba di pos asrama tanpa QR">
+                                                            title="Catat santri keluar asrama tanpa QR">
                                                         <i class="ri-login-box-line me-1"></i> Catat Santri Keluar
                                                     </button>
                                                     <a href="{{ route('user.asrama.visits.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'visitUuid' => $visit->id]) }}"
@@ -430,7 +430,7 @@
                         </div>
                     </div>
 
-                    {{-- STEP 2: Santri sedang di luar asrama menemui tamu/wali --}}
+                    {{-- STEP 2: Sedang dalam kunjungan (santri menemui tamu/wali) --}}
                     <div class="tab-pane fade" id="step-arrived" role="tabpanel">
                         <div class="card-header bg-soft-warning py-2">
                             <small class="text-muted">
@@ -481,7 +481,7 @@
                                             <td data-label="Durasi"><span class="text-muted">{{ $duration }}</span></td>
                                             <td data-label="Status">
                                                 <span class="badge bg-warning-subtle text-warning">
-                                                    <span class="status-dot bg-warning"></span> Santri Sedang di Luar
+                                                    <span class="status-dot bg-warning"></span> Sedang dalam Kunjungan
                                                 </span>
                                             </td>
                                             <td data-label="Aksi" class="text-center">
@@ -510,7 +510,7 @@
                         </div>
                     </div>
 
-                    {{-- STEP 3: Santri sudah kembali (checked_out) --}}
+                    {{-- STEP 3: Kunjungan selesai (checked_out) --}}
                     <div class="tab-pane fade" id="step-done" role="tabpanel">
                         <div class="card-header bg-soft-success py-2">
                             <small class="text-muted">
@@ -559,7 +559,7 @@
                                             <td data-label="Durasi"><span class="text-muted">{{ $dur }}</span></td>
                                             <td data-label="Status">
                                                 <span class="badge bg-success-subtle text-success">
-                                                    <span class="status-dot bg-success"></span> Santri Sudah Kembali
+                                                    <span class="status-dot bg-success"></span> Kunjungan Selesai
                                                 </span>
                                             </td>
                                             <td data-label="Aksi" class="text-center">

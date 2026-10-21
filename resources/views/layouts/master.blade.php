@@ -20,6 +20,9 @@
     <link href="{{ URL::asset('build/vendor/select2/css/select2.min.css') }}" rel="stylesheet" />
     <script src="{{ URL::asset('build/vendor/select2/js/select2.min.js') }}"></script>
     @include('layouts.head-css')
+    @if(request()->routeIs('user.asrama.*'))
+        @include('dormitory._ui-styles')
+    @endif
     <style>
         /* Logo ALIM: paksa logo yang tepat untuk mode terang/gelap. */
         [data-bs-theme="light"] .logo.logo-light { display: none !important; }
@@ -53,7 +56,7 @@
         <!-- ============================================================== -->
         <div class="main-content">
             <div class="page-content">
-                <div class="container-fluid">
+                <div class="container-fluid @if(request()->routeIs('user.asrama.*')) asrama-page @endif">
                     @yield('content')
                     @include('components.delete-modal')
                 </div>

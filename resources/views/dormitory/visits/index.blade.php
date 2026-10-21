@@ -22,72 +22,89 @@
         </div>
     @endif
 
-    {{-- Stats Cards --}}
-    <div class="row g-3 mb-2">
-        <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-90 border-start border-warning">
+    @php
+        $totalVisit = ($stats['pending'] ?? 0) + ($stats['approved'] ?? 0) + ($stats['arrived'] ?? 0) + ($stats['checked_out'] ?? 0);
+        $completionRate = $totalVisit > 0 ? round((($stats['checked_out'] ?? 0) / $totalVisit) * 100) : 0;
+    @endphp
+
+    {{-- Statistik ringkas: status mengikuti posisi santri --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning-subtle rounded fs-2">
-                                <i class="ri-time-line fs-24 text-warning"></i>
+                            <span class="avatar-title bg-warning-subtle rounded">
+                                <i class="ri-time-line text-warning"></i>
                             </span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Menunggu</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['pending'] ?? 0) }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Menunggu Persetujuan</p>
+                            <h3 class="stat-value">{{ number_format($stats['pending'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-information-line me-1"></i>Perlu ditinjau pengasuh</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-90 border-start border-success">
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2">
-                                <i class="ri-checkbox-circle-line fs-24 text-success"></i>
+                            <span class="avatar-title bg-info-subtle rounded">
+                                <i class="ri-user-follow-line text-info"></i>
                             </span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Santri Belum Keluar</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['approved'] ?? 0) }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Santri Belum Keluar</p>
+                            <h3 class="stat-value">{{ number_format($stats['approved'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-notification-3-line me-1"></i>Menunggu dipanggil ke area kunjungan</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-90 border-start border-info">
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2">
-                                <i class="ri-user-location-line fs-24 text-info"></i>
+                            <span class="avatar-title bg-primary-subtle rounded">
+                                <i class="ri-user-location-line text-primary"></i>
                             </span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Santri Sedang di Luar</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['arrived'] ?? 0) }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Sedang dalam Kunjungan</p>
+                            <h3 class="stat-value">{{ number_format($stats['arrived'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-walk-line me-1"></i>Santri sedang menemui tamu</p>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card card-animate h-90 border-start border-secondary">
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-secondary-subtle rounded fs-2">
-                                <i class="ri-logout-box-line fs-24 text-secondary"></i>
+                            <span class="avatar-title bg-success-subtle rounded">
+                                <i class="ri-home-heart-line text-success"></i>
                             </span>
                         </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Santri Sudah Kembali</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['checked_out'] ?? 0) }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Kunjungan Selesai</p>
+                            <h3 class="stat-value">{{ number_format($stats['checked_out'] ?? 0) }}</h3>
                         </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="height:5px;">
+                            <div class="progress-bar bg-success" style="width:{{ $completionRate }}%"></div>
+                        </div>
+                        <span class="stat-note">{{ $completionRate }}%</span>
                     </div>
                 </div>
             </div>
@@ -98,20 +115,21 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-header border-bottom-dashed">
-                    <div class="row g-4 align-items-center">
+                    <div class="row g-3 align-items-center">
                         <div class="col-sm">
                             <h5 class="card-title mb-0">Log Kunjungan</h5>
-                            <p class="text-muted mb-0">Daftar kunjungan tamu ke asrama.</p>
+                            <p class="text-muted mb-0 small">Daftar kunjungan keluarga dan status santri di {{ $dormitory->name ?? 'asrama' }}.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('user.asrama.visits.scan', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                                   class="btn btn-info">
-                                    <i class="ri-qr-scan-2-line align-bottom me-1"></i> Scan QR
+                            <div class="toolbar-actions">
+                                <a href="{{ route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}" class="btn btn-outline-warning btn-sm" title="Pengaturan kuota dan kebijakan kunjungan">
+                                    <i class="ri-settings-3-line me-1"></i> Pengaturan
                                 </a>
-                                <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                                   class="btn btn-primary">
-                                    <i class="ri-add-line align-bottom me-1"></i> Ajukan Kunjungan
+                                <a href="{{ route('user.asrama.visits.scan', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}" class="btn btn-info btn-sm">
+                                    <i class="ri-qr-scan-2-line me-1"></i> Scan QR
+                                </a>
+                                <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}" class="btn btn-primary btn-sm">
+                                    <i class="ri-add-line me-1"></i> Ajukan Kunjungan
                                 </a>
                             </div>
                         </div>
@@ -119,148 +137,146 @@
                 </div>
 
                 <div class="card-body">
-                    {{-- Filter Form --}}
-                    <form method="GET" class="row g-3 mb-4">
-                        @if(!isset($dormitory))
-                        <div class="col-md-3">
-                            <select name="dormitory_id" class="form-control">
-                                <option value="">Semua Asrama</option>
-                                @foreach($dormitories ?? [] as $d)
-                                    <option value="{{ $d->id }}" {{ request('dormitory_id') == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @endif
-                        <div class="col-md-2">
-                            <select name="status" class="form-control">
-                                <option value="">Semua Status</option>
-                                <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Menunggu</option>
-                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Santri Belum Keluar</option>
-                                <option value="arrived" {{ request('status') === 'arrived' ? 'selected' : '' }}>Santri Sedang di Luar</option>
-                                <option value="checked_out" {{ request('status') === 'checked_out' ? 'selected' : '' }}>Santri Sudah Kembali</option>
-                                <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
-                        </div>
-                        <div class="col-md-2">
-                            <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <input type="text" name="search" class="form-control" placeholder="Cari nama tamu / santri..." value="{{ request('search') }}">
-                        </div>
-                        <div class="col-md-2 d-flex gap-2">
-                            <button type="submit" class="btn btn-primary flex-grow-1"><i class="ri-search-line"></i> Filter</button>
-                            <a href="{{ route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                               class="btn btn-light">Reset</a>
-                        </div>
-                    </form>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <form method="GET" class="d-flex gap-2 flex-grow-1" style="max-width:520px;">
+                            <input type="text" name="search" class="form-control form-control-sm"
+                                   placeholder="Cari nama tamu / santri..." value="{{ request('search') }}">
+                            @foreach(['status', 'start_date', 'end_date'] as $filterKey)
+                                @if(request($filterKey))
+                                    <input type="hidden" name="{{ $filterKey }}" value="{{ request($filterKey) }}">
+                                @endif
+                            @endforeach
+                            <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                <i class="ri-search-line"></i> Cari
+                            </button>
+                        </form>
 
-                    {{-- Table --}}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                        <div class="toolbar-actions">
+                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#visitFilterModal">
+                                <i class="ri-filter-3-line me-1"></i> Filter Lanjutan
+                                @if(request()->hasAny(['status', 'start_date', 'end_date']))
+                                    <span class="badge bg-light text-dark ms-1">Aktif</span>
+                                @endif
+                            </button>
+                            <a href="{{ route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
+                               class="btn btn-light btn-sm" title="Reset filter">
+                                <i class="ri-refresh-line"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    @if(request()->hasAny(['search','status','start_date','end_date']))
+                        <div class="mb-3">
+                            <span class="text-muted small">Filter aktif:</span>
+                            @if(request('search'))
+                                <span class="filter-badge active"><i class="ri-search-line"></i> "{{ request('search') }}"</span>
+                            @endif
+                            @if(request('status'))
+                                <span class="filter-badge active"><i class="ri-flag-line"></i> {{ ucfirst(str_replace('_', ' ', request('status'))) }}</span>
+                            @endif
+                            @if(request('start_date'))
+                                <span class="filter-badge active"><i class="ri-calendar-line"></i> ≥ {{ \Carbon\Carbon::parse(request('start_date'))->format('d/m/Y') }}</span>
+                            @endif
+                            @if(request('end_date'))
+                                <span class="filter-badge active"><i class="ri-calendar-line"></i> ≤ {{ \Carbon\Carbon::parse(request('end_date'))->format('d/m/Y') }}</span>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <small class="text-muted">
+                            <i class="ri-file-list-line me-1"></i> Menampilkan
+                            <strong>{{ $visits->count() }}</strong> dari
+                            <strong>{{ $visits->total() }}</strong> kunjungan
+                        </small>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="table table-hover align-middle table-freeze">
                             <thead>
                                 <tr>
                                     <th class="text-center" style="width:50px;">No</th>
                                     <th>Santri</th>
-                                    <th>Tamu / Visitor</th>
+                                    <th>Tamu / Wali</th>
                                     <th>Hubungan</th>
                                     <th>Tujuan</th>
-                                    <th>Waktu Datang</th>
-                                    <!-- <th class="text-center">Durasi</th> -->
+                                    <th>Jadwal</th>
                                     <th class="text-center">Status</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th class="text-center" style="width:150px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($visits ?? [] as $i => $visit)
                                     <tr>
-                                        <td class="text-center">{{ ($visits->currentPage() - 1) * $visits->perPage() + $i + 1 }}</td>
+                                        <td class="text-center text-muted">{{ $visits->firstItem() + $i }}</td>
                                         <td>
                                             <div class="fw-semibold">{{ $visit->student?->name ?? '—' }}</div>
-                                            @if($visit->student?->nisn)
-                                                <small class="text-muted">NISN: {{ $visit->student->nisn }}</small>
-                                            @endif
+                                            <small class="text-muted">
+                                                <i class="ri-home-4-line me-1"></i>{{ $visit->room?->name ?? 'Tanpa kamar' }}
+                                                @if($visit->student?->nisn) · {{ $visit->student->nisn }} @endif
+                                            </small>
                                         </td>
                                         <td>
                                             <div class="fw-semibold">{{ $visit->visitor_name ?? '—' }}</div>
-                                            @if($visit->visitor_id_number)
+                                            @if($visit->visitor_phone)
+                                                <small class="text-muted"><i class="ri-phone-line me-1"></i>{{ $visit->visitor_phone }}</small>
+                                            @elseif($visit->visitor_id_number)
                                                 <small class="text-muted">{{ $visit->visitor_id_number }}</small>
                                             @endif
                                         </td>
                                         <td>
                                             @if($visit->visitor_relationship === 'mahrom')
-                                                <span class="badge bg-danger-subtle text-danger">
-                                                    <i class="ri-shield-star-line me-1"></i>Mahrom
-                                                </span>
+                                                <span class="badge bg-danger-subtle text-danger"><i class="ri-shield-star-line me-1"></i>Mahrom</span>
                                             @else
-                                                <span class="badge bg-secondary-subtle text-secondary">{{ ucfirst(str_replace('_', ' ', $visit->visitor_relationship ?? '—')) }}</span>
+                                                <span class="badge bg-secondary-subtle text-secondary">{{ $visit->visitor_relationship_text }}</span>
                                             @endif
                                         </td>
-                                        <td>
-                                            <span class="text-dark">{{ $visit->purpose_text ?? '—' }}</span>
-                                        </td>
+                                        <td>{{ $visit->purpose_text ?? '—' }}</td>
                                         <td>
                                             <div class="small">
                                                 <div><i class="ri-calendar-line me-1 text-muted"></i>{{ $visit->expected_arrival?->format('d/m/Y') ?? '—' }}</div>
                                                 <div><i class="ri-time-line me-1 text-muted"></i>{{ $visit->expected_arrival?->format('H:i') ?? '—' }}</div>
-                                                @if($visit->actual_arrival_at)
-                                                    <div class="text-success small">
-                                                        <i class="ri-check-line me-1"></i>Actual: {{ $visit->actual_arrival_at->format('H:i') }}
-                                                    </div>
+                                                @if($visit->check_in_at)
+                                                    <div class="text-success"><i class="ri-login-box-line me-1"></i>Keluar: {{ $visit->check_in_at->format('H:i') }}</div>
+                                                @endif
+                                                @if($visit->check_out_at)
+                                                    <div class="text-info"><i class="ri-logout-box-line me-1"></i>Kembali: {{ $visit->check_out_at->format('H:i') }}</div>
                                                 @endif
                                             </div>
                                         </td>
-                                        <!-- <td class="text-center">
-                                            @if($visit->expected_duration_minutes)
-                                                <span class="badge bg-light text-dark">{{ $visit->expected_duration_minutes }} menit</span>
-                                            @else
-                                                —
-                                            @endif
-                                        </td> -->
+                                        <td class="text-center">{!! $visit->status_badge !!}</td>
                                         <td class="text-center">
-                                            {!! $visit->status_badge !!}
-                                        </td>
-                                        <td class="text-center">
-                                            <!-- Tombol Cetak Kartu -->
-                                            <a href="{{ route('user.asrama.visits.card', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
-                                               target="_blank"
-                                               class="btn btn-sm btn-outline-secondary me-1" title="Cetak Kartu Kunjungan">
-                                                <i class="ri-printer-line"></i>
-                                            </a>
-                                            <a href="{{ route('user.asrama.visits.show', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
-                                               class="btn btn-sm btn-outline-primary me-1" title="Detail">
-                                                <i class="ri-eye-line"></i>
-                                            </a>
-                                            @if($visit->status === 'approved')
-                                                <form method="POST"
-                                                      action="{{ route('user.asrama.visits.check-in', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
-                                                      class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Catat Santri Keluar">
-                                                        <i class="ri-login-box-line"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
-                                            @if($visit->status === 'arrived')
-                                                <form method="POST"
-                                                      action="{{ route('user.asrama.visits.check-out', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
-                                                      class="d-inline">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Catat Santri Kembali">
-                                                        <i class="ri-logout-box-r-line"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{ route('user.asrama.visits.card', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
+                                                   target="_blank" class="btn btn-sm btn-outline-secondary" title="Cetak Kartu Kunjungan">
+                                                    <i class="ri-printer-line"></i>
+                                                </a>
+                                                <a href="{{ route('user.asrama.visits.show', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
+                                                   class="btn btn-sm btn-outline-primary" title="Detail">
+                                                    <i class="ri-eye-line"></i>
+                                                </a>
+                                                @if($visit->status === 'approved')
+                                                    <form method="POST" action="{{ route('user.asrama.visits.check-in', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Catat Santri Keluar">
+                                                            <i class="ri-login-box-line"></i>
+                                                        </button>
+                                                    </form>
+                                                @elseif($visit->status === 'arrived')
+                                                    <form method="POST" action="{{ route('user.asrama.visits.check-out', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Catat Santri Kembali">
+                                                            <i class="ri-logout-box-r-line"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <x-empty-state colspan="8" title="Belum ada data kunjungan"
                                         message="Belum ada kunjungan yang tercatat untuk asrama ini.">
-                                        <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}"
-                                           class="btn btn-primary btn-sm mt-3">
+                                        <a href="{{ route('user.asrama.visits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}" class="btn btn-primary btn-sm mt-3">
                                             <i class="ri-add-line me-1"></i> Ajukan Kunjungan Baru
                                         </a>
                                     </x-empty-state>
@@ -273,6 +289,65 @@
                         @include('shared._pagination', ['paginator' => $visits])
                     @endif
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal filter lanjutan --}}
+    <div class="modal fade" id="visitFilterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="GET" action="{{ route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-filter-3-line me-2 text-primary"></i>Filter Kunjungan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-search-line"></i>Pencarian</div>
+                                    <input type="text" name="search" class="form-control" value="{{ request('search') }}" placeholder="Nama tamu atau santri...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-flag-line"></i>Status Santri</div>
+                                    <select name="status" class="form-select">
+                                        <option value="">Semua status</option>
+                                        @foreach([
+                                            'pending' => 'Menunggu Persetujuan',
+                                            'approved' => 'Santri Belum Keluar',
+                                            'arrived' => 'Sedang dalam Kunjungan',
+                                            'checked_out' => 'Kunjungan Selesai',
+                                            'rejected' => 'Ditolak',
+                                        ] as $value => $label)
+                                            <option value="{{ $value }}" {{ request('status') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-calendar-line"></i>Dari Tanggal</div>
+                                    <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-calendar-line"></i>Sampai Tanggal</div>
+                                    <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id ?? request('dormitory_id')]) }}" class="btn btn-light">
+                            <i class="ri-refresh-line me-1"></i> Reset
+                        </a>
+                        <button type="submit" class="btn btn-primary"><i class="ri-filter-3-line me-1"></i> Terapkan Filter</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
