@@ -67,7 +67,12 @@ $isAdmin = $currentUser->hasAnyRole(['Personalia','Super Admin']);
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0"><i class="ri-file-chart-line me-1"></i> Detail Penilaian</h5>
                 @if($isAdmin)
-                <a href="{{ route('user.ats.kinerja.edit', [$userId, $penilaian->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line me-1"></i> Edit</a>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('user.kinerja.edit', [$userId, $penilaian->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line me-1"></i> Edit</a>
+                    @if($penilaian->status !== 'final')
+                        <form method="POST" action="{{ route('user.kinerja.finalize', ['userId'=>$userId, 'id'=>$penilaian->id]) }}" onsubmit="return confirm('Finalkan penilaian ini?')">@csrf<button class="btn btn-soft-success btn-sm"><i class="ri-check-double-line me-1"></i>Finalkan</button></form>
+                    @endif
+                </div>
                 @endif
             </div>
             <div class="card-body">

@@ -42,12 +42,12 @@ $topGtk = \App\Models\KinerjaPenilaian::with('user')->whereNotNull('total_skor')
         </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.ats.kinerja.periode', $userId) }}" class="btn btn-light btn-sm"><i class="ri-calendar-line me-1"></i>Periode</a>
-        <a href="{{ route('user.ats.kinerja.indikator', $userId) }}" class="btn btn-light btn-sm"><i class="ri-list-checks me-1"></i>Indikator</a>
-        <a href="{{ route('user.ats.kinerja.reward', $userId) }}" class="btn btn-light btn-sm"><i class="ri-medal-line me-1"></i>Reward</a>
-        <a href="{{ route('user.ats.kinerja.laporan', $userId) }}" class="btn btn-light btn-sm"><i class="ri-file-chart-line me-1"></i>Laporan</a>
+        <a href="{{ route('user.kinerja.periode', $userId) }}" class="btn btn-light btn-sm"><i class="ri-calendar-line me-1"></i>Periode</a>
+        <a href="{{ route('user.kinerja.indikator', $userId) }}" class="btn btn-light btn-sm"><i class="ri-list-checks me-1"></i>Indikator</a>
+        <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-light btn-sm"><i class="ri-medal-line me-1"></i>Reward</a>
+        <a href="{{ route('user.kinerja.laporan', $userId) }}" class="btn btn-light btn-sm"><i class="ri-file-chart-line me-1"></i>Laporan</a>
         @if($isAdmin)
-        <a href="{{ route('user.ats.kinerja.create', $userId) }}" class="btn btn-primary btn-sm"><i class="ri-add-line me-1"></i>Penilaian Baru</a>
+        <a href="{{ route('user.kinerja.create', $userId) }}" class="btn btn-primary btn-sm"><i class="ri-add-line me-1"></i>Penilaian Baru</a>
         @endif
     </div>
 </div>
@@ -146,7 +146,7 @@ $topGtk = \App\Models\KinerjaPenilaian::with('user')->whereNotNull('total_skor')
             <div class="col-md-3">
                 <div class="d-flex gap-1">
                     <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="ri-filter-line me-1"></i>Filter</button>
-                    <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-restart-line"></i></a>
+                    <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-restart-line"></i></a>
                     <button onclick="window.print()" class="btn btn-light btn-sm"><i class="ri-printer-line"></i></button>
                 </div>
             </div>
@@ -207,10 +207,10 @@ $topGtk = \App\Models\KinerjaPenilaian::with('user')->whereNotNull('total_skor')
                         </td>
                         <td class="no-print">
                             <div class="d-flex gap-1">
-                                <a href="{{ route('user.ats.kinerja.show', [$userId, $p->id]) }}" class="btn btn-soft-primary btn-sm" title="Detail"><i class="ri-eye-line"></i></a>
+                                <a href="{{ route('user.kinerja.show', [$userId, $p->id]) }}" class="btn btn-soft-primary btn-sm" title="Detail"><i class="ri-eye-line"></i></a>
                                 @if($isAdmin)
-                                <a href="{{ route('user.ats.kinerja.edit', [$userId, $p->id]) }}" class="btn btn-soft-warning btn-sm" title="Edit"><i class="ri-edit-2-line"></i></a>
-                                <form action="{{ route('user.ats.kinerja.destroy', [$userId, $p->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" title="Hapus" onclick="return confirm('Hapus penilaian ini?')"><i class="ri-delete-bin-line"></i></button></form>
+                                <a href="{{ route('user.kinerja.edit', [$userId, $p->id]) }}" class="btn btn-soft-warning btn-sm" title="Edit"><i class="ri-edit-2-line"></i></a>
+                                <form action="{{ route('user.kinerja.destroy', [$userId, $p->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" title="Hapus" onclick="return confirm('Hapus penilaian ini?')"><i class="ri-delete-bin-line"></i></button></form>
                                 @endif
                             </div>
                         </td>
@@ -228,7 +228,7 @@ $topGtk = \App\Models\KinerjaPenilaian::with('user')->whereNotNull('total_skor')
                                     Penilaian kinerja akan ditampilkan di sini setelah diinput oleh Personalia.
                                     @endif
                                 </p>
-                                @if($isAdmin)<a href="{{ route('user.ats.kinerja.create', $userId) }}" class="btn btn-primary btn-sm mt-2"><i class="ri-add-line me-1"></i> Penilaian Baru</a>@endif
+                                @if($isAdmin)<a href="{{ route('user.kinerja.create', $userId) }}" class="btn btn-primary btn-sm mt-2"><i class="ri-add-line me-1"></i> Penilaian Baru</a>@endif
                             </div>
                         </td>
                     </tr>

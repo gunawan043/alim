@@ -22,12 +22,12 @@
             <p class="mb-0 text-muted" style="font-size:.8rem">Perbarui data penilaian kinerja GTK</p>
         </div>
     </div>
-    <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
+    <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
 </div>
 
 <div class="row">
     <div class="col-lg-8">
-        <form method="POST" action="{{ route('user.ats.kinerja.update', [$userId, $penilaian->id]) }}">
+        <form method="POST" action="{{ route('user.kinerja.update', [$userId, $penilaian->id]) }}">
             @csrf @method('PUT')
             <div class="card">
                 <div class="card-header"><h5 class="card-title mb-0"><i class="ri-edit-line me-1"></i> Edit Penilaian</h5></div>
@@ -65,7 +65,7 @@
                     </div>
                 </div>
                 <div class="card-footer d-flex justify-content-end gap-2 no-print">
-                    <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light">Batal</a>
+                    <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light">Batal</a>
                     <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i> Simpan</button>
                 </div>
             </div>

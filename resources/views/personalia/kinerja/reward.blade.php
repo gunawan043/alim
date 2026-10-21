@@ -19,8 +19,8 @@
 $userId = request()->route('userId') ?? auth()->id();
 $currentUser = auth()->user();
 $isAdmin = $currentUser->hasAnyRole(['Personalia','Super Admin','Admin Tata Usaha']);
-$totalReward = \App\Models\KinerjaReward::where('tipe','reward')->count();
-$totalPunishment = \App\Models\KinerjaReward::where('tipe','punishment')->count();
+$totalReward = \App\Models\KinerjaRewardPunishment::where('jenis','reward')->count();
+$totalPunishment = \App\Models\KinerjaRewardPunishment::where('jenis','punishment')->count();
 @endphp
 
 <div class="page-header-card d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
@@ -34,9 +34,9 @@ $totalPunishment = \App\Models\KinerjaReward::where('tipe','punishment')->count(
         </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Daftar</a>
-        <a href="{{ route('user.ats.kinerja.indikator', $userId) }}" class="btn btn-light btn-sm"><i class="ri-list-checks me-1"></i>Indikator</a>
-        <a href="{{ route('user.ats.kinerja.laporan', $userId) }}" class="btn btn-light btn-sm"><i class="ri-file-chart-line me-1"></i>Laporan</a>
+        <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Daftar</a>
+        <a href="{{ route('user.kinerja.indikator', $userId) }}" class="btn btn-light btn-sm"><i class="ri-list-checks me-1"></i>Indikator</a>
+        <a href="{{ route('user.kinerja.laporan', $userId) }}" class="btn btn-light btn-sm"><i class="ri-file-chart-line me-1"></i>Laporan</a>
     </div>
 </div>
 
@@ -115,7 +115,7 @@ $totalPunishment = \App\Models\KinerjaReward::where('tipe','punishment')->count(
                 <h5 class="card-title mb-0"><i class="ri-gift-line text-success me-1"></i> Daftar Reward GTK</h5>
                 <div class="d-flex gap-2">
                     @if($isAdmin)
-                    <a href="{{ route('user.ats.kinerja.reward.create', $userId) }}" class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i> Tambah Reward</a>
+                    <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i> Tambah Reward</a>
                     @endif
                 </div>
             </div>
@@ -145,8 +145,8 @@ $totalPunishment = \App\Models\KinerjaReward::where('tipe','punishment')->count(
                                 <td class="no-print">
                                     <div class="d-flex gap-1">
                                         @if($isAdmin)
-                                        <a href="{{ route('user.ats.kinerja.reward.edit', [$userId, $r->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
-                                        <form action="{{ route('user.ats.kinerja.reward.destroy', [$userId, $r->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus?')"><i class="ri-delete-bin-line"></i></button></form>
+                                        <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
+                                        <form action="{{ route('user.kinerja.reward.destroy', [$userId, $r->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus?')"><i class="ri-delete-bin-line"></i></button></form>
                                         @endif
                                     </div>
                                 </td>
@@ -180,7 +180,7 @@ $totalPunishment = \App\Models\KinerjaReward::where('tipe','punishment')->count(
                 <h5 class="card-title mb-0"><i class="ri-shield-star-line text-danger me-1"></i> Daftar Punishment GTK</h5>
                 <div class="d-flex gap-2">
                     @if($isAdmin)
-                    <a href="{{ route('user.ats.kinerja.punishment.create', $userId) }}" class="btn btn-danger btn-sm"><i class="ri-add-line me-1"></i> Tambah Punishment</a>
+                    <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-danger btn-sm"><i class="ri-add-line me-1"></i> Tambah Punishment</a>
                     @endif
                 </div>
             </div>
@@ -210,8 +210,8 @@ $totalPunishment = \App\Models\KinerjaReward::where('tipe','punishment')->count(
                                 <td class="no-print">
                                     <div class="d-flex gap-1">
                                         @if($isAdmin)
-                                        <a href="{{ route('user.ats.kinerja.punishment.edit', [$userId, $p->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
-                                        <form action="{{ route('user.ats.kinerja.punishment.destroy', [$userId, $p->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus?')"><i class="ri-delete-bin-line"></i></button></form>
+                                        <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
+                                        <form action="{{ route('user.kinerja.punishment.destroy', [$userId, $p->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus?')"><i class="ri-delete-bin-line"></i></button></form>
                                         @endif
                                     </div>
                                 </td>

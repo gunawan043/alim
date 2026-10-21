@@ -90,6 +90,7 @@ use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HumasComplaintController;
+use App\Http\Controllers\HumasGuestVisitController;
 use App\Http\Controllers\HumasAnnouncementController;
 use App\Http\Controllers\HumasSatisfactionController;
 use App\Http\Controllers\ImpersonateController;
@@ -1282,6 +1283,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{id}/edit', [KinerjaController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [KinerjaController::class, 'update'])->name('update');
                 Route::delete('/{id}', [KinerjaController::class, 'destroy'])->name('destroy');
+                Route::post('/{id}/finalize', [KinerjaController::class, 'finalize'])->name('finalize');
                 Route::get('/periode', [KinerjaController::class, 'periode'])->name('periode');
                 Route::post('/periode', [KinerjaController::class, 'periodeStore'])->name('periode.store');
                 Route::put('/periode/{id}', [KinerjaController::class, 'periodeUpdate'])->name('periode.update');
@@ -1295,6 +1297,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/reward', [KinerjaController::class, 'reward'])->name('reward');
                 Route::post('/reward', [KinerjaController::class, 'rewardStore'])->name('reward.store');
                 Route::delete('/reward/{id}', [KinerjaController::class, 'rewardDestroy'])->name('reward.destroy');
+                Route::post('/punishment', [KinerjaController::class, 'punishmentStore'])->name('punishment.store');
+                Route::delete('/punishment/{id}', [KinerjaController::class, 'punishmentDestroy'])->name('punishment.destroy');
                 Route::get('/laporan', [KinerjaController::class, 'laporan'])->name('laporan');
                 Route::post('/datatable', [KinerjaController::class, 'datatable'])->name('datatable');
             });
@@ -1386,6 +1390,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── GTK REQUESTS ───────────────────────────────────────
             Route::prefix('humas')->name('humas.')->group(function () {
+                Route::get('/guest-visits', [HumasGuestVisitController::class, 'index'])->name('guest-visits.index');
+                Route::post('/guest-visits', [HumasGuestVisitController::class, 'store'])->name('guest-visits.store');
+                Route::post('/guest-visits/{id}/checkout', [HumasGuestVisitController::class, 'checkout'])->name('guest-visits.checkout');
                 Route::get('/announcements', [HumasAnnouncementController::class, 'index'])->name('announcements.index');
                 Route::post('/announcements', [HumasAnnouncementController::class, 'store'])->name('announcements.store');
                 Route::put('/announcements/{id}', [HumasAnnouncementController::class, 'update'])->name('announcements.update');

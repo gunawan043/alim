@@ -32,9 +32,9 @@ $countFinal = \App\Models\KinerjaPenilaian::where('status','final')->count();
         </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Daftar</a>
-        <a href="{{ route('user.ats.kinerja.indikator', $userId) }}" class="btn btn-light btn-sm"><i class="ri-list-checks me-1"></i>Indikator</a>
-        <a href="{{ route('user.ats.kinerja.reward', $userId) }}" class="btn btn-light btn-sm"><i class="ri-medal-line me-1"></i>Reward</a>
+        <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Daftar</a>
+        <a href="{{ route('user.kinerja.indikator', $userId) }}" class="btn btn-light btn-sm"><i class="ri-list-checks me-1"></i>Indikator</a>
+        <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-light btn-sm"><i class="ri-medal-line me-1"></i>Reward</a>
     </div>
 </div>
 
@@ -144,10 +144,10 @@ $countFinal = \App\Models\KinerjaPenilaian::where('status','final')->count();
             <div class="card-body">
                 <div class="d-flex flex-column gap-2">
                     @if($isAdmin)
-                    <a href="{{ route('user.ats.kinerja.laporan.export', $userId) }}" class="btn btn-outline-primary btn-sm no-print"><i class="ri-fileExcel-line me-1"></i> Export Excel</a>
+                    <a href="{{ route('user.kinerja.laporan', $userId) }}" class="btn btn-outline-primary btn-sm no-print"><i class="ri-fileExcel-line me-1"></i> Export Excel</a>
                     <a href="javascript:window.print()" class="btn btn-outline-secondary btn-sm no-print"><i class="ri-printer-line me-1"></i> Cetak Laporan</a>
                     @endif
-                    <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm no-print"><i class="ri-list-check me-1"></i> Lihat Daftar Penilaian</a>
+                    <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm no-print"><i class="ri-list-check me-1"></i> Lihat Daftar Penilaian</a>
                 </div>
             </div>
         </div>

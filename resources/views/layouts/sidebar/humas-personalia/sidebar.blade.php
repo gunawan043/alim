@@ -675,12 +675,10 @@
         </a>
     </li>
 
-    {{-- ⏳ SOON: Buku Tamu Eksternal --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-user-received-line"></i>
-            <span>Buku Tamu Eksternal <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.guest-visits.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.humas.guest-visits.index') }}">
+            <i class="ri-user-received-line"></i><span>Buku Tamu Eksternal</span>
         </a>
     </li>
 

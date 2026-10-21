@@ -34,7 +34,7 @@ $selesaiPeriode = \App\Models\KinerjaPeriode::where('status','selesai')->count()
         </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Daftar</a>
+        <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i>Daftar</a>
         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPeriodeModal"><i class="ri-add-line me-1"></i>Tambah Periode</button>
     </div>
 </div>
@@ -116,8 +116,8 @@ $selesaiPeriode = \App\Models\KinerjaPeriode::where('status','selesai')->count()
                         <td><span class="badge bg-light text-dark">{{ $p->penilaian->count() }}</span></td>
                         <td class="no-print">
                             <div class="d-flex gap-1">
-                                <a href="{{ route('user.ats.kinerja.periode') }}?edit={{ $p->id }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
-                                <form action="{{ route('user.ats.kinerja.periode.destroy', [$userId, $p->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus periode ini?')"><i class="ri-delete-bin-line"></i></button></form>
+                                <a href="{{ route('user.kinerja.periode') }}?edit={{ $p->id }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
+                                <form action="{{ route('user.kinerja.periode.destroy', [$userId, $p->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus periode ini?')"><i class="ri-delete-bin-line"></i></button></form>
                             </div>
                         </td>
                     </tr>
@@ -151,7 +151,7 @@ $selesaiPeriode = \App\Models\KinerjaPeriode::where('status','selesai')->count()
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title"><i class="ri-add-circle-line me-1"></i> Tambah Periode</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-            <form method="POST" action="{{ route('user.ats.kinerja.periode.store', $userId) }}">
+            <form method="POST" action="{{ route('user.kinerja.periode.store', $userId) }}">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">

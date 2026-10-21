@@ -155,6 +155,17 @@ class KinerjaController extends Controller
             ->with('success', 'Penilaian kinerja berhasil diperbarui.');
     }
 
+    public function finalize(Request $request, string $userId, string $id)
+    {
+        $penilaian = KinerjaPenilaian::findOrFail($id);
+        if ($penilaian->status === 'final') {
+            return back()->with('error', 'Penilaian sudah final.');
+        }
+        $penilaian->update(['status' => 'final']);
+
+        return back()->with('success', 'Penilaian kinerja difinalkan.');
+    }
+
     public function destroy(Request $request, string $userId, string $id)
     {
         $penilaian = KinerjaPenilaian::findOrFail($id);

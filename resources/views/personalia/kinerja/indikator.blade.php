@@ -36,11 +36,11 @@ $totalBobot = \App\Models\KinerjaIndikator::sum('bobot_persen') ?? 0;
         </div>
     </div>
     <div class="d-flex gap-2 flex-shrink-0 no-print">
-        <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i> Daftar</a>
-        <a href="{{ route('user.ats.kinerja.reward', $userId) }}" class="btn btn-light btn-sm"><i class="ri-medal-line me-1"></i> Reward</a>
-        <a href="{{ route('user.ats.kinerja.laporan', $userId) }}" class="btn btn-light btn-sm"><i class="ri-file-chart-line me-1"></i> Laporan</a>
+        <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm"><i class="ri-arrow-left-line me-1"></i> Daftar</a>
+        <a href="{{ route('user.kinerja.reward', $userId) }}" class="btn btn-light btn-sm"><i class="ri-medal-line me-1"></i> Reward</a>
+        <a href="{{ route('user.kinerja.laporan', $userId) }}" class="btn btn-light btn-sm"><i class="ri-file-chart-line me-1"></i> Laporan</a>
         @if($isAdmin)
-        <a href="{{ route('user.ats.kinerja.indikator.create', $userId) }}" class="btn btn-primary btn-sm"><i class="ri-add-line me-1"></i> Tambah Indikator</a>
+        <a href="{{ route('user.kinerja.indikator', $userId) }}" class="btn btn-primary btn-sm"><i class="ri-add-line me-1"></i> Tambah Indikator</a>
         @endif
     </div>
 </div>
@@ -128,8 +128,8 @@ $totalBobot = \App\Models\KinerjaIndikator::sum('bobot_persen') ?? 0;
                         <td class="no-print">
                             <div class="d-flex gap-1">
                                 @if($isAdmin)
-                                <a href="{{ route('user.ats.kinerja.indikator.edit', [$userId, $ind->id]) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
-                                <form action="{{ route('user.ats.kinerja.indikator.destroy', [$userId, $ind->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus indikator ini?')"><i class="ri-delete-bin-line"></i></button></form>
+                                <a href="{{ route('user.kinerja.indikator', $userId) }}" class="btn btn-soft-warning btn-sm"><i class="ri-edit-2-line"></i></a>
+                                <form action="{{ route('user.kinerja.indikator.destroy', [$userId, $ind->id]) }}" method="POST" class="d-inline">@csrf @method('DELETE')<button type="submit" class="btn btn-soft-danger btn-sm" onclick="return confirm('Hapus indikator ini?')"><i class="ri-delete-bin-line"></i></button></form>
                                 @endif
                             </div>
                         </td>
@@ -141,7 +141,7 @@ $totalBobot = \App\Models\KinerjaIndikator::sum('bobot_persen') ?? 0;
                                 <i class="ri-list-checks text-muted" style="font-size:3rem;"></i>
                                 <h5 class="fw-semibold text-dark mt-2 mb-1">Belum ada indikator kinerja</h5>
                                 <p class="text-muted mb-0 small">Klik <strong>Tambah Indikator</strong> untuk menambahkan indikator baru.</p>
-                                @if($isAdmin)<a href="{{ route('user.ats.kinerja.indikator.create', $userId) }}" class="btn btn-primary btn-sm mt-2"><i class="ri-add-line me-1"></i> Tambah Indikator</a>@endif
+                                @if($isAdmin)<a href="{{ route('user.kinerja.indikator', $userId) }}" class="btn btn-primary btn-sm mt-2"><i class="ri-add-line me-1"></i> Tambah Indikator</a>@endif
                             </div>
                         </td>
                     </tr>

@@ -44,6 +44,17 @@ class KinerjaPenilaian extends Model
         return $this->hasMany(KinerjaSkor::class);
     }
 
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'draft' => 'Draft',
+            'dinilai' => 'Dinilai',
+            'rekon' => 'Rekonsiliasi',
+            'final' => 'Final',
+            default => ucfirst((string) $this->status),
+        };
+    }
+
     public static function hitungNilaiHuruf(float $skor): string
     {
         return match (true) {

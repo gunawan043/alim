@@ -29,14 +29,14 @@
             <p class="mb-0 text-muted" style="font-size:.8rem">Form penilaian kinerja GTK</p>
         </div>
     </div>
-    <a href="{{ route('user.ats.kinerja.index', $userId) }}" class="btn btn-light btn-sm no-print"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
+    <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm no-print"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
 </div>
 
 <div class="row">
     <div class="col-lg-8">
         <div class="card">
             <div class="card-body">
-                <form method="POST" action="{{ route('user.ats.kinerja.store', $userId) }}" id="kinerjaForm">
+                <form method="POST" action="{{ route('user.kinerja.store', $userId) }}" id="kinerjaForm">
                     @csrf
                     <div class="step-indicator mb-4">
                         <div class="step-item active"><div class="step-circle">1</div><div class="step-label">GTK & Periode</div></div>
@@ -106,7 +106,7 @@
                             </div>
                         </div>
                         @empty
-                        <div class="alert alert-warning mb-3"><i class="ri-alert-line me-1"></i> Belum ada komponen penilaian. <a href="{{ route('user.ats.kinerja.indikator', $userId) }}">Tambah di sini</a></div>
+                        <div class="alert alert-warning mb-3"><i class="ri-alert-line me-1"></i> Belum ada komponen penilaian. <a href="{{ route('user.kinerja.indikator', $userId) }}">Tambah di sini</a></div>
                         @endforelse
                         <div class="d-flex justify-content-between mt-3">
                             <button type="button" class="btn btn-light" onclick="goStep(1)"><i class="ri-arrow-left-line me-1"></i>Kembali</button>
