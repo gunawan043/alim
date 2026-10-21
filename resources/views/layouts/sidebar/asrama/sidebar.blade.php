@@ -165,7 +165,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 <li class="nav-item">
     <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.asrama.attendance.')
+        isActiveAsr($currentRoute, 'user.asrama.attendance.') && ! isActiveAsr($currentRoute, 'user.asrama.attendance.recap')
         ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
@@ -180,8 +180,18 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.attendance.recap') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.attendance.recap', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-file-chart-line"></i>
+        <span>Rekap Absensi</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.asrama.permits.')
+        isActiveAsr($currentRoute, 'user.asrama.permits.') && ! isActiveAsr($currentRoute, 'user.asrama.permits.scan')
         ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
@@ -196,9 +206,21 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 @if (! (($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama') && ($scanAsramaId ?? null)))
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.permits.scan') ? ' active' : '' }}"
+           href="{{ $hasAsramaContext
+                ? route('user.asrama.permits.scan', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+                : $asramaProfileFallback }}">
+            <i class="ri-qr-scan-2-line"></i>
+            <span>Scan QR Izin</span>
+        </a>
+    </li>
+@endif
+
+@if (! (($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama') && ($scanAsramaId ?? null)))
     {{-- Tampil di sini hanya bila menu global Staf Perizinan tidak merender link yang sama. --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.') ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.') && ! isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.statistics') ? ' active' : '' }}"
            href="{{ $hasAsramaContext
                 ? route('user.asrama.dormitory-returns.index', [
                     'userId' => $userId,
@@ -212,8 +234,18 @@ $isKepalaAsrama = in_array($currentUserJob, [
 @endif
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.statistics') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.dormitory-returns.statistics', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-bar-chart-box-line"></i>
+        <span>Statistik Kepulangan</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.asrama.visits.')
+        isActiveAsr($currentRoute, 'user.asrama.visits.') && ! isActiveAsr($currentRoute, 'user.asrama.visits.scan')
         ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
@@ -224,6 +256,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
             : $asramaProfileFallback }}">
         <i class="ri-footprint-line"></i>
         <span>Kunjungan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.visits.scan') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.visits.scan', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-qr-scan-line"></i>
+        <span>Scan QR Kunjungan</span>
     </a>
 </li>
 
@@ -393,7 +435,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 <li class="nav-item">
     <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.asrama.kegiatan.')
+        isActiveAsr($currentRoute, 'user.asrama.kegiatan.') && ! isActiveAsr($currentRoute, 'user.asrama.kegiatan.schedules')
         ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
@@ -404,6 +446,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
             : $asramaProfileFallback }}">
         <i class="ri-user-follow-line"></i>
         <span>Presensi Kegiatan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.kegiatan.schedules') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.kegiatan.schedules', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-calendar-schedule-line"></i>
+        <span>Jadwal Kegiatan</span>
     </a>
 </li>
 
@@ -465,7 +517,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
 
 <li class="nav-item">
     <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.asrama.rooms.')
+        isActiveAsr($currentRoute, 'user.asrama.rooms.') && ! isActiveAsr($currentRoute, 'user.asrama.rooms.placement')
         ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
@@ -476,6 +528,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
             : $asramaProfileFallback }}">
         <i class="ri-door-open-line"></i>
         <span>Kamar</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.rooms.placement') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.rooms.placement', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-layout-grid-line"></i>
+        <span>Penempatan Kamar</span>
     </a>
 </li>
 
