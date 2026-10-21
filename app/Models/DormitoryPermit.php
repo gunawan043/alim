@@ -297,22 +297,6 @@ class DormitoryPermit extends Model
     }
 
     /**
-     * Cari permit langsung dari token, bukan dari student_id.
-     * Ini mencegah scan mengambil izin lama ketika seorang santri memiliki
-     * lebih dari satu riwayat izin.
-     */
-    public static function findByScanToken(string $raw): ?self
-    {
-        $raw = trim($raw);
-
-        if ($raw === '') {
-            return null;
-        }
-
-        return static::query()->where('scan_token', $raw)->first();
-    }
-
-    /**
      * The base64-encoded payload that mobile apps will render as QR + store for scanning.
      */
     public function qrPayload(): ?array

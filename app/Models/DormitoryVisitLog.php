@@ -137,10 +137,10 @@ class DormitoryVisitLog extends Model
     {
         return match ($this->status) {
             'pending' => 'Menunggu Persetujuan',
-            'approved' => 'Menunggu Kedatangan Tamu',
+            'approved' => 'Santri Belum Keluar',
             'rejected' => 'Ditolak',
-            'arrived' => 'Sedang Berkunjung',
-            'checked_out' => 'Kunjungan Selesai',
+            'arrived' => 'Santri Sedang di Luar',
+            'checked_out' => 'Santri Sudah Kembali',
             'cancelled' => 'Dibatalkan',
             'no_show' => 'Tidak Datang',
             default => ucfirst($this->status ?? ''),

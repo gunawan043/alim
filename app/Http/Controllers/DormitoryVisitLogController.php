@@ -241,7 +241,7 @@ class DormitoryVisitLogController extends Controller
             note: $request->input('note'),
         );
 
-        return back()->with('success', 'Check-in kunjungan berhasil.');
+        return back()->with('success', 'Santri berhasil dicatat keluar asrama untuk kunjungan.');
     }
 
     public function checkOut(Request $request, string $userId, string $asramaUuid, string $visitUuid)
@@ -252,7 +252,7 @@ class DormitoryVisitLogController extends Controller
             note: $request->input('note'),
         );
 
-        return back()->with('success', 'Check-out kunjungan berhasil.');
+        return back()->with('success', 'Santri berhasil dicatat kembali ke asrama.');
     }
 
     public function scan(Request $request, string $userId, string $asramaUuid)
@@ -287,14 +287,14 @@ class DormitoryVisitLogController extends Controller
             return $q;
         };
 
-        // Santri yang belum keluar (menunggu penjenguk datang)
+        // Santri belum keluar (kunjungan disetujui, menunggu santri dipanggil)
         $approvedAwaiting = $baseQuery()
             ->where('status', 'approved')
             ->when($fromDate && $toDate, fn ($q) => $q->whereBetween('expected_arrival_datetime', [$fromDate.' 00:00:00', $toDate.' 23:59:59']))
             ->orderBy('expected_arrival_datetime')
             ->get();
 
-        // Belum kembali dari penjengukan (sudah check-in tamu, anak belum pulang)
+        // Santri sedang di luar asrama menemui tamu (sudah scan keluar, belum kembali)
         $arrivedAwaiting = $baseQuery()
             ->where('status', 'arrived')
             ->when($fromDate && $toDate, fn ($q) => $q->whereBetween('check_in_at', [$fromDate.' 00:00:00', $toDate.' 23:59:59']))
@@ -383,7 +383,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Kedatangan tamu {$visit->visitor_name} berhasil dicatat. Status: Sedang Berkunjung.",
+                "Santri berhasil dicatat keluar asrama menemui {$visit->visitor_name}. Status: Santri Sedang di Luar.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'arrived']
             );
@@ -394,7 +394,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Kunjungan {$visit->visitor_name} selesai. Status: Kunjungan Selesai.",
+                "Santri berhasil dicatat kembali ke asrama. Status: Santri Sudah Kembali.",
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'checked_out']
             );

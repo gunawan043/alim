@@ -164,8 +164,8 @@
                         <div class="col-md-6">
                             <label class="form-label text-muted small">Waktu Datang (Aktual)</label>
                             <div class="fw-semibold">
-                                @if($visit->actual_arrival_at)
-                                    <span class="text-success">{{ $visit->actual_arrival_at->format('d M Y, H:i') }} WIB</span>
+                                @if($visit->check_in_at)
+                                    <span class="text-success">{{ $visit->check_in_at->format('d M Y, H:i') }} WIB</span>
                                 @else
                                     <span class="text-muted">Belum check-in</span>
                                 @endif
@@ -174,8 +174,8 @@
                         <div class="col-md-6">
                             <label class="form-label text-muted small">Waktu Pergi (Aktual)</label>
                             <div class="fw-semibold">
-                                @if($visit->actual_departure_at)
-                                    <span class="text-info">{{ $visit->actual_departure_at->format('d M Y, H:i') }} WIB</span>
+                                @if($visit->check_out_at)
+                                    <span class="text-info">{{ $visit->check_out_at->format('d M Y, H:i') }} WIB</span>
                                 @else
                                     <span class="text-muted">Belum check-out</span>
                                 @endif
@@ -252,7 +252,7 @@
                                       action="{{ route('user.asrama.visits.check-in', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}">
                                     @csrf
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="ri-login-box-line me-1"></i> Check-in
+                                        <i class="ri-logout-box-r-line me-1"></i> Catat Santri Keluar
                                     </button>
                                 </form>
                             @endif
@@ -262,7 +262,7 @@
                                       action="{{ route('user.asrama.visits.check-out', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}">
                                     @csrf
                                     <button type="submit" class="btn btn-warning">
-                                        <i class="ri-logout-box-r-line me-1"></i> Check-out
+                                        <i class="ri-login-box-line me-1"></i> Catat Santri Kembali
                                     </button>
                                 </form>
                             @endif
@@ -322,10 +322,10 @@
                                 <i class="ri-check-line"></i>
                             @endif
                         </div>
-                        <div class="fw-semibold mb-0">Tamu Tiba</div>
+                        <div class="fw-semibold mb-0">Santri Keluar</div>
                         <div class="text-muted small">
-                            @if($visit->actual_arrival_at)
-                                {{ $visit->actual_arrival_at->format('d M Y, H:i') }}
+                            @if($visit->check_in_at)
+                                {{ $visit->check_in_at->format('d M Y, H:i') }}
                             @else
                                 Menunggu
                             @endif
@@ -339,10 +339,10 @@
                                 <i class="ri-check-line"></i>
                             @endif
                         </div>
-                        <div class="fw-semibold mb-0">Selesai / Check-out</div>
+                        <div class="fw-semibold mb-0">Santri Kembali</div>
                         <div class="text-muted small">
-                            @if($visit->actual_departure_at)
-                                {{ $visit->actual_departure_at->format('d M Y, H:i') }}
+                            @if($visit->check_out_at)
+                                {{ $visit->check_out_at->format('d M Y, H:i') }}
                             @else
                                 Menunggu
                             @endif
@@ -398,7 +398,7 @@
                              alt="QR Code Kunjungan"
                              class="img-fluid rounded border"
                              style="max-width: 200px;">
-                        <p class="text-muted small mt-2 mb-2">Scan oleh pengasuh untuk {{ $visit->status === 'approved' ? 'check-in' : 'check-out' }} tamu.</p>
+                        <p class="text-muted small mt-2 mb-2">Scan untuk mencatat {{ $visit->status === 'approved' ? 'santri keluar menemui tamu' : 'santri kembali ke asrama' }}.</p>
                         <div class="small text-muted mb-2">
                             URL: <code class="text-truncate d-inline-block" style="max-width: 100%;">{{ $scanUrl }}</code>
                         </div>

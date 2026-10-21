@@ -150,7 +150,7 @@
                                     @error('scan_url')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
-                                    <small class="text-muted">Aksi otomatis: <strong>check-in</strong> jika kunjungan disetujui, <strong>check-out</strong> jika tamu sudah berada di asrama.</small>
+                                    <small class="text-muted">Aksi otomatis: <strong>scan keluar</strong> jika kunjungan disetujui, <strong>scan kembali</strong> jika santri sudah menemui tamu.</small>
                                 </div>
 
                                 <button type="submit" class="btn btn-primary w-100">
@@ -315,7 +315,7 @@
                 </div>
             </div>
 
-            {{-- Wizard Tabs: 1) Tamu belum datang → 2) Tamu di pos / sedang berkunjung → 3) Kunjungan selesai --}}
+            {{-- Wizard Tabs: 1) Santri belum keluar → 2) Santri sedang di luar menemui tamu → 3) Santri sudah kembali --}}
             <div class="card">
                 <div class="card-header border-bottom-dashed pb-0">
                     <ul class="nav nav-tabs nav-tabs-custom" id="visitStepper" role="tablist" style="border-bottom: none;">
@@ -324,7 +324,7 @@
                                     data-bs-target="#step-pending" type="button" role="tab">
                                 <span class="step-number">1</span>
                                 <i class="ri-user-add-line me-1"></i>
-                                <span>Tamu Belum Datang</span>
+                                <span>Santri Belum Keluar</span>
                                 <span class="badge bg-info-subtle text-info ms-2">{{ $approvedAwaiting->count() }}</span>
                             </button>
                         </li>
@@ -333,7 +333,7 @@
                                     data-bs-target="#step-arrived" type="button" role="tab">
                                 <span class="step-number">2</span>
                                 <i class="ri-user-unfollow-line me-1"></i>
-                                <span>Sedang Berkunjung</span>
+                                <span>Santri Sedang di Luar</span>
                                 <span class="badge bg-warning-subtle text-warning ms-2">{{ $arrivedAwaiting->count() }}</span>
                             </button>
                         </li>
@@ -342,7 +342,7 @@
                                     data-bs-target="#step-done" type="button" role="tab">
                                 <span class="step-number">3</span>
                                 <i class="ri-home-heart-line me-1"></i>
-                                <span>Kunjungan Selesai</span>
+                                <span>Santri Sudah Kembali</span>
                                 <span class="badge bg-success-subtle text-success ms-2">{{ $returnedHome->count() }}</span>
                             </button>
                         </li>
@@ -350,21 +350,21 @@
                 </div>
 
                 <div class="tab-content" id="visitStepperContent">
-                    {{-- STEP 1: Wali belum datang (approved, belum scan/QR) --}}
+                    {{-- STEP 1: Santri belum keluar (approved, belum scan QR) --}}
                     <div class="tab-pane fade show active" id="step-pending" role="tabpanel">
                         <div class="card-header bg-soft-info py-2">
                             <small class="text-muted">
                                 <i class="ri-information-line me-1"></i>
-                                Kunjungan yang menunggu tamu/wali datang ke pos asrama.
-                                <span class="text-primary fw-semibold">Check-in = catat waktu wali tiba (santri keluar ke pos)</span>.
-                                Gunakan tombol <strong>Catat Tamu Tiba</strong> jika tamu tidak dapat memindai QR.
+                                Kunjungan sudah disetujui; santri masih di asrama dan menunggu dipanggil.
+                                <span class="text-primary fw-semibold">Scan keluar = catat saat santri keluar asrama menemui tamu/wali.</span>
+                                Gunakan tombol <strong>Catat Santri Keluar</strong> jika kartu tidak dapat dipindai.
                             </small>
                         </div>
                         <div class="table-container">
                             @if($approvedAwaiting->isEmpty())
                                 <div class="text-center text-muted py-4">
                                     <i class="ri-information-line d-block fs-4 mb-1"></i>
-                                    Tidak ada tamu/wali yang menunggu check-in.
+                                    Tidak ada kunjungan yang menunggu santri keluar.
                                 </div>
                             @else
                                 <table class="table table-hover align-middle mb-0">
@@ -401,7 +401,7 @@
                                             </td>
                                             <td data-label="Status">
                                                 <span class="badge bg-info-subtle text-info">
-                                                    <span class="status-dot bg-info"></span> Menunggu Penjengukan
+                                                    <span class="status-dot bg-info"></span> Menunggu Santri Keluar
                                                 </span>
                                             </td>
                                             <td data-label="Aksi" class="text-center">
@@ -412,9 +412,9 @@
                                                             data-visit-name="{{ $visit->visitor_name }}"
                                                             data-student-name="{{ $visit->student?->name ?? '—' }}"
                                                             data-action="check-in"
-                                                            data-action-label="Wali Tiba (Check-in)"
+                                                            data-action-label="Catat Santri Keluar"
                                                             title="Catat wali tiba di pos asrama tanpa QR">
-                                                        <i class="ri-login-box-line me-1"></i> Catat Tamu Tiba
+                                                        <i class="ri-login-box-line me-1"></i> Catat Santri Keluar
                                                     </button>
                                                     <a href="{{ route('user.asrama.visits.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'visitUuid' => $visit->id]) }}"
                                                        class="btn btn-sm btn-outline-primary" title="Detail">
@@ -430,21 +430,21 @@
                         </div>
                     </div>
 
-                    {{-- STEP 2: Wali tiba & sedang menunggu, sementara SANTRI yang keluar asrama --}}
+                    {{-- STEP 2: Santri sedang di luar asrama menemui tamu/wali --}}
                     <div class="tab-pane fade" id="step-arrived" role="tabpanel">
                         <div class="card-header bg-soft-warning py-2">
                             <small class="text-muted">
                                 <i class="ri-information-line me-1"></i>
-                                Tamu/wali telah tiba di pos asrama dan sedang berkunjung.
-                                <span class="text-primary fw-semibold">Check-out = catat waktu tamu/wali pulang dan kunjungan selesai.</span>
-                                Gunakan tombol <strong>Selesaikan Kunjungan</strong> setelah tamu pulang.
+                                Santri sedang di luar asrama menemui tamu/wali.
+                                <span class="text-primary fw-semibold">Scan kembali = catat saat santri masuk kembali ke asrama.</span>
+                                Gunakan tombol <strong>Catat Santri Kembali</strong> setelah santri kembali ke asrama.
                             </small>
                         </div>
                         <div class="table-container">
                             @if($arrivedAwaiting->isEmpty())
                                 <div class="text-center text-muted py-4">
                                     <i class="ri-information-line d-block fs-4 mb-1"></i>
-                                    Tidak ada kunjungan yang sedang berlangsung.
+                                    Tidak ada santri yang sedang di luar asrama untuk kunjungan.
                                 </div>
                             @else
                                 <table class="table table-hover align-middle mb-0">
@@ -481,7 +481,7 @@
                                             <td data-label="Durasi"><span class="text-muted">{{ $duration }}</span></td>
                                             <td data-label="Status">
                                                 <span class="badge bg-warning-subtle text-warning">
-                                                    <span class="status-dot bg-warning"></span> Sedang Berkunjung
+                                                    <span class="status-dot bg-warning"></span> Santri Sedang di Luar
                                                 </span>
                                             </td>
                                             <td data-label="Aksi" class="text-center">
@@ -492,9 +492,9 @@
                                                             data-visit-name="{{ $visit->visitor_name }}"
                                                             data-student-name="{{ $visit->student?->name ?? '—' }}"
                                                             data-action="check-out"
-                                                            data-action-label="Selesaikan Kunjungan (Check-out)"
+                                                            data-action-label="Catat Santri Kembali"
                                                             title="Catat kunjungan selesai & santri kembali ke asrama">
-                                                        <i class="ri-logout-box-line me-1"></i> Selesaikan Kunjungan
+                                                        <i class="ri-logout-box-line me-1"></i> Catat Santri Kembali
                                                     </button>
                                                     <a href="{{ route('user.asrama.visits.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'visitUuid' => $visit->id]) }}"
                                                        class="btn btn-sm btn-outline-primary" title="Detail">
@@ -515,7 +515,7 @@
                         <div class="card-header bg-soft-success py-2">
                             <small class="text-muted">
                                 <i class="ri-information-line me-1"></i>
-                                Riwayat kunjungan yang telah selesai — tamu/wali pulang dan kunjungan ditutup. {{ $recentScans->count() > 0 ? "Menampilkan juga " . $recentScans->count() . " scan terbaru." : '' }}
+                                Riwayat kunjungan yang telah selesai — santri sudah kembali ke asrama. {{ $recentScans->count() > 0 ? "Menampilkan juga " . $recentScans->count() . " scan terbaru." : '' }}
                             </small>
                         </div>
                         <div class="table-container">
@@ -533,7 +533,7 @@
                                             <th>Hubungan</th>
                                             <th>Nama Santri</th>
                                             <th>Kamar</th>
-                                            <th>Selesaikan Kunjungan (Check-out)</th>
+                                            <th>Waktu Santri Kembali</th>
                                             <th>Durasi</th>
                                             <th>Status</th>
                                             <th class="text-center" style="width:80px;">Aksi</th>
@@ -555,11 +555,11 @@
                                             <td data-label="Hubungan"><span class="text-muted">{{ $visit->visitor_relationship ?? '—' }}</span></td>
                                             <td data-label="Nama Santri">{{ $visit->student?->name ?? '—' }}</td>
                                             <td data-label="Kamar">{{ $visit->room?->name ?? '—' }}</td>
-                                            <td data-label="Selesaikan Kunjungan (Check-out)">{{ $visit->check_out_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                                            <td data-label="Waktu Santri Kembali">{{ $visit->check_out_at?->format('d/m/Y H:i') ?? '—' }}</td>
                                             <td data-label="Durasi"><span class="text-muted">{{ $dur }}</span></td>
                                             <td data-label="Status">
                                                 <span class="badge bg-success-subtle text-success">
-                                                    <span class="status-dot bg-success"></span> Kunjungan Selesai
+                                                    <span class="status-dot bg-success"></span> Santri Sudah Kembali
                                                 </span>
                                             </td>
                                             <td data-label="Aksi" class="text-center">
@@ -581,7 +581,7 @@
                                                     <td data-label="Hubungan"><span class="text-muted">{{ $visit->visitor_relationship ?? '—' }}</span></td>
                                                     <td data-label="Nama Santri">{{ $visit->student?->name ?? '—' }}</td>
                                                     <td data-label="Kamar">{{ $visit->room?->name ?? '—' }}</td>
-                                                    <td data-label="Selesaikan Kunjungan (Check-out)" class="text-muted">—</td>
+                                                    <td data-label="Waktu Santri Kembali" class="text-muted">—</td>
                                                     <td data-label="Durasi" class="text-muted">—</td>
                                                     <td data-label="Status">
                                                         <span class="badge bg-secondary-subtle text-secondary">Riwayat Scan</span>

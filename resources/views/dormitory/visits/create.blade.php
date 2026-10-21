@@ -47,7 +47,7 @@
                     <div class="card-body">
                         {{-- Student Search / Selection --}}
                         <div class="mb-4">
-                            <label for="studentSelect" class="form-label">Santri yang Ditanam <span class="text-danger">*</span></label>
+                            <label for="studentSelect" class="form-label">Santri yang Dikunjungi <span class="text-danger">*</span></label>
                             <select name="student_id" id="studentSelect" class="form-control @error('student_id') is-invalid @enderror" required aria-describedby="studentSelectHelp">
                                 <option value="">— Pilih Santri —</option>
                                 @foreach($students ?? [] as $s)
@@ -206,7 +206,7 @@
                             </li>
                             <li class="d-flex gap-2 mb-0">
                                 <i class="ri-checkbox-circle-line text-success mt-1" aria-hidden="true"></i>
-                                <span>Tamu wajib checkout saat meninggalkan asrama.</span>
+                                <span>Kunjungan ditutup saat santri kembali ke asrama.</span>
                             </li>
                         </ul>
                     </div>

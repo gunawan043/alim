@@ -51,7 +51,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Menunggu Tamu</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Santri Belum Keluar</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['approved'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -68,7 +68,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Sedang Berkunjung</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Santri Sedang di Luar</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['arrived'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
                             </span>
                         </div>
                         <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Kunjungan Selesai</p>
+                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:11px;">Santri Sudah Kembali</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['checked_out'] ?? 0) }}</h3>
                         </div>
                     </div>
@@ -135,9 +135,9 @@
                             <select name="status" class="form-control">
                                 <option value="">Semua Status</option>
                                 <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Menunggu</option>
-                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Menunggu Tamu</option>
-                                <option value="arrived" {{ request('status') === 'arrived' ? 'selected' : '' }}>Sedang Berkunjung</option>
-                                <option value="checked_out" {{ request('status') === 'checked_out' ? 'selected' : '' }}>Kunjungan Selesai</option>
+                                <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Santri Belum Keluar</option>
+                                <option value="arrived" {{ request('status') === 'arrived' ? 'selected' : '' }}>Santri Sedang di Luar</option>
+                                <option value="checked_out" {{ request('status') === 'checked_out' ? 'selected' : '' }}>Santri Sudah Kembali</option>
                                 <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
                                 <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>
@@ -239,7 +239,7 @@
                                                       action="{{ route('user.asrama.visits.check-in', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
                                                       class="d-inline">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Check-in">
+                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Catat Santri Keluar">
                                                         <i class="ri-login-box-line"></i>
                                                     </button>
                                                 </form>
@@ -249,7 +249,7 @@
                                                       action="{{ route('user.asrama.visits.check-out', ['userId' => $userId, 'asramaUuid' => $visit->dormitory_id, 'visitUuid' => $visit->id]) }}"
                                                       class="d-inline">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Check-out">
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Catat Santri Kembali">
                                                         <i class="ri-logout-box-r-line"></i>
                                                     </button>
                                                 </form>
