@@ -265,13 +265,32 @@ class CutiController extends Controller
             ->groupBy('cuti_template_id')
             ->get();
 
-        $recent = CutiRequest::with(['user', 'template'])
+        $rows = CutiRequest::with(['user:id,name', 'template:id,nama', 'approver:id,name'])
             ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+            ->latest('created_at')->paginate(20)->withQueryString();
 
-        return view('personalia.cuti.rekap', compact('userId', 'stats', 'byTemplate', 'recent', 'period'));
+        return view('personalia.cuti.rekap', compact('userId', 'stats', 'byTemplate', 'rows', 'period'));
+    }
+
+    public function rekapExport(Request $request, string $userId)
+    {
+        $period = CutiPeriod::where('is_active', true)->first();
+        $rows = CutiRequest::with(['user:id,name', 'template:id,nama'])
+            ->when($period, fn ($q) => $q->where('cuti_period_id', $period->id))
+            ->orderByDesc('created_at')->get();
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Nama GTK', 'Jenis Cuti', 'Tanggal Mulai', 'Tanggal Selesai', 'Jumlah Hari', 'Status', 'Disetujui Oleh', 'Tanggal Approval']);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    $row->user?->name, $row->template?->nama,
+                    $row->tanggal_mulai?->format('Y-m-d'), $row->tanggal_selesai?->format('Y-m-d'),
+                    $row->jumlah_hari, $row->status, $row->approved_by, $row->approved_at?->format('Y-m-d H:i'),
+                ]);
+            }
+            fclose($out);
+        }, 'rekap-cuti-'.now()->format('Ymd').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function quota(Request $request, string $userId)

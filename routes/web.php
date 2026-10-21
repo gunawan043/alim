@@ -1248,6 +1248,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{id}/approve', [CutiController::class, 'approve'])->name('approve')->middleware('personalia.access:cuti');
                 Route::post('/{id}/reject', [CutiController::class, 'reject'])->name('reject')->middleware('personalia.access:cuti');
                 Route::get('/rekap', [CutiController::class, 'rekap'])->name('rekap')->middleware('personalia.access:cuti');
+                Route::get('/rekap/export', [CutiController::class, 'rekapExport'])->name('rekap.export')->middleware('personalia.access:cuti');
                 Route::get('/quota', [CutiController::class, 'quota'])->name('quota')->middleware('personalia.access:cuti');
                 Route::get('/settings', [CutiController::class, 'settings'])->name('settings')->middleware('personalia.access:cuti');
                 Route::post('/settings', [CutiController::class, 'settingsStore'])->name('settings.store')->middleware('personalia.access:cuti');
@@ -1301,6 +1302,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/punishment', [KinerjaController::class, 'punishmentStore'])->name('punishment.store');
                 Route::delete('/punishment/{id}', [KinerjaController::class, 'punishmentDestroy'])->name('punishment.destroy');
                 Route::get('/laporan', [KinerjaController::class, 'laporan'])->name('laporan');
+                Route::get('/laporan/export', [KinerjaController::class, 'laporanExport'])->name('laporan.export');
                 Route::post('/datatable', [KinerjaController::class, 'datatable'])->name('datatable');
             });
 

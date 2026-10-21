@@ -444,6 +444,25 @@ class KinerjaController extends Controller
         return view('personalia.kinerja.laporan', compact('userId', 'periodes', 'ranking', 'scoreByPeriod', 'kategoriDist', 'gtkList'));
     }
 
+    public function laporanExport(Request $request, string $userId)
+    {
+        $rows = KinerjaPenilaian::with(['user:id,name', 'periode:id,nama', 'penilai:id,name'])
+            ->orderByDesc('tanggal_penilaian')->get();
+
+        return response()->streamDownload(function () use ($rows) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Nama GTK', 'Periode', 'Total Skor', 'Nilai', 'Kategori', 'Penilai', 'Tanggal']);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    $row->user?->name, $row->periode?->nama, $row->total_skor,
+                    $row->nilai_huruf, $row->kategori_hasil, $row->penilai?->name,
+                    $row->tanggal_penilaian?->format('Y-m-d'),
+                ]);
+            }
+            fclose($out);
+        }, 'laporan-kinerja-'.now()->format('Ymd').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function datatable(Request $request, string $userId)
     {
         $query = KinerjaPenilaian::with(['user.gtkProfile', 'periode', 'penilai'])
