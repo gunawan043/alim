@@ -49,6 +49,10 @@ $asramaProfileFallback = route(
     ['userId' => $userId]
 );
 
+// Dipakai menu scan/kedatangan lintas asrama. Pakai asrama aktif, lalu
+// fallback ke asrama aktif pertama agar link tidak pernah hilang.
+$scanAsramaId = $scanAsramaId ?? $asramaUuid;
+
 /*
 |--------------------------------------------------------------------------
 | Helper Active Route
