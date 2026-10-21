@@ -1,0 +1,4 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Cambria,serif;font-size:11pt;line-height:1.15}h2{text-align:center}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:4px;font-size:10pt}th{background:#e2e8f0}</style></head><body>
+<h2>REKAP CUTI GTK</h2><table><thead><tr><th>No</th><th>Nama</th><th>Jenis Cuti</th><th>Mulai</th><th>Selesai</th><th>Hari</th><th>Status</th><th>Disetujui</th></tr></thead><tbody>
+@foreach($rows as $i => $row)<tr><td>{{ $i+1 }}</td><td>{{ $row->user?->name }}</td><td>{{ $row->template?->nama }}</td><td>{{ $row->tanggal_mulai?->format('d/m/Y') }}</td><td>{{ $row->tanggal_selesai?->format('d/m/Y') }}</td><td>{{ $row->jumlah_hari }}</td><td>{{ $row->status }}</td><td>{{ $row->approved_by }}</td></tr>@endforeach
+</tbody></table></body></html>

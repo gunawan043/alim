@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
+use App\Exports\GenericExport;
 use App\Models\CutiBalance;
 use App\Models\CutiPeriod;
 use App\Models\CutiRequest;
@@ -13,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CutiController extends Controller
 {
@@ -88,6 +90,8 @@ class CutiController extends Controller
                 'jumlah_hari' => $jumlah,
                 'alasan' => $validated['alasan'] ?? null,
                 'status' => CutiRequest::STATUS_PENDING,
+                'approval_chain' => $this->defaultApprovalChain(),
+                'approval_stage' => 0,
             ]);
             try {
                 $this->notif->notifyCutiRequest($cuti);
@@ -184,44 +188,61 @@ class CutiController extends Controller
             return redirect()->back()->with('error', 'Cuti sudah diproses.');
         }
 
+        $chain = $cuti->approval_chain ?: $this->defaultApprovalChain();
+        $stage = (int) ($cuti->approval_stage ?? 0);
+        if ($stage >= count($chain)) {
+            return redirect()->back()->with('error', 'Tahap approval tidak valid.');
+        }
+
+        $this->authorizeApprovalStage($request->user(), $chain[$stage]['level'] ?? 0);
+        $chain[$stage]['status'] = 'approved';
+        $chain[$stage]['approved_by'] = $request->user()->id;
+        $chain[$stage]['approved_at'] = now()->toDateTimeString();
+        $stage++;
+        $isFinal = $stage >= count($chain);
+
         try {
-        DB::transaction(function () use ($cuti, $userId) {
-            $balance = CutiBalance::query()
-                ->where('user_id', $cuti->user_id)
-                ->where('cuti_template_id', $cuti->cuti_template_id)
-                ->when($cuti->cuti_period_id, fn ($q) => $q->where('cuti_period_id', $cuti->cuti_period_id))
-                ->lockForUpdate()
-                ->first();
-
-            if ($balance && $balance->tersisa < $cuti->jumlah_hari) {
-                throw new \RuntimeException('Sisa kuota cuti tidak mencukupi saat approval.');
-            }
-
-            $cuti->update([
-                'status' => CutiRequest::STATUS_APPROVED,
-                'approved_at' => now(),
-                'approved_by' => $userId,
-                'approval_notes' => request('notes'),
-            ]);
-
-            if ($balance) {
-                $balance->update([
-                    'digunakan' => $balance->digunakan + $cuti->jumlah_hari,
-                    'tersisa' => $balance->tersisa - $cuti->jumlah_hari,
+            DB::transaction(function () use ($cuti, $chain, $stage, $isFinal, $request) {
+                $cuti->update([
+                    'approval_chain' => $chain,
+                    'approval_stage' => $stage,
+                    'status' => $isFinal ? CutiRequest::STATUS_APPROVED : CutiRequest::STATUS_PENDING,
+                    'approved_at' => $isFinal ? now() : null,
+                    'approved_by' => $isFinal ? $request->user()->id : null,
+                    'approval_notes' => $request->input('notes', $cuti->approval_notes),
                 ]);
-            }
-        });
+
+                if (! $isFinal) {
+                    return;
+                }
+
+                $balance = CutiBalance::query()
+                    ->where('user_id', $cuti->user_id)
+                    ->where('cuti_template_id', $cuti->cuti_template_id)
+                    ->when($cuti->cuti_period_id, fn ($q) => $q->where('cuti_period_id', $cuti->cuti_period_id))
+                    ->lockForUpdate()->first();
+
+                if ($balance && $balance->tersisa < $cuti->jumlah_hari) {
+                    throw new \RuntimeException('Sisa kuota cuti tidak mencukupi saat approval.');
+                }
+                if ($balance) {
+                    $balance->update([
+                        'digunakan' => $balance->digunakan + $cuti->jumlah_hari,
+                        'tersisa' => $balance->tersisa - $cuti->jumlah_hari,
+                    ]);
+                }
+            });
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
         try {
-            $this->notif->notifyCutiDecision($cuti, 'approved');
+            $this->notif->notifyCutiDecision($cuti->fresh(), $isFinal ? 'approved' : 'pending');
         } catch (\Throwable $e) {
         }
 
         return redirect()->route('user.cuti.approval', $userId)
-            ->with('success', 'Cuti berhasil disetujui.');
+            ->with('success', $isFinal ? 'Cuti disetujui penuh.' : 'Persetujuan tahap '.$stage.' dicatat; menunggu approver berikutnya.');
     }
 
     public function reject(Request $request, string $userId, string $id)
@@ -230,6 +251,11 @@ class CutiController extends Controller
         $cuti = CutiRequest::findOrFail($id);
         if ($cuti->status !== CutiRequest::STATUS_PENDING) {
             return redirect()->back()->with('error', 'Cuti sudah diproses.');
+        }
+        $chain = $cuti->approval_chain ?: $this->defaultApprovalChain();
+        $stage = (int) ($cuti->approval_stage ?? 0);
+        if ($stage < count($chain)) {
+            $this->authorizeApprovalStage($request->user(), $chain[$stage]['level'] ?? 0);
         }
 
         $cuti->update([
@@ -293,6 +319,36 @@ class CutiController extends Controller
         }, 'rekap-cuti-'.now()->format('Ymd').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    public function rekapExcel(Request $request, string $userId)
+    {
+        $rows = CutiRequest::with(['user:id,name', 'template:id,nama'])
+            ->where('cuti_period_id', \App\Models\CutiPeriod::where('is_active', true)->value('id'))
+            ->orderByDesc('created_at')->get()
+            ->map(fn ($row) => [
+                'Nama GTK' => $row->user?->name,
+                'Jenis Cuti' => $row->template?->nama,
+                'Tanggal Mulai' => $row->tanggal_mulai?->format('Y-m-d'),
+                'Tanggal Selesai' => $row->tanggal_selesai?->format('Y-m-d'),
+                'Jumlah Hari' => $row->jumlah_hari,
+                'Status' => $row->status,
+                'Disetujui Oleh' => $row->approved_by,
+                'Tanggal Approval' => $row->approved_at?->format('Y-m-d H:i'),
+            ])->values()->all();
+
+        return Excel::download(new GenericExport($rows), 'rekap-cuti-'.now()->format('Ymd').'.xlsx');
+    }
+
+    public function rekapPdf(Request $request, string $userId)
+    {
+        $rows = CutiRequest::with(['user:id,name', 'template:id,nama'])
+            ->where('cuti_period_id', \App\Models\CutiPeriod::where('is_active', true)->value('id'))
+            ->orderByDesc('created_at')->get();
+
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'personalia.cuti.rekap-pdf', compact('rows', 'userId'), 'rekap-cuti-'.now()->format('Ymd'), 'landscape'
+        );
+    }
+
     public function quota(Request $request, string $userId)
     {
         $period = CutiPeriod::where('is_active', true)->first();
@@ -348,6 +404,27 @@ class CutiController extends Controller
         }
 
         return redirect()->back()->with('success', 'Pengaturan berhasil disimpan.');
+    }
+
+    private function defaultApprovalChain(): array
+    {
+        return [
+            ['level' => 1, 'role' => 'Kepala Personalia', 'status' => 'pending'],
+            ['level' => 2, 'role' => 'Pimpinan', 'status' => 'pending'],
+        ];
+    }
+
+    private function authorizeApprovalStage($user, int $level): void
+    {
+        if ($user->isSystemAdmin() || $user->isSuperAdmin()) {
+            return;
+        }
+
+        $jabatan = strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+        $isHead = str_contains($jabatan, 'kepala humas') || str_contains($jabatan, 'kepala personalia') || str_contains($jabatan, 'wakil kepala personalia');
+        $isPimpinan = $user->hasRole('Pimpinan');
+
+        abort_unless(($level === 1 && $isHead) || ($level === 2 && $isPimpinan), 403, 'Anda bukan approver pada tahap ini.');
     }
 
     public function datatable(Request $request, string $userId)

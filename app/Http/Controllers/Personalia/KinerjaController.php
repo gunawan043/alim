@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Personalia;
 
 use App\Http\Controllers\Controller;
+use App\Exports\GenericExport;
 use App\Models\GtkProfile;
 use App\Models\KinerjaIndikator;
 use App\Models\KinerjaKomponen;
@@ -11,6 +12,7 @@ use App\Models\KinerjaPeriode;
 use App\Models\KinerjaRewardPunishment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class KinerjaController extends Controller
 {
@@ -461,6 +463,33 @@ class KinerjaController extends Controller
             }
             fclose($out);
         }, 'laporan-kinerja-'.now()->format('Ymd').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function laporanExcel(Request $request, string $userId)
+    {
+        $rows = KinerjaPenilaian::with(['user:id,name', 'periode:id,nama', 'penilai:id,name'])
+            ->orderByDesc('tanggal_penilaian')->get()
+            ->map(fn ($row) => [
+                'Nama GTK' => $row->user?->name,
+                'Periode' => $row->periode?->nama,
+                'Total Skor' => $row->total_skor,
+                'Nilai' => $row->nilai_huruf,
+                'Kategori' => $row->kategori_hasil,
+                'Penilai' => $row->penilai?->name,
+                'Tanggal' => $row->tanggal_penilaian?->format('Y-m-d'),
+            ])->values()->all();
+
+        return Excel::download(new GenericExport($rows), 'laporan-kinerja-'.now()->format('Ymd').'.xlsx');
+    }
+
+    public function laporanPdf(Request $request, string $userId)
+    {
+        $rows = KinerjaPenilaian::with(['user:id,name', 'periode:id,nama', 'penilai:id,name'])
+            ->orderByDesc('tanggal_penilaian')->get();
+
+        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+            'personalia.kinerja.laporan-pdf', compact('rows', 'userId'), 'laporan-kinerja-'.now()->format('Ymd'), 'landscape'
+        );
     }
 
     public function datatable(Request $request, string $userId)

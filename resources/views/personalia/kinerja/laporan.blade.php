@@ -144,7 +144,7 @@ $countFinal = \App\Models\KinerjaPenilaian::where('status','final')->count();
             <div class="card-body">
                 <div class="d-flex flex-column gap-2">
                     @if($isAdmin)
-                    <a href="{{ route('user.kinerja.laporan', $userId) }}" class="btn btn-outline-primary btn-sm no-print"><i class="ri-fileExcel-line me-1"></i> Export Excel</a>
+                    <a href="{{ route('user.kinerja.laporan.excel', $userId) }}" class="btn btn-outline-primary btn-sm no-print"><i class="ri-file-excel-line me-1"></i> XLSX</a><a href="{{ route('user.kinerja.laporan.pdf', $userId) }}" target="_blank" class="btn btn-outline-danger btn-sm no-print"><i class="ri-file-pdf-line me-1"></i> PDF</a>
                     <a href="javascript:window.print()" class="btn btn-outline-secondary btn-sm no-print"><i class="ri-printer-line me-1"></i> Cetak Laporan</a>
                     @endif
                     <a href="{{ route('user.kinerja.index', $userId) }}" class="btn btn-light btn-sm no-print"><i class="ri-list-check me-1"></i> Lihat Daftar Penilaian</a>

@@ -55,6 +55,11 @@ class EnsurePersonaliaPermission
         }
 
         $route = $request->route()?->getName() ?? '';
+        if ($module === 'cuti' && str_contains($route, 'approve') || ($module === 'cuti' && str_contains($route, 'reject'))) {
+            if ($user->hasRole('Pimpinan')) {
+                return $next($request);
+            }
+        }
         if ($this->requiresHead($route) && ! $this->isPersonaliaHead($user)) {
             abort(403, 'Aksi ini hanya dapat dilakukan Kepala Personalia.');
         }
@@ -90,7 +95,7 @@ class EnsurePersonaliaPermission
     private function requiresHead(string $route): bool
     {
         foreach ([
-            'user.cuti.approval', 'user.cuti.approve', 'user.cuti.reject',
+            'user.cuti.approval',
             'user.cuti.rekap', 'user.cuti.quota', 'user.cuti.settings',
             'user.kinerja.finalize', 'user.kinerja.periode.destroy',
             'user.kesejahteraan.klaim.proses', 'user.kontrak.perpanjang',
