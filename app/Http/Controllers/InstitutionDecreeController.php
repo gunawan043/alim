@@ -259,7 +259,7 @@ class InstitutionDecreeController extends Controller
         $employees = User::whereIn('id', $userIds)->where('is_active', true)->orderBy('name')->get();
         $assignments = TeachingAssignment::with(['subject:id,name', 'studyGroup:id,name'])->whereIn('teacher_id', $userIds)->where('status', 'active')->get()->groupBy('teacher_id');
         $additional = collect();
-        $additional = $additional->merge(GtkAdditionalTask::whereIn('user_id', $userIds)->where('is_active', true)->get()->groupBy('user_id'));
+        $additional = $additional->merge(GtkAdditionalTask::whereIn('user_id', $userIds)->get()->groupBy('user_id'));
         $otherTasks = OtherTeacherTask::whereIn('teacher_id', $userIds)->where('is_active', true)->get()->groupBy('teacher_id');
         $positions = StructuralAssignment::with('position')->whereIn('user_id', $userIds)->where('status', 'active')->get()->keyBy('user_id');
         $positionHours = StructuralPositionWorkUnitHour::where('work_unit_id', $workUnit?->id)->pluck('weekly_hours', 'structural_position_id');
