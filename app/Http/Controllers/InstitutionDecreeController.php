@@ -221,8 +221,14 @@ class InstitutionDecreeController extends Controller
         if (! $workUnitId && $schoolId) {
             $workUnitId = School::whereKey($schoolId)->value('work_unit_id');
         }
+        if (! $workUnitId && method_exists($user, 'primaryWorkUnit')) {
+            $workUnitId = $user->primaryWorkUnit?->work_unit_id;
+        }
         if (! $workUnitId) {
-            $workUnitId = GtkWorkUnit::where('user_id', $user->id)->where('is_primary', true)->value('work_unit_id');
+            $workUnitId = GtkWorkUnit::where('user_id', $user->id)->value('work_unit_id');
+        }
+        if (! $workUnitId && ($user->isSystemAdmin() || $user->isSuperAdmin())) {
+            $workUnitId = WorkUnit::where('is_active', true)->orderBy('name')->value('id');
         }
         $workUnit = $workUnitId ? WorkUnit::find($workUnitId) : null;
         $decree = $request->filled('decree_id') ? InstitutionDecree::with(['reviewer:id,name', 'approver:id,name'])->find($request->decree_id) : null;
@@ -235,6 +241,14 @@ class InstitutionDecreeController extends Controller
         if ($workUnit) {
             $userIds = GtkWorkUnit::where('work_unit_id', $workUnit->id)->pluck('user_id');
             $userIds = $userIds->merge(GtkEmployment::whereIn('school_id', $schools->pluck('id'))->pluck('user_id'))->unique();
+        }
+        if ($userIds->isEmpty()) {
+            $userIds = User::where('is_active', true)->whereHas('employment')
+                ->when($schools->isNotEmpty(), fn ($q) => $q->whereHas('employment', fn ($e) => $e->whereIn('school_id', $schools->pluck('id'))))
+                ->pluck('id');
+        }
+        if ($userIds->isEmpty()) {
+            $userIds = User::where('is_active', true)->whereHas('employment')->pluck('id');
         }
         $employees = User::whereIn('id', $userIds)->where('is_active', true)->orderBy('name')->get();
         $assignments = TeachingAssignment::with(['subject:id,name', 'studyGroup:id,name'])->whereIn('teacher_id', $userIds)->where('status', 'active')->get()->groupBy('teacher_id');
