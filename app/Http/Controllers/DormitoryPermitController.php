@@ -631,7 +631,7 @@ class DormitoryPermitController extends Controller
             $html = view('dormitory.permits.bulk-card-pdf', compact('dormitory', 'permits', 'userId', 'now'))->render();
 
             // Satu kartu per halaman; tinggi tetap ringkas untuk printer 58 mm.
-            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)->renderFixed($html, 380);
+            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)->renderFixed($html, 400);
             $output = $rendered['output'];
             $filename = 'cetak-kartu-izin-'.now()->format('Ymd-His').'.pdf';
 

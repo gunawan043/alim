@@ -109,7 +109,7 @@ class CardPdfRenderer
         $options = (new Options)
             ->set('isRemoteEnabled', false)
             ->set('isHtml5ParserEnabled', true)
-            ->set('defaultFont', 'Courier');
+            ->set('defaultFont', 'DejaVu Sans');
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);

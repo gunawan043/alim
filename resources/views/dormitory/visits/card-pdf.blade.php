@@ -9,7 +9,7 @@
         @page { margin: 0; }
 
         body {
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
             font-size: 7.1pt;
             line-height: 1.2;
             color: #000;
@@ -33,7 +33,17 @@
             padding: 0 0 0.8mm;
         }
         .logo-top img {
-            height: 8mm;
+            height: 13mm;
+        }
+        .student-name {
+            text-align: center;
+            font-weight: 700;
+            line-height: 1.1;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+            margin: 0.8mm 0 1.6mm;
+            padding-bottom: 1mm;
+            border-bottom: 1px dashed #000;
         }
         .header {
             text-align: center;
@@ -54,6 +64,7 @@
             letter-spacing: 0.2px;
         }
         .header .title {
+            font-family: 'DejaVu Serif', Georgia, serif;
             font-size: 8.5pt;
             font-weight: 700;
             text-transform: uppercase;
@@ -132,9 +143,16 @@
             <div class="title">KARTU KUNJUNGAN SANTRI</div>
         </div>
 
+        @php
+            $studentName = $visit->student?->name ?? '—';
+            $nameLength = mb_strlen($studentName);
+            $nameSize = $nameLength <= 20 ? '12pt' : ($nameLength <= 28 ? '10.8pt' : ($nameLength <= 36 ? '9.6pt' : '8.4pt'));
+        @endphp
+        <div class="student-name" style="font-size:{{ $nameSize }}">{{ $studentName }}</div>
+
         <table class="info-table">
             <tr>
-                <td class="label-col">Nama</td>
+                <td class="label-col">Tamu</td>
                 <td class="sep-col">:</td>
                 <td class="value-col">{{ $visit->visitor_name ?? '—' }}</td>
             </tr>
@@ -156,11 +174,6 @@
 
             <tr><td colspan="3"><hr class="section-divider"></td></tr>
 
-            <tr>
-                <td class="label-col">Santri</td>
-                <td class="sep-col">:</td>
-                <td class="value-col">{{ $visit->student?->name ?? '—' }}</td>
-            </tr>
             <tr>
                 <td class="label-col">Kamar</td>
                 <td class="sep-col">:</td>
