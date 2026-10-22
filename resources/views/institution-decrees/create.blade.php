@@ -1,29 +1,8 @@
 @extends('layouts.master')
 @section('title') Tambah Surat Keputusan @endsection
 
-@section('css')
-<style>
-    .col-jp { min-width: 46px; text-align: center; }
-    .col-jp input { text-align: center; width: 44px; padding: 3px 4px; }
-    .col-jp input.has-val { background: #e8f4ea; border-color: #28a745; }
-    .del-btn { color: #aaa; cursor: pointer; }
-    .del-btn:hover { color: #333; }
-    .decree-matrix { --bs-table-bg: var(--vz-card-bg, #fff); --bs-table-color: var(--vz-body-color, #212529); }
-    .decree-matrix thead th { border-color: #dee2e6; }
-    [data-bs-theme="dark"] .decree-matrix { --bs-table-bg: #172033; --bs-table-color: #dbe4f0; --bs-table-border-color: #334155; background: #172033; color: #dbe4f0; }
-    [data-bs-theme="dark"] .decree-matrix thead th,
-    [data-bs-theme="dark"] .decree-matrix tbody td { border-color: #334155 !important; }
-    [data-bs-theme="dark"] .decree-matrix thead th { background: #1e293b !important; color: #e2e8f0 !important; }
-    [data-bs-theme="dark"] .decree-matrix tbody td,
-    [data-bs-theme="dark"] .decree-matrix tbody tr { background-color: #172033 !important; color: #dbe4f0 !important; }
-    [data-bs-theme="dark"] .decree-matrix tbody tr:hover td { background-color: #1e293b !important; }
-    [data-bs-theme="dark"] .decree-matrix .col-jp-input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
-    [data-bs-theme="dark"] .decree-matrix .col-jp-input.has-val { background: #14532d; border-color: #22c55e; }
-</style>
-@endsection
 
 @section('content')
-    @include('personalia._gtk-ui')
     @component('components.breadcrumb')
         @slot('li_1') Administrasi @endslot
         @slot('li_2') <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">Surat Keputusan</a> @endslot
@@ -165,61 +144,57 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="badge bg-light text-secondary border mb-1">
-                                <i class="ri-group-line me-1"></i>
-                                <span id="teacherCount">0</span> GTK
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary-subtle text-primary">
+                                <i class="ri-group-line me-1"></i><span id="teacherCount">0</span> GTK
                             </span>
-                            <span class="badge bg-light text-secondary border mb-1">
-                                <i class="ri-stack-line me-1"></i>
-                                {{ $studyGroups->count() }} Rombel
+                            <span class="badge bg-info-subtle text-info">
+                                <i class="ri-stack-line me-1"></i>{{ $studyGroups->count() }} Rombel
                             </span>
                         </div>
                         <div class="d-flex gap-2 align-items-center">
                             <select id="newTeacherSelect" class="d-none"><option value="">-- Pilih Guru --</option>@foreach($teachers as $t)<option value="{{ $t->id }}">{{ $t->name }}</option>@endforeach</select>
-                            <button type="button" class="btn btn-sm" style="border:1px solid #ccc;" onclick="showAddTask()">
+                            <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddTask()">
                                 <i class="ri-user-settings-line me-1"></i> Tugas Tambahan
                             </button>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height:60vh; overflow:auto;">
-                            <table class="table table-bordered mb-0 decree-matrix" style="font-size:12px; min-width:650px;">
-                                <thead class="text-center align-middle position-sticky top-0" style="z-index:10; background:#f8f9fa; border-bottom:2px solid #dee2e6;">
-                                    <tr>
-                                        <th rowspan="2" class="text-center" style="width:25px; border-right:1px solid #dee2e6;">No</th>
-                                        <th rowspan="2" style="min-width:170px; border-right:1px solid #dee2e6;">Nama</th>
-                                        <th rowspan="2" style="min-width:130px; border-right:1px solid #dee2e6;">Jabatan</th>
-                                        <th rowspan="2" style="min-width:190px; border-right:1px solid #dee2e6;">Mapel/Tugas</th>
-                                        <th rowspan="2" style="min-width:170px; border-right:1px solid #dee2e6;">Tugas Tambahan</th>
-                                        @foreach($byGrade as $level => $groups)
-                                            <th colspan="{{ $groups->count() }}" style="background:#343a40; color:#fff; font-size:11px;">
-                                                {{ $groups->first()->gradeLevel->name ?? "Kelas $level" }}
-                                            </th>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle mb-0">
+                            <thead class="table-light text-center align-middle">
+                                <tr>
+                                    <th rowspan="2" class="text-nowrap">No</th>
+                                    <th rowspan="2" class="text-nowrap">Nama</th>
+                                    <th rowspan="2" class="text-nowrap">Jabatan</th>
+                                    <th rowspan="2" class="text-nowrap">Mapel/Tugas</th>
+                                    <th rowspan="2" class="text-nowrap">Tugas Tambahan</th>
+                                    @foreach($byGrade as $level => $groups)
+                                        <th colspan="{{ $groups->count() }}" class="text-nowrap">
+                                            {{ $groups->first()->gradeLevel->name ?? "Kelas $level" }}
+                                        </th>
+                                    @endforeach
+                                    <th rowspan="2" class="text-nowrap">JP</th>
+                                    <th rowspan="2" class="text-nowrap">Total Jam</th>
+                                    <th rowspan="2"></th>
+                                </tr>
+                                <tr>
+                                    @foreach($byGrade as $level => $groups)
+                                        @foreach($groups as $sg)
+                                            <th class="text-nowrap">{{ $sg->name }}</th>
                                         @endforeach
-                                        <th rowspan="2" style="background:#343a40; color:#fff; width:48px; font-size:10px;">JP</th>
-                                        <th rowspan="2" style="background:#343a40; color:#fff; width:60px; font-size:10px;">Total<br>Jam</th>
-                                        <th rowspan="2" style="width:26px;"></th>
-                                    </tr>
-                                    <tr>
-                                        @foreach($byGrade as $level => $groups)
-                                            @foreach($groups as $sg)
-                                                <th class="table-light" style="min-width:42px; font-size:10px;">{{ $sg->name }}</th>
-                                            @endforeach
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody id="matrixBody">
-                                    <tr>
-                                        <td colspan="20" class="text-center text-muted py-4" style="border:none;">
-                                            <i class="ri-user-add-line fs-3 d-block mb-2"></i>
-                                            Belum ada guru. Pilih guru di atas lalu klik "Tambah".
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody id="matrixBody">
+                                <tr>
+                                    <td colspan="30" class="text-center text-muted py-4">
+                                        <i class="ri-team-line fs-3 d-block mb-2"></i>
+                                        Belum ada GTK pada satuan kerja ini.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             @endif
@@ -235,6 +210,7 @@
 
         <input type="hidden" name="assignments_json" id="assignmentsJson" value="">
         <input type="hidden" name="other_tasks_json" id="otherTasksJson" value="">
+        <input type="hidden" name="positions_json" id="positionsJson" value="">
     </form>
 
     {{-- Modal: Add Task --}}
@@ -340,9 +316,29 @@ const studyGroups = {!! json_encode($studyGroups->map(fn($sg) => ['id' => $sg->i
 const currentAssignments = {!! json_encode($currentAssignments) !!};
 const currentTasks = {!! json_encode($currentTasks) !!};
 const currentPositions = {!! json_encode($currentPositions) !!};
+const currentPositionIds = {!! json_encode($currentPositionIds) !!};
+const positionOptions = {!! json_encode($positionOptions) !!};
 
 // Build grade columns for JS rendering
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+}
+function positionOptionsHtml(tid) {
+    const current = currentPositionIds[tid] || '';
+    const currentName = currentPositions[tid] || '';
+    const hasCurrent = positionOptions.some(p => p.id === current);
+    const keep = (!hasCurrent && currentName && currentName !== 'GTK')
+        ? `<option value="__keep__" selected>${escapeHtml(currentName)}</option>`
+        : '';
+    return '<option value="">GTK</option>' + keep + positionOptions.map(p =>
+        `<option value="${p.id}" ${current === p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+    ).join('');
+}
+function subjectOptionsHtml(sid) {
+    return subjects.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+}
 
 let activeSubjects = {}; // tid -> [{sid, name}]
 let activeTasks = {};   // tid -> [{name, hours, code, studyGroupId}]
@@ -378,21 +374,26 @@ function addTeacherToMatrix(teacherId) {
 
     const tr = document.createElement('tr');
     tr.id = `teacher-row-${tid}`;
+    tr.className = 'table-light';
     tr.innerHTML = `
-        <td class="text-center" style="width:25px; border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600;">${teacherCounter}</td>
-        <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600; font-size:12px;">${teacher.name}</td>
-        <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px;">${currentPositions[tid] || 'GTK'}</td>
-        <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px;">
-            <button type="button" class="btn btn-sm p-0" style="color:#555;" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
-                <i class="ri-add-circle-line me-1"></i> Mapel
+        <td class="text-center fw-semibold">${teacherCounter}</td>
+        <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
+        <td class="text-nowrap">
+            <select class="form-select form-select-sm position-select" data-teacher-id="${tid}" onchange="changePosition(this)">
+                ${positionOptionsHtml(tid)}
+            </select>
+        </td>
+        <td class="text-nowrap">
+            <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
+                <i class="ri-add-line me-1"></i>Mapel
             </button>
         </td>
-        <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px; color:#555;" id="teacher-tugas-${tid}"></td>
+        <td class="text-nowrap" id="teacher-tugas-${tid}"></td>
         ${sgCells()}
-        <td class="text-center" style="background:#e8e8e8; width:48px; font-size:11px;" id="teacher-sebaran-${tid}">0</td>
-        <td class="text-center" style="background:#e8e8e8; width:60px; font-size:11px; font-weight:700;" id="teacher-total-${tid}">0</td>
-        <td style="width:26px;">
-            <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTeacher('${tid}')" title="Hapus Guru">
+        <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
+        <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTeacher('${tid}')" title="Hapus GTK">
                 <i class="ri-delete-bin-line"></i>
             </button>
         </td>
@@ -414,26 +415,27 @@ function renderSubjectRow(tid, sid, sname) {
     tr.id = `sub-row-${tid}-${sid}`;
     tr.setAttribute('data-teacher', tid);
     tr.setAttribute('data-subject', sid);
-    tr.style = 'background:#fff;';
     tr.innerHTML = `
-        <td style="width:25px; border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6; padding-left:12px; font-size:11px; color:#555;">
-            <span id="sub-label-${tid}-${sid}">${sname}</span>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-nowrap">
+            <select class="form-select form-select-sm subject-select" data-old-sid="${sid}" onchange="changeSubject(this)">
+                ${subjectOptionsHtml(sid)}
+            </select>
         </td>
-        <td style="border-right:1px solid #dee2e6;"></td>
+        <td></td>
         ${gradeCols.map(sg => `
-            <td class="col-jp">
-                <input type="number" min="0" max="20" value="" placeholder="" class="col-jp-input"
+            <td class="text-center">
+                <input type="number" min="0" max="40" value="" class="form-control form-control-sm text-center col-jp-input"
                        data-tid="${tid}" data-sid="${sid}" data-sgid="${sg.id}"
                        oninput="updateHours(this)">
             </td>
         `).join('')}
-        <td class="text-center" style="background:#e8e8e8; width:48px; font-size:11px;" id="sebaran-${tid}-${sid}">0</td>
-        <td class="text-center" style="background:#e8e8e8; width:60px; font-size:11px; font-weight:600;" id="subtotal-${tid}-${sid}">0</td>
-        <td style="width:26px;">
-            <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeSubjectRow('${tid}', '${sid}')">
+        <td class="text-center fw-semibold" id="sebaran-${tid}-${sid}">0</td>
+        <td class="text-center fw-semibold" id="subtotal-${tid}-${sid}">0</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeSubjectRowByButton(this)" title="Hapus Mapel">
                 <i class="ri-delete-bin-line"></i>
             </button>
         </td>
@@ -486,7 +488,7 @@ function updateHours(input) {
     const tid = input.dataset.tid;
     const sid = input.dataset.sid;
     const val = input.value;
-    input.className = 'col-jp-input' + (val ? ' has-val' : '');
+    input.classList.toggle('is-valid', !!val);
     const row = input.closest('tr');
     const inputs = row.querySelectorAll('.col-jp-input');
     let sebaran = 0;
@@ -494,6 +496,46 @@ function updateHours(input) {
     document.getElementById(`sebaran-${tid}-${sid}`).textContent = sebaran;
     document.getElementById(`subtotal-${tid}-${sid}`).textContent = sebaran;
     refreshTotal(tid);
+}
+
+function changePosition(select) {
+    const tid = select.dataset.teacherId;
+    if (!tid) return;
+    currentPositions[tid] = select.options[select.selectedIndex]?.text || 'GTK';
+}
+
+function changeSubject(select) {
+    const row = select.closest('tr');
+    const tid = row.dataset.teacher;
+    const oldSid = row.dataset.subject;
+    const newSid = select.value;
+    if (!tid || !newSid || newSid === oldSid) return;
+
+    if ((activeSubjects[tid] || []).some(s => s.id === newSid)) {
+        alert('Mapel tersebut sudah ada untuk GTK ini.');
+        select.value = oldSid;
+        return;
+    }
+
+    const subject = subjects.find(s => s.id === newSid);
+    row.id = `sub-row-${tid}-${newSid}`;
+    row.dataset.subject = newSid;
+    row.querySelectorAll('.col-jp-input').forEach(input => input.dataset.sid = newSid);
+    const sebaran = row.querySelector('[id^="sebaran-"]');
+    if (sebaran) sebaran.id = `sebaran-${tid}-${newSid}`;
+    const subtotal = row.querySelector('[id^="subtotal-"]');
+    if (subtotal) subtotal.id = `subtotal-${tid}-${newSid}`;
+    select.dataset.oldSid = newSid;
+    activeSubjects[tid] = (activeSubjects[tid] || []).map(s =>
+        s.id === oldSid ? { id: newSid, name: subject?.name || '' } : s
+    );
+    refreshTotal(tid);
+}
+
+function removeSubjectRowByButton(button) {
+    const row = button.closest('tr');
+    if (!row) return;
+    removeSubjectRow(row.dataset.teacher, row.dataset.subject);
 }
 
 function refreshTotal(tid) {
@@ -540,20 +582,24 @@ function addTaskFromModal() {
         const tr = document.createElement('tr');
         tr.id = `teacher-row-${tid}`;
         tr.innerHTML = `
-            <td class="text-center" style="width:25px; border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600;">${teacherCounter}</td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600; font-size:12px;">${teacher.name}</td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px;">${currentPositions[tid] || 'GTK'}</td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px;">
-                <button type="button" class="btn btn-sm p-0" style="color:#555;" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
-                    <i class="ri-add-circle-line me-1"></i> Mapel
+            <td class="text-center fw-semibold">${teacherCounter}</td>
+            <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
+            <td class="text-nowrap">
+                <select class="form-select form-select-sm position-select" data-teacher-id="${tid}" onchange="changePosition(this)">
+                    ${positionOptionsHtml(tid)}
+                </select>
+            </td>
+            <td class="text-nowrap">
+                <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
+                    <i class="ri-add-line me-1"></i>Mapel
                 </button>
             </td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px; color:#555;" id="teacher-tugas-${tid}"></td>
+            <td class="text-nowrap" id="teacher-tugas-${tid}"></td>
             ${sgCells()}
-            <td class="text-center" style="background:#e8e8e8; width:48px; font-size:11px;" id="teacher-sebaran-${tid}">0</td>
-            <td class="text-center" style="background:#e8e8e8; width:60px; font-size:11px; font-weight:700;" id="teacher-total-${tid}">0</td>
-            <td style="width:26px;">
-                <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTeacher('${tid}')" title="Hapus Guru">
+            <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
+            <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTeacher('${tid}')" title="Hapus GTK">
                     <i class="ri-delete-bin-line"></i>
                 </button>
             </td>
@@ -569,18 +615,18 @@ function addTaskFromModal() {
     const rowId = `task-row-${tid}-${Date.now()}`;
     const tr = document.createElement('tr');
     tr.id = rowId;
-    tr.style = 'background:#f0f0f0; border-top:1px dashed #ccc;';
+    tr.className = 'table-light';
     tr.innerHTML = `
-        <td style="width:25px; border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6; padding-left:12px; font-size:11px; font-style:italic; color:#666;">${name}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-nowrap fst-italic">${name}</td>
         ${sgCells()}
-        <td class="text-center" style="background:#e8e8e8; width:48px;"></td>
-        <td class="text-center" style="background:#e8e8e8; width:60px; font-weight:700; font-size:11px;">${hours}</td>
-        <td style="width:26px;">
-            <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTask('${tid}', '${rowId}')">
+        <td></td>
+        <td class="text-center fw-semibold">${hours}</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTask('${tid}', '${rowId}')" title="Hapus Tugas">
                 <i class="ri-delete-bin-line"></i>
             </button>
         </td>
@@ -657,6 +703,13 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
         }
     });
     document.getElementById('assignmentsJson').value = JSON.stringify(assignments);
+    const positions = {};
+    document.querySelectorAll('.position-select').forEach(select => {
+        if (select.dataset.teacherId && select.value !== '__keep__') {
+            positions[select.dataset.teacherId] = select.value;
+        }
+    });
+    document.getElementById('positionsJson').value = JSON.stringify(positions);
     document.getElementById('otherTasksJson').value = JSON.stringify(
         Object.entries(activeTasks).flatMap(([tid, tasks]) =>
             tasks.map(t => ({ teacher_id: tid, task_name: t.name, task_code: t.code, weekly_hours: t.hours }))
@@ -766,20 +819,24 @@ function addTaskFromModal() {
         const trow = document.createElement('tr');
         trow.id = `teacher-row-${tid}`;
         trow.innerHTML = `
-            <td class="text-center" style="width:25px; border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600;">${teacherCounter}</td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-weight:600; font-size:12px;">${teacher.name}</td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px;">${currentPositions[tid] || 'GTK'}</td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px;">
-                <button type="button" class="btn btn-sm p-0" style="color:#555;" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
-                    <i class="ri-add-circle-line me-1"></i> Mapel
+            <td class="text-center fw-semibold">${teacherCounter}</td>
+            <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
+            <td class="text-nowrap">
+                <select class="form-select form-select-sm position-select" data-teacher-id="${tid}" onchange="changePosition(this)">
+                    ${positionOptionsHtml(tid)}
+                </select>
+            </td>
+            <td class="text-nowrap">
+                <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
+                    <i class="ri-add-line me-1"></i>Mapel
                 </button>
             </td>
-            <td style="border-right:1px solid #dee2e6; background:#f8f9fa; font-size:11px; color:#555;" id="teacher-tugas-${tid}"></td>
+            <td class="text-nowrap" id="teacher-tugas-${tid}"></td>
             ${sgCells()}
-            <td class="text-center" style="background:#e8e8e8; width:48px; font-size:11px;" id="teacher-sebaran-${tid}">0</td>
-            <td class="text-center" style="background:#e8e8e8; width:60px; font-size:11px; font-weight:700;" id="teacher-total-${tid}">0</td>
-            <td style="width:26px;">
-                <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTeacher('${tid}')" title="Hapus Guru">
+            <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
+            <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTeacher('${tid}')" title="Hapus GTK">
                     <i class="ri-delete-bin-line"></i>
                 </button>
             </td>
@@ -791,18 +848,18 @@ function addTaskFromModal() {
     const rowId = `task-row-${tid}-${Date.now()}`;
     const tr = document.createElement('tr');
     tr.id = rowId;
-    tr.style = 'background:#f0f0f0; border-top:1px dashed #ccc;';
+    tr.className = 'table-light';
     tr.innerHTML = `
-        <td style="width:25px; border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6;"></td>
-        <td style="border-right:1px solid #dee2e6; padding-left:12px; font-size:11px; font-style:italic; color:#666;">${taskName}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-nowrap fst-italic">${taskName}</td>
         ${sgCells()}
-        <td class="text-center" style="background:#e8e8e8; width:48px;"></td>
-        <td class="text-center" style="background:#e8e8e8; width:60px; font-weight:700; font-size:11px;">${hours}</td>
-        <td style="width:26px;">
-            <button type="button" class="btn btn-sm p-0" style="color:#aaa;" onclick="removeTask('${tid}', '${rowId}')">
+        <td></td>
+        <td class="text-center fw-semibold">${hours}</td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTask('${tid}', '${rowId}')" title="Hapus Tugas">
                 <i class="ri-delete-bin-line"></i>
             </button>
         </td>
@@ -862,6 +919,13 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
         }
     });
     document.getElementById('assignmentsJson').value = JSON.stringify(assignments);
+    const positions = {};
+    document.querySelectorAll('.position-select').forEach(select => {
+        if (select.dataset.teacherId && select.value !== '__keep__') {
+            positions[select.dataset.teacherId] = select.value;
+        }
+    });
+    document.getElementById('positionsJson').value = JSON.stringify(positions);
     document.getElementById('otherTasksJson').value = JSON.stringify(
         Object.values(activeTasks).flatMap(([tid, tasks]) =>
             tasks.map(t => ({ teacher_id: tid, task_name: t.name, task_code: t.code, weekly_hours: t.hours }))

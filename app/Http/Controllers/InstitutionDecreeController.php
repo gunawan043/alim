@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\GtkEmployment;
+use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
 use App\Models\OtherTeacherTask;
 use App\Models\School;
+use App\Models\StructuralPosition;
 use App\Models\StructuralAssignment;
 use App\Models\StudyGroup;
 use App\Models\Subject;
@@ -109,8 +112,11 @@ class InstitutionDecreeController extends Controller
         $currentAssignments = [];
         $currentTasks = [];
         $currentPositions = [];
+        $currentPositionIds = [];
+        $positionOptions = collect();
         if ($teachers->isNotEmpty()) {
             $teacherIds = $teachers->pluck('id');
+            $workUnitId = $selectedSchool?->work_unit_id;
 
             $teachingRows = TeachingAssignment::with(['subject:id,name', 'studyGroup:id,name'])
                 ->whereIn('teacher_id', $teacherIds)
@@ -119,35 +125,61 @@ class InstitutionDecreeController extends Controller
                 ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
                 ->get();
 
-            $structuralPositions = StructuralAssignment::with('position:id,name')
+            $structuralRows = StructuralAssignment::with('position:id,name')
                 ->whereIn('user_id', $teacherIds)
                 ->where('status', 'active')
+                ->when($selectedSchoolId, fn ($q) => $q->where('school_id', $selectedSchoolId))
+                ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
                 ->get()
-                ->mapWithKeys(fn ($row) => [$row->user_id => $row->position?->name])
-                ->filter()
-                ->all();
+                ->keyBy('user_id');
 
-            $employmentPositions = \App\Models\GtkEmployment::query()
+            $employmentRows = GtkEmployment::with('jabatanRel:id,name')
                 ->whereIn('user_id', $teacherIds)
                 ->when($selectedSchoolId, fn ($q) => $q->where('school_id', $selectedSchoolId))
                 ->orderByDesc('academic_year_id')
                 ->get()
-                ->groupBy('user_id')
-                ->map(fn ($rows) => $rows->first()->jabatanRel?->name ?? $rows->first()->jabatan)
-                ->filter()
-                ->all();
+                ->groupBy('user_id');
+
+            $workUnitRows = GtkWorkUnit::query()
+                ->whereIn('user_id', $teacherIds)
+                ->when($workUnitId, fn ($q) => $q->where('work_unit_id', $workUnitId))
+                ->get()
+                ->keyBy('user_id');
+
+            $positionOptions = StructuralPosition::active()
+                ->orderBy('urutan')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+            $positionOptionsByName = $positionOptions->keyBy(fn ($position) => mb_strtolower($position->name));
 
             $currentPositions = [];
+            $currentPositionIds = [];
             foreach ($teachers as $teacher) {
-                $currentPositions[$teacher->id] = $structuralPositions[$teacher->id]
-                    ?? $employmentPositions[$teacher->id]
+                $structural = $structuralRows->get($teacher->id);
+                $employment = $employmentRows->get($teacher->id)?->first();
+                $workUnitPosition = $workUnitRows->get($teacher->id)?->jabatan;
+                $positionName = $workUnitPosition
+                    ?? $structural?->position?->name
+                    ?? $employment?->jabatanRel?->name
+                    ?? $employment?->jabatan
                     ?? 'GTK';
+                $currentPositions[$teacher->id] = $positionName;
+                $currentPositionIds[$teacher->id] = $structural?->position_id
+                    ?? $employment?->jabatan_id
+                    ?? $positionOptionsByName->get(mb_strtolower($positionName))?->id;
             }
 
-            $additionalRows = \App\Models\GtkAdditionalTask::whereIn('user_id', $teacherIds)->get();
+            $additionalRows = \App\Models\GtkAdditionalTask::whereIn('user_id', $teacherIds)
+                ->when($workUnitId, fn ($q) => $q->where('work_unit_id', $workUnitId))
+                ->get();
+
             $otherRows = OtherTeacherTask::whereIn('teacher_id', $teacherIds)
                 ->where('is_active', true)
                 ->when($selectedSchoolId, fn ($q) => $q->where('school_id', $selectedSchoolId))
+                ->when($workUnitId, fn ($q) => $q->where(fn ($unit) => $unit
+                    ->where('work_unit_id', $workUnitId)
+                    ->orWhereNull('work_unit_id')
+                    ->orWhere('work_unit_id', '')))
                 ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
                 ->get();
 
@@ -183,7 +215,7 @@ class InstitutionDecreeController extends Controller
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions'
         ));
     }
 
@@ -222,11 +254,53 @@ class InstitutionDecreeController extends Controller
 
         if ($data['decree_type'] === 'SK Pembagian Tugas') {
             $this->_saveMatrixFromJson($decree, $request, $selectedSchoolId);
+            $this->_savePositionsFromJson($request, $selectedSchoolId);
         }
 
         return redirect()->route('user.institution-decrees.show', [
             'userId' => $userId, 'id' => $decree->id,
         ])->with('success', 'Surat Keputusan berhasil disimpan.');
+    }
+
+    private function _savePositionsFromJson(Request $request, ?string $schoolId): void
+    {
+        $raw = $request->input('positions_json');
+        $positions = $raw ? json_decode($raw, true) : [];
+        if (! is_array($positions) || empty($positions) || ! $schoolId) {
+            return;
+        }
+
+        $teacherIds = array_keys($positions);
+        $workUnitId = School::find($schoolId)?->work_unit_id;
+        $workUnitRows = GtkWorkUnit::whereIn('user_id', $teacherIds)
+            ->when($workUnitId, fn ($q) => $q->where('work_unit_id', $workUnitId))
+            ->get()
+            ->keyBy('user_id');
+        $employments = GtkEmployment::whereIn('user_id', $teacherIds)
+            ->where('school_id', $schoolId)
+            ->get()
+            ->keyBy('user_id');
+
+        foreach ($positions as $teacherId => $positionId) {
+            $position = $positionId ? StructuralPosition::find($positionId) : null;
+            $positionName = $position?->name;
+
+            $workUnitRow = $workUnitRows->get($teacherId);
+            if ($workUnitRow) {
+                $workUnitRow->update(['jabatan' => $positionName]);
+                continue;
+            }
+
+            $employment = $employments->get($teacherId);
+            if (! $employment) {
+                continue;
+            }
+
+            $employment->update([
+                'jabatan_id' => $position?->id,
+                'jabatan' => $positionName,
+            ]);
+        }
     }
 
     private function _saveMatrixFromJson($decree, $request, $schoolId)
@@ -263,10 +337,12 @@ class InstitutionDecreeController extends Controller
         // Save other teacher tasks
         $tasksJson = $request->input('other_tasks_json');
         $tasks = $tasksJson ? json_decode($tasksJson, true) : [];
+        $workUnitId = School::find($decree->school_id ?? $schoolId)?->work_unit_id;
         foreach ($tasks as $t) {
             OtherTeacherTask::create([
                 'teacher_id' => $t['teacher_id'],
                 'school_id' => $decree->school_id ?? $schoolId,
+                'work_unit_id' => $workUnitId,
                 'academic_year_id' => $decree->academic_year_id,
                 'study_group_id' => $t['study_group_id'] ?? null,
                 'task_name' => $t['task_name'],
