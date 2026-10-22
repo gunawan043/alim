@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\InstitutionDecree;
 use App\Models\OtherTeacherTask;
 use App\Models\School;
+use App\Models\StructuralAssignment;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
@@ -105,13 +106,84 @@ class InstitutionDecreeController extends Controller
 
         $selectedSchool = $selectedSchoolId ? School::find($selectedSchoolId) : null;
 
+        $currentAssignments = [];
+        $currentTasks = [];
+        $currentPositions = [];
+        if ($teachers->isNotEmpty()) {
+            $teacherIds = $teachers->pluck('id');
+
+            $teachingRows = TeachingAssignment::with(['subject:id,name', 'studyGroup:id,name'])
+                ->whereIn('teacher_id', $teacherIds)
+                ->where('status', 'active')
+                ->when($selectedSchoolId, fn ($q) => $q->where('school_id', $selectedSchoolId))
+                ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+                ->get();
+
+            $structuralPositions = StructuralAssignment::with('position:id,name')
+                ->whereIn('user_id', $teacherIds)
+                ->where('status', 'active')
+                ->get()
+                ->mapWithKeys(fn ($row) => [$row->user_id => $row->position?->name])
+                ->filter()
+                ->all();
+
+            $employmentPositions = \App\Models\GtkEmployment::query()
+                ->whereIn('user_id', $teacherIds)
+                ->when($selectedSchoolId, fn ($q) => $q->where('school_id', $selectedSchoolId))
+                ->orderByDesc('academic_year_id')
+                ->get()
+                ->groupBy('user_id')
+                ->map(fn ($rows) => $rows->first()->jabatanRel?->name ?? $rows->first()->jabatan)
+                ->filter()
+                ->all();
+
+            $currentPositions = [];
+            foreach ($teachers as $teacher) {
+                $currentPositions[$teacher->id] = $structuralPositions[$teacher->id]
+                    ?? $employmentPositions[$teacher->id]
+                    ?? 'GTK';
+            }
+
+            $additionalRows = \App\Models\GtkAdditionalTask::whereIn('user_id', $teacherIds)->get();
+            $otherRows = OtherTeacherTask::whereIn('teacher_id', $teacherIds)
+                ->where('is_active', true)
+                ->when($selectedSchoolId, fn ($q) => $q->where('school_id', $selectedSchoolId))
+                ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+                ->get();
+
+            foreach ($teachers as $teacher) {
+                $currentAssignments[$teacher->id] = $teachingRows
+                    ->where('teacher_id', $teacher->id)
+                    ->map(fn ($row) => [
+                        'subject_id' => $row->subject_id,
+                        'subject' => $row->subject?->name ?? '-',
+                        'study_group_id' => $row->study_group_id,
+                        'rombel' => $row->studyGroup?->name ?? '-',
+                        'hours' => (int) $row->weekly_hours,
+                    ])->values()->all();
+
+                $currentTasks[$teacher->id] = collect($additionalRows->where('user_id', $teacher->id)
+                    ->map(fn ($row) => [
+                        'name' => $row->nama_tugas,
+                        'hours' => (int) $row->hours_per_week,
+                        'code' => 'additional',
+                    ])->values()->all())
+                    ->merge($otherRows->where('teacher_id', $teacher->id)->map(fn ($row) => [
+                        'name' => $row->task_name,
+                        'hours' => (int) $row->weekly_hours,
+                        'code' => $row->task_code,
+                    ])->values()->all())
+                    ->values()->all();
+            }
+        }
+
         // For non-global users, auto-select school from session and lock decree_type
         $canSelectSchool = $isGlobal;
 
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions'
         ));
     }
 
