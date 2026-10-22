@@ -9,7 +9,7 @@
         @page { margin: 0; }
 
         body {
-            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 7.2pt;
             line-height: 1.22;
             color: #000;
@@ -64,7 +64,7 @@
             letter-spacing: 0.2px;
         }
         .header .title {
-            font-family: 'DejaVu Serif', Georgia, serif;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 8.5pt;
             font-weight: 700;
             text-transform: uppercase;
