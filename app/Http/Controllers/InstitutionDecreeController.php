@@ -9,6 +9,12 @@ use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
+use App\Models\GtkAdditionalTask;
+use App\Models\GtkEmployment;
+use App\Models\GtkWorkUnit;
+use App\Models\StructuralAssignment;
+use App\Models\StructuralPosition;
+use App\Models\StructuralPositionWorkUnitHour;
 use App\Models\WorkUnit;
 use App\Services\NotificationUniversalService;
 use App\Models\User;
@@ -205,6 +211,67 @@ class InstitutionDecreeController extends Controller
                 'is_active' => true,
             ]);
         }
+    }
+
+    public function unified(Request $request, string $userId)
+    {
+        $user = $request->user();
+        $schoolId = $request->attributes->get('schoolContextId') ?: $user->employment?->school_id;
+        $workUnitId = $request->input('work_unit_id');
+        if (! $workUnitId && $schoolId) {
+            $workUnitId = School::whereKey($schoolId)->value('work_unit_id');
+        }
+        if (! $workUnitId) {
+            $workUnitId = GtkWorkUnit::where('user_id', $user->id)->where('is_primary', true)->value('work_unit_id');
+        }
+        $workUnit = $workUnitId ? WorkUnit::find($workUnitId) : null;
+        $schools = $workUnit ? School::where('work_unit_id', $workUnit->id)->get() : collect();
+        $isSchoolUnit = $schools->isNotEmpty();
+        $userIds = collect();
+        if ($workUnit) {
+            $userIds = GtkWorkUnit::where('work_unit_id', $workUnit->id)->pluck('user_id');
+            $userIds = $userIds->merge(GtkEmployment::whereIn('school_id', $schools->pluck('id'))->pluck('user_id'))->unique();
+        }
+        $employees = User::whereIn('id', $userIds)->where('is_active', true)->orderBy('name')->get();
+        $assignments = TeachingAssignment::with(['subject:id,name', 'studyGroup:id,name'])->whereIn('teacher_id', $userIds)->where('status', 'active')->get()->groupBy('teacher_id');
+        $additional = collect();
+        $additional = $additional->merge(GtkAdditionalTask::whereIn('user_id', $userIds)->where('is_active', true)->get()->groupBy('user_id'));
+        $otherTasks = OtherTeacherTask::whereIn('teacher_id', $userIds)->where('is_active', true)->get()->groupBy('teacher_id');
+        $positions = StructuralAssignment::with('position')->whereIn('user_id', $userIds)->where('status', 'active')->get()->keyBy('user_id');
+        $positionHours = StructuralPositionWorkUnitHour::where('work_unit_id', $workUnit?->id)->pluck('weekly_hours', 'structural_position_id');
+        $rows = $employees->map(function (User $employee) use ($assignments, $additional, $otherTasks, $positions, $positionHours) {
+            $position = $positions->get($employee->id)?->position;
+            $ta = $assignments->get($employee->id, collect());
+            $teaching = $ta->map(fn ($a) => $a->subject?->name.' '.$a->studyGroup?->name)->filter()->implode(', ');
+            $rombel = $ta->pluck('studyGroup.name')->filter()->unique()->implode(', ');
+            $tasks = $additional->get($employee->id, collect())->pluck('nama_tugas')->filter()
+                ->merge($otherTasks->get($employee->id, collect())->pluck('task_name'))->filter()->implode(', ');
+            $jp = (float) $ta->sum('weekly_hours')
+                + (float) ($additional->get($employee->id, collect())->sum('hours_per_week'))
+                + (float) ($otherTasks->get($employee->id, collect())->sum('weekly_hours'));
+            $posHours = (float) ($position ? ($positionHours[$position->id] ?? 0) : 0);
+            return ['name'=>$employee->name,'position'=>$position?->name ?? 'GTK','teaching'=>$teaching,'additional'=>$tasks,'rombel'=>$rombel,'jp'=>$jp,'total_hours'=>$jp+$posHours,'sort'=>$position?->hierarchy_level ?? 99];
+        })->sortBy(['sort','name'])->values();
+        $kspId = $workUnit?->metadata['head_user_id'] ?? $schools->first()?->principal_user_id;
+        $ksp = $kspId ? User::find($kspId) : null;
+        $positionsForModal = StructuralPosition::where('is_active', true)->orderBy('name')->get();
+
+        return view('institution-decrees.unified', ['userId'=>$userId, 'workUnit'=>$workUnit, 'rows'=>$rows, 'ksp'=>$ksp, 'positions'=>$positionsForModal, 'positionHours'=>$positionHours, 'isSchoolUnit'=>$isSchoolUnit]);
+    }
+
+    public function updatePositionHours(Request $request, string $userId, string $workUnitId)
+    {
+        $user = $request->user();
+        abort_unless($user->hasRole('Humas Personalia') || $user->isSystemAdmin() || $user->isSuperAdmin() || str_contains(strtolower((string) ($user->employment?->jabatan ?? '')), 'kepala') || str_contains(strtolower((string) ($user->employment?->jabatan ?? '')), 'tata usaha'), 403);
+        $validated = $request->validate(['hours' => 'required|array', 'hours.*' => 'nullable|numeric|min:0']);
+        foreach ($validated['hours'] as $positionId => $hours) {
+            StructuralPositionWorkUnitHour::updateOrCreate(
+                ['structural_position_id'=>$positionId, 'work_unit_id'=>$workUnitId],
+                ['weekly_hours'=>(float) ($hours ?? 0)]
+            );
+        }
+
+        return back()->with('success', 'JP jabatan untuk satuan kerja disimpan.');
     }
 
     public function submit(Request $request, string $userId, string $id)
