@@ -65,6 +65,12 @@ class InstitutionDecreeController extends Controller
 
     public function create(Request $request, string $userId)
     {
+        return redirect()->route('user.institution-decrees.unified', array_filter([
+            'userId' => $userId,
+            'work_unit_id' => $request->input('work_unit_id'),
+            'decree_id' => $request->input('decree_id'),
+        ]));
+
         $schoolContextId = $request->attributes->get('schoolContextId');
         $currentUser = auth()->user();
         $isGlobal = canPermission('institution-decree-all-access');
