@@ -4,6 +4,7 @@ namespace App\Services\Dormitory;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Render kartu asrama (58 mm) dengan tinggi halaman mengikuti isi.
@@ -56,6 +57,58 @@ class CardPdfRenderer
             'height' => min(self::MAX_HEIGHT_PT, $bestHeight + 4),
             'pages' => $bestPages,
         ];
+    }
+
+    /**
+     * Render dengan tinggi minimum yang benar-benar muat dalam satu halaman.
+     * Hasil tinggi di-cache berdasarkan konten kartu agar cetak ulang cepat.
+     *
+     * @return array{output:string,height:int,pages:int}
+     */
+    public function renderAuto(string $html, string $cacheKey): array
+    {
+        $cacheKey = 'asrama_card_height_'.sha1($cacheKey);
+        $cachedHeight = Cache::get($cacheKey);
+
+        if ($cachedHeight) {
+            [$output, $pages] = $this->renderAtHeight($html, (int) $cachedHeight);
+
+            if ($pages <= 1) {
+                return ['output' => $output, 'height' => (int) $cachedHeight, 'pages' => $pages];
+            }
+
+            Cache::forget($cacheKey);
+        }
+
+        $low = self::MIN_HEIGHT_PT;
+        $high = self::MAX_HEIGHT_PT;
+        $bestOutput = null;
+        $bestHeight = $high;
+        $bestPages = 99;
+
+        while ($low <= $high) {
+            $height = intdiv($low + $high, 2);
+            [$output, $pages] = $this->renderAtHeight($html, $height);
+
+            if ($pages <= 1) {
+                $bestOutput = $output;
+                $bestHeight = $height;
+                $bestPages = $pages;
+                $high = $height - 1;
+            } else {
+                $low = $height + 1;
+            }
+        }
+
+        if ($bestOutput === null) {
+            [$bestOutput, $bestPages] = $this->renderAtHeight($html, self::MAX_HEIGHT_PT);
+            $bestHeight = self::MAX_HEIGHT_PT;
+        }
+
+        $bestHeight = min(self::MAX_HEIGHT_PT, $bestHeight + 2);
+        Cache::put($cacheKey, $bestHeight, now()->addDay());
+
+        return ['output' => $bestOutput, 'height' => $bestHeight, 'pages' => $bestPages];
     }
 
     /**

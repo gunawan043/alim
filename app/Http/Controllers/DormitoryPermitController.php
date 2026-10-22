@@ -563,16 +563,24 @@ class DormitoryPermitController extends Controller
 
             $html = view('dormitory.permits.card-pdf', compact('dormitory', 'permit', 'userId', 'now'))->render();
 
-            // Estimasi tinggi dari jumlah baris; renderer menambah tinggi
-            // otomatis jika ternyata konten masih meluber.
-            $estimatedHeight = 290
-                + (($permit->companion_relation || $permit->companion_phone) ? 24 : 0)
-                + (in_array($permit->pickup_authorization_status, ['pending', 'rejected'], true) ? 20 : 0)
-                + ($permit->is_emergency ? 16 : 0)
-                + (mb_strlen((string) $permit->destination) > 30 ? 14 : 0);
+            // Cari tinggi paling kecil yang masih muat satu halaman.
+            $heightKey = implode('|', [
+                'permit',
+                $permit->id,
+                $permit->student?->name,
+                $permit->room?->name,
+                $permit->departure_datetime?->timestamp,
+                $permit->expected_return_datetime?->timestamp,
+                $permit->companion_name,
+                $permit->companion_relation,
+                $permit->companion_phone,
+                $permit->destination,
+                $permit->pickup_authorization_status,
+                (int) $permit->is_emergency,
+            ]);
 
             $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)
-                ->renderEstimated($html, $estimatedHeight);
+                ->renderAuto($html, $heightKey);
             $output = $rendered['output'];
             $filename = 'kartu-izin-'.($permit->student?->name ?? $permit->id).'-'.now()->format('Ymd-His').'.pdf';
 
@@ -631,7 +639,7 @@ class DormitoryPermitController extends Controller
             $html = view('dormitory.permits.bulk-card-pdf', compact('dormitory', 'permits', 'userId', 'now'))->render();
 
             // Satu kartu per halaman; tinggi tetap ringkas untuk printer 58 mm.
-            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)->renderFixed($html, 400);
+            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)->renderFixed($html, 360);
             $output = $rendered['output'];
             $filename = 'cetak-kartu-izin-'.now()->format('Ymd-His').'.pdf';
 

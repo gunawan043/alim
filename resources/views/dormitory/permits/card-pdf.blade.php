@@ -121,6 +121,14 @@
             font-weight: 700;
         }
 
+        .footer-tagline {
+            text-align: center;
+            font-size: 6.3pt;
+            font-style: italic;
+            letter-spacing: 0.1px;
+            margin-top: 1mm;
+        }
+
         .logo-area {
             text-align: center;
             padding: 2mm 0;
@@ -260,6 +268,7 @@
                     <span class="badge">DARURAT</span>
                 @endif
             </div>
+            <div class="footer-tagline">Berkarakter dengan Ilmu, Amal, dan Adab</div>
         </div>
 
     </div>
