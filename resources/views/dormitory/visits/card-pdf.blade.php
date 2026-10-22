@@ -9,6 +9,9 @@
         @page { margin: 0; }
 
         body {
+            width: 58mm;
+            margin: 0;
+            padding: 0;
             font-family: 'Courier New', Courier, monospace;
             font-size: 7.1pt;
             line-height: 1.2;
@@ -17,7 +20,7 @@
         }
 
         .card {
-            width: 58mm;
+            width: 55mm;
             padding: 1.5mm;
             margin: 0 auto;
         }
