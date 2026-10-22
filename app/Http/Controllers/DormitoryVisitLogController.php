@@ -14,8 +14,6 @@ use App\Models\DormitoryStaffAssignment;
 use App\Support\UserJabatan;
 use App\Models\Student;
 use App\Services\Boarding\VisitWorkflowService;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -387,8 +385,9 @@ class DormitoryVisitLogController extends Controller
         ]);
 
         $scanUrl = trim((string) $request->input('scan_url'));
+        $audit = app(\App\Services\Dormitory\DormitoryQrAudit::class);
 
-        // QR kartu kunjungan berisi token bertanda tangan (id::hmac).
+        // QR kartu kunjungan berisi token bertanda tangan (id::exp::hmac).
         $visit = $this->resolveVisitQrToken($scanUrl, $asramaUuid);
 
         // Kompatibilitas dengan QR lama berupa signed URL.
@@ -404,12 +403,15 @@ class DormitoryVisitLogController extends Controller
         }
 
         if (! $visit) {
+            $audit->record($request, $asramaUuid, 'scan_kunjungan', 'failed', reason: 'QR tidak valid atau kedaluwarsa.');
+
             return $this->scanResponse($request, 'QR kunjungan tidak valid atau sudah kedaluwarsa.', false);
         }
 
         // 3. Auto check-in / check-out based on status
         if ($visit->status === 'approved') {
             $this->visit->checkIn(visitId: $visit->id, dormitoryId: $asramaUuid);
+            $audit->record($request, $asramaUuid, 'scan_keluar_kunjungan', 'success', visitId: $visit->id);
 
             return $this->scanResponse(
                 $request,
@@ -421,6 +423,7 @@ class DormitoryVisitLogController extends Controller
 
         if ($visit->status === 'arrived') {
             $this->visit->checkOut(visitId: $visit->id, dormitoryId: $asramaUuid);
+            $audit->record($request, $asramaUuid, 'scan_kembali_kunjungan', 'success', visitId: $visit->id);
 
             return $this->scanResponse(
                 $request,
@@ -432,6 +435,7 @@ class DormitoryVisitLogController extends Controller
 
         if ($visit->status === 'checked_out') {
             $waktu = $visit->check_out_at?->format('d/m/Y H:i') ?? '-';
+            $audit->record($request, $asramaUuid, 'scan_kunjungan', 'blocked', visitId: $visit->id, reason: 'Kunjungan sudah selesai.');
 
             return $this->scanResponse(
                 $request,
@@ -455,8 +459,24 @@ class DormitoryVisitLogController extends Controller
             return null;
         }
 
-        [$visitId, $providedSignature] = explode('::', $decoded, 2);
-        $expectedSignature = hash_hmac('sha256', $visitId, (string) config('app.key'));
+        $parts = explode('::', $decoded);
+
+        if (count($parts) === 2) {
+            // Kompatibilitas kartu lama: id::hmac(id).
+            [$visitId, $providedSignature] = $parts;
+            $expectedSignature = hash_hmac('sha256', $visitId, (string) config('app.key'));
+        } elseif (count($parts) === 3) {
+            // Kartu baru: id::expires_at::hmac(id::expires_at).
+            [$visitId, $expiresAt, $providedSignature] = $parts;
+
+            if (! ctype_digit($expiresAt) || (int) $expiresAt < now()->getTimestamp()) {
+                return null;
+            }
+
+            $expectedSignature = hash_hmac('sha256', $visitId.'::'.$expiresAt, (string) config('app.key'));
+        } else {
+            return null;
+        }
 
         if (! hash_equals($expectedSignature, $providedSignature)) {
             return null;
@@ -511,16 +531,18 @@ class DormitoryVisitLogController extends Controller
 
             $html = view('dormitory.visits.card-pdf', compact('dormitory', 'visit', 'userId', 'now'))->render();
 
-            $options = (new Options)
-                ->set('isRemoteEnabled', false)
-                ->set('isHtml5ParserEnabled', true)
-                ->set('defaultFont', 'Courier');
-            $dompdf = new Dompdf($options);
-            $dompdf->loadHtml($html);
-            $dompdf->setPaper([0, 0, 175, 600]); // ~58mm width
-            $dompdf->render();
+            // Estimasi tinggi dari jumlah baris; renderer menambah tinggi
+            // otomatis jika ternyata konten masih meluber.
+            $estimatedHeight = 255
+                + ($visit->visitor_id_number ? 14 : 0)
+                + ($visit->visitor_phone ? 14 : 0)
+                + ($visit->visitor_relationship ? 14 : 0)
+                + ($visit->is_special_permission ? 16 : 0)
+                + (mb_strlen((string) $visit->visitor_name) > 28 ? 14 : 0);
 
-            $output = $dompdf->output();
+            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)
+                ->renderEstimated($html, $estimatedHeight);
+            $output = $rendered['output'];
             $filename = 'kartu-kunjungan-'.($visit->visitor_name ?? $visit->id).'-'.now()->format('Ymd-His').'.pdf';
 
             return response($output, 200, [

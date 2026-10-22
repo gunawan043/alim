@@ -105,8 +105,14 @@ class DormitoryPermit extends Model
         'pickup_details',
         'return_details',
         'scan_token',
+        'scan_token_expires_at',
+        'scan_token_revoked_at',
         'scanned_at',
         'last_actioned_by',
+        'pickup_authorization_status',
+        'pickup_authorization_note',
+        'pickup_authorized_by',
+        'pickup_authorized_at',
         'pickup_scanned_at',
         'pickup_scanned_by',
         'return_scanned_at',
@@ -121,6 +127,9 @@ class DormitoryPermit extends Model
         'overdue_notified_at' => 'datetime',
         'escalation_triggered_at' => 'datetime',
         'scanned_at' => 'datetime',
+        'scan_token_expires_at' => 'datetime',
+        'scan_token_revoked_at' => 'datetime',
+        'pickup_authorized_at' => 'datetime',
         'pickup_scanned_at' => 'datetime',
         'return_scanned_at' => 'datetime',
         'overdue_notified_count' => 'integer',
@@ -249,16 +258,60 @@ class DormitoryPermit extends Model
      */
     public function getOrCreateScanToken(): string
     {
-        if ($this->scan_token) {
+        if ($this->scan_token && ! $this->isScanTokenExpired() && ! $this->scan_token_revoked_at) {
+            // Token lama (sebelum kolom expiry ada) tetap diberi masa berlaku.
+            if (! $this->scan_token_expires_at) {
+                $this->update(['scan_token_expires_at' => $this->defaultScanTokenExpiry()]);
+            }
+
             return $this->scan_token;
         }
+
         $token = (string) Str::ulid();
-        // Sign it so it can't be forged
+        // Sign it so it can't be forged.
         $signature = hash_hmac('sha256', $token, config('app.key'));
         $signed = base64_encode($token.'::'.$signature);
-        $this->update(['scan_token' => $signed]);
+
+        $this->update([
+            'scan_token' => $signed,
+            'scan_token_expires_at' => $this->defaultScanTokenExpiry(),
+            'scan_token_revoked_at' => null,
+        ]);
 
         return $signed;
+    }
+
+    public function isScanTokenExpired(): bool
+    {
+        return $this->scan_token_expires_at !== null
+            && $this->scan_token_expires_at->isPast();
+    }
+
+    public function defaultScanTokenExpiry(): \Carbon\CarbonInterface
+    {
+        return $this->expected_return_datetime
+            ? $this->expected_return_datetime->copy()->addDays(2)
+            : now()->addDays(30);
+    }
+
+    public function revokeScanToken(?string $reason = null): void
+    {
+        $this->update([
+            'scan_token_revoked_at' => now(),
+            'pickup_authorization_note' => $reason
+                ? trim(($this->pickup_authorization_note ? $this->pickup_authorization_note."\n" : '').$reason)
+                : $this->pickup_authorization_note,
+        ]);
+    }
+
+    public function needsPickupAuthorization(): bool
+    {
+        return $this->pickup_authorization_status === 'pending';
+    }
+
+    public function isPickupRejected(): bool
+    {
+        return $this->pickup_authorization_status === 'rejected';
     }
 
     /**
@@ -278,7 +331,7 @@ class DormitoryPermit extends Model
                 $permit = static::whereNotNull('scan_token')->firstWhere(function ($q) use ($raw) {
                     $q->where('scan_token', $raw);
                 });
-                if ($permit) {
+                if ($permit && ! $permit->scan_token_revoked_at && ! $permit->isScanTokenExpired()) {
                     return $permit->student_id;
                 }
             }
@@ -289,7 +342,7 @@ class DormitoryPermit extends Model
             $q->where('scan_token', $raw);
         });
 
-        if (! $permit) {
+        if (! $permit || $permit->scan_token_revoked_at || $permit->isScanTokenExpired()) {
             return null;
         }
 
@@ -314,6 +367,7 @@ class DormitoryPermit extends Model
             'is_emergency' => (bool) $this->is_emergency,
             'status' => $this->status,
             'dormitory_id' => $this->dormitory_id,
+            'expires_at' => $this->scan_token_expires_at?->toIso8601String(),
         ];
     }
 
@@ -332,5 +386,10 @@ class DormitoryPermit extends Model
     public function lastActionedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'last_actioned_by');
+    }
+
+    public function pickupAuthorizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pickup_authorized_by');
     }
 }

@@ -102,6 +102,9 @@
                             <a href="{{ route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-outline-primary me-1">
                                 <i class="ri-shield-user-line align-bottom me-1"></i> Wali Kamar
                             </a>
+                            <a href="{{ route('user.asrama.imports.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-outline-success me-1">
+                                <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Import Kamar
+                            </a>
                             <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-primary">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Kamar
                             </a>

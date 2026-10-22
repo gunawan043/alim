@@ -210,6 +210,16 @@ class LeaveWorkflowService
         }
         $data['companion_is_mahrom'] = isset($data['companion_is_mahrom']);
 
+        // ── Safeguarding penjemput ──────────────────────────────────
+        // Penjemput dari mahrom/orang tua langsung terverifikasi. Keluarga
+        // di luar daftar mahrom tetap boleh diajukan, tetapi scan keluar
+        // diblokir sampai Kepala/Wakil Asrama menyetujui.
+        $pickupAuthorization = $this->resolvePickupAuthorization($data, $student);
+        $data['pickup_authorization_status'] = $pickupAuthorization['status'];
+        $data['pickup_authorization_note'] = $pickupAuthorization['note'];
+        $data['pickup_authorized_by'] = null;
+        $data['pickup_authorized_at'] = null;
+
         $data['dormitory_id'] = $dormitoryId;
         $data['academic_year_id'] = $activeYearId;
         $data['id'] = $data['id'] ?? (string) Str::uuid();
@@ -915,6 +925,53 @@ class LeaveWorkflowService
             ->orderByDesc('dormitory_policy_assignments.priority')
             ->orderByDesc('dormitory_policy_assignments.effective_from')
             ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{status:string,note:string}
+     */
+    private function resolvePickupAuthorization(array $data, ?Student $student): array
+    {
+        $companionName = trim((string) ($data['companion_name'] ?? ''));
+        $companionPhone = trim((string) ($data['companion_phone'] ?? ''));
+        $mahromId = $data['mahrom_id'] ?? null;
+
+        if (! $student) {
+            return ['status' => 'pending', 'note' => 'Data santri tidak ditemukan; penjemput perlu diverifikasi.'];
+        }
+
+        $mahroms = StudentMahrom::where('student_id', $student->id)
+            ->where('is_active', true)
+            ->get();
+
+        $matched = null;
+
+        if ($mahromId) {
+            $matched = $mahroms->firstWhere('id', $mahromId);
+        }
+
+        if (! $matched && $companionName !== '') {
+            $matched = $mahroms->first(function (StudentMahrom $mahrom) use ($companionName, $companionPhone) {
+                $sameName = mb_strtolower(trim((string) $mahrom->name)) === mb_strtolower($companionName);
+                $samePhone = $companionPhone !== ''
+                    && preg_replace('/\D+/', '', (string) $mahrom->phone) === preg_replace('/\D+/', '', $companionPhone);
+
+                return $sameName || ($samePhone && $companionPhone !== '');
+            });
+        }
+
+        if ($matched) {
+            return [
+                'status' => 'approved',
+                'note' => 'Penjemput terdaftar sebagai mahrom/orang tua: '.$matched->name.' ('.$matched->relationship_text.').',
+            ];
+        }
+
+        return [
+            'status' => 'pending',
+            'note' => 'Penjemput di luar daftar mahrom. Wajib diverifikasi Kepala/Wakil Asrama sebelum scan keluar.',
+        ];
     }
 
     /**

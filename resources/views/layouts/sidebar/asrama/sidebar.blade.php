@@ -697,6 +697,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <i class="ri-user-star-line"></i><span>Petugas Santri</span>
     </a>
 </li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.imports.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.imports.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-upload-cloud-2-line"></i>
+        <span>Import Data</span>
+    </a>
+</li>
 @endif
 
 {{-- ================================================================

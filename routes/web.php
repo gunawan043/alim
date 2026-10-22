@@ -2101,6 +2101,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/kamar', [DormitoryRoomController::class, 'store'])->name('rooms.store');
                 Route::get('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'show'])->name('rooms.show');
                 Route::get('/{asramaUuid}/penempatan', [DormitoryRoomController::class, 'placement'])->name('rooms.placement');
+
+                // ── IMPORT DATA ASRAMA (kamar/gedung) ────────────────
+                Route::get('/{asramaUuid}/import', [\App\Http\Controllers\DormitoryImportController::class, 'index'])->name('imports.index');
+                Route::get('/{asramaUuid}/import/kamar/template', [\App\Http\Controllers\DormitoryImportController::class, 'roomsTemplate'])->name('imports.rooms.template');
+                Route::post('/{asramaUuid}/import/kamar', [\App\Http\Controllers\DormitoryImportController::class, 'roomsStore'])->name('imports.rooms.store');
                 Route::get('/{asramaUuid}/kamar/{roomUuid}/edit', [DormitoryRoomController::class, 'edit'])->name('rooms.edit');
                 Route::put('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'update'])->name('rooms.update');
                 Route::delete('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'destroy'])->name('rooms.destroy');
@@ -2169,6 +2174,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/{permitUuid}/reject', [DormitoryPermitController::class, 'reject'])->name('permits.reject');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/return', [DormitoryPermitController::class, 'returnRecord'])->name('permits.return');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/pickup', [DormitoryPermitController::class, 'pickup'])->name('permits.pickup');
+                Route::post('/{asramaUuid}/izin/{permitUuid}/pickup-authorization', [DormitoryPermitController::class, 'authorizePickup'])->name('permits.pickup-authorization');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/status', [DormitoryPermitController::class, 'updateStatus'])->name('permits.update-status');
                 Route::get('/{asramaUuid}/izin/{permitUuid}/card', [DormitoryPermitController::class, 'card'])->name('permits.card');
 
@@ -2177,7 +2183,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 // ── SCAN & VERIFY (QR / manual) ───────────────────
                 Route::get('/{asramaUuid}/izin/scan', [DormitoryPermitController::class, 'scan'])->name('permits.scan')->withoutMiddleware([EnsurePermission::class]);
-                Route::post('/{asramaUuid}/izin/scan', [DormitoryPermitController::class, 'scanStore'])->name('permits.scan.store');
+                Route::post('/{asramaUuid}/izin/scan', [DormitoryPermitController::class, 'scanStore'])->name('permits.scan.store')->middleware('throttle:30,1');
                 Route::get('/izin/verify', [DormitoryPermitController::class, 'verify'])->name('permits.verify')->withoutMiddleware([EnsurePermission::class]);
                 Route::post('/izin/verify', [DormitoryPermitController::class, 'verifyStore'])->name('permits.verify.store')->withoutMiddleware([EnsurePermission::class]);
                 // Public QR scan endpoint for mobile apps
@@ -2288,7 +2294,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-in', [DormitoryVisitLogController::class, 'checkIn'])->name('visits.check-in');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-out', [DormitoryVisitLogController::class, 'checkOut'])->name('visits.check-out');
                 Route::get('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scan'])->name('visits.scan')->withoutMiddleware([EnsurePermission::class]);
-                Route::post('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scanStore'])->name('visits.scan.store');
+                Route::post('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scanStore'])->name('visits.scan.store')->middleware('throttle:30,1');
                 Route::get('/kunjungan/verify', [DormitoryVisitLogController::class, 'verify'])->name('visits.verify')->withoutMiddleware([EnsurePermission::class]);
 
                 // ── APPROVAL CENTER (Inbox terpadu) ───────────────────────

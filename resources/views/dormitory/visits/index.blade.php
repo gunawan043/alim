@@ -219,9 +219,9 @@
                                         <td>
                                             <div class="fw-semibold">{{ $visit->visitor_name ?? '—' }}</div>
                                             @if($visit->visitor_phone)
-                                                <small class="text-muted"><i class="ri-phone-line me-1"></i>{{ $visit->visitor_phone }}</small>
+                                                <small class="text-muted"><i class="ri-phone-line me-1"></i>{{ $visit->masked_visitor_phone }}</small>
                                             @elseif($visit->visitor_id_number)
-                                                <small class="text-muted">{{ $visit->visitor_id_number }}</small>
+                                                <small class="text-muted">{{ $visit->masked_visitor_id_number }}</small>
                                             @endif
                                         </td>
                                         <td>

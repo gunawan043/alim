@@ -568,6 +568,44 @@
                         </table>
                     </div>
                     @endif
+
+                    @if($permit->pickup_authorization_status)
+                        <div class="px-3 pb-3">
+                            @if($permit->pickup_authorization_status === 'approved')
+                                <div class="alert alert-success py-2 mb-0 small">
+                                    <i class="ri-shield-check-line me-1"></i>
+                                    Penjemput terverifikasi
+                                    @if($permit->pickup_authorized_at) · {{ $permit->pickup_authorized_at->format('d/m/Y H:i') }} @endif
+                                </div>
+                            @elseif($permit->pickup_authorization_status === 'rejected')
+                                <div class="alert alert-danger py-2 mb-0 small">
+                                    <i class="ri-close-circle-line me-1"></i>
+                                    Penjemput ditolak. QR lama sudah dicabut.
+                                </div>
+                            @else
+                                <div class="alert alert-warning py-2 small">
+                                    <i class="ri-shield-user-line me-1"></i>
+                                    <strong>Penjemput di luar daftar mahrom.</strong>
+                                    Scan keluar diblokir sampai diverifikasi Kepala/Wakil Asrama.
+                                </div>
+                                @if($canAuthorizePickup)
+                                    <form method="POST" action="{{ route('user.asrama.permits.pickup-authorization', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'permitUuid' => $permit->id]) }}">
+                                        @csrf
+                                        <label for="pickup_authorization_note" class="form-label small fw-semibold">Catatan verifikasi</label>
+                                        <textarea name="pickup_authorization_note" id="pickup_authorization_note" class="form-control form-control-sm mb-2" rows="2" placeholder="Contoh: sudah dikonfirmasi ke orang tua via telepon"></textarea>
+                                        <div class="d-flex gap-2">
+                                            <button type="submit" name="pickup_authorization_status" value="approved" class="btn btn-sm btn-success">
+                                                <i class="ri-check-line me-1"></i> Setujui
+                                            </button>
+                                            <button type="submit" name="pickup_authorization_status" value="rejected" class="btn btn-sm btn-outline-danger">
+                                                <i class="ri-close-line me-1"></i> Tolak
+                                            </button>
+                                        </div>
+                                    </form>
+                                @endif
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
             @endif

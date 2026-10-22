@@ -6,10 +6,12 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        @page { margin: 0; }
+
         body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 7.5pt;
-            line-height: 1.3;
+            font-size: 7.2pt;
+            line-height: 1.22;
             color: #000;
             background: #fff;
         }
@@ -26,14 +28,21 @@
         .section-divider {
             border: none;
             border-top: 1px dashed #000;
-            margin: 2mm 0;
+            margin: 1.25mm 0;
         }
 
+        .logo-top {
+            text-align: center;
+            padding: 0 0 0.8mm;
+        }
+        .logo-top img {
+            height: 8mm;
+        }
         .header {
             text-align: center;
-            padding: 2mm 1mm;
-            border-bottom: 1.5px solid #000;
-            margin-bottom: 2mm;
+            padding: 1.1mm 1mm 1.3mm;
+            border-bottom: 1.2px solid #000;
+            margin-bottom: 1.35mm;
         }
         .header .school {
             font-size: 6.5pt;
@@ -79,11 +88,11 @@
 
         .qr-section {
             text-align: center;
-            padding: 2mm 0;
+            padding: 1.2mm 0;
         }
         .qr-section img {
-            width: 38mm;
-            height: 38mm;
+            width: 34mm;
+            height: 34mm;
         }
 
         .footer {
@@ -135,7 +144,14 @@
         @endphp
 
         <div class="card">
-            <div class="header" style="margin-top:3mm">
+        @php
+            $logoPath = public_path('build/images/alim-dark-name.png');
+            $logoData = is_file($logoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath)) : null;
+        @endphp
+        @if($logoData)
+            <div class="logo-top"><img src="{{ $logoData }}" alt="ALIM"></div>
+        @endif
+            <div class="header">
                 <div class="school">PONPES ABU HURAIRAH MATARAM</div>
                 <div class="dormitory">{{ $dormitory->name ?? 'Asrama Santri' }}</div>
                 <div class="title">KARTU IZIN PULANG SANTRI</div>
@@ -191,18 +207,31 @@
                     <td class="sep">:</td>
                     <td class="value">{{ $permit->destination ?? '—' }}</td>
                 </tr>
+                @if($permit->pickup_authorization_status === 'pending')
+                <tr>
+                    <td colspan="3" style="padding-top:1mm;font-size:6.2pt;font-weight:700;border-top:1px dashed #000;">
+                        PENJEMPUT BELUM DIVERIFIKASI — SCAN KELUAR DIBLOKIR
+                    </td>
+                </tr>
+                @elseif($permit->pickup_authorization_status === 'rejected')
+                <tr>
+                    <td colspan="3" style="padding-top:1mm;font-size:6.2pt;font-weight:700;border-top:1px dashed #000;">
+                        PENJEMPUT DITOLAK — KARTU TIDAK BERLAKU
+                    </td>
+                </tr>
+                @endif
             </table>
 
             <div class="qr-section">
                 @php
                     $token = $permit->scan_token ?: $permit->getOrCreateScanToken();
                     $qrPayload = json_encode($permit->qrPayload() ?? ['token' => $token]);
-                    $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')
+                    $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
                         ->size(200)
                         ->margin(2)
                         ->generate($qrPayload);
                 @endphp
-                <img src="data:image/png;base64,{{ base64_encode($qrImage) }}" alt="QR">
+                <img src="data:image/svg+xml;base64,{{ base64_encode((string) $qrImage) }}" alt="QR">
             </div>
 
             <hr class="section-divider" style="margin:2mm 1mm">
@@ -223,9 +252,6 @@
                 </div>
             </div>
 
-            <div class="logo-area">
-                <img src="{{ URL::asset('build/images/alim-dark-name.png') }}" alt="ALIM">
-            </div>
         </div>
     @empty
         <p>Tidak ada izin yang memenuhi filter.</p>

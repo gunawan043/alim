@@ -161,6 +161,32 @@ class DormitoryVisitLog extends Model
         return '<span class="badge '.$class.'">'.e($this->status_text).'</span>';
     }
 
+    public function getMaskedVisitorPhoneAttribute(): string
+    {
+        $phone = preg_replace('/\D+/', '', (string) $this->visitor_phone);
+
+        if (strlen($phone) <= 4) {
+            return $this->visitor_phone ?: '—';
+        }
+
+        return substr($phone, 0, 4).'••••'.substr($phone, -3);
+    }
+
+    public function getMaskedVisitorIdNumberAttribute(): string
+    {
+        $id = trim((string) $this->visitor_id_number);
+
+        if ($id === '') {
+            return '—';
+        }
+
+        if (strlen($id) <= 6) {
+            return substr($id, 0, 2).'••••';
+        }
+
+        return substr($id, 0, 4).'••••'.substr($id, -3);
+    }
+
     public function getVisitorRelationshipTextAttribute(): string
     {
         return match (strtolower(trim((string) $this->visitor_relationship))) {
@@ -194,6 +220,31 @@ class DormitoryVisitLog extends Model
     public function getExpectedDurationMinutesAttribute()
     {
         return $this->expected_meet_duration_minutes;
+    }
+
+    /**
+     * Masa berlaku kartu QR kunjungan. Kartu harus tetap bisa dipakai
+     * sampai santri kembali, dengan toleransi 1 hari.
+     */
+    public function cardExpiresAt(): \Carbon\CarbonInterface
+    {
+        if ($this->check_out_at) {
+            return $this->check_out_at->copy()->addDay();
+        }
+
+        $base = $this->expected_arrival_datetime?->copy() ?? now();
+        $minutes = max(5, (int) ($this->expected_meet_duration_minutes ?? 60));
+
+        return $base->addMinutes($minutes)->addDay();
+    }
+
+    public function makeCardToken(): string
+    {
+        $expires = $this->cardExpiresAt()->getTimestamp();
+        $payload = $this->id.'::'.$expires;
+        $signature = hash_hmac('sha256', $payload, (string) config('app.key'));
+
+        return base64_encode($payload.'::'.$signature);
     }
 
     public function getPurposeTextAttribute(): string

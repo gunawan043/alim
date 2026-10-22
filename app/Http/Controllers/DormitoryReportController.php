@@ -14,6 +14,7 @@ use App\Models\DormitoryAttendance;
 use App\Models\DormitoryInventory;
 use App\Exports\DormitoryPermitsExport;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryQrScanLog;
 use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryRoomMove;
@@ -430,7 +431,13 @@ class DormitoryReportController extends Controller
 
         $logs = $query->paginate(30)->withQueryString();
 
-        return view('dormitory.reports.audit', compact('dormitory', 'logs', 'userId', 'asramaUuid'));
+        $qrLogs = DormitoryQrScanLog::with(['user', 'permit.student', 'visit.student'])
+            ->where('dormitory_id', $asramaUuid)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        return view('dormitory.reports.audit', compact('dormitory', 'logs', 'qrLogs', 'userId', 'asramaUuid'));
     }
 
     // ── Laporan Kunjungan (CSV) ──────────────────────────────────

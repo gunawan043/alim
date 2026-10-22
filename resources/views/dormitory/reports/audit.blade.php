@@ -67,4 +67,39 @@
             <div class="card-footer">@include('shared._pagination', ['paginator' => $logs])</div>
         @endif
     </div>
+
+    <div class="card mt-3">
+        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0"><i class="ri-qr-scan-2-line me-2 text-primary"></i>Audit Scan QR</h5>
+            <span class="badge bg-info-subtle text-info">{{ $qrLogs->count() }} scan terakhir</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-freeze align-middle mb-0">
+                    <thead>
+                        <tr><th>Waktu</th><th>Pengguna</th><th>Aksi</th><th>Hasil</th><th>Referensi</th><th>Alasan</th><th>IP</th></tr>
+                    </thead>
+                    <tbody>
+                        @forelse($qrLogs as $log)
+                            <tr>
+                                <td class="small">{{ $log->created_at?->format('d/m/Y H:i') }}</td>
+                                <td class="small">{{ $log->user?->name ?? 'Sistem' }}</td>
+                                <td><span class="badge bg-primary-subtle text-primary">{{ $log->action }}</span></td>
+                                <td>
+                                    <span class="badge {{ $log->result === 'success' ? 'bg-success-subtle text-success' : ($log->result === 'blocked' ? 'bg-warning-subtle text-warning' : 'bg-danger-subtle text-danger') }}">
+                                        {{ $log->result }}
+                                    </span>
+                                </td>
+                                <td class="small text-muted">{{ $log->permit?->student?->name ?? $log->visit?->student?->name ?? '—' }}</td>
+                                <td class="small text-muted">{{ $log->reason ?? '—' }}</td>
+                                <td class="small text-muted">{{ $log->ip_address ?? '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="7" class="text-center text-muted py-4">Belum ada audit scan QR.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 @endsection

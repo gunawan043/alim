@@ -514,6 +514,15 @@
                                                         <i class="ri-file-text-line"></i> Rencana
                                                     </small>
                                                 @endif
+                                                @if($permit->pickup_authorization_status === 'pending')
+                                                    <span class="badge bg-warning-subtle text-warning mt-1" style="font-size:9px;">
+                                                        <i class="ri-shield-user-line me-1"></i>Perlu verifikasi
+                                                    </span>
+                                                @elseif($permit->pickup_authorization_status === 'rejected')
+                                                    <span class="badge bg-danger-subtle text-danger mt-1" style="font-size:9px;">
+                                                        <i class="ri-close-line me-1"></i>Penjemput ditolak
+                                                    </span>
+                                                @endif
                                             @endif
                                         </td>
 

@@ -323,6 +323,10 @@
                                 <option value="">-- Tidak ada mahrom --</option>
                             </select>
                             <div class="form-text">Opsi tersedia setelah santri dipilih.</div>
+                        <div class="alert alert-info py-2 px-2 mt-2 mb-0 small">
+                            <i class="ri-shield-user-line me-1"></i>
+                            Penjemput dari mahrom/orang tua langsung terverifikasi. Penjemput keluarga di luar daftar mahrom tetap bisa diajukan, tetapi harus disetujui Kepala/Wakil Asrama sebelum scan keluar.
+                        </div>
                         </div>
 
                         <div class="form-check mb-3">

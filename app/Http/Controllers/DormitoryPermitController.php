@@ -19,8 +19,6 @@ use App\Services\Boarding\LeaveWorkflowService;
 use App\Services\DormitoryService;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -277,7 +275,10 @@ class DormitoryPermitController extends Controller
             ->where('dormitory_id', $asramaUuid)
             ->findOrFail($permitUuid);
 
-        return view('dormitory.permits.show', compact('dormitory', 'permit', 'userId'));
+        $canAuthorizePickup = app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+            ->canManageQuota(auth()->user(), $asramaUuid);
+
+        return view('dormitory.permits.show', compact('dormitory', 'permit', 'userId', 'canAuthorizePickup'));
     }
 
     /** Generate QR image for a permit (public, no auth required). */
@@ -410,6 +411,52 @@ class DormitoryPermitController extends Controller
     }
 
     /**
+     * Verifikasi penjemput di luar mahrom oleh Kepala/Wakil Asrama.
+     */
+    public function authorizePickup(Request $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user && app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+                ->canManageQuota($user, $asramaUuid),
+            403,
+            'Hanya Kepala/Wakil Asrama yang dapat memverifikasi penjemput.'
+        );
+
+        $data = $request->validate([
+            'pickup_authorization_status' => 'required|in:approved,rejected',
+            'pickup_authorization_note' => 'nullable|string|max:500',
+        ]);
+
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
+
+        if (! in_array($permit->status, ['approved', 'overdue'], true)) {
+            return back()->with('error', 'Verifikasi penjemput hanya dapat dilakukan saat izin belum keluar.');
+        }
+
+        $permit->pickup_authorization_status = $data['pickup_authorization_status'];
+        $permit->pickup_authorization_note = $data['pickup_authorization_note'] ?? null;
+        $permit->pickup_authorized_by = $user->id;
+        $permit->pickup_authorized_at = now();
+
+        if ($data['pickup_authorization_status'] === 'approved') {
+            if ($permit->scan_token_revoked_at) {
+                $permit->scan_token_revoked_at = null;
+                $permit->scan_token_expires_at = $permit->defaultScanTokenExpiry();
+            }
+            $permit->save();
+
+            return back()->with('success', 'Penjemput disetujui. Kartu izin dapat digunakan untuk scan keluar.');
+        }
+
+        $permit->save();
+        $permit->revokeScanToken('Penjemput ditolak oleh pengasuh.');
+
+        return back()->with('success', 'Penjemput ditolak. QR lama dicabut; ajukan penjemput baru jika diperlukan.');
+    }
+
+    /**
      * AJAX endpoint: hitung sisa kuota jika izin disetujui.
      * Mengembalikan informasi used / quota / over-quota untuk modal UI.
      */
@@ -516,16 +563,17 @@ class DormitoryPermitController extends Controller
 
             $html = view('dormitory.permits.card-pdf', compact('dormitory', 'permit', 'userId', 'now'))->render();
 
-            $options = (new Options)
-                ->set('isRemoteEnabled', false)
-                ->set('isHtml5ParserEnabled', true)
-                ->set('defaultFont', 'Courier');
-            $dompdf = new Dompdf($options);
-            $dompdf->loadHtml($html);
-            $dompdf->setPaper([0, 0, 175, 600]); // 58mm width (≈165pt) with variable height
-            $dompdf->render();
+            // Estimasi tinggi dari jumlah baris; renderer menambah tinggi
+            // otomatis jika ternyata konten masih meluber.
+            $estimatedHeight = 290
+                + (($permit->companion_relation || $permit->companion_phone) ? 24 : 0)
+                + ($permit->pickup_authorization_status ? 20 : 0)
+                + ($permit->is_emergency ? 16 : 0)
+                + (mb_strlen((string) $permit->destination) > 30 ? 14 : 0);
 
-            $output = $dompdf->output();
+            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)
+                ->renderEstimated($html, $estimatedHeight);
+            $output = $rendered['output'];
             $filename = 'kartu-izin-'.($permit->student?->name ?? $permit->id).'-'.now()->format('Ymd-His').'.pdf';
 
             return response($output, 200, [
@@ -582,16 +630,9 @@ class DormitoryPermitController extends Controller
 
             $html = view('dormitory.permits.bulk-card-pdf', compact('dormitory', 'permits', 'userId', 'now'))->render();
 
-            $options = (new Options)
-                ->set('isRemoteEnabled', false)
-                ->set('isHtml5ParserEnabled', true)
-                ->set('defaultFont', 'Courier');
-            $dompdf = new Dompdf($options);
-            $dompdf->loadHtml($html);
-            $dompdf->setPaper([0, 0, 175, 600]);
-            $dompdf->render();
-
-            $output = $dompdf->output();
+            // Satu kartu per halaman; tinggi tetap ringkas untuk printer 58 mm.
+            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)->renderFixed($html, 380);
+            $output = $rendered['output'];
             $filename = 'cetak-kartu-izin-'.now()->format('Ymd-His').'.pdf';
 
             return response($output, 200, [
@@ -707,10 +748,13 @@ class DormitoryPermitController extends Controller
                 return $this->scanResponse($request, 'Format scan tidak benar — gunakan scan URL atau masukkan token.', false);
             }
 
+            $audit = app(\App\Services\Dormitory\DormitoryQrAudit::class);
+
             if (! DormitoryPermit::verifyScanToken($token)) {
                 \Log::debug('Token verifikasi gagal', ['token_input' => $token]);
+                $audit->record($request, $asramaUuid, 'scan_izin', 'failed', reason: 'Token tidak valid, kedaluwarsa, atau sudah dicabut.');
 
-                return $this->scanResponse($request, 'Token tidak valid atau izin tidak ditemukan.', false);
+                return $this->scanResponse($request, 'Token tidak valid, kedaluwarsa, atau izin tidak ditemukan.', false);
             }
 
             $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)
@@ -718,7 +762,28 @@ class DormitoryPermitController extends Controller
                 ->first();
 
             if (! $permit) {
+                $audit->record($request, $asramaUuid, 'scan_izin', 'failed', reason: 'Token bukan milik asrama ini.');
                 return $this->scanResponse($request, 'Token tidak cocok dengan izin di asrama ini.', false);
+            }
+
+            if ($permit->scan_token_revoked_at) {
+                $audit->record($request, $asramaUuid, 'scan_izin', 'failed', $permit->id, reason: 'Token sudah dicabut.');
+                return $this->scanResponse($request, 'QR izin ini sudah dicabut oleh pengasuh.', false);
+            }
+
+            if ($permit->isScanTokenExpired()) {
+                $audit->record($request, $asramaUuid, 'scan_izin', 'failed', $permit->id, reason: 'Token kedaluwarsa.');
+                return $this->scanResponse($request, 'QR izin ini sudah kedaluwarsa. Cetak ulang kartu dari halaman perizinan.', false);
+            }
+
+            if (in_array($permit->status, ['approved', 'overdue'], true) && $permit->needsPickupAuthorization()) {
+                $audit->record($request, $asramaUuid, 'scan_keluar', 'blocked', $permit->id, reason: 'Penjemput belum diverifikasi.');
+                return $this->scanResponse($request, 'Penjemput belum diverifikasi oleh Kepala/Wakil Asrama. Scan keluar diblokir sampai penjemput disetujui.', false);
+            }
+
+            if ($permit->isPickupRejected()) {
+                $audit->record($request, $asramaUuid, 'scan_keluar', 'blocked', $permit->id, reason: 'Penjemput ditolak.');
+                return $this->scanResponse($request, 'Penjemput ditolak oleh pengasuh. QR tidak dapat digunakan untuk keluar asrama.', false);
             }
 
             $user = $request->user();
@@ -745,6 +810,7 @@ class DormitoryPermitController extends Controller
                     'note' => $request->input('note', ''),
                 ]);
                 $permit->save();
+                $audit->record($request, $asramaUuid, 'scan_keluar', 'success', $permit->id, reason: 'Scan keluar berhasil.');
 
                 // Notifikasi WA wali santri: santri dijemput.
                 try {
@@ -783,6 +849,7 @@ class DormitoryPermitController extends Controller
                     'note' => $request->input('note', ''),
                 ]);
                 $permit->save();
+                $audit->record($request, $asramaUuid, 'scan_kembali', 'success', $permit->id, reason: 'Scan kembali berhasil.');
 
                 // Notifikasi WA wali santri: santri kembali ke asrama.
                 try {
@@ -847,6 +914,15 @@ class DormitoryPermitController extends Controller
                 'success' => false,
                 'message' => 'Izin tidak ditemukan.',
             ], 404);
+        }
+
+        if ($permit->needsPickupAuthorization() || $permit->isPickupRejected()) {
+            return response()->json([
+                'success' => false,
+                'message' => $permit->isPickupRejected()
+                    ? 'Penjemput ditolak oleh pengasuh.'
+                    : 'Penjemput belum diverifikasi oleh Kepala/Wakil Asrama.',
+            ], 422);
         }
 
         // Hanya bisa pickup jika status approved/overdue dan belum pernah dipickup.
@@ -936,6 +1012,18 @@ class DormitoryPermitController extends Controller
         $permit->last_actioned_by = $user?->id;
 
         // Update field spesifik sesuai status
+        if ($newStatus === 'picked_up' && ($permit->needsPickupAuthorization() || $permit->isPickupRejected())) {
+            $message = $permit->isPickupRejected()
+                ? 'Penjemput ditolak oleh pengasuh.'
+                : 'Penjemput belum diverifikasi oleh Kepala/Wakil Asrama.';
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
+        }
+
         if ($newStatus === 'returned' && is_null($permit->pickup_scanned_at)) {
             $permit->pickup_scanned_at = now();
             $permit->scanned_at = now();
