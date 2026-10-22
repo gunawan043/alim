@@ -9,6 +9,8 @@ use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
+use App\Models\WorkUnit;
+use App\Services\NotificationUniversalService;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -201,6 +203,155 @@ class InstitutionDecreeController extends Controller
                 'task_code' => $t['task_code'] ?? null,
                 'weekly_hours' => $t['weekly_hours'] ?? 0,
                 'is_active' => true,
+            ]);
+        }
+    }
+
+    public function submit(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::findOrFail($id);
+        abort_unless($this->canEditDecree($request->user(), $decree), 403);
+        abort_unless(in_array($decree->status, ['draft', 'rejected'], true), 422, 'SK tidak dapat diajukan pada status ini.');
+        if ($decree->decree_type === 'SK Pembagian Tugas' && $decree->work_unit_id) {
+            $missing = $this->positionsWithoutHours($decree->work_unit_id);
+            abort_if($missing->isNotEmpty(), 422, 'Lengkapi JP jabatan terlebih dahulu: '.$missing->implode(', '));
+        }
+        $decree->update(['status' => 'submitted', 'submitted_by' => $request->user()->id, 'submitted_at' => now()]);
+
+        return back()->with('success', 'SK berhasil diajukan.');
+    }
+
+    public function review(Request $request, string $userId, string $id)
+    {
+        abort_unless($this->isPersonalia($request->user()), 403, 'Review hanya dapat dilakukan Personalia.');
+        $validated = $request->validate(['review_notes' => 'nullable|string|max:2000']);
+        $decree = InstitutionDecree::findOrFail($id);
+        $decree->update(['reviewed_by' => $request->user()->id, 'reviewed_at' => now(), 'review_notes' => $validated['review_notes'] ?? null]);
+
+        return back()->with('success', 'Review Personalia disimpan tanpa mengubah isi SK.');
+    }
+
+    public function approve(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::findOrFail($id);
+        abort_unless($this->isKsp($request->user(), $decree), 403, 'Hanya Kepala Satuan Kerja yang dapat menyetujui SK.');
+        abort_unless($decree->status === 'submitted', 422, 'SK belum diajukan.');
+        $decree->update(['status' => 'approved', 'approved_by' => $request->user()->id, 'approved_at' => now()]);
+
+        return back()->with('success', 'SK disetujui.');
+    }
+
+    public function publish(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::findOrFail($id);
+        abort_unless($this->isKsp($request->user(), $decree), 403, 'Hanya Kepala Satuan Kerja yang dapat mengaktifkan SK.');
+        abort_unless($decree->status === 'approved', 422, 'SK harus disetujui sebelum diaktifkan.');
+        $workUnitId = $decree->work_unit_id ?: $decree->school?->work_unit_id;
+
+        DB::transaction(function () use ($decree, $request, $workUnitId) {
+            if ($decree->decree_type === 'SK Pembagian Tugas' && $workUnitId) {
+                InstitutionDecree::where('id', '!=', $decree->id)
+                    ->where('decree_type', 'SK Pembagian Tugas')
+                    ->where('work_unit_id', $workUnitId)
+                    ->where('academic_year_id', $decree->academic_year_id)
+                    ->where('semester', $decree->semester)
+                    ->where('status', 'active')
+                    ->update([
+                        'status' => 'inactive',
+                        'deactivated_by' => $request->user()->id,
+                        'deactivated_at' => now(),
+                        'deactivation_reason' => 'Digantikan SK aktif baru.',
+                    ]);
+            }
+            $decree->update(['status' => 'active', 'activated_at' => now()]);
+        });
+
+        $this->notifyWorkUnit($decree, $request->user());
+
+        return back()->with('success', 'SK dipublikasikan dan aktif. Notifikasi dikirim ke GTK satuan kerja.');
+    }
+
+    public function deactivate(Request $request, string $userId, string $id)
+    {
+        $validated = $request->validate(['deactivation_reason' => 'required|string|max:1000']);
+        $decree = InstitutionDecree::findOrFail($id);
+        abort_unless($this->isKsp($request->user(), $decree), 403);
+        abort_unless($decree->status === 'active', 422, 'SK tidak sedang aktif.');
+        $decree->update([
+            'status' => 'inactive',
+            'deactivated_by' => $request->user()->id,
+            'deactivated_at' => now(),
+            'deactivation_reason' => $validated['deactivation_reason'],
+        ]);
+
+        return back()->with('success', 'SK dinonaktifkan.');
+    }
+
+    private function canEditDecree($user, InstitutionDecree $decree): bool
+    {
+        if ($this->isPersonalia($user) || $user->isSystemAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+        if ($user->hasRole('Pimpinan')) {
+            return true;
+        }
+        $jabatan = strtolower((string) ($user->employment?->jabatan ?? ''));
+        return str_contains($jabatan, 'kepala satuan pendidikan')
+            || str_contains($jabatan, 'wakil kepala')
+            || str_contains($jabatan, 'tata usaha')
+            || $this->isKsp($user, $decree);
+    }
+
+    private function isPersonalia($user): bool
+    {
+        return $user->hasRole('Humas Personalia') || $user->isSystemAdmin() || $user->isSuperAdmin();
+    }
+
+    private function isKsp($user, InstitutionDecree $decree): bool
+    {
+        if ($user->isSystemAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+        if ($decree->school?->principal_user_id && (string) $decree->school->principal_user_id === (string) $user->id) {
+            return true;
+        }
+        $workUnit = $decree->workUnit ?: ($decree->school?->work_unit_id ? WorkUnit::find($decree->school->work_unit_id) : null);
+        if ($workUnit && (string) ($workUnit->metadata['head_user_id'] ?? '') === (string) $user->id) {
+            return true;
+        }
+        $jabatan = strtolower((string) ($user->employment?->jabatan ?? ''));
+        return str_contains($jabatan, 'kepala satuan pendidikan') && (string) ($user->employment?->school_id ?? '') === (string) $decree->school_id;
+    }
+
+    private function positionsWithoutHours(string $workUnitId)
+    {
+        return \App\Models\StructuralPositionWorkUnitHour::query()
+            ->where('work_unit_id', $workUnitId)
+            ->where('weekly_hours', '<=', 0)
+            ->with('position:id,name')
+            ->get()->pluck('position.name')->filter()->values();
+    }
+
+    private function notifyWorkUnit(InstitutionDecree $decree, $publisher): void
+    {
+        $workUnitId = $decree->work_unit_id ?: $decree->school?->work_unit_id;
+        if (! $workUnitId) {
+            return;
+        }
+        $service = app(NotificationUniversalService::class);
+        $ids = $service->userIdsForWorkUnit($workUnitId);
+        foreach ($ids as $recipientId) {
+            if ((string) $recipientId === (string) $publisher->id) {
+                continue;
+            }
+            $service->send((string) $recipientId, [
+                'module' => 'system', 'type' => 'info', 'priority' => 'high',
+                'title' => 'SK Pembagian Tugas aktif',
+                'message' => $decree->decree_number.' — '.$decree->title.' telah aktif.',
+                'action_url' => route('user.institution-decrees.show', ['userId' => $recipientId, 'id' => $decree->id]),
+                'reference_type' => InstitutionDecree::class,
+                'reference_id' => $decree->id,
+                'action_text' => 'Lihat SK',
             ]);
         }
     }

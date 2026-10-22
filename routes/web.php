@@ -1509,6 +1509,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{id}/edit', [InstitutionDecreeController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [InstitutionDecreeController::class, 'update'])->name('update');
                 Route::delete('/{id}', [InstitutionDecreeController::class, 'destroy'])->name('destroy');
+                Route::post('/{id}/submit', [InstitutionDecreeController::class, 'submit'])->name('submit');
+                Route::post('/{id}/review', [InstitutionDecreeController::class, 'review'])->name('review');
+                Route::post('/{id}/approve', [InstitutionDecreeController::class, 'approve'])->name('approve');
+                Route::post('/{id}/publish', [InstitutionDecreeController::class, 'publish'])->name('publish');
+                Route::post('/{id}/deactivate', [InstitutionDecreeController::class, 'deactivate'])->name('deactivate');
             });
 
             // ── DOKUMEN ISO ─────────────────────────────────────────

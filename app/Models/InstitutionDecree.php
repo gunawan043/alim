@@ -32,6 +32,8 @@ class InstitutionDecree extends Model
 
     public const STATUS_ACTIVE = 'active';
 
+    public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_ARCHIVED = 'archived';
 
     public const WORKFLOW_STATES = [
@@ -42,6 +44,7 @@ class InstitutionDecree extends Model
         self::STATUS_APPROVED,
         self::STATUS_REJECTED,
         self::STATUS_ACTIVE,
+        self::STATUS_INACTIVE,
         self::STATUS_ARCHIVED,
     ];
 
@@ -51,6 +54,9 @@ class InstitutionDecree extends Model
         'end_date' => 'date',
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
+        'reviewed_at' => 'datetime',
+        'activated_at' => 'datetime',
+        'deactivated_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -66,6 +72,12 @@ class InstitutionDecree extends Model
         'description',
         'academic_year_id',
         'school_id',
+        'work_unit_id',
+        'semester',
+        'revision_of_id',
+        'version',
+        'reviewed_by', 'reviewed_at', 'review_notes',
+        'activated_at', 'deactivated_by', 'deactivated_at', 'deactivation_reason',
         'issued_date',
         'effective_date',
         'end_date',
@@ -89,6 +101,21 @@ class InstitutionDecree extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class, 'school_id');
+    }
+
+    public function workUnit(): BelongsTo
+    {
+        return $this->belongsTo(WorkUnit::class, 'work_unit_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function revisionOf(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'revision_of_id');
     }
 
     public function signer(): BelongsTo
