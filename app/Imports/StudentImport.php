@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudentMahrom;
 use App\Models\StudyGroup;
+use App\Services\Uks\StudentHealthSyncService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,8 @@ class StudentImport implements ToCollection
     /** Fallback: rombel from form dropdown (overrides file column) */
     private ?string $overrideStudyGroupId;
 
+    private StudentHealthSyncService $healthSync;
+
     /** Cache: [school_id][normalized_rombel_name] => study_group_id */
     private array $rombelCache = [];
 
@@ -51,10 +54,11 @@ class StudentImport implements ToCollection
     // 60=Berat Badan  61=Tinggi Badan  62=Lingkar Kepala
     // 63=Jml Saudara Kandung  64=Jarak ke Sekolah (KM)
 
-    public function __construct(?string $schoolId = null, ?string $overrideStudyGroupId = null)
+    public function __construct(?string $schoolId = null, ?string $overrideStudyGroupId = null, ?StudentHealthSyncService $healthSync = null)
     {
         $this->schoolId = $schoolId;
         $this->overrideStudyGroupId = $overrideStudyGroupId;
+        $this->healthSync = $healthSync ?? app(StudentHealthSyncService::class);
         $activeYear = AcademicYear::where('is_active', true)->first();
         $this->academicYearId = $activeYear?->id;
     }
@@ -232,6 +236,7 @@ class StudentImport implements ToCollection
                 // Tidak menimpa mahrom yang sudah ada (per peran).
                 $synced = $this->createMahroms($existing, $row);
                 $this->mahromCount += $synced;
+                $healthSynced = $this->syncHealth($existing, $row);
 
                 $this->duplicates[] = [
                     'nisn' => $nisn ?: '-',
@@ -239,8 +244,8 @@ class StudentImport implements ToCollection
                     'nama' => $existing->name,
                     'sekolah' => $existing->school?->name ?? '-',
                     'catatan' => $synced > 0
-                        ? 'Sudah ada — '.$synced.' data mahrom disinkronkan'
-                        : 'Sudah ada — dilewati',
+                        ? 'Sudah ada — '.$synced.' data mahrom disinkronkan'.($healthSynced ? ' + data UKS' : '')
+                        : ($healthSynced ? 'Sudah ada — data UKS disinkronkan' : 'Sudah ada — dilewati'),
                 ];
 
                 continue;
@@ -268,6 +273,10 @@ class StudentImport implements ToCollection
                 // jika salah satu gagal tidak meninggalkan data parsial.
                 [$student, $history, $mahromCreated] = DB::transaction(function () use ($row, $sgId, $activeYearId) {
                     $student = Student::create($this->parseRow($row));
+
+                    // Tinggi/berat/lingkar kepala dari file juga masuk ke
+                    // data kesehatan UKS (record + riwayat antropometri).
+                    $this->syncHealth($student, $row);
 
                     // Data Ayah/Ibu/Wali pada file ikut tersimpan sebagai mahrom.
                     $mahromCreated = $this->createMahroms($student, $row);
@@ -316,6 +325,40 @@ class StudentImport implements ToCollection
         Log::info('[StudentImport] DONE: success='.$this->successCount
             .' errors='.count($this->errors)
             .' duplicates='.count($this->duplicates));
+    }
+
+    /**
+     * @return array{height: ?float, weight: ?float, head_circumference: ?float}
+     */
+    private function healthData(Collection $row): array
+    {
+        return [
+            'height' => $this->parseDecimal($this->cell($row, 61)),
+            'weight' => $this->parseDecimal($this->cell($row, 60)),
+            'head_circumference' => $this->parseDecimal($this->cell($row, 62)),
+        ];
+    }
+
+    private function syncHealth(Student $student, Collection $row): bool
+    {
+        $data = $this->healthData($row);
+
+        if (array_filter($data, fn ($value) => $value !== null) === []) {
+            return false;
+        }
+
+        try {
+            $this->healthSync->sync($student, $data, $this->academicYearId);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('[StudentImport] Gagal sinkronisasi data UKS', [
+                'student_id' => $student->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     private function cell(Collection $row, int $index): string

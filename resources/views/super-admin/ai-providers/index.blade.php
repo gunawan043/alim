@@ -27,15 +27,15 @@
         <i class="ri-information-line me-1"></i>
         <strong>Multi-platform:</strong> pilih provider gratis/free tier, berbayar, atau lokal. API key disimpan <strong>terenkripsi</strong>.
         Model dari platform yang sama dapat <strong>berbagi satu API key</strong> (key grup) — cukup isi key di salah satu baris.
-        Baris hasil seeder masih <strong>nonaktif</strong>; isi key lalu aktifkan model yang dipilih dan jadikan default.
-        Provider default dipakai generator nama Arab, AI Assistant RPM/soal, dan chat AI.
+        Baris hasil seeder masih <strong>nonaktif</strong>; isi key lalu aktifkan model yang dipilih.
+        <strong>Hanya satu provider yang aktif:</strong> mengaktifkan provider akan menonaktifkan provider lain secara otomatis.
     </div>
 
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>
                 <h5 class="card-title mb-0"><i class="ri-robot-2-line text-primary me-1"></i>Provider AI</h5>
-                <p class="text-muted mb-0 small">Satu provider default aktif. Endpoint harus mendukung <code>/chat/completions</code> (OpenAI-compatible).</p>
+                <p class="text-muted mb-0 small">Hanya satu provider aktif. Mengaktifkan provider lain akan mengganti provider yang sedang aktif. Endpoint harus mendukung <code>/chat/completions</code> (OpenAI-compatible).</p>
             </div>
             <button type="button" class="btn btn-success" onclick="openProviderForm()">
                 <i class="ri-add-line me-1"></i>Tambah Provider
@@ -154,8 +154,8 @@
                                     <form method="POST" action="{{ route('user.sa.ai-providers.toggle', ['userId' => $userId, 'id' => $provider->id]) }}">
                                         @csrf
                                         <button class="btn btn-sm {{ $provider->is_active ? 'btn-outline-warning' : 'btn-outline-success' }}"
-                                                title="{{ $provider->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">
-                                            <i class="ri-power-line"></i>
+                                                title="{{ $provider->is_active ? 'Nonaktifkan' : 'Aktifkan (mengganti provider aktif)' }}">
+                                            <i class="ri-shut-down-line"></i>
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ route('user.sa.ai-providers.test', ['userId' => $userId, 'id' => $provider->id]) }}">
@@ -238,8 +238,10 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-2">
+                                    <input type="hidden" name="is_active" value="0">
                                     <input class="form-check-input" type="checkbox" name="is_active" value="1" id="providerActive" checked>
                                     <label class="form-check-label" for="providerActive">Aktif</label>
+                                    <div class="form-text">Mengaktifkan provider ini akan menonaktifkan provider lain.</div>
                                 </div>
                             </div>
                             <div class="col-md-6">

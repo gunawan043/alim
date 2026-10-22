@@ -11,7 +11,10 @@ use App\Models\DormitoryViolation;
 use App\Models\GtkEmployment;
 use App\Models\Student;
 use App\Models\StudyGroup;
+use App\Models\SystemSetting;
+use App\Services\Uks\UksMode;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -27,30 +30,30 @@ class SystemDashboardController extends Controller
     {
         // ── Statistik Pengguna & Akses ────────────────────────────
         $stats = [
-            'users_total'       => DB::table('users')->whereNull('deleted_at')->count(),
-            'users_active'      => DB::table('users')->where('is_active', 1)->whereNull('deleted_at')->count(),
-            'users_inactive'    => DB::table('users')->where('is_active', 0)->whereNull('deleted_at')->count(),
-            'users_no_role'     => DB::table('users')->whereNull('deleted_at')
+            'users_total' => DB::table('users')->whereNull('deleted_at')->count(),
+            'users_active' => DB::table('users')->where('is_active', 1)->whereNull('deleted_at')->count(),
+            'users_inactive' => DB::table('users')->where('is_active', 0)->whereNull('deleted_at')->count(),
+            'users_no_role' => DB::table('users')->whereNull('deleted_at')
                 ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('model_has_roles')->whereColumn('model_has_roles.model_id', 'users.id'))
                 ->count(),
-            'system_admins'     => DB::table('users')->where('is_system_admin', 1)->count(),
-            'roles_total'       => DB::table('roles')->count(),
+            'system_admins' => DB::table('users')->where('is_system_admin', 1)->count(),
+            'roles_total' => DB::table('roles')->count(),
             'permissions_total' => DB::table('permissions')->count(),
-            'schools_total'     => DB::table('schools')->count(),
-            'schools_active'    => DB::table('schools')->where('is_active', 1)->count(),
-            'migrations_total'  => DB::table('migrations')->count(),
-            'activity_total'    => DB::table('activity_log')->count(),
-            'activity_today'    => DB::table('activity_log')->whereDate('created_at', today())->count(),
-            'jobs_pending'      => DB::table('jobs')->count(),
-            'jobs_failed'       => DB::table('failed_jobs')->count(),
+            'schools_total' => DB::table('schools')->count(),
+            'schools_active' => DB::table('schools')->where('is_active', 1)->count(),
+            'migrations_total' => DB::table('migrations')->count(),
+            'activity_total' => DB::table('activity_log')->count(),
+            'activity_today' => DB::table('activity_log')->whereDate('created_at', today())->count(),
+            'jobs_pending' => DB::table('jobs')->count(),
+            'jobs_failed' => DB::table('failed_jobs')->count(),
 
             // Ringkasan operasional lintas unit
-            'students_active'   => Student::where('status', 'active')->count(),
+            'students_active' => Student::where('status', 'active')->count(),
             'study_groups_total' => StudyGroup::count(),
             'dormitories_total' => Dormitory::where('is_active', true)->count(),
-            'permits_pending'   => DormitoryPermit::where('status', 'pending')->count(),
-            'violations_total'  => DormitoryViolation::count(),
-            'gtk_total'         => GtkEmployment::count(),
+            'permits_pending' => DormitoryPermit::where('status', 'pending')->count(),
+            'violations_total' => DormitoryViolation::count(),
+            'gtk_total' => GtkEmployment::count(),
         ];
 
         // ── Aktivitas 7 Hari ──────────────────────────────────────
@@ -147,36 +150,52 @@ class SystemDashboardController extends Controller
 
         // Status modul berdasarkan keberadaan tabel skema
         $moduleDefinitions = [
-            'Kepegawaian & GTK'    => ['gtk_profiles', 'gtk_employments', 'gtk_educations'],
-            'Kesiswaan'            => ['students', 'student_class_histories', 'violation_points'],
-            'Asrama'               => ['dormitories', 'dormitory_permits', 'dormitory_attendances'],
-            'UKS'                  => ['uks_patients', 'uks_beds', 'student_medicine_inventory'],
-            'Tahfidz'              => ['tahfidz_setorans', 'tahfidz_mutabaah', 'tahfidz_groups'],
-            'Keuangan'             => ['payroll', 'invoice_approvals', 'division_budgets'],
-            'Sarpras & URT'        => ['assets', 'work_orders', 'warehouses', 'spareparts'],
+            'Kepegawaian & GTK' => ['gtk_profiles', 'gtk_employments', 'gtk_educations'],
+            'Kesiswaan' => ['students', 'student_class_histories', 'violation_points'],
+            'Asrama' => ['dormitories', 'dormitory_permits', 'dormitory_attendances'],
+            'UKS' => ['uks_patients', 'uks_beds', 'student_medicine_inventory'],
+            'Tahfidz' => ['tahfidz_setorans', 'tahfidz_mutabaah', 'tahfidz_groups'],
+            'Keuangan' => ['payroll', 'invoice_approvals', 'division_budgets'],
+            'Sarpras & URT' => ['assets', 'work_orders', 'warehouses', 'spareparts'],
             'Perizinan & Tata Tertib' => ['dormitory_permits', 'dormitory_violations'],
-            'Rekrutmen'            => ['gtk_recruitments', 'recruitment_jobs', 'recruitment_applications'],
-            'Agenda & Kegiatan'    => ['agendas', 'agenda_categories'],
-            'Departemen Bahasa'    => ['language_vocabularies', 'language_violations'],
-            'Perpustakaan'         => ['library_books', 'library_loans'],
-            'Satuan Keamanan'      => ['security_posts', 'security_guest_logs'],
-            'Teknologi Informasi'  => ['it_devices', 'it_helpdesk_tickets'],
-            'Pelayanan Gizi'       => ['kitchen_menus', 'food_stocks'],
+            'Rekrutmen' => ['gtk_recruitments', 'recruitment_jobs', 'recruitment_applications'],
+            'Agenda & Kegiatan' => ['agendas', 'agenda_categories'],
+            'Departemen Bahasa' => ['language_vocabularies', 'language_violations'],
+            'Perpustakaan' => ['library_books', 'library_loans'],
+            'Satuan Keamanan' => ['security_posts', 'security_guest_logs'],
+            'Teknologi Informasi' => ['it_devices', 'it_helpdesk_tickets'],
+            'Pelayanan Gizi' => ['kitchen_menus', 'food_stocks'],
         ];
 
         $modules = [];
         foreach ($moduleDefinitions as $label => $tables) {
             $available = collect($tables)->filter(fn ($t) => Schema::hasTable($t))->count();
             $modules[] = [
-                'label'   => $label,
-                'tables'  => $tables,
-                'found'   => $available,
-                'total'   => count($tables),
-                'status'  => $available === count($tables) ? 'aktif' : ($available > 0 ? 'sebagian' : 'belum'),
+                'label' => $label,
+                'tables' => $tables,
+                'found' => $available,
+                'total' => count($tables),
+                'status' => $available === count($tables) ? 'aktif' : ($available > 0 ? 'sebagian' : 'belum'),
             ];
         }
 
-        return view('system.features', compact('roleDashboards', 'modules'));
+        $uksMode = UksMode::current();
+
+        return view('system.features', compact('roleDashboards', 'modules', 'uksMode'));
+    }
+
+    public function updateUksMode(Request $request)
+    {
+        $validated = $request->validate([
+            'uks_mode' => 'required|in:simple,clinic',
+        ]);
+
+        SystemSetting::set('uks_mode', $validated['uks_mode'], 'uks');
+        Cache::forget('system_settings');
+        Cache::forget('system_settings_map');
+
+        return redirect()->route('system.features')
+            ->with('success', 'Mode operasional UKS berhasil diubah ke '.($validated['uks_mode'] === 'clinic' ? 'Klinik' : 'UKS Sederhana').'.');
     }
 
     public function monitoring()
@@ -194,25 +213,25 @@ class SystemDashboardController extends Controller
         $logPath = storage_path('logs/laravel.log');
 
         $monitoring = [
-            'php_version'      => PHP_VERSION,
-            'laravel_version'  => app()->version(),
-            'environment'      => app()->environment(),
-            'debug_mode'       => config('app.debug'),
-            'timezone'         => config('app.timezone'),
-            'db_driver'        => config('database.default'),
-            'db_database'      => $dbName,
-            'db_tables'        => $tableCount,
-            'db_size_mb'       => $dbSizeMb,
-            'cache_driver'     => config('cache.default'),
-            'session_driver'   => config('session.driver'),
-            'queue_driver'     => config('queue.default'),
-            'jobs_pending'     => DB::table('jobs')->count(),
-            'jobs_failed'      => DB::table('failed_jobs')->count(),
-            'sessions_active'  => DB::table('sessions')->count(),
-            'log_size_kb'      => file_exists($logPath) ? round(filesize($logPath) / 1024, 1) : 0,
-            'log_modified'     => file_exists($logPath) ? date('d M Y H:i', filemtime($logPath)) : null,
-            'disk_total_gb'    => round(disk_total_space(base_path()) / 1024 / 1024 / 1024, 1),
-            'disk_free_gb'     => round(disk_free_space(base_path()) / 1024 / 1024 / 1024, 1),
+            'php_version' => PHP_VERSION,
+            'laravel_version' => app()->version(),
+            'environment' => app()->environment(),
+            'debug_mode' => config('app.debug'),
+            'timezone' => config('app.timezone'),
+            'db_driver' => config('database.default'),
+            'db_database' => $dbName,
+            'db_tables' => $tableCount,
+            'db_size_mb' => $dbSizeMb,
+            'cache_driver' => config('cache.default'),
+            'session_driver' => config('session.driver'),
+            'queue_driver' => config('queue.default'),
+            'jobs_pending' => DB::table('jobs')->count(),
+            'jobs_failed' => DB::table('failed_jobs')->count(),
+            'sessions_active' => DB::table('sessions')->count(),
+            'log_size_kb' => file_exists($logPath) ? round(filesize($logPath) / 1024, 1) : 0,
+            'log_modified' => file_exists($logPath) ? date('d M Y H:i', filemtime($logPath)) : null,
+            'disk_total_gb' => round(disk_total_space(base_path()) / 1024 / 1024 / 1024, 1),
+            'disk_free_gb' => round(disk_free_space(base_path()) / 1024 / 1024 / 1024, 1),
         ];
 
         // Aktivitas 7 hari
@@ -241,17 +260,17 @@ class SystemDashboardController extends Controller
         $logPath = storage_path('logs/laravel.log');
 
         $maintenance = [
-            'down'             => app()->isDownForMaintenance(),
-            'config_cached'    => file_exists(base_path('bootstrap/cache/config.php')),
-            'routes_cached'    => file_exists(base_path('bootstrap/cache/routes-v7.php')) || file_exists(base_path('bootstrap/cache/routes.php')),
-            'compiled_views'   => $compiledViews,
-            'cache_driver'     => config('cache.default'),
-            'queue_driver'     => config('queue.default'),
-            'jobs_pending'     => DB::table('jobs')->count(),
-            'jobs_failed'      => DB::table('failed_jobs')->count(),
-            'log_size_kb'      => file_exists($logPath) ? round(filesize($logPath) / 1024, 1) : 0,
-            'log_modified'     => file_exists($logPath) ? date('d M Y H:i', filemtime($logPath)) : null,
-            'last_migration'   => DB::table('migrations')->orderByDesc('id')->value('migration'),
+            'down' => app()->isDownForMaintenance(),
+            'config_cached' => file_exists(base_path('bootstrap/cache/config.php')),
+            'routes_cached' => file_exists(base_path('bootstrap/cache/routes-v7.php')) || file_exists(base_path('bootstrap/cache/routes.php')),
+            'compiled_views' => $compiledViews,
+            'cache_driver' => config('cache.default'),
+            'queue_driver' => config('queue.default'),
+            'jobs_pending' => DB::table('jobs')->count(),
+            'jobs_failed' => DB::table('failed_jobs')->count(),
+            'log_size_kb' => file_exists($logPath) ? round(filesize($logPath) / 1024, 1) : 0,
+            'log_modified' => file_exists($logPath) ? date('d M Y H:i', filemtime($logPath)) : null,
+            'last_migration' => DB::table('migrations')->orderByDesc('id')->value('migration'),
         ];
 
         $commands = [
@@ -282,7 +301,7 @@ class SystemDashboardController extends Controller
                 return str_repeat('•', $len);
             }
 
-            return substr($value, 0, 2) . str_repeat('•', max(3, $len - 4)) . substr($value, -2);
+            return substr($value, 0, 2).str_repeat('•', max(3, $len - 4)).substr($value, -2);
         };
 
         $groups = [
@@ -292,19 +311,19 @@ class SystemDashboardController extends Controller
                 ['name' => 'Debug Mode', 'value' => config('app.debug') ? 'AKTIF' : 'Nonaktif', 'badge' => config('app.debug') ? 'danger' : 'success'],
                 ['name' => 'URL', 'value' => config('app.url')],
                 ['name' => 'Timezone', 'value' => config('app.timezone')],
-                ['name' => 'Locale', 'value' => config('app.locale') . ' (fallback: ' . config('app.fallback_locale') . ')'],
+                ['name' => 'Locale', 'value' => config('app.locale').' (fallback: '.config('app.fallback_locale').')'],
             ],
             'Database' => [
                 ['name' => 'Driver', 'value' => config('database.default')],
-                ['name' => 'Host', 'value' => config("database.connections." . config('database.default') . ".host")],
-                ['name' => 'Port', 'value' => (string) config("database.connections." . config('database.default') . ".port")],
-                ['name' => 'Database', 'value' => config("database.connections." . config('database.default') . ".database")],
-                ['name' => 'Username', 'value' => $mask(config("database.connections." . config('database.default') . ".username"))],
-                ['name' => 'Password', 'value' => config("database.connections." . config('database.default') . ".password") ? '••••••••' : '(kosong)'],
+                ['name' => 'Host', 'value' => config('database.connections.'.config('database.default').'.host')],
+                ['name' => 'Port', 'value' => (string) config('database.connections.'.config('database.default').'.port')],
+                ['name' => 'Database', 'value' => config('database.connections.'.config('database.default').'.database')],
+                ['name' => 'Username', 'value' => $mask(config('database.connections.'.config('database.default').'.username'))],
+                ['name' => 'Password', 'value' => config('database.connections.'.config('database.default').'.password') ? '••••••••' : '(kosong)'],
             ],
             'Layanan' => [
                 ['name' => 'Cache', 'value' => config('cache.default')],
-                ['name' => 'Session', 'value' => config('session.driver') . ' · lifetime ' . config('session.lifetime') . ' menit'],
+                ['name' => 'Session', 'value' => config('session.driver').' · lifetime '.config('session.lifetime').' menit'],
                 ['name' => 'Queue', 'value' => config('queue.default')],
                 ['name' => 'Broadcast', 'value' => config('broadcasting.default', '—')],
                 ['name' => 'Filesystem', 'value' => config('filesystems.default')],
@@ -313,7 +332,7 @@ class SystemDashboardController extends Controller
                 ['name' => 'Driver', 'value' => config('mail.default')],
                 ['name' => 'Host', 'value' => config('mail.mailers.smtp.host', '—')],
                 ['name' => 'Port', 'value' => (string) config('mail.mailers.smtp.port', '—')],
-                ['name' => 'Pengirim', 'value' => config('mail.from.address', '—') . ' (' . config('mail.from.name', '—') . ')'],
+                ['name' => 'Pengirim', 'value' => config('mail.from.address', '—').' ('.config('mail.from.name', '—').')'],
             ],
         ];
 

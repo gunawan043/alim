@@ -225,7 +225,7 @@ class FailedLoginMechanismTest extends TestCase
 
         $response = $this->post('/login', $successCredentials);
 
-        $response->assertRedirect('/');
+        $response->assertRedirect(route('user.dashboard', ['userId' => $this->user->id]));
         $this->assertAuthenticatedAs($this->user);
 
         $this->user->refresh();

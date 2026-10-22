@@ -1,7 +1,17 @@
 @extends('layouts.master')
 @section('title') Detail Pasien - UKS @endsection
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @section('content')
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-2"></i>{{ $errors->first() }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
     @component('components.breadcrumb')
         @slot('li_1') UKS @endslot
         @slot('li_2') Rekam Medis Pasien @endslot
@@ -52,12 +62,18 @@
                                 </span>
                                 <span>
                                     <i class="ri-home-2-line me-1"></i>
-                                    {{ $patient->student?->dormitory?->name ?? 'Tanpa Asrama' }}
+                                    {{ $patient->student?->activeDormitoryResident?->dormitory?->name ?? 'Tanpa Asrama' }}
                                 </span>
                                 <span>
                                     <i class="ri-barcode-line me-1"></i>
-                                    {{ $patient->patient_uuid ?? $patient->id }}
+                                    {{ $patient->medical_record_no ?? $patient->id }}
                                 </span>
+                                @if($patient->queue_number)
+                                    <span>
+                                        <i class="ri-list-check-2 me-1"></i>
+                                        Antrean {{ $patient->queue_number }} · {{ $patient->queue_label }}
+                                    </span>
+                                @endif
                                 <span>
                                     <i class="ri-calendar-line me-1"></i>
                                     Daftar: {{ $patient->admitted_at ? $patient->admitted_at->format('d M Y H:i') : '-' }}
@@ -69,19 +85,24 @@
                                 <i class="ri-pulse-line me-1"></i>{{ $patientStatusLabel }}
                             </span>
                             <div class="mt-2">
-                                @if($patient->patient_type === 'rawat')
-                                    <span class="badge bg-info-subtle text-info">
-                                        <i class="ri-hospital-line me-1"></i>Rawat
-                                    </span>
-                                @elseif($patient->patient_type === 'balik')
-                                    <span class="badge bg-warning-subtle text-warning">
-                                        <i class="ri-arrow-go-back-line me-1"></i>Balik Asrama
-                                    </span>
-                                @elseif($patient->patient_type === 'pulang')
-                                    <span class="badge bg-secondary-subtle text-secondary">
-                                        <i class="ri-roadster-line me-1"></i>Pulang
-                                    </span>
-                                @endif
+                                <span class="badge bg-{{ $patient->care_location_color }}-subtle text-{{ $patient->care_location_color }}">
+                                    <i class="{{ $patient->care_location_icon }} me-1"></i>{{ $patient->care_location_label }}
+                                </span>
+                                <div class="mt-1">
+                                    @if($patient->patient_type === 'rawat')
+                                        <span class="badge bg-info-subtle text-info">
+                                            <i class="ri-hospital-line me-1"></i>Rawat
+                                        </span>
+                                    @elseif($patient->patient_type === 'balik')
+                                        <span class="badge bg-warning-subtle text-warning">
+                                            <i class="ri-arrow-go-back-line me-1"></i>Balik Asrama
+                                        </span>
+                                    @elseif($patient->patient_type === 'pulang')
+                                        <span class="badge bg-secondary-subtle text-secondary">
+                                            <i class="ri-roadster-line me-1"></i>Pulang
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -372,6 +393,53 @@
             </div>
         @endif
 
+        {{-- Riwayat Lokasi Perawatan --}}
+        @if($patient->locationLogs->isNotEmpty())
+            <div class="col-12">
+                <div class="card card-animate">
+                    <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-map-pin-user-line align-bottom me-1 text-info"></i>
+                            Riwayat Lokasi Perawatan
+                        </h5>
+                        <span class="badge bg-info-subtle text-info">{{ $patient->locationLogs->count() }} perpindahan</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 align-middle">
+                                <thead>
+                                    <tr>
+                                        <th class="text-muted">Waktu</th>
+                                        <th class="text-muted">Dari</th>
+                                        <th class="text-muted">Ke</th>
+                                        <th class="text-muted">Bed</th>
+                                        <th class="text-muted">Catatan</th>
+                                        <th class="text-muted">Petugas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($patient->locationLogs as $log)
+                                        <tr>
+                                            <td><small class="text-muted">{{ $log->recorded_at?->format('d M Y H:i') ?? '-' }}</small></td>
+                                            <td><small>{{ $log->from_label }}</small></td>
+                                            <td>
+                                                <span class="badge bg-{{ \App\Models\Uks\UksPatient::$careLocationColors[$log->to_location] ?? 'secondary' }}-subtle text-{{ \App\Models\Uks\UksPatient::$careLocationColors[$log->to_location] ?? 'secondary' }}">
+                                                    {{ $log->to_label }}
+                                                </span>
+                                            </td>
+                                            <td><small>{{ $log->bed?->bed_number ?? '-' }}</small></td>
+                                            <td><small class="text-muted">{{ $log->notes ?? '-' }}</small></td>
+                                            <td><small>{{ $log->recordedBy?->name ?? '-' }}</small></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- Riwayat Kunjungan UKS --}}
         @if($previousPatients->isNotEmpty())
             <div class="col-12">
@@ -452,16 +520,14 @@
                     <div class="card-body">
                         <div class="d-flex flex-wrap gap-2">
                             @foreach($actions as $action)
-                                <form action="{{ route('user.uks.patients.change-status', ['userId' => auth()->user()->id, 'uuid' => $patient->id]) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('{{ $action['confirm'] }}')">
-                                    @csrf
-                                    <input type="hidden" name="new_status" value="{{ $action['status'] }}">
-                                    <button type="submit" class="btn btn-{{ $action['color'] }} btn-sm">
-                                        <i class="{{ $action['icon'] }} me-1"></i>
-                                        {{ $action['label'] }}
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        class="btn btn-{{ $action['color'] }} btn-sm btn-patient-status"
+                                        data-bs-toggle="modal" data-bs-target="#patientStatusModal"
+                                        data-status="{{ $action['status'] }}"
+                                        data-label="{{ $action['label'] }}">
+                                    <i class="{{ $action['icon'] }} me-1"></i>
+                                    {{ $action['label'] }}
+                                </button>
                             @endforeach
                         </div>
                     </div>
@@ -488,6 +554,10 @@
                             <a href="{{ route('user.uks.patients.index', ['userId' => auth()->user()->id]) }}" class="btn btn-light">
                                 <i class="ri-arrow-left-line align-bottom me-1"></i> Kembali
                             </a>
+                            <a href="{{ route('user.uks.clinic.workspace', ['userId' => auth()->user()->id, 'uuid' => $patient->id]) }}"
+                               class="btn btn-success">
+                                <i class="ri-stethoscope-line align-bottom me-1"></i> Lembar Pemeriksaan
+                            </a>
                             <a href="{{ route('user.uks.treatment-status.show', ['userId' => auth()->user()->id, 'uuid' => $patient->id]) }}"
                                class="btn btn-primary">
                                 <i class="ri-pulse-line align-bottom me-1"></i> Status Perawatan
@@ -498,4 +568,45 @@
             </div>
         </div>
     </div>
+
+    {{-- MODAL: UBAH STATUS PASIEN --}}
+    <div class="modal fade" id="patientStatusModal" tabindex="-1" aria-labelledby="patientStatusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{{ route('user.uks.patients.change-status', ['userId' => auth()->id(), 'uuid' => $patient->id]) }}">
+                @csrf
+                <input type="hidden" name="new_status" id="patientStatusValue" value="">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="patientStatusModalLabel"><i class="ri-refresh-line me-2 text-warning"></i>Tindakan Status</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">Pasien: <strong>{{ $patient->student?->name ?? '-' }}</strong></p>
+                        <p>Tindakan: <strong id="patientStatusActionLabel">-</strong></p>
+                        <div>
+                            <label class="form-label">Catatan / Alasan</label>
+                            <textarea name="notes" rows="3" class="form-control" placeholder="Opsional..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Status</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.btn-patient-status').forEach(function (button) {
+        button.addEventListener('click', function () {
+            document.getElementById('patientStatusValue').value = this.dataset.status || '';
+            document.getElementById('patientStatusActionLabel').textContent = this.dataset.label || '-';
+        });
+    });
+});
+</script>
+@endpush

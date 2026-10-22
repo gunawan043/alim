@@ -1,127 +1,47 @@
-@php
-    $cameraUser = auth()->user();
-    $cameraUnitName = $cameraUser?->primaryWorkUnit?->workUnit?->name
-        ?? $cameraUser?->gtkWorkUnits?->first()?->workUnit?->name
-        ?? 'Ponpes Abu Hurairah';
-@endphp
-<style>
-    #alimCameraModal .modal-content { height: 100vh; background: #000; border: 0; }
-    .alim-camera-stage { position: relative; width: 100%; height: 100vh; overflow: hidden; background: #000; }
-    #alimCameraPreview { position: relative; width: 100%; height: 100%; margin: 0 auto; overflow: hidden; background: #000; transition: width .2s ease; }
-    #alimCameraPreview[data-orientation="portrait"] { width: min(100vw, calc(100vh * 9 / 16)); height: 100vh; aspect-ratio: 9 / 16; }
-    #alimCameraPreview video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .alim-live-overlay { position: absolute; left: 16px; right: 16px; bottom: 110px; z-index: 3; padding: 16px; border: 1px solid rgba(255,255,255,.28); border-radius: 16px; background: rgba(5,20,27,.34); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: #fff; box-shadow: 0 12px 35px rgba(0,0,0,.25); }
-    .alim-live-overlay .live-brand { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:11px; letter-spacing:.02em; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.18); }
-    .alim-live-overlay .live-unit-name { font-size:10px; font-weight:700; max-width:58%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .alim-location-override input { min-width:170px; max-width:260px; background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#fff; font-size:11px; }
-    .alim-location-override .btn { background:rgba(0,0,0,.55); border-color:rgba(255,255,255,.35); color:#FFD400; }
-    .alim-location-override input::placeholder { color:rgba(255,255,255,.65); }
-    .alim-camera-map { position:absolute; inset:0; z-index:30; display:none; flex-direction:column; background:#0b141a; color:#fff; }
-    .alim-camera-map.is-open { display:flex; }
-    .alim-map-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; background:rgba(0,0,0,.78); border-bottom:1px solid rgba(255,255,255,.12); z-index:2; }
-    .alim-map-hint { font-size:11px; color:rgba(255,255,255,.72); }
-    .alim-map-body { position:relative; flex:1; min-height:0; }
-    #alimMapCanvas { position:absolute; inset:0; }
-    .alim-map-center { position:absolute; left:50%; top:50%; transform:translate(-50%,-100%); z-index:500; pointer-events:none; color:#FFD400; font-size:40px; line-height:1; text-shadow:0 4px 10px rgba(0,0,0,.6); }
-    .alim-map-center::after { content:''; position:absolute; left:50%; bottom:-3px; width:10px; height:4px; border-radius:50%; background:rgba(0,0,0,.45); transform:translateX(-50%); }
-    .alim-map-footer { display:flex; justify-content:space-between; gap:10px; padding:10px 16px; background:rgba(0,0,0,.78); font-size:11px; color:rgba(255,255,255,.75); z-index:2; }
-    .alim-capture-review { position:absolute; inset:0; z-index:50; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(3,12,18,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-    .alim-capture-review.is-open { display:flex; }
-    .alim-review-card { width:min(100%,430px); max-height:calc(100vh - 32px); overflow:auto; background:#fff; color:#1b2b33; border-radius:18px; padding:16px; box-shadow:0 24px 70px rgba(0,0,0,.45); }
-    .alim-review-card h6 { font-weight:800; margin:0; }
-    #alimCapturePreview { display:block; width:100%; max-height:56vh; object-fit:contain; background:#000; border-radius:12px; margin:12px 0 10px; }
-    .alim-review-status { font-size:12px; line-height:1.35; color:#52646d; }
-    .alim-review-actions { display:flex; gap:8px; margin-top:12px; }
-    .alim-review-actions .btn { flex:1; }
-    @media (max-width:576px) { .alim-capture-review { padding:10px; } .alim-review-card { padding:13px; } }
-    @media (max-width: 576px) { .alim-location-override input { min-width:140px; max-width:180px; } .alim-map-toolbar { align-items:flex-start; flex-direction:column; } }
-    .alim-live-overlay .live-date { display:flex; align-items:baseline; gap:8px; margin-top:10px; }
-    .alim-live-overlay .live-day { font-size:30px; font-weight:900; color:#FFD400; line-height:1; }
-    .alim-live-overlay .live-month { font-size:12px; font-weight:700; }
-    .alim-live-overlay .live-title { font-size:22px; font-weight:800; line-height:1.1; margin-top:4px; }
-    .alim-live-overlay .live-title span { color:#FFD400; }
-    .alim-live-overlay .live-subtitle { font-size:10px; opacity:.82; }
-    .alim-live-overlay .live-location { display:flex; gap:7px; align-items:flex-start; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.16); cursor:pointer; }
-    .alim-live-overlay .live-location:active { opacity:.75; }
-    .alim-live-overlay .live-location i { color:#FFD400; font-size:15px; }
-    .alim-live-overlay .live-place { font-size:12px; font-weight:700; line-height:1.2; }
-    .alim-live-overlay .live-coords { font-size:9px; opacity:.72; margin-top:2px; }
-    .alim-live-overlay .live-footer { display:flex; justify-content:space-between; gap:8px; margin-top:9px; padding-top:8px; border-top:1px solid rgba(255,255,255,.16); font-size:9px; }
-    .alim-live-overlay .live-footer .copyright { color:#FFD400; font-weight:700; text-align:right; }
-    .alim-camera-topbar { position:absolute; inset:0 0 auto 0; z-index:4; display:flex; justify-content:space-between; align-items:flex-start; padding:14px; background:linear-gradient(to bottom, rgba(0,0,0,.65), transparent); }
-    .alim-camera-close { width:40px; height:40px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; border:1px solid rgba(255,255,255,.35); }
-    .alim-camera-orientation { background:rgba(0,0,0,.48); border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:4px; }
-    .alim-camera-orientation .btn { border:0; color:#fff; font-size:11px; }
-    .alim-camera-orientation .btn-check:checked + .btn { background:#FFD400; color:#111; }
-    .alim-camera-bottombar { position:absolute; left:0; right:0; bottom:0; z-index:5; display:flex; align-items:center; justify-content:center; padding:14px 18px 24px; background:linear-gradient(to top, rgba(0,0,0,.8), transparent); }
-    .alim-shutter { width:72px; height:72px; border-radius:50%; border:5px solid rgba(255,255,255,.9); background:#fff; box-shadow:0 0 0 5px rgba(0,0,0,.25); transition:transform .15s; }
-    .alim-shutter:active { transform:scale(.94); }
-    .alim-camera-hint { position:absolute; bottom:104px; left:0; right:0; text-align:center; color:#fff; font-size:11px; opacity:.85; z-index:5; }
-    #alimCameraError { position:absolute; left:16px; right:16px; bottom:158px; z-index:6; }
-    @media (max-width: 576px) { .alim-live-overlay { left:10px; right:10px; bottom:100px; padding:12px; } .alim-live-overlay .live-day { font-size:25px; } .alim-live-overlay .live-title { font-size:19px; } .alim-live-overlay .live-footer { font-size:8px; } }
-</style>
+
 <div class="modal fade" id="alimCameraModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="alim-camera-stage">
-                <div id="alimCameraPreview" class="alim-camera-preview" data-orientation="auto">
-                    <video id="alimCameraVideo" autoplay playsinline muted></video>
-                    <div class="alim-live-overlay">
-                        <div class="live-brand"><span class="d-flex align-items-center gap-2 min-w-0"><img src="{{ asset('build/images/alim-light.png') }}" alt="ALIM" style="height:24px;width:auto"><span class="live-unit-name" title="{{ $cameraUnitName }}">{{ $cameraUnitName }}</span></span><span id="alimLiveTime">WITA --.--</span></div>
-                        <div class="live-date"><span class="live-day" id="alimLiveDay">--</span><span class="live-month" id="alimLiveMonthYear">--- ----</span></div>
-                        <div class="live-title">Dokumentasi<span>.</span></div>
-                        <div class="live-subtitle" id="alimLivePageTitle">Kamera Dokumentasi</div>
-                        <div class="live-location" id="alimLiveLocation" role="button" tabindex="0" title="Klik untuk memilih titik lokasi di peta"><i class="ri-map-pin-2-fill"></i><div class="min-w-0"><div class="live-place" id="alimLivePlace">Meminta lokasi…</div><div class="live-coords" id="alimLiveCoords">Koordinat belum tersedia</div></div></div>
-                        <div class="live-footer"><span>Oleh: <strong>{{ auth()->user()->name ?? 'Pengguna ALIM' }}</strong></span><span class="copyright">© Ponpes Abu Hurairah</span></div>
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="ri-camera-line me-1"></i> Ambil Foto Bukti
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="alert alert-light border small mb-2">
+                    <i class="ri-map-pin-line me-1"></i>
+                    <span id="alimCameraLocation">Meminta titik koordinat…</span>
+                    <div class="mt-1">
+                        <i class="ri-time-line me-1"></i>
+                        <span id="alimCameraClock">WITA</span>
                     </div>
                 </div>
-                <div class="alim-camera-topbar">
-                    <button type="button" class="btn alim-camera-close" data-bs-dismiss="modal" aria-label="Tutup"><i class="ri-close-line fs-5"></i></button>
-                    <div class="d-flex flex-column align-items-end gap-2">
-                        <div class="btn-group btn-group-sm alim-camera-orientation" role="group" aria-label="Orientasi foto">
-                            <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationAuto" value="auto" checked>
-                            <label class="btn btn-sm" for="alimOrientationAuto">Otomatis</label>
-                            <input type="radio" class="btn-check" name="alimCameraOrientation" id="alimOrientationPortrait" value="portrait">
-                            <label class="btn btn-sm" for="alimOrientationPortrait">9:16</label>
-                        </div>
-                        <div class="alim-location-override d-flex gap-1"><input id="alimLocationOverride" class="form-control form-control-sm" placeholder="Koreksi nama lokasi…" aria-label="Koreksi nama lokasi"><button type="button" id="alimLocationMap" class="btn btn-dark btn-sm flex-shrink-0" title="Pilih titik di peta"><i class="ri-map-pin-line"></i></button><button type="button" id="alimLocationRefresh" class="btn btn-dark btn-sm flex-shrink-0" title="Perbarui lokasi"><i class="ri-refresh-line"></i></button></div>
+
+                <video
+                    id="alimCameraVideo"
+                    autoplay
+                    playsinline
+                    muted
+                    style="width:100%;max-height:55vh;object-fit:cover;background:#000;border-radius:.75rem"
+                ></video>
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                    <small class="text-muted">
+                        Foto diberi watermark lokasi, koordinat, waktu WITA,
+                        dan copyright Ponpes Abu Hurairah.
+                    </small>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                            Batal
+                        </button>
+                        <button type="button" class="btn btn-success" id="alimCameraCapture">
+                            <i class="ri-camera-line me-1"></i> Ambil Foto
+                        </button>
                     </div>
                 </div>
-                <div id="alimCameraMapPicker" class="alim-camera-map" aria-hidden="true">
-                    <div class="alim-map-toolbar">
-                        <div>
-                            <div class="fw-bold">Pilih titik lokasi</div>
-                            <div class="alim-map-hint">Geser dan zoom peta sampai pin tepat di lokasi Anda.</div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" id="alimMapCancel" class="btn btn-sm btn-light">Batal</button>
-                            <button type="button" id="alimMapConfirm" class="btn btn-sm btn-warning fw-bold">Gunakan titik</button>
-                        </div>
-                    </div>
-                    <div class="alim-map-body">
-                        <div id="alimMapCanvas"></div>
-                        <div class="alim-map-center"><i class="ri-map-pin-5-fill"></i></div>
-                    </div>
-                    <div class="alim-map-footer"><span id="alimMapCoords">-</span><span>© OpenStreetMap</span></div>
-                </div>
-                <div id="alimCaptureReview" class="alim-capture-review" aria-hidden="true">
-                    <div class="alim-review-card">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6><i class="ri-checkbox-circle-line me-1 text-success"></i>Hasil Foto</h6>
-                            <button type="button" class="btn-close" id="alimReviewClose" aria-label="Tutup pratinjau"></button>
-                        </div>
-                        <img id="alimCapturePreview" alt="Pratinjau foto yang akan digunakan">
-                        <div class="alim-review-status" id="alimCaptureStatus">Foto sedang diproses…</div>
-                        <div class="mt-2"><a id="alimReviewDownload" class="small text-primary" href="#" download><i class="ri-download-2-line me-1"></i>Unduh foto</a></div>
-                        <div class="alim-review-actions">
-                            <button type="button" class="btn btn-light" id="alimReviewRetake"><i class="ri-refresh-line me-1"></i>Ambil Ulang</button>
-                            <button type="button" class="btn btn-warning fw-bold" id="alimReviewUse"><i class="ri-check-line me-1"></i>Gunakan Foto</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="alimCameraError" class="alert alert-danger small d-none"></div>
-                <div class="alim-camera-hint">Arahkan kamera ke objek · watermark tampil langsung di layar</div>
-                <div class="alim-camera-bottombar"><button type="button" class="alim-shutter" id="alimCameraCapture" aria-label="Ambil foto"></button></div>
             </div>
         </div>
     </div>
@@ -129,759 +49,597 @@
 
 <script>
 (function () {
+    'use strict';
+
     if (window.AlimCamera) return;
 
     const modalEl = document.getElementById('alimCameraModal');
     if (!modalEl) return;
+
     const video = document.getElementById('alimCameraVideo');
-    const previewEl = document.getElementById('alimCameraPreview');
-    const livePlaceEl = document.getElementById('alimLivePlace');
-    const liveCoordsEl = document.getElementById('alimLiveCoords');
-    const liveTimeEl = document.getElementById('alimLiveTime');
-    const liveDayEl = document.getElementById('alimLiveDay');
-    const liveMonthYearEl = document.getElementById('alimLiveMonthYear');
-    const livePageTitleEl = document.getElementById('alimLivePageTitle');
+    const locationEl = document.getElementById('alimCameraLocation');
+    const clockEl = document.getElementById('alimCameraClock');
     const captureBtn = document.getElementById('alimCameraCapture');
-    const errorEl = document.getElementById('alimCameraError');
-    let stream = null, targetInput = null, targetPreview = null, coords = null, placeName = null, manualPlace = '', placePromise = null, clockTimer = null;
-    let locationWatchId = null, locationStopTimer = null, geocodeTimer = null, geocodeSeq = 0, lastGeocodeAccuracy = null;
-    let manualCoordinate = false, mapInstance = null, leafletPromise = null;
-    let lastCapturedBlob = null, lastCapturedUrl = null, lastCaptureAttached = false;
-    const PRECISE_ACCURACY_METERS = 100;
-    const accountName = @json(auth()->user()->name ?? 'Pengguna ALIM');
-    const unitName = @json($cameraUnitName);
-    const locationOverrideEl = document.getElementById('alimLocationOverride');
-    const locationRefreshBtn = document.getElementById('alimLocationRefresh');
-    const locationMapBtn = document.getElementById('alimLocationMap');
-    const mapPickerEl = document.getElementById('alimCameraMapPicker');
-    const mapCanvasEl = document.getElementById('alimMapCanvas');
-    const mapCoordsEl = document.getElementById('alimMapCoords');
-    const mapCancelBtn = document.getElementById('alimMapCancel');
-    const mapConfirmBtn = document.getElementById('alimMapConfirm');
-    const reviewEl = document.getElementById('alimCaptureReview');
-    const reviewImg = document.getElementById('alimCapturePreview');
-    const reviewStatus = document.getElementById('alimCaptureStatus');
-    const reviewDownload = document.getElementById('alimReviewDownload');
-    const reviewRetakeBtn = document.getElementById('alimReviewRetake');
-    const reviewUseBtn = document.getElementById('alimReviewUse');
-    const reviewCloseBtn = document.getElementById('alimReviewClose');
-    const geocodeEndpoint = @json(route('sarpras.camera.geocode'));
-    const leafletCssUrl = @json(asset('build/libs/leaflet/leaflet.css'));
-    const leafletJsUrl = @json(asset('build/libs/leaflet/leaflet.js'));
+
+    let stream = null;
+    let targetInput = null;
+    let targetPreview = null;
+    let coords = null;
+    let locationName = 'Lokasi tidak tersedia';
+    let clockTimer = null;
+    let locationRequestId = 0;
+    let locationPromise = Promise.resolve();
+    let startingCamera = false;
+
+    const TIME_ZONE = 'Asia/Makassar';
+    const COPYRIGHT = 'Copyright © Ponpes Abu Hurairah';
+    const MAX_WIDTH = 1600;
+
     const logo = new Image();
     logo.src = '{{ asset('build/images/alim-light.png') }}';
 
-    // Bootstrap data-api menutup modal yang sedang terbuka saat tombol
-    // [data-bs-toggle="modal"] diklik. Itu membuat modal "Isi Keterangan &
-    // Bukti" ikut tertutup ketika kamera dibuka. Tangkap klik lebih dulu dan
-    // buka kamera secara programatik agar modal induk tetap terbuka.
-    document.addEventListener('click', function (event) {
-        var trigger = event.target && event.target.closest
-            ? event.target.closest('[data-bs-toggle="modal"][data-bs-target="#alimCameraModal"]')
-            : null;
-        if (!trigger) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        targetInput = trigger.dataset.target;
-        targetPreview = trigger.dataset.preview;
-        bootstrap.Modal.getOrCreateInstance(modalEl).show(trigger);
-    }, true);
+    logo.onerror = function () {
+        // Watermark tetap berjalan meskipun logo tidak tersedia.
+    };
 
-    if (locationOverrideEl) {
-        locationOverrideEl.addEventListener('input', function () {
-            manualPlace = this.value.trim();
-            renderLocation();
-        });
-    }
+    function formatDateParts(date) {
+        const parts = new Intl.DateTimeFormat('id-ID', {
+            timeZone: TIME_ZONE,
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        }).formatToParts(date);
 
-    if (locationRefreshBtn) {
-        locationRefreshBtn.addEventListener('click', requestLocation);
-    }
+        const get = type =>
+            parts.find(part => part.type === type)?.value || '';
 
-    if (locationMapBtn) {
-        locationMapBtn.addEventListener('click', openMapPicker);
-    }
-    const liveLocationEl = document.getElementById('alimLiveLocation');
-    if (liveLocationEl) {
-        liveLocationEl.addEventListener('click', openMapPicker);
-        liveLocationEl.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                openMapPicker();
-            }
-        });
-    }
-    if (mapCancelBtn) {
-        mapCancelBtn.addEventListener('click', closeMapPicker);
-    }
-    if (mapConfirmBtn) {
-        mapConfirmBtn.addEventListener('click', confirmMapPoint);
-    }
-    if (reviewRetakeBtn) {
-        reviewRetakeBtn.addEventListener('click', retakePhoto);
-    }
-    if (reviewUseBtn) {
-        reviewUseBtn.addEventListener('click', useCapturedPhoto);
-    }
-    if (reviewCloseBtn) {
-        reviewCloseBtn.addEventListener('click', hideCaptureReview);
+        return {
+            day: get('day'),
+            month: get('month'),
+            year: get('year')
+        };
     }
 
     function updateClock() {
-        const now = new Date();
-        const timeZone = 'Asia/Makassar';
-        liveTimeEl.textContent = 'WITA ' + new Intl.DateTimeFormat('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replace(':', '.');
-        liveDayEl.textContent = new Intl.DateTimeFormat('id-ID', { timeZone, day: '2-digit' }).format(now);
-        liveMonthYearEl.textContent = new Intl.DateTimeFormat('id-ID', { timeZone, month: 'long', year: 'numeric' }).format(now).toUpperCase();
+        clockEl.textContent =
+            new Intl.DateTimeFormat('id-ID', {
+                timeZone: TIME_ZONE,
+                dateStyle: 'medium',
+                timeStyle: 'medium'
+            }).format(new Date()) + ' WITA';
     }
 
-    function formatDistance(meters) {
-        if (!Number.isFinite(meters)) return '-';
-        return meters >= 1000 ? (meters / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(meters) + ' m';
-    }
+    function updateLocationDisplay() {
+        if (!coords) return;
 
-    function renderLocation() {
-        const isPrecise = coords && (coords.manual || coords.accuracy <= PRECISE_ACCURACY_METERS);
-        if (manualPlace) {
-            livePlaceEl.textContent = manualPlace;
-        } else if (!coords) {
-            livePlaceEl.textContent = 'Lokasi tidak tersedia';
-        } else if (coords.manual) {
-            livePlaceEl.textContent = placeName || 'Titik manual terpilih';
-        } else if (!isPrecise) {
-            // Jangan tampilkan nama tempat dari titik yang masih kasar; nama itu
-            // bisa berasal dari WiFi/IP dan meleset jauh dari lokasi sebenarnya.
-            livePlaceEl.textContent = `Lokasi belum presisi (±${formatDistance(coords.accuracy)}) · pilih titik di peta`;
-        } else {
-            livePlaceEl.textContent = placeName || 'Nama lokasi tidak tersedia';
-        }
+        const accuracy = Math.round(coords.accuracy);
 
-        if (!coords) {
-            liveCoordsEl.textContent = 'Koordinat belum tersedia';
-            return;
-        }
-
-        const accuracyText = coords.manual ? 'titik manual' : `±${formatDistance(coords.accuracy)}`;
-        const approximateText = !coords.manual && coords.accuracy > PRECISE_ACCURACY_METERS ? ' · perkiraan jaringan' : '';
-        liveCoordsEl.textContent = `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ${accuracyText}${approximateText}`;
-    }
-
-    async function resolvePlaceName(lat, lng, accuracy) {
-        // Jangan memberi nama dari titik yang masih kasar.
-        if (accuracy != null && accuracy > PRECISE_ACCURACY_METERS) return null;
-
-        // Proxy backend: menghindari CORS Nominatim.
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 5000);
-        try {
-            var response = await fetch(geocodeEndpoint + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng) + '&accuracy=' + encodeURIComponent(accuracy == null ? '' : accuracy), {
-                headers: { 'Accept': 'application/json' },
-                signal: controller.signal
-            });
-            if (response.ok) {
-                var payload = await response.json();
-                if (payload.place) return payload.place;
-                // Jangan jatuh ke geocoder kota bila backend menolak karena
-                // titik GPS masih kasar.
-                if (payload.reason === 'accuracy_too_low') return null;
-            }
-        } catch (error) {
-            // lanjut ke fallback
-        } finally {
-            clearTimeout(timer);
-        }
-
-        // Fallback BigDataCloud (CORS aktif, tanpa API key).
-        try {
-            var fallback = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + encodeURIComponent(lat) + '&longitude=' + encodeURIComponent(lng) + '&localityLanguage=id');
-            if (fallback.ok) {
-                var place = await fallback.json();
-                var names = [place.locality || place.city, place.principalSubdivision, place.countryName].filter(Boolean);
-                if (names.length) return names.join(', ');
-            }
-        } catch (error) {
-            // abaikan, watermark tetap memakai koordinat
-        }
-
-        return null;
-    }
-
-    function loadLeaflet() {
-        if (window.L) return Promise.resolve(window.L);
-        if (leafletPromise) return leafletPromise;
-
-        leafletPromise = new Promise(function (resolve, reject) {
-            if (!document.querySelector('link[data-alim-leaflet]')) {
-                var css = document.createElement('link');
-                css.rel = 'stylesheet';
-                css.href = leafletCssUrl;
-                css.setAttribute('data-alim-leaflet', '1');
-                document.head.appendChild(css);
-            }
-
-            var existing = document.querySelector('script[data-alim-leaflet]');
-            if (existing) {
-                existing.addEventListener('load', function () { window.L ? resolve(window.L) : reject(new Error('Leaflet tidak tersedia')); });
-                existing.addEventListener('error', reject);
-                return;
-            }
-
-            var script = document.createElement('script');
-            script.src = leafletJsUrl;
-            script.async = true;
-            script.setAttribute('data-alim-leaflet', '1');
-            script.onload = function () { window.L ? resolve(window.L) : reject(new Error('Leaflet tidak tersedia')); };
-            script.onerror = function () { reject(new Error('Gagal memuat peta')); };
-            document.head.appendChild(script);
-        });
-
-        return leafletPromise;
-    }
-
-    function updateMapCoords() {
-        if (!mapInstance || !mapCoordsEl) return;
-        var center = mapInstance.getCenter();
-        mapCoordsEl.textContent = center.lat.toFixed(6) + ', ' + center.lng.toFixed(6);
-    }
-
-    function openMapPicker() {
-        if (!mapPickerEl || !mapCanvasEl) return;
-        mapPickerEl.classList.add('is-open');
-        mapPickerEl.setAttribute('aria-hidden', 'false');
-
-        loadLeaflet().then(function () {
-            var start = coords ? [coords.lat, coords.lng] : [-8.5833, 116.1167];
-            if (!mapInstance) {
-                mapInstance = L.map(mapCanvasEl, { zoomControl: true, attributionControl: false }).setView(start, 18);
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '© OpenStreetMap'
-                }).addTo(mapInstance);
-                mapInstance.on('move', updateMapCoords);
-            } else {
-                mapInstance.setView(start, Math.max(mapInstance.getZoom() || 17, 17));
-            }
-            setTimeout(function () {
-                mapInstance.invalidateSize();
-                updateMapCoords();
-            }, 80);
-        }).catch(function () {
-            closeMapPicker();
-            if (errorEl) {
-                errorEl.textContent = 'Peta gagal dimuat. Periksa koneksi internet lalu coba lagi.';
-                errorEl.classList.remove('d-none');
-            }
-        });
-    }
-
-    function closeMapPicker() {
-        if (!mapPickerEl) return;
-        mapPickerEl.classList.remove('is-open');
-        mapPickerEl.setAttribute('aria-hidden', 'true');
-    }
-
-    function confirmMapPoint() {
-        if (!mapInstance) return;
-        var center = mapInstance.getCenter();
-        coords = { lat: center.lat, lng: center.lng, accuracy: 10, manual: true };
-        manualCoordinate = true;
-        stopLocationWatch();
-        if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
-        placeName = null;
-        manualPlace = '';
-        lastGeocodeAccuracy = null;
-        if (locationOverrideEl) locationOverrideEl.value = '';
-        renderLocation();
-        livePlaceEl.textContent = 'Mencari nama lokasi…';
-        queueGeocode(center.lat, center.lng, 10, true);
-        closeMapPicker();
-    }
-
-    function stopLocationWatch() {
-        if (locationWatchId !== null && navigator.geolocation) {
-            navigator.geolocation.clearWatch(locationWatchId);
-            locationWatchId = null;
-        }
-        if (locationStopTimer) { clearTimeout(locationStopTimer); locationStopTimer = null; }
-    }
-
-    function queueGeocode(lat, lng, accuracy, force) {
-        if (!force && accuracy != null && accuracy > PRECISE_ACCURACY_METERS) {
-            placeName = null;
-            renderLocation();
-            return;
-        }
-        if (geocodeTimer) clearTimeout(geocodeTimer);
-        const seq = ++geocodeSeq;
-        placePromise = new Promise(function (resolve) {
-            geocodeTimer = setTimeout(function () {
-                resolvePlaceName(lat, lng, accuracy).then(function (name) {
-                    if (seq === geocodeSeq) {
-                        placeName = name;
-                        renderLocation();
-                    }
-                    resolve(name);
-                }).catch(function () {
-                    resolve(null);
-                });
-            }, 700);
-        });
+        locationEl.textContent =
+            `${locationName} · ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} (±${accuracy} m)`;
     }
 
     function requestLocation() {
-        coords = null;
-        placeName = null;
-        manualPlace = '';
-        manualCoordinate = false;
-        lastGeocodeAccuracy = null;
-        if (locationOverrideEl) locationOverrideEl.value = '';
-        placePromise = null;
-        stopLocationWatch();
-        if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
-        livePlaceEl.textContent = 'Menyempurnakan lokasi…';
-        liveCoordsEl.textContent = 'Mengambil beberapa titik GPS…';
-        if (!navigator.geolocation) { livePlaceEl.textContent = 'GPS tidak tersedia'; return; }
+        const requestId = ++locationRequestId;
 
-        // Ambil beberapa sampel, pakai accuracy terkecil (paling presisi).
-        locationWatchId = navigator.geolocation.watchPosition(
-            function (position) {
-                if (manualCoordinate) return;
-                const next = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    accuracy: position.coords.accuracy
-                };
-                if (!coords || next.accuracy < coords.accuracy) {
-                    coords = next;
-                    if (next.accuracy <= PRECISE_ACCURACY_METERS) {
-                        if (lastGeocodeAccuracy === null || next.accuracy + 15 < lastGeocodeAccuracy) {
-                            lastGeocodeAccuracy = next.accuracy;
-                            livePlaceEl.textContent = 'Mencari nama lokasi…';
-                            queueGeocode(next.lat, next.lng, next.accuracy);
-                        } else {
-                            renderLocation();
-                        }
-                    } else {
-                        placeName = null;
-                        renderLocation();
+        coords = null;
+        locationName = 'Nama lokasi belum tersedia';
+        locationEl.textContent = 'Meminta titik koordinat…';
+
+        if (!navigator.geolocation) {
+            locationName = 'GPS tidak tersedia';
+            locationEl.textContent = locationName;
+            return Promise.resolve();
+        }
+
+        locationPromise = new Promise(resolve => {
+            navigator.geolocation.getCurrentPosition(
+                async function (position) {
+                    if (requestId !== locationRequestId) {
+                        resolve();
+                        return;
                     }
+
+                    coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+
+                    locationName = 'Mencari nama lokasi…';
+                    updateLocationDisplay();
+
+                    try {
+                        const url = new URL(
+                            'https://nominatim.openstreetmap.org/reverse'
+                        );
+
+                        url.search = new URLSearchParams({
+                            format: 'jsonv2',
+                            lat: String(coords.lat),
+                            lon: String(coords.lng),
+                            zoom: '16',
+                            'accept-language': 'id'
+                        }).toString();
+
+                        const response = await fetch(url.toString(), {
+                            headers: {
+                                Accept: 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Reverse geocoding gagal');
+                        }
+
+                        const data = await response.json();
+
+                        if (requestId !== locationRequestId) {
+                            resolve();
+                            return;
+                        }
+
+                        const address = data.address || {};
+
+                        const locality =
+                            address.village ||
+                            address.suburb ||
+                            address.neighbourhood ||
+                            address.quarter ||
+                            address.town ||
+                            address.city ||
+                            address.municipality ||
+                            address.county ||
+                            '';
+
+                        const region =
+                            address.city_district ||
+                            address.state_district ||
+                            address.state ||
+                            '';
+
+                        locationName = [
+                            locality,
+                            region
+                        ].filter(Boolean).filter((value, index, array) =>
+                            array.indexOf(value) === index
+                        ).join(', ') || data.name || 'Lokasi tidak diketahui';
+
+                    } catch (error) {
+                        locationName = 'Nama lokasi tidak tersedia';
+                    }
+
+                    updateLocationDisplay();
+                    resolve();
+                },
+                function () {
+                    if (requestId === locationRequestId) {
+                        coords = null;
+                        locationName = 'Lokasi tidak tersedia';
+                        locationEl.textContent =
+                            'Koordinat tidak diizinkan/tidak tersedia';
+                    }
+
+                    resolve();
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
                 }
-                if (next.accuracy <= 20) {
-                    stopLocationWatch();
-                }
-            },
-            function () {
-                livePlaceEl.textContent = 'Lokasi tidak diizinkan';
-                liveCoordsEl.textContent = 'Koordinat tidak tersedia';
-                stopLocationWatch();
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-        locationStopTimer = setTimeout(stopLocationWatch, 8000);
+            );
+        });
+
+        return locationPromise;
     }
 
     async function startCamera() {
-        hideCaptureReview();
-        if (captureBtn) captureBtn.disabled = false;
-        if (errorEl) { errorEl.classList.add('d-none'); errorEl.textContent = ''; }
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            if (errorEl) { errorEl.textContent = 'Browser tidak mendukung kamera. Gunakan HTTPS atau buka di Chrome/Safari terbaru.'; errorEl.classList.remove('d-none'); }
-            return;
-        }
+        if (startingCamera || stream) return;
+
+        startingCamera = true;
+        captureBtn.disabled = true;
+
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error(
+                    'Browser tidak mendukung kamera. Gunakan HTTPS atau localhost.'
+                );
+            }
+
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1600 },
+                    height: { ideal: 1200 }
+                },
+                audio: false
+            });
+
             video.srcObject = stream;
             await video.play();
-            updatePreviewRatio();
-            requestLocation();
+
             updateClock();
-            livePageTitleEl.textContent = (document.title || 'Kamera Dokumentasi').split('|')[0].trim();
             clockTimer = setInterval(updateClock, 1000);
+
+            requestLocation();
+
+            captureBtn.disabled = false;
         } catch (error) {
-            if (errorEl) { errorEl.textContent = 'Kamera tidak dapat dibuka: ' + error.message + '. Pastikan izin kamera aktif dan koneksi HTTPS.'; errorEl.classList.remove('d-none'); }
+            stopCamera();
+
+            alert(
+                'Kamera tidak dapat dibuka: ' +
+                error.message +
+                '. Pastikan izin kamera aktif dan koneksi menggunakan HTTPS.'
+            );
+
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        } finally {
+            startingCamera = false;
         }
     }
 
     function stopCamera() {
-        if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
-        if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
-        stopLocationWatch();
-        closeMapPicker();
-        hideCaptureReview();
-        if (geocodeTimer) { clearTimeout(geocodeTimer); geocodeTimer = null; }
+        locationRequestId++;
+
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+
+        video.srcObject = null;
+
+        if (clockTimer) {
+            clearInterval(clockTimer);
+            clockTimer = null;
+        }
+
+        captureBtn.disabled = false;
+        startingCamera = false;
     }
 
-    function selectedOrientation() {
-        return document.querySelector('input[name="alimCameraOrientation"]:checked')?.value || 'auto';
-    }
-
-    function updatePreviewRatio() {
-        if (!previewEl) return;
-        previewEl.dataset.orientation = selectedOrientation();
+    function roundedRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
     }
 
     function fitText(ctx, text, maxWidth) {
         if (ctx.measureText(text).width <= maxWidth) return text;
-        var shortened = text;
-        while (shortened.length > 4 && ctx.measureText(shortened + '…').width > maxWidth) {
-            shortened = shortened.slice(0, -1);
+
+        let result = text;
+
+        while (
+            result.length > 1 &&
+            ctx.measureText(result + '…').width > maxWidth
+        ) {
+            result = result.slice(0, -1);
         }
-        return shortened + '…';
+
+        return result + '…';
     }
 
     function drawWatermark(canvas) {
         const ctx = canvas.getContext('2d');
-        const w = canvas.width, h = canvas.height;
-        const portrait = h > w;
-        const unit = Math.max(0.78, Math.min(w / 1200, h / 900));
+        const w = canvas.width;
+        const h = canvas.height;
+        const u = Math.max(0.55, w / 1280);
         const now = new Date();
-        const timeZone = 'Asia/Makassar';
-        const day = new Intl.DateTimeFormat('id-ID', { timeZone, day: '2-digit' }).format(now);
-        const month = new Intl.DateTimeFormat('id-ID', { timeZone, month: 'long' }).format(now).toUpperCase();
-        const year = new Intl.DateTimeFormat('id-ID', { timeZone, year: 'numeric' }).format(now);
-        const time = new Intl.DateTimeFormat('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(now).replace(':', '.');
-        const pageTitle = (document.title || 'Dokumentasi Sarpras').split('|')[0].trim();
-        const locationIsPrecise = coords && (coords.manual || coords.accuracy <= PRECISE_ACCURACY_METERS);
-        const displayPlaceName = manualPlace
-            || (locationIsPrecise ? placeName : null)
-            || (coords && coords.manual ? 'Titik manual terpilih'
-                : coords && coords.accuracy > PRECISE_ACCURACY_METERS ? 'Lokasi perkiraan (±' + formatDistance(coords.accuracy) + ')'
-                : 'Nama lokasi tidak tersedia');
-        const x = Math.round(w * 0.042);
-        const panelW = Math.min(w * (portrait ? 0.86 : 0.68), 800 * unit);
-        const panelH = 300 * unit;
-        const panelY = h - panelH - Math.max(18 * unit, h * 0.025);
-        const px = x - 14 * unit;
-        const right = px + panelW - 16 * unit;
 
-        // Sedikit gradasi bawah untuk keterbacaan, tanpa menutupi foto.
-        const grad = ctx.createLinearGradient(0, h * 0.58, 0, h);
-        grad.addColorStop(0, 'rgba(0,0,0,0)');
-        grad.addColorStop(1, 'rgba(0,0,0,0.62)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, h * 0.58, w, h * 0.42);
+        const date = formatDateParts(now);
 
-        // Efek kaca: salin area belakang panel, blur, lalu beri tint transparan.
-        const glass = document.createElement('canvas');
-        glass.width = Math.ceil(panelW);
-        glass.height = Math.ceil(panelH);
-        const gctx = glass.getContext('2d');
-        if ('filter' in gctx) {
-            gctx.filter = `blur(${Math.max(8, 13 * unit)}px)`;
-        }
-        gctx.drawImage(canvas, px, panelY, panelW, panelH, 0, 0, glass.width, glass.height);
-        gctx.filter = 'none';
+        const time = new Intl.DateTimeFormat('id-ID', {
+            timeZone: TIME_ZONE,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).format(now);
 
-        const radius = 16 * unit;
-        ctx.beginPath();
-        ctx.moveTo(px + radius, panelY);
-        ctx.lineTo(px + panelW - radius, panelY);
-        ctx.quadraticCurveTo(px + panelW, panelY, px + panelW, panelY + radius);
-        ctx.lineTo(px + panelW, panelY + panelH - radius);
-        ctx.quadraticCurveTo(px + panelW, panelY + panelH, px + panelW - radius, panelY + panelH);
-        ctx.lineTo(px + radius, panelY + panelH);
-        ctx.quadraticCurveTo(px, panelY + panelH, px, panelY + panelH - radius);
-        ctx.lineTo(px, panelY + radius);
-        ctx.quadraticCurveTo(px, panelY, px + radius, panelY);
-        ctx.closePath();
+        const pageTitle = (document.title || 'Dokumentasi ALIM')
+            .split('|')[0]
+            .trim();
 
-        ctx.save();
-        ctx.clip();
-        ctx.globalAlpha = 0.82;
-        ctx.drawImage(glass, px, panelY, panelW, panelH);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = 'rgba(5, 20, 27, 0.30)';
-        ctx.fillRect(px, panelY, panelW, panelH);
-        // Kilau kaca tipis.
-        const sheen = ctx.createLinearGradient(px, panelY, px + panelW, panelY + panelH);
-        sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
-        sheen.addColorStop(0.5, 'rgba(255,255,255,0.025)');
-        sheen.addColorStop(1, 'rgba(255,255,255,0.06)');
-        ctx.fillStyle = sheen;
-        ctx.fillRect(px, panelY, panelW, panelH);
-        ctx.restore();
+        const x = w * 0.055;
+        const panelW = Math.min(w * 0.79, 700 * u);
+        const panelH = 310 * u;
+        const panelX = x - 16 * u;
+        const panelY = h - panelH - 28 * u;
+        const radius = 14 * u;
 
-        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-        ctx.lineWidth = Math.max(1, unit);
+        // Lapisan gradasi bawah untuk menjaga keterbacaan.
+        const gradient = ctx.createLinearGradient(0, h * 0.45, 0, h);
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(0.48, 'rgba(0,0,0,0.24)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.80)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, h * 0.45, w, h * 0.55);
+
+        // Panel transparan bergaya editorial.
+        roundedRect(ctx, panelX, panelY, panelW, panelH, radius);
+
+        ctx.fillStyle = 'rgba(5, 18, 22, 0.54)';
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.17)';
+        ctx.lineWidth = Math.max(1, u);
         ctx.stroke();
 
-        // Aksen kuning.
-        ctx.fillStyle = '#FFD400';
-        ctx.fillRect(px + 18 * unit, panelY, 68 * unit, 3 * unit);
-
-        // Header: logo + nama satuan kerja, waktu.
-        if (logo.complete && logo.naturalWidth > 0) {
-            const logoSize = 31 * unit;
-            ctx.drawImage(logo, x, panelY + 15 * unit, logoSize, logoSize);
-        }
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.shadowColor = 'rgba(0,0,0,0.55)';
-        ctx.shadowBlur = 7 * unit;
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `800 ${Math.round(12 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, unitName, panelW * 0.48), x + 36 * unit, panelY + 33 * unit);
-
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#FFD400';
-        ctx.font = `700 ${Math.round(12 * unit)}px Arial, sans-serif`;
-        ctx.fillText('WITA ' + time, right, panelY + 32 * unit);
-        ctx.textAlign = 'left';
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-        ctx.lineWidth = Math.max(1, unit * 0.8);
-        ctx.beginPath();
-        ctx.moveTo(x, panelY + 54 * unit);
-        ctx.lineTo(right, panelY + 54 * unit);
-        ctx.stroke();
 
         // Tanggal.
-        const dateY = panelY + 96 * unit;
-        ctx.fillStyle = '#FFD400';
-        ctx.font = `900 ${Math.round(46 * unit)}px Arial, sans-serif`;
-        ctx.fillText(day, x, dateY);
-        const dayWidth = ctx.measureText(day).width;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `700 ${Math.round(17 * unit)}px Arial, sans-serif`;
-        ctx.fillText(month + ' ' + year, x + dayWidth + 11 * unit, dateY - 2 * unit);
+        const dateY = panelY + 37 * u;
 
-        // Judul dan konteks halaman.
-        const titleY = panelY + 143 * unit;
+        ctx.fillStyle = '#FFE64D';
+        ctx.font = `900 ${Math.round(27 * u)}px Arial, sans-serif`;
+        ctx.fillText(date.day, x, dateY);
+
+        const dayWidth = ctx.measureText(date.day).width;
+
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `800 ${Math.round(32 * unit)}px Arial, sans-serif`;
-        ctx.fillText('Dokumentasi', x, titleY);
+        ctx.font = `700 ${Math.round(14 * u)}px Arial, sans-serif`;
+        ctx.fillText(
+            `${date.month.toUpperCase()} ${date.year}`,
+            x + dayWidth + 9 * u,
+            dateY
+        );
+
+        // Judul.
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `900 ${Math.round(38 * u)}px Arial, sans-serif`;
+        ctx.fillText('Dokumentasi', x, panelY + 83 * u);
+
         const titleWidth = ctx.measureText('Dokumentasi').width;
-        ctx.fillStyle = '#FFD400';
-        ctx.fillText('.', x + titleWidth + 2 * unit, titleY);
 
-        ctx.fillStyle = 'rgba(255,255,255,0.84)';
-        ctx.font = `500 ${Math.round(13 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, pageTitle, panelW - 36 * unit), x, panelY + 166 * unit);
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+        ctx.fillStyle = '#FFE64D';
         ctx.beginPath();
-        ctx.moveTo(x, panelY + 181 * unit);
-        ctx.lineTo(right, panelY + 181 * unit);
-        ctx.stroke();
-
-        // Lokasi.
-        const pinX = x + 5 * unit;
-        const pinY = panelY + 202 * unit;
-        ctx.fillStyle = '#FFD400';
-        ctx.beginPath();
-        ctx.arc(pinX, pinY, 6.5 * unit, 0, Math.PI * 2);
+        ctx.arc(
+            x + titleWidth + 6 * u,
+            panelY + 79 * u,
+            3.5 * u,
+            0,
+            Math.PI * 2
+        );
         ctx.fill();
+
+        // Keterangan halaman.
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.font = `500 ${Math.round(13 * u)}px Arial, sans-serif`;
+
+        ctx.fillText(
+            fitText(ctx, pageTitle, panelW - 45 * u),
+            x,
+            panelY + 108 * u
+        );
+
+        // Nama lokasi.
+        const locationY = panelY + 148 * u;
+
+        ctx.fillStyle = '#FFE64D';
         ctx.beginPath();
-        ctx.moveTo(pinX - 4.5 * unit, pinY + 4.5 * unit);
-        ctx.lineTo(pinX + 4.5 * unit, pinY + 4.5 * unit);
-        ctx.lineTo(pinX, pinY + 14 * unit);
-        ctx.closePath();
+        ctx.arc(x + 4 * u, locationY - 5 * u, 5 * u, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = `700 ${Math.round(14 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, displayPlaceName || 'Nama lokasi tidak tersedia', panelW - 44 * unit), x + 19 * unit, panelY + 208 * unit);
+        ctx.font = `700 ${Math.round(14 * u)}px Arial, sans-serif`;
 
-        ctx.fillStyle = 'rgba(255,255,255,0.74)';
-        ctx.font = `500 ${Math.round(10.5 * unit)}px Arial, sans-serif`;
+        const maxLocationWidth = panelW - 48 * u;
+        const place = locationName || 'Lokasi tidak tersedia';
+
+        ctx.fillText(
+            fitText(ctx, place, maxLocationWidth),
+            x + 18 * u,
+            locationY
+        );
+
+        // Koordinat GPS dan akurasi.
+        ctx.fillStyle = 'rgba(255,255,255,0.78)';
+        ctx.font = `500 ${Math.round(11 * u)}px Arial, sans-serif`;
+
         const coordinateText = coords
-            ? `Koordinat: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · `
-                + (coords.manual ? 'titik manual' : `±${formatDistance(coords.accuracy)}${coords.accuracy > PRECISE_ACCURACY_METERS ? ' · perkiraan jaringan' : ''}`)
-            : 'Koordinat tidak tersedia';
-        ctx.fillText(fitText(ctx, coordinateText, panelW - 44 * unit), x + 19 * unit, panelY + 228 * unit);
+            ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)} · ±${Math.round(coords.accuracy)} m`
+            : 'Koordinat GPS tidak tersedia';
 
-        // Footer.
-        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+        ctx.fillText(
+            fitText(ctx, coordinateText, maxLocationWidth),
+            x + 18 * u,
+            locationY + 19 * u
+        );
+
+        // Waktu.
+        ctx.fillStyle = '#FFE64D';
+        ctx.font = `700 ${Math.round(12 * u)}px Arial, sans-serif`;
+        ctx.fillText(
+            `WITA  ${time}`,
+            x + 18 * u,
+            panelY + 204 * u
+        );
+
+        // Garis pemisah.
+        ctx.strokeStyle = 'rgba(255,255,255,0.24)';
+        ctx.lineWidth = Math.max(1, u);
+
         ctx.beginPath();
-        ctx.moveTo(x, panelY + 247 * unit);
-        ctx.lineTo(right, panelY + 247 * unit);
+        ctx.moveTo(x, panelY + 224 * u);
+        ctx.lineTo(x + panelW - 36 * u, panelY + 224 * u);
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.font = `600 ${Math.round(10.5 * unit)}px Arial, sans-serif`;
-        ctx.fillText(fitText(ctx, 'Oleh: ' + accountName, panelW * 0.48), x, panelY + 270 * unit);
+        // Identitas institusi.
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `800 ${Math.round(12 * u)}px Arial, sans-serif`;
+        ctx.fillText(
+            'PONPES ABU HURAIRAH',
+            x,
+            panelY + 246 * u
+        );
 
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#FFD400';
-        ctx.font = `700 ${Math.round(10 * unit)}px Arial, sans-serif`;
-        ctx.fillText('© Ponpes Abu Hurairah', right, panelY + 270 * unit);
-        ctx.textAlign = 'left';
-        ctx.shadowBlur = 0;
-    }
+        ctx.fillStyle = 'rgba(255,255,255,0.76)';
+        ctx.font = `500 ${Math.round(10 * u)}px Arial, sans-serif`;
+        ctx.fillText(
+            COPYRIGHT,
+            x,
+            panelY + 265 * u
+        );
 
-    function attachCapturedFile(file) {
-        var input = targetInput ? document.getElementById(targetInput) : null;
-        if (!input) throw new Error('Input foto tujuan tidak ditemukan.');
-        if (typeof DataTransfer === 'undefined') throw new Error('Browser tidak mendukung pemasangan foto otomatis.');
+        // Logo ALIM di sudut kanan bawah.
+        if (logo.complete && logo.naturalWidth > 0) {
+            const logoW = 42 * u;
+            const logoH =
+                logoW * (logo.naturalHeight / logo.naturalWidth);
 
-        var dt = new DataTransfer();
-        if (input.multiple && input.files) {
-            Array.from(input.files).forEach(function (existing) { dt.items.add(existing); });
+            ctx.globalAlpha = 0.92;
+
+            ctx.drawImage(
+                logo,
+                w - logoW - 24 * u,
+                h - logoH - 24 * u,
+                logoW,
+                logoH
+            );
+
+            ctx.globalAlpha = 1;
         }
-        dt.items.add(file);
-        input.files = dt.files;
-        if (!input.files || input.files.length === 0) {
-            throw new Error('Browser menolak memasang file ke input.');
-        }
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        return input;
-    }
-
-    function showCaptureReview(blob, file, error) {
-        if (!reviewEl || !reviewImg) return;
-        lastCapturedBlob = blob;
-
-        if (lastCapturedUrl) URL.revokeObjectURL(lastCapturedUrl);
-        lastCapturedUrl = URL.createObjectURL(blob);
-        reviewImg.src = lastCapturedUrl;
-        if (reviewDownload) {
-            reviewDownload.href = lastCapturedUrl;
-            reviewDownload.download = file.name;
-        }
-
-        lastCaptureAttached = !error;
-        if (reviewUseBtn) reviewUseBtn.disabled = !lastCaptureAttached;
-
-        if (reviewStatus) {
-            reviewStatus.textContent = error
-                ? 'Foto berhasil dibuat, tetapi gagal ditempel otomatis: ' + error.message + ' Unduh foto lalu unggah manual.'
-                : 'Foto sudah dimasukkan ke formulir. Tekan Gunakan Foto untuk kembali.';
-            reviewStatus.classList.toggle('text-danger', !!error);
-        }
-
-        reviewEl.classList.add('is-open');
-        reviewEl.setAttribute('aria-hidden', 'false');
-    }
-
-    function hideCaptureReview() {
-        if (!reviewEl) return;
-        reviewEl.classList.remove('is-open');
-        reviewEl.setAttribute('aria-hidden', 'true');
-        if (lastCapturedUrl) {
-            URL.revokeObjectURL(lastCapturedUrl);
-            lastCapturedUrl = null;
-        }
-        if (reviewImg) reviewImg.removeAttribute('src');
-        if (reviewDownload) reviewDownload.removeAttribute('href');
-        lastCapturedBlob = null;
-        lastCaptureAttached = false;
-    }
-
-    function retakePhoto() {
-        hideCaptureReview();
-        if (captureBtn) captureBtn.disabled = false;
-    }
-
-    function useCapturedPhoto() {
-        if (!lastCaptureAttached) {
-            if (reviewStatus) {
-                reviewStatus.textContent = 'Foto belum bisa ditempel otomatis. Gunakan tombol Unduh foto, lalu unggah manual.';
-                reviewStatus.classList.add('text-danger');
-            }
-            return;
-        }
-        hideCaptureReview();
-        bootstrap.Modal.getInstance(modalEl)?.hide();
     }
 
     async function capture() {
-        if (captureBtn.disabled) return;
-        captureBtn.disabled = true;
-        if (!video.videoWidth) {
-            if (errorEl) { errorEl.textContent = 'Kamera belum siap. Tunggu sebentar lalu coba lagi.'; errorEl.classList.remove('d-none'); }
-            captureBtn.disabled = false;
+        if (!video.videoWidth || !stream) {
+            alert('Kamera belum siap. Silakan tunggu sebentar.');
             return;
         }
-        if (!coords) {
-            await new Promise(function (resolve) { setTimeout(resolve, 1200); });
-        }
-        if (placePromise) {
+
+        captureBtn.disabled = true;
+
+        try {
+            // Tunggu hasil reverse geocoding, maksimal 4 detik.
             await Promise.race([
-                placePromise,
-                new Promise(function (resolve) { setTimeout(resolve, 2600); })
+                locationPromise,
+                new Promise(resolve => setTimeout(resolve, 4000))
             ]);
-        }
-        const orientation = selectedOrientation();
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        let sx = 0, sy = 0, sw = video.videoWidth, sh = video.videoHeight;
 
-        if (orientation === 'portrait') {
-            // Crop tengah 9:16 agar hasil vertikal konsisten di kamera depan/belakang.
-            const targetRatio = 9 / 16;
-            if (sw / sh > targetRatio) {
-                sw = sh * targetRatio;
-                sx = (video.videoWidth - sw) / 2;
-            } else {
-                sh = sw / targetRatio;
-                sy = (video.videoHeight - sh) / 2;
-            }
-            canvas.width = 720;
-            canvas.height = 1280;
-        } else {
-            const maxWidth = 1280;
-            const scale = Math.min(1, maxWidth / sw);
-            canvas.width = Math.round(sw * scale);
-            canvas.height = Math.round(sh * scale);
-        }
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(1, MAX_WIDTH / video.videoWidth);
 
-        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-        drawWatermark(canvas);
+            canvas.width = Math.round(video.videoWidth * scale);
+            canvas.height = Math.round(video.videoHeight * scale);
 
-        canvas.toBlob(function (blob) {
-            captureBtn.disabled = false;
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(
+                video,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            drawWatermark(canvas);
+
+            const blob = await new Promise(resolve =>
+                canvas.toBlob(resolve, 'image/jpeg', 0.90)
+            );
+
             if (!blob) {
-                if (errorEl) {
-                    errorEl.textContent = 'Foto gagal dibuat. Coba ambil ulang.';
-                    errorEl.classList.remove('d-none');
-                }
-                return;
+                throw new Error('Gagal membuat file foto.');
             }
 
-            const file = new File([blob], 'foto-' + Date.now() + '.jpg', { type: 'image/jpeg' });
-            let attachError = null;
-
-            try {
-                attachCapturedFile(file);
-                if (targetPreview) {
-                    const preview = document.getElementById(targetPreview);
-                    if (preview) {
-                        preview.innerHTML = '<img src="' + URL.createObjectURL(blob) + '" class="img-fluid rounded border mt-1" style="max-height:110px" alt="Foto bukti"><div class="small text-success mt-1"><i class="ri-check-line"></i> Foto kamera siap diunggah</div>';
-                    }
-                }
-            } catch (error) {
-                attachError = error;
+            if (!targetInput) {
+                throw new Error('Input file tujuan tidak ditemukan.');
             }
 
-            // Jangan tutup kamera otomatis. Tampilkan pratinjau agar foto
-            // tidak hilang dan pengguna bisa mengulang atau mengunduhnya.
-            showCaptureReview(blob, file, attachError);
-        }, 'image/jpeg', 0.86);
+            const input = document.getElementById(targetInput);
+
+            if (!input) {
+                throw new Error(
+                    `Elemen input #${targetInput} tidak ditemukan.`
+                );
+            }
+
+            const file = new File(
+                [blob],
+                `alim-dokumentasi-${Date.now()}.jpg`,
+                {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                }
+            );
+
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+
+            input.files = dataTransfer.files;
+
+            input.dispatchEvent(
+                new Event('change', { bubbles: true })
+            );
+
+            if (targetPreview) {
+                const preview = document.getElementById(targetPreview);
+
+                if (preview) {
+                    const objectUrl = URL.createObjectURL(blob);
+
+                    preview.replaceChildren();
+
+                    const image = document.createElement('img');
+                    image.src = objectUrl;
+                    image.alt = 'Foto bukti dokumentasi';
+                    image.className =
+                        'img-fluid rounded border mt-1';
+                    image.style.maxHeight = '180px';
+
+                    const caption = document.createElement('div');
+                    caption.className =
+                        'small text-success mt-1';
+                    caption.innerHTML =
+                        '<i class="ri-check-line"></i> Foto kamera siap diunggah';
+
+                    preview.append(image, caption);
+                }
+            }
+
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+
+        } catch (error) {
+            alert('Gagal mengambil foto: ' + error.message);
+        } finally {
+            captureBtn.disabled = false;
+        }
     }
 
     modalEl.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        if (button) {
-            targetInput = button.dataset.target;
-            targetPreview = button.dataset.preview;
-        }
+
+        targetInput = button?.dataset.target || targetInput;
+        targetPreview = button?.dataset.preview || targetPreview;
+    });
+
+    modalEl.addEventListener('shown.bs.modal', function () {
         startCamera();
     });
+
     modalEl.addEventListener('hidden.bs.modal', function () {
         stopCamera();
-        // Jika kamera dibuka dari modal lain, Bootstrap menghapus
-        // body.modal-open saat kamera ditutup. Kembalikan agar modal induk
-        // tetap terkunci dan latar belakang tidak ikut bergulir.
-        if (document.querySelector('.modal.show')) {
-            document.body.classList.add('modal-open');
-        }
     });
-    document.querySelectorAll('input[name="alimCameraOrientation"]').forEach(function (input) {
-        input.addEventListener('change', updatePreviewRatio);
-    });
-    video.addEventListener('loadedmetadata', updatePreviewRatio);
+
     captureBtn.addEventListener('click', capture);
 
-    window.AlimCamera = { open: function (target, preview) { targetInput = target; targetPreview = preview; bootstrap.Modal.getOrCreateInstance(modalEl).show(); } };
+    window.AlimCamera = {
+        open: function (target, preview) {
+            targetInput = target;
+            targetPreview = preview;
+
+            bootstrap.Modal
+                .getOrCreateInstance(modalEl)
+                .show();
+        }
+    };
 })();
 </script>

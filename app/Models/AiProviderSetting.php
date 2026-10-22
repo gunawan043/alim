@@ -23,6 +23,27 @@ class AiProviderSetting extends Model
     {
         parent::boot();
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+
+        // Hanya satu provider yang boleh aktif. Mengaktifkan provider
+        // otomatis menonaktifkan provider lain dan menjadikannya default.
+        static::saving(function (self $provider) {
+            if ($provider->is_active) {
+                $provider->is_default = true;
+
+                $others = static::query();
+                if ($provider->exists) {
+                    $others->whereKeyNot($provider->getKey());
+                }
+
+                $others->update(['is_active' => false, 'is_default' => false]);
+
+                return;
+            }
+
+            if ($provider->is_default) {
+                $provider->is_default = false;
+            }
+        });
     }
 
     protected $fillable = [
@@ -105,7 +126,8 @@ class AiProviderSetting extends Model
     }
 
     /**
-     * Jadikan provider ini default (hanya satu default aktif).
+     * Jadikan provider ini aktif dan default. Hanya satu provider aktif;
+     * provider lain otomatis dinonaktifkan.
      */
     public function makeDefault(): void
     {

@@ -1,7 +1,42 @@
 @extends('layouts.master')
 @section('title') Daftar Pasien UKS @endsection
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @section('content')
+    @php
+        $userId = request()->route('userId') ?? auth()->id();
+        $isClinicMode = (string) setting('uks_mode', 'simple') === 'clinic';
+        $statusLabels = \App\Models\Uks\UksPatient::$statusLabels;
+        $statusColors = [
+            \App\Models\Uks\UksPatient::STATUS_WAITING => 'warning',
+            \App\Models\Uks\UksPatient::STATUS_TREATED => 'warning',
+            \App\Models\Uks\UksPatient::STATUS_OBSERVATION => 'primary',
+            \App\Models\Uks\UksPatient::STATUS_INPATIENT => 'primary',
+            \App\Models\Uks\UksPatient::STATUS_RESTING_UKS => 'info',
+            \App\Models\Uks\UksPatient::STATUS_RETURN_DORM => 'success',
+            \App\Models\Uks\UksPatient::STATUS_RETURN_SCHOOL => 'success',
+            \App\Models\Uks\UksPatient::STATUS_PICKED_UP => 'secondary',
+            \App\Models\Uks\UksPatient::STATUS_LEAVING => 'success',
+            \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC => 'danger',
+            \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL => 'danger',
+            \App\Models\Uks\UksPatient::STATUS_COMPLETED => 'success',
+        ];
+        $transitionMap = collect(array_keys($statusLabels))
+            ->mapWithKeys(fn ($status) => [$status => app(\App\Services\Uks\UksClinicService::class)->allowedTransitions($status)])
+            ->all();
+
+        // Kompatibilitas status lama
+        foreach (['aktif' => 'Aktif', 'selesai' => 'Selesai', 'dirujuk' => 'Dirujuk'] as $legacy => $legacyLabel) {
+            $statusLabels[$legacy] = $legacyLabel;
+            $statusColors[$legacy] = $legacy === 'dirujuk' ? 'danger' : ($legacy === 'selesai' ? 'success' : 'warning');
+            $transitionMap[$legacy] = app(\App\Services\Uks\UksClinicService::class)->allowedTransitions($legacy);
+        }
+        $hasFilter = request()->filled('search') || request()->filled('status') || request()->filled('active_only') || request()->filled('month');
+    @endphp
+
     @component('components.breadcrumb')
         @slot('li_1') UKS @endslot
         @slot('li_2') Rekam Medis Pasien @endslot
@@ -21,367 +56,407 @@
         </div>
     @endif
 
-    {{-- ============================================================
-         STATS CARDS
-    ============================================================ --}}
-    <div class="row g-3 mb-2">
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-2"></i>{{ $errors->first() }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
+
+    {{-- STATISTIK --}}
+    <div class="row g-3 mb-3">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-primary">
+            <div class="card card-animate h-100 border-start border-primary">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary rounded fs-2"><i class="ri-hospital-line fs-4 text-white"></i></span>
-                        </div>
+                        <span class="avatar-sm rounded bg-primary-subtle d-flex align-items-center justify-content-center flex-shrink-0">
+                            <i class="ri-hospital-line text-primary fs-5"></i>
+                        </span>
                         <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Total Pasien</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['total'] ?? 0 }}</h3>
+                            <p class="text-uppercase text-muted fs-11 mb-1">Total Pasien</p>
+                            <h3 class="mb-0 fw-bold">{{ number_format($stats['total'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted fs-11 mb-0 mt-2"><i class="ri-information-line me-1"></i>{{ $stats['today'] ?? 0 }} pendaftaran hari ini</p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-success">
+            <div class="card card-animate h-100 border-start border-success">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success rounded fs-2"><i class="ri-pulse-line fs-4 text-white"></i></span>
-                        </div>
+                        <span class="avatar-sm rounded bg-success-subtle d-flex align-items-center justify-content-center flex-shrink-0">
+                            <i class="ri-pulse-line text-success fs-5"></i>
+                        </span>
                         <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Sedang Aktif</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['active'] ?? 0 }}</h3>
+                            <p class="text-uppercase text-muted fs-11 mb-1">Sedang Aktif</p>
+                            <h3 class="mb-0 fw-bold">{{ number_format($stats['active'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted fs-11 mb-0 mt-2">
+                        <span class="badge bg-warning-subtle text-warning">{{ $stats['waiting'] ?? 0 }} menunggu</span>
+                        <span class="badge bg-success-subtle text-success">{{ $stats['pharmacy'] ?? 0 }} farmasi</span>
+                    </p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-warning">
+            <div class="card card-animate h-100 border-start border-warning">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning rounded fs-2"><i class="ri-eye-line fs-4 text-white"></i></span>
-                        </div>
+                        <span class="avatar-sm rounded bg-warning-subtle d-flex align-items-center justify-content-center flex-shrink-0">
+                            <i class="ri-eye-line text-warning fs-5"></i>
+                        </span>
                         <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Observasi / Rawat UKS</p>
-                            <h3 class="mb-0 fw-bold">{{ ($stats['observation'] ?? 0) + ($stats['inpatient'] ?? 0) }}</h3>
+                            <p class="text-uppercase text-muted fs-11 mb-1">Observasi / Rawat UKS</p>
+                            <h3 class="mb-0 fw-bold">{{ number_format(($stats['observation'] ?? 0) + ($stats['inpatient'] ?? 0)) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted fs-11 mb-0 mt-2"><i class="ri-hotel-bed-line me-1"></i>Termasuk pasien yang menempati bed</p>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-danger">
+            <div class="card card-animate h-100 border-start border-danger">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-danger rounded fs-2"><i class="ri-ambulance-line fs-4 text-white"></i></span>
-                        </div>
+                        <span class="avatar-sm rounded bg-danger-subtle d-flex align-items-center justify-content-center flex-shrink-0">
+                            <i class="ri-ambulance-line text-danger fs-5"></i>
+                        </span>
                         <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Dirujuk Faskes</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['referrals'] ?? 0 }}</h3>
+                            <p class="text-uppercase text-muted fs-11 mb-1">Dirujuk Faskes</p>
+                            <h3 class="mb-0 fw-bold">{{ number_format($stats['referrals'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="text-muted fs-11 mb-0 mt-2"><i class="ri-hospital-line me-1"></i>{{ $isClinicMode ? 'Klinik / puskesmas / rumah sakit' : 'Pemeriksaan awal UKS' }}</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-header border-bottom-dashed">
-                    <div class="row g-4 align-items-center">
-                        <div class="col-sm">
-                            <h5 class="card-title mb-0">Daftar Pasien UKS</h5>
-                            <p class="text-muted mb-0">
-                                Total {{ $stats['total'] ?? 0 }} pasien terdaftar &mdash;
-                                {{ $stats['today'] ?? 0 }} pendaftaran hari ini
-                            </p>
-                        </div>
-                        <div class="col-sm-auto">
-                            <div class="d-flex flex-wrap gap-2">
-                                <a href="{{ route('user.uks.patients.create', ['userId' => auth()->user()->id]) }}"
-                                   class="btn btn-primary btn-sm">
-                                    <i class="ri-add-line align-bottom me-1"></i> Daftarkan Pasien
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+    <div class="row g-2 mb-3">
+        <div class="col-md-6">
+            <a href="{{ route('user.uks.clinic.queue', ['userId' => $userId]) }}" class="text-decoration-none">
+                <div class="alert alert-warning d-flex align-items-center justify-content-between mb-0 py-2">
+                    <span><i class="ri-time-line me-1"></i>Menunggu antrean: <strong>{{ $stats['waiting'] ?? 0 }}</strong></span>
+                    <i class="ri-arrow-right-line"></i>
                 </div>
+            </a>
+        </div>
+        <div class="col-md-6">
+            <a href="{{ route('user.uks.pharmacy.index', ['userId' => $userId]) }}" class="text-decoration-none">
+                <div class="alert alert-success d-flex align-items-center justify-content-between mb-0 py-2">
+                    <span><i class="ri-capsule-line me-1"></i>Menunggu obat / farmasi: <strong>{{ $stats['pharmacy'] ?? 0 }}</strong></span>
+                    <i class="ri-arrow-right-line"></i>
+                </div>
+            </a>
+        </div>
+    </div>
 
-                <div class="card-body">
-                    {{-- ============================================================
-                         FILTER FORM
-                    ============================================================ --}}
-                    <form method="GET" class="row g-3 align-items-end mb-4 pb-3 border-bottom border-light">
-                        <div class="col-md-4">
-                            <label class="form-label fs-12 text-muted mb-1">Cari Pasien</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">
-                                    <i class="ri-search-line text-muted"></i>
-                                </span>
-                                <input type="text" name="search" class="form-control"
-                                       placeholder="Nama siswa..."
-                                       value="{{ request('search') }}">
-                            </div>
-                        </div>
-                        @php
-                            $allStatuses = [
-                                \App\Models\Uks\UksPatient::STATUS_WAITING,
-                                \App\Models\Uks\UksPatient::STATUS_TREATED,
-                                \App\Models\Uks\UksPatient::STATUS_OBSERVATION,
-                                \App\Models\Uks\UksPatient::STATUS_INPATIENT,
-                                \App\Models\Uks\UksPatient::STATUS_RESTING_UKS,
-                                \App\Models\Uks\UksPatient::STATUS_RETURN_DORM,
-                                \App\Models\Uks\UksPatient::STATUS_RETURN_SCHOOL,
-                                \App\Models\Uks\UksPatient::STATUS_PICKED_UP,
-                                \App\Models\Uks\UksPatient::STATUS_LEAVING,
-                                \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC,
-                                \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL,
-                                \App\Models\Uks\UksPatient::STATUS_COMPLETED,
-                            ];
-                        @endphp
-
-                        @php
-                            $statusMeta = [
-                                \App\Models\Uks\UksPatient::STATUS_WAITING => ['label' => 'Menunggu Pemeriksaan', 'color' => 'warning'],
-                                \App\Models\Uks\UksPatient::STATUS_TREATED => ['label' => 'Sedang Ditangani', 'color' => 'warning'],
-                                \App\Models\Uks\UksPatient::STATUS_OBSERVATION => ['label' => 'Observasi', 'color' => 'primary'],
-                                \App\Models\Uks\UksPatient::STATUS_INPATIENT => ['label' => 'Rawat UKS', 'color' => 'primary'],
-                                \App\Models\Uks\UksPatient::STATUS_RESTING_UKS => ['label' => 'Istirahat di UKS', 'color' => 'info'],
-                                \App\Models\Uks\UksPatient::STATUS_RETURN_DORM => ['label' => 'Kembali ke Asrama', 'color' => 'success'],
-                                \App\Models\Uks\UksPatient::STATUS_RETURN_SCHOOL => ['label' => 'Kembali ke Sekolah', 'color' => 'success'],
-                                \App\Models\Uks\UksPatient::STATUS_PICKED_UP => ['label' => 'Dijemput Wali', 'color' => 'secondary'],
-                                \App\Models\Uks\UksPatient::STATUS_LEAVING => ['label' => 'Pulang', 'color' => 'success'],
-                                \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC => ['label' => 'Dirujuk ke Klinik', 'color' => 'danger'],
-                                \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL => ['label' => 'Dirujuk ke RS', 'color' => 'danger'],
-                                \App\Models\Uks\UksPatient::STATUS_COMPLETED => ['label' => 'Selesai', 'color' => 'success'],
-                            ];
-
-                            $transitionsMap = [
-                                \App\Models\Uks\UksPatient::STATUS_WAITING => [
-                                    \App\Models\Uks\UksPatient::STATUS_TREATED,
-                                    \App\Models\Uks\UksPatient::STATUS_OBSERVATION,
-                                    \App\Models\Uks\UksPatient::STATUS_INPATIENT,
-                                    \App\Models\Uks\UksPatient::STATUS_COMPLETED,
-                                ],
-                                \App\Models\Uks\UksPatient::STATUS_TREATED => [
-                                    \App\Models\Uks\UksPatient::STATUS_OBSERVATION,
-                                    \App\Models\Uks\UksPatient::STATUS_INPATIENT,
-                                    \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC,
-                                    \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL,
-                                    \App\Models\Uks\UksPatient::STATUS_COMPLETED,
-                                ],
-                                \App\Models\Uks\UksPatient::STATUS_OBSERVATION => [
-                                    \App\Models\Uks\UksPatient::STATUS_INPATIENT,
-                                    \App\Models\Uks\UksPatient::STATUS_TREATED,
-                                    \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC,
-                                    \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL,
-                                    \App\Models\Uks\UksPatient::STATUS_COMPLETED,
-                                ],
-                                \App\Models\Uks\UksPatient::STATUS_INPATIENT => [
-                                    \App\Models\Uks\UksPatient::STATUS_OBSERVATION,
-                                    \App\Models\Uks\UksPatient::STATUS_TREATED,
-                                    \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC,
-                                    \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL,
-                                    \App\Models\Uks\UksPatient::STATUS_COMPLETED,
-                                    \App\Models\Uks\UksPatient::STATUS_RESTING_UKS,
-                                ],
-                                \App\Models\Uks\UksPatient::STATUS_RESTING_UKS => [
-                                    \App\Models\Uks\UksPatient::STATUS_TREATED,
-                                    \App\Models\Uks\UksPatient::STATUS_OBSERVATION,
-                                    \App\Models\Uks\UksPatient::STATUS_RETURN_DORM,
-                                    \App\Models\Uks\UksPatient::STATUS_RETURN_SCHOOL,
-                                    \App\Models\Uks\UksPatient::STATUS_PICKED_UP,
-                                    \App\Models\Uks\UksPatient::STATUS_LEAVING,
-                                ],
-                                \App\Models\Uks\UksPatient::STATUS_RETURN_DORM => [],
-                                \App\Models\Uks\UksPatient::STATUS_RETURN_SCHOOL => [],
-                                \App\Models\Uks\UksPatient::STATUS_PICKED_UP => [],
-                                \App\Models\Uks\UksPatient::STATUS_LEAVING => [],
-                                \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC => [],
-                                \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL => [],
-                                \App\Models\Uks\UksPatient::STATUS_COMPLETED => [],
-                            ];
-                        @endphp
-                        <div class="col-md-3">
-                            <label class="form-label fs-12 text-muted mb-1">Status Perawatan</label>
-                            <select name="status" class="form-select">
-                                <option value="">Semua Status</option>
-                                @foreach($allStatuses as $statusKey)
-                                    <option value="{{ $statusKey }}" {{ request('status') === $statusKey ? 'selected' : '' }}>
-                                        {{ ucfirst(str_replace('_', ' ', $statusKey)) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fs-12 text-muted mb-1">Hanya Aktif</label>
-                            <select name="active_only" class="form-select">
-                                <option value="">Semua</option>
-                                <option value="1" {{ request('active_only') === '1' ? 'selected' : '' }}>Aktif</option>
-                                <option value="0" {{ request('active_only') === '0' ? 'selected' : '' }}>Selesai</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary flex-grow-1">
-                                    <i class="ri-search-line me-1"></i> Terapkan Filter
-                                </button>
-                                <a href="{{ route('user.uks.patients.index', ['userId' => auth()->user()->id]) }}"
-                                   class="btn btn-outline-secondary"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Reset Filter">
-                                    <i class="ri-refresh-line"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </form>
-
-                    {{-- ============================================================
-                         PATIENTS TABLE
-                    ============================================================ --}}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" style="width: 5%">No</th>
-                                    <th>Pasien</th>
-                                    <th style="width: 12%">Tipe Kunjungan</th>
-                                    <th style="width: 14%">Status</th>
-                                    <th style="width: 14%">Tgl Daftar</th>
-                                    <th class="text-center" style="width: 12%">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($patients as $i => $patient)
-                                    @php
-                                        $status = $patient->status;
-                                        $statusLabel = ucfirst(str_replace('_', ' ', $status));
-                                        $statusColor = match($status) {
-                                            \App\Models\Uks\UksPatient::STATUS_WAITING,
-                                            \App\Models\Uks\UksPatient::STATUS_TREATED          => 'warning',
-                                            \App\Models\Uks\UksPatient::STATUS_OBSERVATION,
-                                            \App\Models\Uks\UksPatient::STATUS_INPATIENT         => 'primary',
-                                            \App\Models\Uks\UksPatient::STATUS_RESTING_UKS       => 'info',
-                                            \App\Models\Uks\UksPatient::STATUS_RETURN_DORM,
-                                            \App\Models\Uks\UksPatient::STATUS_RETURN_SCHOOL,
-                                            \App\Models\Uks\UksPatient::STATUS_LEAVING,
-                                            \App\Models\Uks\UksPatient::STATUS_COMPLETED         => 'success',
-                                            \App\Models\Uks\UksPatient::STATUS_PICKED_UP         => 'secondary',
-                                            \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC,
-                                            \App\Models\Uks\UksPatient::STATUS_REFERRAL_HOSPITAL => 'danger',
-                                            default                                               => 'light',
-                                        };
-                                    @endphp
-                                    <tr>
-                                        <td class="text-center text-muted">
-                                            {{ $patients->firstItem() + $i }}
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-xs me-3">
-                                                    <div class="avatar-title rounded-circle bg-{{ $patient->student?->gender === 'P' ? 'danger' : 'primary' }}-subtle text-{{ $patient->student?->gender === 'P' ? 'danger' : 'primary' }} fw-bold fs-10">
-                                                        {{ strtoupper(substr($patient->student?->name ?? '?', 0, 1)) }}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <span class="fw-semibold">{{ $patient->student?->name ?? '-' }}</span>
-                                                    @if($patient->student?->nisn)
-                                                        <br><small class="text-muted">{{ $patient->student->nisn }}</small>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @if($patient->patient_type === 'rawat')
-                                                <span class="badge bg-info-subtle text-info">
-                                                    <i class="ri-hospital-line me-1"></i>Rawat
-                                                </span>
-                                            @elseif($patient->patient_type === 'balik')
-                                                <span class="badge bg-warning-subtle text-warning">
-                                                    <i class="ri-arrow-go-back-line me-1"></i>Balik Asrama
-                                                </span>
-                                            @elseif($patient->patient_type === 'pulang')
-                                                <span class="badge bg-secondary-subtle text-secondary">
-                                                    <i class="ri-roadster-line me-1"></i>Pulang
-                                                </span>
-                                            @else
-                                                <span class="badge bg-light text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-{{ $statusColor }}-subtle text-{{ $statusColor }}">
-                                                <i class="ri-pulse-line me-1"></i>{{ $statusLabel }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">
-                                                <i class="ri-calendar-line me-1"></i>
-                                                {{ $patient->admitted_at ? $patient->admitted_at->format('d M Y H:i') : '-' }}
-                                            </small>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="d-flex justify-content-center gap-1">
-                                                <a href="{{ route('user.uks.patients.show', ['userId' => auth()->user()->id, 'uuid' => $patient->id]) }}"
-                                                   class="btn btn-sm btn-outline-primary"
-                                                   title="Detail Pasien">
-                                                    <i class="ri-eye-line"></i>
-                                                </a>
-                                                @php
-                                                    $allowedNext = $allStatuses;
-                                                @endphp
-                                                @if(count($allowedNext))
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                                                id="statusDropdown-{{ $patient->id }}" data-bs-toggle="dropdown"
-                                                                aria-expanded="false" title="Ubah Status">
-                                                            <i class="ri-refresh-line"></i>
-                                                        </button>
-                                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="statusDropdown-{{ $patient->id }}">
-                                                            @foreach($allowedNext as $nextStatus)
-                                                                @php
-                                                                    $meta = $statusMeta[$nextStatus] ?? ['label' => ucfirst(str_replace('_', ' ', $nextStatus)), 'color' => 'secondary'];
-                                                                @endphp
-                                                                <li>
-                                                                    <form method="POST" action="{{ route('user.uks.patients.change-status', ['userId' => auth()->user()->id, 'uuid' => $patient->id]) }}" class="d-inline">
-                                                                        @csrf
-                                                                        <input type="hidden" name="new_status" value="{{ $nextStatus }}">
-                                                                        <button type="submit" class="dropdown-item">
-                                                                            <span class="badge bg-{{ $meta['color'] }}-subtle text-{{ $meta['color'] }}">
-                                                                                {{ $meta['label'] }}
-                                                                            </span>
-                                                                        </button>
-                                                                    </form>
-                                                                </li>
-                                                            @endforeach
-                                                        </ul>
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center py-5">
-                                            <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
-                                            <h6 class="text-muted mb-1 mt-3">Belum Ada Pasien</h6>
-                                            <p class="text-muted mb-3">Belum ada data pasien yang terdaftar di UKS.</p>
-                                            <a href="{{ route('user.uks.patients.create', ['userId' => auth()->user()->id]) }}"
-                                               class="btn btn-primary btn-sm">
-                                                <i class="ri-add-line me-1"></i> Daftarkan Pasien
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+    <div class="card">
+        <div class="card-header border-bottom-dashed">
+            <div class="row g-3 align-items-center">
+                <div class="col-sm">
+                    <h5 class="card-title mb-0">Daftar Pasien UKS</h5>
+                    <p class="text-muted mb-0 fs-12">Total {{ $stats['total'] ?? 0 }} pasien terdaftar</p>
+                </div>
+                <div class="col-sm-auto">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <form method="GET" action="{{ route('user.uks.patients.index', ['userId' => $userId]) }}" class="d-flex gap-2">
+                            <input type="text" name="search" class="form-control" value="{{ request('search') }}"
+                                   placeholder="Cari nama / NIS / No. RM / antrean" style="min-width: 240px;">
+                            <button class="btn btn-primary" type="submit"><i class="ri-search-line"></i></button>
+                        </form>
+                        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#patientFilterModal">
+                            <i class="bx bx-filter-alt align-bottom me-1"></i>Filter Lanjutan
+                        </button>
+                        @if ((string) setting('uks_mode', 'simple') === 'clinic')
+                            <a href="{{ route('user.uks.clinic.queue', ['userId' => $userId]) }}" class="btn btn-soft-primary">
+                                <i class="ri-list-check-2 me-1"></i>Antrean
+                            </a>
+                        @endif
+                        <a href="{{ route('user.uks.patients.create', ['userId' => $userId]) }}" class="btn btn-primary">
+                            <i class="ri-add-line me-1"></i>Daftarkan Pasien
+                        </a>
                     </div>
-
-                    {{-- Pagination (shared template) --}}
-                    @include('shared._pagination', ['paginator' => $patients->withQueryString()])
                 </div>
             </div>
+        </div>
+
+        @if($hasFilter)
+            <div class="card-header py-2 bg-light border-bottom">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="fw-semibold"><i class="ri-filter-3-line me-1"></i>Filter Aktif:</span>
+                    @if(request('search'))
+                        <span class="filter-badge active">Cari: {{ request('search') }}</span>
+                    @endif
+                    @if(request('status'))
+                        <span class="filter-badge active">Status: {{ $statusLabels[request('status')] ?? request('status') }}</span>
+                    @endif
+                    @if(request('active_only'))
+                        <span class="filter-badge active">Hanya Aktif</span>
+                    @endif
+                    @if(request('month'))
+                        <span class="filter-badge active">Bulan: {{ request('month') }}</span>
+                    @endif
+                    <a href="{{ route('user.uks.patients.index', ['userId' => $userId]) }}" class="btn btn-sm btn-link text-danger ms-auto">
+                        <i class="ri-close-circle-line me-1"></i>Hapus Semua
+                    </a>
+                </div>
+            </div>
+        @endif
+
+        <div class="card-header py-2 uks-quick-filter">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted me-1"><i class="ri-flashlight-line me-1"></i>Quick Filter:</span>
+                <a class="filter-badge" href="{{ route('user.uks.patients.index', ['userId' => $userId]) }}">Semua</a>
+                <a class="filter-badge" href="{{ route('user.uks.patients.index', ['userId' => $userId, 'active_only' => 1]) }}"><i class="ri-pulse-line"></i>Aktif</a>
+                <a class="filter-badge" href="{{ route('user.uks.patients.index', ['userId' => $userId, 'status' => \App\Models\Uks\UksPatient::STATUS_WAITING]) }}"><i class="ri-time-line"></i>Menunggu</a>
+                <a class="filter-badge" href="{{ route('user.uks.patients.index', ['userId' => $userId, 'status' => \App\Models\Uks\UksPatient::STATUS_INPATIENT]) }}"><i class="ri-hotel-bed-line"></i>Rawat UKS</a>
+                <a class="filter-badge" href="{{ route('user.uks.patients.index', ['userId' => $userId, 'status' => \App\Models\Uks\UksPatient::STATUS_OBSERVATION]) }}"><i class="ri-eye-line"></i>Observasi</a>
+                <a class="filter-badge" href="{{ route('user.uks.patients.index', ['userId' => $userId, 'status' => \App\Models\Uks\UksPatient::STATUS_REFERRAL_CLINIC]) }}"><i class="ri-ambulance-line"></i>Dirujuk</a>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table table-hover align-middle table-freeze" id="patientsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th data-column="pasien">Pasien</th>
+                            @if ((string) setting('uks_mode', 'simple') === 'clinic')
+                                <th data-column="antrean">Antrean</th>
+                            @endif
+                            <th data-column="triase">Triase</th>
+                            <th data-column="tipe">Tipe</th>
+                            <th data-column="status">Status</th>
+                            <th data-column="lokasi">Lokasi</th>
+                            <th data-column="tanggal">Tgl Daftar</th>
+                            <th data-column="action" style="width: 100px;" class="text-end">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="list">
+                        @forelse($patients as $patient)
+                            @php
+                                $status = $patient->status;
+                                $statusColor = $statusColors[$status] ?? 'secondary';
+                                $student = $patient->student;
+                                $dormitory = $student?->activeDormitoryResident?->dormitory?->name;
+                            @endphp
+                            <tr>
+                                <td data-column="pasien">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-xs flex-shrink-0">
+                                            <div class="avatar-title rounded-circle bg-{{ $student?->gender === 'P' ? 'danger' : 'primary' }}-subtle text-{{ $student?->gender === 'P' ? 'danger' : 'primary' }} fw-bold">
+                                                {{ strtoupper(substr($student?->name ?? '?', 0, 1)) }}
+                                            </div>
+                                        </div>
+                                        <div class="ms-2">
+                                            <div class="fw-semibold">{{ $student?->name ?? '-' }}</div>
+                                            <div class="text-muted fs-11">
+                                                {{ $patient->medical_record_no ?? '-' }}
+                                                @if($dormitory) · {{ $dormitory }} @endif
+                                            </div>
+                                            @if($student?->nisn)<div class="text-muted fs-10">NISN {{ $student->nisn }}</div>@endif
+                                        </div>
+                                    </div>
+                                </td>
+                                @if ((string) setting('uks_mode', 'simple') === 'clinic')
+                                    <td data-column="antrean">
+                                        <span class="badge bg-dark">{{ $patient->queue_number ?? '—' }}</span>
+                                        <div class="text-muted fs-10 mt-1">{{ $patient->queue_label }}</div>
+                                    </td>
+                                @endif
+                                <td data-column="triase">
+                                    <span class="badge bg-{{ $patient->triage_color }}-subtle text-{{ $patient->triage_color }}">{{ $patient->triage_level ?? '-' }}</span>
+                                </td>
+                                <td data-column="tipe">
+                                    @if($patient->patient_type === 'rawat')
+                                        <span class="badge bg-info-subtle text-info">Rawat</span>
+                                    @elseif($patient->patient_type === 'balik')
+                                        <span class="badge bg-warning-subtle text-warning">Balik</span>
+                                    @elseif($patient->patient_type === 'pulang')
+                                        <span class="badge bg-secondary-subtle text-secondary">Pulang</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td data-column="status">
+                                    <span class="badge bg-{{ $statusColor }}-subtle text-{{ $statusColor }}">{{ $statusLabels[$status] ?? ucfirst($status) }}</span>
+                                    @if($patient->diagnosis)
+                                        <div class="text-muted fs-10 mt-1">{{ \Illuminate\Support\Str::limit($patient->diagnosis, 35) }}</div>
+                                    @endif
+                                </td>
+                                <td data-column="lokasi">
+                                    <span class="badge bg-{{ $patient->care_location_color }}-subtle text-{{ $patient->care_location_color }}">
+                                        <i class="{{ $patient->care_location_icon }} me-1"></i>{{ $patient->care_location_short_label }}
+                                    </span>
+                                    @if($patient->currentBedAssignment?->bed)
+                                        <div class="text-muted fs-10 mt-1"><i class="ri-hotel-bed-line me-1"></i>{{ $patient->currentBedAssignment->bed->bed_number }}</div>
+                                    @endif
+                                </td>
+                                <td data-column="tanggal">
+                                    <span class="fs-12 text-muted">{{ $patient->admitted_at?->format('d M Y H:i') ?? '-' }}</span>
+                                </td>
+                                <td data-column="action" class="text-end">
+                                    <div class="dropdown uks-table-actions">
+                                        <button class="btn btn-sm btn-soft-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="ri-more-2-fill"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('user.uks.patients.show', ['userId' => $userId, 'uuid' => $patient->id]) }}">
+                                                    <i class="ri-eye-line text-info me-2"></i>Detail Pasien
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('user.uks.clinic.workspace', ['userId' => $userId, 'uuid' => $patient->id]) }}">
+                                                    <i class="ri-stethoscope-line text-primary me-2"></i>{{ $isClinicMode ? 'Lembar Pemeriksaan' : 'Pemeriksaan UKS' }}
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('user.uks.treatment-status.show', ['userId' => $userId, 'uuid' => $patient->id]) }}">
+                                                    <i class="ri-pulse-line text-success me-2"></i>Status Perawatan
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button type="button" class="dropdown-item btn-change-status"
+                                                        data-bs-toggle="modal" data-bs-target="#statusModal"
+                                                        data-patient-id="{{ $patient->id }}"
+                                                        data-patient-name="{{ $student?->name ?? '-' }}"
+                                                        data-current-status="{{ $status }}">
+                                                    <i class="ri-refresh-line text-warning me-2"></i>Ubah Status
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ (string) setting('uks_mode', 'simple') === 'clinic' ? 8 : 7 }}" class="border-0 p-0">
+                                    <div class="uks-empty">
+                                        <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop" colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
+                                        <h5 class="mt-2">Belum ada data pasien</h5>
+                                        <p class="text-muted mb-3">Daftarkan pasien untuk memulai pelayanan UKS.</p>
+                                        <a href="{{ route('user.uks.patients.create', ['userId' => $userId]) }}" class="btn btn-primary btn-sm">
+                                            <i class="ri-add-line me-1"></i>Daftarkan Pasien
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if($patients->hasPages())
+            <div class="card-footer">
+                @include('shared._pagination', ['paginator' => $patients->withQueryString()])
+            </div>
+        @endif
+    </div>
+
+    {{-- FILTER MODAL --}}
+    <x-uks.filter-modal id="patientFilterModal" title="Filter Data Pasien" :action="route('user.uks.patients.index', ['userId' => $userId])">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="filter-group">
+                    <div class="filter-group-title"><i class="ri-search-line"></i>Cari Pasien</div>
+                    <input type="text" name="search" class="form-control" value="{{ request('search') }}" placeholder="Nama / NIS / NISN / No. RM / antrean">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="filter-group">
+                    <div class="filter-group-title"><i class="ri-pulse-line"></i>Status & Kunjungan</div>
+                    <div class="mb-2">
+                        <label class="form-label">Status Perawatan</label>
+                        <select name="status" class="form-select">
+                            <option value="">Semua Status</option>
+                            @foreach($statusLabels as $key => $label)
+                                <option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Hanya Pasien Aktif</label>
+                        <select name="active_only" class="form-select">
+                            <option value="">Semua</option>
+                            <option value="1" {{ request('active_only') === '1' ? 'selected' : '' }}>Aktif</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Bulan Pendaftaran</label>
+                        <input type="month" name="month" class="form-control" value="{{ request('month') }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </x-uks.filter-modal>
+
+    {{-- STATUS MODAL --}}
+    <div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" id="statusForm" action="#">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="statusModalLabel"><i class="ri-refresh-line me-2 text-warning"></i>Ubah Status Pasien</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">Pasien: <strong id="statusPatientName">-</strong></p>
+                        <div class="mb-2">
+                            <label class="form-label">Status Baru</label>
+                            <select name="new_status" id="statusNewValue" class="form-select" required></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Catatan / Alasan</label>
+                            <textarea name="notes" rows="2" class="form-control" placeholder="Opsional..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-warning"><i class="ri-save-line me-1"></i>Simpan Status</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const transitions = @json($transitionMap);
+    const labels = @json($statusLabels);
+    const baseUrl = @json(route('user.uks.patients.change-status', ['userId' => $userId, 'uuid' => '00000000-0000-0000-0000-000000000000']));
+
+    document.querySelectorAll('.btn-change-status').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const patientId = this.dataset.patientId;
+            const currentStatus = this.dataset.currentStatus;
+            document.getElementById('statusPatientName').textContent = this.dataset.patientName || '-';
+            document.getElementById('statusForm').action = baseUrl.replace('00000000-0000-0000-0000-000000000000', patientId);
+
+            const select = document.getElementById('statusNewValue');
+            select.innerHTML = '';
+            (transitions[currentStatus] || []).forEach(function (status) {
+                const option = document.createElement('option');
+                option.value = status;
+                option.textContent = labels[status] || status;
+                select.appendChild(option);
+            });
+            if (!select.options.length) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Tidak ada transisi status';
+                select.appendChild(option);
+            }
+        });
+    });
+});
+</script>
+@endpush

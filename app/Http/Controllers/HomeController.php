@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\SecurityPolicy;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -224,7 +225,7 @@ class HomeController extends Controller
     {
         $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => ['required', 'string', 'min:'.SecurityPolicy::passwordMinLength(), 'confirmed'],
         ]);
 
         if (! (Hash::check($request->get('current_password'), Auth::user()->password))) {

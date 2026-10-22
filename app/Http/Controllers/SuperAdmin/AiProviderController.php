@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 /**
  * Pengaturan provider AI (multi-platform, OpenAI-compatible).
- * Mendukung provider berbayar maupun gratis/lokal; satu provider default aktif.
+ * Mendukung provider berbayar maupun gratis/lokal; hanya satu provider aktif.
  */
 class AiProviderController extends Controller
 {
@@ -60,7 +60,7 @@ class AiProviderController extends Controller
 
         $provider = AiProviderSetting::create($data);
 
-        if ($request->boolean('is_default') || AiProviderSetting::query()->count() === 1) {
+        if ($provider->is_active) {
             $provider->makeDefault();
         }
 
@@ -80,9 +80,9 @@ class AiProviderController extends Controller
 
         $provider->update($data);
 
-        if ($request->boolean('is_default') && $provider->is_active) {
+        if ($provider->is_active) {
             $provider->makeDefault();
-        } elseif (! $provider->is_active && $provider->is_default) {
+        } elseif ($provider->is_default) {
             $provider->forceFill(['is_default' => false])->save();
         }
 
@@ -194,7 +194,9 @@ class AiProviderController extends Controller
 
         unset($data['clear_api_key']);
 
-        $data['is_active'] = $request->boolean('is_active', true);
+        $data['is_active'] = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : ($provider?->is_active ?? true);
         $data['is_default'] = $request->boolean('is_default');
 
         if ($provider && blank($data['api_key'] ?? null)) {

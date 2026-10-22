@@ -506,6 +506,11 @@
         <i class="ri-settings-4-line"></i><span>Pengaturan Sistem</span>
     </a>
 
+    <a class="nav-link menu-link{{ $currentRoute === 'user.sa.system-settings.index' && request('tab') === 'email' ? ' active' : '' }}"
+       href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'email']) }}">
+        <i class="ri-mail-settings-line"></i> <span>Email Sistem</span>
+    </a>
+
     <a class="nav-link menu-link{{ $currentRoute === 'user.sa.system-settings.index' && request('tab') === 'notifications' ? ' active' : '' }}"
        href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'notifications']) }}">
         <i class="ri-whatsapp-line"></i> <span>WA Gateway</span>

@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\SystemSetting;
 use App\Services\Notifications\WhatsAppGatewayService;
 use App\Services\Sarpras\GoogleDriveService;
-use Illuminate\Support\Facades\Crypt;
+use App\Services\SystemMailSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 class SystemSettingController extends Controller
 {
@@ -20,13 +25,14 @@ class SystemSettingController extends Controller
         $tab = $request->tab ?? 'general';
 
         $settings = SystemSetting::pluck('value', 'key')->toArray();
+        $mailSettings = app(SystemMailSettingsService::class)->displayValues();
 
         $waLogs = DB::table('wa_message_logs')
             ->orderByDesc('created_at')
             ->limit(15)
             ->get();
 
-        return view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs'));
+        return view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings'));
     }
 
     public function update(Request $request)
@@ -44,9 +50,32 @@ class SystemSettingController extends Controller
             'maintenance_mode' => 'boolean',
             'registration_enabled' => 'boolean',
             'otp_expiry_minutes' => 'nullable|integer|min:1|max:60',
+            'password_min_length' => 'nullable|integer|min:8|max:64',
             'max_login_attempts' => 'nullable|integer|min:1|max:20',
             'lockout_duration_minutes' => 'nullable|integer|min:1|max:1440',
             'session_lifetime_minutes' => 'nullable|integer|min:1|max:10080',
+            'security_2fa_enabled' => 'boolean',
+            'security_2fa_mobile_enabled' => 'boolean',
+            'security_2fa_scope' => 'nullable|in:all,super_admin',
+            'security_admin_ip_allowlist' => 'nullable|string|max:2000',
+            'security_notify_login' => 'boolean',
+            'security_login_notify_mode' => 'nullable|in:all,new_device',
+            'security_notify_password_forgot' => 'boolean',
+            'security_notify_password_reset' => 'boolean',
+            'security_notify_password_changed' => 'boolean',
+            'security_settings' => 'boolean',
+            'notification_settings' => 'boolean',
+            'mail_settings' => 'boolean',
+            'mail_mailer' => 'nullable|in:smtp,log,sendmail,array,failover',
+            'mail_host' => 'nullable|string|max:255',
+            'mail_port' => 'nullable|integer|min:1|max:65535',
+            'mail_username' => 'nullable|string|max:255',
+            'mail_password' => 'nullable|string|max:1000',
+            'mail_password_clear' => 'boolean',
+            'mail_encryption' => 'nullable|in:tls,ssl,none',
+            'mail_from_address' => 'nullable|email|max:255',
+            'mail_from_name' => 'nullable|string|max:255',
+            'mail_logo_url' => 'nullable|url|max:500',
             'email_notifications' => 'boolean',
             'whatsapp_notifications' => 'boolean',
             'push_notifications' => 'boolean',
@@ -112,30 +141,101 @@ class SystemSettingController extends Controller
         if (array_key_exists('wa_meta_api_version', $validated)) {
             $validated['wa_meta_api_version'] = trim((string) $validated['wa_meta_api_version']) ?: 'v20.0';
         }
-        // Checkbox tidak tercentang = nonaktif.
-        $validated['wa_meta_template_enabled'] = $request->boolean('wa_meta_template_enabled') ? 1 : 0;
+        // Tab Keamanan: simpan semua toggle, termasuk yang tidak dicentang.
+        if ($request->boolean('security_settings')) {
+            foreach ([
+                'security_2fa_enabled',
+                'security_2fa_mobile_enabled',
+                'security_notify_login',
+                'security_notify_password_forgot',
+                'security_notify_password_reset',
+                'security_notify_password_changed',
+            ] as $securityToggle) {
+                $validated[$securityToggle] = $request->boolean($securityToggle) ? '1' : '0';
+            }
+
+            $validated['security_2fa_scope'] = in_array($request->input('security_2fa_scope'), ['all', 'super_admin'], true)
+                ? $request->input('security_2fa_scope')
+                : 'all';
+
+            $validated['security_login_notify_mode'] = in_array($request->input('security_login_notify_mode'), ['all', 'new_device'], true)
+                ? $request->input('security_login_notify_mode')
+                : 'all';
+
+            [$allowlist, $invalidIps] = $this->normalizeIpAllowlist((string) $request->input('security_admin_ip_allowlist', ''));
+
+            if ($invalidIps !== []) {
+                return back()->withInput()->with(
+                    'error',
+                    'Daftar IP admin tidak valid: '.implode(', ', $invalidIps)
+                        .'. Gunakan format IP atau CIDR, pisahkan dengan koma.'
+                );
+            }
+
+            if ($allowlist !== '' && ! IpUtils::checkIp((string) $request->ip(), explode(',', $allowlist))) {
+                return back()->withInput()->with(
+                    'error',
+                    'IP Anda saat ini tidak termasuk dalam allowlist. Tambahkan '.$request->ip()
+                        .' terlebih dahulu agar tidak terkunci dari area admin.'
+                );
+            }
+
+            $validated['security_admin_ip_allowlist'] = $allowlist;
+
+            $securityDefaults = [
+                'otp_expiry_minutes' => 10,
+                'password_min_length' => 8,
+                'max_login_attempts' => 9,
+                'lockout_duration_minutes' => 1440,
+                'session_lifetime_minutes' => (int) config('session.lifetime', 120),
+            ];
+
+            foreach ($securityDefaults as $key => $default) {
+                if (empty($validated[$key])) {
+                    $validated[$key] = $default;
+                }
+            }
+        }
+
+        unset($validated['security_settings'], $validated['notification_settings'], $validated['mail_settings']);
+
+        // Tab Email: simpan konfigurasi SMTP. Password hanya ditulis bila diisi.
+        if ($request->boolean('mail_settings')) {
+            $this->persistMailSettings($request);
+        }
+
+        unset($validated['mail_password'], $validated['mail_password_clear']);
+        foreach (['mail_mailer', 'mail_host', 'mail_port', 'mail_username', 'mail_encryption', 'mail_from_address', 'mail_from_name', 'mail_logo_url'] as $mailKey) {
+            unset($validated[$mailKey]);
+        }
+
         if (array_key_exists('wa_central_number', $validated)) {
             $validated['wa_central_number'] = preg_replace('/\D+/', '', (string) $validated['wa_central_number']);
         }
 
+        $notificationTab = $request->boolean('notification_settings');
+
         // Toggle event: checkbox tidak tercentang = nonaktif.
-        foreach (['wa_event_picked_up', 'wa_event_returned', 'wa_event_sick', 'wa_event_permit_approved', 'wa_event_permit_rejected', 'wa_event_violation', 'wa_event_overdue', 'wa_event_rapor', 'wa_event_holiday', 'wa_event_achievement', 'wa_event_announcement', 'wa_event_visit'] as $toggleKey) {
-            if (! $request->filled('test_wa') || true) {
+        if ($notificationTab) {
+            // Checkbox tidak tercentang = nonaktif.
+            $validated['wa_meta_template_enabled'] = $request->boolean('wa_meta_template_enabled') ? 1 : 0;
+
+            foreach (['wa_event_picked_up', 'wa_event_returned', 'wa_event_sick', 'wa_event_permit_approved', 'wa_event_permit_rejected', 'wa_event_violation', 'wa_event_overdue', 'wa_event_rapor', 'wa_event_holiday', 'wa_event_achievement', 'wa_event_announcement', 'wa_event_visit'] as $toggleKey) {
                 $validated[$toggleKey] = $request->boolean($toggleKey) ? 1 : 0;
             }
-        }
 
-        // Matriks channel notifikasi: simpan sebagai JSON.
-        $notifMatrix = [];
-        foreach (array_keys(config('notifications.events', [])) as $event) {
-            foreach (array_keys(config('notifications.channels', [])) as $channel) {
-                $notifMatrix[$event][$channel] = $request->boolean("notif_channels.{$event}.{$channel}");
+            // Matriks channel notifikasi: simpan sebagai JSON.
+            $notifMatrix = [];
+            foreach (array_keys(config('notifications.events', [])) as $event) {
+                foreach (array_keys(config('notifications.channels', [])) as $channel) {
+                    $notifMatrix[$event][$channel] = $request->boolean("notif_channels.{$event}.{$channel}");
+                }
             }
+            SystemSetting::updateOrCreate(
+                ['key' => 'notification_channel_matrix'],
+                ['value' => json_encode($notifMatrix), 'group' => 'notifications']
+            );
         }
-        SystemSetting::updateOrCreate(
-            ['key' => 'notification_channel_matrix'],
-            ['value' => json_encode($notifMatrix), 'group' => 'notifications']
-        );
         unset($validated['notif_channels']);
 
         // Field POS API ditangani khusus di bawah (normalisasi header, IP, dan
@@ -158,6 +258,14 @@ class SystemSettingController extends Controller
                 ['key' => $key],
                 ['value' => $value]
             );
+        }
+
+        if ($request->boolean('security_settings')) {
+            $this->writeSettingsAudit($request, 'SECURITY_SETTINGS_UPDATED');
+        }
+
+        if ($request->boolean('mail_settings')) {
+            $this->writeSettingsAudit($request, 'EMAIL_SETTINGS_UPDATED');
         }
 
         // ── Tab Integrasi POS: simpan pengaturan & kelola token ──────────
@@ -240,6 +348,77 @@ class SystemSettingController extends Controller
             ->with('success', $posFlash ?? 'Pengaturan berhasil disimpan.');
     }
 
+    private function writeSettingsAudit(Request $request, string $action): void
+    {
+        try {
+            AuditLog::create([
+                'user_id' => $request->user()?->id,
+                'action' => $action,
+                'table_name' => 'system_settings',
+                'record_id' => null,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal menulis audit perubahan pengaturan', [
+                'action' => $action,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function testEmail(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user?->email) {
+            return redirect()->back()->with('error', 'Akun Anda belum memiliki alamat email.');
+        }
+
+        $validated = $request->validate([
+            'test_email_to' => 'nullable|email|max:255',
+        ]);
+
+        if ($request->boolean('mail_settings')) {
+            $this->persistMailSettings($request, validate: true);
+        }
+
+        $target = $validated['test_email_to'] ?? $user->email;
+        app(SystemMailSettingsService::class)->apply();
+
+        try {
+            Mail::raw(
+                "Tes notifikasi email ALIM.\n\nWaktu: ".now()->format('d/m/Y H:i:s')
+                    ."\nPenerima: {$target}\n\nJika email ini diterima, konfigurasi MAIL_* sudah benar.",
+                function ($message) use ($target) {
+                    $message->to($target)->subject('Tes Notifikasi Email ALIM');
+                }
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengirim email tes', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with(
+                'error',
+                'Gagal mengirim email tes: '.$e->getMessage().' Periksa MAIL_MAILER, MAIL_HOST, MAIL_USERNAME, dan MAIL_PASSWORD.'
+            );
+        }
+
+        if (config('mail.default') === 'log') {
+            return redirect()->back()->with(
+                'success',
+                'Email tes untuk '.$target.' ditulis ke log (MAIL_MAILER=log). Periksa storage/logs/laravel.log.'
+            );
+        }
+
+        return redirect()->back()->with(
+            'success',
+            'Email tes dikirim ke '.$target.'. Periksa inbox/spam. Jika tidak masuk, periksa konfigurasi MAIL_*.'
+        );
+    }
+
     public function testGoogleDrive(Request $request)
     {
         // Simpan dulu nilai dari form, karena tombol Test ada di form pengaturan.
@@ -302,6 +481,50 @@ class SystemSettingController extends Controller
      *
      * @return array{0: string, 1: list<string>} [nilai ternormalisasi, item tidak valid]
      */
+    private function persistMailSettings(Request $request, bool $validate = false): void
+    {
+        if ($validate) {
+            $request->validate([
+                'mail_mailer' => 'nullable|in:smtp,log,sendmail,array,failover',
+                'mail_host' => 'nullable|string|max:255',
+                'mail_port' => 'nullable|integer|min:1|max:65535',
+                'mail_username' => 'nullable|string|max:255',
+                'mail_password' => 'nullable|string|max:1000',
+                'mail_password_clear' => 'boolean',
+                'mail_encryption' => 'nullable|in:tls,ssl,none',
+                'mail_from_address' => 'nullable|email|max:255',
+                'mail_from_name' => 'nullable|string|max:255',
+                'mail_logo_url' => 'nullable|url|max:500',
+            ]);
+        }
+
+        foreach ([
+            'mail_mailer', 'mail_host', 'mail_port', 'mail_username',
+            'mail_encryption', 'mail_from_address', 'mail_from_name', 'mail_logo_url',
+        ] as $mailKey) {
+            if ($request->has($mailKey)) {
+                SystemSetting::updateOrCreate(
+                    ['key' => $mailKey],
+                    ['value' => $request->input($mailKey), 'group' => 'mail']
+                );
+            }
+        }
+
+        $mailPassword = trim((string) $request->input('mail_password', ''));
+
+        if ($mailPassword !== '') {
+            SystemSetting::updateOrCreate(
+                ['key' => 'mail_password'],
+                ['value' => Crypt::encryptString($mailPassword), 'group' => 'mail']
+            );
+        } elseif ($request->boolean('mail_password_clear')) {
+            SystemSetting::where('key', 'mail_password')->delete();
+        }
+
+        Cache::forget('system_settings_map');
+        app(SystemMailSettingsService::class)->apply();
+    }
+
     private function normalizeIpAllowlist(string $input): array
     {
         $items = array_values(array_filter(

@@ -6,9 +6,7 @@ $schoolId = $this->getUserSchoolId($user);
 
 $count = $this->applyUksScope(
     DB::table('uks_patients')
-        ->where(function ($q) {
-            $q->where('status', 'dirujuk')->orWhere('referred_to_faskes', 1);
-        })
+        ->where('referred_to_faskes', 1)
         ->whereYear('admitted_at', now()->year)
         ->whereMonth('admitted_at', now()->month)
         ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId)),

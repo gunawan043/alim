@@ -183,10 +183,17 @@ class GtkArabicNameController extends Controller
 
     private function authorizeGtkImport(): void
     {
+        $user = auth()->user();
+
         abort_unless(
-            canPermission('super-admin-only') || canPermission('gtk-create'),
+            $user && (
+                (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+                || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+                || $user->hasRole('Super Admin')
+                || $user->hasRole('Humas Personalia')
+            ),
             403,
-            'Hanya pengguna berwenang yang dapat mengimpor nama Arab GTK.'
+            'Import nama Arab GTK hanya dapat dilakukan oleh Humas Personalia atau Super Admin.'
         );
     }
 }

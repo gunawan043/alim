@@ -7,11 +7,10 @@ use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\Student;
 use App\Models\Uks\UksPatient;
-use App\Models\UksBed;
-use App\Models\UksBedAssignment;
 use App\Models\UksCareEvent;
 use App\Models\UksMedicationLog;
-use App\Models\UksTreatment;
+use App\Services\Uks\UksClinicService;
+use App\Services\Uks\UksMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -20,6 +19,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class PatientController extends Controller
 {
+    public function __construct(private readonly UksClinicService $clinic) {}
+
     // ── Status labels for display ──────────────────────────────
 
     private const STATUS_LABELS = [
@@ -46,7 +47,7 @@ class PatientController extends Controller
 
         $genderFilter = $this->getGenderFilter($roles);
 
-        $query = UksPatient::with(['student', 'admittedBy'])
+        $query = UksPatient::with(['student', 'admittedBy', 'currentBedAssignment.bed', 'locationUpdatedBy'])
             ->orderByDesc('admitted_at')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
 
@@ -57,28 +58,48 @@ class PatientController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         } elseif ($request->boolean('active_only')) {
-            $query->active();
+            $query->whereIn('status', [
+                UksPatient::STATUS_WAITING,
+                UksPatient::STATUS_TREATED,
+                UksPatient::STATUS_OBSERVATION,
+                UksPatient::STATUS_INPATIENT,
+                UksPatient::STATUS_RESTING_UKS,
+            ]);
         }
 
         if ($request->filled('search')) {
             $q = $request->search;
-            $query->whereHas('student', fn ($s) => $s->where('name', 'like', "%{$q}%"));
+            $query->where(function ($sub) use ($q) {
+                $sub->where('queue_number', 'like', "%{$q}%")
+                    ->orWhere('medical_record_no', 'like', "%{$q}%")
+                    ->orWhereHas('student', fn ($s) => $s->where('name', 'like', "%{$q}%")
+                        ->orWhere('nis', 'like', "%{$q}%")
+                        ->orWhere('nisn', 'like', "%{$q}%"));
+            });
         }
 
         if ($request->filled('month')) {
             [$year, $month] = explode('-', $request->month);
-            $query->whereRaw("DATE_FORMAT(admitted_at, '%Y-%m') = ?", ["{$year}-{$month}"]);
+            $query->whereYear('admitted_at', (int) $year)->whereMonth('admitted_at', (int) $month);
         }
 
         $patients = $query->paginate(15)->withQueryString();
 
         $stats = [
             'total' => (clone $query)->count(),
-            'active' => (clone $query)->active()->count(),
+            'active' => (clone $query)->whereIn('status', [
+                UksPatient::STATUS_WAITING,
+                UksPatient::STATUS_TREATED,
+                UksPatient::STATUS_OBSERVATION,
+                UksPatient::STATUS_INPATIENT,
+                UksPatient::STATUS_RESTING_UKS,
+            ])->count(),
             'referrals' => (clone $query)->where('referred_to_faskes', true)->count(),
             'today' => (clone $query)->today()->count(),
             'observation' => (clone $query)->where('status', UksPatient::STATUS_OBSERVATION)->count(),
             'inpatient' => (clone $query)->where('status', UksPatient::STATUS_INPATIENT)->count(),
+            'waiting' => (clone $query)->where('queue_status', UksPatient::QUEUE_WAITING)->count(),
+            'pharmacy' => (clone $query)->where('queue_status', UksPatient::QUEUE_PHARMACY)->count(),
         ];
 
         return view('uks.patients.index', compact('patients', 'stats', 'activeAy'));
@@ -88,7 +109,7 @@ class PatientController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $students = Student::whereHas('activeDormitoryResident')
+        $students = Student::where('status', 'active')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->get();
@@ -110,84 +131,63 @@ class PatientController extends Controller
             'academic_year_id' => 'nullable|uuid|exists:academic_years,id',
             'dormitory_id' => 'nullable|uuid|exists:dormitories,id',
             'patient_type' => 'required|in:rawat,pulang,balik',
-            'chief_complaint' => 'nullable|string|max:1000',
+            'triage_level' => 'nullable|in:P1,P2,P3',
+            'chief_complaint' => 'nullable|string|max:2000',
             'symptoms' => 'nullable|array',
             'symptoms.*' => 'string|max:100',
             'blood_pressure' => 'nullable|string|max:20',
-            'temperature' => 'nullable|numeric|min:34|max:45',
-            'pulse' => 'nullable|integer|min:30|max:250',
-            'height' => 'nullable|numeric|min:30|max:300',
-            'weight' => 'nullable|numeric|min:2|max:300',
-            'diagnosis' => 'nullable|string|max:500',
-            'treatment' => 'nullable|string|max:1000',
+            'temperature' => 'nullable|numeric|min:30|max:45',
+            'pulse' => 'nullable|integer|min:20|max:300',
+            'respiration_rate' => 'nullable|integer|min:5|max:80',
+            'oxygen_saturation' => 'nullable|integer|min:50|max:100',
+            'height' => 'nullable|numeric|min:20|max:300',
+            'weight' => 'nullable|numeric|min:1|max:500',
+            'allergies' => 'nullable|string|max:2000',
+            'diagnosis' => 'nullable|string|max:2000',
+            'treatment' => 'nullable|string|max:5000',
             'medicine_given' => 'nullable|string|max:255',
             'medication_details' => 'nullable|string|max:1000',
-            'bed_number' => 'nullable|string|max:20',
-            'in_bed' => 'sometimes|boolean',
             'referred_to_faskes' => 'sometimes|boolean',
             'referral_reason' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $vitals = collect([
-            'blood_pressure' => $validated['blood_pressure'] ?? null,
-            'temperature' => $validated['temperature'] ?? null,
-            'pulse' => $validated['pulse'] ?? null,
-            'height' => $validated['height'] ?? null,
-            'weight' => $validated['weight'] ?? null,
-        ])->filter()->toJson();
+        $student = Student::query()->findOrFail($validated['student_id']);
+        $schoolId = $validated['school_id'] ?? $request->attributes->get('schoolContextId');
 
-        $symptoms = collect($validated['symptoms'] ?? [])->filter()->values()->toJson();
+        $patient = $this->clinic->register($student, $validated, $schoolId, Auth::id());
 
-        // Default status
-        $validated['status'] = UksPatient::STATUS_WAITING;
-        $validated['admitted_at'] = now();
-        $validated['admitted_by'] = Auth::id();
-        $validated['symptoms'] = $symptoms;
-
-        // Bed tracking
-        if (! empty($validated['bed_number']) || (isset($validated['in_bed']) && $validated['in_bed'])) {
-            $validated['in_bed'] = true;
-            $validated['taken_bed_at'] = now();
-            $validated['left_bed_at'] = null;
+        if (UksMode::isSimple()) {
+            // Mode UKS sederhana: tidak ada antrean, pemeriksaan awal
+            // langsung dimulai oleh petugas UKS.
+            $this->clinic->startExamination($patient, Auth::id());
         }
 
-        if ($validated['referred_to_faskes'] === 1 || $validated['referred_to_faskes'] === '1') {
-            $validated['referred_to_faskes'] = true;
-        } else {
-            $validated['referred_to_faskes'] = false;
-        }
-
-        unset($validated['blood_pressure'], $validated['temperature'],
-            $validated['pulse'], $validated['height'], $validated['weight']);
-
-        $patient = UksPatient::create(array_merge($validated, ['vitals' => $vitals]));
-
-        // Log care event
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => now(),
-            'event_type' => 'masuk',
-            'event_title' => 'Masuk UKS',
-            'description' => 'Pendaftaran pasien baru dengan keluhan: '.($validated['chief_complaint'] ?? '-'),
-        ]);
-
-        // Redirect to index without filters so the newly-created patient appears immediately
-        return redirect()->route('user.uks.patients.index', ['userId' => Auth::id()])
-            ->with('success', 'Pasien berhasil didaftarkan.');
+        return redirect()
+            ->route('user.uks.clinic.workspace', ['userId' => Auth::id(), 'uuid' => $patient->id])
+            ->with('success', 'Pasien berhasil didaftarkan. Nomor antrean: '.$patient->queue_number.'.');
     }
 
     public function show(string $userId, string $uuid)
     {
         $patient = UksPatient::with([
-            'student',
+            'student.healthRecord',
+            'student.activeDormitoryResident.dormitory',
             'admittedBy',
+            'dischargedBy',
             'dormitory',
-            'treatments',
+            'treatments.performedBy',
+            'latestEncounter.performedBy',
+            'prescriptions.items.inventory',
+            'prescriptions.prescribedBy',
+            'prescriptions.dispensedBy',
+            'referrals.facility',
             'medicationLogs',
+            'medicationAdministrations.administeredBy',
             'careEvents' => fn ($q) => $q->orderBy('happened_at')->with('performedBy'),
             'currentBedAssignment.bed',
+            'locationUpdatedBy',
+            'locationLogs' => fn ($q) => $q->with(['recordedBy', 'bed'])->orderByDesc('recorded_at')->limit(20),
         ])
             ->findOrFail($uuid);
 
@@ -219,147 +219,40 @@ class PatientController extends Controller
     public function changeStatus(Request $request, string $userId, string $uuid)
     {
         $patient = UksPatient::findOrFail($uuid);
-        $oldStatus = $patient->status;
-        $newStatus = $request->input('new_status');
 
-        $allowedTransitions = [
-            UksPatient::STATUS_WAITING => [
-                UksPatient::STATUS_TREATED,
-                UksPatient::STATUS_OBSERVATION,
-                UksPatient::STATUS_INPATIENT,
-                UksPatient::STATUS_COMPLETED,
-            ],
-            UksPatient::STATUS_TREATED => [
-                UksPatient::STATUS_OBSERVATION,
-                UksPatient::STATUS_INPATIENT,
-                UksPatient::STATUS_REFERRAL_CLINIC,
-                UksPatient::STATUS_REFERRAL_HOSPITAL,
-                UksPatient::STATUS_COMPLETED,
-            ],
-            UksPatient::STATUS_OBSERVATION => [
-                UksPatient::STATUS_INPATIENT,
-                UksPatient::STATUS_TREATED,
-                UksPatient::STATUS_REFERRAL_CLINIC,
-                UksPatient::STATUS_REFERRAL_HOSPITAL,
-                UksPatient::STATUS_COMPLETED,
-            ],
-            UksPatient::STATUS_INPATIENT => [
-                UksPatient::STATUS_OBSERVATION,
-                UksPatient::STATUS_TREATED,
-                UksPatient::STATUS_REFERRAL_CLINIC,
-                UksPatient::STATUS_REFERRAL_HOSPITAL,
-                UksPatient::STATUS_COMPLETED,
-                UksPatient::STATUS_RESTING_UKS,
-            ],
-            UksPatient::STATUS_RESTING_UKS => [
-                UksPatient::STATUS_TREATED,
-                UksPatient::STATUS_OBSERVATION,
-                UksPatient::STATUS_RETURN_DORM,
-                UksPatient::STATUS_RETURN_SCHOOL,
-                UksPatient::STATUS_PICKED_UP,
-                UksPatient::STATUS_LEAVING,
-            ],
-            UksPatient::STATUS_RETURN_DORM => [],
-            UksPatient::STATUS_RETURN_SCHOOL => [],
-            UksPatient::STATUS_PICKED_UP => [],
-            UksPatient::STATUS_LEAVING => [],
-            UksPatient::STATUS_REFERRAL_CLINIC => [],
-            UksPatient::STATUS_REFERRAL_HOSPITAL => [],
-            UksPatient::STATUS_COMPLETED => [],
-        ];
-
-        if (! in_array($newStatus, $allowedTransitions[$oldStatus] ?? [])) {
-            return back()->withErrors([
-                'status' => "Tidak dapat mengubah status dari '{$oldStatus}' ke '{$newStatus}'.",
-            ]);
-        }
-
-        $patient->status = $newStatus;
-
-        $isTerminal = in_array($newStatus, [
-            UksPatient::STATUS_COMPLETED,
-            UksPatient::STATUS_RETURN_DORM,
-            UksPatient::STATUS_RETURN_SCHOOL,
-            UksPatient::STATUS_PICKED_UP,
-            UksPatient::STATUS_LEAVING,
-        ], true);
-
-        $patient->discharged_at = $isTerminal ? now() : null;
-        $patient->discharged_by = in_array($newStatus, [
-            UksPatient::STATUS_REFERRAL_CLINIC,
-            UksPatient::STATUS_REFERRAL_HOSPITAL,
-        ], true) ? auth()->id() : null;
-        $patient->notes = ($patient->notes ? $patient->notes."\n" : '').$request->input('notes', '');
-
-        if (in_array($newStatus, [UksPatient::STATUS_REFERRAL_CLINIC, UksPatient::STATUS_REFERRAL_HOSPITAL])) {
-            $patient->referred_to_faskes = true;
-        }
-
-        $patient->save();
-
-        // Bed assignment is auto-managed: occupied during rawat_uks OR istirahat_di_uks;
-        // cleared when leaving the room (terminal statuses except istirahat).
-        $bedStatuses = [UksPatient::STATUS_INPATIENT, UksPatient::STATUS_RESTING_UKS];
-
-        if (in_array($newStatus, $bedStatuses, true) && ! $patient->in_bed) {
-            $patient->in_bed = true;
-            $patient->taken_bed_at = now();
-            $patient->save();
-        } elseif (! in_array($newStatus, $bedStatuses, true) && $patient->in_bed) {
-            $patient->in_bed = false;
-            $patient->left_bed_at = now();
-            $patient->save();
-        }
-
-        // Log care event
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => now(),
-            'event_type' => $this->eventTypeForStatus($newStatus),
-            'event_title' => self::STATUS_LABELS[$newStatus] ?? $newStatus,
-            'description' => "Status diubah dari {$oldStatus} ke {$newStatus}",
+        $validated = $request->validate([
+            'new_status' => 'required|string|in:'.implode(',', array_keys(UksPatient::$statusLabels)),
+            'notes' => 'nullable|string|max:1000',
         ]);
 
+        $this->clinic->changeStatus($patient, $validated['new_status'], $validated['notes'] ?? null, Auth::id());
+
         return redirect()->route('user.uks.patients.show', ['userId' => Auth::id(), 'uuid' => $patient->id])
-            ->with('success', "Status pasien berhasil diubah ke '".(self::STATUS_LABELS[$newStatus] ?? $newStatus)."'.");
+            ->with('success', "Status pasien berhasil diubah ke '".(UksPatient::$statusLabels[$validated['new_status']] ?? $validated['new_status'])."'.");
     }
 
     /**
-     * Discharge a patient — set status to 'selesai'.
+     * Discharge a patient — selesai atau rujuk.
      */
     public function discharge(Request $request, string $userId, string $uuid)
     {
         $patient = UksPatient::findOrFail($uuid);
 
-        if (! $patient->isActive()) {
-            return back()->withErrors(['status' => 'Pasien ini sudah tidak aktif.']);
-        }
-
         $validated = $request->validate([
-            'action' => 'required|in:selesai,dirujuk',
-            'discharged_at' => 'nullable|date|after_or_equal:'.($patient->admitted_at ? $patient->admitted_at->format('Y-m-d\TH:i') : ''),
+            'action' => 'required|in:selesai,dirujuk_ke_klinik,dirujuk_ke_rumah_sakit',
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $patient->status = $validated['action'];
-        $patient->discharged_at = $validated['discharged_at'] ?? now();
-        $patient->discharged_by = auth()->id();
-        $patient->notes = ($patient->notes ? $patient->notes."\n" : '').$validated['notes'];
+        $this->clinic->changeStatus(
+            $patient,
+            $validated['action'],
+            $validated['notes'] ?? null,
+            Auth::id()
+        );
 
-        if ($validated['action'] === 'dirujuk') {
-            $patient->referred_to_faskes = true;
-            $patient->save();
-        } else {
-            $patient->save();
-        }
-
-        $redirectRoute = $validated['action'] === 'dirujuk'
-            ? 'user.uks.facility-referrals.create'
-            : 'user.uks.patients.index';
-
-        return redirect()->route($redirectRoute, ['userId' => auth()->user()->id])
-            ->with('success', "Pasien berhasil {$validated['action']}.");
+        return redirect()
+            ->route('user.uks.patients.show', ['userId' => Auth::id(), 'uuid' => $patient->id])
+            ->with('success', 'Status keluar pasien berhasil dicatat.');
     }
 
     /**
@@ -370,17 +263,19 @@ class PatientController extends Controller
         $patient = UksPatient::findOrFail($uuid);
 
         $validated = $request->validate([
-            'diagnosis' => 'nullable|string|max:500',
-            'treatment' => 'nullable|string|max:1000',
+            'diagnosis' => 'nullable|string|max:2000',
+            'treatment' => 'nullable|string|max:5000',
             'medicine_given' => 'nullable|string|max:255',
             'medication_details' => 'nullable|string|max:1000',
-            'chief_complaint' => 'nullable|string|max:1000',
+            'chief_complaint' => 'nullable|string|max:2000',
+            'allergies' => 'nullable|string|max:2000',
+            'follow_up_date' => 'nullable|date',
             'symptoms' => 'nullable|array',
             'symptoms.*' => 'string|max:100',
-            'bed_number' => 'nullable|string|max:20',
-            'in_bed' => 'sometimes|boolean',
             'notes' => 'nullable|string|max:2000',
         ]);
+
+        $validated['symptoms'] = collect($validated['symptoms'] ?? [])->filter()->values()->all() ?: null;
 
         $patient->update($validated);
 
@@ -395,31 +290,23 @@ class PatientController extends Controller
     {
         $patient = UksPatient::findOrFail($uuid);
 
-        if (! $patient->isActive()) {
-            return back()->withErrors(['status' => 'Hanya pasien aktif yang bisa ditandai kembali.']);
-        }
-
         $validated = $request->validate([
             'return_type' => 'required|in:pulang,balik',
             'returned_at' => 'required|date',
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $patient->patient_type = $validated['return_type'];
-        $patient->status = UksPatient::STATUS_COMPLETED;
-        $patient->discharged_at = $validated['returned_at'];
-        $patient->discharged_by = auth()->id();
-        $patient->notes = ($patient->notes ? $patient->notes."\n" : '').$validated['notes'];
-        $patient->save();
+        $targetStatus = $validated['return_type'] === 'pulang'
+            ? UksPatient::STATUS_LEAVING
+            : UksPatient::STATUS_RETURN_DORM;
 
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => $validated['returned_at'],
-            'event_type' => 'pulang',
-            'event_title' => 'Pulang - '.ucfirst($validated['return_type']),
-            'description' => $validated['notes'],
-        ]);
+        if (! in_array($targetStatus, $this->clinic->allowedTransitions($patient->status), true)) {
+            $targetStatus = UksPatient::STATUS_COMPLETED;
+        }
+
+        $this->clinic->changeStatus($patient, $targetStatus, $validated['notes'] ?? null, Auth::id());
+
+        $patient->update(['patient_type' => $validated['return_type']]);
 
         return redirect()->route('user.uks.patients.show', ['userId' => Auth::id(), 'uuid' => $patient->id])
             ->with('success', "Pasien ditandai sebagai '{$validated['return_type']}' pada {$validated['returned_at']}.");
@@ -447,10 +334,9 @@ class PatientController extends Controller
             'dosage' => $validated['dosage'] ?? null,
             'route' => $validated['route'] ?? 'oral',
             'given_at' => $validated['given_at'] ?? now(),
-            'notes' => $validated['notes'],
+            'notes' => $validated['notes'] ?? null,
         ]);
 
-        // Also update patient's medicine_given field for quick display
         $patient->medicine_given = $validated['medicine_name'];
         $patient->save();
 
@@ -458,7 +344,7 @@ class PatientController extends Controller
             'patient_id' => $patient->id,
             'performed_by' => Auth::id(),
             'happened_at' => $log->given_at,
-            'event_type' => 'pemberian_obat',
+            'event_type' => UksCareEvent::TYPE_PEMBERIAN_OBAT,
             'event_title' => 'Pemberian Obat: '.$validated['medicine_name'],
             'description' => ($validated['dosage'] ?? '—').' via '.($validated['route'] ?? 'oral'),
         ]);
@@ -472,65 +358,33 @@ class PatientController extends Controller
      */
     public function recordTreatment(Request $request, string $uuid)
     {
-        $patient = UksPatient::findOrFail($uuid);
+        $patient = UksPatient::with('student')->findOrFail($uuid);
 
         $validated = $request->validate([
-            'chief_complaint' => 'nullable|string|max:1000',
+            'chief_complaint' => 'nullable|string|max:2000',
+            'subjective' => 'nullable|string|max:5000',
             'symptoms' => 'nullable|array',
             'symptoms.*' => 'string|max:200',
             'blood_pressure' => 'nullable|string|max:20',
-            'temperature' => 'nullable|numeric|min:34|max:45',
-            'pulse' => 'nullable|integer|min:30|max:250',
-            'height' => 'nullable|numeric|min:30|max:300',
-            'weight' => 'nullable|numeric|min:2|max:300',
-            'oxygen_saturation' => 'nullable|integer|min:70|max:100',
-            'diagnosis' => 'nullable|string|max:500',
-            'treatment' => 'nullable|string|max:1000',
+            'temperature' => 'nullable|numeric|min:30|max:45',
+            'pulse' => 'nullable|integer|min:20|max:300',
+            'respiration_rate' => 'nullable|integer|min:5|max:80',
+            'height' => 'nullable|numeric|min:20|max:300',
+            'weight' => 'nullable|numeric|min:1|max:500',
+            'oxygen_saturation' => 'nullable|integer|min:50|max:100',
+            'physical_exam' => 'nullable|string|max:5000',
+            'diagnosis' => 'nullable|string|max:2000',
+            'assessment' => 'nullable|string|max:5000',
+            'icd10_code' => 'nullable|string|max:10',
+            'icd10_name' => 'nullable|string|max:191',
+            'treatment' => 'nullable|string|max:5000',
+            'plan' => 'nullable|string|max:5000',
+            'disposition' => 'nullable|in:pulang,kontrol,observasi,rawat_uks,rujuk',
+            'follow_up_date' => 'nullable|date',
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        // Build vitals array
-        $vitals = collect([
-            'blood_pressure' => $validated['blood_pressure'] ?? null,
-            'temperature' => $validated['temperature'] ?? null,
-            'pulse' => $validated['pulse'] ?? null,
-            'height' => $validated['height'] ?? null,
-            'weight' => $validated['weight'] ?? null,
-            'oxygen_saturation' => $validated['oxygen_saturation'] ?? null,
-        ])->filter()->toJson();
-
-        $symptoms = collect($validated['symptoms'] ?? [])->filter()->values()->toJson();
-
-        $treatment = UksTreatment::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'chief_complaint' => $validated['chief_complaint'] ?? $patient->chief_complaint,
-            'symptoms' => $symptoms,
-            'vitals' => $vitals,
-            'diagnosis' => $validated['diagnosis'] ?? $patient->diagnosis,
-            'treatment' => $validated['treatment'],
-            'notes' => $validated['notes'],
-        ]);
-
-        // Update patient with latest info if not already filled
-        if (! $patient->diagnosis && $validated['diagnosis']) {
-            $patient->diagnosis = $validated['diagnosis'];
-            $patient->chief_complaint = $validated['chief_complaint'] ?? $patient->chief_complaint;
-            $patient->save();
-        }
-
-        $eventTitle = $validated['diagnosis']
-            ? "Diagnosa: {$validated['diagnosis']}"
-            : 'Pemeriksaan ulang';
-
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => now(),
-            'event_type' => 'pemeriksaan_ulang',
-            'event_title' => $eventTitle,
-            'description' => $validated['notes'],
-        ]);
+        $this->clinic->recordEncounter($patient, $validated, Auth::id());
 
         return redirect()->route('user.uks.patients.show', ['userId' => Auth::id(), 'uuid' => $patient->id])
             ->with('success', 'Data perawatan berhasil dicatat.');
@@ -541,36 +395,17 @@ class PatientController extends Controller
      */
     public function assignBed(Request $request, string $uuid)
     {
-        $patient = UksPatient::findOrFail($uuid);
+        $patient = UksPatient::with('student')->findOrFail($uuid);
 
         $validated = $request->validate([
             'bed_id' => 'required|uuid|exists:uks_beds,id',
             'reason' => 'nullable|string|max:500',
         ]);
 
-        UksBedAssignment::assign($validated['bed_id'], $patient->id, $validated['reason'] ?? null);
-
-        $patient->update([
-            'bed_number' => $validated['bed_id'] ? UksBed::find($validated['bed_id'])->bed_number : null,
-            'in_bed' => true,
-            'taken_bed_at' => now(),
-            'status' => UksPatient::STATUS_INPATIENT,
-        ]);
-
-        $bed = UksBed::find($validated['bed_id']);
-        $identifier = $bed ? $bed->identifier : 'Unknown';
-
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => now(),
-            'event_type' => 'istirahat',
-            'event_title' => 'Penempatan Bed: '.$identifier,
-            'description' => $validated['reason'] ?? null,
-        ]);
+        $bed = $this->clinic->assignBed($patient, $validated['bed_id'], $validated['reason'] ?? null, Auth::id());
 
         return redirect()->route('user.uks.patients.show', ['userId' => Auth::id(), 'uuid' => $patient->id])
-            ->with('success', 'Santri berhasil ditempatkan di ranjang '.$identifier);
+            ->with('success', 'Santri berhasil ditempatkan di bed '.$bed->bed_number.'.');
     }
 
     /**
@@ -580,34 +415,21 @@ class PatientController extends Controller
     {
         $patient = UksPatient::findOrFail($uuid);
 
-        $assignment = UksBedAssignment::where('patient_id', $patient->id)
-            ->where('status', 'assigned')
-            ->latest('assigned_at')
-            ->first();
-
-        if ($assignment) {
-            $assignment->update([
-                'status' => 'released',
-                'released_at' => now(),
-            ]);
-        }
-
-        $patient->update([
-            'in_bed' => false,
-            'left_bed_at' => now(),
+        $validated = $request->validate([
+            'care_location' => 'nullable|in:'.implode(',', array_keys(UksPatient::$careLocationLabels)),
+            'notes' => 'nullable|string|max:1000',
         ]);
 
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => now(),
-            'event_type' => 'istirahat',
-            'event_title' => 'Keluar dari Ranjang',
-            'description' => 'Sanutri turun dari ranjang UKS',
-        ]);
+        $this->clinic->releaseBed(
+            $patient,
+            Auth::id(),
+            true,
+            $validated['care_location'] ?? null,
+            $validated['notes'] ?? null
+        );
 
         return redirect()->route('user.uks.patients.show', ['userId' => Auth::id(), 'uuid' => $patient->id])
-            ->with('success', 'Pesawat berhasil dikeluarkan dari ranjang');
+            ->with('success', 'Pasien berhasil dikeluarkan dari bed UKS.');
     }
 
     /**
@@ -673,7 +495,7 @@ class PatientController extends Controller
                         </form>
                     </div>',
                     $patient->id,
-                    route('user.uks.patients.discharge', $patient->id),
+                    route('user.uks.patients.discharge', ['userId' => auth()->id(), 'uuid' => $patient->id]),
                     csrf_field()
                 );
             } else {
@@ -685,9 +507,11 @@ class PatientController extends Controller
             }
 
             return [
-                '#DTRowIndex' => $start + $patient->id,
+                '#DTRowIndex' => $start + 1,
                 'student_name' => $student ? htmlspecialchars($student->name, ENT_QUOTES, 'UTF-8') : '-',
-                'dormitory' => $student?->dormitory ? htmlspecialchars($student->dormitory->name, ENT_QUOTES, 'UTF-8') : '-',
+                'dormitory' => $student?->activeDormitoryResident?->dormitory?->name
+                    ? htmlspecialchars($student->activeDormitoryResident->dormitory->name, ENT_QUOTES, 'UTF-8')
+                    : '-',
                 'patient_type' => ucfirst($patient->patient_type ?? '-'),
                 'chief_complaint' => htmlspecialchars($patient->chief_complaint ?? '-', ENT_QUOTES, 'UTF-8'),
                 'vitals' => $patient->vitals ? json_encode($patient->vitals) : '-',
@@ -739,127 +563,39 @@ class PatientController extends Controller
     }
 
     /**
-     * Map a status value to a care event type.
-     */
-    private function eventTypeForStatus(string $status): string
-    {
-        return match ($status) {
-            UksPatient::STATUS_INPATIENT,
-            UksPatient::STATUS_RESTING_UKS => 'istirahat',
-            UksPatient::STATUS_RETURN_DORM => 'kembali_asrama',
-            UksPatient::STATUS_RETURN_SCHOOL => 'kembali_sekolah',
-            UksPatient::STATUS_PICKED_UP => 'jemput_wali',
-            UksPatient::STATUS_LEAVING,
-            UksPatient::STATUS_COMPLETED => 'pulang',
-            UksPatient::STATUS_REFERRAL_CLINIC,
-            UksPatient::STATUS_REFERRAL_HOSPITAL => 'dirujuk',
-            default => 'pemeriksaan',
-        };
-    }
-
-    /**
      * Get action buttons available for a given patient status.
      */
     private function getAvailableActionsForStatus(string $status): array
     {
-        return match ($status) {
-            // Active / inpatient — full menu
-            UksPatient::STATUS_WAITING,
-            UksPatient::STATUS_TREATED,
-            UksPatient::STATUS_OBSERVATION,
-            UksPatient::STATUS_INPATIENT => [
-                [
-                    'label' => 'Rawat Lanjut / Obserbasi',
-                    'status' => UksPatient::STATUS_TREATED,
-                    'color' => 'info',
-                    'icon' => 'ri-capsule-line',
-                    'confirm' => 'Yakin ingin melanjutkan perawatan pasien?',
-                ],
-                [
-                    'label' => 'Rawat UKS',
-                    'status' => UksPatient::STATUS_INPATIENT,
-                    'color' => 'info',
-                    'icon' => 'ri-stethoscope-line',
-                    'confirm' => 'Pindahkan pasien ke rawat inap di UKS?',
-                ],
-                [
-                    'label' => 'Istirahat di UKS',
-                    'status' => UksPatient::STATUS_RESTING_UKS,
-                    'color' => 'secondary',
-                    'icon' => 'ri-sleep-line',
-                    'confirm' => 'Pindahkan pasien ke ranjang istirahat (tanpa perawatan aktif)?',
-                ],
-                [
-                    'label' => 'Rujuk ke Klinik',
-                    'status' => UksPatient::STATUS_REFERRAL_CLINIC,
-                    'color' => 'danger',
-                    'icon' => 'ri-hospital-line',
-                    'confirm' => 'Rujuk pasien ke klinik/faskes?',
-                ],
-                [
-                    'label' => 'Rujuk ke RS',
-                    'status' => UksPatient::STATUS_REFERRAL_HOSPITAL,
-                    'color' => 'danger',
-                    'icon' => 'ri-hospital-line',
-                    'confirm' => 'Rujuk pasien ke rumah sakit?',
-                ],
-                [
-                    'label' => 'Selesai',
-                    'status' => UksPatient::STATUS_COMPLETED,
-                    'color' => 'success',
-                    'icon' => 'ri-check-line',
-                    'confirm' => 'Tandai pasien selesai (pulang normal)?',
-                ],
-            ],
+        $labels = [
+            UksPatient::STATUS_WAITING => ['Menunggu Pemeriksaan', 'warning', 'ri-time-line'],
+            UksPatient::STATUS_TREATED => ['Sedang Ditangani', 'info', 'ri-stethoscope-line'],
+            UksPatient::STATUS_OBSERVATION => ['Observasi', 'primary', 'ri-eye-line'],
+            UksPatient::STATUS_INPATIENT => ['Rawat UKS', 'primary', 'ri-hospital-line'],
+            UksPatient::STATUS_RESTING_UKS => ['Istirahat di UKS', 'secondary', 'ri-sleep-line'],
+            UksPatient::STATUS_RETURN_DORM => ['Kembali ke Asrama', 'success', 'ri-home-heart-line'],
+            UksPatient::STATUS_RETURN_SCHOOL => ['Kembali ke Sekolah', 'success', 'ri-school-line'],
+            UksPatient::STATUS_PICKED_UP => ['Dijemput Wali', 'warning', 'ri-user-heart-line'],
+            UksPatient::STATUS_LEAVING => ['Pulang', 'dark', 'ri-logout-box-r-line'],
+            UksPatient::STATUS_REFERRAL_CLINIC => ['Rujuk ke Klinik', 'danger', 'ri-hospital-line'],
+            UksPatient::STATUS_REFERRAL_HOSPITAL => ['Rujuk ke RS', 'danger', 'ri-hospital-line'],
+            UksPatient::STATUS_COMPLETED => ['Selesai', 'success', 'ri-check-line'],
+        ];
 
-            // Resting — can return to care or leave
-            UksPatient::STATUS_RESTING_UKS => [
-                [
-                    'label' => 'Teruskan Perawatan',
-                    'status' => UksPatient::STATUS_TREATED,
-                    'color' => 'info',
-                    'icon' => 'ri-capsule-line',
-                    'confirm' => 'Kembalikan pasien ke perawatan aktif?',
-                ],
-                [
-                    'label' => 'Kembali ke Asrama',
-                    'status' => UksPatient::STATUS_RETURN_DORM,
-                    'color' => 'primary',
-                    'icon' => 'ri-home-heart-line',
-                    'confirm' => 'Pasien kembali ke asrama?',
-                ],
-                [
-                    'label' => 'Kembali ke Sekolah',
-                    'status' => UksPatient::STATUS_RETURN_SCHOOL,
-                    'color' => 'primary',
-                    'icon' => 'ri-school-line',
-                    'confirm' => 'Pasien kembali ke sekolah (non-asrama)?',
-                ],
-                [
-                    'label' => 'Dijemput Wali',
-                    'status' => UksPatient::STATUS_PICKED_UP,
-                    'color' => 'warning',
-                    'icon' => 'ri-user-heart-line',
-                    'confirm' => 'Pasien dijemput wali/orang tua?',
-                ],
-                [
-                    'label' => 'Pulang',
-                    'status' => UksPatient::STATUS_LEAVING,
-                    'color' => 'dark',
-                    'icon' => 'ri-logout-box-r-line',
-                    'confirm' => 'Pasien pulang biasa?',
-                ],
-                [
-                    'label' => 'Selesai',
-                    'status' => UksPatient::STATUS_COMPLETED,
-                    'color' => 'success',
-                    'icon' => 'ri-check-line',
-                    'confirm' => 'Tandai pasien selesai?',
-                ],
-            ],
+        $actions = [];
 
-            // Terminal — no actions available
-            default => [],
-        };
+        foreach ($this->clinic->allowedTransitions($status) as $nextStatus) {
+            [$label, $color, $icon] = $labels[$nextStatus] ?? [ucfirst(str_replace('_', ' ', $nextStatus)), 'secondary', 'ri-arrow-right-line'];
+
+            $actions[] = [
+                'label' => $label,
+                'status' => $nextStatus,
+                'color' => $color,
+                'icon' => $icon,
+                'confirm' => 'Ubah status pasien menjadi '.$label.'?',
+            ];
+        }
+
+        return $actions;
     }
 }

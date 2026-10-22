@@ -216,10 +216,19 @@
                         </span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end">
-                        <h6 class="dropdown-header">Welcome {{ Auth::user()->name }}!</h6>
-                        <a class="dropdown-item" href="pages-profile"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Profile</span></a>
+                        @php
+                            $topbarUser = Auth::user();
+                            $canManageSecurity = (method_exists($topbarUser, 'isSystemAdmin') && $topbarUser->isSystemAdmin())
+                                || $topbarUser->hasRole('Super Admin');
+                            $settingsUrl = $canManageSecurity
+                                ? route('user.sa.system-settings.index', ['userId' => $topbarUser->id, 'tab' => 'security'])
+                                : route('user.profile.security', ['userId' => $topbarUser->id]);
+                        @endphp
+                        <h6 class="dropdown-header">Welcome {{ $topbarUser->name }}!</h6>
+                        <a class="dropdown-item" href="{{ route('user.profile.my', ['userId' => $topbarUser->id]) }}"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Profile</span></a>
+                        <a class="dropdown-item" href="{{ route('user.profile.security', ['userId' => $topbarUser->id]) }}"><i class="mdi mdi-shield-key-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Keamanan Akun</span></a>
                         <a class="dropdown-item" href="apps-tasks-kanban"><i class="mdi mdi-calendar-check-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Taskboard</span></a>
-                        <a class="dropdown-item" href="pages-profile-settings"><span class="badge bg-success-subtle text-success mt-1 float-end">New</span><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Settings</span></a>
+                        <a class="dropdown-item" href="{{ $settingsUrl }}"><span class="badge bg-success-subtle text-success mt-1 float-end">New</span><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Settings</span></a>
                         <a class="dropdown-item" href="auth-lockscreen-basic"><i class="mdi mdi-lock text-muted fs-16 align-middle me-1"></i> <span class="align-middle">Lock screen</span></a>
                         <a class="dropdown-item " href="javascript:void();" onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><i class="bx bx-power-off font-size-16 align-middle me-1"></i> <span key="t-logout">@lang('translation.logout')</span></a>
                         <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
@@ -312,8 +321,8 @@
     <style>
         .alim-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-80%); color:#94a3b8; font-size:16px; }
         .alim-search-input { width:100%; height:38px; padding:0 14px 0 36px; border-radius:10px; font-size:.85rem; transition:all .15s ease; }
-        .alim-search-input:focus { outline:none; border-color:#0a5f9e; background:#fff; box-shadow:0 0 0 3px rgba(10,95,158,.12); }
-        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background:#fff; border-radius:12px; box-shadow:0 12px 32px rgba(15,23,42,.16); z-index:2000; max-height:420px; overflow:auto; padding:.4rem;}
+        .alim-search-input:focus { outline:none; background:#fff; box-shadow:0 0 0 3px rgba(10,95,158,.12); }
+        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background:#fff; border-radius:12px; z-index:2000; max-height:420px; overflow:auto; padding:.4rem;}
         .alim-search-group { padding:.5rem .7rem .25rem; font-size:.66rem; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; font-weight:600; }
         .alim-search-group i { margin-right:4px; }
         .alim-search-item { display:block; padding:.5rem .7rem; border-radius:9px; color:#1e293b; text-decoration:none; transition:background .12s ease; }

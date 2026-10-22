@@ -661,6 +661,9 @@
                 <button type="button" class="ai-chat-icon-btn" id="aiChatNew" title="Percakapan baru" aria-label="Percakapan baru">
                     <i class="ri-add-line"></i>
                 </button>
+                <a class="ai-chat-icon-btn" href="{{ route('user.ai.index', ['userId' => $chatUserId]) }}" title="Buka halaman AI" aria-label="Buka halaman AI">
+                    <i class="ri-expand-diagonal-line"></i>
+                </a>
                 <button type="button" class="ai-chat-icon-btn" id="aiChatClose" title="Tutup" aria-label="Tutup chat">
                     <i class="ri-close-line"></i>
                 </button>

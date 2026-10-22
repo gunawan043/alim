@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Services\SecurityPolicy;
+use App\Services\TotpService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
@@ -51,6 +54,7 @@ class User extends Authenticatable
         'remember_token',
         'google_id',
         'google_token',
+        'two_factor_secret',
     ];
 
     protected $casts = [
@@ -59,6 +63,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'last_login_at' => 'datetime',
         'name_ar_reviewed_at' => 'datetime',
+        'two_factor_confirmed_at' => 'datetime',
         'locked_at' => 'datetime',
         'locked_until' => 'datetime',
         'is_active' => 'boolean',
@@ -317,6 +322,47 @@ class User extends Authenticatable
         return $email;
     }
 
+    public function hasTotpEnabled(): bool
+    {
+        return $this->two_factor_confirmed_at !== null && $this->getTotpSecret() !== null;
+    }
+
+    public function getTotpSecret(): ?string
+    {
+        if (empty($this->two_factor_secret)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($this->two_factor_secret);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function setTotpSecret(string $secret, bool $confirmed = false): void
+    {
+        $this->forceFill([
+            'two_factor_secret' => Crypt::encryptString($secret),
+            'two_factor_confirmed_at' => $confirmed ? now() : null,
+        ])->save();
+    }
+
+    public function clearTotp(): void
+    {
+        $this->forceFill([
+            'two_factor_secret' => null,
+            'two_factor_confirmed_at' => null,
+        ])->save();
+    }
+
+    public function getTotpUriAttribute(): ?string
+    {
+        $secret = $this->getTotpSecret();
+
+        return $secret ? TotpService::otpauthUri($secret, (string) $this->email) : null;
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -332,8 +378,8 @@ class User extends Authenticatable
     {
         $this->failed_login_attempts += 1;
 
-        if ($this->failed_login_attempts >= 9) {
-            $this->locked_until = now()->addHours(24);
+        if ($this->failed_login_attempts >= SecurityPolicy::maxLoginAttempts()) {
+            $this->locked_until = now()->addMinutes(SecurityPolicy::lockoutMinutes());
             $this->locked_at = now();
         }
 
@@ -344,6 +390,7 @@ class User extends Authenticatable
     {
         $this->failed_login_attempts = 0;
         $this->locked_until = null;
+        $this->locked_at = null;
         $this->save();
     }
 
@@ -705,7 +752,7 @@ class User extends Authenticatable
         }
 
         // Wali kamar aktif juga berhak mengakses asrama tempat kamarnya.
-        if (\App\Models\RoomSupervisor::active()
+        if (RoomSupervisor::active()
             ->where('user_id', $this->id)
             ->where('dormitory_id', $dormitoryId)
             ->exists()) {

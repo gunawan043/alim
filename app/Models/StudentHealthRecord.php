@@ -22,7 +22,7 @@ class StudentHealthRecord extends Model
 
     protected $fillable = [
         'student_id', 'school_id',
-        'blood_type', 'height_cm', 'weight_kg', 'bmi',
+        'blood_type', 'height_cm', 'weight_kg', 'head_circumference_cm', 'bmi',
         'allergies', 'chronic_diseases', 'current_medications',
         'emergency_notes',
         'bpjs_number', 'insurance_provider', 'insurance_number',
@@ -32,6 +32,7 @@ class StudentHealthRecord extends Model
     protected $casts = [
         'height_cm' => 'integer',
         'weight_kg' => 'integer',
+        'head_circumference_cm' => 'integer',
         'bmi' => 'decimal:2',
         'last_physical_exam_date' => 'date',
     ];

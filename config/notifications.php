@@ -37,5 +37,8 @@ return [
         // Sistem
         'announcement' => ['group' => 'Sistem', 'label' => 'Pengumuman'],
         'login' => ['group' => 'Sistem', 'label' => 'Notifikasi login akun'],
+        'password_forgot' => ['group' => 'Keamanan Akun', 'label' => 'Permintaan lupa password'],
+        'password_reset' => ['group' => 'Keamanan Akun', 'label' => 'Password berhasil direset'],
+        'password_changed' => ['group' => 'Keamanan Akun', 'label' => 'Password diubah dari profil'],
     ],
 ];

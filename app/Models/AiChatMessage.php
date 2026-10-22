@@ -27,7 +27,7 @@ class AiChatMessage extends Model
     }
 
     protected $fillable = [
-        'conversation_id', 'role', 'sequence', 'content', 'metadata',
+        'conversation_id', 'client_message_id', 'role', 'sequence', 'content', 'metadata',
     ];
 
     protected $casts = [

@@ -7,6 +7,7 @@ $schoolId = $this->getUserSchoolId($user);
 $count = DB::table('student_medicine_inventory')
     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
     ->whereColumn('current_stock', '<=', 'min_stock_alert')
+    ->where('min_stock_alert', '>', 0)
     ->count();
 
 return [

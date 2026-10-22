@@ -8,6 +8,8 @@ use App\Models\GradeLevel;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
+use App\Models\StudentHealthMetric;
+use App\Models\StudentHealthRecord;
 use App\Models\StudyGroup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -78,6 +80,89 @@ class StudentImportTest extends TestCase
         $errors = implode(' | ', $import->getErrors());
         $this->assertStringContainsString('NISN wajib diisi', $errors);
         $this->assertStringContainsString('jenis kelamin tidak valid', $errors);
+    }
+
+    public function test_import_menyinkronkan_tinggi_berat_dan_lingkar_kepala_ke_uks(): void
+    {
+        $import = new StudentImport($this->school->id, $this->group->id);
+        $import->collection($this->makeRows([
+            [
+                'name' => 'Santri Antropometri',
+                'nis' => '1101',
+                'gender' => 'L',
+                'nisn' => '991001',
+                'nik' => '3200000000001001',
+                'weight' => '55',
+                'height' => '165',
+                'head_circumference' => '53',
+            ],
+        ]));
+
+        $this->assertSame(1, $import->getSuccessCount());
+
+        $student = Student::where('nisn', '991001')->firstOrFail();
+        $this->assertSame(165, (int) $student->height);
+        $this->assertSame(55, (int) $student->weight);
+        $this->assertSame(53, (int) $student->head_circumference);
+
+        $record = StudentHealthRecord::where('student_id', $student->id)->firstOrFail();
+        $this->assertSame(165, $record->height_cm);
+        $this->assertSame(55, $record->weight_kg);
+        $this->assertSame(53, $record->head_circumference_cm);
+        $this->assertNotNull($record->bmi);
+
+        $metric = StudentHealthMetric::where('student_id', $student->id)->firstOrFail();
+        $this->assertSame($this->ay->id, $metric->academic_year_id);
+        $this->assertSame(165, $metric->height_cm);
+        $this->assertSame(55, $metric->weight_kg);
+        $this->assertSame(53, $metric->head_circumference_cm);
+        $this->assertSame('medical_checkup', $metric->measurement_session);
+        $this->assertNotNull($metric->bmi);
+    }
+
+    public function test_import_ulang_melengkapi_data_uks_santri_lama(): void
+    {
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'nisn' => '991002',
+            'nis' => '1102',
+            'name' => 'Santri Lama UKS',
+            'gender' => 'P',
+            'status' => 'active',
+        ]);
+
+        $import = new StudentImport($this->school->id, $this->group->id);
+        $import->collection($this->makeRows([
+            [
+                'name' => 'Santri Lama UKS',
+                'nis' => '1102',
+                'gender' => 'P',
+                'nisn' => '991002',
+                'weight' => '60',
+                'height' => '170',
+                'head_circumference' => '55',
+            ],
+        ]));
+
+        $this->assertSame(0, $import->getSuccessCount());
+        $this->assertCount(1, $import->getDuplicates());
+
+        $student->refresh();
+        $this->assertSame(170, (int) $student->height);
+        $this->assertSame(60, (int) $student->weight);
+
+        $record = StudentHealthRecord::where('student_id', $student->id)->firstOrFail();
+        $this->assertSame(170, $record->height_cm);
+        $this->assertSame(60, $record->weight_kg);
+        $this->assertSame(55, $record->head_circumference_cm);
+
+        $this->assertDatabaseHas('student_health_metrics', [
+            'student_id' => $student->id,
+            'academic_year_id' => $this->ay->id,
+            'height_cm' => 170,
+            'weight_kg' => 60,
+            'head_circumference_cm' => 55,
+        ]);
     }
 
     public function test_import_melewati_duplikat_nisn_dan_nis_dalam_sekolah(): void
@@ -158,6 +243,9 @@ class StudentImportTest extends TestCase
             $row[3] = $data['gender'] ?? null;
             $row[4] = $data['nisn'] ?? null;
             $row[7] = $data['nik'] ?? null;
+            $row[60] = $data['weight'] ?? null;
+            $row[61] = $data['height'] ?? null;
+            $row[62] = $data['head_circumference'] ?? null;
             $rows->push(collect($row));
         }
 

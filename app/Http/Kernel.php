@@ -2,17 +2,20 @@
 
 namespace App\Http;
 
+use App\Http\Middleware\ApplySecuritySettings;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\BindOrganizationContext;
 use App\Http\Middleware\CheckIpBlocked;
+use App\Http\Middleware\DenyStudentOperatorAi;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureBookPeriodWritable;
+use App\Http\Middleware\EnsureDormitoryStudentOperatorAccess;
 use App\Http\Middleware\EnsureEmployeeAccess;
 use App\Http\Middleware\EnsureKurikulumModuleAccess;
+use App\Http\Middleware\EnsureLabAccess;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureSarprasAccess;
-use App\Http\Middleware\DenyStudentOperatorAi;
-use App\Http\Middleware\EnsureDormitoryStudentOperatorAccess;
+use App\Http\Middleware\EnsureSatuanPendidikanFeature;
 use App\Http\Middleware\EnsureStudentPasswordChanged;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Http\Middleware\Localization;
@@ -21,6 +24,7 @@ use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RequestIdMiddleware;
 use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\RestrictAdminIp;
 use App\Http\Middleware\RestrictDormitoryUserFromStudents;
 use App\Http\Middleware\RoleLevelMiddleware;
 use App\Http\Middleware\RoleMiddleware;
@@ -78,6 +82,7 @@ class Kernel extends HttpKernel
         'web' => [
             EncryptCookies::class,
             AddQueuedCookiesToResponse::class,
+            ApplySecuritySettings::class,
             StartSession::class,
             RequestIdMiddleware::class,
             WebSecurityHeaders::class,
@@ -90,6 +95,7 @@ class Kernel extends HttpKernel
             SchoolContextMiddleware::class,
             BindOrganizationContext::class,
             CheckIpBlocked::class,
+            RestrictAdminIp::class,
             EnsureStudentPasswordChanged::class,
             DenyStudentOperatorAi::class,
             EnsureDormitoryStudentOperatorAccess::class,
@@ -137,9 +143,9 @@ class Kernel extends HttpKernel
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
         'sarpras.access' => EnsureSarprasAccess::class,
-        'lab.access' => \App\Http\Middleware\EnsureLabAccess::class,
+        'lab.access' => EnsureLabAccess::class,
         'osipp.access' => \App\Http\Middleware\EnsureOsippAccess::class,
-        'satuan.feature' => \App\Http\Middleware\EnsureSatuanPendidikanFeature::class,
+        'satuan.feature' => EnsureSatuanPendidikanFeature::class,
         'pos.api-key' => VerifyPosApiKey::class,
         'period.book' => EnsureBookPeriodWritable::class,
     ];

@@ -32,6 +32,9 @@ class PasswordOtp extends Model
         'user_id',
         'otp_hash',
         'expires_at',
+        'attempts',
+        'used_at',
+        'last_sent_at',
     ];
 
     protected $hidden = [
@@ -42,6 +45,9 @@ class PasswordOtp extends Model
         'id' => 'string',
         'user_id' => 'string',
         'expires_at' => 'datetime',
+        'used_at' => 'datetime',
+        'last_sent_at' => 'datetime',
+        'attempts' => 'integer',
     ];
 
     // RELATIONSHIPS
@@ -53,7 +59,7 @@ class PasswordOtp extends Model
     // SCOPES
     public function scopeValid($query)
     {
-        return $query->where('expires_at', '>', now());
+        return $query->whereNull('used_at')->where('expires_at', '>', now());
     }
 
     public function scopeExpired($query)
@@ -69,12 +75,12 @@ class PasswordOtp extends Model
     // OTP MANAGEMENT
     public function isValid()
     {
-        return $this->expires_at > now();
+        return $this->used_at === null && $this->expires_at > now();
     }
 
     public function isExpired()
     {
-        return $this->expires_at <= now();
+        return $this->used_at !== null || $this->expires_at <= now();
     }
 
     public static function generateOtp($userId, $expiryMinutes = 10)

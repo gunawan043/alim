@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 class GtkHealthRecord extends Model
 {
@@ -13,19 +12,24 @@ class GtkHealthRecord extends Model
 
     protected $primaryKey = 'id';
 
-    protected $keyType = 'string';
+    protected $keyType = 'int';
 
-    public $incrementing = false;
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
-    }
+    public $incrementing = true;
 
     protected $fillable = [
         'user_id',
         'examined_at',
+        'check_date',
+        'blood_pressure',
+        'pulse',
+        'temperature',
+        'respiration_rate',
+        'height',
+        'weight',
+        'blood_sugar_postprandial',
+        'sgot_ast',
+        'sgpt_alt',
+        'bun',
         'weight_kg',
         'height_cm',
         'bmi',
@@ -59,6 +63,12 @@ class GtkHealthRecord extends Model
     protected $casts = [
         'user_id' => 'string',
         'examined_at' => 'datetime',
+        'check_date' => 'date',
+        'weight' => 'decimal:1',
+        'height' => 'decimal:1',
+        'pulse' => 'integer',
+        'temperature' => 'decimal:1',
+        'respiration_rate' => 'integer',
         'weight_kg' => 'decimal:1',
         'height_cm' => 'decimal:1',
         'bmi' => 'decimal:1',
@@ -138,9 +148,31 @@ class GtkHealthRecord extends Model
     protected static function booted()
     {
         static::saving(function ($record) {
-            if (($record->height_cm ?? null) && ($record->weight_kg ?? null) && $record->height_cm > 0) {
-                $heightM = $record->height_cm / 100;
-                $record->bmi = round($record->weight_kg / ($heightM * $heightM), 1);
+            $aliases = [
+                'examined_at' => 'check_date',
+                'weight_kg' => 'weight',
+                'height_cm' => 'height',
+                'pulse_bpm' => 'pulse',
+                'temperature_c' => 'temperature',
+                'resp_rate' => 'respiration_rate',
+            ];
+
+            foreach ($aliases as $modern => $legacy) {
+                if (empty($record->{$modern}) && ! empty($record->{$legacy})) {
+                    $record->{$modern} = $record->{$legacy};
+                }
+
+                if (empty($record->{$legacy}) && ! empty($record->{$modern})) {
+                    $record->{$legacy} = $record->{$modern};
+                }
+            }
+
+            $height = $record->height_cm ?: $record->height;
+            $weight = $record->weight_kg ?: $record->weight;
+
+            if ($height && $weight && $height > 0) {
+                $heightM = $height / 100;
+                $record->bmi = round($weight / ($heightM * $heightM), 1);
             }
         });
     }
@@ -150,33 +182,4 @@ class GtkHealthRecord extends Model
     // columns have _suffix_ naming.  They also let old code that
     // references e.g. $r->weight_kg keep working.
 
-    public function getWeightKgAttribute(): ?float
-    {
-        return $this->getAttribute('weight_kg');
-    }
-
-    public function getHeightCmAttribute(): ?float
-    {
-        return $this->getAttribute('height_cm');
-    }
-
-    public function getPulseBpmAttribute(): ?int
-    {
-        return $this->getAttribute('pulse_bpm');
-    }
-
-    public function getTemperatureCAttribute(): ?float
-    {
-        return $this->getAttribute('temperature_c');
-    }
-
-    public function getRespRateAttribute(): ?int
-    {
-        return $this->getAttribute('resp_rate');
-    }
-
-    public function getExaminedAtAttribute()
-    {
-        return $this->getAttribute('examined_at');
-    }
 }

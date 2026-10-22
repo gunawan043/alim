@@ -4,73 +4,202 @@
 
 @push('css')
 <style>
+    /* ═══════════ Scanner ═══════════ */
     #qr-reader { width: 100%; max-width: 420px; margin: 0 auto; }
-    #qr-reader video { border-radius: 10px; width: 100% !important; height: auto !important; object-fit: cover; }
+    #qr-reader video { border-radius: .625rem; width: 100% !important; height: auto !important; object-fit: cover; }
     #qr-reader img { max-width: 100%; height: auto; }
     @media (max-width: 575.98px) { #qr-reader { max-width: 100%; } }
 
-    .stat-card { border: none; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); transition: transform .2s; }
-    .stat-card:hover { transform: translateY(-2px); }
-    .stat-card .card-body { padding: .8rem 1rem; }
-    .stat-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; flex-shrink: 0; }
-    .stat-value { font-size: 1.35rem; font-weight: 700; line-height: 1.15; }
-    .stat-label { font-size: .66rem; text-transform: uppercase; letter-spacing: .5px; margin: 0; color: #94a3b8; }
+    .scanner-shell {
+        border: 2px dashed var(--bs-border-color);
+        border-radius: .75rem;
+        min-height: 260px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--bs-tertiary-bg);
+        transition: border-color .2s ease, border-style .2s ease;
+        overflow: hidden;
+    }
+    .scanner-shell.scanning { border-color: var(--bs-primary); border-style: solid; }
 
-    .scan-hero { border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.15rem; background: linear-gradient(135deg, #f8faff 0%, #eef6ff 100%); }
-    .scan-hero-icon { width: 48px; height: 48px; border-radius: 12px; background: #4f46e51a; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
-    .scan-hero-title { font-size: 1.05rem; font-weight: 700; margin: 0; color: #1e293b; }
-    .scan-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .55rem; font-size: .8rem; color: #64748b; margin-top: .15rem; }
-    .scan-hero-meta .dot { color: #cbd5e1; }
-    .clock-card { display: flex; align-items: center; gap: .6rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: .45rem .75rem; }
+    /* ═══════════ Stat card ═══════════ */
+    .stat-card { border: none; border-radius: .625rem; box-shadow: 0 2px 8px rgba(0,0,0,.05); transition: transform .2s ease, box-shadow .2s ease; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.06); }
+    .stat-card .card-body { padding: .8rem 1rem; }
+    .stat-icon {
+        width: 38px; height: 38px; border-radius: .5rem;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.05rem; flex-shrink: 0;
+    }
+    .stat-value { font-size: 1.35rem; font-weight: 700; line-height: 1.15; }
+    .stat-label {
+        font-size: .66rem; text-transform: uppercase; letter-spacing: .5px;
+        margin: 0; color: var(--bs-secondary-color);
+    }
+
+    /* ═══════════ Hero ═══════════ */
+    .scan-hero {
+        border: 1px solid var(--bs-border-color);
+        border-radius: .875rem;
+        padding: 1rem 1.15rem;
+        background: linear-gradient(135deg, #f8faff 0%, #eef6ff 100%);
+    }
+    .scan-hero-icon {
+        width: 48px; height: 48px; border-radius: .75rem;
+        background: rgba(79,70,229,.1); color: #4f46e5;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; flex-shrink: 0;
+    }
+    .scan-hero-title { font-size: 1.05rem; font-weight: 700; margin: 0; color: var(--bs-heading-color); }
+    .scan-hero-meta {
+        display: flex; flex-wrap: wrap; align-items: center;
+        gap: .35rem .55rem; font-size: .8rem;
+        color: var(--bs-secondary-color); margin-top: .15rem;
+    }
+    .scan-hero-meta .dot { color: var(--bs-border-color); }
+
+    /* Clock card */
+    .clock-card, .completion-card {
+        display: flex; align-items: center; gap: .6rem;
+        background: #fff; border: 1px solid var(--bs-border-color);
+        border-radius: .625rem; padding: .45rem .75rem;
+    }
     .clock-card > i { font-size: 1.15rem; color: #4f46e5; }
-    .clock-label { display: block; font-size: .62rem; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; line-height: 1; }
-    .clock-value { display: flex; align-items: baseline; gap: .25rem; font-family: 'SF Mono', Monaco, monospace; font-size: .9rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
-    .clock-value small { font-size: .6rem; font-weight: 600; color: #94a3b8; }
-    .completion-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: .45rem .75rem; }
-    .no-schedule-card { display: flex; align-items: center; gap: .9rem; padding: .85rem 1rem; border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; flex-wrap: wrap; }
-    .no-schedule-icon { width: 40px; height: 40px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
-    .clock-chip { font-family: 'SF Mono', Monaco, monospace; font-size: .8rem; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px; padding: 4px 12px; white-space: nowrap; }
+    .clock-label {
+        display: block; font-size: .62rem; text-transform: uppercase;
+        letter-spacing: .5px; color: var(--bs-secondary-color); line-height: 1;
+    }
+    .clock-value {
+        display: flex; align-items: baseline; gap: .25rem;
+        font-family: 'SF Mono', Monaco, monospace; font-size: .9rem;
+        font-weight: 700; color: var(--bs-heading-color); line-height: 1.2;
+    }
+    .clock-value small { font-size: .6rem; font-weight: 600; color: var(--bs-secondary-color); }
+
+    /* ═══════════ Mobile: jam + kelengkapan + riwayat = 1 BARIS ═══════════ */
     @media (max-width: 575.98px) {
         .scan-hero { padding: .85rem; }
         .scan-hero-icon { width: 42px; height: 42px; font-size: 1.25rem; }
         .scan-hero-title { font-size: .98rem; }
         .scan-hero-meta { font-size: .74rem; }
-        .clock-card, .completion-card { padding: .4rem .6rem; }
-        .scan-hero .btn { padding: .35rem .65rem; font-size: .82rem; }
+
+        /* Baris aksi tidak boleh wrap */
+        .scan-hero-actions {
+            flex-wrap: nowrap !important;
+            width: 100%;
+            gap: .4rem !important;
+            align-items: stretch;
+        }
+
+        /* Clock ringkas */
+        .clock-card {
+            padding: .35rem .5rem !important;
+            gap: .35rem !important;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .clock-card > i { display: none; }
+        .clock-label { font-size: .55rem !important; letter-spacing: .3px; }
+        .clock-value { font-size: .78rem !important; }
+        .clock-value small { font-size: .5rem !important; }
+
+        /* Kelengkapan ringkas (kolom) */
+        .completion-card {
+            padding: .35rem .5rem !important;
+            flex: 0 0 auto;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: .15rem !important;
+        }
+        .completion-card > div:first-child { gap: .3rem !important; margin-bottom: 0 !important; }
+        .completion-card .clock-label { font-size: .5rem !important; }
+        .completion-card .fw-bold { font-size: .68rem !important; }
+        .completion-card .progress { width: 60px !important; height: 5px !important; }
+
+        /* Riwayat: ikon saja */
+        .btn-history-mobile {
+            padding: .35rem .55rem !important;
+            font-size: .82rem !important;
+            flex: 0 0 auto;
+        }
+        .btn-history-mobile .btn-label { display: none; }
     }
 
-    .nav-tabs-custom { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; border-bottom: 2px solid #e2e8f0; }
+    /* ═══════════ No schedule ═══════════ */
+    .no-schedule-card {
+        display: flex; align-items: center; gap: .9rem;
+        padding: .85rem 1rem;
+        border: 1px solid #fde68a; background: #fffbeb;
+        border-radius: .75rem; flex-wrap: wrap;
+    }
+    .no-schedule-icon {
+        width: 40px; height: 40px; border-radius: .625rem;
+        background: #fef3c7; color: #d97706;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; flex-shrink: 0;
+    }
+
+    /* ═══════════ Tabs (wizard) ═══════════ */
+    .nav-tabs-custom {
+        flex-wrap: nowrap; overflow-x: auto;
+        scrollbar-width: none; border-bottom: 2px solid var(--bs-border-color);
+    }
     .nav-tabs-custom::-webkit-scrollbar { display: none; }
-    .nav-tabs-custom .nav-link { border: none; border-bottom: 3px solid transparent; color: #64748b; font-weight: 500; padding: 10px 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-    .nav-tabs-custom .nav-link:hover { color: #6366f1; border-bottom-color: #cbd5e1; }
+    .nav-tabs-custom .nav-link {
+        border: none; border-bottom: 3px solid transparent;
+        color: var(--bs-secondary-color); font-weight: 500;
+        padding: 10px 13px; display: flex; align-items: center;
+        gap: 6px; white-space: nowrap;
+    }
+    .nav-tabs-custom .nav-link:hover { color: #6366f1; border-bottom-color: var(--bs-border-color); }
     .nav-tabs-custom .nav-link.active { color: #6366f1; border-bottom-color: #6366f1; background: transparent; }
-    .nav-tabs-custom .step-number { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: #64748b; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .nav-tabs-custom .step-number {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 22px; height: 22px; border-radius: 50%;
+        background: var(--bs-border-color); color: var(--bs-secondary-color);
+        font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
     .nav-tabs-custom .nav-link.active .step-number { background: #6366f1; color: #fff; }
 
-    .spotlight-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid; margin-bottom: 12px; }
+    /* ═══════════ Spotlight (kelas aktif/berikutnya) ═══════════ */
+    .spotlight-card {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px; border-radius: .75rem;
+        border: 1px solid; margin-bottom: 12px;
+    }
     .spotlight-card.ongoing { background: #eff6ff; border-color: #bfdbfe; }
-    .spotlight-card.next { background: #f8fafc; border-color: #e2e8f0; }
-    .spotlight-label { font-size: .66rem; text-transform: uppercase; letter-spacing: .5px; color: #64748b; }
-    .pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; flex-shrink: 0; animation: pulse 1.6s infinite; }
+    .spotlight-card.next { background: var(--bs-tertiary-bg); border-color: var(--bs-border-color); }
+    .spotlight-label {
+        font-size: .66rem; text-transform: uppercase;
+        letter-spacing: .5px; color: var(--bs-secondary-color);
+    }
+    .pulse-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: #22c55e; flex-shrink: 0;
+        animation: pulse 1.6s infinite;
+    }
     @keyframes pulse {
         0% { box-shadow: 0 0 0 0 rgba(34,197,94,.45); }
         70% { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
         100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
     }
 
+    /* ═══════════ Tabel jadwal ═══════════ */
     .schedule-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .schedule-table-wrap table { min-width: 620px; margin-bottom: 0; }
-    .schedule-table-wrap thead th { white-space: nowrap; font-size: .76rem; background: #f8fafc; text-transform: uppercase; letter-spacing: .3px; color: #64748b; }
+    .schedule-table-wrap thead th {
+        white-space: nowrap; font-size: .76rem;
+        background: var(--bs-tertiary-bg);
+        text-transform: uppercase; letter-spacing: .3px;
+        color: var(--bs-secondary-color);
+    }
     .schedule-table-wrap tbody td { vertical-align: middle; }
-    .time-pill { font-family: 'SF Mono', Monaco, monospace; font-size: .76rem; background: #f1f5f9; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+    .time-pill {
+        font-family: 'SF Mono', Monaco, monospace;
+        font-size: .76rem; background: var(--bs-tertiary-bg);
+        border-radius: .375rem; padding: 2px 8px; white-space: nowrap;
+    }
     .row-now { box-shadow: inset 3px 0 0 #6366f1; }
-
-    .scanner-shell { border: 2px dashed #cbd5e1; border-radius: 12px; min-height: 260px; display: flex; align-items: center; justify-content: center; background: #f8fafc; transition: border-color .2s; overflow: hidden; }
-    .scanner-shell.scanning { border-color: #6366f1; border-style: solid; }
-
-    .result-icon { width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 2.6rem; }
-    .result-icon.ok { background: #dcfce7; color: #16a34a; }
-    .result-icon.fail { background: #fee2e2; color: #dc2626; }
 </style>
 @endpush
 
@@ -93,6 +222,7 @@
         : null;
 @endphp
 
+{{-- ═══════════ HERO ═══════════ --}}
 <div class="scan-hero mb-3">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
@@ -109,18 +239,23 @@
                     @if($stats['total'] > 0)
                         <span class="badge bg-primary-subtle text-primary">{{ $stats['total'] }} jadwal hari ini</span>
                     @else
-                        <span class="badge bg-warning-subtle text-warning"><i class="ri-calendar-close-line me-1"></i>Tidak ada jadwal</span>
+                        <span class="badge bg-warning-subtle text-warning">
+                            <i class="ri-calendar-close-line me-1"></i>Tidak ada jadwal
+                        </span>
                     @endif
                 </div>
             </div>
         </div>
 
-        <div class="d-flex flex-wrap align-items-center gap-2">
+        {{-- ── Baris aksi: jam + kelengkapan + riwayat ── --}}
+        <div class="d-flex flex-wrap align-items-center gap-2 scan-hero-actions">
             <div class="clock-card" title="Waktu saat ini">
                 <i class="ri-time-line"></i>
                 <div>
                     <span class="clock-label">Waktu sekarang</span>
-                    <span class="clock-value"><span id="live-clock">--:--:--</span><small>WITA</small></span>
+                    <span class="clock-value">
+                        <span id="live-clock" aria-live="polite">--:--:--</span><small>WITA</small>
+                    </span>
                 </div>
             </div>
 
@@ -131,308 +266,362 @@
                         <span class="fw-bold small">{{ $stats['checked_out'] }}/{{ $stats['total'] }}</span>
                     </div>
                     <div class="progress" style="width:110px;height:7px">
-                        <div class="progress-bar bg-{{ $completion >= 100 ? 'success' : 'primary' }}" style="width: {{ $completion }}%"></div>
+                        <div class="progress-bar bg-{{ $completion >= 100 ? 'success' : 'primary' }}"
+                             style="width: {{ $completion }}%"></div>
                     </div>
                 </div>
             @endif
 
-            <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" class="btn btn-outline-primary">
-                <i class="ri-history-line me-1"></i>Riwayat
+            <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}"
+               class="btn btn-outline-primary btn-history-mobile">
+                <i class="ri-history-line"></i>
+                <span class="btn-label ms-1">Riwayat</span>
             </a>
         </div>
     </div>
 </div>
 
+{{-- ═══════════ NO SCHEDULE ═══════════ --}}
 @if($schedules->isEmpty())
-    <div class="no-schedule-card mb-3">
+    <div class="no-schedule-card mb-3" role="alert">
         <span class="no-schedule-icon"><i class="ri-calendar-close-line"></i></span>
         <div class="flex-grow-1">
             <div class="fw-semibold">Tidak ada jadwal mengajar hari ini</div>
-            <div class="small text-muted">Halaman scan tetap dapat dibuka, tetapi absensi hanya bisa diproses saat jam mengajar. Silakan periksa jadwal pelajaran Anda.</div>
+            <div class="small text-muted">
+                Halaman scan tetap dapat dibuka, tetapi absensi hanya bisa diproses saat jam mengajar.
+                Silakan periksa jadwal pelajaran Anda.
+            </div>
         </div>
-        <a href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}" class="btn btn-sm btn-outline-primary flex-shrink-0">
+        <a href="{{ route('user.jadwal-kbm.index', ['userId' => $userId]) }}"
+           class="btn btn-sm btn-outline-primary flex-shrink-0">
             <i class="ri-calendar-line me-1"></i>Lihat Jadwal
         </a>
     </div>
 @endif
 
-{{-- Statistik ringkas (desktop; di mobile ringkasan sudah ada di header) --}}
-<div class="row d-none d-xl-flex">
-    <div class="col-6 col-md-4 col-xl">
-        <div class="card stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <span class="stat-icon bg-primary-subtle text-primary"><i class="ri-calendar-check-line"></i></span>
-                <div>
-                    <p class="stat-label">Jadwal Hari Ini</p>
-                    <div class="stat-value">{{ $stats['total'] }}</div>
+{{-- ═══════════ STATISTIK (desktop) ═══════════ --}}
+<div class="row g-3 mb-3 d-none d-xl-flex">
+    @php
+        $statItems = [
+            ['label' => 'Jadwal Hari Ini', 'value' => $stats['total'],       'icon' => 'ri-calendar-check-line',  'tone' => 'primary'],
+            ['label' => 'Sudah Masuk',     'value' => $stats['checked_in'],  'icon' => 'ri-login-box-line',       'tone' => 'success'],
+            ['label' => 'Sudah Keluar',    'value' => $stats['checked_out'], 'icon' => 'ri-logout-box-r-line',    'tone' => 'info'],
+            ['label' => 'Terlambat',       'value' => $stats['late'],        'icon' => 'ri-time-line',            'tone' => 'warning'],
+            ['label' => 'Belum Absen',     'value' => $stats['pending'],     'icon' => 'ri-user-unfollow-line',   'tone' => 'danger'],
+        ];
+    @endphp
+    @foreach($statItems as $s)
+        <div class="col-6 col-md-4 col-xl">
+            <div class="card stat-card h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <span class="stat-icon bg-{{ $s['tone'] }}-subtle text-{{ $s['tone'] }}">
+                        <i class="{{ $s['icon'] }}"></i>
+                    </span>
+                    <div>
+                        <p class="stat-label">{{ $s['label'] }}</p>
+                        <div class="stat-value text-{{ $s['tone'] }}">{{ $s['value'] }}</div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-6 col-md-4 col-xl">
-        <div class="card stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <span class="stat-icon bg-success-subtle text-success"><i class="ri-login-box-line"></i></span>
-                <div>
-                    <p class="stat-label">Sudah Masuk</p>
-                    <div class="stat-value text-success">{{ $stats['checked_in'] }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-4 col-xl">
-        <div class="card stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <span class="stat-icon bg-info-subtle text-info"><i class="ri-logout-box-r-line"></i></span>
-                <div>
-                    <p class="stat-label">Sudah Keluar</p>
-                    <div class="stat-value text-info">{{ $stats['checked_out'] }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-4 col-xl">
-        <div class="card stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <span class="stat-icon bg-warning-subtle text-warning"><i class="ri-time-line"></i></span>
-                <div>
-                    <p class="stat-label">Terlambat</p>
-                    <div class="stat-value text-warning">{{ $stats['late'] }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-6 col-md-4 col-xl">
-        <div class="card stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <span class="stat-icon bg-danger-subtle text-danger"><i class="ri-user-unfollow-line"></i></span>
-                <div>
-                    <p class="stat-label">Belum Absen</p>
-                    <div class="stat-value text-danger">{{ $stats['pending'] }}</div>
-                </div>
-            </div>
-        </div>
-    </div>
+    @endforeach
 </div>
 
-<div class="row g-3">
-    {{-- Scanner --}}
+<div class="row g-3 mb-3">
+    {{-- ═══════════ KOLOM SCANNER ═══════════ --}}
     <div class="col-xl-5">
         <div class="card h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0"><i class="ri-qr-scan-2-line me-2 text-primary"></i>Scan QR Kelas</h5>
-                <span class="badge bg-light text-secondary border" id="camera-state"><i class="ri-camera-line me-1"></i>Kamera</span>
+                <h5 class="card-title mb-0">
+                    <i class="ri-qr-scan-2-line me-2 text-primary"></i>Scan QR Kelas
+                </h5>
+                <span class="badge bg-light text-secondary border" id="camera-state">
+                    <i class="ri-camera-line me-1"></i>Kamera
+                </span>
             </div>
+
             <div class="card-body d-flex flex-column">
-                {{-- Spotlight: kelas berlangsung / berikutnya (desktop di atas, mobile di bawah kamera) --}}
-                <div class="order-2 order-xl-1">
-                @if($currentClass)
-                    @php $att = $attendances[$currentClass->id] ?? null; @endphp
-                    <div class="spotlight-card ongoing">
-                        <span class="pulse-dot"></span>
-                        <div class="flex-grow-1" style="min-width:0">
-                            <div class="spotlight-label">Sedang berlangsung</div>
-                            <div class="fw-bold text-truncate">{{ $currentClass->studyGroup?->name ?? '-' }} · {{ $currentClass->subject?->name ?? '-' }}</div>
-                            <div class="small text-muted">
-                                Jam {{ $currentClass->slot_index }} · <span class="time-pill">{{ substr($currentClass->start_time, 0, 5) }}–{{ substr($currentClass->end_time, 0, 5) }}</span>
-                                <span id="countdown-end" data-countdown-end="{{ substr($currentClass->end_time, 0, 5) }}"></span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-success flex-shrink-0" onclick="triggerScan('{{ $currentClass->study_group_id }}')">
-                            <i class="ri-logout-box-r-line me-1"></i>Scan Keluar
-                        </button>
-                    </div>
-                @elseif($nextClass)
-                    <div class="spotlight-card next">
-                        <span class="stat-icon bg-primary-subtle text-primary" style="width:34px;height:34px"><i class="ri-calendar-schedule-line"></i></span>
-                        <div class="flex-grow-1" style="min-width:0">
-                            <div class="spotlight-label">Kelas berikutnya</div>
-                            <div class="fw-bold text-truncate">{{ $nextClass->studyGroup?->name ?? '-' }} · {{ $nextClass->subject?->name ?? '-' }}</div>
-                            <div class="small text-muted">
-                                Jam {{ $nextClass->slot_index }} · <span class="time-pill">{{ substr($nextClass->start_time, 0, 5) }}–{{ substr($nextClass->end_time, 0, 5) }}</span>
-                                <span id="countdown-start" data-countdown-start="{{ substr($nextClass->start_time, 0, 5) }}"></span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-primary flex-shrink-0" onclick="triggerScan('{{ $nextClass->study_group_id }}')">
-                            <i class="ri-login-box-line me-1"></i>Scan Masuk
-                        </button>
-                    </div>
-                @elseif($stats['total'] > 0)
-                    <div class="spotlight-card next">
-                        <span class="stat-icon bg-success-subtle text-success" style="width:34px;height:34px"><i class="ri-checkbox-circle-line"></i></span>
-                        <div class="flex-grow-1">
-                            <div class="spotlight-label">Selesai</div>
-                            <div class="fw-semibold">Semua kelas hari ini sudah diabsen lengkap.</div>
-                        </div>
-                    </div>
-                @endif
-                </div>
+                <div class="d-flex flex-column h-100">
 
-@php $canManualAbsen = canPermission('teacher-attendance_manual'); @endphp
-
-                {{-- Kamera & tab scan: tampil paling atas pada mobile --}}
-                <div class="order-1 order-xl-2">
-
-                @if($geo['enabled'] ?? false)
-                    <div class="alert alert-info py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2" role="alert" id="geoStatusBox">
-                        <span id="geoStatusText"><i class="ri-map-pin-line me-1"></i>Mendeteksi lokasi Anda…</span>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="captureGeo()">
-                            <i class="ri-focus-3-line me-1"></i>Ambil Ulang Lokasi
-                        </button>
-                    </div>
-                @endif
-
-                <div class="alert alert-primary border-0 mb-3" id="permGuide" role="alert">
-                    <div class="d-flex align-items-start gap-3">
-                        <i class="ri-shield-check-line" style="font-size:1.8rem;"></i>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1 fw-bold">Sebelum mulai absen, izinkan akses berikut (cukup sekali)</h6>
-                            <p class="mb-2 small" style="opacity:.85;">
-                                Izinkan <strong>Kamera</strong> untuk scan QR{{ ($geo['enabled'] ?? false) ? ' dan Lokasi untuk verifikasi area sekolah' : '' }}.
-                                Jika pernah ditolak, buka ikon kunci di alamat situs → izinkan Kamera/Lokasi.
-                            </p>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button type="button" class="btn btn-primary px-4" onclick="requestCameraPermission()" id="btnPermCamera">
-                                    <i class="ri-camera-line me-1"></i> Izinkan Kamera
+                    {{-- Spotlight: kelas berlangsung / berikutnya --}}
+                    <div class="order-2 order-xl-1">
+                        @if($currentClass)
+                            @php $att = $attendances[$currentClass->id] ?? null; @endphp
+                            <div class="spotlight-card ongoing">
+                                <span class="pulse-dot"></span>
+                                <div class="flex-grow-1" style="min-width:0">
+                                    <div class="spotlight-label">Sedang berlangsung</div>
+                                    <div class="fw-bold text-truncate">
+                                        {{ $currentClass->studyGroup?->name ?? '-' }}
+                                        · {{ $currentClass->subject?->name ?? '-' }}
+                                    </div>
+                                    <div class="small text-muted">
+                                        Jam {{ $currentClass->slot_index }} ·
+                                        <span class="time-pill">
+                                            {{ substr($currentClass->start_time, 0, 5) }}–{{ substr($currentClass->end_time, 0, 5) }}
+                                        </span>
+                                        <span id="countdown-end"
+                                              data-countdown-end="{{ substr($currentClass->end_time, 0, 5) }}"></span>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        class="btn btn-success flex-shrink-0"
+                                        onclick="triggerScan('{{ $currentClass->study_group_id }}')">
+                                    <i class="ri-logout-box-r-line me-1"></i>Scan Keluar
                                 </button>
-                                @if($geo['enabled'] ?? false)
-                                    <button type="button" class="btn btn-outline-primary px-4" onclick="requestGeoPermission()" id="btnPermGeo">
-                                        <i class="ri-map-pin-line me-1"></i> Izinkan Lokasi
-                                    </button>
-                                @endif
                             </div>
-                            <div class="mt-2 small fw-semibold" id="permStatusText"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <ul class="nav nav-pills nav-pills-custom mb-3" id="scanTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera-panel" type="button" role="tab">
-                            <i class="ri-camera-line me-1"></i>Kamera
-                        </button>
-                    </li>
-                    @if($canManualAbsen)
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" type="button" role="tab">
-                                <i class="ri-keyboard-line me-1"></i>Manual
-                            </button>
-                        </li>
-                    @endif
-                </ul>
-
-                <div class="tab-content" id="scanTabContent">
-                    <div class="tab-pane fade show active" id="camera-panel" role="tabpanel">
-                        <div class="scanner-shell" id="scanner-container">
-                            <div class="text-center text-muted px-3">
-                                <i class="ri-camera-line" style="font-size:2rem;color:#cbd5e1"></i>
-                                <p class="mt-2 mb-0">Kamera sedang disiapkan…</p>
+                        @elseif($nextClass)
+                            <div class="spotlight-card next mt-2">
+                                <span class="stat-icon bg-primary-subtle text-primary" style="width:34px;height:34px">
+                                    <i class="ri-calendar-schedule-line"></i>
+                                </span>
+                                <div class="flex-grow-1" style="min-width:0">
+                                    <div class="spotlight-label">Kelas berikutnya</div>
+                                    <div class="fw-bold text-truncate">
+                                        {{ $nextClass->studyGroup?->name ?? '-' }}
+                                        · {{ $nextClass->subject?->name ?? '-' }}
+                                    </div>
+                                    <div class="small text-muted">
+                                        Jam {{ $nextClass->slot_index }} ·
+                                        <span class="time-pill">
+                                            {{ substr($nextClass->start_time, 0, 5) }}–{{ substr($nextClass->end_time, 0, 5) }}
+                                        </span>
+                                        <span id="countdown-start"
+                                              data-countdown-start="{{ substr($nextClass->start_time, 0, 5) }}"></span>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        class="btn btn-primary flex-shrink-0"
+                                        onclick="triggerScan('{{ $nextClass->study_group_id }}')">
+                                    <i class="ri-login-box-line me-1"></i>Scan Masuk
+                                </button>
                             </div>
-                        </div>
-                        <div id="scanner-status" class="text-center text-muted small mt-2"></div>
+                        @elseif($stats['total'] > 0)
+                            <div class="spotlight-card next">
+                                <span class="stat-icon bg-success-subtle text-success" style="width:34px;height:34px">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                </span>
+                                <div class="flex-grow-1">
+                                    <div class="spotlight-label">Selesai</div>
+                                    <div class="fw-semibold">Semua kelas hari ini sudah diabsen lengkap.</div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
-                    @if($canManualAbsen)
-                    <div class="tab-pane fade" id="manual-panel" role="tabpanel">
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Pilih Kelas / Jam Hari Ini</label>
-                            <select id="manual_schedule" class="form-select form-select-sm">
-                                <option value="">— Pilih jadwal mengajar —</option>
-                                @foreach($schedules as $jadwal)
-                                    @php $att = $attendances[$jadwal->id] ?? null; @endphp
-                                    <option value="{{ $jadwal->study_group_id }}">
-                                        Jam {{ $jadwal->slot_index }} · {{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}
-                                        · {{ $jadwal->studyGroup?->name ?? '-' }} · {{ $jadwal->subject?->name ?? '-' }}
-                                        @if($att && $att->actual_time_out) (selesai)
-                                        @elseif($att && $att->actual_time_in) (sedang berlangsung)
-                                        @else (belum absen)
+                    @php $canManualAbsen = canPermission('teacher-attendance_manual'); @endphp
+
+                    {{-- Kamera & tab scan --}}
+                    <div class="order-1 order-xl-2">
+
+                        <div class="alert alert-primary border-0 mb-3" id="permGuide" role="alert">
+                            <div class="d-flex align-items-start gap-3">
+                                <i class="ri-shield-check-line" style="font-size:1.8rem;"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 fw-bold">Sebelum mulai absen, izinkan akses berikut (cukup sekali)</h6>
+                                    <p class="mb-2 small" style="opacity:.85;">
+                                        Izinkan <strong>Kamera</strong> untuk scan QR{{ ($geo['enabled'] ?? false) ? ' dan Lokasi untuk verifikasi area sekolah' : '' }}.
+                                        Jika pernah ditolak, buka ikon kunci di alamat situs → izinkan Kamera/Lokasi.
+                                    </p>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-primary px-4"
+                                                onclick="requestCameraPermission()" id="btnPermCamera">
+                                            <i class="ri-camera-line me-1"></i> Izinkan Kamera
+                                        </button>
+                                        @if($geo['enabled'] ?? false)
+                                            <button type="button" class="btn btn-outline-primary px-4"
+                                                    onclick="requestGeoPermission()" id="btnPermGeo">
+                                                <i class="ri-map-pin-line me-1"></i> Izinkan Lokasi
+                                            </button>
                                         @endif
-                                    </option>
-                                @endforeach
-                            </select>
+                                    </div>
+                                    <div class="mt-2 small fw-semibold" id="permStatusText" role="status" aria-live="polite"></div>
+                                </div>
+                            </div>
                         </div>
-                        <button type="button" class="btn btn-primary w-100" id="btn-manual-process" {{ $schedules->isEmpty() ? 'disabled' : '' }}>
-                            <i class="ri-check-double-line me-1"></i>Proses Absen Masuk / Keluar
-                        </button>
-                        <div class="text-center text-muted small my-2">— atau tempel isi QR —</div>
-                        <input type="text" id="manual_token" class="form-control form-control-sm" placeholder="Tempel URL / token hasil scan QR">
-                        <button type="button" class="btn btn-outline-secondary w-100 mt-2" id="btn-manual-token">
-                            <i class="ri-qr-scan-line me-1"></i>Proses dari Token QR
-                        </button>
-                    </div>
-                    @endif
-                </div>
 
-                <div class="alert alert-light border small mb-0 mt-3">
-                    <i class="ri-information-line me-1 text-primary"></i>
-                    Scan <strong>masuk</strong> saat tiba di kelas dan <strong>keluar</strong> saat jam berakhir.
-                    QR ditempel di depan kelas (lihat menu <a href="{{ route('user.qr.index', ['userId' => $userId]) }}">QR Kelas</a>).
-                </div>
+                        <ul class="nav nav-pills nav-pills-custom mb-3" id="scanTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="camera-tab"
+                                        data-bs-toggle="tab" data-bs-target="#camera-panel"
+                                        type="button" role="tab">
+                                    <i class="ri-camera-line me-1"></i>Kamera
+                                </button>
+                            </li>
+                            @if($canManualAbsen)
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="manual-tab"
+                                            data-bs-toggle="tab" data-bs-target="#manual-panel"
+                                            type="button" role="tab">
+                                        <i class="ri-keyboard-line me-1"></i>Manual
+                                    </button>
+                                </li>
+                            @endif
+                        </ul>
 
-                @unless($canManualAbsen)
-                    <div class="alert alert-warning border small mb-0 mt-2">
-                        <i class="ri-shield-user-line me-1"></i>
-                        Absensi manual (tanpa scan QR) hanya dapat dilakukan oleh
-                        <strong>Waka / Kepala / Tata Usaha</strong>. Guru wajib memindai QR kelas saat jam mengajar.
+                        <div class="tab-content" id="scanTabContent">
+                            <div class="tab-pane fade show active" id="camera-panel" role="tabpanel">
+                                <div class="scanner-shell" id="scanner-container">
+                                    <div class="text-center text-muted px-3">
+                                        <i class="ri-camera-line" style="font-size:2rem;color:#cbd5e1"></i>
+                                        <p class="mt-2 mb-0">Kamera sedang disiapkan…</p>
+                                    </div>
+                                </div>
+                                <div id="scanner-status"
+                                     class="text-center text-muted small mt-2"
+                                     role="status" aria-live="polite"></div>
+                            </div>
+
+                            @if($canManualAbsen)
+                                <div class="tab-pane fade" id="manual-panel" role="tabpanel">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-semibold">Pilih Kelas / Jam Hari Ini</label>
+                                        <select id="manual_schedule" class="form-select form-select-sm">
+                                            <option value="">— Pilih jadwal mengajar —</option>
+                                            @foreach($schedules as $jadwal)
+                                                @php $att = $attendances[$jadwal->id] ?? null; @endphp
+                                                <option value="{{ $jadwal->study_group_id }}">
+                                                    Jam {{ $jadwal->slot_index }}
+                                                    · {{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}
+                                                    · {{ $jadwal->studyGroup?->name ?? '-' }}
+                                                    · {{ $jadwal->subject?->name ?? '-' }}
+                                                    @if($att && $att->actual_time_out) (selesai)
+                                                    @elseif($att && $att->actual_time_in) (sedang berlangsung)
+                                                    @else (belum absen)
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-primary w-100"
+                                            id="btn-manual-process" {{ $schedules->isEmpty() ? 'disabled' : '' }}>
+                                        <i class="ri-check-double-line me-1"></i>Proses Absen Masuk / Keluar
+                                    </button>
+                                    <div class="text-center text-muted small my-2">— atau tempel isi QR —</div>
+                                    <input type="text" id="manual_token" class="form-control form-control-sm"
+                                           placeholder="Tempel URL / token hasil scan QR">
+                                    <button type="button" class="btn btn-outline-secondary w-100 mt-2"
+                                            id="btn-manual-token">
+                                        <i class="ri-qr-scan-line me-1"></i>Proses dari Token QR
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+
+                        @if($geo['enabled'] ?? false)
+                            <div class="alert alert-info py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2"
+                                 role="alert" id="geoStatusBox">
+                                <span id="geoStatusText">
+                                    <i class="ri-map-pin-line me-1"></i>Mendeteksi lokasi Anda…
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="captureGeo()">
+                                    <i class="ri-focus-3-line me-1"></i>Ambil Ulang Lokasi
+                                </button>
+                            </div>
+                        @endif
+
+                        <div class="alert alert-light border small mb-0 mt-3">
+                            <i class="ri-information-line me-1 text-primary"></i>
+                            Scan <strong>masuk</strong> saat tiba di kelas dan <strong>keluar</strong> saat jam berakhir.
+                            QR ditempel di depan kelas
+                            (lihat menu <a href="{{ route('user.qr.index', ['userId' => $userId]) }}">QR Kelas</a>).
+                        </div>
+
+                        @unless($canManualAbsen)
+                            <div class="alert alert-warning border small mb-2 mt-2">
+                                <i class="ri-shield-user-line me-1"></i>
+                                Absensi manual (tanpa scan QR) hanya dapat dilakukan oleh
+                                <strong>Waka / Kepala / Tata Usaha</strong>.
+                                Guru wajib memindai QR kelas saat jam mengajar.
+                            </div>
+                        @endunless
                     </div>
-                @endunless
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Wizard jadwal hari ini --}}
+    {{-- ═══════════ KOLOM WIZARD JADWAL ═══════════ --}}
     <div class="col-xl-7">
         <div class="card h-100">
             <div class="card-header pb-0">
                 <ul class="nav nav-tabs nav-tabs-custom" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#step-pending" type="button" role="tab">
-                            <span class="step-number">1</span><i class="ri-user-unfollow-line"></i>Belum Absen
+                        <button class="nav-link active"
+                                data-bs-toggle="tab" data-bs-target="#step-pending"
+                                type="button" role="tab">
+                            <span class="step-number">1</span>
+                            <i class="ri-user-unfollow-line"></i>Belum Absen
                             <span class="badge bg-danger-subtle text-danger ms-1">{{ $belumAbsen->count() }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#step-ongoing" type="button" role="tab">
-                            <span class="step-number">2</span><i class="ri-hourglass-line"></i>Berlangsung
+                        <button class="nav-link"
+                                data-bs-toggle="tab" data-bs-target="#step-ongoing"
+                                type="button" role="tab">
+                            <span class="step-number">2</span>
+                            <i class="ri-hourglass-line"></i>Berlangsung
                             <span class="badge bg-info-subtle text-info ms-1">{{ $berlangsung->count() }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#step-done" type="button" role="tab">
-                            <span class="step-number">3</span><i class="ri-checkbox-circle-line"></i>Selesai
+                        <button class="nav-link"
+                                data-bs-toggle="tab" data-bs-target="#step-done"
+                                type="button" role="tab">
+                            <span class="step-number">3</span>
+                            <i class="ri-checkbox-circle-line"></i>Selesai
                             <span class="badge bg-success-subtle text-success ms-1">{{ $selesaiHariIni->count() }}</span>
                         </button>
                     </li>
                 </ul>
             </div>
+
             <div class="card-body p-3">
                 <div class="tab-content">
-                    {{-- Belum absen --}}
+
+                    {{-- ── Belum absen ── --}}
                     <div class="tab-pane fade show active" id="step-pending" role="tabpanel">
                         @if($belumAbsen->isEmpty())
                             <div class="text-center py-4 text-muted">
-                                <i class="{{ $schedules->isEmpty() ? 'ri-calendar-close-line' : 'ri-emotion-happy-line' }} d-block mb-1" style="font-size:1.6rem"></i>
-                                {{ $schedules->isEmpty() ? 'Tidak ada jadwal mengajar hari ini.' : 'Semua jadwal hari ini sudah diabsen.' }}
+                                <i class="{{ $schedules->isEmpty() ? 'ri-calendar-close-line' : 'ri-emotion-happy-line' }} d-block mb-1"
+                                   style="font-size:1.6rem"></i>
+                                {{ $schedules->isEmpty()
+                                    ? 'Tidak ada jadwal mengajar hari ini.'
+                                    : 'Semua jadwal hari ini sudah diabsen.' }}
                             </div>
                         @else
                             <div class="schedule-table-wrap">
                                 <table class="table table-hover align-middle">
                                     <thead>
-                                        <tr><th>Jam</th><th>Waktu</th><th>Kelas</th><th>Mapel</th><th class="text-end">Aksi</th></tr>
+                                        <tr>
+                                            <th class="text-center">Jam</th>
+                                            <th>Waktu</th>
+                                            <th>Kelas</th>
+                                            <th>Mapel</th>
+                                            <th class="text-end">Aksi</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($belumAbsen as $jadwal)
                                             @php $isNowRow = $nowHms >= $jadwal->start_time && $nowHms <= $jadwal->end_time; @endphp
                                             <tr class="{{ $isNowRow ? 'row-now' : '' }}">
                                                 <td class="text-center fw-semibold">{{ $jadwal->slot_index }}</td>
-                                                <td><span class="time-pill">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</span></td>
+                                                <td>
+                                                    <span class="time-pill">
+                                                        {{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}
+                                                    </span>
+                                                </td>
                                                 <td>
                                                     <div class="fw-medium">
                                                         {{ $jadwal->studyGroup?->name ?? '-' }}
-                                                        @if($isNowRow) <span class="badge bg-primary ms-1">Sekarang</span> @endif
+                                                        @if($isNowRow)
+                                                            <span class="badge bg-primary ms-1">Sekarang</span>
+                                                        @endif
                                                     </div>
-                                                    <small class="text-muted">{{ $jadwal->studyGroup?->gradeLevel?->name ?? '' }} {{ $jadwal->room ? '· '.$jadwal->room : '' }}</small>
+                                                    <small class="text-muted">
+                                                        {{ $jadwal->studyGroup?->gradeLevel?->name ?? '' }}
+                                                        {{ $jadwal->room ? '· '.$jadwal->room : '' }}
+                                                    </small>
                                                 </td>
                                                 <td>{{ $jadwal->subject?->name ?? '-' }}</td>
                                                 <td class="text-end">
@@ -449,7 +638,7 @@
                         @endif
                     </div>
 
-                    {{-- Berlangsung --}}
+                    {{-- ── Berlangsung ── --}}
                     <div class="tab-pane fade" id="step-ongoing" role="tabpanel">
                         @if($berlangsung->isEmpty())
                             <div class="text-center py-4 text-muted">
@@ -460,7 +649,13 @@
                             <div class="schedule-table-wrap">
                                 <table class="table table-hover align-middle">
                                     <thead>
-                                        <tr><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Scan Masuk</th><th class="text-end">Aksi</th></tr>
+                                        <tr>
+                                            <th class="text-center">Jam</th>
+                                            <th>Kelas</th>
+                                            <th>Mapel</th>
+                                            <th>Scan Masuk</th>
+                                            <th class="text-end">Aksi</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($berlangsung as $jadwal)
@@ -473,15 +668,25 @@
                                                 <td>
                                                     <div class="fw-medium">
                                                         {{ $jadwal->studyGroup?->name ?? '-' }}
-                                                        @if($isNowRow) <span class="badge bg-primary ms-1">Sekarang</span> @endif
+                                                        @if($isNowRow)
+                                                            <span class="badge bg-primary ms-1">Sekarang</span>
+                                                        @endif
                                                     </div>
-                                                    <small class="text-muted"><span class="time-pill">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</span></small>
+                                                    <small class="text-muted">
+                                                        <span class="time-pill">
+                                                            {{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}
+                                                        </span>
+                                                    </small>
                                                 </td>
                                                 <td>{{ $jadwal->subject?->name ?? '-' }}</td>
                                                 <td>
-                                                    <span class="time-pill">{{ $att?->actual_time_in?->format('H:i') ?? '—' }}</span>
+                                                    <span class="time-pill">
+                                                        {{ $att?->actual_time_in?->format('H:i') ?? '—' }}
+                                                    </span>
                                                     @if($att && ($att->status_masuk === 'terlambat' || $att->late_minutes > 0))
-                                                        <span class="badge bg-warning-subtle text-warning ms-1">Terlambat {{ $att->late_minutes }} mnt</span>
+                                                        <span class="badge bg-warning-subtle text-warning ms-1">
+                                                            Terlambat {{ $att->late_minutes }} mnt
+                                                        </span>
                                                     @endif
                                                 </td>
                                                 <td class="text-end">
@@ -498,7 +703,7 @@
                         @endif
                     </div>
 
-                    {{-- Selesai --}}
+                    {{-- ── Selesai ── --}}
                     <div class="tab-pane fade" id="step-done" role="tabpanel">
                         @if($selesaiHariIni->isEmpty())
                             <div class="text-center py-4 text-muted">
@@ -509,7 +714,15 @@
                             <div class="schedule-table-wrap">
                                 <table class="table table-hover align-middle">
                                     <thead>
-                                        <tr><th>Jam</th><th>Kelas</th><th>Mapel</th><th>Masuk</th><th>Keluar</th><th>Durasi</th><th class="text-center">Status</th></tr>
+                                        <tr>
+                                            <th class="text-center">Jam</th>
+                                            <th>Kelas</th>
+                                            <th>Mapel</th>
+                                            <th>Masuk</th>
+                                            <th>Keluar</th>
+                                            <th>Durasi</th>
+                                            <th class="text-center">Status</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($selesaiHariIni as $jadwal)
@@ -518,20 +731,38 @@
                                                 <td class="text-center fw-semibold">{{ $jadwal->slot_index }}</td>
                                                 <td>
                                                     <div class="fw-medium">{{ $jadwal->studyGroup?->name ?? '-' }}</div>
-                                                    <small class="text-muted"><span class="time-pill">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</span></small>
+                                                    <small class="text-muted">
+                                                        <span class="time-pill">
+                                                            {{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}
+                                                        </span>
+                                                    </small>
                                                 </td>
                                                 <td>{{ $jadwal->subject?->name ?? '-' }}</td>
-                                                <td><span class="time-pill">{{ $att?->actual_time_in?->format('H:i') ?? '—' }}</span></td>
-                                                <td><span class="time-pill">{{ $att?->actual_time_out?->format('H:i') ?? '—' }}</span></td>
+                                                <td>
+                                                    <span class="time-pill">
+                                                        {{ $att?->actual_time_in?->format('H:i') ?? '—' }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="time-pill">
+                                                        {{ $att?->actual_time_out?->format('H:i') ?? '—' }}
+                                                    </span>
+                                                </td>
                                                 <td>{{ $att && $att->duration_minutes > 0 ? $att->duration_minutes.' mnt' : '—' }}</td>
                                                 <td class="text-center">
                                                     @if($att && ($att->status_masuk === 'terlambat' || $att->late_minutes > 0))
-                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Terlambat</span>
+                                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                                            Terlambat
+                                                        </span>
                                                     @else
-                                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Tepat Waktu</span>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                                            Tepat Waktu
+                                                        </span>
                                                     @endif
                                                     @if($att && ($att->status_keluar === 'keluar_cepat' || $att->early_leave_minutes > 0))
-                                                        <span class="badge bg-info-subtle text-info border border-info-subtle">Keluar Cepat</span>
+                                                        <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                                            Keluar Cepat
+                                                        </span>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -547,12 +778,15 @@
     </div>
 </div>
 
-{{-- Riwayat 7 hari terakhir --}}
+{{-- ═══════════ RIWAYAT 7 HARI ═══════════ --}}
 @if($recentRecords->isNotEmpty())
     <div class="card mt-3">
         <div class="card-header d-flex align-items-center justify-content-between">
-            <h6 class="card-title mb-0"><i class="ri-history-line text-secondary me-1"></i>Aktivitas 7 Hari Terakhir</h6>
-            <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" class="btn btn-sm btn-outline-secondary">
+            <h6 class="card-title mb-0">
+                <i class="ri-history-line text-secondary me-1"></i>Aktivitas 7 Hari Terakhir
+            </h6>
+            <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}"
+               class="btn btn-sm btn-outline-secondary">
                 Lihat Semua <i class="ri-arrow-right-line ms-1"></i>
             </a>
         </div>
@@ -560,18 +794,20 @@
             <div class="row g-2">
                 @foreach($recentRecords as $record)
                     @php
-                        $late = $record->status_masuk === 'terlambat' || $record->late_minutes > 0;
+                        $late  = $record->status_masuk === 'terlambat' || $record->late_minutes > 0;
                         $early = $record->status_keluar === 'keluar_cepat' || $record->early_leave_minutes > 0;
-                        $tone = $early ? 'info' : ($late ? 'warning' : 'success');
+                        $tone  = $early ? 'info' : ($late ? 'warning' : 'success');
                     @endphp
                     <div class="col-md-6 col-xl-4">
                         <div class="d-flex align-items-center gap-2 p-2 rounded border h-100">
-                            <span class="stat-icon bg-{{ $tone }}-subtle text-{{ $tone }}" style="width:34px;height:34px;font-size:.95rem">
+                            <span class="stat-icon bg-{{ $tone }}-subtle text-{{ $tone }}"
+                                  style="width:34px;height:34px;font-size:.95rem">
                                 <i class="ri-checkbox-circle-line"></i>
                             </span>
                             <div class="flex-grow-1" style="min-width:0">
                                 <div class="fw-medium small text-truncate">
-                                    {{ $record->jadwalKbm?->studyGroup?->name ?? '-' }} · {{ $record->jadwalKbm?->subject?->name ?? '-' }}
+                                    {{ $record->jadwalKbm?->studyGroup?->name ?? '-' }}
+                                    · {{ $record->jadwalKbm?->subject?->name ?? '-' }}
                                 </div>
                                 <small class="text-muted d-block">
                                     {{ $record->attendance_date?->translatedFormat('d M') }} ·
@@ -605,6 +841,7 @@ const GEO_ENABLED = @json($geo['enabled'] ?? false);
 const GEO_RADIUS_HINT = @json($geo['radius_m'] ?? 150);
 window.__geo = null;
 
+/* ── Geo status ─────────────────────────────────────────────── */
 function setGeoStatus(message, ok) {
     var box = document.getElementById('geoStatusBox');
     var text = document.getElementById('geoStatusText');
@@ -645,15 +882,10 @@ function captureGeo() {
     );
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    if (GEO_ENABLED) captureGeo();
-});
-
-/* ── Izin kamera & lokasi: diminta sekali, hasil di-cache ── */
+/* ── Izin kamera & lokasi ───────────────────────────────────── */
 const PERM_CACHE_KEY = 'alim_qr_perm_v2';
 const DEVICE_KEY = 'alim_device_id_v1';
 
-// ID perangkat persisten (untuk kunci perangkat opsional Opsi B).
 function getDeviceId() {
     try {
         var id = localStorage.getItem(DEVICE_KEY);
@@ -693,17 +925,25 @@ function requestCameraPermission() {
         return;
     }
 
+    const btn = document.getElementById('btnPermCamera');
+    if (btn) btn.disabled = true;
+
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(function (stream) {
             stream.getTracks().forEach(function (t) { t.stop(); });
-            var cam = document.getElementById('btnPermCamera');
-            if (cam) { cam.dataset.done = '1'; cam.classList.remove('btn-primary'); cam.classList.add('btn-success'); }
+            if (btn) {
+                btn.dataset.done = '1';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = '<i class="ri-checkbox-circle-line me-1"></i> Kamera diizinkan';
+            }
             setPermStatus('✅ Kamera diizinkan.');
             maybeFinishPermissions();
         })
         .catch(function () {
             setPermStatus('❌ Izin kamera ditolak. Klik ikon kunci/gembok di alamat situs → izinkan Kamera, lalu muat ulang halaman.');
-        });
+        })
+        .finally(function () { if (btn) btn.disabled = false; });
 }
 
 function requestGeoPermission() {
@@ -717,10 +957,17 @@ function requestGeoPermission() {
         return;
     }
 
+    const btn = document.getElementById('btnPermGeo');
+    if (btn) btn.disabled = true;
+
     navigator.geolocation.getCurrentPosition(
         function () {
-            var geoBtn = document.getElementById('btnPermGeo');
-            if (geoBtn) { geoBtn.dataset.done = '1'; geoBtn.classList.remove('btn-outline-primary'); geoBtn.classList.add('btn-success'); }
+            if (btn) {
+                btn.dataset.done = '1';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = '<i class="ri-checkbox-circle-line me-1"></i> Lokasi diizinkan';
+            }
             setPermStatus('✅ Lokasi diizinkan.');
             captureGeo();
             maybeFinishPermissions();
@@ -730,33 +977,17 @@ function requestGeoPermission() {
         },
         { enableHighAccuracy: true, timeout: 12000 }
     );
+
+    setTimeout(function () { if (btn) btn.disabled = false; }, 12500);
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-    var guide = document.getElementById('permGuide');
-    if (!guide) return;
-
-    var cached = false;
-    try { cached = localStorage.getItem(PERM_CACHE_KEY) === '1'; } catch (e) {}
-
-    if (cached) {
-        guide.classList.add('d-none');
-        return;
-    }
-
-    // Permintaan pertama kali (sesuai permintaan: cukup sekali; jika izin berubah, browser akan menanyakan lagi saat dipakai).
-    requestCameraPermission();
-    if (GEO_ENABLED) requestGeoPermission();
-});
 
 /* ── Jam live + countdown ───────────────────────────────────── */
 function tickClock() {
     const el = document.getElementById('live-clock');
-    if (el) {
-        const now = new Date();
-        const pad = (n) => String(n).padStart(2, '0');
-        el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
-    }
+    if (!el) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
 }
 
 function tickCountdowns() {
@@ -779,16 +1010,13 @@ function tickCountdowns() {
     }
 }
 
-setInterval(tickClock, 1000);
-setInterval(tickCountdowns, 30000);
-tickClock();
-tickCountdowns();
-
 /* ── Scanner kamera ─────────────────────────────────────────── */
 function setCameraState(on) {
     const el = document.getElementById('camera-state');
     if (!el) return;
-    el.className = 'badge border ' + (on ? 'bg-success-subtle text-success border-success-subtle' : 'bg-light text-secondary border');
+    el.className = 'badge border ' + (on
+        ? 'bg-success-subtle text-success border-success-subtle'
+        : 'bg-light text-secondary border');
     el.innerHTML = '<i class="ri-camera-line me-1"></i>' + (on ? 'Aktif' : 'Kamera');
 }
 
@@ -799,8 +1027,8 @@ function startScanner() {
     html5QrCode = new Html5Qrcode("scanner-container");
     const config = {
         fps: 10,
-        qrbox: function (viewfinderWidth, viewfinderHeight) {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        qrbox: function (w, h) {
+            const minEdge = Math.min(w, h);
             const size = Math.max(200, Math.min(320, Math.floor(minEdge * 0.8)));
             return { width: size, height: size };
         },
@@ -825,7 +1053,8 @@ function startScanner() {
         container.innerHTML = `<div class="text-center text-muted px-4">
             <i class="ri-camera-off-line d-block mb-2" style="font-size:2rem;color:#cbd5e1"></i>
             <p class="mb-1 fw-medium">Kamera tidak tersedia / akses ditolak</p>
-            <small>Gunakan tab <strong>Manual</strong> untuk memilih kelas, atau izinkan akses kamera lalu muat ulang halaman.</small>
+            <small>Gunakan tab <strong>Manual</strong> untuk memilih kelas,
+            atau izinkan akses kamera lalu muat ulang halaman.</small>
         </div>`;
         setScannerStatus('⚠️ Kamera tidak aktif — gunakan tab Manual.', true);
     });
@@ -839,10 +1068,9 @@ function stopScanner() {
 
 function setScannerStatus(text, warning) {
     const el = document.getElementById('scanner-status');
-    if (el) {
-        el.textContent = text;
-        el.className = 'text-center small mt-2 ' + (warning ? 'text-warning' : 'text-muted');
-    }
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'text-center small mt-2 ' + (warning ? 'text-warning' : 'text-muted');
 }
 
 /**
@@ -853,7 +1081,7 @@ function extractStudyGroupId(decodedText) {
     try {
         const payload = JSON.parse(decodedText);
         if (payload && payload.study_group_id) return payload.study_group_id;
-    } catch (e) { /* bukan JSON — lanjut fallback URL */ }
+    } catch (e) { /* bukan JSON */ }
 
     const params = new URLSearchParams((decodedText.split('?')[1] || ''));
     if (params.get('study_group_id')) return params.get('study_group_id');
@@ -930,7 +1158,7 @@ function buildModal(outcome, message, extraHtml) {
         <div class="modal fade" id="scanResultModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                    <div class="modal-body text-center p-4">
+                    <div class="modal-body text-center p-4" aria-live="polite">
                         <div class="${isSuccess ? '' : 'd-none'}">
                             <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop"
                                        colors="primary:#121331,secondary:#08a88a"
@@ -1009,6 +1237,26 @@ function showResult(ok, message, data) {
 
 /* ── Inisialisasi ───────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
+    if (GEO_ENABLED) captureGeo();
+
+    var guide = document.getElementById('permGuide');
+    if (guide) {
+        var cached = false;
+        try { cached = localStorage.getItem(PERM_CACHE_KEY) === '1'; } catch (e) {}
+
+        if (cached) {
+            guide.classList.add('d-none');
+        } else {
+            requestCameraPermission();
+            if (GEO_ENABLED) requestGeoPermission();
+        }
+    }
+
+    setInterval(tickClock, 1000);
+    setInterval(tickCountdowns, 30000);
+    tickClock();
+    tickCountdowns();
+
     startScanner();
 
     // Restart kamera saat kembali ke tab kamera

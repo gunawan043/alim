@@ -28,3 +28,8 @@ Homestead.json
 .env.testing
 SECURITY_AUDIT_*.md
 phpbrew
+
+# Artefak lokal/debug
+/public/tmp-*.html
+/resources/views/layouts/sidebar/*/sidebar.blade 2.php
+/storage/fonts/

@@ -3,9 +3,16 @@
 use Illuminate\Support\Facades\DB;
 
 $schoolId = $this->getUserSchoolId($user);
+$activeStatuses = [
+    'menunggu_pemeriksaan',
+    'sedang_ditangani',
+    'observasi',
+    'rawat_uks',
+    'istirahat_di_uks',
+];
 
 $base = fn () => $this->applyUksScope(
-    DB::table('uks_patients')->where('status', 'aktif')
+    DB::table('uks_patients')->whereIn('status', $activeStatuses)
         ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId)),
     $user
 );

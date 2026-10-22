@@ -6,8 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Mail\AccountCompromisedMail;
 use App\Mail\AccountLockedMail;
 use App\Mail\IpBlockedMail;
+use App\Mail\LoginOtpMail;
+use App\Models\AuditLog;
 use App\Models\FailedLoginAttempt;
+use App\Models\LoginOtp;
+use App\Models\StudentOperatorAssignment;
+use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
+use App\Services\SecurityNotificationService;
+use App\Services\SecurityPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,11 +23,6 @@ use Illuminate\Support\Facades\Mail;
 
 class LoginController extends Controller
 {
-    private const EMAIL_MAX_ATTEMPTS = 9;
-    private const EMAIL_COMPROMISED_THRESHOLD = 6;
-    private const IP_COOLDOWN_THRESHOLD = 5;
-    private const IP_COOLDOWN_SECONDS = 60;
-
     public function __construct()
     {
         $this->middleware('guest')->except('logout');
@@ -72,11 +74,21 @@ class LoginController extends Controller
             return $this->showLoginWithError($request, 'Email atau NUPY tidak ditemukan.');
         }
 
-        if (Auth::attempt(['email' => $user->email, 'password' => $request->password], $request->filled('remember'))) {
+        $remember = $request->filled('remember');
+        $requiresTwoFactor = $this->shouldUseTwoFactor($user);
+
+        if (Auth::attempt(
+            ['email' => $user->email, 'password' => $request->password],
+            $remember && ! $requiresTwoFactor,
+        )) {
             $user = Auth::user();
 
             $user->resetFailedLoginAttempts();
             FailedLoginAttempt::forIp($ip)->update(['attempts' => 0]);
+
+            if ($requiresTwoFactor) {
+                return $this->startTwoFactorChallenge($user, $request, $remember);
+            }
 
             $request->session()->regenerate();
 
@@ -86,6 +98,17 @@ class LoginController extends Controller
 
             Log::info('Login successful', ['user_id' => Auth::id()]);
 
+            AuditLog::create([
+                'user_id' => $user->id,
+                'action' => 'LOGIN_SUCCESS',
+                'table_name' => 'users',
+                'record_id' => $user->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            app(SecurityNotificationService::class)->login($user, $request);
+
             return $this->redirectBasedOnRole($user);
         }
 
@@ -93,7 +116,7 @@ class LoginController extends Controller
 
         $user->passwordOtps()->latest()->delete();
 
-        if ($user->failed_login_attempts + 1 == self::EMAIL_COMPROMISED_THRESHOLD) {
+        if ($user->failed_login_attempts + 1 == SecurityPolicy::compromisedThreshold()) {
             Mail::to($user->email)->queue(new AccountCompromisedMail(
                 $user->name, $user->email, $user->failed_login_attempts + 1, $ip
             ));
@@ -106,7 +129,7 @@ class LoginController extends Controller
         $user->incrementFailedLoginAttempts();
         $this->trackIpAttempt($ip, $user->failed_login_attempts, $identity);
 
-        if ($user->failed_login_attempts >= self::EMAIL_MAX_ATTEMPTS) {
+        if ($user->failed_login_attempts >= SecurityPolicy::maxLoginAttempts()) {
             Mail::to($user->email)->send(new AccountLockedMail(
                 $user->name, $user->email, $user->failed_login_attempts, $ip
             ));
@@ -182,7 +205,68 @@ class LoginController extends Controller
         return redirect('/login');
     }
 
-    private function redirectBasedOnRole($user): RedirectResponse
+    private function shouldUseTwoFactor(User $user): bool
+    {
+        if ((string) setting('security_2fa_enabled', '0') !== '1'
+            || ! $user->is_active
+            || ! filled($user->email)) {
+            return false;
+        }
+
+        if (SecurityPolicy::twoFactorScope() === 'super_admin') {
+            return (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+                || $user->hasRole('Super Admin');
+        }
+
+        return true;
+    }
+
+    private function startTwoFactorChallenge(User $user, Request $request, bool $remember): RedirectResponse
+    {
+        $expiryMinutes = SecurityPolicy::otpExpiryMinutes();
+        $record = null;
+
+        try {
+            [$record, $otp] = LoginOtp::issue($user, $expiryMinutes);
+            Mail::to($user->email)->send(new LoginOtpMail($otp, $user->name, $expiryMinutes));
+        } catch (\Throwable $e) {
+            $record?->delete();
+
+            $hasRecoveryCode = TwoFactorRecoveryCode::where('user_id', $user->id)
+                ->whereNull('used_at')
+                ->exists();
+
+            if (! $user->hasTotpEnabled() && ! $hasRecoveryCode) {
+                Auth::logout();
+
+                Log::error('Gagal mengirim OTP 2FA', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return redirect()->route('login')
+                    ->withErrors(['identity' => 'Kode verifikasi tidak dapat dikirim saat ini. Silakan coba lagi.']);
+            }
+
+            Log::warning('OTP email 2FA gagal, pengguna memakai authenticator', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        Auth::logout();
+        $request->session()->regenerate();
+        $request->session()->put([
+            '2fa_user_id' => $user->id,
+            '2fa_remember' => $remember,
+            '2fa_started_at' => now()->timestamp,
+        ]);
+
+        return redirect()->route('two-factor.challenge')
+            ->with('status', 'Kode verifikasi telah dikirim ke email Anda.');
+    }
+
+    public function redirectBasedOnRole($user): RedirectResponse
     {
         if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
             return redirect()->route('system.dashboard');
@@ -199,11 +283,12 @@ class LoginController extends Controller
         }
 
         if ($roles->contains('Operator Asrama Santri')) {
-            $assignment = \App\Models\StudentOperatorAssignment::where('user_id', $user->id)
+            $assignment = StudentOperatorAssignment::where('user_id', $user->id)
                 ->where('operator_type', 'asrama')->where('is_active', true)->first();
             if ($assignment?->dormitory_id) {
                 return redirect()->route('user.asrama.visits.index', ['userId' => $user->id, 'asramaUuid' => $assignment->dormitory_id]);
             }
+
             return redirect()->route('root');
         }
 
@@ -219,6 +304,7 @@ class LoginController extends Controller
 
         if ($roles->contains('Wali Santri')) {
             Auth::logout();
+
             return redirect('/access-denied')
                 ->with('error', 'Akun ini adalah Wali Santri dan tidak memiliki akses ke website ini.');
         }
@@ -228,102 +314,103 @@ class LoginController extends Controller
         $roleName = strtolower(trim((string) $roles->first()));
 
         $jabatanMap = [
-            'kepala satuan pendidikan'  => 'user.dashboard.kepala-satuan-pendidikan',
-            'wakil kepala satuan'       => 'user.dashboard.wakil-kepala',
-            'wakasek'                   => 'user.dashboard.wakil-kepala',
-            'kepala tata usaha'         => 'user.dashboard.ka-tata-usaha',
-            'kepala tu sekolah'         => 'user.dashboard.ka-tata-usaha',
-            'staf tata usaha'           => 'user.dashboard.staf-tata-usaha',
-            'tata usaha'                => 'user.dashboard.staf-tata-usaha',
-            'tu sekolah'                => 'user.dashboard.staf-tata-usaha',
-            'bendahara sekolah'         => 'user.dashboard.bendahara',
-            'bendahara penerimaan'      => 'user.dashboard.keuangan',
-            'bendahara pengeluaran'     => 'user.dashboard.keuangan',
-            'kasir spp'                 => 'user.dashboard.keuangan',
-            'guru umum'                 => 'user.dashboard.guru',
-            'guru agama'                => 'user.dashboard.guru',
-            'guru hadits'               => 'user.dashboard.guru',
-            'guru bahasa arab'          => 'user.dashboard.guru',
-            'guru tahfidz'              => 'user.dashboard.guru',
-            'guru kelas'                => 'user.dashboard.guru',
-            'guru'                      => 'user.dashboard.guru',
-            'musrif'                    => 'user.dashboard.asrama',
-            'musrifah'                  => 'user.dashboard.asrama',
-            'musyrif'                   => 'user.dashboard.asrama',
-            'musyrifah'                 => 'user.dashboard.asrama',
-            'kepala asrama'             => 'user.dashboard.asrama',
-            'wakil kepala asrama'       => 'user.dashboard.asrama',
-            'tata usaha asrama'         => 'user.dashboard.asrama',
-            'tu asrama'                 => 'user.dashboard.asrama',
-            'staf perizinan'            => 'user.dashboard.asrama',
-            'kepala uks'                => 'user.uks.dashboard',
-            'staf uks putra'            => 'user.uks.dashboard',
-            'staf uks putri'            => 'user.uks.dashboard',
-            'mudir'                     => 'user.dashboard.pimpinan',
-            'pengasuh pesantren'        => 'user.dashboard.pimpinan',
-            'wadir 1'                   => 'user.dashboard.pimpinan',
-            'wadir 2'                   => 'user.dashboard.pimpinan',
+            'kepala satuan pendidikan' => 'user.dashboard.kepala-satuan-pendidikan',
+            'wakil kepala satuan' => 'user.dashboard.wakil-kepala',
+            'wakasek' => 'user.dashboard.wakil-kepala',
+            'kepala tata usaha' => 'user.dashboard.ka-tata-usaha',
+            'kepala tu sekolah' => 'user.dashboard.ka-tata-usaha',
+            'staf tata usaha' => 'user.dashboard.staf-tata-usaha',
+            'tata usaha' => 'user.dashboard.staf-tata-usaha',
+            'tu sekolah' => 'user.dashboard.staf-tata-usaha',
+            'bendahara sekolah' => 'user.dashboard.bendahara',
+            'bendahara penerimaan' => 'user.dashboard.keuangan',
+            'bendahara pengeluaran' => 'user.dashboard.keuangan',
+            'kasir spp' => 'user.dashboard.keuangan',
+            'guru umum' => 'user.dashboard.guru',
+            'guru agama' => 'user.dashboard.guru',
+            'guru hadits' => 'user.dashboard.guru',
+            'guru bahasa arab' => 'user.dashboard.guru',
+            'guru tahfidz' => 'user.dashboard.guru',
+            'guru kelas' => 'user.dashboard.guru',
+            'guru' => 'user.dashboard.guru',
+            'musrif' => 'user.dashboard.asrama',
+            'musrifah' => 'user.dashboard.asrama',
+            'musyrif' => 'user.dashboard.asrama',
+            'musyrifah' => 'user.dashboard.asrama',
+            'kepala asrama' => 'user.dashboard.asrama',
+            'wakil kepala asrama' => 'user.dashboard.asrama',
+            'tata usaha asrama' => 'user.dashboard.asrama',
+            'tu asrama' => 'user.dashboard.asrama',
+            'staf perizinan' => 'user.dashboard.asrama',
+            'kepala uks' => 'user.uks.dashboard',
+            'staf uks putra' => 'user.uks.dashboard',
+            'staf uks putri' => 'user.uks.dashboard',
+            'mudir' => 'user.dashboard.pimpinan',
+            'pengasuh pesantren' => 'user.dashboard.pimpinan',
+            'wadir 1' => 'user.dashboard.pimpinan',
+            'wadir 2' => 'user.dashboard.pimpinan',
             'kepala departemen tahfidz' => 'user.dashboard.tahfidz',
             'wakil kepala departemen tahfidz' => 'user.dashboard.tahfidz',
             'tata usaha departemen tahfidz' => 'user.dashboard.tahfidz',
-            'tu departemen tahfidz'     => 'user.dashboard.tahfidz',
+            'tu departemen tahfidz' => 'user.dashboard.tahfidz',
             'staf tu departemen tahfidz' => 'user.dashboard.tahfidz',
-            'kepala departemen bahasa'  => 'user.dashboard',
-            'wakil kepala departemen bahasa'  => 'user.dashboard',
-            'koordinator perpustakaan'  => 'user.dashboard',
-            'kepala perpustakaan'       => 'user.dashboard',
-            'pustakawan'                => 'user.dashboard',
-            'staf perpustakaan'         => 'user.dashboard',
-            'kepala satuan keamanan'    => 'user.dashboard',
+            'kepala departemen bahasa' => 'user.dashboard',
+            'wakil kepala departemen bahasa' => 'user.dashboard',
+            'koordinator perpustakaan' => 'user.dashboard',
+            'kepala perpustakaan' => 'user.dashboard',
+            'pustakawan' => 'user.dashboard',
+            'staf perpustakaan' => 'user.dashboard',
+            'kepala satuan keamanan' => 'user.dashboard',
             'koordinator satuan keamanan' => 'user.dashboard',
-            'anggota satuan keamanan'   => 'user.dashboard',
-            'petugas keamanan'          => 'user.dashboard',
+            'anggota satuan keamanan' => 'user.dashboard',
+            'petugas keamanan' => 'user.dashboard',
             'kepala humas & personalia' => 'user.dashboard.personalia',
-            'kepala humas'              => 'user.dashboard.personalia',
-            'kepala personalia'         => 'user.dashboard.personalia',
-            'staf humas'                => 'user.dashboard.personalia',
-            'staf personalia'           => 'user.dashboard.personalia',
-            'kepala unit rumah tangga'  => 'user.dashboard.unit-rumah-tangga',
-            'koordinator sarpras'       => 'user.dashboard.unit-rumah-tangga',
+            'kepala humas' => 'user.dashboard.personalia',
+            'kepala personalia' => 'user.dashboard.personalia',
+            'staf humas' => 'user.dashboard.personalia',
+            'staf personalia' => 'user.dashboard.personalia',
+            'kepala unit rumah tangga' => 'user.dashboard.unit-rumah-tangga',
+            'koordinator sarpras' => 'user.dashboard.unit-rumah-tangga',
             'koordinator sarana prasarana' => 'user.dashboard.unit-rumah-tangga',
-            'teknisi maintenance'       => 'user.dashboard.unit-rumah-tangga',
-            'teknisi'                   => 'user.dashboard.unit-rumah-tangga',
-            'petugas kebersihan'        => 'user.dashboard.unit-rumah-tangga',
-            'janitor'                   => 'user.dashboard.unit-rumah-tangga',
-            'driver'                    => 'user.dashboard.unit-rumah-tangga',
-            'pengemudi'                 => 'user.dashboard.unit-rumah-tangga',
-            'tata usaha urt'            => 'user.dashboard.unit-rumah-tangga',
-            'tu urt'                    => 'user.dashboard.unit-rumah-tangga',
-            'staf urt'                  => 'user.dashboard.unit-rumah-tangga',
+            'teknisi maintenance' => 'user.dashboard.unit-rumah-tangga',
+            'teknisi' => 'user.dashboard.unit-rumah-tangga',
+            'petugas kebersihan' => 'user.dashboard.unit-rumah-tangga',
+            'janitor' => 'user.dashboard.unit-rumah-tangga',
+            'driver' => 'user.dashboard.unit-rumah-tangga',
+            'pengemudi' => 'user.dashboard.unit-rumah-tangga',
+            'tata usaha urt' => 'user.dashboard.unit-rumah-tangga',
+            'tu urt' => 'user.dashboard.unit-rumah-tangga',
+            'staf urt' => 'user.dashboard.unit-rumah-tangga',
             'kepala departemen keuangan' => 'user.dashboard.keuangan',
-            'kepala keuangan'           => 'user.dashboard.keuangan',
-            'staf payroll'              => 'user.dashboard.keuangan',
-            'staf gaji'                 => 'user.dashboard.keuangan',
-            'akuntan'                   => 'user.dashboard.keuangan',
-            'staf pembukuan'            => 'user.dashboard.keuangan',
-            'staf akuntansi'            => 'user.dashboard.keuangan',
-            'staf keuangan'             => 'user.dashboard.keuangan',
-            'kepala unit ti'            => 'user.dashboard',
+            'kepala keuangan' => 'user.dashboard.keuangan',
+            'staf payroll' => 'user.dashboard.keuangan',
+            'staf gaji' => 'user.dashboard.keuangan',
+            'akuntan' => 'user.dashboard.keuangan',
+            'staf pembukuan' => 'user.dashboard.keuangan',
+            'staf akuntansi' => 'user.dashboard.keuangan',
+            'staf keuangan' => 'user.dashboard.keuangan',
+            'kepala unit ti' => 'user.dashboard',
             'kepala unit teknologi informasi' => 'user.dashboard',
             'network & infrastructure administrator' => 'user.dashboard',
             'application & database specialist' => 'user.dashboard',
-            'it support'                => 'user.dashboard',
-            'hardware technician'       => 'user.dashboard',
-            'teknisi jaringan'          => 'user.dashboard',
+            'it support' => 'user.dashboard',
+            'hardware technician' => 'user.dashboard',
+            'teknisi jaringan' => 'user.dashboard',
             'kepala unit pelayanan gizi' => 'user.dashboard',
             'kepala unit gizi & logistik' => 'user.dashboard',
-            'ahli gizi'                 => 'user.dashboard',
-            'menu planner'              => 'user.dashboard',
-            'chef'                      => 'user.dashboard',
-            'staf dapur'                => 'user.dashboard',
+            'ahli gizi' => 'user.dashboard',
+            'menu planner' => 'user.dashboard',
+            'chef' => 'user.dashboard',
+            'staf dapur' => 'user.dashboard',
             'staf logistik bahan pangan' => 'user.dashboard',
-            'koordinator logistik'      => 'user.dashboard',
-            'staf gizi'                 => 'user.dashboard',
-            'staf logistik'             => 'user.dashboard',
+            'koordinator logistik' => 'user.dashboard',
+            'staf gizi' => 'user.dashboard',
+            'staf logistik' => 'user.dashboard',
         ];
 
         if ($jabatanLower && isset($jabatanMap[$jabatanLower])) {
             $route = $jabatanMap[$jabatanLower];
+
             return $route === 'sarpras.dashboard'
                 ? redirect()->route($route)
                 : redirect()->route($route, ['userId' => $userId]);
@@ -354,20 +441,20 @@ class LoginController extends Controller
         $userTugas = array_values(array_unique(array_filter($userTugas)));
 
         $tugasMap = [
-            'Wali Kelas'                  => 'user.dashboard.wali-kelas',
-            'Koordinator Kurikulum'       => 'user.dashboard.koordinator-kurikulum',
-            'Koordinator Kesiswaan'       => 'user.dashboard.koordinator-kesiswaan',
-            'Guru Koordinator OSIPP'      => 'osipp.dashboard',
-            'Koordinator OSIPP'           => 'osipp.dashboard',
-            'Pembina OSIPP'               => 'osipp.dashboard',
+            'Wali Kelas' => 'user.dashboard.wali-kelas',
+            'Koordinator Kurikulum' => 'user.dashboard.koordinator-kurikulum',
+            'Koordinator Kesiswaan' => 'user.dashboard.koordinator-kesiswaan',
+            'Guru Koordinator OSIPP' => 'osipp.dashboard',
+            'Koordinator OSIPP' => 'osipp.dashboard',
+            'Pembina OSIPP' => 'osipp.dashboard',
             'Koordinator Ekstrakurikuler' => 'user.dashboard.koordinator-ekskul',
-            'Koordinator Laboratorium'    => 'user.dashboard.koordinator-lab',
+            'Koordinator Laboratorium' => 'user.dashboard.koordinator-lab',
             'Koordinator Sarpras Satuan Pendidikan' => 'user.dashboard.koordinator-sarpras',
-            'Koordinator Guru Umum'       => 'user.dashboard.koordinator-guru',
-            'Koordinator Guru Agama'      => 'user.dashboard.koordinator-guru',
-            'Koordinator Guru Hadits'     => 'user.dashboard.koordinator-guru',
+            'Koordinator Guru Umum' => 'user.dashboard.koordinator-guru',
+            'Koordinator Guru Agama' => 'user.dashboard.koordinator-guru',
+            'Koordinator Guru Hadits' => 'user.dashboard.koordinator-guru',
             'Koordinator Guru Bahasa Arab' => 'user.dashboard.koordinator-guru',
-            'Koordinator Guru Tahfidz'    => 'user.dashboard.koordinator-guru',
+            'Koordinator Guru Tahfidz' => 'user.dashboard.koordinator-guru',
         ];
 
         foreach ($userTugas as $tugas) {
@@ -377,21 +464,21 @@ class LoginController extends Controller
         }
 
         $roleDashboardMap = match (true) {
-            str_contains($roleName, 'kepala satuan')       => 'user.dashboard.satuan-pendidikan',
-            str_contains($roleName, 'pimpinan')            => 'user.dashboard.pimpinan',
-            str_contains($roleName, 'satuan pendidikan')   => 'user.dashboard.satuan-pendidikan',
-            str_contains($roleName, 'asrama')              => 'user.dashboard.asrama',
-            str_contains($roleName, 'uks')                 => 'user.uks.dashboard',
-            str_contains($roleName, 'tahfidz')             => 'user.dashboard.tahfidz',
-            str_contains($roleName, 'bahasa')              => 'user.dashboard',
-            str_contains($roleName, 'perpustakaan')        => 'user.dashboard',
-            str_contains($roleName, 'keamanan')            => 'user.dashboard',
-            str_contains($roleName, 'humas')               => 'user.dashboard.personalia',
-            str_contains($roleName, 'rumah tangga')        => 'user.dashboard.unit-rumah-tangga',
-            str_contains($roleName, 'keuangan')            => 'user.dashboard.keuangan',
+            str_contains($roleName, 'kepala satuan') => 'user.dashboard.satuan-pendidikan',
+            str_contains($roleName, 'pimpinan') => 'user.dashboard.pimpinan',
+            str_contains($roleName, 'satuan pendidikan') => 'user.dashboard.satuan-pendidikan',
+            str_contains($roleName, 'asrama') => 'user.dashboard.asrama',
+            str_contains($roleName, 'uks') => 'user.uks.dashboard',
+            str_contains($roleName, 'tahfidz') => 'user.dashboard.tahfidz',
+            str_contains($roleName, 'bahasa') => 'user.dashboard',
+            str_contains($roleName, 'perpustakaan') => 'user.dashboard',
+            str_contains($roleName, 'keamanan') => 'user.dashboard',
+            str_contains($roleName, 'humas') => 'user.dashboard.personalia',
+            str_contains($roleName, 'rumah tangga') => 'user.dashboard.unit-rumah-tangga',
+            str_contains($roleName, 'keuangan') => 'user.dashboard.keuangan',
             str_contains($roleName, 'teknologi informasi') => 'user.dashboard',
-            str_contains($roleName, 'gizi')                => 'user.dashboard',
-            default                                        => null,
+            str_contains($roleName, 'gizi') => 'user.dashboard',
+            default => null,
         };
 
         if ($roleDashboardMap) {

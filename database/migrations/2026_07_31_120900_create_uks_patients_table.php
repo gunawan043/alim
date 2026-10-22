@@ -34,7 +34,7 @@ return new class extends Migration
             $table->timestamp('left_bed_at')->nullable();       // Waktu turun ranjang
 
             // ── Status tracking ────────────────────────────────────
-            $table->enum('status', ['aktif', 'selesai', 'dirujuk'])->default('aktif');
+            $table->string('status', 30)->default('menunggu_pemeriksaan');
             $table->timestamp('admitted_at')->nullable();
             $table->timestamp('discharged_at')->nullable();
 

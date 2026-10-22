@@ -4,6 +4,7 @@
 @section('subtitle', 'Penjadwalan Shift UKS')
 
 @section('css')
+    @include('uks._ui-styles')
 <style>
     .shift-card {
         border: 2px solid #e9ecef;
@@ -44,6 +45,17 @@
     .date-nav {
         background: linear-gradient(135deg, #405189 0%, #27346c 100%);
         color: white; padding: 18px 24px; border-radius: 12px;
+    }
+
+    [data-bs-theme="dark"] .staff-pill {
+        background: var(--bs-secondary-bg);
+        border-color: var(--bs-border-color);
+    }
+    [data-bs-theme="dark"] .staff-pill .name {
+        color: var(--bs-body-color);
+    }
+    [data-bs-theme="dark"] .shift-time {
+        background: rgba(255, 255, 255, .08);
     }
 </style>
 @endsection

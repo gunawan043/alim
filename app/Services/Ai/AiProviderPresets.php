@@ -58,6 +58,13 @@ class AiProviderPresets
             'needs_key' => false,
             'note' => 'Jalankan LM Studio (server lokal); tanpa biaya API.',
         ],
+        'deepseek' => [
+            'label' => 'DeepSeek (API langsung)',
+            'endpoint' => 'https://api.deepseek.com/chat/completions',
+            'model' => 'deepseek-flash',
+            'needs_key' => true,
+            'note' => 'Berbayar. Model deepseek-flash (V4.1 Flash) atau deepseek-v4-pro.',
+        ],
         'custom' => [
             'label' => 'Custom (OpenAI-compatible)',
             'endpoint' => '',

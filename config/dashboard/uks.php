@@ -12,6 +12,7 @@
 $welcome = ['welcome-banner'];
 
 $kpiLayanan = [
+    'stat-antrean-hari-ini',
     'stat-pasien-aktif',
     'stat-rawat-inap',
     'stat-kunjungan-hari-ini',
@@ -20,6 +21,7 @@ $kpiLayanan = [
 ];
 
 $kpiFarmasi = [
+    'stat-resep-menunggu',
     'stat-obat-menipis',
     'stat-obat-kadaluarsa',
 ];
@@ -28,6 +30,7 @@ $blokLayanan = [
     'chart-kunjungan-7-hari',
     'chart-pasien-per-status',
     'chart-pasien-per-jenis',
+    'table-antrean-hari-ini',
     'table-pasien-aktif',
     'table-kunjungan-terbaru',
     'table-tindakan-terbaru',
@@ -44,6 +47,7 @@ $blokRujukan = [
     'stat-rujukan-bulan',
     'stat-bed-tersedia',
     'stat-istirahat-aktif',
+    'table-lokasi-rawat',
     'chart-kunjungan-per-dormitory',
     'table-rujukan-terbaru',
     'table-istirahat-aktif',
@@ -179,6 +183,8 @@ return [
     // ══════════════════════════════════════════════════════════════
     'section_map' => [
         'welcome-banner'               => 'ringkasan',
+        'stat-antrean-hari-ini'        => 'ringkasan',
+        'stat-resep-menunggu'          => 'farmasi',
         'stat-pasien-aktif'            => 'ringkasan',
         'stat-rawat-inap'              => 'ringkasan',
         'stat-kunjungan-hari-ini'      => 'ringkasan',
@@ -190,6 +196,7 @@ return [
         'chart-kunjungan-7-hari'       => 'layanan',
         'chart-pasien-per-status'      => 'layanan',
         'chart-pasien-per-jenis'       => 'layanan',
+        'table-antrean-hari-ini'       => 'layanan',
         'table-pasien-aktif'           => 'layanan',
         'table-kunjungan-terbaru'      => 'layanan',
         'table-tindakan-terbaru'       => 'layanan',
@@ -202,6 +209,7 @@ return [
         'stat-rujukan-bulan'           => 'rujukan',
         'stat-bed-tersedia'            => 'rujukan',
         'stat-istirahat-aktif'         => 'rujukan',
+        'table-lokasi-rawat'           => 'rujukan',
         'chart-kunjungan-per-dormitory' => 'rujukan',
         'table-rujukan-terbaru'        => 'rujukan',
         'table-istirahat-aktif'        => 'rujukan',

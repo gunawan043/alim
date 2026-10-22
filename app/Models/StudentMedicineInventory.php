@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Uks\UksPrescriptionItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -57,6 +58,11 @@ class StudentMedicineInventory extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(StudentMedicineLog::class, 'inventory_id');
+    }
+
+    public function prescriptionItems(): HasMany
+    {
+        return $this->hasMany(UksPrescriptionItem::class, 'inventory_id');
     }
 
     // ── Accessors ───────────────────────────────────────────────

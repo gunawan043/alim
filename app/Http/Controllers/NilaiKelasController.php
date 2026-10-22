@@ -22,6 +22,7 @@ use App\Services\AcademicPeriodService;
 use App\Services\Arsip\LegerPdfService;
 use App\Services\Arsip\RaporPdfService;
 use App\Services\KurikulumAccess;
+use App\Services\NotificationUniversalService;
 use App\Services\SumatifHarianService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
@@ -969,9 +970,9 @@ class NilaiKelasController extends Controller
             );
         }
 
-        $academicYear = \App\Models\AcademicYear::find($validated['academic_year_id']);
+        $academicYear = AcademicYear::find($validated['academic_year_id']);
 
-        app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
+        app(NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
             'module' => 'academic',
             'reference_type' => 'raport_registration',
             'reference_id' => $studyGroup->id,
@@ -1022,7 +1023,7 @@ class NilaiKelasController extends Controller
             ->where('is_active', true)
             ->pluck('student_id');
 
-        app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
+        app(NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
             'module' => 'academic',
             'reference_type' => 'teacher_admin_book',
             'reference_id' => $book->id,

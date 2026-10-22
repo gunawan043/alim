@@ -4,11 +4,9 @@ namespace App\Http\Controllers\Uks;
 
 use App\Http\Controllers\Controller;
 use App\Models\Uks\UksPatient;
-use App\Models\Uks\UksStatusHistory;
 use App\Models\Uks\UksTreatmentNote;
 use App\Models\UksBed;
-use App\Models\UksBedAssignment;
-use App\Models\UksCareEvent;
+use App\Services\Uks\UksClinicService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,6 +24,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class TreatmentStatusController extends Controller
 {
+    public function __construct(private readonly UksClinicService $clinic) {}
+
     public const STATUS_LABELS = [
         UksPatient::STATUS_WAITING => 'Menunggu Pemeriksaan',
         UksPatient::STATUS_TREATED => 'Sedang Ditangani',
@@ -67,6 +67,7 @@ class TreatmentStatusController extends Controller
             'patient' => $patient,
             'statusLabels' => self::STATUS_LABELS,
             'availableBeds' => $availableBeds,
+            'allowedTransitions' => $this->clinic->allowedTransitions($patient->status),
         ]);
     }
 
@@ -76,114 +77,16 @@ class TreatmentStatusController extends Controller
     public function updateStatus(Request $request, string $userId, string $uuid)
     {
         $patient = UksPatient::findOrFail($uuid);
+
         $validated = $request->validate([
             'new_status' => 'required|string|in:'.implode(',', array_keys(self::STATUS_LABELS)),
             'reason' => 'nullable|string|max:500',
         ]);
 
-        $oldStatus = $patient->status;
-        $newStatus = $validated['new_status'];
-
-        if ($oldStatus === $newStatus) {
-            return back()->withErrors(['status' => 'Status tidak berubah.']);
-        }
-
-        // ── Perbarui status utama
-        $patient->status = $newStatus;
-        $patient->save();
-
-        // ── Tulis histori perubahan status eksplisit
-        UksStatusHistory::create([
-            'patient_id' => $patient->id,
-            'changed_by' => Auth::id(),
-            'from_status' => $oldStatus,
-            'to_status' => $newStatus,
-            'changed_at' => now(),
-            'reason' => $validated['reason'] ?? null,
-        ]);
-
-        // Tahap 3: keterkaitan UKS → kehadiran akademik pada hari yang sama.
-        // Sakit selama perawatan/observasi; kembali hadir saat dipulangkan.
-        $careStatuses = [
-            UksPatient::STATUS_WAITING, UksPatient::STATUS_TREATED, UksPatient::STATUS_OBSERVATION,
-            UksPatient::STATUS_INPATIENT, UksPatient::STATUS_RESTING_UKS,
-            UksPatient::STATUS_REFERRAL_CLINIC, UksPatient::STATUS_REFERRAL_HOSPITAL,
-        ];
-        $dischargedStatuses = [
-            UksPatient::STATUS_COMPLETED, UksPatient::STATUS_RETURN_DORM, UksPatient::STATUS_RETURN_SCHOOL,
-            UksPatient::STATUS_PICKED_UP, UksPatient::STATUS_LEAVING,
-        ];
-
-        if ($patient->student_id) {
-            $attendanceSync = app(\App\Services\AcademicAttendanceSyncService::class);
-
-            if (in_array($newStatus, $careStatuses, true)) {
-                $attendanceSync->markAsAbsent(
-                    $patient->student_id, now(), now(),
-                    \App\Services\AcademicAttendanceSyncService::SOURCE_UPS, $patient->id, 'sakit'
-                );
-
-                // Notifikasi WA wali santri: santri sakit (masuk perawatan).
-                try {
-                    if ($patient->student) {
-                        app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
-                            ->notifySick($patient->student, $validated['reason'] ?? null, 'uks');
-                    }
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('WA notif sakit gagal: '.$e->getMessage());
-                }
-            } elseif (in_array($newStatus, $dischargedStatuses, true)) {
-                $attendanceSync->markAsPresent(
-                    $patient->student_id, now(),
-                    \App\Services\AcademicAttendanceSyncService::SOURCE_RETURN, $patient->id
-                );
-            }
-        }
-
-        // ── Otomatis bebaskan bed saat status bukan lagi rawat/istirahat
-        if (
-            in_array($newStatus, [
-                UksPatient::STATUS_RETURN_DORM,
-                UksPatient::STATUS_LEAVING,
-                UksPatient::STATUS_COMPLETED,
-                UksPatient::STATUS_REFERRAL_CLINIC,
-                UksPatient::STATUS_REFERRAL_HOSPITAL,
-            ], true) && $patient->in_bed
-        ) {
-            $assignment = UksBedAssignment::where('patient_id', $patient->id)
-                ->where('status', 'assigned')
-                ->latest('assigned_at')
-                ->first();
-
-            if ($assignment) {
-                $assignment->update([
-                    'status' => 'released',
-                    'released_at' => now(),
-                ]);
-            }
-
-            $patient->in_bed = false;
-            $patient->left_bed_at = now();
-            $patient->save();
-        }
-
-        // ── Tulis care-event agar konsisten dengan timeline existing
-        UksCareEvent::create([
-            'patient_id' => $patient->id,
-            'performed_by' => Auth::id(),
-            'happened_at' => now(),
-            'event_type' => 'pemeriksaan_ulang',
-            'event_title' => 'Perubahan Status Perawatan',
-            'description' => sprintf(
-                '%s → %s%s',
-                self::STATUS_LABELS[$oldStatus] ?? $oldStatus,
-                self::STATUS_LABELS[$newStatus] ?? $newStatus,
-                $validated['reason'] ? '. '.$validated['reason'] : ''
-            ),
-        ]);
+        $this->clinic->changeStatus($patient, $validated['new_status'], $validated['reason'] ?? null, Auth::id());
 
         return redirect()
-            ->route('user.uks.treatment-status.show', ['uuid' => $patient->id])
+            ->route('user.uks.treatment-status.show', ['userId' => $userId, 'uuid' => $patient->id])
             ->with('success', 'Status perawatan diperbarui.');
     }
 
@@ -207,7 +110,7 @@ class TreatmentStatusController extends Controller
         ]);
 
         return redirect()
-            ->route('user.uks.treatment-status.show', ['uuid' => $patient->id])
+            ->route('user.uks.treatment-status.show', ['userId' => $userId, 'uuid' => $patient->id])
             ->with('success', 'Catatan perkembangan berhasil ditambahkan.');
     }
 
@@ -216,38 +119,17 @@ class TreatmentStatusController extends Controller
      */
     public function assignBed(Request $request, string $userId, string $uuid)
     {
-        $patient = UksPatient::findOrFail($uuid);
+        $patient = UksPatient::with('student')->findOrFail($uuid);
 
         $validated = $request->validate([
             'bed_id' => 'required|uuid|exists:uks_beds,id',
             'reason' => 'nullable|string|max:500',
         ]);
 
-        UksBedAssignment::assign($validated['bed_id'], $patient->id, $validated['reason'] ?? null);
-
-        // Otomatis naikkan status ke rawat_uks bila belum rawat
-        $bed = UksBed::findOrFail($validated['bed_id']);
-        $patient->update([
-            'bed_number' => $bed->bed_number,
-            'in_bed' => true,
-            'taken_bed_at' => now(),
-            'status' => $patient->needsBed() ? $patient->status : UksPatient::STATUS_INPATIENT,
-        ]);
-
-        // Tulis histori status jika berubah
-        if ($patient->wasChanged('status')) {
-            UksStatusHistory::create([
-                'patient_id' => $patient->id,
-                'changed_by' => Auth::id(),
-                'from_status' => $patient->getOriginal('status'),
-                'to_status' => $patient->status,
-                'changed_at' => now(),
-                'reason' => 'Penempatan Bed',
-            ]);
-        }
+        $bed = $this->clinic->assignBed($patient, $validated['bed_id'], $validated['reason'] ?? null, Auth::id());
 
         return redirect()
-            ->route('user.uks.treatment-status.show', ['uuid' => $patient->id])
+            ->route('user.uks.treatment-status.show', ['userId' => $userId, 'uuid' => $patient->id])
             ->with('success', sprintf(
                 'Pasien ditempatkan di %s / %s / %s.',
                 $bed->building ?? 'UKS',
@@ -263,27 +145,20 @@ class TreatmentStatusController extends Controller
     {
         $patient = UksPatient::findOrFail($uuid);
 
-        $assignment = UksBedAssignment::where('patient_id', $patient->id)
-            ->where('status', 'assigned')
-            ->latest('assigned_at')
-            ->first();
+        $validated = $request->validate([
+            'care_location' => 'nullable|in:'.implode(',', array_keys(UksPatient::$careLocationLabels)),
+            'notes' => 'nullable|string|max:1000',
+        ]);
 
-        if ($assignment) {
-            $assignment->update([
-                'status' => 'released',
-                'released_at' => now(),
-            ]);
-        }
+        $this->clinic->releaseBed(
+            $patient,
+            Auth::id(),
+            true,
+            $validated['care_location'] ?? null,
+            $validated['notes'] ?? null
+        );
 
-        if ($patient->in_bed) {
-            $patient->in_bed = false;
-            $patient->left_bed_at = now();
-            $patient->save();
-        }
-
-        return redirect()
-            ->route('user.uks.treatment-status.show', ['uuid' => $patient->id])
-            ->with('success', 'Bed dikosongkan.');
+        return back()->with('success', 'Bed dikosongkan dan lokasi perawatan diperbarui.');
     }
 
     /**

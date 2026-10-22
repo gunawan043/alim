@@ -5,17 +5,17 @@ use Illuminate\Support\Facades\DB;
 $schoolId = $this->getUserSchoolId($user);
 
 $items = $this->applyUksScope(
-    DB::table('student_clinic_visits as v')
-        ->join('students as s', 's.id', '=', 'v.student_id')
-        ->when($schoolId, fn ($q) => $q->where('v.school_id', $schoolId)),
+    DB::table('uks_patients as p')
+        ->join('students as s', 's.id', '=', 'p.student_id')
+        ->when($schoolId, fn ($q) => $q->where('p.school_id', $schoolId)),
     $user,
-    'v.student_id'
+    'p.student_id'
 )
-    ->orderByDesc('v.visit_date')
+    ->orderByDesc('p.admitted_at')
     ->limit(10)
     ->get([
-        's.name as santri', 'v.complaint', 'v.diagnosis', 'v.is_referred',
-        'v.referral_hospital', 'v.visit_date',
+        's.name as santri', 'p.queue_number', 'p.triage_level', 'p.chief_complaint',
+        'p.diagnosis', 'p.queue_status', 'p.admitted_at',
     ])
     ->all();
 

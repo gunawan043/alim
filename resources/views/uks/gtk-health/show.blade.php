@@ -9,6 +9,7 @@
 @endphp
 
 @section('css')
+    @include('uks._ui-styles')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
     <style>
         .profile-stat {
@@ -908,7 +909,7 @@
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="ri-loader-4-line ri-spin me-1"></i> Menyimpan...';
 
-        var healthUrl = '{!! route("user.gtk.health-data.store", ["userId" => $userId, "uuid" => $gtk->id]) !!}';
+        var healthUrl = '{!! route("user.gtk.health-data.store", ["userId" => $userId, "uuid" => $user->id]) !!}';
 
         $.ajax({
             url: healthUrl,

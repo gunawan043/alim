@@ -171,6 +171,11 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Bersihkan OTP reset password yang kedaluwarsa/terpakai.
+        $schedule->command('password-otps:cleanup')
+            ->hourly()
+            ->withoutOverlapping();
+
         // PENGINGAT JAM PELAJARAN (GURU)
         // Setiap menit: kirim notifikasi ±5 menit sebelum jam mengajar dimulai.
         $schedule->command('alim:notify-lesson-reminders --minutes=5')

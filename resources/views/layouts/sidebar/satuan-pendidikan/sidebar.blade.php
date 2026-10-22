@@ -72,6 +72,7 @@
     $isGuruAgama    = $hasJabatan('Guru Agama');
     $isGuruHadits   = $hasJabatan('Guru Hadits');
     $isGuruArab     = $hasJabatan('Guru Bahasa Arab');
+    $isGuruInggris  = $hasJabatan('Guru Bahasa Inggris');
     $isGuruTahfidz  = $hasJabatan('Guru Tahfidz');
     $isKepalaTU     = $hasJabatan('Kepala Tata Usaha');
     $isTU           = $hasJabatan('Tata Usaha') || $hasJabatan('Staf Tata Usaha');
@@ -81,7 +82,7 @@
     $isKoorEkskul   = $hasJabatan('Koordinator Ekstrakurikuler')
         || $hasTugas('Koordinator Ekstrakurikuler');
 
-    $isGuru         = $isGuruUmum || $isGuruAgama || $isGuruHadits || $isGuruArab || $isGuruTahfidz;
+    $isGuru         = $isGuruUmum || $isGuruAgama || $isGuruHadits || $isGuruArab || $isGuruInggris || $isGuruTahfidz;
     $isAdminTU      = $isKepalaTU || $isTU;
     $isStruktural   = $isKepala || $isWakil;
     $isKoordinator  = $isKoorKurik || $isKoorKesiswa || $isKoorEkskul;
@@ -432,6 +433,53 @@
                 </li>
             </ul>
         </div>
+    </li>
+@endif
+
+@if($showAll || $isGuruArab || $isGuruInggris || $isKepala || $isWakil)
+    <li class="menu-title"><span>Bahasa</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.dashboard']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.dashboard', ['userId' => $userId]) }}">
+            <i class="ri-translate-2"></i><span>Dashboard Bahasa</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.mufradat.']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.mufradat.index', ['userId' => $userId]) }}">
+            <i class="ri-book-2-line"></i><span>Hafalan Mufradat</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.violations.']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.violations.index', ['userId' => $userId]) }}">
+            <i class="ri-error-warning-line"></i><span>Pelanggaran Bahasa</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.activities.']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.activities.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-event-line"></i><span>AM Nasyath Syahri</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.academic.nilai', ['userId' => $userId, 'language' => 'arab']) }}">
+            <i class="ri-line-chart-line"></i><span>Nilai & Perkembangan</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.daily.']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.daily.index', ['userId' => $userId, 'type' => 'percakapan']) }}">
+            <i class="ri-chat-3-line"></i><span>Percakapan & Jasus</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.certifications.']) ? ' active' : '' }}"
+           href="{{ route('user.bahasa.certifications.index', ['userId' => $userId]) }}">
+            <i class="ri-award-line"></i><span>Sertifikasi Bahasa</span>
+        </a>
     </li>
 @endif
 

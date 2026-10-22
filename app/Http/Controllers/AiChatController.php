@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AcademicYear;
 use App\Models\AiChatConversation;
-use App\Models\TeachingAssignment;
 use App\Services\Ai\AiChatService;
+use App\Services\Ai\AiContextService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,13 +15,17 @@ use Illuminate\Support\Facades\DB;
  */
 class AiChatController extends Controller
 {
-    public function send(Request $request, string $userId, AiChatService $chat)
+    public function send(Request $request, string $userId, AiChatService $chat, ?AiContextService $contextService = null)
     {
+        $contextService ??= app(AiContextService::class);
+
         $validated = $request->validate([
-            'message' => 'required|string|max:'.(int) config('ai_chat.max_message_chars', 2000),
+            'message' => 'required|string|max:'.(int) config('ai.max_message_chars', 4000),
             'conversation_id' => 'nullable|uuid',
             'page' => 'nullable|string|max:150',
             'mode' => 'nullable|in:ai,support',
+            'quality' => 'nullable|in:flash,pro',
+            'client_message_id' => 'nullable|uuid',
         ]);
 
         $conversation = null;
@@ -37,47 +41,7 @@ class AiChatController extends Controller
         }
 
         $user = $request->user();
-        $isSuper = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
-        $schoolId = $request->attributes->get('schoolContextId');
-        $activeYear = AcademicYear::query()->where('is_active', true)->first();
-
-        $assignments = TeachingAssignment::query()
-            ->with(['studyGroup:id,name,grade_level_id', 'studyGroup.gradeLevel:id,name', 'subject:id,name'])
-            ->where('teacher_id', $user->id)
-            ->where('status', 'active')
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id))
-            ->get();
-
-        $classes = $assignments->pluck('studyGroup')->filter()->unique('id')->map(fn ($group) => [
-            'id' => $group->id,
-            'name' => $group->name,
-            'grade_level' => $group->gradeLevel?->name,
-        ])->values()->all();
-
-        $subjects = $assignments->pluck('subject')->filter()->unique('id')->pluck('name')->values()->all();
-
-        $context = [
-            'school_id' => $schoolId,
-            'global' => (bool) $request->attributes->get('isGlobalView', false),
-            'my_study_group_ids' => $assignments->pluck('study_group_id')->filter()->unique()->values()->all(),
-            'my_teaching' => [
-                'academic_year' => $activeYear?->name,
-                'classes' => $classes,
-                'subjects' => $subjects,
-            ],
-            'can_view_students' => $isSuper
-                || canPermission('student_view')
-                || canPermission('student-all-access'),
-            'can_view_gtk' => $isSuper
-                || canPermission('gtk_view')
-                || canPermission('gtk_detail_view')
-                || canPermission('gtk-view-all')
-                || canPermission('gtk-view-school'),
-            'can_view_gtk_detail' => $isSuper
-                || canPermission('gtk_detail_view')
-                || canPermission('gtk-view-all'),
-        ];
+        $context = $contextService->build($user, $request);
 
         $requestedMode = $validated['mode'] ?? 'ai';
         $mode = $requestedMode === 'support' ? 'support' : ($conversation?->mode ?? 'ai');
@@ -93,15 +57,35 @@ class AiChatController extends Controller
             return response()->json($result, $result['ok'] ? 200 : 503);
         }
 
-        $result = $chat->send(
-            $request->user(),
-            $context,
-            $conversation,
-            trim($validated['message']),
-            $validated['page'] ?? null,
+        $clientMessageId = $validated['client_message_id'] ?? null;
+        $lock = Cache::lock(
+            'ai-chat-send:'.sha1($request->user()->id.'|'.trim($validated['message'])),
+            240,
         );
 
-        return response()->json($result, $result['ok'] ? 200 : 503);
+        if ($lock && ! $lock->get()) {
+            return response()->json([
+                'ok' => false,
+                'duplicate' => true,
+                'message' => 'Pesan ini sedang diproses. Tunggu sebentar.',
+            ], 409);
+        }
+
+        try {
+            $result = $chat->send(
+                $request->user(),
+                $context,
+                $conversation,
+                trim($validated['message']),
+                $validated['page'] ?? null,
+                $validated['quality'] ?? config('ai.default_quality', 'flash'),
+                $clientMessageId,
+            );
+
+            return response()->json($result, $result['ok'] ? 200 : 503);
+        } finally {
+            $lock?->release();
+        }
     }
 
     public function conversations(Request $request, string $userId)
@@ -157,6 +141,31 @@ class AiChatController extends Controller
         ]);
     }
 
+    public function feedback(Request $request, string $userId, string $conversationId)
+    {
+        $validated = $request->validate([
+            'message_id' => 'required|uuid',
+            'rating' => 'required|in:up,down',
+        ]);
+
+        $conversation = AiChatConversation::query()
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($conversationId);
+
+        $message = $conversation->messages()
+            ->where('id', $validated['message_id'])
+            ->where('role', 'assistant')
+            ->firstOrFail();
+
+        $metadata = is_array($message->metadata) ? $message->metadata : [];
+        $metadata['rating'] = $validated['rating'];
+        $metadata['rated_at'] = now()->toIso8601String();
+
+        $message->update(['metadata' => $metadata]);
+
+        return response()->json(['ok' => true, 'rating' => $validated['rating']]);
+    }
+
     public function resumeAi(Request $request, string $userId, string $conversationId)
     {
         $conversation = AiChatConversation::query()
@@ -208,6 +217,7 @@ class AiChatController extends Controller
         return [
             'id' => $conversation->id,
             'title' => $conversation->title,
+            'provider' => $conversation->provider,
             'model' => $conversation->model,
             'mode' => $conversation->mode ?: 'ai',
             'status' => $conversation->status ?: 'open',
@@ -221,13 +231,23 @@ class AiChatController extends Controller
     private function messagePayload(AiChatConversation $conversation): array
     {
         return $conversation->messages()
-            ->get(['id', 'role', 'content', 'created_at'])
-            ->map(fn ($message) => [
-                'id' => $message->id,
-                'role' => $message->role,
-                'content' => $message->content,
-                'created_at' => $message->created_at?->toIso8601String(),
-            ])
+            ->get(['id', 'role', 'content', 'metadata', 'created_at'])
+            ->map(function ($message) {
+                $metadata = is_array($message->metadata) ? $message->metadata : [];
+
+                return [
+                    'id' => $message->id,
+                    'role' => $message->role,
+                    'content' => $message->content,
+                    'blocks' => $metadata['blocks'] ?? null,
+                    'sources' => $metadata['sources'] ?? [],
+                    'usage' => $metadata['usage'] ?? [],
+                    'cost' => $metadata['cost'] ?? 0,
+                    'model' => $metadata['model'] ?? null,
+                    'rating' => $metadata['rating'] ?? null,
+                    'created_at' => $message->created_at?->toIso8601String(),
+                ];
+            })
             ->all();
     }
 }

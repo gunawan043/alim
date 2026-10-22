@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Uks\UksPatient;
+use App\Models\Uks\UksPrescription;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -27,10 +28,20 @@ class UksTreatment extends Model
         'patient_id',
         'performed_by',
         'chief_complaint',
+        'subjective',
         'symptoms',
         'vitals',
+        'objective',
+        'physical_exam',
         'diagnosis',
+        'assessment',
+        'icd10_code',
+        'icd10_name',
         'treatment',
+        'plan',
+        'disposition',
+        'follow_up_date',
+        'is_locked',
         'notes',
     ];
 
@@ -39,6 +50,8 @@ class UksTreatment extends Model
         'performed_by' => 'string',
         'symptoms' => 'array',
         'vitals' => 'array',
+        'follow_up_date' => 'date',
+        'is_locked' => 'boolean',
     ];
 
     // ── Relationships ───────────────────────────────────────────
@@ -51,5 +64,10 @@ class UksTreatment extends Model
     public function performedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'performed_by');
+    }
+
+    public function prescriptions()
+    {
+        return $this->hasMany(UksPrescription::class, 'treatment_id');
     }
 }

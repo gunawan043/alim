@@ -40,6 +40,15 @@ class GtkHealthController extends Controller
                 ->orWhere('email', 'like', "%{$q}%"));
         }
 
+        // Filter by jenis kelamin
+        $genderFilter = in_array($request->input('gender'), ['L', 'P'], true)
+            ? $request->input('gender')
+            : null;
+
+        if ($genderFilter) {
+            $query->whereHas('gtkProfile', fn ($q) => $q->where('jenis_kelamin', $genderFilter));
+        }
+
         // Filter by golongan darah
         if ($request->filled('blood_type')) {
             $query->whereHas('gtkProfile', fn ($q) => $q->where('golongan_darah', $request->blood_type));

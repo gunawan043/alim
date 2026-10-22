@@ -76,12 +76,17 @@ class SanitationInspectionController extends Controller
             ->orderByDesc('avg_score')
             ->get();
 
-        // Tren skor bulanan
+        // Tren skor bulanan — grouping dilakukan di PHP agar kompatibel
+        // dengan MySQL maupun SQLite (test environment).
         $monthlyTrend = (clone $baseQuery)
-            ->selectRaw("DATE_FORMAT(inspection_date, '%Y-%m') as month, avg(score) as avg_score")
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
+            ->get(['inspection_date', 'score'])
+            ->groupBy(fn ($inspection) => $inspection->inspection_date?->format('Y-m') ?? 'unknown')
+            ->map(fn ($rows, $month) => (object) [
+                'month' => $month,
+                'avg_score' => round((float) $rows->avg('score'), 2),
+            ])
+            ->sortBy('month')
+            ->values();
 
         // Inspection count
         $totalInspection = (clone $baseQuery)->count();

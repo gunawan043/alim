@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class UksBed extends Model
@@ -66,12 +67,12 @@ class UksBed extends Model
 
     // ── Accessors ───────────────────────────────────────────────
 
-    public function currentAssignment()
+    public function currentAssignment(): HasOne
     {
-        return $this->assignments()
+        return $this->hasOne(UksBedAssignment::class, 'bed_id')
             ->where('status', 'assigned')
-            ->orderByDesc('assigned_at')
-            ->first();
+            ->whereNull('released_at')
+            ->latestOfMany('assigned_at');
     }
 
     /**

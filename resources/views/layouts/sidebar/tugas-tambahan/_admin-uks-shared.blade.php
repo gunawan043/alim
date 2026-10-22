@@ -44,7 +44,23 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Rekam Medis</span></li>
 
-{{-- 1. Rekam Medis Santri (sektor) --}}
+{{-- 1. Antrean Klinik (input pasien) --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.clinic.']) ? ' active' : '' }}"
+       href="{{ $adminUksUrl('user.uks.clinic.queue') }}">
+        <i class="ri-list-check-2"></i><span>Antrean Klinik</span>
+    </a>
+</li>
+
+{{-- 2. Papan Lokasi Rawat --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.care-locations.']) ? ' active' : '' }}"
+       href="{{ $adminUksUrl('user.uks.care-locations.index') }}">
+        <i class="ri-map-pin-user-line"></i><span>Papan Lokasi Rawat</span>
+    </a>
+</li>
+
+{{-- 3. Rekam Medis Santri (sektor) --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.student-health.']) ? ' active' : '' }}"
        href="{{ $adminUksUrl('user.uks.student-health.index') }}">
@@ -81,7 +97,15 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Obat & Log</span></li>
 
-{{-- 5. Log Pemberian Obat --}}
+{{-- 5. Farmasi & Resep --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.pharmacy.']) ? ' active' : '' }}"
+       href="{{ $adminUksUrl('user.uks.pharmacy.index') }}">
+        <i class="ri-capsule-line"></i><span>Farmasi & Resep</span>
+    </a>
+</li>
+
+{{-- 6. Log Pemberian Obat --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.medicine-logs.']) ? ' active' : '' }}"
        href="{{ $adminUksUrl('user.uks.medicine-logs.index') }}">

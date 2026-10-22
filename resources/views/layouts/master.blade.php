@@ -23,6 +23,7 @@
     @if(request()->routeIs('user.asrama.*'))
         @include('dormitory._ui-styles')
     @endif
+    @include('layouts.partials.theme-fixes')
     <style>
         /* Logo ALIM: paksa logo yang tepat untuk mode terang/gelap. */
         [data-bs-theme="light"] .logo.logo-light { display: none !important; }
@@ -85,7 +86,7 @@
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
     <script src="{{ URL::asset('build/libs/toastify-js/src/toastify.js') }}"></script>
     <script src="{{ URL::asset('build/js/sidebar-scroll.js') }}"></script>
-    @unless(request()->routeIs('user.sa.ai-chat.*'))
+    @unless(request()->routeIs('user.sa.ai-chat.*') || request()->routeIs('user.ai.*') || (auth()->check() && auth()->user()->isStudentOperator()))
         @include('layouts.partials.ai-chat-widget')
     @endunless
     {{-- Skrip khusus halaman: @yield('script') dirender di vendor-scripts (jangan ganda!) --}}

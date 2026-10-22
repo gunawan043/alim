@@ -209,8 +209,14 @@
                     <i class="ri-shield-check-line"></i>
                 </div>
                 <div class="auth-title-main">Verifikasi Email</div>
-                <div class="auth-title-sub">Masukkan 6 digit kode OTP yang dikirim ke email Anda</div>
+                <div class="auth-title-sub">Masukkan 6 digit kode OTP yang dikirim ke {{ $email ?? 'email Anda' }}</div>
             </div>
+
+            @if(session('status'))
+                <div class="alert-box" style="background:rgba(0,89,129,.08);border-color:rgba(0,89,129,.2);color:#4a6a80">
+                    <i class="ri-information-line"></i><span>{{ session('status') }}</span>
+                </div>
+            @endif
 
             @error('otp')
                 <div class="alert-box">
@@ -243,6 +249,18 @@
             <p class="timer-text" id="timer-wrap">
                 OTP berlaku <span id="timer">--:--</span>
             </p>
+
+            <div class="resend-text" id="resend-form">
+                <form method="POST" action="{{ route('password.otp.resend') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-link p-0" style="font-size:.82rem">Kirim ulang kode OTP</button>
+                </form>
+                <span class="mx-2 text-muted">·</span>
+                <form method="POST" action="{{ route('password.cancel') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-link p-0 text-muted" style="font-size:.82rem">Batalkan</button>
+                </form>
+            </div>
         </div>
 
         <div class="footer-note">&copy; {{ date('Y') }} ALIM &mdash; Ponpes Abu Hurairah Mataram</div>

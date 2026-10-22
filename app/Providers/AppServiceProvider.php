@@ -47,21 +47,37 @@ use App\Listeners\RecordQuotationTransition;
 use App\Listeners\RecordRmaTransition;
 use App\Listeners\RecordVendorAuditListener;
 use App\Listeners\SendVendorNotificationListener;
+use App\Models\AbsensiGtk;
 use App\Models\BoardingPolicy;
 use App\Models\DokumenIso;
+use App\Models\DormitoryResident;
 use App\Models\DormitoryStaffAssignment;
 use App\Models\GradeLevel;
+use App\Models\GtkAdditionalTask;
 use App\Models\GtkEmployment;
+use App\Models\InstitutionDecree;
+use App\Models\OtherTeacherTask;
+use App\Models\PersonalAccessToken;
 use App\Models\Student;
 use App\Models\StudyGroup;
-use App\Models\Subject;
 use App\Models\StudyGroupSubject;
+use App\Models\TeachingAssignment;
+use App\Observers\AbsensiGtkPeriodObserver;
 use App\Observers\BoardingPolicyObserver;
 use App\Observers\DokumenIsoObserver;
+use App\Observers\DormitoryResidentObserver;
 use App\Observers\DormitoryStaffAssignmentObserver;
+use App\Observers\GtkAdditionalTaskObserver;
 use App\Observers\GtkEmploymentObserver;
+use App\Observers\InstitutionDecreeObserver;
+use App\Observers\OtherTeacherTaskObserver;
 use App\Observers\StudyGroupObserver;
 use App\Observers\StudyGroupSubjectObserver;
+use App\Observers\TeachingAssignmentObserver;
+use App\Services\Ai\AiProviderService;
+use App\Services\ArabicName\AiArabicNameGenerator;
+use App\Services\ArabicName\ArabicNameGenerator;
+use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
 use App\Services\Boarding\BoardingApprovalService;
 use App\Services\Boarding\HealthWorkflowService;
 use App\Services\Boarding\LeaveWorkflowService;
@@ -86,6 +102,7 @@ use App\Services\Sarpras\StockOpnameWorkflow;
 use App\Services\Sarpras\TechnicianWorkspaceService;
 use App\Services\Sarpras\WorkOrderExecutionService;
 use App\Services\SarprasCacheInvalidator;
+use App\Services\SystemMailSettingsService;
 use App\Services\WorkspaceActivationService;
 use App\View\Composers\SidebarAccessComposer;
 use App\View\Composers\SystemAdminMenuComposer;
@@ -94,10 +111,10 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event as EventDispatcher;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use App\Observers\DormitoryResidentObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\View;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -106,19 +123,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
         $this->app->singleton(NotificationBroadcastService::class);
         $this->app->singleton(WorkspaceActivationService::class);
 
         // Generator nama Arab: kaidah transliterasi (default) atau AI (opsional).
         $this->app->bind(
-            \App\Services\ArabicName\Contracts\ArabicNameGeneratorContract::class,
+            ArabicNameGeneratorContract::class,
             function ($app) {
                 $aiEnabled = config('arabic_names.driver') === 'ai'
-                    || $app->make(\App\Services\Ai\AiProviderService::class)->isConfigured();
+                    || $app->make(AiProviderService::class)->isConfigured();
 
                 return $aiEnabled
-                    ? $app->make(\App\Services\ArabicName\AiArabicNameGenerator::class)
-                    : $app->make(\App\Services\ArabicName\ArabicNameGenerator::class);
+                    ? $app->make(AiArabicNameGenerator::class)
+                    : $app->make(ArabicNameGenerator::class);
             }
         );
 
@@ -163,7 +182,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \App\Models\DormitoryResident::observe(DormitoryResidentObserver::class);
+        DormitoryResident::observe(DormitoryResidentObserver::class);
         Schema::defaultStringLength(191);
 
         // ── System Super Admin bootstrap ───────────────────────────
@@ -171,6 +190,9 @@ class AppServiceProvider extends ServiceProvider
         // full permissions on every boot, even after migrate:fresh.
         // Idempotent — safe to call repeatedly.
         SystemSuperAdminBootstrap::ensure();
+
+        // Terapkan konfigurasi email dari database (dengan fallback .env).
+        app(SystemMailSettingsService::class)->apply();
 
         // Register sidebar access composer globally
         view()->composer(['layouts.sidebar'], SidebarAccessComposer::class);
@@ -246,17 +268,17 @@ class AppServiceProvider extends ServiceProvider
         StudyGroup::observe(StudyGroupObserver::class);
         DokumenIso::observe(DokumenIsoObserver::class);
         StudyGroupSubject::observe(StudyGroupSubjectObserver::class);
-        \App\Models\AbsensiGtk::observe(\App\Observers\AbsensiGtkPeriodObserver::class);
+        AbsensiGtk::observe(AbsensiGtkPeriodObserver::class);
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
         GtkEmployment::observe(GtkEmploymentObserver::class);
         DormitoryStaffAssignment::observe(DormitoryStaffAssignmentObserver::class);
 
         // Penugasan mengajar → provisioning buku nilai/SGS + notifikasi + pindah kepemilikan.
-        \App\Models\TeachingAssignment::observe(\App\Observers\TeachingAssignmentObserver::class);
-        \App\Models\OtherTeacherTask::observe(\App\Observers\OtherTeacherTaskObserver::class);
-        \App\Models\GtkAdditionalTask::observe(\App\Observers\GtkAdditionalTaskObserver::class);
-        \App\Models\InstitutionDecree::observe(\App\Observers\InstitutionDecreeObserver::class);
+        TeachingAssignment::observe(TeachingAssignmentObserver::class);
+        OtherTeacherTask::observe(OtherTeacherTaskObserver::class);
+        GtkAdditionalTask::observe(GtkAdditionalTaskObserver::class);
+        InstitutionDecree::observe(InstitutionDecreeObserver::class);
 
         // ── Boarding Rules Engine Registration ─────────────────────
         $engine = BoardingRulesEngine::getInstance();

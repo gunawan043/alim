@@ -14,6 +14,7 @@ use App\Models\StudentClassHistory;
 use App\Models\StudentMutationIn;
 use App\Models\StudentMutationOut;
 use App\Models\StudyGroup;
+use App\Services\Uks\StudentHealthSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -422,6 +423,10 @@ class StudentController extends Controller
 
         $student = Student::create($data);
 
+        if ($request->hasAny(['height', 'weight', 'head_circumference'])) {
+            app(StudentHealthSyncService::class)->sync($student);
+        }
+
         return redirect()->route('user.students.show', ['userId' => $request->route('userId'), 'santriUuid' => $student->id])
             ->with('success', 'Data siswa berhasil disimpan.');
     }
@@ -572,6 +577,10 @@ class StudentController extends Controller
         $previousStatus = $student->getOriginal('status');
 
         $student->update($data);
+
+        if ($request->hasAny(['height', 'weight', 'head_circumference'])) {
+            app(StudentHealthSyncService::class)->sync($student);
+        }
 
         // Perubahan status manual (graduate/dropped/transfer) harus menjalankan
         // efek lifecycle: tutup rombel, buat alumni, audit, notifikasi wali.

@@ -3,6 +3,7 @@
     @lang('Data GTK & Kesehatan')
 @endsection
 @section('css')
+    @include('uks._ui-styles')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
     <style>
         .table-container { position: relative; width: 100%; overflow-x: auto; }
@@ -21,6 +22,9 @@
         .filter-group { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
         .filter-group-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .filter-group-title i { color: #0a5f9e; font-size: 18px; }
+        [data-bs-theme="dark"] .filter-group { background: var(--bs-tertiary-bg); }
+        [data-bs-theme="dark"] .filter-group-title { color: var(--bs-body-color); }
+        [data-bs-theme="dark"] .table-freeze thead th { border-bottom-color: var(--bs-border-color); }
     </style>
 @endsection
 

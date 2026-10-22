@@ -38,8 +38,7 @@ class UksDashboardController extends Controller
         // Fallback: if role is UKS without work unit, allow all (no filter)
 
         // ── Card 1: Total Santri ────────────────────────────────
-        $totalSantriQuery = Student::whereHas('activeDormitoryResident')
-            ->where('status', 'active');
+        $totalSantriQuery = Student::where('status', 'active');
         if ($schoolId) {
             $totalSantriQuery->where('school_id', $schoolId);
         }
@@ -96,7 +95,7 @@ class UksDashboardController extends Controller
         $bedStats = $this->getBedStats($schoolId, $genderFilter);
 
         // ── Recent Active Patients ───────────────────────────────
-        $recentPatients = UksPatient::with(['student.dormitory'])
+        $recentPatients = UksPatient::with(['student.activeDormitoryResident.dormitory'])
             ->active()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->when($genderFilter, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('gender', $genderFilter)))
@@ -163,8 +162,8 @@ class UksDashboardController extends Controller
 
         $totalBeds = $allBeds->count();
         $occupiedBeds = $allBeds->where('is_occupied', true)->count();
-        $availableBeds = $totalBeds - $occupiedBeds;
         $underRepair = $allBeds->where('status', 'perbaikan')->count();
+        $availableBeds = max(0, $totalBeds - $occupiedBeds - $underRepair);
 
         $groupedByDorm = $allBeds->groupBy(function ($bed) {
             return $bed->dormitory?->name ?? 'Tanpa Asrama';

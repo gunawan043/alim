@@ -79,7 +79,7 @@ class StudentHealthController extends Controller
             ->limit(20)
             ->get();
         $metrics = StudentHealthMetric::where('student_id', $studentModel->id)
-            ->orderByDesc('recorded_at')
+            ->orderByDesc('record_date')
             ->limit(12)
             ->get();
 

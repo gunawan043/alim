@@ -13,6 +13,45 @@
     @endcomponent
 
     <div class="dashboard-role" data-role="super-admin">
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <section class="dash-section">
+            <div class="dash-section-header">
+                <span class="dash-section-icon"><i class="ri-heart-pulse-line"></i></span>
+                <h6 class="dash-section-title">Mode Operasional UKS</h6>
+                <span class="dash-section-line"></span>
+                <span class="dash-section-count">UKS</span>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ route('system.features.uks-mode') }}" class="row g-3 align-items-end">
+                        @csrf
+                        <div class="col-md-5">
+                            <label class="form-label">Pilih mode</label>
+                            <select name="uks_mode" class="form-select">
+                                <option value="simple" {{ $uksMode === 'simple' ? 'selected' : '' }}>UKS Sederhana — tanpa antrean, pemeriksaan awal langsung</option>
+                                <option value="clinic" {{ $uksMode === 'clinic' ? 'selected' : '' }}>Klinik — antrean, triase, dan alur klinik</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100"><i class="ri-save-line me-1"></i>Simpan Mode</button>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info small mb-0">
+                                Mode <strong>UKS Sederhana</strong> menyembunyikan antrean dan langsung memulai pemeriksaan awal.
+                                Data antrean, resep, dan bed tetap disimpan untuk digunakan saat mode Klinik diaktifkan.
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
         <section class="dash-section">
             <div class="dash-section-header">
                 <span class="dash-section-icon"><i class="ri-dashboard-3-line"></i></span>

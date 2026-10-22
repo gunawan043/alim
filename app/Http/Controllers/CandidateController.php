@@ -7,6 +7,7 @@ use App\Models\RecruitmentProfile;
 use App\Models\RecruitmentSkill;
 use App\Models\User;
 use App\Services\RecruitmentDocumentService;
+use App\Services\SecurityPolicy;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -276,7 +277,7 @@ class CandidateController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8',
+            'password' => 'required|min:'.SecurityPolicy::passwordMinLength(),
             'nik' => 'nullable|string|unique:recruitment_profiles,nik',
             'no_hp' => 'nullable|string',
             'tempat_lahir' => 'nullable|string',

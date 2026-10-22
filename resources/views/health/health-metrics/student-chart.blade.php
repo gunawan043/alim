@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Grafik Antropometri Santri @endsection
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') UKS @endslot
@@ -248,7 +252,7 @@
                                     $prevBmi = $m->bmi;
                                     $bc = $badgeColor[$m->bmi_category ?? ''] ?? 'secondary';
                                     $bl = $bmiLabel[$m->bmi_category ?? ''] ?? '-';
-                                    $sessionLabel = ['awal_tahun'=>'Awal','tengah_tahun'=>'Tengah','akhir_tahun'=>'Akhir','lainnya'=>'Lain'][$m->measurement_session ?? ''] ?? '-';
+                                    $sessionLabel = ['awal_tahun'=>'Awal','tengah_tahun'=>'Tengah','akhir_tahun'=>'Akhir','bulanan'=>'Bulanan','caturwulan'=>'Caturwulan','akhir_semester'=>'Akhir Semester','medical_checkup'=>'MCU / Import','lainnya'=>'Lain'][$m->measurement_session ?? ''] ?? '-';
                                 ?>
                                 <tr>
                                     <td class="text-center text-muted">{{ $i + 1 }}</td>

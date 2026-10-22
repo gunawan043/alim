@@ -45,9 +45,21 @@
 @if($isPustaka && menu_allowed('perpustakaan'))
     @if($isStudentOperator)
         <li class="menu-title"><span>Operator Santri</span></li>
-        <li class="nav-item"><a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.index']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.index') }}"><i class="ri-dashboard-3-line"></i><span>Dashboard</span></a></li>
-        <li class="nav-item"><a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.loans.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.loans.index') }}"><i class="ri-exchange-line"></i><span>Peminjaman &amp; Pengembalian</span></a></li>
-        <li class="nav-item"><a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.visits.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.visits.index') }}"><i class="ri-footprint-line"></i><span>Kunjungan Harian</span></a></li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.index']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.index') }}">
+                <i class="ri-dashboard-3-line"></i><span>Dashboard</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.loans.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.loans.index') }}">
+                <i class="ri-exchange-line"></i><span>Peminjaman &amp; Pengembalian</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.visits.']) ? ' active' : '' }}" href="{{ $pustakaUrl('user.perpustakaan.visits.index') }}">
+                <i class="ri-footprint-line"></i><span>Kunjungan Harian</span>
+            </a>
+        </li>
     @else
     <li class="menu-title"><span>Dashboard</span></li>
     <li class="nav-item">

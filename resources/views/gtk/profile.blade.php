@@ -22,7 +22,7 @@
         .profile-wrapper { background: linear-gradient(to right, rgba(var(--bs-primary-rgb), 0.9), rgba(var(--bs-success-rgb), 0.7)); border-radius: 12px; padding: 20px; margin-top: -30px; position: relative; z-index: 10; }
         .family-member-card, .education-card { transition: all 0.3s ease; border: 1px solid var(--bs-border-color); }
         .family-member-card:hover, .education-card:hover { transform: translateY(-5px); box-shadow: var(--bs-box-shadow); }
-        [data-bs-theme="dark"] .profile-wrapper { background: linear-gradient(to right, rgba(13, 110, 253, 0.8), rgba(25, 135, 84, 0.6)); }
+        /* [data-bs-theme="dark"] .profile-wrapper { background: linear-gradient(to right, rgba(13, 110, 253, 0.8), rgba(25, 135, 84, 0.6)); } */
     </style>
 @endsection
 
@@ -233,7 +233,7 @@
     </div>
 
     <!-- Profile Stats -->
-    <div class="pt-4 mb-4 mb-lg-3 pb-lg-4 profile-wrapper">
+    <div class="pt-4 mb-4 mb-lg-3 pb-lg-4 profile-wraspper">
         <div class="row g-4">
             <div class="col-auto">
                 <div class="avatar-lg position-relative">

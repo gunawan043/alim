@@ -4,6 +4,7 @@
 @section('subtitle', 'Profil Kesehatan Santri')
 
 @section('css')
+    @include('uks._ui-styles')
     <style>
         .profile-stat {
             background: rgba(var(--bs-body-bg-rgb), 0.1);
@@ -78,6 +79,7 @@
         $latestMetric = isset($metrics) && $metrics->count() > 0 ? $metrics->first() : null;
         $latestHeight = $latestMetric?->height_cm ?? $record?->height_cm;
         $latestWeight = $latestMetric?->weight_kg ?? $record?->weight_kg;
+        $latestHead = $latestMetric?->head_circumference_cm ?? $record?->head_circumference_cm;
         $bmi = $latestMetric?->bmi ?? $record?->bmi;
         $bmiNumeric = $bmi !== null ? (float) $bmi : 0;
 
@@ -189,6 +191,12 @@
                                 <span>{{ number_format((float) $latestWeight, 1) }} kg</span>
                             </div>
                         @endif
+                        @if($latestHead)
+                            <div class="d-flex align-items-center">
+                                <i class="ri-ruler-line me-2"></i>
+                                <span>Lingkar kepala {{ number_format((float) $latestHead, 1) }} cm</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -279,6 +287,18 @@
                                                 {{ $latestWeight ? number_format((float) $latestWeight, 1, ',', '.') : '-' }}
                                             </div>
                                             <small class="text-muted">kg</small>
+                                        </div>
+                                    </div>
+
+                                    {{-- Lingkar Kepala --}}
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="profile-stat text-center">
+                                            <div class="mb-2"><i class="ri-ruler-line fs-4 text-warning"></i></div>
+                                            <h6 class="text-muted mb-1">Lingkar Kepala</h6>
+                                            <div class="fs-4 fw-bold">
+                                                {{ $latestHead ? number_format((float) $latestHead, 1, ',', '.') : '-' }}
+                                            </div>
+                                            <small class="text-muted">cm</small>
                                         </div>
                                     </div>
 

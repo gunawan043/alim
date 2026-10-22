@@ -14,10 +14,13 @@ class ResetPasswordOtpMail extends Mailable
 
     public string $name;
 
-    public function __construct(string $otp, string $name)
+    public int $expiryMinutes;
+
+    public function __construct(string $otp, string $name, int $expiryMinutes = 10)
     {
         $this->otp = $otp;
         $this->name = $name;
+        $this->expiryMinutes = $expiryMinutes;
     }
 
     public function build()
@@ -27,6 +30,7 @@ class ResetPasswordOtpMail extends Mailable
             ->with([
                 'otp' => $this->otp,
                 'name' => $this->name,
+                'expiryMinutes' => $this->expiryMinutes,
             ]);
     }
 }

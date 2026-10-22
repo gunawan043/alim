@@ -228,7 +228,7 @@
                     <i class="ri-key-line"></i>
                 </div>
                 <div class="auth-title-main">Lupa Password</div>
-                <div class="auth-title-sub">Masukkan email terdaftar untuk reset password</div>
+                <div class="auth-title-sub">Masukkan email terdaftar untuk menerima kode OTP</div>
             </div>
 
             <form method="POST" action="{{ route('password.email') }}">
@@ -244,7 +244,7 @@
                 </div>
 
                 <button class="btn-submit" type="submit">
-                    <i class="ri-send-plane-line"></i> Kirim Link Reset
+                    <i class="ri-send-plane-line"></i> Kirim Kode OTP
                 </button>
             </form>
 

@@ -26,8 +26,8 @@
             padding: 12px 16px;
             word-break: break-word;
         }
-        .table-freeze th:second-child,
-        .table-freeze td:second-child {
+        .table-freeze th:first-child,
+        .table-freeze td:first-child {
             position: sticky;
             left: 0;
             z-index: 100;
@@ -76,11 +76,50 @@
         .filter-group { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
         .filter-group-title { font-size: 15px; font-weight: 600; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .filter-group-title i { color: #0a5f9e; font-size: 18px; }
+
+        [data-bs-theme="dark"] .filter-group {
+            background: var(--bs-tertiary-bg);
+        }
+        [data-bs-theme="dark"] .filter-group-title {
+            color: var(--bs-body-color);
+        }
+        [data-bs-theme="dark"] .filter-badge {
+            background: var(--bs-secondary-bg);
+            border-color: var(--bs-border-color);
+            color: var(--bs-body-color);
+        }
+        [data-bs-theme="dark"] .filter-badge:hover,
+        [data-bs-theme="dark"] .filter-badge.active {
+            background: var(--bs-primary);
+            border-color: var(--bs-primary);
+            color: #fff;
+        }
+        [data-bs-theme="dark"] .table-freeze th:first-child,
+        [data-bs-theme="dark"] .table-freeze td:first-child {
+            background: var(--bs-secondary-bg);
+            box-shadow: 2px 0 5px rgba(0,0,0,.35);
+        }
+        [data-bs-theme="dark"] .table-freeze thead th {
+            border-bottom-color: var(--bs-border-color);
+        }
+        [data-bs-theme="dark"] .select2-container--default .select2-selection--single {
+            background: var(--bs-body-bg);
+            border-color: var(--bs-border-color);
+            color: var(--bs-body-color);
+        }
     </style>
 @endsection
 
 @section('content')
-    @php $userId = request()->route('userId') ?? Auth::id(); @endphp
+    @php
+        $userId = request()->route('userId') ?? Auth::id();
+        $canManageGtk = auth()->check() && (
+            (method_exists(auth()->user(), 'isSystemAdmin') && auth()->user()->isSystemAdmin())
+            || (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin())
+            || auth()->user()->hasRole('Super Admin')
+            || auth()->user()->hasRole('Humas Personalia')
+        );
+    @endphp
     @component('components.breadcrumb')
         @slot('li_1') Data GTK @endslot
         @slot('title')
@@ -471,7 +510,7 @@
                                     </div>
                                 </div>
 
-                                @if (canPermission('super-admin-only') || canPermission('gtk-create'))
+                                @if ($canManageGtk)
                                     <a href="{{ route('user.gtk.import', ['userId' => $userId]) }}" class="btn btn-success">
                                         <i class="bx bx-add-to-queue ri-upload-2-line align-bottom me-1"></i> Import
                                     </a>
@@ -848,7 +887,7 @@
                                                 colors="primary:#121331,secondary:#08a88a" style="width:75px;height:75px"></lord-icon>
                                             <h5 class="mt-2">Belum ada data GTK</h5>
                                             <p class="text-muted mb-0">Tambahkan GTK untuk memulai</p>
-                                            @if (canPermission('super-admin-only') || canPermission('gtk-create'))
+                                            @if ($canManageGtk)
                                                 <a href="{{ route('user.gtk.create', ['userId' => $userId]) }}" class="btn btn-primary mt-3">
                                                     <i class="ri-add-line me-1"></i> Tambah GTK
                                                 </a>

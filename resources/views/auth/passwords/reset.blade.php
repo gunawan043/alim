@@ -239,7 +239,7 @@
                 <span>Masukkan password baru minimal 8 karakter.</span>
             </div>
 
-            <form method="POST" action="{{ route('password.update') }}">
+            <form method="POST" action="{{ route('password.reset.update') }}">
                 @csrf
                 <div class="mb-3" style="margin-bottom: 1rem;">
                     <label for="email" class="form-label">Email</label>

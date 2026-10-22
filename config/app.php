@@ -123,6 +123,10 @@ return [
 
     'asset_url' => env('ASSET_URL', null),
 
+    // URL logo publik untuk email. Kosongkan untuk memakai aset aplikasi
+    // (atau logo GitHub saat development lokal).
+    'email_logo_url' => env('EMAIL_LOGO_URL'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

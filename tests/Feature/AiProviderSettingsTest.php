@@ -84,6 +84,34 @@ class AiProviderSettingsTest extends TestCase
         $this->assertSame(1, AiProviderSetting::where('is_default', true)->count());
     }
 
+    public function test_hanya_satu_provider_yang_boleh_aktif(): void
+    {
+        $first = $this->storeProvider(['name' => 'Provider A']);
+        $second = $this->storeProvider([
+            'name' => 'Provider B',
+            'provider' => 'groq',
+            'endpoint' => 'https://api.groq.test/v1/chat/completions',
+            'model' => 'llama',
+        ]);
+
+        $this->assertFalse($first->fresh()->is_active);
+        $this->assertFalse($first->fresh()->is_default);
+        $this->assertTrue($second->fresh()->is_active);
+        $this->assertTrue($second->fresh()->is_default);
+        $this->assertSame(1, AiProviderSetting::where('is_active', true)->count());
+
+        $this->actingAs($this->admin)
+            ->post("/{$this->admin->id}/sa/ai-providers/{$first->id}/toggle")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertTrue($first->fresh()->is_active);
+        $this->assertTrue($first->fresh()->is_default);
+        $this->assertFalse($second->fresh()->is_active);
+        $this->assertFalse($second->fresh()->is_default);
+        $this->assertSame(1, AiProviderSetting::where('is_active', true)->count());
+    }
+
     public function test_update_kosong_mempertahankan_key_dan_clear_menghapus(): void
     {
         $provider = $this->storeProvider();

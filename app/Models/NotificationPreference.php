@@ -44,7 +44,21 @@ class NotificationPreference extends Model
      */
     public static function forUser(User $user): self
     {
-        return static::firstOrCreate(['user_id' => $user->id]);
+        $prefs = static::firstOrCreate(['user_id' => $user->id], static::defaults());
+        $missing = [];
+
+        foreach (static::defaults() as $key => $value) {
+            if ($prefs->getAttribute($key) === null) {
+                $prefs->{$key} = $value;
+                $missing[] = $key;
+            }
+        }
+
+        if ($missing !== []) {
+            $prefs->save();
+        }
+
+        return $prefs;
     }
 
     /**

@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Edit Inspeksi Sanitasi @endsection
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') UKS @endslot

@@ -91,10 +91,9 @@
 <li class="menu-title"><span>Dashboard</span></li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-translate-2"></i>
-        <span>Dashboard <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.dashboard']) ? ' active' : '' }}"
+       href="{{ $bahasaUrl('user.bahasa.dashboard') }}">
+        <i class="ri-translate-2"></i><span>Dashboard Bahasa</span>
     </a>
 </li>
 
@@ -104,12 +103,11 @@
 @if(($showAll || $isKepalaBahasa) && menu_allowed('bahasa'))
     <li class="menu-title"><span>Master Kurikulum Bahasa</span></li>
 
-    {{-- PLACEHOLDER: silabus mufrodat --}}
+    {{-- Mufradat: silabus/periode pekanan --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-book-2-line"></i>
-            <span>Silabus Mufrodat <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.mufradat.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.mufradat.index') }}">
+            <i class="ri-book-2-line"></i><span>Silabus Mufradat</span>
         </a>
     </li>
 
@@ -133,8 +131,8 @@
 
     {{-- Yang sudah ada: Mapel Bahasa (read-only referensi) --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.subjects.']) ? ' active' : '' }}"
-           href="{{ $bahasaUrl('user.subjects.index') }}">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.reference.subjects']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.reference.subjects') }}">
             <i class="ri-book-mark-line"></i><span>Mata Pelajaran Bahasa</span>
         </a>
     </li>
@@ -155,37 +153,42 @@
 @if(($showAll || $isStruktural || $isAdmin) && menu_allowed('bahasa'))
     <li class="menu-title"><span>Operasional Harian</span></li>
 
-    {{-- PLACEHOLDER: mufrodat harian --}}
+    {{-- Mufradat harian: daftar pekan aktif + setoran --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-calendar-todo-line"></i>
-            <span>Mufrodat Harian <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.mufradat.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.mufradat.index') }}">
+            <i class="ri-calendar-todo-line"></i><span>Hafalan Mufradat</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: percakapan harian --}}
+    {{-- AM Nasyath Syahri --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-chat-3-line"></i>
-            <span>Percakapan Harian <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.activities.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.activities.index') }}">
+            <i class="ri-calendar-event-line"></i><span>AM Nasyath Syahri</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: monitoring Jasus / spionase bahasa --}}
+    {{-- Percakapan harian --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-spy-line"></i>
-            <span>Monitoring Jasus <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.daily.index']) && request('type', 'percakapan') === 'percakapan' ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.daily.index', ['type' => 'percakapan']) }}">
+            <i class="ri-chat-3-line"></i><span>Percakapan Harian</span>
+        </a>
+    </li>
+
+    {{-- Monitoring Jasus --}}
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.daily.index']) && request('type') === 'jasus' ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.daily.index', ['type' => 'jasus']) }}">
+            <i class="ri-spy-line"></i><span>Monitoring Jasus</span>
         </a>
     </li>
 
     {{-- Data guru bahasa — read-only, filter di controller --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.index', 'user.gtk.indexguru']) ? ' active' : '' }}"
-           href="{{ $bahasaUrl('user.gtk.indexguru') }}">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.reference.teachers']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.reference.teachers') }}">
             <i class="ri-user-star-line"></i><span>Data Guru Bahasa</span>
         </a>
     </li>
@@ -198,65 +201,27 @@
 @if(($showAll || $isStruktural || $isAdmin) && menu_allowed('bahasa'))
     <li class="menu-title"><span>Pelanggaran Bahasa</span></li>
 
-    {{-- PLACEHOLDER: pencatatan pelanggaran --}}
+    {{-- Pencatatan pelanggaran --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-error-warning-line"></i>
-            <span>Pencatatan Pelanggaran <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.violations.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.violations.index') }}">
+            <i class="ri-error-warning-line"></i><span>Pencatatan Pelanggaran</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: rekap poin pelanggaran --}}
+    {{-- Rekap poin pelanggaran --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-bar-chart-2-line"></i>
-            <span>Rekap Poin Bahasa <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.violations.report']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.violations.report') }}">
+            <i class="ri-bar-chart-2-line"></i><span>Rekap Poin Bahasa</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: santri sering melanggar --}}
+    {{-- Santri bermasalah --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-user-unfollow-line"></i>
-            <span>Santri Bermasalah <small class="badge bg-warning text-dark ms-1">Soon</small></span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 6 — MAHKAMAH BAHASA
-     Akses: Kepala, Wakil
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || $isStruktural) && menu_allowed('bahasa'))
-    <li class="menu-title"><span>Mahkamah Bahasa</span></li>
-
-    {{-- PLACEHOLDER: jadwal sidang --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-calendar-event-line"></i>
-            <span>Jadwal Sidang <small class="badge bg-warning text-dark ms-1">Soon</small></span>
-        </a>
-    </li>
-
-    {{-- PLACEHOLDER: pencatatan sidang --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-file-text-line"></i>
-            <span>Pencatatan Sidang <small class="badge bg-warning text-dark ms-1">Soon</small></span>
-        </a>
-    </li>
-
-    {{-- PLACEHOLDER: penindakan pelanggaran --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-scales-3-line"></i>
-            <span>Penindakan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.violations.report']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.violations.report', ['threshold' => 100]) }}">
+            <i class="ri-user-unfollow-line"></i><span>Santri Bermasalah</span>
         </a>
     </li>
 @endif
@@ -268,39 +233,35 @@
 @if(($showAll || $isStruktural || $isAdmin) && menu_allowed('bahasa'))
     <li class="menu-title"><span>Nilai & Perkembangan</span></li>
 
-    {{-- PLACEHOLDER: nilai Bahasa Arab --}}
+    {{-- Nilai Bahasa Arab --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-translate"></i>
-            <span>Nilai Bahasa Arab <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.nilai']) && request('language', 'arab') === 'arab' ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.nilai', ['language' => 'arab']) }}">
+            <i class="ri-translate"></i><span>Nilai Bahasa Arab</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: nilai Bahasa Inggris --}}
+    {{-- Nilai Bahasa Inggris --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-english-input"></i>
-            <span>Nilai Bahasa Inggris <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.nilai']) && request('language') === 'inggris' ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.nilai', ['language' => 'inggris']) }}">
+            <i class="ri-english-input"></i><span>Nilai Bahasa Inggris</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: grafik perkembangan --}}
+    {{-- Grafik perkembangan --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-line-chart-line"></i>
-            <span>Grafik Perkembangan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.progress']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.progress', ['language' => 'arab']) }}">
+            <i class="ri-line-chart-line"></i><span>Grafik Perkembangan</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: santri tertinggal --}}
+    {{-- Santri tertinggal --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-alert-line"></i>
-            <span>Santri Tertinggal <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.at-risk']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.at-risk', ['language' => 'arab']) }}">
+            <i class="ri-alert-line"></i><span>Santri Tertinggal</span>
         </a>
     </li>
 @endif
@@ -312,39 +273,32 @@
 @if(($showAll || $isStruktural || $isAdmin) && menu_allowed('bahasa'))
     <li class="menu-title"><span>Ujian & Sertifikasi</span></li>
 
-    {{-- PLACEHOLDER: ujian lisan per semester --}}
+    {{-- Ujian lisan / penilaian dari nilai resmi Satuan Pendidikan --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-mic-line"></i>
-            <span>Ujian Lisan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.exams']) && request('mode') === 'ujian' ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.exams', ['mode' => 'ujian', 'language' => 'arab']) }}">
+            <i class="ri-mic-line"></i><span>Ujian Lisan</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: penilaian ujian bahasa --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-edit-2-line"></i>
-            <span>Penilaian Ujian <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.exams']) && request('mode') === 'penilaian' ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.exams', ['mode' => 'penilaian', 'language' => 'arab']) }}">
+            <i class="ri-edit-2-line"></i><span>Penilaian Ujian</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: leger nilai bahasa --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-table-line"></i>
-            <span>Leger Nilai Bahasa <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.leger']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.leger', ['language' => 'arab']) }}">
+            <i class="ri-table-line"></i><span>Leger Nilai Bahasa</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: sertifikasi bahasa --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-award-line"></i>
-            <span>Sertifikasi Bahasa <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.certifications.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.certifications.index') }}">
+            <i class="ri-award-line"></i><span>Sertifikasi Bahasa</span>
         </a>
     </li>
 @endif
@@ -412,21 +366,19 @@
         </a>
     </li>
 
-    {{-- PLACEHOLDER: laporan capaian bahasa --}}
+    {{-- Laporan capaian bahasa --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-file-chart-line"></i>
-            <span>Laporan Capaian Bahasa <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.academic.report']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.academic.report', ['language' => 'arab']) }}">
+            <i class="ri-file-chart-line"></i><span>Laporan Capaian Bahasa</span>
         </a>
     </li>
 
-    {{-- PLACEHOLDER: laporan pelanggaran bahasa --}}
+    {{-- Laporan pelanggaran bahasa --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-file-warning-line"></i>
-            <span>Laporan Pelanggaran <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.violations.report']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.violations.report') }}">
+            <i class="ri-file-warning-line"></i><span>Laporan Pelanggaran</span>
         </a>
     </li>
 @endif

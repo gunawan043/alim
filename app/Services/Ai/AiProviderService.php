@@ -30,17 +30,104 @@ class AiProviderService
     {
         try {
             if (! Schema::hasTable('ai_provider_settings')) {
-                return null;
+                return $this->transientDeepSeekProvider();
             }
 
             return AiProviderSetting::query()
                 ->where('is_active', true)
                 ->orderByDesc('is_default')
                 ->orderBy('name')
-                ->first();
+                ->first() ?: $this->transientDeepSeekProvider();
         } catch (\Throwable) {
+            return $this->transientDeepSeekProvider();
+        }
+    }
+
+    /**
+     * Provider sesuai kualitas: flash (cepat) atau pro (analisis berat).
+     */
+    public function providerForQuality(string $quality = 'flash'): ?AiProviderSetting
+    {
+        return $this->providersForQuality($quality)[0] ?? null;
+    }
+
+    /**
+     * Provider aktif dari Pengaturan AI. Provider default selalu didahulukan;
+     * provider aktif lain menjadi cadangan. ENV hanya dipakai bila tabel
+     * provider belum berisi provider aktif.
+     *
+     * @return array<int, AiProviderSetting>
+     */
+    public function providersForQuality(string $quality = 'flash'): array
+    {
+        try {
+            if (! Schema::hasTable('ai_provider_settings')) {
+                return array_values(array_filter([$this->transientDeepSeekProvider()]));
+            }
+
+            $providers = AiProviderSetting::query()
+                ->where('is_active', true)
+                ->orderByDesc('is_default')
+                ->orderBy('name')
+                ->get()
+                ->unique('id')
+                ->values();
+
+            if ($providers->isNotEmpty()) {
+                return $providers->all();
+            }
+
+            return array_values(array_filter([$this->transientDeepSeekProvider()]));
+        } catch (\Throwable) {
+            return array_values(array_filter([$this->transientDeepSeekProvider()]));
+        }
+    }
+
+    /**
+     * Provider sementara dari ENV jika DB belum dikonfigurasi.
+     */
+    public function transientDeepSeekProvider(?string $model = null): ?AiProviderSetting
+    {
+        $endpoint = (string) config('ai.deepseek.endpoint', '');
+        $key = (string) config('ai.deepseek.api_key', '');
+
+        if ($endpoint === '' || $key === '') {
             return null;
         }
+
+        $provider = new AiProviderSetting([
+            'name' => 'DeepSeek ENV',
+            'provider' => 'deepseek',
+            'endpoint' => $endpoint,
+            'model' => $model ?: (string) config('ai.models.flash', 'deepseek-flash'),
+            'is_active' => true,
+            'is_default' => true,
+        ]);
+        $provider->api_key = $key;
+
+        return $provider;
+    }
+
+    /**
+     * Estimasi biaya berdasarkan token (USD), memakai config/ai.php.
+     *
+     * @param  array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int}  $usage
+     */
+    public function estimateCost(AiProviderSetting $provider, array $usage): float
+    {
+        $pricing = config('ai.pricing.'.$provider->model);
+        if (! is_array($pricing)) {
+            return 0.0;
+        }
+
+        $input = (int) ($usage['prompt_tokens'] ?? 0);
+        $output = (int) ($usage['completion_tokens'] ?? 0);
+
+        return round(
+            ($input / 1_000_000) * (float) ($pricing['input'] ?? 0)
+            + ($output / 1_000_000) * (float) ($pricing['output'] ?? 0),
+            6
+        );
     }
 
     /**
@@ -76,14 +163,14 @@ class AiProviderService
     /**
      * @param  array<int, array<string, mixed>>  $messages
      * @param  array{temperature?: float, max_tokens?: int, timeout?: int, tools?: array, tool_choice?: string}  $options
-     * @return array{ok: bool, content: string, status: int, error: ?string, tool_calls: array, finish_reason: ?string}
+     * @return array{ok: bool, content: string, status: int, error: ?string, tool_calls: array, finish_reason: ?string, usage: array{prompt_tokens?: int, completion_tokens?: int, total_tokens?: int}, cost: float}
      */
     public function chat(array $messages, array $options = [], ?AiProviderSetting $provider = null): array
     {
         $provider = $provider ?: $this->resolveProvider();
 
         if (! $provider || ! filled($provider->endpoint)) {
-            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => 'Belum ada provider AI yang dikonfigurasi.', 'tool_calls' => [], 'finish_reason' => null];
+            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => 'Belum ada provider AI yang dikonfigurasi.', 'tool_calls' => [], 'finish_reason' => null, 'usage' => [], 'cost' => 0.0];
         }
 
         $headers = ['Accept' => 'application/json'];
@@ -117,6 +204,17 @@ class AiProviderService
             $payload['tool_choice'] = $options['tool_choice'] ?? 'auto';
         }
 
+        // DeepSeek V4 mendukung mode thinking. Untuk pertanyaan data pendek
+        // mode ini dimatikan agar token reasoning tidak membengkak.
+        if ($provider->provider === 'deepseek' && isset($options['thinking']) && is_array($options['thinking'])) {
+            $payload['thinking'] = $options['thinking'];
+        }
+
+        // OpenRouter menormalkan reasoning lewat objek `reasoning`.
+        if ($provider->provider === 'openrouter' && isset($options['reasoning']) && is_array($options['reasoning'])) {
+            $payload['reasoning'] = $options['reasoning'];
+        }
+
         try {
             $response = Http::withHeaders($headers)
                 ->timeout((int) ($options['timeout'] ?? config('arabic_names.ai.timeout', 30)))
@@ -126,15 +224,16 @@ class AiProviderService
                 $error = 'HTTP '.$response->status().': '.mb_substr((string) $response->body(), 0, 300);
                 Log::warning('AI provider gagal: '.$error);
 
-                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => $error, 'tool_calls' => [], 'finish_reason' => null];
+                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => $error, 'tool_calls' => [], 'finish_reason' => null, 'usage' => [], 'cost' => 0.0];
             }
 
+            $usage = (array) data_get($response->json(), 'usage', []);
             $message = (array) data_get($response->json(), 'choices.0.message', []);
             $content = (string) ($message['content'] ?? '');
             $toolCalls = (array) ($message['tool_calls'] ?? []);
 
             if (trim($content) === '' && $toolCalls === []) {
-                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => 'Respons AI kosong.', 'tool_calls' => [], 'finish_reason' => null];
+                return ['ok' => false, 'content' => '', 'status' => $response->status(), 'error' => 'Respons AI kosong.', 'tool_calls' => [], 'finish_reason' => null, 'usage' => $usage, 'cost' => $this->estimateCost($provider, $usage)];
             }
 
             return [
@@ -144,11 +243,13 @@ class AiProviderService
                 'error' => null,
                 'tool_calls' => $toolCalls,
                 'finish_reason' => data_get($response->json(), 'choices.0.finish_reason'),
+                'usage' => $usage,
+                'cost' => $this->estimateCost($provider, $usage),
             ];
         } catch (\Throwable $e) {
             Log::warning('AI provider exception: '.$e->getMessage());
 
-            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => $e->getMessage(), 'tool_calls' => [], 'finish_reason' => null];
+            return ['ok' => false, 'content' => '', 'status' => 0, 'error' => $e->getMessage(), 'tool_calls' => [], 'finish_reason' => null, 'usage' => [], 'cost' => 0.0];
         }
     }
 

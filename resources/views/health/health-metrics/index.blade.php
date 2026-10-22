@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Antropometri Santri @endsection
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') UKS @endslot
@@ -148,7 +152,7 @@
                                     </td>
                                     <td>{{ $row->record_date?->format('d/m/Y') ?? '-' }}</td>
                                     <td>
-                                        @php $sessionLabel = ['awal_tahun'=>'Awal','tengah_tahun'=>'Tengah','akhir_tahun'=>'Akhir','lainnya'=>'Lain'][$row->measurement_session ?? ''] ?? '-'; @endphp
+                                        @php $sessionLabel = ['awal_tahun'=>'Awal','tengah_tahun'=>'Tengah','akhir_tahun'=>'Akhir','bulanan'=>'Bulanan','caturwulan'=>'Caturwulan','akhir_semester'=>'Akhir Semester','medical_checkup'=>'MCU / Import','lainnya'=>'Lain'][$row->measurement_session ?? ''] ?? '-'; @endphp
                                         <span class="badge bg-light text-dark">{{ $sessionLabel }}</span>
                                     </td>
                                     <td class="text-center">{{ $row->height_cm ?: '-' }}</td>

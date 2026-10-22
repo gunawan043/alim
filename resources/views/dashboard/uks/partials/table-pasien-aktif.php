@@ -7,7 +7,7 @@ $schoolId = $this->getUserSchoolId($user);
 $items = $this->applyUksScope(
     DB::table('uks_patients as p')
         ->join('students as s', 's.id', '=', 'p.student_id')
-        ->where('p.status', 'aktif')
+        ->whereIn('p.status', ['menunggu_pemeriksaan', 'sedang_ditangani', 'observasi', 'rawat_uks', 'istirahat_di_uks'])
         ->when($schoolId, fn ($q) => $q->where('p.school_id', $schoolId)),
     $user,
     'p.student_id'

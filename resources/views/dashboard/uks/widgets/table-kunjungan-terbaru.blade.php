@@ -25,13 +25,16 @@
                             <td>
                                 @php
                                     $badge = match ($item->status) {
-                                        'aktif'   => 'warning',
-                                        'selesai' => 'success',
-                                        'dirujuk' => 'danger',
-                                        default   => 'secondary',
+                                        'menunggu_pemeriksaan', 'sedang_ditangani' => 'warning',
+                                        'observasi', 'rawat_uks' => 'primary',
+                                        'istirahat_di_uks' => 'info',
+                                        'kembali_ke_asrama', 'kembali_ke_sekolah', 'pulang', 'selesai' => 'success',
+                                        'dijemput_wali' => 'secondary',
+                                        'dirujuk_ke_klinik', 'dirujuk_ke_rumah_sakit' => 'danger',
+                                        default => 'secondary',
                                     };
                                 @endphp
-                                <span class="badge bg-{{ $badge }}-subtle text-{{ $badge }}">{{ $item->status ?? '—' }}</span>
+                                <span class="badge bg-{{ $badge }}-subtle text-{{ $badge }}">{{ str_replace('_', ' ', $item->status ?? '—') }}</span>
                             </td>
                         </tr>
                     @empty

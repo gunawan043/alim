@@ -32,6 +32,7 @@ class StudentHealthMetric extends Model
         'record_date',
         'height_cm',
         'weight_kg',
+        'head_circumference_cm',
         'bmi',
         'bmi_category',
         'measurement_session',
@@ -43,6 +44,7 @@ class StudentHealthMetric extends Model
         'record_date' => 'date',
         'height_cm' => 'integer',
         'weight_kg' => 'integer',
+        'head_circumference_cm' => 'integer',
         'bmi' => 'decimal:2',
     ];
 

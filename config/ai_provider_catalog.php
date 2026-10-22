@@ -345,4 +345,26 @@ return [
         'notes' => 'Sesuaikan nama model dengan yang dimuat di LM Studio.',
         'sort_order' => 83,
     ],
+
+    // ── DeepSeek API resmi (berbayar) ───────────────────────────────
+    [
+        'name' => 'DeepSeek — V4.1 Flash (API resmi)',
+        'provider' => 'deepseek',
+        'model' => 'deepseek-flash',
+        'tier' => 'paid',
+        'pricing' => 'Sesuai pemakaian DeepSeek',
+        'notes' => 'Model default cepat; cocok untuk chat dan analisis data.',
+        'key_group' => 'deepseek',
+        'sort_order' => 40,
+    ],
+    [
+        'name' => 'DeepSeek — V4 Pro (API resmi)',
+        'provider' => 'deepseek',
+        'model' => 'deepseek-v4-pro',
+        'tier' => 'paid',
+        'pricing' => 'Sesuai pemakaian DeepSeek',
+        'notes' => 'Analisis lebih dalam; biaya lebih tinggi.',
+        'key_group' => 'deepseek',
+        'sort_order' => 41,
+    ],
 ];

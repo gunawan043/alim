@@ -25,6 +25,7 @@ class CutiRequest extends Model
         'status',
         'attachment',
         'approval_chain',
+        'approval_stage',
         'approved_at',
         'approved_by',
         'approval_notes',
@@ -38,6 +39,7 @@ class CutiRequest extends Model
         'tanggal_selesai' => 'date',
         'jumlah_hari' => 'integer',
         'approval_chain' => 'array',
+        'approval_stage' => 'integer',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];

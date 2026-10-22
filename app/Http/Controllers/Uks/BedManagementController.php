@@ -16,12 +16,27 @@ class BedManagementController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $genderFilter = $request->input('gender');
+        $statusFilter = $request->input('status');
+        $search = $request->input('search');
 
         $query = UksBed::with(['currentAssignment.patient.student', 'dormitory'])
-            ->when($genderFilter, fn ($q) => $q->where('gender', $genderFilter));
+            ->when($genderFilter, fn ($q) => $q->where('gender', $genderFilter))
+            ->when($statusFilter, fn ($q) => $q->where('status', $statusFilter))
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('bed_number', 'like', "%{$search}%")
+                        ->orWhere('building', 'like', "%{$search}%")
+                        ->orWhere('building_or_room', 'like', "%{$search}%")
+                        ->orWhere('room', 'like', "%{$search}%")
+                        ->orWhere('section', 'like', "%{$search}%");
+                });
+            });
 
         if ($schoolId) {
-            $query->whereHas('dormitory', fn ($d) => $d->where('school_id', $schoolId));
+            $query->where(function ($sub) use ($schoolId) {
+                $sub->whereHas('dormitory', fn ($d) => $d->where('school_id', $schoolId))
+                    ->orWhereNull('dormitory_id');
+            });
         }
 
         $beds = $query->orderBy('sort_order')->orderBy('building_or_room')
@@ -34,20 +49,34 @@ class BedManagementController extends Controller
 
         $totalBeds = $beds->count();
         $occupiedBeds = $beds->where('is_occupied', true)->count();
-        $availableBeds = $totalBeds - $occupiedBeds;
+        $underRepair = $beds->where('status', 'perbaikan')->count();
+        $availableBeds = max(0, $totalBeds - $occupiedBeds - $underRepair);
+
+        $dormitories = Dormitory::where('is_active', true)
+            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->orderBy('name')
+            ->get();
 
         return view('uks.beds.index', compact(
             'groupedByDorm',
             'totalBeds',
             'occupiedBeds',
             'availableBeds',
-            'genderFilter'
+            'underRepair',
+            'genderFilter',
+            'statusFilter',
+            'search',
+            'dormitories'
         ));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $dormitories = Dormitory::where('is_active', true)->get();
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $dormitories = Dormitory::where('is_active', true)
+            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->get();
 
         return view('uks.beds.create', compact('dormitories'));
     }
@@ -58,6 +87,8 @@ class BedManagementController extends Controller
             'dormitory_id' => 'nullable|uuid|exists:dormitories,id',
             'gender' => 'required|in:L,P',
             'building_or_room' => 'required|string|max:100',
+            'building' => 'nullable|string|max:100',
+            'room' => 'nullable|string|max:100',
             'section' => 'nullable|string|max:50',
             'bed_number' => 'required|string|max:20',
             'status' => 'required|in:tersedia,dipakai,perbaikan',
@@ -65,9 +96,13 @@ class BedManagementController extends Controller
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
+        if ($validated['status'] === 'dipakai') {
+            $validated['status'] = 'tersedia';
+        }
+
         UksBed::create($validated);
 
-        return redirect()->route('user.uks.beds.index')
+        return redirect()->route('user.uks.beds.index', ['userId' => auth()->id()])
             ->with('success', 'Ranjang berhasil ditambahkan.');
     }
 
@@ -85,10 +120,13 @@ class BedManagementController extends Controller
         return view('uks.beds.show', compact('bed', 'assignmentHistory'));
     }
 
-    public function edit(string $uuid)
+    public function edit(Request $request, string $uuid)
     {
+        $schoolId = $request->attributes->get('schoolContextId');
         $bed = UksBed::findOrFail($uuid);
-        $dormitories = Dormitory::where('is_active', true)->get();
+        $dormitories = Dormitory::where('is_active', true)
+            ->when($schoolId, fn ($query) => $query->where('school_id', $schoolId))
+            ->get();
 
         return view('uks.beds.edit', compact('bed', 'dormitories'));
     }
@@ -101,6 +139,8 @@ class BedManagementController extends Controller
             'dormitory_id' => 'nullable|uuid|exists:dormitories,id',
             'gender' => 'required|in:L,P',
             'building_or_room' => 'required|string|max:100',
+            'building' => 'nullable|string|max:100',
+            'room' => 'nullable|string|max:100',
             'section' => 'nullable|string|max:50',
             'bed_number' => 'required|string|max:20',
             'status' => 'required|in:tersedia,dipakai,perbaikan',
@@ -108,9 +148,15 @@ class BedManagementController extends Controller
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
+        if ($bed->currentAssignment && $validated['status'] !== 'dipakai') {
+            return back()->withErrors([
+                'status' => 'Bed masih ditempati pasien. Kosongkan bed terlebih dahulu sebelum mengubah status.',
+            ])->withInput();
+        }
+
         $bed->update($validated);
 
-        return redirect()->route('user.uks.beds.show', $bed->id)
+        return redirect()->route('user.uks.beds.show', ['userId' => auth()->id(), 'uuid' => $bed->id])
             ->with('success', 'Data ranjang berhasil diperbarui.');
     }
 
@@ -126,7 +172,7 @@ class BedManagementController extends Controller
 
         $bed->delete();
 
-        return redirect()->route('user.uks.beds.index')
+        return redirect()->route('user.uks.beds.index', ['userId' => auth()->id()])
             ->with('success', 'Ranjang berhasil dihapus.');
     }
 }

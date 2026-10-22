@@ -15,7 +15,20 @@ $rows = $this->applyUksScope(
     ->groupBy('status')
     ->get();
 
-$labels = ['aktif' => 'Aktif', 'selesai' => 'Selesai', 'dirujuk' => 'Dirujuk'];
+$labels = [
+    'menunggu_pemeriksaan' => 'Menunggu',
+    'sedang_ditangani' => 'Ditangani',
+    'observasi' => 'Observasi',
+    'rawat_uks' => 'Rawat UKS',
+    'istirahat_di_uks' => 'Istirahat',
+    'kembali_ke_asrama' => 'Kembali Asrama',
+    'kembali_ke_sekolah' => 'Kembali Sekolah',
+    'dijemput_wali' => 'Dijemput Wali',
+    'pulang' => 'Pulang',
+    'dirujuk_ke_klinik' => 'Rujuk Klinik',
+    'dirujuk_ke_rumah_sakit' => 'Rujuk RS',
+    'selesai' => 'Selesai',
+];
 
 return [
     '_type'  => 'chart',

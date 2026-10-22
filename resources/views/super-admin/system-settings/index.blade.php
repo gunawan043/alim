@@ -26,9 +26,15 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'email' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'email']) }}">
+                                <i class="ri-mail-settings-line me-1"></i> Email
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'security' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'security']) }}">
-                                <i class="ri-shield-key-line me-1"></i> Keamanan
+                                <i class="ri-shield-keyhole-line me-1"></i> Keamanan
                             </a>
                         </li>
                         <li class="nav-item">
@@ -133,8 +139,158 @@
                             </div>
                         @endif
 
+                        {{-- TAB: Email --}}
+                        @if($tab === 'email')
+                            <input type="hidden" name="mail_settings" value="1">
+                            <div class="row g-4">
+                                <div class="col-lg-8">
+                                    <div class="card border h-100">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-start gap-3">
+                                            <div>
+                                                <h6 class="mb-0"><i class="ri-mail-settings-line me-1"></i>Konfigurasi Email Sistem</h6>
+                                                <small class="text-muted">Dipakai untuk OTP, reset password, dan notifikasi email. Perubahan pada form ini ikut disimpan saat Test Email.</small>
+                                            </div>
+                                            <button type="submit"
+                                                formaction="{{ route('user.sa.system-settings.test-email', ['userId' => $userId]) }}"
+                                                class="btn btn-sm btn-soft-info flex-shrink-0">
+                                                <i class="ri-mail-send-line me-1"></i>Test Email
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            @if(($mailSettings['mail_mailer'] ?? '') === 'smtp' && in_array($mailSettings['mail_host'] ?? '', ['', 'smtp.example.com'], true))
+                                                <div class="alert alert-danger small">
+                                                    <i class="ri-error-warning-line me-1"></i>
+                                                    <strong>Email belum siap.</strong>
+                                                    Isi host SMTP dan kredensial di bawah, lalu klik <strong>Test Email</strong>.
+                                                </div>
+                                            @elseif(($mailSettings['mail_mailer'] ?? '') === 'log')
+                                                <div class="alert alert-info small">
+                                                    <i class="ri-information-line me-1"></i>
+                                                    Mode <strong>log</strong> aktif. Email tidak dikirim ke inbox, tetapi dicatat di
+                                                    <code>storage/logs/laravel.log</code>.
+                                                </div>
+                                            @endif
+
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Mailer</label>
+                                                    <select name="mail_mailer" class="form-select">
+                                                        @foreach(['smtp' => 'SMTP', 'log' => 'Log (development)', 'sendmail' => 'Sendmail', 'failover' => 'Failover'] as $value => $label)
+                                                            <option value="{{ $value }}" {{ ($mailSettings['mail_mailer'] ?? 'smtp') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label">Host SMTP</label>
+                                                    <input type="text" name="mail_host" class="form-control"
+                                                        value="{{ $mailSettings['mail_host'] ?? '' }}" placeholder="mail.domain.com">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Port</label>
+                                                    <input type="number" name="mail_port" class="form-control"
+                                                        value="{{ $mailSettings['mail_port'] ?? 587 }}" min="1" max="65535">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Enkripsi</label>
+                                                    <select name="mail_encryption" class="form-select">
+                                                        @foreach(['tls' => 'TLS', 'ssl' => 'SSL', 'none' => 'Tanpa Enkripsi'] as $value => $label)
+                                                            <option value="{{ $value }}" {{ ($mailSettings['mail_encryption'] ?? 'tls') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Username SMTP</label>
+                                                    <input type="text" name="mail_username" class="form-control"
+                                                        value="{{ $mailSettings['mail_username'] ?? '' }}" autocomplete="off"
+                                                        placeholder="biasanya alamat email lengkap">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">
+                                                        Password SMTP
+                                                        @if($mailSettings['mail_password_set'] ?? false)
+                                                            <span class="badge bg-success-subtle text-success ms-1">Tersimpan</span>
+                                                        @endif
+                                                    </label>
+                                                    <input type="password" name="mail_password" class="form-control"
+                                                        value="" autocomplete="new-password"
+                                                        placeholder="{{ ($mailSettings['mail_password_set'] ?? false) ? 'Kosongkan jika tidak diubah' : 'Masukkan password SMTP' }}">
+                                                    <div class="form-text">Password disimpan terenkripsi. Kosongkan bila tidak ingin mengubah.</div>
+                                                    @if($mailSettings['mail_password_set'] ?? false)
+                                                        <div class="form-check mt-2">
+                                                            <input class="form-check-input" type="checkbox" name="mail_password_clear" value="1" id="mail-password-clear">
+                                                            <label class="form-check-label small" for="mail-password-clear">Hapus password SMTP tersimpan</label>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Email Pengirim</label>
+                                                    <input type="email" name="mail_from_address" class="form-control"
+                                                        value="{{ $mailSettings['mail_from_address'] ?? '' }}" placeholder="noreply@domain.com">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Nama Pengirim</label>
+                                                    <input type="text" name="mail_from_name" class="form-control"
+                                                        value="{{ $mailSettings['mail_from_name'] ?? '' }}" placeholder="ALIM">
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label">URL Logo Email</label>
+                                                    <input type="url" name="mail_logo_url" class="form-control"
+                                                        value="{{ $mailSettings['mail_logo_url'] ?: 'https://cdn.jsdelivr.net/gh/gunawan043/alim@main/public/build/images/alim-light-name.png' }}"
+                                                        placeholder="https://cdn.jsdelivr.net/gh/.../alim-light-name.png">
+                                                    <div class="form-text">
+                                                        Logo harus berupa URL publik yang dapat diakses penerima email.
+                                                        Default memakai logo ALIM dari repository GitHub.
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Email Tujuan Uji Coba</label>
+                                                    <input type="email" name="test_email_to" class="form-control"
+                                                        value="{{ old('test_email_to', auth()->user()->email ?? '') }}"
+                                                        placeholder="email@contoh.com">
+                                                    <div class="form-text">Khusus tombol Test Email. Kosongkan untuk memakai email akun yang sedang login.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="card border h-100">
+                                        <div class="card-header"><h6 class="mb-0">Status Konfigurasi</h6></div>
+                                        <div class="card-body small">
+                                            <div class="mb-2 d-flex justify-content-between">
+                                                <span class="text-muted">Mailer</span>
+                                                <strong>{{ strtoupper($mailSettings['mail_mailer'] ?? 'smtp') }}</strong>
+                                            </div>
+                                            <div class="mb-2 d-flex justify-content-between">
+                                                <span class="text-muted">Host</span>
+                                                <strong>{{ $mailSettings['mail_host'] ?: '(dari .env)' }}</strong>
+                                            </div>
+                                            <div class="mb-2 d-flex justify-content-between">
+                                                <span class="text-muted">Port</span>
+                                                <strong>{{ $mailSettings['mail_port'] ?: '(default)' }}</strong>
+                                            </div>
+                                            <div class="mb-3 d-flex justify-content-between">
+                                                <span class="text-muted">Password</span>
+                                                @if($mailSettings['mail_password_set'] ?? false)
+                                                    <span class="badge bg-success-subtle text-success">Tersimpan</span>
+                                                @else
+                                                    <span class="badge bg-warning-subtle text-warning">Belum diisi</span>
+                                                @endif
+                                            </div>
+                                            <div class="alert alert-info mb-0">
+                                                <i class="ri-shield-lock-line me-1"></i>
+                                                Nilai kosong akan memakai konfigurasi <code>.env</code>.
+                                                Gunakan <code>MAIL_MAILER=log</code> untuk development tanpa SMTP.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- TAB: Security --}}
                         @if($tab === 'security')
+                            <input type="hidden" name="security_settings" value="1">
                             <div class="row g-4">
                                 <div class="col-md-4">
                                     <label class="form-label">OTP Expiry (menit)</label>
@@ -142,26 +298,152 @@
                                         value="{{ $settings['otp_expiry_minutes'] ?? 10 }}" min="1" max="60">
                                 </div>
                                 <div class="col-md-4">
+                                    <label class="form-label">Password Minimal</label>
+                                    <input type="number" name="password_min_length" class="form-control"
+                                        value="{{ $settings['password_min_length'] ?? 8 }}" min="8" max="64">
+                                    <small class="text-muted">Minimal 8 karakter.</small>
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">Max Login Attempts</label>
                                     <input type="number" name="max_login_attempts" class="form-control"
-                                        value="{{ $settings['max_login_attempts'] ?? 5 }}" min="1" max="20">
+                                        value="{{ $settings['max_login_attempts'] ?? 9 }}" min="1" max="20">
+                                    <small class="text-muted">Berlaku untuk akun dan pembatasan IP.</small>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Lockout Duration (menit)</label>
                                     <input type="number" name="lockout_duration_minutes" class="form-control"
-                                        value="{{ $settings['lockout_duration_minutes'] ?? 15 }}" min="1" max="1440">
+                                        value="{{ $settings['lockout_duration_minutes'] ?? 1440 }}" min="1" max="1440">
+                                    <small class="text-muted">Default 1440 menit (24 jam), sama dengan perilaku sebelumnya.</small>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Session Lifetime (menit)</label>
                                     <input type="number" name="session_lifetime_minutes" class="form-control"
-                                        value="{{ $settings['session_lifetime_minutes'] ?? 120 }}" min="1" max="10080">
-                                    <small class="text-muted">Max: 10080 menit (7 hari)</small>
+                                        value="{{ $settings['session_lifetime_minutes'] ?? config('session.lifetime', 120) }}" min="1" max="10080">
+                                    <small class="text-muted">Diterapkan sebelum session dimulai. Max: 10080 menit (7 hari).</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">IP Allowlist Area Admin</label>
+                                    <textarea name="security_admin_ip_allowlist" class="form-control" rows="2"
+                                        placeholder="Contoh: 103.10.20.30, 10.0.0.0/8">{{ $settings['security_admin_ip_allowlist'] ?? '' }}</textarea>
+                                    <small class="text-muted">Kosong = semua IP diizinkan. Pisahkan dengan koma. IP Anda saat ini: <code>{{ request()->ip() }}</code></small>
+                                </div>
+                            </div>
+
+                            <div class="row g-4 mt-1">
+                                <div class="col-lg-6">
+                                    <div class="card h-100 border">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-start gap-3">
+                                            <div>
+                                                <h6 class="mb-0"><i class="ri-shield-check-line me-1"></i>Notifikasi Keamanan Akun</h6>
+                                                <small class="text-muted">Kirim peringatan ke email, WhatsApp, dan notifikasi sistem.</small>
+                                            </div>
+                                            <button type="submit"
+                                                formaction="{{ route('user.sa.system-settings.test-email', ['userId' => $userId]) }}"
+                                                class="btn btn-sm btn-soft-info flex-shrink-0">
+                                                <i class="ri-mail-send-line me-1"></i>Test Email
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            @if(($mailSettings['mail_mailer'] ?? '') === 'smtp' && in_array($mailSettings['mail_host'] ?? '', ['', 'smtp.example.com'], true))
+                                                <div class="alert alert-danger small">
+                                                    <i class="ri-error-warning-line me-1"></i>
+                                                    <strong>Email belum dikonfigurasi.</strong>
+                                                    Host SMTP masih placeholder. OTP 2FA dan email notifikasi tidak akan terkirim
+                                                    sampai konfigurasi Email Sistem diisi.
+                                                </div>
+                                            @elseif(($mailSettings['mail_mailer'] ?? '') === 'log')
+                                                <div class="alert alert-info small">
+                                                    <i class="ri-information-line me-1"></i>
+                                                    Mode email saat ini <strong>log</strong>. Email tidak benar-benar dikirim;
+                                                    isinya tercatat di <code>storage/logs/laravel.log</code>.
+                                                </div>
+                                            @endif
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="security_notify_login" value="1"
+                                                    id="security-notify-login" {{ ($settings['security_notify_login'] ?? '1') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="security-notify-login">Login berhasil</label>
+                                                <div class="form-text">Email + WhatsApp + notifikasi sistem setiap login berhasil.</div>
+                                            </div>
+                                            <div class="ms-4 mb-3">
+                                                <label class="form-label small mb-1">Mode notifikasi login</label>
+                                                <select name="security_login_notify_mode" class="form-select form-select-sm">
+                                                    <option value="all" {{ ($settings['security_login_notify_mode'] ?? 'all') === 'all' ? 'selected' : '' }}>Setiap login</option>
+                                                    <option value="new_device" {{ ($settings['security_login_notify_mode'] ?? 'all') === 'new_device' ? 'selected' : '' }}>Hanya perangkat/IP baru</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="security_notify_password_forgot" value="1"
+                                                    id="security-notify-forgot" {{ ($settings['security_notify_password_forgot'] ?? '1') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="security-notify-forgot">Permintaan lupa password</label>
+                                                <div class="form-text">Email OTP tetap dikirim; WhatsApp + notifikasi sistem mencatat permintaan.</div>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="security_notify_password_reset" value="1"
+                                                    id="security-notify-reset" {{ ($settings['security_notify_password_reset'] ?? '1') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="security-notify-reset">Password berhasil direset</label>
+                                                <div class="form-text">Email pemberitahuan + WhatsApp + notifikasi sistem.</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="security_notify_password_changed" value="1"
+                                                    id="security-notify-changed" {{ ($settings['security_notify_password_changed'] ?? '1') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="security-notify-changed">Password diubah dari profil</label>
+                                                <div class="form-text">Email pemberitahuan + WhatsApp + notifikasi sistem.</div>
+                                            </div>
+                                            <div class="alert alert-info small mb-0 mt-3">
+                                                <i class="ri-links-line me-1"></i>
+                                                Jika notifikasi tidak muncul, periksa juga
+                                                <a href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'notifications']) }}">Matriks Channel Notifikasi</a>.
+                                                Channel yang dimatikan di matriks tidak akan mengirim pesan.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-6">
+                                    <div class="card h-100 border">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-lock-password-line me-1"></i>Two-Factor Authentication (2FA)</h6>
+                                            @if(($settings['security_2fa_enabled'] ?? '0') == '1')
+                                                <span class="badge bg-success-subtle text-success">Aktif</span>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>
+                                            @endif
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="security_2fa_enabled" value="1"
+                                                    id="security-2fa-enabled" {{ ($settings['security_2fa_enabled'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label fw-medium" for="security-2fa-enabled">Aktifkan 2FA saat login</label>
+                                            </div>
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" name="security_2fa_mobile_enabled" value="1"
+                                                    id="security-2fa-mobile" {{ ($settings['security_2fa_mobile_enabled'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="security-2fa-mobile">Terapkan 2FA pada login aplikasi mobile</label>
+                                                <div class="form-text">Default nonaktif. Aktifkan hanya setelah aplikasi mobile mendukung challenge 2FA.</div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Berlaku untuk</label>
+                                                <select name="security_2fa_scope" class="form-select form-select-sm">
+                                                    <option value="all" {{ ($settings['security_2fa_scope'] ?? 'all') === 'all' ? 'selected' : '' }}>Semua pengguna web</option>
+                                                    <option value="super_admin" {{ ($settings['security_2fa_scope'] ?? 'all') === 'super_admin' ? 'selected' : '' }}>Super Admin / System Admin saja</option>
+                                                </select>
+                                                <div class="form-text">Disarankan Super Admin saja jika 2FA baru diuji.</div>
+                                            </div>
+                                            <div class="alert alert-warning small mb-0">
+                                                <i class="ri-information-line me-1"></i>
+                                                Default <strong>nonaktif</strong> agar development tidak terganggu.
+                                                Jika diaktifkan, pengguna yang login melalui web akan diminta kode OTP email setelah password benar.
+                                                Kode berlaku sesuai <strong>OTP Expiry</strong> di atas. Perubahan berlaku pada login berikutnya.
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         @endif
 
                         {{-- TAB: Notifications --}}
                         @if($tab === 'notifications')
+                            <input type="hidden" name="notification_settings" value="1">
                             <div class="row g-4">
                                 <div class="col-lg-4">
                                     <div class="card h-100">
@@ -174,12 +456,12 @@
                                             </div>
                                             <div class="form-check form-switch mb-3">
                                                 <input class="form-check-input" type="checkbox" name="whatsapp_notifications" value="1"
-                                                    id="wa-notif" {{ ($settings['whatsapp_notifications'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                    id="wa-notif" {{ ($settings['whatsapp_notifications'] ?? '1') == '1' ? 'checked' : '' }}>
                                                 <label class="form-check-label" for="wa-notif">Notifikasi WhatsApp</label>
                                             </div>
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" name="push_notifications" value="1"
-                                                    id="push-notif" {{ ($settings['push_notifications'] ?? '0') == '1' ? 'checked' : '' }}>
+                                                    id="push-notif" {{ ($settings['push_notifications'] ?? '1') == '1' ? 'checked' : '' }}>
                                                 <label class="form-check-label" for="push-notif">Push Notifications</label>
                                             </div>
                                         </div>
@@ -308,17 +590,31 @@
 
                                 <div class="col-12">
                                     <div class="card">
-                                        <div class="card-header border-bottom-dashed">
-                                            <h6 class="mb-0"><i class="ri-links-line me-1"></i>Matriks Channel Notifikasi</h6>
-                                            <small class="text-muted">
-                                                Pilih channel untuk tiap jenis notifikasi. <strong>Sistem</strong> = lonceng in-app.
-                                                Channel Email/WhatsApp tetap mengikuti preferensi masing-masing pengguna.
-                                            </small>
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-start gap-3">
+                                            <div>
+                                                <h6 class="mb-0"><i class="ri-links-line me-1"></i>Matriks Channel Notifikasi</h6>
+                                                <small class="text-muted">
+                                                    Pilih channel untuk tiap jenis notifikasi. <strong>Sistem</strong> = lonceng in-app.
+                                                    Channel Email/WhatsApp tetap mengikuti preferensi masing-masing pengguna.
+                                                </small>
+                                            </div>
+                                            <button type="button" id="enable-all-notif" class="btn btn-sm btn-soft-success flex-shrink-0">
+                                                <i class="ri-check-double-line me-1"></i>Aktifkan semua
+                                            </button>
                                         </div>
                                         <div class="card-body p-0">
                                             @php
                                                 $channelMatrix = json_decode($settings['notification_channel_matrix'] ?? '[]', true) ?: [];
+                                                $allChannelsOff = ! empty($channelMatrix)
+                                                    && collect($channelMatrix)->every(fn ($channels) => ! collect($channels)->contains(true));
                                             @endphp
+                                            @if($allChannelsOff)
+                                                <div class="alert alert-warning small rounded-0 border-0 border-bottom mb-0">
+                                                    <i class="ri-error-warning-line me-1"></i>
+                                                    Semua channel notifikasi sedang <strong>nonaktif</strong>. Notifikasi tidak akan tampil di lonceng dan tidak dikirim ke email/WhatsApp.
+                                                    Klik <strong>Aktifkan semua</strong>, lalu simpan.
+                                                </div>
+                                            @endif
                                             <div class="table-responsive">
                                                 <table class="table table-sm table-hover align-middle mb-0">
                                                     <thead class="table-light">
@@ -653,6 +949,18 @@
         </div>
     </div>
 @endsection
+
+@if($tab === 'notifications')
+    @push('scripts')
+        <script>
+            document.getElementById('enable-all-notif')?.addEventListener('click', function () {
+                document.querySelectorAll('input[name^="notif_channels["]').forEach(function (checkbox) {
+                    checkbox.checked = true;
+                });
+            });
+        </script>
+    @endpush
+@endif
 
 @if($tab === 'pos-api')
     @push('scripts')

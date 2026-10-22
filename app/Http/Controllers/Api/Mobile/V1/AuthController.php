@@ -8,15 +8,29 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\LoginWaliRequest;
 use App\Http\Requests\Mobile\RegisterWaliRequest;
 use App\Http\Services\WaliSantriService;
+use App\Mail\LoginOtpMail;
+use App\Models\AuditLog;
+use App\Models\LoginOtp;
+use App\Models\TeacherAdminBook;
+use App\Models\TeachingAssignment;
+use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
 use App\Models\WaliSantri;
+use App\Services\Ljk\LjkAccess;
 use App\Services\MobileSessionIntrospector;
+use App\Services\SecurityNotificationService;
+use App\Services\SecurityPolicy;
+use App\Services\SystemMailSettingsService;
+use App\Services\TotpService;
 use App\Support\AbilityRegistry;
 use App\Support\TokenExpiration;
 use App\Support\TokenName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\NewAccessToken;
@@ -104,6 +118,11 @@ class AuthController extends Controller
         }
 
         $user->resetFailedLoginAttempts();
+
+        if ($this->shouldUseMobileTwoFactor($user)) {
+            return $this->startMobileTwoFactor($user, $request);
+        }
+
         $user->last_login_at = now();
         $user->save();
 
@@ -113,6 +132,17 @@ class AuthController extends Controller
             request: $request,
             deviceFp: $this->fingerprintFromRequest($request),
         );
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'LOGIN_SUCCESS',
+            'table_name' => 'users',
+            'record_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        app(SecurityNotificationService::class)->login($user, $request);
 
         return response()->json([
             'success' => true,
@@ -126,6 +156,243 @@ class AuthController extends Controller
                 'abilities' => $payload['abilities'],
             ],
         ]);
+    }
+
+    public function verifyMobileTwoFactor(Request $request): JsonResponse
+    {
+        $request->validate([
+            'challenge_token' => 'required|string',
+            'code' => 'nullable|digits:6',
+            'totp_code' => 'nullable|digits:6',
+            'recovery_code' => 'nullable|string|max:20',
+        ]);
+
+        if (! $request->filled('code') && ! $request->filled('totp_code') && ! $request->filled('recovery_code')) {
+            throw ValidationException::withMessages([
+                'code' => 'Kode verifikasi wajib dikirim.',
+            ]);
+        }
+
+        $challenge = $this->decodeMobileChallenge((string) $request->input('challenge_token'));
+
+        if (! $challenge) {
+            throw ValidationException::withMessages([
+                'challenge_token' => 'Challenge 2FA tidak valid atau sudah kedaluwarsa.',
+            ]);
+        }
+
+        $user = User::whereKey($challenge['user_id'])->where('is_active', true)->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'challenge_token' => 'Akun tidak ditemukan atau tidak aktif.',
+            ]);
+        }
+
+        $throttleKey = 'mobile-2fa:'.$user->id.'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
+            throw ValidationException::withMessages([
+                'code' => 'Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.',
+            ]);
+        }
+
+        RateLimiter::hit($throttleKey, 300);
+
+        if ($request->filled('totp_code')) {
+            if (! $user->hasTotpEnabled() || ! TotpService::verify((string) $user->getTotpSecret(), (string) $request->input('totp_code'))) {
+                throw ValidationException::withMessages([
+                    'totp_code' => 'Kode authenticator tidak valid.',
+                ]);
+            }
+        } elseif ($request->filled('recovery_code')) {
+            if (! TwoFactorRecoveryCode::verifyFor($user, (string) $request->input('recovery_code'))) {
+                throw ValidationException::withMessages([
+                    'recovery_code' => 'Kode pemulihan tidak valid atau sudah digunakan.',
+                ]);
+            }
+        } else {
+            $record = LoginOtp::whereKey($challenge['otp_id'])
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (! $record || ! $record->isValid() || $record->attempts >= 5) {
+                throw ValidationException::withMessages([
+                    'code' => 'Kode OTP tidak ditemukan atau sudah kedaluwarsa.',
+                ]);
+            }
+
+            if (! Hash::check((string) $request->input('code'), $record->otp_hash)) {
+                $record->forceFill(['attempts' => $record->attempts + 1])->save();
+
+                throw ValidationException::withMessages([
+                    'code' => 'Kode OTP salah.',
+                ]);
+            }
+
+            $record->forceFill(['used_at' => now()])->save();
+        }
+
+        RateLimiter::clear($throttleKey);
+        LoginOtp::where('user_id', $user->id)->delete();
+        $user->last_login_at = now();
+        $user->save();
+
+        [$token, $payload] = $this->issueMobileToken(
+            user: $user,
+            channel: TokenName::CHANNEL_PASSWORD,
+            request: $request,
+            deviceFp: $this->fingerprintFromRequest($request),
+        );
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'MOBILE_2FA_VERIFIED',
+            'table_name' => 'login_otps',
+            'record_id' => null,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'LOGIN_SUCCESS',
+            'table_name' => 'users',
+            'record_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        app(SecurityNotificationService::class)->login($user, $request);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login berhasil.',
+            'data' => [
+                'user' => $this->formatUser($user),
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => $payload['expires_in'],
+                'expires_at' => $payload['expires_at'],
+                'abilities' => $payload['abilities'],
+            ],
+        ]);
+    }
+
+    public function resendMobileTwoFactor(Request $request): JsonResponse
+    {
+        $request->validate(['challenge_token' => 'required|string']);
+
+        $challenge = $this->decodeMobileChallenge((string) $request->input('challenge_token'));
+
+        if (! $challenge) {
+            throw ValidationException::withMessages([
+                'challenge_token' => 'Challenge 2FA tidak valid atau sudah kedaluwarsa.',
+            ]);
+        }
+
+        $user = User::whereKey($challenge['user_id'])->where('is_active', true)->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'challenge_token' => 'Akun tidak ditemukan atau tidak aktif.',
+            ]);
+        }
+
+        $throttleKey = 'mobile-2fa-resend:'.$user->id;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            throw ValidationException::withMessages([
+                'challenge_token' => 'Tunggu beberapa saat sebelum meminta kode baru.',
+            ]);
+        }
+
+        RateLimiter::hit($throttleKey, 300);
+
+        return $this->startMobileTwoFactor($user, $request);
+    }
+
+    private function startMobileTwoFactor(User $user, Request $request): JsonResponse
+    {
+        $expiryMinutes = SecurityPolicy::otpExpiryMinutes();
+        $record = null;
+
+        $emailOtpSent = true;
+
+        try {
+            [$record, $otp] = LoginOtp::issue($user, $expiryMinutes);
+            app(SystemMailSettingsService::class)->apply();
+            Mail::to($user->email)->send(new LoginOtpMail($otp, $user->name, $expiryMinutes));
+        } catch (\Throwable $e) {
+            $record?->delete();
+            $emailOtpSent = false;
+
+            $hasRecoveryCode = TwoFactorRecoveryCode::where('user_id', $user->id)
+                ->whereNull('used_at')
+                ->exists();
+
+            if (! $user->hasTotpEnabled() && ! $hasRecoveryCode) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kode verifikasi tidak dapat dikirim saat ini. Silakan coba lagi.',
+                ], 500);
+            }
+        }
+
+        $challengeToken = Crypt::encryptString($user->id.'|'.($record?->id ?? '0'));
+        $methods = [];
+
+        if ($emailOtpSent) {
+            $methods[] = 'email';
+        }
+
+        if ($user->hasTotpEnabled()) {
+            $methods[] = 'totp';
+        }
+
+        if (TwoFactorRecoveryCode::where('user_id', $user->id)->whereNull('used_at')->exists()) {
+            $methods[] = 'recovery';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Verifikasi dua langkah diperlukan.',
+            'two_factor_required' => true,
+            'challenge_token' => $challengeToken,
+            'methods' => $methods,
+            'expires_in' => $expiryMinutes * 60,
+            'data' => null,
+        ]);
+    }
+
+    private function decodeMobileChallenge(string $token): ?array
+    {
+        try {
+            $decoded = Crypt::decryptString($token);
+            [$userId, $otpId] = array_pad(explode('|', $decoded, 2), 2, null);
+
+            if (! $userId || ! $otpId) {
+                return null;
+            }
+
+            return ['user_id' => $userId, 'otp_id' => $otpId];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function shouldUseMobileTwoFactor(User $user): bool
+    {
+        if (! SecurityPolicy::mobileTwoFactorEnabled() || ! $user->is_active || ! filled($user->email)) {
+            return false;
+        }
+
+        if (SecurityPolicy::twoFactorScope() === 'super_admin') {
+            return (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())
+                || $user->hasRole('Super Admin');
+        }
+
+        return true;
     }
 
     // ── POST /api/mobile/v1/auth/google ───────────────────────────────────────
@@ -163,12 +430,27 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($this->shouldUseMobileTwoFactor($user)) {
+            return $this->startMobileTwoFactor($user, $request);
+        }
+
         [$token, $payload] = $this->issueMobileToken(
             user: $user,
             channel: TokenName::CHANNEL_GOOGLE,
             request: $request,
             deviceFp: $this->fingerprintFromRequest($request),
         );
+
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'LOGIN_SUCCESS',
+            'table_name' => 'users',
+            'record_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        app(SecurityNotificationService::class)->login($user, $request);
 
         return response()->json([
             'success' => true,
@@ -478,15 +760,15 @@ class AuthController extends Controller
         }
 
         try {
-            if (app(\App\Services\Ljk\LjkAccess::class)->isOfficer($user)) {
+            if (app(LjkAccess::class)->isOfficer($user)) {
                 return true;
             }
 
-            return \App\Models\TeacherAdminBook::query()
+            return TeacherAdminBook::query()
                 ->where('teacher_id', $user->id)
                 ->where('is_active', true)
                 ->exists()
-                || \App\Models\TeachingAssignment::query()
+                || TeachingAssignment::query()
                     ->where('teacher_id', $user->id)
                     ->where('status', 'active')
                     ->exists();

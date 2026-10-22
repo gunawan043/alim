@@ -12,6 +12,7 @@
 @section('subtitle', 'Rincian Penugasan Shift')
 
 @section('css')
+    @include('uks._ui-styles')
 <style>
     .detail-row {
         display: flex;

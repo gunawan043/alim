@@ -3,13 +3,18 @@
 @section('title', 'Status Perawatan - UKS')
 @section('subtitle', 'Status Perawatan & Perkembangan')
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @php
+    $userId = request()->route('userId') ?? auth()->id();
     $student = $patient->student;
     $studentName = $student->name ?? 'Pasien';
     $initialLetter = strtoupper(substr($studentName, 0, 1));
     $genderBadgeColor = $student->gender === 'L' ? 'primary' : 'danger';
     $genderLabel = $student->gender === 'L' ? 'Putra' : 'Putri';
-    $dormName = $student->dormitory->name ?? null;
+    $dormName = $student->activeDormitoryResident?->dormitory?->name;
 
     $patientStatusLabel = $statusLabels[$patient->status] ?? ucfirst($patient->status);
     $badgeColor = match($patient->status) {
@@ -52,6 +57,12 @@
 @endphp
 
 @section('content')
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-2"></i>{{ $errors->first() }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
 <div class="row">
     <div class="col-12">
         <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -148,35 +159,16 @@
                 <h4 class="card-title mb-0"><i class="ri-toggle-line me-2 text-primary"></i>Ubah Status Perawatan</h4>
             </div>
             <div class="card-body">
-                <form action="{{ route('user.uks.treatment-status.update-status', ['uuid' => $patient->id]) }}"
-                      method="POST">
-                    @csrf
-                    <div class="row g-3">
-                        <div class="col-md-7">
-                            <label class="form-label">Status Baru</label>
-                            <select name="new_status" class="form-select" required>
-                                @foreach($statusLabels as $key => $label)
-                                    <option value="{{ $key }}" {{ $patient->status === $key ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label">Alasan (opsional)</label>
-                            <input type="text" name="reason" maxlength="500" class="form-control"
-                                   placeholder="cth: Kondisi membaik, dipindahkan ke klinik, dll.">
-                        </div>
-                    </div>
-                    <div class="mt-3 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="ri-save-line me-1"></i>Simpan Status
-                        </button>
-                        <a href="{{ route('user.uks.patients.show', ['uuid' => $patient->id]) }}" class="btn btn-soft-secondary">
-                            <i class="ri-file-text-line me-1"></i>Lihat Detail
-                        </a>
-                    </div>
-                </form>
+                <p class="text-muted mb-3">
+                    Status saat ini:
+                    <span class="badge badge-soft-{{ $badgeColor }}">{{ $patientStatusLabel }}</span>
+                </p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#statusTreatmentModal">
+                    <i class="ri-toggle-line me-1"></i>Ubah Status Perawatan
+                </button>
+                <a href="{{ route('user.uks.patients.show', ['userId' => auth()->id(), 'uuid' => $patient->id]) }}" class="btn btn-soft-secondary">
+                    <i class="ri-file-text-line me-1"></i>Lihat Detail
+                </a>
             </div>
         </div>
     </div>
@@ -185,17 +177,6 @@
         <div class="card">
             <div class="card-header align-items-center d-flex">
                 <h4 class="card-title mb-0"><i class="ri-bed-line me-2 text-info"></i>Penempatan Bed</h4>
-                @if($patient->currentBedAssignment)
-                    <form action="{{ route('user.uks.treatment-status.release-bed', ['uuid' => $patient->id]) }}"
-                          method="POST"
-                          class="ms-auto"
-                          onsubmit="return confirm('Kosongkan bed pasien ini?')">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-soft-warning">
-                            <i class="ri-logout-box-r-line me-1"></i>Kosongkan
-                        </button>
-                    </form>
-                @endif
             </div>
             <div class="card-body">
                 @if($patient->currentBedAssignment)
@@ -221,6 +202,21 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <hr>
+                    <form action="{{ route('user.uks.treatment-status.release-bed', ['uuid' => $patient->id]) }}" method="POST">
+                        @csrf
+                        <label class="form-label small">Kosongkan bed & pindahkan ke lokasi</label>
+                        <select name="care_location" class="form-select form-select-sm mb-1" required>
+                            @foreach(\App\Models\Uks\UksPatient::$careLocationLabels as $key => $label)
+                                <option value="{{ $key }}" {{ $key === \App\Models\Uks\UksPatient::LOCATION_ASRAMA ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="notes" class="form-control form-control-sm mb-1" placeholder="Catatan (opsional)">
+                        <button type="submit" class="btn btn-sm btn-soft-warning w-100" onclick="return confirm('Kosongkan bed pasien ini?')">
+                            <i class="ri-logout-box-r-line me-1"></i>Kosongkan Bed
+                        </button>
+                    </form>
                 @else
                     <div class="text-center py-3">
                         <div class="avatar-md mx-auto mb-2">
@@ -295,27 +291,11 @@
                     {{-- Tab: Catatan Perkembangan --}}
                     <div class="tab-pane active" id="tab-notes" role="tabpanel">
                         @if($isInCare)
-                            <form action="{{ route('user.uks.treatment-status.store-note', ['uuid' => $patient->id]) }}"
-                                  method="POST" class="mb-3">
-                                @csrf
-                                <div class="row g-2 align-items-end">
-                                    <div class="col-md-3">
-                                        <label class="form-label small mb-1">Waktu</label>
-                                        <input type="datetime-local" name="recorded_at" class="form-control form-control-sm"
-                                               value="{{ now()->format('Y-m-d\TH:i') }}">
-                                    </div>
-                                    <div class="col-md-7">
-                                        <label class="form-label small mb-1">Catatan</label>
-                                        <input type="text" name="note" maxlength="5000" class="form-control form-control-sm"
-                                               placeholder="cth: Suhu tubuh 37.8°C, diberikan parasetamol 500mg..." required>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="submit" class="btn btn-primary btn-sm w-100">
-                                            <i class="ri-add-line me-1"></i>Tambah
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
+                            <div class="d-flex justify-content-end mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#treatmentNoteModal">
+                                    <i class="ri-add-line me-1"></i>Tambah Catatan
+                                </button>
+                            </div>
                         @endif
 
                         @if($treatmentNotes->count() > 0)
@@ -351,44 +331,11 @@
 
                     {{-- Tab: Pemberian Obat --}}
                     <div class="tab-pane" id="tab-meds" role="tabpanel">
-                        <form action="{{ route('user.uks.medication-administrations.store', ['uuid' => $patient->id]) }}"
-                              method="POST" class="mb-3">
-                            @csrf
-                            <div class="row g-2 align-items-end">
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-1">Nama Obat</label>
-                                    <input type="text" name="medicine_name" maxlength="255" required
-                                           class="form-control form-control-sm"
-                                           placeholder="cth: Paracetamol">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small mb-1">Dosis</label>
-                                    <input type="text" name="dosage" maxlength="100"
-                                           class="form-control form-control-sm"
-                                           placeholder="cth: 500 mg">
-                                </div>
-                                <div class="col-md-1">
-                                    <label class="form-label small mb-1">Jumlah</label>
-                                    <input type="number" name="quantity" min="1" max="999" required
-                                           class="form-control form-control-sm" value="1">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small mb-1">Jam</label>
-                                    <input type="datetime-local" name="given_at" class="form-control form-control-sm"
-                                           value="{{ now()->format('Y-m-d\TH:i') }}">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small mb-1">Catatan</label>
-                                    <input type="text" name="notes" maxlength="2000" class="form-control form-control-sm"
-                                           placeholder="cth: Setelah makan">
-                                </div>
-                                <div class="col-md-1">
-                                    <button type="submit" class="btn btn-success btn-sm w-100">
-                                        <i class="ri-add-line"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
+                        <div class="d-flex justify-content-end mb-3">
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#treatmentMedicationModal">
+                                <i class="ri-capsule-line me-1"></i>Beri Obat
+                            </button>
+                        </div>
 
                         @if($medicationAdmins->count() > 0)
                             <div class="table-responsive">
@@ -485,6 +432,111 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- MODAL: UBAH STATUS --}}
+<div class="modal fade" id="statusTreatmentModal" tabindex="-1" aria-labelledby="statusTreatmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ route('user.uks.treatment-status.update-status', ['userId' => $userId, 'uuid' => $patient->id]) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="statusTreatmentModalLabel"><i class="ri-toggle-line me-2 text-primary"></i>Ubah Status Perawatan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Status Baru</label>
+                        <select name="new_status" class="form-select" required>
+                            @foreach($allowedTransitions as $key)
+                                <option value="{{ $key }}">{{ $statusLabels[$key] ?? $key }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Alasan (opsional)</label>
+                        <input type="text" name="reason" maxlength="500" class="form-control" placeholder="cth: Kondisi membaik, dipindahkan ke klinik, dll.">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Status</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- MODAL: CATATAN PERKEMBANGAN --}}
+<div class="modal fade" id="treatmentNoteModal" tabindex="-1" aria-labelledby="treatmentNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ route('user.uks.treatment-status.store-note', ['userId' => $userId, 'uuid' => $patient->id]) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="treatmentNoteModalLabel"><i class="ri-file-list-3-line me-2 text-primary"></i>Tambah Catatan Perkembangan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Waktu</label>
+                        <input type="datetime-local" name="recorded_at" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}">
+                    </div>
+                    <div>
+                        <label class="form-label">Catatan</label>
+                        <textarea name="note" rows="4" maxlength="5000" class="form-control" required placeholder="cth: Suhu tubuh 37.8°C, diberikan parasetamol 500mg..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-add-line me-1"></i>Tambah Catatan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- MODAL: PEMBERIAN OBAT --}}
+<div class="modal fade" id="treatmentMedicationModal" tabindex="-1" aria-labelledby="treatmentMedicationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ route('user.uks.medication-administrations.store', ['userId' => $userId, 'uuid' => $patient->id]) }}">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="treatmentMedicationModalLabel"><i class="ri-capsule-line me-2 text-success"></i>Beri Obat</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Nama Obat <span class="text-danger">*</span></label>
+                        <input type="text" name="medicine_name" maxlength="255" class="form-control" required placeholder="cth: Paracetamol">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Dosis</label>
+                            <input type="text" name="dosage" maxlength="100" class="form-control" placeholder="cth: 500 mg">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jumlah</label>
+                            <input type="number" name="quantity" min="1" max="999" class="form-control" value="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jam Pemberian</label>
+                            <input type="datetime-local" name="given_at" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Catatan</label>
+                            <input type="text" name="notes" maxlength="2000" class="form-control" placeholder="cth: Setelah makan">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success"><i class="ri-check-line me-1"></i>Simpan Pemberian</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 @endsection

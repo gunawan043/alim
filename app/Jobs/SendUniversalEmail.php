@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\NotificationUniversal;
 use App\Models\User;
+use App\Services\SystemMailSettingsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,6 +28,8 @@ class SendUniversalEmail implements ShouldQueue
 
     public function handle()
     {
+        app(SystemMailSettingsService::class)->apply();
+
         Mail::send('emails.universal-notification', [
             'user' => $this->user,
             'notification' => $this->notification,

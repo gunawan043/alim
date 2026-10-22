@@ -82,7 +82,7 @@ class AiProviderSeeder extends Seeder
     private function defaultKeyGroup(string $provider): ?string
     {
         return match ($provider) {
-            'openrouter', 'groq', 'gemini', 'openai', 'anthropic' => $provider,
+            'openrouter', 'groq', 'gemini', 'openai', 'anthropic', 'deepseek' => $provider,
             default => null,
         };
     }

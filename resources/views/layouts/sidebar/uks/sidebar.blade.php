@@ -120,10 +120,19 @@
 @if(($showAll || $isKepalaUKS || $isStaf) && menu_allowed('uks'))
     <li class="menu-title"><span>Layanan Harian</span></li>
 
+    @if ((string) setting('uks_mode', 'simple') === 'clinic')
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.clinic.']) ? ' active' : '' }}"
+               href="{{ $uksUrl('user.uks.clinic.queue') }}">
+                <i class="ri-list-check-2"></i><span>Antrean Klinik</span>
+            </a>
+        </li>
+    @endif
+
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.patients.']) ? ' active' : '' }}"
            href="{{ $uksUrl('user.uks.patients.index') }}">
-            <i class="ri-hospital-line"></i><span>Pasien & Antrean</span>
+            <i class="ri-hospital-line"></i><span>Pasien & Kunjungan</span>
         </a>
     </li>
 
@@ -153,6 +162,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.beds.']) ? ' active' : '' }}"
            href="{{ $uksUrl('user.uks.beds.index') }}">
             <i class="ri-hotel-bed-line"></i><span>Bed & Ruang Rawat</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.care-locations.']) ? ' active' : '' }}"
+           href="{{ $uksUrl('user.uks.care-locations.index') }}">
+            <i class="ri-map-pin-user-line"></i><span>Papan Lokasi Rawat</span>
         </a>
     </li>
 
@@ -231,9 +247,16 @@
     <li class="menu-title"><span>Obat & Logistik</span></li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.pharmacy.']) ? ' active' : '' }}"
+           href="{{ $uksUrl('user.uks.pharmacy.index') }}">
+            <i class="ri-capsule-line"></i><span>Farmasi & Resep</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.medicine-inventory.']) ? ' active' : '' }}"
            href="{{ $uksUrl('user.uks.medicine-inventory.index') }}">
-            <i class="ri-capsule-line"></i><span>Stok Obat</span>
+            <i class="ri-archive-line"></i><span>Stok Obat</span>
         </a>
     </li>
 
@@ -275,9 +298,16 @@
     <li class="menu-title"><span>Rujukan Faskes</span></li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.referrals.']) ? ' active' : '' }}"
+           href="{{ $uksUrl('user.uks.referrals.index') }}">
+            <i class="ri-share-forward-line"></i><span>Rujukan Pasien</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.facility-referrals.']) ? ' active' : '' }}"
            href="{{ $uksUrl('user.uks.facility-referrals.index') }}">
-            <i class="ri-hospital-fill"></i><span>Rujukan RS / Klinik</span>
+            <i class="ri-hospital-fill"></i><span>Master Faskes Rujukan</span>
         </a>
     </li>
 @endif

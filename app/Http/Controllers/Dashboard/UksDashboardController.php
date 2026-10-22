@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Models\User;
+use App\Services\Uks\UksMode;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,6 +28,49 @@ class UksDashboardController extends DashboardController
     protected function getRoleLabel(): string
     {
         return 'UKS';
+    }
+
+    protected function resolveWidgets(array $config, string $jabatanCode, array $tugasTambahan): array
+    {
+        $widgets = parent::resolveWidgets($config, $jabatanCode, $tugasTambahan);
+
+        if (UksMode::isSimple()) {
+            $widgets = array_values(array_filter(
+                $widgets,
+                fn ($widget) => ! in_array($widget, [
+                    'stat-antrean-hari-ini',
+                    'table-antrean-hari-ini',
+                ], true)
+            ));
+        }
+
+        return $widgets;
+    }
+
+    protected function canAccessDashboard(User $user): bool
+    {
+        if (parent::canAccessDashboard($user)) {
+            return true;
+        }
+
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole('Super Admin')) {
+            return true;
+        }
+
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole([
+            'UKS',
+            'Kepala UKS',
+            'Admin UKS Putra',
+            'Admin UKS Putri',
+        ])) {
+            return true;
+        }
+
+        return function_exists('canPermission') && canPermission('menu-uks-sidebar');
     }
 
     /** Gender scope dari jabatan: 'L' (putra), 'P' (putri), null (semua). */

@@ -331,6 +331,14 @@
             <div id="two-column-menu"></div>
 
             <ul class="navbar-nav" id="navbar-nav" style="padding-bottom: 50px">
+                {{-- ALIM AI — tersedia untuk semua pegawai --}}
+                <li class="menu-title"><span>ALIM AI</span></li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.ai.']) ? ' active' : '' }}"
+                       href="{{ route('user.ai.index', ['userId' => $userId]) }}">
+                        <i class="ri-sparkling-2-line"></i><span>ALIM AI</span>
+                    </a>
+                </li>
 
                 {{-- ═══════════════════════════════════════════════════════════
                      MODE 1 — VIEW-AS (Super Admin / impersonate)

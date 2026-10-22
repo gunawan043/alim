@@ -30,8 +30,10 @@ class LibraryAccess
 
         if ($this->isStudentOperator($user)) {
             $unitIds = StudentOperatorAssignment::query()
-                ->where('user_id', $user->id)->where('operator_type', 'library')
-                ->where('is_active', true)->whereNotNull('library_unit_id')
+                ->where('user_id', $user->id)
+                ->where('operator_type', 'library')
+                ->where('is_active', true)
+                ->whereNotNull('library_unit_id')
                 ->pluck('library_unit_id');
 
             return $query->whereIn('id', $unitIds)->orderBy('name')->get();
@@ -82,7 +84,8 @@ class LibraryAccess
         }
 
         return StudentOperatorAssignment::query()
-            ->where('user_id', $user->id)->where('operator_type', 'library')
+            ->where('user_id', $user->id)
+            ->where('operator_type', 'library')
             ->where('is_active', true)
             ->when($unit, fn ($q) => $q->where('library_unit_id', $unit->id))
             ->exists();

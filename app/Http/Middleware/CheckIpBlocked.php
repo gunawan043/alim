@@ -23,7 +23,7 @@ class CheckIpBlocked
         $ip = $request->ip();
         $block = FailedLoginAttempt::forIp($ip)->active()->first();
 
-        // IP hard-locked (attempt 9)
+        // IP diblokir sementara setelah mencapai batas percobaan login.
         if ($block && $block->isLockedByIp()) {
             $seconds = now()->diffInSeconds($block->locked_until, false);
 

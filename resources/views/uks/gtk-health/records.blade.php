@@ -4,6 +4,7 @@
 @section('subtitle', __('Riwayat Kesehatan GTK'))
 
 @section('css')
+    @include('uks._ui-styles')
 <style>
     .vital-box {
         padding: 10px 0;
@@ -17,6 +18,7 @@
     .vital-danger { color: #dc3545; }
     .record-card { border-left: 4px solid #0ea5e9; }
     .record-abnormal { background-color: #fff7ed; }
+    [data-bs-theme="dark"] .record-abnormal { background-color: rgba(245, 158, 11, 0.12); }
 </style>
 @endsection
 

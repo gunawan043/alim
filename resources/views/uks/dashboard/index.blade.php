@@ -3,6 +3,7 @@
 @section('title', 'Dashboard UKS')
 
 @section('css')
+    @include('uks._ui-styles')
     <link href="{{ URL::asset('build/libs/apexcharts/apexcharts.min.css') }}" rel="stylesheet" type="text/css" />
 @endsection
 
@@ -304,7 +305,7 @@
                                                     {{ $patient->student?->name ?? '-' }}
                                                 </a>
                                                 <div class="text-muted small" style="font-size: 11px;">
-                                                    <i class="ri-home-7-line me-1"></i>{{ $patient->student?->dormitory?->name ?? 'Tidak berasrama' }}
+                                                    <i class="ri-home-7-line me-1"></i>{{ $patient->student?->activeDormitoryResident?->dormitory?->name ?? 'Tidak berasrama' }}
                                                     @if($patient->student)
                                                         &middot; {{ $patient->student->classGroup?->name ?? '-' }}
                                                     @endif

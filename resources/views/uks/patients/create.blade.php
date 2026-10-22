@@ -1,6 +1,10 @@
 @extends('layouts.master')
 @section('title') Pendaftaran Pasien UKS @endsection
 
+@section('css')
+    @include('uks._ui-styles')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') UKS @endslot
@@ -61,7 +65,7 @@
                                 <select name="patient_type" id="patient_type"
                                         class="form-select @error('patient_type') is-invalid @enderror" required>
                                     <option value="rawat" {{ old('patient_type') == 'rawat' ? 'selected' : '' }}>
-                                        <i class="ri-hospital-line"></i> Rawat Jalan
+                                        Rawat Jalan
                                     </option>
                                     <option value="pulang" {{ old('patient_type') == 'pulang' ? 'selected' : '' }}>
                                         Pulang (Dirujuk)
@@ -71,6 +75,21 @@
                                     </option>
                                 </select>
                                 @error('patient_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="triage_level" class="form-label">Prioritas Triase</label>
+                                <select name="triage_level" id="triage_level" class="form-select @error('triage_level') is-invalid @enderror">
+                                    <option value="P3" {{ old('triage_level', 'P3') === 'P3' ? 'selected' : '' }}>P3 — Non-urgent (hijau)</option>
+                                    <option value="P2" {{ old('triage_level') === 'P2' ? 'selected' : '' }}>P2 — Mendesak (kuning)</option>
+                                    <option value="P1" {{ old('triage_level') === 'P1' ? 'selected' : '' }}>P1 — Darurat (merah)</option>
+                                </select>
+                                @error('triage_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-12">
+                                <div class="alert alert-info py-2 mb-0 fs-12">
+                                    <i class="ri-information-line me-1"></i>
+                                    Nomor antrean dan nomor rekam medis dibuat otomatis setelah pendaftaran.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -96,6 +115,14 @@
                                           class="form-control @error('chief_complaint') is-invalid @enderror"
                                           placeholder="Keluhan yang disampaikan siswa...">{{ old('chief_complaint') }}</textarea>
                                 @error('chief_complaint')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-12">
+                                <label for="allergies" class="form-label">Alergi (obat / makanan)</label>
+                                <input type="text" name="allergies" id="allergies"
+                                       value="{{ old('allergies') }}"
+                                       class="form-control @error('allergies') is-invalid @enderror"
+                                       placeholder="Kosongkan jika tidak ada">
+                                @error('allergies')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-3">
                                 <label for="blood_pressure" class="form-label">Tekanan Darah</label>
@@ -127,6 +154,26 @@
                                     <span class="input-group-text bg-white">/min</span>
                                 </div>
                                 @error('pulse')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-2">
+                                <label for="respiration_rate" class="form-label">Napas</label>
+                                <div class="input-group">
+                                    <input type="number" name="respiration_rate" id="respiration_rate"
+                                           value="{{ old('respiration_rate') }}"
+                                           class="form-control @error('respiration_rate') is-invalid @enderror">
+                                    <span class="input-group-text bg-white">/min</span>
+                                </div>
+                                @error('respiration_rate')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-2">
+                                <label for="oxygen_saturation" class="form-label">SpO₂</label>
+                                <div class="input-group">
+                                    <input type="number" name="oxygen_saturation" id="oxygen_saturation"
+                                           value="{{ old('oxygen_saturation') }}"
+                                           class="form-control @error('oxygen_saturation') is-invalid @enderror">
+                                    <span class="input-group-text bg-white">%</span>
+                                </div>
+                                @error('oxygen_saturation')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-2">
                                 <label for="height" class="form-label">Tinggi</label>

@@ -10,6 +10,39 @@
         @slot('title') Manajemen User @endslot
     @endcomponent
 
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('generated_password'))
+        <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3" role="alert">
+            <div>
+                <strong><i class="ri-key-2-line me-1"></i>Password sementara untuk {{ session('generated_password_for') }} berhasil dibuat.</strong>
+                <div class="small mt-1">Password hanya ditampilkan sekali. Buka dialog untuk melihat dan menyalinnya.</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-warning flex-shrink-0" data-bs-toggle="modal" data-bs-target="#generatedPasswordModal">
+                Lihat Password
+            </button>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0 small">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
@@ -120,6 +153,11 @@
                                                     </li>
                                                     @if(auth()->id() !== $user->id)
                                                         <li>
+                                                            <button class="dropdown-item reset-password" data-id="{{ $user->id }}" data-name="{{ $user->name }}" data-email="{{ $user->email }}" data-nupy="{{ $user->employment?->nupy }}">
+                                                                <i class="ri-key-2-line text-warning me-2"></i>Reset Password
+                                                            </button>
+                                                        </li>
+                                                        <li>
                                                             <button class="dropdown-item toggle-status" data-id="{{ $user->id }}" data-active="{{ $user->is_active }}">
                                                                 <i class="ri-toggle-{{ $user->is_active ? 'fill text-warning' : 'line text-success' }} me-2"></i>
                                                                 {{ $user->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
@@ -171,6 +209,94 @@
         </div>
     </div>
 
+    @if(session('generated_password'))
+        <div class="modal fade zoomIn" id="generatedPasswordModal" tabindex="-1" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning-subtle">
+                        <h5 class="modal-title"><i class="ri-key-2-line me-1"></i>Password Sementara</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Password untuk <strong>{{ session('generated_password_for') }}</strong>:</p>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control form-control-lg font-monospace text-center"
+                                   id="generatedPasswordValue" value="{{ session('generated_password') }}" readonly>
+                            <button type="button" class="btn btn-primary" id="copyGeneratedPassword">
+                                <i class="ri-file-copy-line me-1"></i>Salin
+                            </button>
+                        </div>
+                        <div class="alert alert-warning small mb-0">
+                            <i class="ri-error-warning-line me-1"></i>
+                            Simpan password ini sekarang. Setelah halaman ditutup/direfresh, password tidak dapat dilihat lagi. Pengguna wajib mengganti password saat login berikutnya.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success" data-bs-dismiss="modal">Sudah Saya Salin</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Reset Password Modal --}}
+    <div class="modal fade zoomIn" id="resetPasswordModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-key-2-line me-1"></i>Reset Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" id="resetPasswordForm">
+                    @csrf
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Reset password untuk <strong id="resetPasswordUserName"></strong>
+                            <span class="d-block" id="resetPasswordUserEmail"></span>
+                        </p>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="mode" value="nupy" id="resetModeNupy" checked>
+                            <label class="form-check-label" for="resetModeNupy">
+                                Reset ke <strong>@NUPY</strong>
+                                <span class="text-muted small d-block" id="resetNupyPreview"></span>
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="mode" value="generate" id="resetModeGenerate">
+                            <label class="form-check-label" for="resetModeGenerate">Generate password acak (ditampilkan sekali)</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="mode" value="manual" id="resetModeManual">
+                            <label class="form-check-label" for="resetModeManual">Tentukan password sendiri</label>
+                        </div>
+
+                        <div id="manualPasswordFields" style="display:none">
+                            <div class="mb-3">
+                                <label class="form-label">Password Baru</label>
+                                <input type="password" name="password" class="form-control" autocomplete="new-password">
+                                <div class="form-text">Minimal {{ \App\Services\SecurityPolicy::passwordMinLength() }} karakter.</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Konfirmasi Password</label>
+                                <input type="password" name="password_confirmation" class="form-control" autocomplete="new-password">
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning small mb-0">
+                            <i class="ri-information-line me-1"></i>
+                            Semua sesi web dan mobile pengguna akan dicabut. Pengguna wajib mengganti password saat login berikutnya.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-warning"><i class="ri-key-2-line me-1"></i> Reset Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- Manage Roles Modal --}}
     <div class="modal fade zoomIn" id="manageRolesModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -200,6 +326,100 @@
     document.addEventListener('DOMContentLoaded', function () {
         // All available roles for manage-roles modal
         const allRoles = @json($roles);
+
+        @if(session('generated_password'))
+        const generatedPasswordModal = new bootstrap.Modal(document.getElementById('generatedPasswordModal'));
+        generatedPasswordModal.show();
+
+        document.getElementById('copyGeneratedPassword').addEventListener('click', async function () {
+            const value = document.getElementById('generatedPasswordValue').value;
+            try {
+                await navigator.clipboard.writeText(value);
+            } catch (e) {
+                const input = document.getElementById('generatedPasswordValue');
+                input.select();
+                document.execCommand('copy');
+            }
+
+            const original = this.innerHTML;
+            this.innerHTML = '<i class="ri-check-line me-1"></i>Tersalin';
+            setTimeout(() => { this.innerHTML = original; }, 1500);
+        });
+        @endif
+
+        // ── Reset password ─────────────────────────────────────────────
+        let resetUserId = null;
+        const resetForm = document.getElementById('resetPasswordForm');
+        const manualFields = document.getElementById('manualPasswordFields');
+        const resetPasswordInput = resetForm.querySelector('input[name="password"]');
+        const resetPasswordConfirmation = resetForm.querySelector('input[name="password_confirmation"]');
+        const nupyRadio = document.getElementById('resetModeNupy');
+        const nupyPreview = document.getElementById('resetNupyPreview');
+
+        function syncResetMode() {
+            const manual = document.getElementById('resetModeManual').checked;
+            manualFields.style.display = manual ? 'block' : 'none';
+            resetPasswordInput.required = manual;
+            resetPasswordConfirmation.required = manual;
+        }
+
+        document.querySelectorAll('input[name="mode"]').forEach(input => {
+            input.addEventListener('change', syncResetMode);
+        });
+        syncResetMode();
+
+        document.querySelectorAll('.reset-password').forEach(btn => {
+            btn.addEventListener('click', function () {
+                resetUserId = this.dataset.id;
+                resetForm.action = `/{{ $userId }}/sa/users/${resetUserId}/reset-password`;
+                document.getElementById('resetPasswordUserName').textContent = this.dataset.name;
+                document.getElementById('resetPasswordUserEmail').textContent = this.dataset.email;
+
+                const nupy = this.dataset.nupy || '';
+                nupyRadio.disabled = !nupy;
+                nupyPreview.textContent = nupy ? `Password: @${nupy}` : 'NUPY tidak tersedia untuk user ini';
+
+                resetForm.reset();
+
+                if (nupy) {
+                    nupyRadio.checked = true;
+                } else {
+                    document.getElementById('resetModeGenerate').checked = true;
+                }
+
+                syncResetMode();
+                new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+            });
+        });
+
+        let resetConfirmed = false;
+        resetForm.addEventListener('submit', function (e) {
+            if (resetConfirmed) {
+                resetConfirmed = false;
+                return;
+            }
+
+            e.preventDefault();
+            const userName = document.getElementById('resetPasswordUserName').textContent || 'user ini';
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Reset password user ini?',
+                html: `Semua sesi aktif <strong>${userName}</strong> akan dicabut.<br>Pengguna wajib mengganti password saat login berikutnya.`,
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Reset Password',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#f7b84b',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                resetConfirmed = true;
+                resetForm.requestSubmit();
+                setTimeout(() => { resetConfirmed = false; }, 0);
+            });
+        });
 
         // ── Toggle status ──────────────────────────────────────────────
         document.querySelectorAll('.toggle-status').forEach(btn => {

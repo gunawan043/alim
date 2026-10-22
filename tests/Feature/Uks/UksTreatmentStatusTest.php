@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Uks;
 
 use App\Http\Controllers\Uks\TreatmentStatusController;
+use App\Models\School;
+use App\Models\Student;
 use App\Models\Uks\UksMedicationAdministration;
 use App\Models\Uks\UksPatient;
 use App\Models\Uks\UksStatusHistory;
@@ -29,9 +31,20 @@ final class UksTreatmentStatusTest extends TestCase
      */
     private function makePatient(array $attrs = []): UksPatient
     {
+        $school = School::factory()->create();
+        $student = Student::create([
+            'id' => (string) Str::uuid(),
+            'school_id' => $school->id,
+            'nisn' => (string) random_int(1000000000, 9999999999),
+            'name' => 'Santri Uji Status',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
         return UksPatient::create(array_merge([
             'id' => (string) Str::uuid(),
-            'student_id' => (string) Str::uuid(),
+            'student_id' => $student->id,
+            'school_id' => $school->id,
             'status' => UksPatient::STATUS_INPATIENT,
             'patient_type' => 'rawat',
             'admitted_at' => now()->subHour(),

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Auth\LoginController;
+use App\Services\SecurityPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -23,7 +23,7 @@ class ForcePasswordController extends Controller
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::min(6)],
+            'password' => ['required', 'confirmed', Password::min(SecurityPolicy::passwordMinLength())],
         ]);
 
         $user = $request->user();

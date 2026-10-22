@@ -9,29 +9,25 @@
                 <thead class="table-light">
                     <tr class="text-muted fs-13">
                         <th>Santri</th>
+                        <th>Antrean</th>
+                        <th>Triase</th>
                         <th>Keluhan</th>
-                        <th>Diagnosa</th>
-                        <th>Rujukan</th>
-                        <th>Tanggal</th>
+                        <th>Status</th>
+                        <th>Masuk</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($data['items'] ?? [] as $item)
                         <tr>
                             <td class="fw-medium">{{ $item->santri }}</td>
-                            <td class="fs-13">{{ \Illuminate\Support\Str::limit($item->complaint ?? '—', 30) }}</td>
-                            <td class="fs-13">{{ \Illuminate\Support\Str::limit($item->diagnosis ?? '—', 30) }}</td>
-                            <td class="fs-13">
-                                @if ($item->is_referred)
-                                    <span class="badge bg-danger-subtle text-danger">{{ $item->referral_hospital ?? 'dirujuk' }}</span>
-                                @else
-                                    —
-                                @endif
-                            </td>
-                            <td class="fs-13">{{ $item->visit_date ? \Carbon\Carbon::parse($item->visit_date)->translatedFormat('d M Y') : '—' }}</td>
+                            <td class="fs-13">{{ $item->queue_number ?? '—' }}</td>
+                            <td class="fs-13">{{ $item->triage_level ?? '—' }}</td>
+                            <td class="fs-13">{{ \Illuminate\Support\Str::limit($item->chief_complaint ?? '—', 30) }}</td>
+                            <td class="fs-13">{{ str_replace('_', ' ', ucfirst($item->queue_status ?? '—')) }}</td>
+                            <td class="fs-13">{{ $item->admitted_at ? \Carbon\Carbon::parse($item->admitted_at)->translatedFormat('d M Y H:i') : '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="border-0 p-0">
+                        <tr><td colspan="6" class="border-0 p-0">
                             @include('dashboard._shared.widgets._empty', ['icon' => 'ri-stethoscope-line', 'title' => 'Belum ada kunjungan klinik'])
                         </td></tr>
                     @endforelse

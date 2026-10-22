@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SecurityPolicy;
 use Illuminate\Database\Eloquent\Model;
 
 class FailedLoginAttempt extends Model
@@ -54,8 +55,8 @@ class FailedLoginAttempt extends Model
         $this->attempts = $this->attempts + 1; // controller already set attempts=N, this makes it N+1
         $this->last_attempt_at = now();
 
-        if ($this->attempts >= 9) {
-            $this->locked_until = now()->addHours(24);
+        if ($this->attempts >= SecurityPolicy::maxLoginAttempts()) {
+            $this->locked_until = now()->addMinutes(SecurityPolicy::lockoutMinutes());
             $this->locked_reason = $emailFound ? 'account' : 'ip';
         }
 

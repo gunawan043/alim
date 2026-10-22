@@ -6,8 +6,12 @@ use App\Authorization\Services\ApprovalRoleResolver;
 use App\Jobs\SendUniversalEmail;
 use App\Jobs\SendUniversalPush;
 use App\Jobs\SendUniversalWhatsApp;
+use App\Models\Dormitory;
+use App\Models\DormitoryStaffAssignment;
+use App\Models\NotificationPreference;
 use App\Models\NotificationUniversal;
 use App\Models\User;
+use App\Models\WaliSantri;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -83,7 +87,7 @@ class NotificationUniversalService
             return 0;
         }
 
-        $links = \App\Models\WaliSantri::with('student')
+        $links = WaliSantri::with('student')
             ->whereIn('student_id', $ids)
             ->active()
             ->get();
@@ -118,11 +122,11 @@ class NotificationUniversalService
      */
     public function userIdsForWorkUnit(string $workUnitId): array
     {
-        $viaPivot = \App\Models\User::query()
+        $viaPivot = User::query()
             ->whereHas('gtkWorkUnits', fn ($q) => $q->where('work_unit_id', $workUnitId))
             ->pluck('id');
 
-        $viaSchool = \App\Models\User::query()
+        $viaSchool = User::query()
             ->whereHas('employment.school', fn ($q) => $q->where('work_unit_id', $workUnitId))
             ->pluck('id');
 
@@ -134,13 +138,13 @@ class NotificationUniversalService
      */
     public function notifyDormitoryStaff(string $dormitoryId, array $data): int
     {
-        $dormitory = \App\Models\Dormitory::withTrashed()->find($dormitoryId);
+        $dormitory = Dormitory::withTrashed()->find($dormitoryId);
 
         if (! $dormitory) {
             return 0;
         }
 
-        $ids = \App\Models\DormitoryStaffAssignment::query()
+        $ids = DormitoryStaffAssignment::query()
             ->where('dormitory_id', $dormitoryId)
             ->where('status', 'active')
             ->pluck('user_id');
@@ -168,14 +172,14 @@ class NotificationUniversalService
             return count($this->sendToMany($ids, $data + ['work_unit_id' => $workUnitId]));
         }
 
-        $ids = \App\Models\User::query()->where('is_active', true)->pluck('id')->all();
+        $ids = User::query()->where('is_active', true)->pluck('id')->all();
 
         return count($this->sendToMany($ids, $data));
     }
 
     public function sendToWorkUnit(string $workUnitId, array $data)
     {
-        $userIds = \App\Models\User::query()
+        $userIds = User::query()
             ->whereHas('gtkWorkUnits', fn ($q) => $q->where('work_unit_id', $workUnitId))
             ->pluck('id')
             ->all();
@@ -279,17 +283,21 @@ class NotificationUniversalService
         }
 
         // Preferensi pengguna (default aktif semua bila belum diatur).
-        $prefs = \App\Models\NotificationPreference::forUser($user);
+        $prefs = NotificationPreference::forUser($user);
         $action = (string) ($data['action'] ?? $notification->action ?? 'system');
 
+        $emailEnabled = (string) setting('email_notifications', '1') !== '0';
+        $whatsappEnabled = (string) setting('whatsapp_notifications', '1') !== '0';
+        $pushEnabled = (string) setting('push_notifications', '1') !== '0';
+
         // Email
-        if (($data['send_email'] ?? false) && $prefs->email_enabled
+        if (($data['send_email'] ?? false) && $emailEnabled && $prefs->email_enabled
             && $this->channelAllowed($action, 'email') && $user->email) {
             $this->sendEmail($user, $notification);
         }
 
         // WhatsApp
-        if (($data['send_whatsapp'] ?? false) && $prefs->whatsapp_enabled
+        if (($data['send_whatsapp'] ?? false) && $whatsappEnabled && $prefs->whatsapp_enabled
             && $this->channelAllowed($action, 'wa')) {
             $phone = $this->recipientPhone($user);
             if ($phone) {
@@ -298,7 +306,7 @@ class NotificationUniversalService
         }
 
         // Push Notification (Web)
-        if (($data['send_push'] ?? false) && $prefs->push_enabled
+        if (($data['send_push'] ?? false) && $pushEnabled && $prefs->push_enabled
             && $this->channelAllowed($action, 'push')) {
             $this->sendPushNotification($user, $notification);
         }
