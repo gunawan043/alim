@@ -225,6 +225,10 @@ class InstitutionDecreeController extends Controller
             $workUnitId = GtkWorkUnit::where('user_id', $user->id)->where('is_primary', true)->value('work_unit_id');
         }
         $workUnit = $workUnitId ? WorkUnit::find($workUnitId) : null;
+        $decree = $request->filled('decree_id') ? InstitutionDecree::with(['reviewer:id,name', 'approver:id,name'])->find($request->decree_id) : null;
+        if ($decree && $workUnit && (string) $decree->work_unit_id !== (string) $workUnit->id) {
+            abort(403);
+        }
         $schools = $workUnit ? School::where('work_unit_id', $workUnit->id)->get() : collect();
         $isSchoolUnit = $schools->isNotEmpty();
         $userIds = collect();
@@ -256,7 +260,42 @@ class InstitutionDecreeController extends Controller
         $ksp = $kspId ? User::find($kspId) : null;
         $positionsForModal = StructuralPosition::where('is_active', true)->orderBy('name')->get();
 
-        return view('institution-decrees.unified', ['userId'=>$userId, 'workUnit'=>$workUnit, 'rows'=>$rows, 'ksp'=>$ksp, 'positions'=>$positionsForModal, 'positionHours'=>$positionHours, 'isSchoolUnit'=>$isSchoolUnit]);
+        $academicYears = \App\Models\AcademicYear::orderByDesc('name')->get();
+        return view('institution-decrees.unified', ['userId'=>$userId, 'workUnit'=>$workUnit, 'rows'=>$rows, 'ksp'=>$ksp, 'positions'=>$positionsForModal, 'positionHours'=>$positionHours, 'isSchoolUnit'=>$isSchoolUnit, 'decree'=>$decree, 'academicYears'=>$academicYears]);
+    }
+
+    public function createDraft(Request $request, string $userId)
+    {
+        $validated = $request->validate([
+            'work_unit_id' => 'required|exists:work_units,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'decree_number' => 'required|string|max:100',
+            'title' => 'required|string|max:255',
+            'issued_date' => 'required|date',
+            'effective_date' => 'required|date',
+        ]);
+        $workUnit = WorkUnit::findOrFail($validated['work_unit_id']);
+        $school = School::where('work_unit_id', $workUnit->id)->first();
+        $kspId = $workUnit->metadata['head_user_id'] ?? $school?->principal_user_id;
+        $decree = InstitutionDecree::create([
+            'decree_number' => $validated['decree_number'],
+            'decree_type' => 'SK Pembagian Tugas',
+            'title' => $validated['title'],
+            'academic_year_id' => $validated['academic_year_id'],
+            'semester' => $validated['semester'],
+            'school_id' => $school?->id,
+            'work_unit_id' => $workUnit->id,
+            'issued_date' => $validated['issued_date'],
+            'effective_date' => $validated['effective_date'],
+            'signed_by' => $kspId,
+            'signed_position' => $school ? 'Kepala Satuan Pendidikan' : 'Kepala Unit',
+            'status' => 'draft',
+            'version' => 1,
+        ]);
+
+        return redirect()->route('user.institution-decrees.unified', ['userId'=>$userId, 'work_unit_id'=>$workUnit->id, 'decree_id'=>$decree->id])
+            ->with('success', 'Draft SK berhasil dibuat.');
     }
 
     public function updatePositionHours(Request $request, string $userId, string $workUnitId)

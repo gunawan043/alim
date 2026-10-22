@@ -1503,6 +1503,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('institution-decrees')->name('institution-decrees.')->group(function () {
                 Route::get('/', [InstitutionDecreeController::class, 'index'])->name('index');
                 Route::get('/unified', [InstitutionDecreeController::class, 'unified'])->name('unified');
+                Route::post('/unified/draft', [InstitutionDecreeController::class, 'createDraft'])->name('draft');
                 Route::post('/position-hours/{workUnitId}', [InstitutionDecreeController::class, 'updatePositionHours'])->name('position-hours');
                 Route::get('/create', [InstitutionDecreeController::class, 'create'])->name('create');
                 Route::post('/', [InstitutionDecreeController::class, 'store'])->name('store');
