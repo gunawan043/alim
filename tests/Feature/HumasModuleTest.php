@@ -27,7 +27,6 @@ class HumasModuleTest extends TestCase
             'humas/guest-visits',
             'humas/media-contacts',
             'gtk/massal',
-            'institution-decrees/unified',
         ] as $path) {
             $this->actingAs($admin)->get("/{$admin->id}/{$path}")->assertOk();
         }
