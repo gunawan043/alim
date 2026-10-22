@@ -567,7 +567,7 @@ class DormitoryPermitController extends Controller
             // otomatis jika ternyata konten masih meluber.
             $estimatedHeight = 290
                 + (($permit->companion_relation || $permit->companion_phone) ? 24 : 0)
-                + ($permit->pickup_authorization_status ? 20 : 0)
+                + (in_array($permit->pickup_authorization_status, ['pending', 'rejected'], true) ? 20 : 0)
                 + ($permit->is_emergency ? 16 : 0)
                 + (mb_strlen((string) $permit->destination) > 30 ? 14 : 0);
 
