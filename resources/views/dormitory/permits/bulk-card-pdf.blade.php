@@ -171,7 +171,7 @@
             @php
                 $studentName = $permit->student?->name ?? '—';
                 $nameLength = mb_strlen($studentName);
-                $nameSize = $nameLength <= 20 ? '12pt' : ($nameLength <= 28 ? '10.8pt' : ($nameLength <= 36 ? '9.6pt' : '8.4pt'));
+                $nameSize = $nameLength <= 18 ? '12pt' : ($nameLength <= 24 ? '10.5pt' : ($nameLength <= 30 ? '9pt' : '7.8pt'));
             @endphp
             <div class="student-name" style="font-size:{{ $nameSize }}">{{ $studentName }}</div>
 
