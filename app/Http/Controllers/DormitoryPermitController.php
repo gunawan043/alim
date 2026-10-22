@@ -563,24 +563,16 @@ class DormitoryPermitController extends Controller
 
             $html = view('dormitory.permits.card-pdf', compact('dormitory', 'permit', 'userId', 'now'))->render();
 
-            // Cari tinggi paling kecil yang masih muat satu halaman.
-            $heightKey = implode('|', [
-                'permit',
-                $permit->id,
-                $permit->student?->name,
-                $permit->room?->name,
-                $permit->departure_datetime?->timestamp,
-                $permit->expected_return_datetime?->timestamp,
-                $permit->companion_name,
-                $permit->companion_relation,
-                $permit->companion_phone,
-                $permit->destination,
-                $permit->pickup_authorization_status,
-                (int) $permit->is_emergency,
-            ]);
+            // Estimasi tinggi berdasarkan jumlah baris; renderer menambah
+            // tinggi dalam langkah kecil jika ternyata masih meluber.
+            $estimatedHeight = 313
+                + (($permit->companion_relation || $permit->companion_phone) ? 24 : 0)
+                + (in_array($permit->pickup_authorization_status, ['pending', 'rejected'], true) ? 20 : 0)
+                + ($permit->is_emergency ? 16 : 0)
+                + (mb_strlen((string) $permit->destination) > 30 ? 14 : 0);
 
             $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)
-                ->renderAuto($html, $heightKey);
+                ->renderEstimated($html, $estimatedHeight);
             $output = $rendered['output'];
             $filename = 'kartu-izin-'.($permit->student?->name ?? $permit->id).'-'.now()->format('Ymd-His').'.pdf';
 

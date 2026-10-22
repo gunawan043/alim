@@ -133,7 +133,7 @@ class CardPdfRenderer
                 return ['output' => $output, 'height' => $height, 'pages' => $pages];
             }
 
-            $height = min(self::MAX_HEIGHT_PT, $height + 70);
+            $height = min(self::MAX_HEIGHT_PT, $height + 24);
         }
 
         [$output, $pages] = $this->renderAtHeight($html, self::MAX_HEIGHT_PT);

@@ -531,9 +531,9 @@ class DormitoryVisitLogController extends Controller
 
             $html = view('dormitory.visits.card-pdf', compact('dormitory', 'visit', 'userId', 'now'))->render();
 
-            // Estimasi tinggi dari jumlah baris; renderer menambah tinggi
-            // otomatis jika ternyata konten masih meluber.
-            $estimatedHeight = 255
+            // Estimasi tinggi berdasarkan jumlah baris; renderer menambah
+            // tinggi dalam langkah kecil jika ternyata masih meluber.
+            $estimatedHeight = 284
                 + ($visit->visitor_id_number ? 14 : 0)
                 + ($visit->visitor_phone ? 14 : 0)
                 + ($visit->visitor_relationship ? 14 : 0)
