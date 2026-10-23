@@ -891,11 +891,13 @@ class NilaiKelasController extends Controller
             'published' => $registrations->filter(fn ($r) => $r->isPublished())->count(),
         ];
 
-        // Pengaturan tanggal pembagian rapor (per sekolah + TA + semester).
+        // Pengaturan tanggal pembagian & tata letak PDF rapor
+        // (per sekolah + TA + semester; berlaku untuk STS dan SAS).
         $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+        $layout = $distributionSetting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
 
         return view('nilai-kelas.rapor-index', compact(
-            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats', 'distributionSetting', 'canPublish',
+            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'canPublish',
         ));
     }
 
@@ -1105,6 +1107,61 @@ class NilaiKelasController extends Controller
         );
 
         return back()->with('success', 'Tanggal pembagian rapor berhasil disimpan.');
+    }
+
+    /**
+     * Simpan pengaturan tata letak PDF rapor (margin, font, ukuran kertas).
+     * Pengaturan ini dipakai oleh cetak per-santri, massal, dan preview PDF.
+     */
+    public function raporLayoutSettings(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $access = $this->assertLegerAccess($userId, $studyGroup);
+        abort_unless($access === 'full', 403, 'Pengaturan tata letak rapor hanya untuk TU/Kurikulum/Kepala.');
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'margin_top' => 'required|numeric|min:0|max:50',
+            'margin_right' => 'required|numeric|min:0|max:50',
+            'margin_bottom' => 'required|numeric|min:0|max:50',
+            'margin_left' => 'required|numeric|min:0|max:50',
+            'font_size' => 'required|numeric|min:6|max:24',
+            'title_font_size' => 'required|numeric|min:8|max:30',
+            'table_font_size' => 'required|numeric|min:6|max:20',
+            'info_font_size' => 'required|numeric|min:6|max:20',
+            'footer_font_size' => 'required|numeric|min:5|max:16',
+            'line_height' => 'required|numeric|min:1|max:2.5',
+            'paper_size' => 'required|in:a4,folio,letter',
+        ]);
+
+        RaporDistributionSetting::updateOrCreate(
+            [
+                'school_id' => $studyGroup->school_id,
+                'academic_year_id' => $validated['academic_year_id'],
+                'semester' => $validated['semester'],
+            ],
+            [
+                'margin_top' => $validated['margin_top'],
+                'margin_right' => $validated['margin_right'],
+                'margin_bottom' => $validated['margin_bottom'],
+                'margin_left' => $validated['margin_left'],
+                'font_size' => $validated['font_size'],
+                'title_font_size' => $validated['title_font_size'],
+                'table_font_size' => $validated['table_font_size'],
+                'info_font_size' => $validated['info_font_size'],
+                'footer_font_size' => $validated['footer_font_size'],
+                'line_height' => $validated['line_height'],
+                'paper_size' => $validated['paper_size'],
+                'updated_by' => $request->user()?->id,
+            ]
+        );
+
+        return back()->with('success', 'Pengaturan tata letak rapor berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
     }
 
     /**

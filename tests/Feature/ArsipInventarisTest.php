@@ -573,6 +573,57 @@ class ArsipInventarisTest extends TestCase
         $this->assertStringStartsWith('%PDF', (string) $response->getContent());
     }
 
+    public function test_halaman_rapor_menyediakan_pengaturan_dan_preview_pdf(): void
+    {
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor"
+            ."?academic_year_id={$this->activeAy->id}&semester=ganjil";
+
+        $this->actingAs($this->tu)
+            ->get($url)
+            ->assertOk()
+            ->assertSee('Preview PDF', false)
+            ->assertSee('name="margin_top"', false)
+            ->assertSee('name="font_size"', false)
+            ->assertSee('raporPreview', false)
+            ->assertSee('name="paper_size"', false);
+    }
+
+    public function test_pengaturan_tata_letak_rapor_disimpan_untuk_sts_dan_sas(): void
+    {
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/layout", [
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'margin_top' => 12.5,
+                'margin_right' => 14,
+                'margin_bottom' => 16,
+                'margin_left' => 13,
+                'font_size' => 10.5,
+                'title_font_size' => 15,
+                'table_font_size' => 9.5,
+                'info_font_size' => 9.5,
+                'footer_font_size' => 7.5,
+                'line_height' => 1.35,
+                'paper_size' => 'folio',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $setting = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail();
+
+        $layout = $setting->layoutSettings();
+
+        $this->assertSame(12.5, $layout['margin_top']);
+        $this->assertSame(10.5, $layout['font_size']);
+        $this->assertSame(9.5, $layout['table_font_size']);
+        $this->assertSame(1.35, $layout['line_height']);
+        $this->assertSame('folio', $layout['paper_size']);
+    }
+
     public function test_tanggal_hijriah_arab_otomatis(): void
     {
         $hijri = ArabicText::formatHijriDate('2026-10-20');

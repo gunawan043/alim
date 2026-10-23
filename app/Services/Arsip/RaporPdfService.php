@@ -255,11 +255,13 @@ class RaporPdfService
         string $jenis,
         Student $student,
         string $bahasa = self::BAHASA_ID,
+        ?array $layout = null,
     ): string {
         $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
 
         $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+        $layout = $layout ?? ($setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout());
 
         $resolver = app(ArabicNameResolver::class);
 
@@ -271,6 +273,7 @@ class RaporPdfService
             'labels' => $this->labels($bahasa),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
+            'layout' => $layout,
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($studyGroup->school),
         ])->render();
@@ -289,9 +292,12 @@ class RaporPdfService
         Student $student,
         string $bahasa = self::BAHASA_ID,
     ): string {
+        $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+        $layout = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+
         return $this->renderPdf($this->renderHtml(
-            $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $bahasa
-        ));
+            $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $bahasa, $layout
+        ), (string) $layout['paper_size']);
     }
 
     /**
@@ -322,6 +328,7 @@ class RaporPdfService
         }
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+        $layout = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
 
         $resolver = app(ArabicNameResolver::class);
 
@@ -333,21 +340,26 @@ class RaporPdfService
             'labels' => $this->labels($bahasa),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
+            'layout' => $layout,
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($studyGroup->school),
         ])->render();
 
-        return $this->renderPdf($html);
+        return $this->renderPdf($html, (string) $layout['paper_size']);
     }
 
-    public function renderPdf(string $html): string
+    public function renderPdf(string $html, string $paperSize = 'a4'): string
     {
+        $paper = in_array(strtolower($paperSize), ['a4', 'folio', 'letter'], true)
+            ? strtolower($paperSize)
+            : 'a4';
+
         $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper($paper, 'portrait');
         $dompdf->render();
 
         return (string) $dompdf->output();

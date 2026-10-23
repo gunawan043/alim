@@ -8,6 +8,11 @@
 @section('content')
     @php
         $userId = request()->route('userId') ?? Auth::id();
+        $previewBaseUrl = route('user.schools.nilai-kelas.rapor.cetak', [
+            'userId' => $userId,
+            'studyGroupId' => $studyGroup->id,
+            'studentId' => '__STUDENT__',
+        ]);
     @endphp
 
     @component('components.breadcrumb')
@@ -210,9 +215,9 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
+    <div class="row g-3">
+        <div class="col-xl-6">
+            <div class="card h-100">
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
                         <div class="col-sm">
@@ -359,6 +364,157 @@
                 </div>
             </div>
         </div>
+
+        <div class="col-xl-6">
+            @php
+                $previewStudent = $students->first()?->student;
+                $previewUrl = $previewStudent
+                    ? route('user.schools.nilai-kelas.rapor.cetak', [
+                        'userId' => $userId,
+                        'studyGroupId' => $studyGroup->id,
+                        'studentId' => $previewStudent->id,
+                        'academic_year_id' => $selectedAyId,
+                        'semester' => $selectedSem,
+                        'jenis' => 'sts',
+                        'bahasa' => 'id',
+                    ])
+                    : null;
+            @endphp
+            <div class="card h-100">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-settings-3-line text-success me-1"></i>Pengaturan &amp; Preview PDF</h5>
+                    <p class="text-muted mb-0 small">Berlaku untuk rapor <strong>STS</strong> dan <strong>SAS</strong> pada TA/semester ini.</p>
+                </div>
+                <div class="card-body">
+                    @if($errors->any())
+                        <div class="alert alert-danger py-2 small">
+                            <i class="ri-error-warning-line me-1"></i> Periksa kembali pengaturan tata letak.
+                        </div>
+                    @endif
+
+                    <form method="POST"
+                          action="{{ route('user.schools.nilai-kelas.rapor.layout', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h6 class="mb-0 small fw-semibold"><i class="ri-layout-line me-1"></i>Margin (mm)</h6>
+                            <span class="text-muted" style="font-size:11px;">Atas / Kanan / Bawah / Kiri</span>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label small mb-1">{{ $label }}</label>
+                                    <input type="number" name="{{ $field }}" class="form-control form-control-sm"
+                                           min="0" max="50" step="0.5" required
+                                           value="{{ old($field, $layout[$field]) }}">
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-font-size-2 me-1"></i>Ukuran Font (pt) &amp; Baris</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Isi</label>
+                                <input type="number" name="font_size" class="form-control form-control-sm" min="6" max="24" step="0.5" required value="{{ old('font_size', $layout['font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Judul</label>
+                                <input type="number" name="title_font_size" class="form-control form-control-sm" min="8" max="30" step="0.5" required value="{{ old('title_font_size', $layout['title_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Tabel</label>
+                                <input type="number" name="table_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('table_font_size', $layout['table_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Info Santri</label>
+                                <input type="number" name="info_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('info_font_size', $layout['info_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Footer/TTD</label>
+                                <input type="number" name="footer_font_size" class="form-control form-control-sm" min="5" max="16" step="0.5" required value="{{ old('footer_font_size', $layout['footer_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Tinggi Baris</label>
+                                <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label small mb-1">Ukuran Kertas</label>
+                                <select name="paper_size" class="form-select form-select-sm" required>
+                                    <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
+                                    <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
+                                    <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="submit" class="btn btn-success btn-sm w-100">
+                                    <i class="ri-save-3-line me-1"></i>Simpan Tata Letak
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <h6 class="mb-0 small fw-semibold"><i class="ri-eye-line me-1"></i>Preview PDF</h6>
+                        <span class="badge bg-info-subtle text-info">STS / SAS</span>
+                    </div>
+
+                    @if($students->isNotEmpty() && $previewStudent)
+                        <div class="row g-2 mb-2">
+                            <div class="col-12">
+                                <select id="previewStudent" class="form-select form-select-sm">
+                                    @foreach($students as $history)
+                                        @if($history->student)
+                                            <option value="{{ $history->student->id }}">{{ $history->student->name }} — {{ $history->student->nis ?? $history->student->nisn ?? '-' }}</option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <select id="previewJenis" class="form-select form-select-sm">
+                                    <option value="sts">STS</option>
+                                    <option value="sas">SAS</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select id="previewBahasa" class="form-select form-select-sm">
+                                    <option value="id">Indonesia</option>
+                                    <option value="ar">Arab</option>
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <button type="button" id="previewRefresh" class="btn btn-outline-primary btn-sm w-100" title="Muat ulang preview">
+                                    <i class="ri-refresh-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="border rounded overflow-hidden bg-light" style="height:620px;">
+                            <iframe id="raporPreview"
+                                    src="{{ $previewUrl }}"
+                                    title="Preview PDF rapor"
+                                    style="width:100%;height:100%;border:0;background:#fff;"
+                                    loading="lazy"></iframe>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted">Preview memakai pengaturan yang sudah disimpan.</small>
+                            <a href="{{ $previewUrl }}" target="_blank" id="previewOpen" class="btn btn-outline-success btn-sm">
+                                <i class="ri-external-link-line me-1"></i>Buka PDF
+                            </a>
+                        </div>
+                    @else
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="ri-information-line me-1"></i>Belum ada santri pada TA/semester ini, preview belum tersedia.
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Modal: Catatan Wali Kelas --}}
@@ -397,5 +553,44 @@ document.querySelectorAll('.js-note').forEach(function (btn) {
         new bootstrap.Modal(document.getElementById('noteModal')).show();
     });
 });
+
+(function () {
+    const iframe = document.getElementById('raporPreview');
+    const student = document.getElementById('previewStudent');
+    const jenis = document.getElementById('previewJenis');
+    const bahasa = document.getElementById('previewBahasa');
+    const open = document.getElementById('previewOpen');
+    const refresh = document.getElementById('previewRefresh');
+
+    if (!iframe || !student) return;
+
+    const baseUrl = @json($previewBaseUrl);
+    const academicYearId = @json($selectedAyId);
+    const semester = @json($selectedSem);
+
+    function buildPreviewUrl() {
+        if (!student.value) return '';
+
+        const url = new URL(baseUrl.replace('__STUDENT__', encodeURIComponent(student.value)));
+        if (academicYearId) url.searchParams.set('academic_year_id', academicYearId);
+        if (semester) url.searchParams.set('semester', semester);
+        url.searchParams.set('jenis', jenis.value || 'sts');
+        url.searchParams.set('bahasa', bahasa.value || 'id');
+
+        return url.toString();
+    }
+
+    function refreshPreview() {
+        const url = buildPreviewUrl();
+        if (!url) return;
+        iframe.src = url;
+        if (open) open.href = url;
+    }
+
+    [student, jenis, bahasa].forEach(function (el) {
+        if (el) el.addEventListener('change', refreshPreview);
+    });
+    if (refresh) refresh.addEventListener('click', refreshPreview);
+})();
 </script>
 @endpush

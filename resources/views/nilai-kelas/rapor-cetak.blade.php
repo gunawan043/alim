@@ -28,6 +28,13 @@
     $printDate = $distributionDate ?? now();
     $printCity = $distributionCity ?: ($studyGroup->school?->city ?? 'Mataram');
     $hijriDate = $isArabic ? \App\Support\ArabicText::formatHijriDate($printDate) : '';
+    $layout = array_merge(\App\Models\RaporDistributionSetting::defaultLayout(), $layout ?? []);
+    $paperSize = $layout['paper_size'] ?? 'a4';
+    $paperCss = match ($paperSize) {
+        'folio' => '215mm 330mm',
+        'letter' => 'letter',
+        default => 'A4',
+    };
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $isArabic ? 'ar' : 'id' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
@@ -36,6 +43,7 @@
     <title>Rapor — {{ $santri[array_key_first($santri)]['Nama'] ?? '' }}</title>
     <style>
         @page {
+            size: {{ $paperCss }};
             margin: 0;
         }
 
@@ -47,8 +55,8 @@
 
         body {
             font-family: 'Times New Roman', Times, serif;
-            font-size: 11pt;
-            line-height: 1.4;
+            font-size: {{ $layout['font_size'] }}pt;
+            line-height: {{ $layout['line_height'] }};
             color: #000;
         }
 
@@ -69,14 +77,14 @@
 
         /* ── Page wrapper per siswa ── */
         .page {
-            padding: 20px 40px 40px 40px;
+            padding: {{ $layout['margin_top'] }}mm {{ $layout['margin_right'] }}mm {{ $layout['margin_bottom'] }}mm {{ $layout['margin_left'] }}mm;
             position: relative;
         }
 
         /* ── Judul ── */
         .judul {
             text-align: center;
-            font-size: 14pt;
+            font-size: {{ $layout['title_font_size'] }}pt;
             font-weight: bold;
             margin: 12px 0 14px 0;
             text-transform: uppercase;
@@ -92,7 +100,7 @@
         .info-grid td {
             border: none;
             padding: 2px 4px;
-            font-size: 10pt;
+            font-size: {{ $layout['info_font_size'] }}pt;
         }
         .info-grid td.lbl {
             font-weight: bold;
@@ -117,7 +125,7 @@
         table.nilai td {
             border: 1px solid #000;
             padding: 4px 6px;
-            font-size: 10pt;
+            font-size: {{ $layout['table_font_size'] }}pt;
         }
         table.nilai th {
             background: #f0f0f0;
@@ -156,7 +164,7 @@
         .ringkasan-box td {
             border: 1px solid #000;
             padding: 4px 8px;
-            font-size: 10pt;
+            font-size: {{ $layout['table_font_size'] }}pt;
             font-weight: bold;
         }
         .ringkasan-box td.lbl {
@@ -194,7 +202,7 @@
         .catatan-box td {
             border: 1px solid #000;
             padding: 6px 8px;
-            font-size: 10pt;
+            font-size: {{ $layout['table_font_size'] }}pt;
             vertical-align: top;
         }
         .catatan-box td.hdr {
@@ -213,7 +221,7 @@
         }
         .ttd-grid td {
             border: none;
-            font-size: 9pt;
+            font-size: {{ $layout['footer_font_size'] + 1 }}pt;
             text-align: center;
             vertical-align: bottom;
             padding: 4px 8px;
@@ -237,13 +245,13 @@
             left: 0;
             right: 0;
             border-top: 1px solid #000;
-            padding: 4px 40px;
+            padding: 4px {{ $layout['margin_right'] }}mm 4px {{ $layout['margin_left'] }}mm;
             display: table;
             width: 100%;
         }
         .footer-bar td {
             border: none;
-            font-size: 8pt;
+            font-size: {{ $layout['footer_font_size'] }}pt;
             display: table-cell;
         }
         .footer-bar td.left { text-align: left; width: 30%; }
