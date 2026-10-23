@@ -1,0 +1,45 @@
+name: Asrama Critical
+
+on:
+  push:
+    paths:
+      - 'app/Http/Controllers/Dormitory**'
+      - 'app/Models/Dormitory**'
+      - 'app/Services/Boarding/**'
+      - 'resources/views/dormitory/**'
+      - 'tests/Feature/**Dormitory**'
+      - 'tests/Feature/**Asrama**'
+      - 'tests/Feature/**Boarding**'
+      - 'tests/Feature/Mobile/MobileMahromIntegrationTest.php'
+      - 'phpunit.xml'
+      - '.github/workflows/asrama-critical.yml'
+  pull_request:
+    paths:
+      - 'app/Http/Controllers/Dormitory**'
+      - 'app/Models/Dormitory**'
+      - 'app/Services/Boarding/**'
+      - 'resources/views/dormitory/**'
+      - 'tests/Feature/**Dormitory**'
+      - 'tests/Feature/**Asrama**'
+      - 'tests/Feature/**Boarding**'
+      - 'tests/Feature/Mobile/MobileMahromIntegrationTest.php'
+      - 'phpunit.xml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_sqlite, sqlite3, zip, gd, intl
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Run Asrama critical tests
+        run: php artisan test --testsuite="Asrama Critical"

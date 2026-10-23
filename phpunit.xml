@@ -11,6 +11,16 @@
         <testsuite name="Feature">
             <directory suffix="Test.php">./tests/Feature</directory>
         </testsuite>
+        <testsuite name="Asrama Critical">
+            <file>./tests/Feature/AsramaPolicyExecutionTest.php</file>
+            <file>./tests/Feature/AsramaQuotaGovernanceTest.php</file>
+            <file>./tests/Feature/BoardingDomainEventsTest.php</file>
+            <file>./tests/Feature/DormitoryPermitScanTest.php</file>
+            <file>./tests/Feature/DormitoryPlacementFlowTest.php</file>
+            <file>./tests/Feature/DormitoryResidentLifecycleTest.php</file>
+            <file>./tests/Feature/StafPerizinanTest.php</file>
+            <file>./tests/Feature/Mobile/MobileMahromIntegrationTest.php</file>
+        </testsuite>
         <testsuite name="Integration">
             <directory suffix="Test.php">./tests/Integration</directory>
         </testsuite>

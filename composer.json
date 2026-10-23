@@ -67,6 +67,11 @@
         }
     },
     "scripts": {
+        "test:asrama": "@php artisan test --testsuite='Asrama Critical'",
+        "test:critical": [
+            "@php artisan test tests/Unit/Authorization tests/Unit/Sarpras/DashboardCacheBumpTest.php",
+            "@test:asrama"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
