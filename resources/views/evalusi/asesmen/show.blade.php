@@ -21,6 +21,7 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="{{ route('user.kisi-kisi-soal.cetak', ['userId' => $userId, 'kisiUuid' => $kisi->id]) }}" target="_blank" class="btn btn-light btn-sm"><i class="ri-printer-line me-1"></i>Cetak Kisi</a>
+                    <a href="{{ route('user.asesmen.cetak', ['userId' => $userId]) }}" class="btn btn-light btn-sm"><i class="ri-printer-line me-1"></i>Pusat Cetak</a>
                     <a href="{{ route($state['route'], $state['params']) }}" class="btn btn-{{ $state['color'] }} btn-sm">
                         {{ $state['label'] }} <i class="ri-arrow-right-line ms-1"></i>
                     </a>

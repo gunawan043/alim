@@ -117,6 +117,25 @@ class AsesmenController extends Controller
         ));
     }
 
+    public function cetak(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $query = PaketSoal::query()
+            ->with(['kisiKisi.subject:id,name', 'kisiKisi.gradeLevel:id,name'])
+            ->withCount(['items', 'printJobs'])
+            ->where(function ($q) {
+                $q->where('is_published', true)
+                    ->orWhereIn('workflow_status', [PaketSoal::WORKFLOW_APPROVED, PaketSoal::WORKFLOW_PUBLISHED]);
+            })
+            ->when($schoolId, fn ($q) => $q->whereHas('kisiKisi', fn ($kisi) => $kisi->where('school_id', $schoolId)))
+            ->orderByDesc('updated_at');
+
+        $pakets = $query->paginate(20)->withQueryString();
+
+        return view('evalusi.asesmen.cetak', compact('pakets', 'userId'));
+    }
+
     private function assessmentState(KisiKisiSoal $kisi, string $userId, ?string $schoolId): array
     {
         $banks = BankSoal::query()

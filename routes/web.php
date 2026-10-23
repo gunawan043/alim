@@ -1791,6 +1791,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── ASESMEN WORKSPACE ───────────────────────────────────
             Route::prefix('asesmen')->name('asesmen.')->group(function () {
                 Route::get('/', [AsesmenController::class, 'index'])->name('index');
+                Route::get('/cetak', [AsesmenController::class, 'cetak'])->name('cetak');
                 Route::get('/{kisiUuid}', [AsesmenController::class, 'show'])->name('show');
             });
 

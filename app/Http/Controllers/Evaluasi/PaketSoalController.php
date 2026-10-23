@@ -154,7 +154,7 @@ class PaketSoalController extends Controller
             'is_acak_opsi' => 'nullable|boolean',
         ]);
 
-        return DB::transaction(function () use ($validated, $kisiKisiId) {
+        return DB::transaction(function () use ($validated, $kisiKisiId, $request, $userId) {
             $kisi = KisiKisiSoal::with('items')->findOrFail($kisiKisiId);
 
             $this->authorizePaketKisi($request, $kisi);
@@ -193,7 +193,7 @@ class PaketSoalController extends Controller
             app(PaketNaskahService::class)->sinkronMeta($paket);
 
             return redirect()
-                ->route('user.paket-soal.show', $paket->id)
+                ->route('user.paket-soal.show', ['userId' => $userId, 'paketUuid' => $paket->id])
                 ->with('success', 'Paket soal berhasil dibuat. Review sebelum publish.');
         });
     }
