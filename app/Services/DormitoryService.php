@@ -10,6 +10,7 @@ use App\Models\DormitoryAttendanceRecap;
 use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
+use App\Models\DormitoryReward;
 use App\Models\DormitoryViolation;
 use App\Models\StudentHealthPermit;
 use App\Models\StudentMahrom;
@@ -38,8 +39,11 @@ class DormitoryService
         $mahrom = $student->mahroms()->where('is_primary', true)->first()
             ?? $student->mahroms()->where('is_active', true)->first();
 
-        if (! $mahrom || ! $mahrom->phone) {
-            return;
+        try {
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                ->notifyPermitApproved($permit);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif approve izin gagal: '.$e->getMessage());
         }
 
         $this->notifService->sendToRole('Wali Santri', [
@@ -49,10 +53,10 @@ class DormitoryService
             'type' => 'success',
             'action' => 'permit_approved',
             'title' => "Izin Pulang Disetujui — {$student->name}",
-            'message' => "Bpk/Ibu {$mahrom->name}, izin pulang untuk {$student->name} telah disetujui.\n"
+            'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", izin pulang untuk {$student->name} telah disetujui.\n"
                 ."Penjemput: {$permit->companion_name} ({$permit->companion_relation})\n"
                 ."Rencanaback: {$permit->expected_return_datetime->format('d/m/Y H:i')}",
-            'send_whatsapp' => true,
+            'send_whatsapp' => false,
             'priority' => 'medium',
         ]);
     }
@@ -70,10 +74,6 @@ class DormitoryService
         $mahrom = $student->mahroms()->where('is_primary', true)->first()
             ?? $student->mahroms()->where('is_active', true)->first();
 
-        if (! $mahrom) {
-            return;
-        }
-
         $categoryLabel = match ($violation->violation_category) {
             'ringan' => 'Ringan',
             'sedang' => 'Sedang',
@@ -81,6 +81,21 @@ class DormitoryService
             default => $violation->violation_category,
         };
 
+        // WA langsung ke nomor wali/terpusat — tidak bergantung pada akun
+        // login wali atau worker queue, sehingga notifikasi tetap terkirim.
+        try {
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                ->notifyViolation(
+                    $student,
+                    $violation->violation_type,
+                    optional($violation->violation_date)->format('d/m/Y'),
+                    trim(($violation->notes ?? '').' '.($violation->action_taken ?? '')) ?: null,
+                );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif pelanggaran gagal: '.$e->getMessage());
+        }
+
+        // In-app untuk akun wali (tanpa WA agar tidak dobel dengan kiriman langsung).
         $this->notifService->sendToRole('Wali Santri', [
             'module' => 'dormitory',
             'reference_type' => 'dormitory_violation',
@@ -88,13 +103,29 @@ class DormitoryService
             'type' => 'warning',
             'action' => 'violation_recorded',
             'title' => "Pelanggaran Asrama — {$student->name}",
-            'message' => "Bpk/Ibu {$mahrom->name}, anak Anda {$student->name} mendapat\n"
+            'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", anak Anda {$student->name} mendapat\n"
                 ."pelanggaran {$violation->violation_type} (Kategori: {$categoryLabel})\n"
                 ."dengan poin: {$violation->points}.\n"
                 ."Tindakan: {$violation->action_taken}",
-            'send_whatsapp' => true,
+            'send_whatsapp' => false,
             'priority' => 'high',
         ]);
+    }
+
+    /**
+     * Kirim notifikasi WA ke wali saat penghargaan dicatat.
+     */
+    public function notifyMahromOnReward(DormitoryReward $reward): void
+    {
+        if (! $reward->student) {
+            return;
+        }
+
+        try {
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyReward($reward);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif penghargaan gagal: '.$e->getMessage());
+        }
     }
 
     /**
@@ -110,8 +141,11 @@ class DormitoryService
         $mahrom = $student->mahroms()->where('is_primary', true)->first()
             ?? $student->mahroms()->where('is_active', true)->first();
 
-        if (! $mahrom) {
-            return;
+        try {
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                ->notifyOverdue($permit);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif overdue gagal: '.$e->getMessage());
         }
 
         $this->notifService->sendToRole('Wali Santri', [
@@ -121,11 +155,11 @@ class DormitoryService
             'type' => 'danger',
             'action' => 'overdue_permit',
             'title' => "Terlambat Pulang — {$student->name}",
-            'message' => "Bpk/Ibu {$mahrom->name}, {$student->name} belum kembali\n"
+            'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", {$student->name} belum kembali\n"
                 ."dari izin pulang hingga waktu yang dijadwalkan\n"
                 ."({$permit->expected_return_datetime->format('d/m/Y H:i')}).\n"
                 .'Mohon konfirmasi.',
-            'send_whatsapp' => true,
+            'send_whatsapp' => false,
             'priority' => 'high',
         ]);
     }

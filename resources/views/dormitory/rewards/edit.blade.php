@@ -124,6 +124,23 @@
                     </div>
                 </div>
 
+                <div class="card border mt-3">
+                    <div class="card-body py-3">
+                        <div class="form-check form-switch">
+                            <input type="hidden" name="send_notification" value="0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="send_notification" name="send_notification" value="1"
+                                   {{ old('send_notification', '1') == '1' ? 'checked' : '' }}>
+                            <label class="form-check-label fw-semibold" for="send_notification">
+                                Kirim notifikasi ke wali santri
+                            </label>
+                        </div>
+                        <div class="form-text mt-1">
+                            Kirim WhatsApp ke wali/terpusat. Matikan jika input ini tidak perlu diberitahukan.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mt-4 d-flex gap-2">
                     <button type="submit" class="btn btn-success"><i class="ri-save-line"></i> Update</button>
                     <a href="{{ route('user.asrama.rewards.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'rewardUuid' => $reward->id]) }}" class="btn btn-secondary"><i class="ri-arrow-go-back-line"></i> Batal</a>

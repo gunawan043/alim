@@ -149,6 +149,58 @@ class WhatsAppGuardianNotificationTest extends TestCase
     }
 
 
+    public function test_notifikasi_penghargaan_terkirim_dan_bisa_dinonaktifkan(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'central');
+        config()->set('whatsapp.central_number', '0811-2222-3333');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $reward = new \App\Models\DormitoryReward([
+            'title' => 'Juara Tahfidz',
+            'category' => \App\Models\DormitoryReward::CAT_TAHFIDZ,
+            'level' => \App\Models\DormitoryReward::LEVEL_UGGALAN,
+            'points' => 25,
+            'description' => 'Hafalan 5 juz',
+        ]);
+        $reward->id = (string) Str::uuid();
+        $reward->setRelation('student', $this->student);
+
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyReward($reward));
+
+        Http::assertSent(function ($request) {
+            return $request['target'] === '6281122223333'
+                && str_contains($request['message'], 'Juara Tahfidz')
+                && str_contains($request['message'], 'Poin: +25');
+        });
+
+        // Toggle UI wa_event_achievement harus benar-benar mematikan event.
+        \App\Models\SystemSetting::updateOrCreate(
+            ['key' => 'wa_event_achievement'],
+            ['value' => '0', 'group' => 'notification', 'type' => 'boolean']
+        );
+        Cache::flush();
+
+        $this->assertFalse(app(GuardianWhatsAppNotifier::class)->notifyReward($reward));
+    }
+
+    public function test_toggle_wa_event_picked_up_mematikan_notifikasi(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'central');
+        config()->set('whatsapp.central_number', '0811-2222-3333');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        \App\Models\SystemSetting::updateOrCreate(
+            ['key' => 'wa_event_picked_up'],
+            ['value' => '0', 'group' => 'notification', 'type' => 'boolean']
+        );
+        Cache::flush();
+
+        $permit = $this->makePermit(['pickup_scanned_at' => now()]);
+
+        $this->assertFalse(app(GuardianWhatsAppNotifier::class)->notifyPickedUp($permit));
+        Http::assertNothingSent();
+    }
+
     public function test_mode_terpusat_mengirim_ke_nomor_admin_dan_tercatat(): void
     {
         config()->set('whatsapp.delivery_mode', 'central');

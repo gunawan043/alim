@@ -42,6 +42,7 @@ class StoreRewardRequest extends FormRequest
             'points' => 'nullable|integer|min:0',
             'proof_path' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             'awarded_date' => 'required|date',
+            'send_notification' => 'nullable|boolean',
         ];
     }
 

@@ -367,15 +367,6 @@ class DormitoryPermitController extends Controller
             \Illuminate\Support\Facades\Log::warning('Notif asrama approve gagal: '.$e->getMessage());
         }
 
-        // Notifikasi WA wali: izin disetujui (mode terpusat/wali).
-        try {
-            if ($approvedPermit && $approvedPermit->student) {
-                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyPermitApproved($approvedPermit);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif approve gagal: '.$e->getMessage());
-        }
-
         return back()->with('success', 'Izin berhasil disetujui dan notifikasi ke wali telah dikirim.');
     }
 
@@ -398,16 +389,6 @@ class DormitoryPermitController extends Controller
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Notif asrama reject gagal: '.$e->getMessage());
-        }
-
-        // Notifikasi WA wali: izin belum disetujui.
-        try {
-            $rejectedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
-            if ($rejectedPermit && $rejectedPermit->student) {
-                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyPermitRejected($rejectedPermit, $request->input('approval_note') ?? $request->input('note'));
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif reject gagal: '.$e->getMessage());
         }
 
         $data = $request->validated();
@@ -1007,6 +988,13 @@ class DormitoryPermitController extends Controller
             ]);
             $permit->save();
 
+            try {
+                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                    ->notifyPickedUp($permit->fresh(['student']));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('WA notif pickup manual gagal: '.$e->getMessage());
+            }
+
             $pickerDisplay = $pickerName !== ''
                 ? "oleh {$pickerName}".($pickerRelation !== '' ? ' ('.ucfirst($pickerRelation).')' : '')
                 : 'berhasil dicatat';
@@ -1093,6 +1081,21 @@ class DormitoryPermitController extends Controller
         }
 
         $permit->save();
+
+        try {
+            $notifier = app(\App\Services\Notifications\GuardianWhatsAppNotifier::class);
+            if ($newStatus === 'picked_up') {
+                $notifier->notifyPickedUp($permit->fresh(['student']));
+            } elseif ($newStatus === 'returned') {
+                $notifier->notifyReturned($permit->fresh(['student']));
+            } elseif ($newStatus === 'approved') {
+                $notifier->notifyPermitApproved($permit->fresh(['student']));
+            } elseif ($newStatus === 'rejected') {
+                $notifier->notifyPermitRejected($permit->fresh(['student']), $request->input('note'));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif update status izin gagal: '.$e->getMessage());
+        }
 
         $message = "Status izin {$permit->student->name} diubah menjadi '{$permit->status_text}'.";
 

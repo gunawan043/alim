@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryReward;
 use App\Models\Kaldik;
 use App\Models\Student;
 use App\Models\TeacherAdminBook;
@@ -117,6 +118,26 @@ class GuardianWhatsAppNotifier
         return $this->sendToTargets($student, $message, 'violation', $student->id);
     }
 
+    public function notifyReward(DormitoryReward $reward): bool
+    {
+        if (! $this->eventEnabled('achievement') || ! $reward->student) {
+            return false;
+        }
+
+        $message = $this->template('achievement', [
+            'santri' => $reward->student->name,
+            'prestasi' => $reward->title ?: 'Penghargaan asrama',
+            'catatan' => trim(implode(' • ', array_filter([
+                $reward->category_text ? 'Kategori: '.$reward->category_text : null,
+                $reward->level_text ? 'Level: '.$reward->level_text : null,
+                (int) $reward->points > 0 ? 'Poin: +'.$reward->points : null,
+                $reward->description,
+            ]))),
+        ]);
+
+        return $this->sendToTargets($reward->student, $message, 'achievement', (string) $reward->id);
+    }
+
     public function notifyOverdue(DormitoryPermit $permit): bool
     {
         if (! $this->eventEnabled('overdue') || ! $permit->student) {
@@ -137,10 +158,12 @@ class GuardianWhatsAppNotifier
             return false;
         }
 
-        $message = $this->template('visit', [
+        $rejected = $stage === 'rejected';
+        $message = $this->template($rejected ? 'visit_rejected' : 'visit', [
             'santri' => $visit->student->name,
             'pengunjung' => trim((string) ($visit->visitor_name ?: '-')),
             'jadwal' => $visit->expected_arrival_datetime?->format('d/m/Y H:i') ?? '-',
+            'catatan' => $visit->approval_note ?: '-',
         ]);
 
         return $this->sendToTargets($visit->student, $message, 'visit', (string) $visit->id);
@@ -317,8 +340,22 @@ class GuardianWhatsAppNotifier
      */
     private function eventEnabled(string $event): bool
     {
+        // Nama event internal tidak selalu sama dengan kunci setting di UI
+        // (mis. permit_picked_up disimpan sebagai wa_event_picked_up).
+        $aliases = [
+            'permit_picked_up' => 'picked_up',
+            'permit_returned' => 'returned',
+            'student_sick' => 'sick',
+        ];
+
         if (function_exists('setting')) {
-            foreach (['wa_event_'.$event, 'wa.event.'.$event] as $key) {
+            $keys = ['wa_event_'.$event, 'wa.event.'.$event];
+            if (isset($aliases[$event])) {
+                $keys[] = 'wa_event_'.$aliases[$event];
+                $keys[] = 'wa.event.'.$aliases[$event];
+            }
+
+            foreach ($keys as $key) {
                 $value = setting($key, null);
                 if ($value !== null && $value !== '') {
                     return (bool) ((int) $value);

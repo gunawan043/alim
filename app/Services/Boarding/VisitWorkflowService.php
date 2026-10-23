@@ -256,7 +256,7 @@ class VisitWorkflowService
             }
         }
 
-        return DB::transaction(function () use ($visit, $note) {
+        $visit = DB::transaction(function () use ($visit, $note) {
             $visit->update([
                 'status' => 'approved',
                 'approved_by' => auth()->id(),
@@ -278,13 +278,17 @@ class VisitWorkflowService
 
             return $visit;
         });
+
+        $this->notifyVisitDecision($visit->fresh(['student']), 'approved');
+
+        return $visit;
     }
 
     public function reject(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog
     {
         $visit = DormitoryVisitLog::where('dormitory_id', $dormitoryId)->findOrFail($visitId);
 
-        return DB::transaction(function () use ($visit, $note) {
+        $visit = DB::transaction(function () use ($visit, $note) {
             $visit->update([
                 'status' => 'rejected',
                 'approved_by' => auth()->id(),
@@ -306,26 +310,42 @@ class VisitWorkflowService
             return $visit;
         });
 
-        // Notifikasi WA wali + in-app petugas asrama (di luar transaksi).
+        $this->notifyVisitDecision($visit->fresh(['student']), 'rejected');
+
+        return $visit;
+    }
+
+    /**
+     * Notifikasi WA wali + in-app petugas asrama setelah keputusan kunjungan.
+     * Dipusatkan di service agar jalur approve manual, auto-approve, dan
+     * approval center sama-sama mengirim notifikasi.
+     */
+    private function notifyVisitDecision(DormitoryVisitLog $visit, string $stage): void
+    {
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyVisit($visit, 'approved');
+            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                ->notifyVisit($visit, $stage);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif kunjungan gagal: '.$e->getMessage());
+        }
+
+        try {
+            $approved = $stage === 'approved';
 
             app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($visit->dormitory_id, [
                 'module' => 'dormitory',
                 'reference_type' => 'dormitory_visit',
                 'reference_id' => $visit->id,
-                'type' => 'info',
-                'action' => 'visit_approved',
-                'title' => 'Kunjungan disetujui: '.($visit->student?->name ?? '-'),
+                'type' => $approved ? 'info' : 'warning',
+                'action' => $approved ? 'visit_approved' : 'visit_rejected',
+                'title' => ($approved ? 'Kunjungan disetujui: ' : 'Kunjungan ditolak: ').($visit->student?->name ?? '-'),
                 'message' => 'Pengunjung '.($visit->visitor_name ?? '-').' dijadwalkan '
                     .($visit->expected_arrival_datetime?->format('d/m/Y H:i') ?? '-').'.',
                 'priority' => 'low',
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Notif kunjungan gagal: '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Notif in-app kunjungan gagal: '.$e->getMessage());
         }
-
-        return $visit;
     }
 
     public function checkIn(string $visitId, string $dormitoryId, ?string $note = null): DormitoryVisitLog

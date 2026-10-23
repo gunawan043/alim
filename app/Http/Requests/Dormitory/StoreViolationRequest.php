@@ -33,6 +33,7 @@ class StoreViolationRequest extends FormRequest
             'follow_up' => 'nullable|string',
             'witness_id' => 'nullable|exists:users,id',
             'notes' => 'nullable|string',
+            'send_notification' => 'nullable|boolean',
         ];
     }
 

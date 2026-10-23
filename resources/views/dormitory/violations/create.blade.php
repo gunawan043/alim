@@ -271,6 +271,24 @@
                     </div>
                 </div>
 
+                {{-- Notification option --}}
+                <div class="card mt-3">
+                    <div class="card-body py-3">
+                        <div class="form-check form-switch">
+                            <input type="hidden" name="send_notification" value="0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="send_notification" name="send_notification" value="1"
+                                   {{ old('send_notification', '1') == '1' ? 'checked' : '' }}>
+                            <label class="form-check-label fw-semibold" for="send_notification">
+                                Kirim notifikasi ke wali santri
+                            </label>
+                        </div>
+                        <div class="form-text mt-1">
+                            Kirim WhatsApp ke wali/terpusat. Matikan jika pencatatan ini tidak perlu diberitahukan.
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Submit --}}
                 <div class="d-flex gap-2 mt-3">
                     <button type="submit" class="btn btn-danger flex-grow-1">

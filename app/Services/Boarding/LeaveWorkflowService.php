@@ -866,6 +866,11 @@ class LeaveWorkflowService
 
             return $permit;
         });
+
+        // Notifikasi izin disetujui dikirim oleh listener BoardingPermitDecided
+        // agar tidak dobel dengan jalur event.
+
+        return $permit;
     }
 
     // ── Reject ──────────────────────────────────────────────────
@@ -899,6 +904,10 @@ class LeaveWorkflowService
 
             return $permit;
         });
+
+        $this->notifyPermitGuardian($permit->fresh(['student']), 'rejected', $note);
+
+        return $permit;
     }
 
     // ── Return ──────────────────────────────────────────────────
@@ -937,6 +946,29 @@ class LeaveWorkflowService
 
             return $permit;
         });
+
+        $this->notifyPermitGuardian($permit->fresh(['student']), 'returned');
+
+        return $permit;
+    }
+
+    /**
+     * Notifikasi WA wali untuk penolakan dan kepulangan izin.
+     * Khusus approval ditangani listener BoardingPermitDecided agar tidak dobel.
+     */
+    private function notifyPermitGuardian(DormitoryPermit $permit, string $stage, ?string $note = null): void
+    {
+        try {
+            $notifier = app(\App\Services\Notifications\GuardianWhatsAppNotifier::class);
+
+            match ($stage) {
+                'rejected' => $notifier->notifyPermitRejected($permit, $note),
+                'returned' => $notifier->notifyReturned($permit),
+                default => null,
+            };
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WA notif izin gagal: '.$e->getMessage());
+        }
     }
 
     // ── Helpers ─────────────────────────────────────────────────

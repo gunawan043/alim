@@ -65,7 +65,22 @@ class DormitoryRewardController extends Controller
 
         $dormitories = Dormitory::where('is_active', true)->get();
 
-        return view('dormitory.rewards.index', compact('dormitory', 'rewards', 'stats', 'dormitories', 'userId'));
+        $students = DormitoryResident::with('student:id,name,nisn,nis,gender')
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true)
+            ->orderBy('bed_number')
+            ->get()
+            ->pluck('student')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $catalogs = $this->rewardCatalogs();
+
+        return view('dormitory.rewards.index', compact(
+            'dormitory', 'rewards', 'stats', 'dormitories', 'students', 'catalogs', 'userId'
+        ));
     }
 
     public function create(Request $request, string $userId, string $asramaUuid)
@@ -92,6 +107,8 @@ class DormitoryRewardController extends Controller
     public function store(StoreRewardRequest $request, string $userId, string $asramaUuid)
     {
         $validated = $request->validated();
+        $sendNotification = $request->boolean('send_notification', true);
+        unset($validated['send_notification']);
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
         if ($request->hasFile('proof_path')) {
@@ -99,6 +116,8 @@ class DormitoryRewardController extends Controller
         }
 
         $validated['dormitory_id'] = $dormitory->id;
+        $validated['academic_year_id'] = $validated['academic_year_id']
+            ?? AcademicYear::where('is_active', true)->value('id');
         $validated['given_by'] = $request->user()->id;
         $validated['semester'] = $this->pointService->currentSemester();
 
@@ -107,8 +126,14 @@ class DormitoryRewardController extends Controller
         $reward = DormitoryReward::create($validated);
         $this->pointService->recordReward($reward);
 
-        return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-            ->with('success', 'Penghargaan berhasil ditambahkan.');
+        if ($sendNotification) {
+            app(\App\Services\DormitoryService::class)->notifyMahromOnReward($reward->fresh('student'));
+        }
+
+        return redirect()->route('user.asrama.rewards.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with('success', $sendNotification
+                ? 'Penghargaan berhasil ditambahkan dan notifikasi ke wali telah dikirim.'
+                : 'Penghargaan berhasil ditambahkan tanpa mengirim notifikasi.');
     }
 
     public function show(string $userId, string $asramaUuid, string $rewardUuid)
@@ -144,6 +169,8 @@ class DormitoryRewardController extends Controller
     {
         $reward = DormitoryReward::findOrFail($rewardUuid);
         $validated = $request->validated();
+        $sendNotification = $request->boolean('send_notification', true);
+        unset($validated['send_notification']);
 
         if ($request->hasFile('proof_path')) {
             if ($reward->proof_path) {
@@ -163,7 +190,11 @@ class DormitoryRewardController extends Controller
             $this->pointService->recordReward($reward->fresh());
         }
 
-        return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+        if ($sendNotification) {
+            app(\App\Services\DormitoryService::class)->notifyMahromOnReward($reward->fresh('student'));
+        }
+
+        return redirect()->route('user.asrama.rewards.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Penghargaan berhasil diperbarui.');
     }
 
@@ -209,7 +240,7 @@ class DormitoryRewardController extends Controller
 
         $reward->delete();
 
-        return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+        return redirect()->route('user.asrama.rewards.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Penghargaan berhasil dihapus.');
     }
 }

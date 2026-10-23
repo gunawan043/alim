@@ -94,6 +94,8 @@ class DormitoryViolationController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
         $data = $request->validated();
+        $sendNotification = $request->boolean('send_notification', true);
+        unset($data['send_notification']);
 
         $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
 
@@ -117,11 +119,15 @@ class DormitoryViolationController extends Controller
         // Tulis ledger + jalankan aturan ambang + notifikasi petugas asrama.
         $this->pointService->recordViolation($violation);
 
-        // Kirim notifikasi ke wali (outside transaction — side effect)
-        $this->service->notifyMahromOnViolation($violation);
+        // Notifikasi ke wali bersifat opsional per input.
+        if ($sendNotification) {
+            $this->service->notifyMahromOnViolation($violation);
+        }
 
         return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
-            ->with('success', 'Pelanggaran berhasil dicatat dan notifikasi ke wali telah dikirim.');
+            ->with('success', $sendNotification
+                ? 'Pelanggaran berhasil dicatat dan notifikasi ke wali telah dikirim.'
+                : 'Pelanggaran berhasil dicatat tanpa mengirim notifikasi.');
     }
 
     public function show(Request $request, string $userId, string $asramaUuid, string $violationUuid)

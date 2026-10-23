@@ -80,5 +80,7 @@ return [
         'announcement' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\n*{judul}*\n{pesan}\n\nTerima kasih.",
 
         'visit' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nKunjungan untuk santri *{santri}* telah *DISETUJUI*.\n• Pengunjung: {pengunjung}\n• Jadwal: {jadwal}\n\nTerima kasih.",
+
+        'visit_rejected' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nMohon maaf, pengajuan kunjungan untuk santri *{santri}* *BELUM DAPAT DISETUJUI*.\n• Pengunjung: {pengunjung}\n• Jadwal: {jadwal}\n• Catatan: {catatan}\n\nSilakan menghubungi pengasuh bila perlu. Terima kasih.",
     ],
 ];
