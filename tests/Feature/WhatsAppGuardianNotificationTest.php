@@ -151,6 +151,24 @@ class WhatsAppGuardianNotificationTest extends TestCase
     }
 
 
+    public function test_footer_branding_alim_dapat_ditambahkan(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'central');
+        config()->set('whatsapp.central_number', '0811-2222-3333');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        \App\Models\SystemSetting::updateOrCreate(
+            ['key' => 'wa_brand_footer'],
+            ['value' => 'ALIM — https://alim.sch.id', 'group' => 'notification', 'type' => 'string']
+        );
+        Cache::flush();
+
+        $permit = $this->makePermit(['pickup_scanned_at' => now()]);
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyPickedUp($permit));
+
+        Http::assertSent(fn ($request) => str_contains($request['message'], 'ALIM — https://alim.sch.id'));
+    }
+
     public function test_notifikasi_sistem_tersimpan_untuk_akun_wali(): void
     {
         $waliUser = User::create([

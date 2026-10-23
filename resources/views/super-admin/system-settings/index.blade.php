@@ -50,6 +50,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'recruitment-api' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'recruitment-api']) }}">
+                                <i class="ri-user-search-line me-1"></i> Integrasi Recruitment
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'google-drive' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'google-drive']) }}">
                                 <i class="ri-google-line me-1"></i> Google Drive
@@ -511,6 +517,13 @@
                                                     <input type="text" name="wa_central_number" class="form-control form-control-sm" value="{{ $settings['wa_central_number'] ?? '' }}" placeholder="08xxxxxxxxxx">
                                                 </div>
                                                 <div class="col-md-4">
+                                                    <label class="form-label small">Footer Branding ALIM (opsional)</label>
+                                                    <input type="text" name="wa_brand_footer" class="form-control form-control-sm"
+                                                           value="{{ $settings['wa_brand_footer'] ?? '' }}"
+                                                           placeholder="ALIM — https://alim.sch.id">
+                                                    <div class="form-text">Ditambahkan di akhir pesan. Watermark Fonnte tetap mengikuti paket device.</div>
+                                                </div>
+                                                <div class="col-md-4">
                                                     <label class="form-label small">API Token</label>
                                                     <input type="text" name="wa_api_token" class="form-control form-control-sm" value="{{ $settings['wa_api_token'] ?? '' }}" placeholder="token Fonnte/Wablas">
                                                 </div>
@@ -716,13 +729,14 @@
                         {{-- TAB: Integrasi POS --}}
                         @if($tab === 'pos-api')
                             @php
-                                $posEnabled = ($settings['pos_api_enabled'] ?? '1') == '1';
-                                $posKey = (string) ($settings['pos_api_key'] ?? config('services.pos.api_key'));
-                                $posHeader = (string) ($settings['pos_api_header'] ?? config('services.pos.header', 'X-ALIM-POS-KEY'));
-                                $posAllowedIps = (string) ($settings['pos_api_allowed_ips'] ?? implode(',', (array) config('services.pos.allowed_ips', [])));
+                                $posEnabled = \App\Support\PosApiConfig::enabled();
+                                $posKey = \App\Support\PosApiConfig::key();
+                                $posHeader = \App\Support\PosApiConfig::header();
+                                $posAllowedIps = implode(',', \App\Support\PosApiConfig::allowedIps());
                                 $posGeneratedAt = $settings['pos_api_key_generated_at'] ?? null;
                                 $posBaseUrl = url('/api/pos/v1');
-                                $posKeyFromEnv = empty($settings['pos_api_key']) && $posKey !== '';
+                                $posKeyFromEnv = ! \App\Support\PosApiConfig::hasStoredKey() && $posKey !== '';
+                                $posKeyEncrypted = \App\Support\PosApiConfig::isEncrypted($settings['pos_api_key'] ?? null);
                                 $posEndpoints = [
                                     ['ping', 'Tes koneksi + ringkasan jumlah data', 'Untuk tombol "Tes Koneksi" di aplikasi POS'],
                                     ['satuan-kerja', 'Satuan kerja / unit kerja', 'Filter: type, divisi_id, is_active, search'],
@@ -767,6 +781,11 @@
                                                         <span class="badge bg-warning-subtle text-warning">.env — belum disimpan ke database</span>
                                                     @elseif($posKey !== '')
                                                         <span class="badge bg-info-subtle text-info">Database</span>
+                                                        @if($posKeyEncrypted)
+                                                            <span class="badge bg-success-subtle text-success" title="Token disimpan terenkripsi dengan APP_KEY">
+                                                                <i class="ri-lock-2-line me-1"></i>terenkripsi
+                                                            </span>
+                                                        @endif
                                                         @if($posGeneratedAt)
                                                             <span class="text-muted">· dibuat {{ \Illuminate\Support\Carbon::parse($posGeneratedAt)->format('d/m/Y H:i') }}</span>
                                                         @endif
@@ -830,7 +849,7 @@
                                         </div>
                                         <div class="card-body">
                                             <div class="p-2 bg-light rounded font-monospace small text-break" id="pos-base-url">{{ $posBaseUrl }}</div>
-                                            <small class="text-muted">Tambahkan <code>?page=1&per_page=100</code> untuk menarik data per halaman.</small>
+                                            <small class="text-muted">Tambahkan <code>?page=1&per_page=100</code> untuk menarik data per halaman. Wajib HTTPS di produksi.</small>
                                         </div>
                                     </div>
 
@@ -913,6 +932,195 @@
                                             @endif
                                             <button type="submit" class="btn btn-outline-primary w-100" formaction="{{ route('user.sa.system-settings.test-google-drive', ['userId' => $userId]) }}"><i class="ri-plug-line me-1"></i>Test Koneksi Drive</button>
                                             <div class="text-muted mt-2" style="font-size:.72rem">Jika aktif, foto bukti diunggah ke Drive. Jika gagal, sistem fallback ke penyimpanan lokal.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- TAB: Integrasi Recruitment --}}
+                        @if($tab === 'recruitment-api')
+                            @php
+                                $recruitmentEnabled = \App\Support\RecruitmentApiConfig::enabled();
+                                $recruitmentKey = \App\Support\RecruitmentApiConfig::key();
+                                $recruitmentHeader = \App\Support\RecruitmentApiConfig::header();
+                                $recruitmentAllowedIps = implode(',', \App\Support\RecruitmentApiConfig::allowedIps());
+                                $recruitmentGeneratedAt = $settings['recruitment_api_key_generated_at'] ?? null;
+                                $recruitmentBaseUrl = url('/api/recruitment/v1');
+                                $recruitmentKeyFromEnv = ! \App\Support\RecruitmentApiConfig::hasStoredKey() && $recruitmentKey !== '';
+                                $recruitmentKeyEncrypted = \App\Support\RecruitmentApiConfig::isEncrypted($settings['recruitment_api_key'] ?? null);
+                                $recruitmentOutboundUrl = \App\Support\RecruitmentOutboundConfig::baseUrl();
+                                $recruitmentHasOutboundToken = \App\Support\RecruitmentOutboundConfig::token() !== null;
+                                $recruitmentOutboundFromEnv = ! \App\Support\RecruitmentOutboundConfig::hasStoredToken()
+                                    && config('services.recruitment_api.token');
+                                $recruitmentEndpoints = [
+                                    ['ping', 'Tes koneksi + ringkasan data Personalia'],
+                                    ['pegawai', 'Pegawai/GTK: email, no. WA, unit kerja, jabatan, role'],
+                                    ['satuan-kerja', 'Master satuan kerja'],
+                                    ['jabatan', 'Master jabatan'],
+                                    ['jenis-gtk', 'Master jenis GTK'],
+                                    ['sekolah', 'Profil sekolah/lembaga'],
+                                    ['role', 'Daftar role & jumlah pengguna'],
+                                ];
+                            @endphp
+
+                            <input type="hidden" name="recruitment_tab" value="1">
+
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-key-2-line me-1"></i>Token API Recruitment</h6>
+                                            <span class="badge bg-{{ $recruitmentEnabled ? 'success' : 'secondary' }}-subtle text-{{ $recruitmentEnabled ? 'success' : 'secondary' }}">
+                                                {{ $recruitmentEnabled ? 'Aktif' : 'Nonaktif' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <label class="form-label small">Token</label>
+                                            <div class="input-group">
+                                                <input type="password" id="recruitment-api-key" class="form-control font-monospace"
+                                                    value="{{ $recruitmentKey }}" readonly autocomplete="off">
+                                                <button type="button" class="btn btn-soft-secondary" onclick="recruitmentToggleKey()"
+                                                    title="Tampilkan / sembunyikan">
+                                                    <i class="ri-eye-line" id="recruitment-api-key-icon"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-soft-primary" onclick="recruitmentCopy(this)">
+                                                    <i class="ri-file-copy-line me-1"></i>Salin
+                                                </button>
+                                            </div>
+                                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                                                <small class="text-muted">
+                                                    Sumber:
+                                                    @if($recruitmentKeyFromEnv)
+                                                        <span class="badge bg-warning-subtle text-warning">.env — belum disimpan ke database</span>
+                                                    @elseif($recruitmentKey !== '')
+                                                        <span class="badge bg-info-subtle text-info">Database</span>
+                                                        @if($recruitmentKeyEncrypted)
+                                                            <span class="badge bg-success-subtle text-success"><i class="ri-lock-2-line me-1"></i>terenkripsi</span>
+                                                        @endif
+                                                        @if($recruitmentGeneratedAt)
+                                                            <span class="text-muted">· dibuat {{ \Illuminate\Support\Carbon::parse($recruitmentGeneratedAt)->format('d/m/Y H:i') }}</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-danger-subtle text-danger">Belum ada token</span>
+                                                    @endif
+                                                </small>
+                                                <small class="text-muted">Header: <code>{{ $recruitmentHeader }}</code></small>
+                                            </div>
+                                            <hr class="my-3">
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <button type="submit" name="regenerate_recruitment_key" value="1" class="btn btn-sm btn-warning"
+                                                    onclick="return confirm('Token lama akan langsung tidak berlaku dan aplikasi recruitment harus diganti tokennya. Lanjutkan?')">
+                                                    <i class="ri-refresh-line me-1"></i>Generate Token Baru
+                                                </button>
+                                                <span class="text-muted small">Gunakan bila token bocor atau saat serah terima ke tim recruitment.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-shield-check-line me-1"></i>Pengaturan Akses</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-12">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" name="recruitment_api_enabled" value="1"
+                                                            id="recruitment-enabled" {{ $recruitmentEnabled ? 'checked' : '' }}>
+                                                        <label class="form-check-label" for="recruitment-enabled">Aktifkan API Recruitment</label>
+                                                    </div>
+                                                    <small class="text-muted">Jika dimatikan, semua request ke <code>/api/recruitment/v1/*</code> ditolak (503).</small>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Nama Header Token</label>
+                                                    <input type="text" name="recruitment_api_header" class="form-control form-control-sm font-monospace"
+                                                        value="{{ $recruitmentHeader }}" placeholder="X-ALIM-RECRUITMENT-KEY">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Whitelist IP (opsional)</label>
+                                                    <textarea name="recruitment_api_allowed_ips" rows="2" class="form-control form-control-sm font-monospace"
+                                                        placeholder="103.10.20.30, 10.0.0.0/8">{{ $recruitmentAllowedIps }}</textarea>
+                                                    <small class="text-muted">Kosongkan = semua IP boleh (cukup token).</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-arrow-left-right-line me-1"></i>Koneksi ke Aplikasi Recruitment (Outbound)</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-12">
+                                                    <label class="form-label small">Base URL</label>
+                                                    <input type="url" name="recruitment_outbound_url" class="form-control form-control-sm"
+                                                        value="{{ $recruitmentOutboundUrl }}" placeholder="https://recruitment.contoh.id">
+                                                    <small class="text-muted">Tanpa akhiran <code>/api</code>; sistem menormalisasi otomatis.</small>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label small">Token (Bearer)</label>
+                                                    <input type="password" name="recruitment_outbound_token" class="form-control form-control-sm"
+                                                        placeholder="{{ $recruitmentHasOutboundToken ? '•••••• (kosongkan = tidak berubah)' : 'Token API recruitment' }}"
+                                                        autocomplete="off">
+                                                    <div class="form-check mt-2">
+                                                        <input class="form-check-input" type="checkbox" name="recruitment_outbound_token_clear"
+                                                            value="1" id="recruitment-outbound-token-clear">
+                                                        <label class="form-check-label small" for="recruitment-outbound-token-clear">Hapus token tersimpan</label>
+                                                    </div>
+                                                    @if($recruitmentOutboundFromEnv)
+                                                        <small class="text-muted">Sumber token saat ini: <code>.env</code></small>
+                                                    @endif
+                                                </div>
+                                                <div class="col-12">
+                                                    <button type="submit" name="test_recruitment_connection" value="1" class="btn btn-sm btn-soft-info">
+                                                        <i class="ri-signal-tower-line me-1"></i>Tes Koneksi
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block mt-2">
+                                                Dipakai ALIM untuk mengambil dokumen/foto pelamar dan mengirim notifikasi.
+                                                Client API (lamaran/lowongan) siap dipakai saat migrasi ATS selesai.
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-links-line me-1"></i>Alamat API</h6>
+                                            <button type="button" class="btn btn-sm btn-soft-primary" onclick="recruitmentCopyUrl(this)">
+                                                <i class="ri-file-copy-line me-1"></i>Salin
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="p-2 bg-light rounded font-monospace small text-break" id="recruitment-base-url">{{ $recruitmentBaseUrl }}</div>
+                                            <small class="text-muted">Tambahkan <code>?page=1&per_page=100</code>. Wajib HTTPS di produksi.</small>
+                                        </div>
+                                    </div>
+
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-code-s-slash-line me-1"></i>Contoh & Endpoint</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <pre class="bg-dark text-light p-3 rounded small mb-3" style="white-space: pre-wrap;">curl -H "{{ $recruitmentHeader }}: {{ $recruitmentKey ?: '<TOKEN>' }}" \
+  "{{ $recruitmentBaseUrl }}/pegawai?per_page=100"</pre>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle mb-0">
+                                                    <thead class="table-light"><tr><th>Endpoint</th><th>Isi</th></tr></thead>
+                                                    <tbody>
+                                                        @foreach($recruitmentEndpoints as [$path, $label])
+                                                            <tr>
+                                                                <td class="font-monospace small">GET /{{ $path }}</td>
+                                                                <td class="small">{{ $label }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1020,6 +1228,69 @@
             function posCopyUrl(button) {
                 const el = document.getElementById('pos-base-url');
                 if (el) posCopyText(el.textContent.trim(), button);
+            }
+        </script>
+    @endpush
+@endif
+
+@if($tab === 'recruitment-api')
+    @push('scripts')
+        <script>
+            function recruitmentToggleKey() {
+                const input = document.getElementById('recruitment-api-key');
+                const icon = document.getElementById('recruitment-api-key-icon');
+                if (!input) return;
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('ri-eye-line');
+                    icon.classList.add('ri-eye-off-line');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('ri-eye-off-line');
+                    icon.classList.add('ri-eye-line');
+                }
+            }
+
+            function recruitmentCopyText(text, button) {
+                const done = function () {
+                    if (typeof Toastify !== 'undefined') {
+                        Toastify({
+                            text: 'Tersalin ke clipboard',
+                            duration: 1500,
+                            gravity: 'top',
+                            position: 'right',
+                            style: { background: '#0ab39c' }
+                        }).showToast();
+                    }
+                    if (button) {
+                        const original = button.innerHTML;
+                        button.innerHTML = '<i class="ri-check-line me-1"></i>Tersalin';
+                        setTimeout(function () { button.innerHTML = original; }, 1500);
+                    }
+                };
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(done);
+                } else {
+                    const helper = document.createElement('textarea');
+                    helper.value = text;
+                    document.body.appendChild(helper);
+                    helper.select();
+                    try { document.execCommand('copy'); } catch (e) {}
+                    document.body.removeChild(helper);
+                    done();
+                }
+            }
+
+            function recruitmentCopy(button) {
+                const input = document.getElementById('recruitment-api-key');
+                if (input) recruitmentCopyText(input.value, button);
+            }
+
+            function recruitmentCopyUrl(button) {
+                const el = document.getElementById('recruitment-base-url');
+                if (el) recruitmentCopyText(el.textContent.trim(), button);
             }
         </script>
     @endpush

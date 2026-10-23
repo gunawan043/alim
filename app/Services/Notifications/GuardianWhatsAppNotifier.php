@@ -261,7 +261,7 @@ class GuardianWhatsAppNotifier
                     ." — santri: {$student->name}\n\n".$message
                 : $message;
 
-            $ok = $this->send($target['phone'], $body, $event, $refId) || $ok;
+            $ok = $this->send($target['phone'], $this->withBrandFooter($body), $event, $refId) || $ok;
         }
 
         return $ok;
@@ -275,7 +275,7 @@ class GuardianWhatsAppNotifier
             return false;
         }
 
-        return $this->send($central, $message, $event, $refId);
+        return $this->send($central, $this->withBrandFooter($message), $event, $refId);
     }
 
     /**
@@ -334,6 +334,31 @@ class GuardianWhatsAppNotifier
         return $template;
     }
 
+
+    /**
+     * Tambahkan footer branding ALIM bila dikonfigurasi.
+     * Watermark provider tetap ditentukan paket Fonnte, bukan oleh footer ini.
+     */
+    private function withBrandFooter(string $message): string
+    {
+        $footer = '';
+
+        if (function_exists('setting')) {
+            $footer = (string) setting('wa_brand_footer', '');
+        }
+
+        if (trim($footer) === '') {
+            $footer = (string) config('whatsapp.brand_footer', '');
+        }
+
+        $footer = trim($footer);
+
+        if ($footer === '' || str_contains($message, $footer)) {
+            return $message;
+        }
+
+        return rtrim($message)."\n\n".$footer;
+    }
 
     /**
      * Toggle jenis notifikasi: settings `wa_event_{event}` menimpa config.

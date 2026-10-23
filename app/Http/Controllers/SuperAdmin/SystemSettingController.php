@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\SystemSetting;
 use App\Services\Notifications\WhatsAppGatewayService;
+use App\Services\Recruitment\RecruitmentApiClient;
 use App\Services\Sarpras\GoogleDriveService;
 use App\Services\SystemMailSettingsService;
+use App\Support\PosApiConfig;
+use App\Support\RecruitmentApiConfig;
+use App\Support\RecruitmentOutboundConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -21,6 +25,8 @@ class SystemSettingController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorizeSystemSettings();
+
         $userId = $request->route('userId');
         $tab = $request->tab ?? 'general';
 
@@ -32,11 +38,16 @@ class SystemSettingController extends Controller
             ->limit(15)
             ->get();
 
-        return view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings'));
+        return response()
+            ->view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings'))
+            ->header('Cache-Control', 'no-store, private')
+            ->header('Pragma', 'no-cache');
     }
 
     public function update(Request $request)
     {
+        $this->authorizeSystemSettings();
+
         $validated = $request->validate([
             'app_name' => 'nullable|string|max:255',
             'app_tagline' => 'nullable|string|max:255',
@@ -97,6 +108,7 @@ class SystemSettingController extends Controller
             'wa_sender' => 'nullable|string|max:50',
             'wa_central_number' => 'nullable|string|max:30',
             'wa_delivery_mode' => 'nullable|in:central,guardian,both',
+            'wa_brand_footer' => 'nullable|string|max:300',
             'wa_template_picked_up' => 'nullable|string|max:2000',
             'wa_template_returned' => 'nullable|string|max:2000',
             'wa_template_sick' => 'nullable|string|max:2000',
@@ -116,6 +128,11 @@ class SystemSettingController extends Controller
             'wa_event_visit' => 'boolean',
             'pos_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'pos_api_allowed_ips' => 'nullable|string|max:2000',
+            'recruitment_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
+            'recruitment_api_allowed_ips' => 'nullable|string|max:2000',
+            'recruitment_outbound_url' => 'nullable|url|max:500',
+            'recruitment_outbound_token' => 'nullable|string|max:2000',
+            'recruitment_outbound_token_clear' => 'boolean',
             'google_drive_enabled' => 'boolean',
             'google_drive_folder_id' => 'nullable|string|max:191',
             'google_drive_folder_url' => 'nullable|url|max:500',
@@ -241,6 +258,12 @@ class SystemSettingController extends Controller
         // Field POS API ditangani khusus di bawah (normalisasi header, IP, dan
         // pembuatan token) — keluarkan dari penyimpanan generik.
         unset($validated['pos_api_header'], $validated['pos_api_allowed_ips']);
+        unset($validated['recruitment_api_header'], $validated['recruitment_api_allowed_ips']);
+        unset(
+            $validated['recruitment_outbound_url'],
+            $validated['recruitment_outbound_token'],
+            $validated['recruitment_outbound_token_clear']
+        );
 
         if ($request->hasAny([
             'google_drive_enabled', 'google_drive_folder_id', 'google_drive_folder_url',
@@ -289,13 +312,24 @@ class SystemSettingController extends Controller
             SystemSetting::set('pos_api_header', $headerInput !== '' ? $headerInput : 'X-ALIM-POS-KEY', 'pos_api');
             SystemSetting::set('pos_api_allowed_ips', $allowedIpsNormalized, 'pos_api');
 
-            $currentKey = (string) (SystemSetting::get('pos_api_key') ?: '');
+            $currentKey = PosApiConfig::key();
+            $rawStoredKey = (string) SystemSetting::get('pos_api_key');
             $regenerated = false;
 
             if ($request->filled('regenerate_pos_key') || ($request->boolean('pos_api_enabled') && $currentKey === '')) {
-                SystemSetting::set('pos_api_key', bin2hex(random_bytes(32)), 'pos_api');
+                PosApiConfig::storeKey(PosApiConfig::generateKey());
                 SystemSetting::set('pos_api_key_generated_at', now()->toDateTimeString(), 'pos_api');
                 $regenerated = true;
+            } elseif ($rawStoredKey !== '' && ! PosApiConfig::isEncrypted($rawStoredKey) && $currentKey !== '') {
+                // Migrasi transparan: token lama yang masih plaintext dienkripsi
+                // tanpa mengubah nilainya, sehingga POS tidak perlu diubah.
+                PosApiConfig::storeKey($currentKey);
+            }
+
+            $this->writeSettingsAudit($request, 'POS_API_SETTINGS_UPDATED');
+
+            if ($regenerated) {
+                $this->writeSettingsAudit($request, 'POS_API_TOKEN_ROTATED');
             }
 
             $posFlash = $regenerated
@@ -303,9 +337,77 @@ class SystemSettingController extends Controller
                 : 'Pengaturan Integrasi POS berhasil disimpan.';
         }
 
+        // ── Tab Integrasi Recruitment: simpan pengaturan & kelola token ──
+        $recruitmentFlash = null;
+
+        if ($request->filled('recruitment_tab')) {
+            $headerInput = trim((string) $request->input('recruitment_api_header', ''));
+            $allowedIpsInput = trim((string) $request->input('recruitment_api_allowed_ips', ''));
+
+            [$allowedIpsNormalized, $invalidIps] = $this->normalizeIpAllowlist($allowedIpsInput);
+
+            if ($invalidIps !== []) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Daftar IP tidak valid: '.implode(', ', $invalidIps)
+                        .'. Gunakan format IP atau CIDR (contoh: 103.10.20.30 atau 10.0.0.0/8), pisahkan dengan koma.'
+                );
+            }
+
+            SystemSetting::set('recruitment_api_enabled', $request->boolean('recruitment_api_enabled') ? '1' : '0', 'integration');
+            SystemSetting::set('recruitment_api_header', $headerInput !== '' ? $headerInput : 'X-ALIM-RECRUITMENT-KEY', 'integration');
+            SystemSetting::set('recruitment_api_allowed_ips', $allowedIpsNormalized, 'integration');
+
+            $currentKey = RecruitmentApiConfig::key();
+            $rawStoredKey = (string) SystemSetting::get('recruitment_api_key');
+            $regenerated = false;
+
+            if ($request->filled('regenerate_recruitment_key') || ($request->boolean('recruitment_api_enabled') && $currentKey === '')) {
+                RecruitmentApiConfig::storeKey(RecruitmentApiConfig::generateKey());
+                SystemSetting::set('recruitment_api_key_generated_at', now()->toDateTimeString(), 'integration');
+                $regenerated = true;
+            } elseif ($rawStoredKey !== '' && ! RecruitmentApiConfig::isEncrypted($rawStoredKey) && $currentKey !== '') {
+                RecruitmentApiConfig::storeKey($currentKey);
+            }
+
+            $this->writeSettingsAudit($request, 'RECRUITMENT_API_SETTINGS_UPDATED');
+
+            if ($regenerated) {
+                $this->writeSettingsAudit($request, 'RECRUITMENT_API_TOKEN_ROTATED');
+            }
+
+            // Arah keluar: URL + token aplikasi recruitment.
+            if ($request->has('recruitment_outbound_url')) {
+                RecruitmentOutboundConfig::storeUrl($request->input('recruitment_outbound_url'));
+            }
+
+            $outboundToken = trim((string) $request->input('recruitment_outbound_token', ''));
+
+            if ($outboundToken !== '') {
+                RecruitmentOutboundConfig::storeToken($outboundToken);
+            } elseif ($request->boolean('recruitment_outbound_token_clear')) {
+                RecruitmentOutboundConfig::clearToken();
+            }
+
+            $this->writeSettingsAudit($request, 'RECRUITMENT_OUTBOUND_SETTINGS_UPDATED');
+
+            $recruitmentFlash = $regenerated
+                ? 'Pengaturan Integrasi Recruitment disimpan dan token baru berhasil dibuat. Salin token ke aplikasi recruitment sekarang.'
+                : 'Pengaturan Integrasi Recruitment berhasil disimpan.';
+        }
+
         // Clear related caches
         Cache::forget('system_settings');
         Cache::forget('system_settings_map');
+
+        if ($request->filled('test_recruitment_connection')) {
+            $result = app(RecruitmentApiClient::class)->testConnection();
+
+            return redirect()->back()->with(
+                $result['ok'] ? 'success' : 'error',
+                $result['message'].(! empty($result['status']) ? ' (HTTP '.$result['status'].')' : '')
+            );
+        }
 
         // Cek status device provider (Fonnte) — diagnosa cepat.
         if ($request->filled('check_device')) {
@@ -345,7 +447,21 @@ class SystemSettingController extends Controller
         }
 
         return redirect()->back()
-            ->with('success', $posFlash ?? 'Pengaturan berhasil disimpan.');
+            ->with('success', $posFlash ?? $recruitmentFlash ?? 'Pengaturan berhasil disimpan.');
+    }
+
+    /**
+     * Halaman pengaturan sistem hanya untuk Super Admin / System Admin.
+     *
+     * Defense-in-depth: middleware role.access hanya memvalidasi {userId}
+     * pada URL, bukan role pengguna. Guard ini melindungi kredensial
+     * (WA, email, Google Drive, token POS) dari akses user biasa.
+     */
+    private function authorizeSystemSettings(): void
+    {
+        if (! canPermission('super-admin-only')) {
+            abort(403, 'Akses hanya untuk Super Admin.');
+        }
     }
 
     private function writeSettingsAudit(Request $request, string $action): void
@@ -369,6 +485,8 @@ class SystemSettingController extends Controller
 
     public function testEmail(Request $request)
     {
+        $this->authorizeSystemSettings();
+
         $user = $request->user();
 
         if (! $user?->email) {
@@ -421,6 +539,8 @@ class SystemSettingController extends Controller
 
     public function testGoogleDrive(Request $request)
     {
+        $this->authorizeSystemSettings();
+
         // Simpan dulu nilai dari form, karena tombol Test ada di form pengaturan.
         try {
             $this->saveGoogleDriveSettings($request);
@@ -576,6 +696,8 @@ class SystemSettingController extends Controller
 
     public function clearCache()
     {
+        $this->authorizeSystemSettings();
+
         Cache::flush();
 
         return redirect()->back()

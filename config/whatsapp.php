@@ -29,6 +29,13 @@ return [
     'delivery_mode' => env('WA_DELIVERY_MODE', 'central'),
 
     /*
+    | Footer branding yang ditambahkan ke akhir pesan (opsional).
+    | Ini BUKAN penghapus watermark provider; watermark Fonnte hanya
+    | hilang pada paket berbayar. Contoh: "ALIM — https://alim.sch.id"
+    */
+    'brand_footer' => env('WA_BRAND_FOOTER', ''),
+
+    /*
     | Toggle jenis notifikasi (dapat ditimpa settings `wa_event_{key}`).
     */
     'events' => [
