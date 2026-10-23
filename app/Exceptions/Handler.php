@@ -66,6 +66,8 @@ class Handler extends ExceptionHandler
             if ($e instanceof ValidationException) {
                 $payload['error']['message'] = 'Validasi gagal.';
                 $payload['error']['errors'] = $e->errors();
+                // Kompatibilitas klien yang membaca errors di root response.
+                $payload['errors'] = $e->errors();
                 $status = 422;
             }
 

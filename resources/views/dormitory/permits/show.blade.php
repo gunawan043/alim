@@ -661,6 +661,22 @@
                             <i class="ri-edit-box-line me-1"></i> Ubah Status
                         </button>
                     @endif
+                    @if(! in_array($permit->status, ['returned', 'rejected'], true))
+                        <form method="POST" action="{{ route('user.asrama.permits.revoke-card', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'permitUuid' => $permit->id]) }}"
+                              onsubmit="return confirm('Cabut QR kartu ini? Kartu lama tidak dapat digunakan lagi.')">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger w-100 btn-sm">
+                                <i class="ri-qr-scan-2-line me-1"></i> Cabut QR Kartu
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('user.asrama.permits.regenerate-card', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'permitUuid' => $permit->id]) }}"
+                              onsubmit="return confirm('Buat QR baru? Kartu harus dicetak ulang setelah ini.')">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-primary w-100 btn-sm">
+                                <i class="ri-refresh-line me-1"></i> Regenerate QR
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
             @endif

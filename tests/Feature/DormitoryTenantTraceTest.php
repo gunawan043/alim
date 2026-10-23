@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DormitoryTenantTraceTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_trace_broadcasting_auth(): void
     {
         $userId = DB::table('users')->value('id');

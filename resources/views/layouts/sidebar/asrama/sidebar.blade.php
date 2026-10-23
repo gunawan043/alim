@@ -270,6 +270,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.visitor-restrictions.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.visitor-restrictions.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-forbid-2-line"></i>
+        <span>Blacklist Tamu</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.room-moves.')
         ? ' active' : ''

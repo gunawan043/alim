@@ -388,6 +388,22 @@ Route::pattern('adminBookId', '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9
 | PUBLIC AUTH ROUTES (NO MIDDLEWARE!)
 |--------------------------------------------------------------------------
 */
+Route::get('/dashboard', fn () => redirect()->route('root'))->middleware('auth')->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('verify-email', [\App\Http\Controllers\Auth\EmailVerificationPromptController::class, '__invoke'])->name('verification.notice');
+    Route::get('verify-email/{id}/{hash}', [\App\Http\Controllers\Auth\VerifyEmailController::class, '__invoke'])
+        ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+    Route::post('email/verification-notification', [\App\Http\Controllers\Auth\EmailVerificationNotificationController::class, 'store'])
+        ->middleware(['throttle:6,1'])->name('verification.send');
+});
+
 Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login')->name('login.process');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
@@ -2276,6 +2292,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/penghuni/find-student', [DormitoryResidentController::class, 'findStudent'])->name('residents.find-student');
                 Route::get('/{asramaUuid}/penghuni/{residentUuid}', [DormitoryResidentController::class, 'show'])->name('residents.show');
                 Route::post('/{asramaUuid}/penghuni/{residentUuid}/checkout', [DormitoryResidentController::class, 'checkout'])->name('residents.checkout');
+                Route::post('/{asramaUuid}/penghuni/{residentUuid}/consent', [DormitoryResidentController::class, 'storeConsent'])->name('residents.consent.store');
+                Route::post('/{asramaUuid}/penghuni/{residentUuid}/consent/{consentUuid}/revoke', [DormitoryResidentController::class, 'revokeConsent'])->name('residents.consent.revoke');
 
                 // ── ABSENSI ───────────────────────────────────────────
                 Route::get('/{asramaUuid}/absensi', [DormitoryAttendanceController::class, 'index'])->name('attendance.index');
@@ -2295,6 +2313,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/{permitUuid}/return', [DormitoryPermitController::class, 'returnRecord'])->name('permits.return');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/pickup', [DormitoryPermitController::class, 'pickup'])->name('permits.pickup');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/pickup-authorization', [DormitoryPermitController::class, 'authorizePickup'])->name('permits.pickup-authorization');
+                Route::post('/{asramaUuid}/izin/{permitUuid}/revoke-card', [DormitoryPermitController::class, 'revokeCard'])->name('permits.revoke-card');
+                Route::post('/{asramaUuid}/izin/{permitUuid}/regenerate-card', [DormitoryPermitController::class, 'regenerateCard'])->name('permits.regenerate-card');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/status', [DormitoryPermitController::class, 'updateStatus'])->name('permits.update-status');
                 Route::get('/{asramaUuid}/izin/{permitUuid}/card', [DormitoryPermitController::class, 'card'])->name('permits.card');
 
@@ -2413,6 +2433,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/reject', [DormitoryVisitLogController::class, 'reject'])->name('visits.reject');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-in', [DormitoryVisitLogController::class, 'checkIn'])->name('visits.check-in');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-out', [DormitoryVisitLogController::class, 'checkOut'])->name('visits.check-out');
+                // ── BLACKLIST TAMU ───────────────────────────────────
+                Route::get('/{asramaUuid}/blacklist-tamu', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'index'])->name('visitor-restrictions.index');
+                Route::post('/{asramaUuid}/blacklist-tamu', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'store'])->name('visitor-restrictions.store');
+                Route::post('/{asramaUuid}/blacklist-tamu/{restrictionUuid}/toggle', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'toggle'])->name('visitor-restrictions.toggle');
+                Route::delete('/{asramaUuid}/blacklist-tamu/{restrictionUuid}', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'destroy'])->name('visitor-restrictions.destroy');
+
                 Route::get('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scan'])->name('visits.scan')->withoutMiddleware([EnsurePermission::class]);
                 Route::post('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scanStore'])->name('visits.scan.store')->middleware('throttle:30,1');
                 Route::get('/kunjungan/verify', [DormitoryVisitLogController::class, 'verify'])->name('visits.verify')->withoutMiddleware([EnsurePermission::class]);

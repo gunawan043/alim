@@ -124,6 +124,98 @@
         </div>
     </div>
 
+    {{-- Persetujuan Data Wali (PDP) --}}
+    <div class="card mb-4">
+        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0"><i class="ri-shield-check-line me-2 text-primary"></i>Persetujuan Data Wali</h5>
+                <small class="text-muted">Consent untuk pemrosesan data asrama, izin, kunjungan, dan riwayat penjemputan.</small>
+            </div>
+            @if($activeConsent)
+                <span class="badge bg-success-subtle text-success">Aktif · {{ $activeConsent->consent_version }}</span>
+            @else
+                <span class="badge bg-warning-subtle text-warning">Belum ada consent</span>
+            @endif
+        </div>
+        <div class="card-body">
+            @if($activeConsent)
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <small class="text-muted d-block">Wali</small>
+                        <strong>{{ $activeConsent->guardian_name }}</strong>
+                        <div class="small text-muted">{{ $activeConsent->relationship ?: '—' }} · {{ $activeConsent->phone ?: '—' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Disetujui</small>
+                        <strong>{{ $activeConsent->consented_at?->format('d/m/Y H:i') }}</strong>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted d-block">Dicatat oleh</small>
+                        <strong>{{ $activeConsent->recorder?->name ?? '—' }}</strong>
+                    </div>
+                    <div class="col-md-2 text-md-end">
+                        <form method="POST" action="{{ route('user.asrama.residents.consent.revoke', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentUuid' => $resident->id, 'consentUuid' => $activeConsent->id]) }}" onsubmit="return confirm('Cabut persetujuan data wali?')">
+                            @csrf
+                            <button class="btn btn-sm btn-outline-danger w-100">Cabut</button>
+                        </form>
+                    </div>
+                </div>
+            @else
+                <form method="POST" action="{{ route('user.asrama.residents.consent.store', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentUuid' => $resident->id]) }}">
+                    @csrf
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nama Wali <span class="text-danger">*</span></label>
+                            <input type="text" name="guardian_name" class="form-control" value="{{ old('guardian_name', $resident->student?->guardian_name ?: $resident->student?->father_name) }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Hubungan</label>
+                            <input type="text" name="relationship" class="form-control" value="{{ old('relationship', 'Wali') }}" placeholder="Ayah/Ibu/Wali">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">No. HP</label>
+                            <input type="text" name="phone" class="form-control" value="{{ old('phone', $resident->student?->guardian_phone ?: $resident->student?->father_phone) }}">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="consent" id="dataConsent" value="1" required>
+                                <label class="form-check-label small" for="dataConsent">
+                                    Wali menyetujui pemrosesan data santri untuk operasional asrama, izin, kunjungan, dan penjemputan sesuai kebijakan privasi pondok.
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Catatan</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Opsional">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100">Simpan Consent</button>
+                        </div>
+                    </div>
+                </form>
+            @endif
+
+            @if($consents->count() > 1)
+                <hr>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Tanggal</th><th>Wali</th><th>Versi</th><th>Status</th></tr></thead>
+                        <tbody>
+                        @foreach($consents as $consent)
+                            <tr>
+                                <td class="small">{{ $consent->consented_at?->format('d/m/Y H:i') }}</td>
+                                <td class="small">{{ $consent->guardian_name }}</td>
+                                <td class="small">{{ $consent->consent_version }}</td>
+                                <td><span class="badge {{ $consent->revoked_at ? 'bg-secondary-subtle text-secondary' : 'bg-success-subtle text-success' }}">{{ $consent->revoked_at ? 'Dicabut' : 'Aktif' }}</span></td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
+
     {{-- ============================================================
          TAB NAVIGATION
     ============================================================ --}}

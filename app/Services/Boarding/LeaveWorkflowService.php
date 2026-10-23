@@ -274,12 +274,39 @@ class LeaveWorkflowService
             return DormitoryPermit::create($data);
         });
 
-        DB::afterCommit(function () use ($permit, $isEmergency) {
+        DB::afterCommit(function () use ($permit, $isEmergency, $pickupAuthorization) {
             Event::dispatch(new BoardingPermitSubmitted($permit));
 
             // ── Emergency WA notification to kepala_asrama ──────────────
             if ($isEmergency) {
                 $this->notifyKepalaAsramaOfEmergency($permit);
+            }
+
+            // ── Notifikasi penjemput di luar mahrom ─────────────────────
+            if (($pickupAuthorization['status'] ?? null) === 'pending') {
+                try {
+                    app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff(
+                        $permit->dormitory_id,
+                        [
+                            'module' => 'dormitory',
+                            'reference_type' => 'dormitory_permit',
+                            'reference_id' => $permit->id,
+                            'type' => 'warning',
+                            'action' => 'pickup_authorization_pending',
+                            'title' => 'Penjemput perlu diverifikasi: '.($permit->student?->name ?? '-'),
+                            'message' => 'Penjemput '.($permit->companion_name ?? '-').' di luar daftar mahrom. Setujui/tolak sebelum scan keluar.',
+                            'action_url' => route('user.asrama.permits.show', [
+                                'userId' => auth()->id(),
+                                'asramaUuid' => $permit->dormitory_id,
+                                'permitUuid' => $permit->id,
+                            ]),
+                            'action_text' => 'Verifikasi Penjemput',
+                            'priority' => 'high',
+                        ]
+                    );
+                } catch (\Throwable $e) {
+                    \Log::warning('Notif penjemput pending gagal: '.$e->getMessage());
+                }
             }
         });
 

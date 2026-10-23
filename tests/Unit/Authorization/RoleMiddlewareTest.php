@@ -27,13 +27,13 @@ final class RoleMiddlewareTest extends TestCase
         );
 
         // Should first try canPermission before hasRole
-        $canPos = strpos($source, 'canPermission');
+        $canPos = strpos($source, 'getPermissions');
         $hasRolePos = strpos($source, 'hasRole');
 
-        $this->assertNotFalse($canPos, 'RoleMiddleware should call canPermission() for snapshot-based checks');
+        $this->assertNotFalse($canPos, 'RoleMiddleware should read snapshot permissions before falling back to hasRole');
         $this->assertGreaterThan(-1, $hasRolePos);
         $this->assertLessThan($hasRolePos, $canPos,
-            'RoleMiddleware must try canPermission() before falling back to hasRole()'
+            'RoleMiddleware must try snapshot permissions before falling back to hasRole()'
         );
     }
 

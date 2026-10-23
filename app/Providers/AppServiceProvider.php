@@ -55,6 +55,7 @@ use App\Models\DormitoryStaffAssignment;
 use App\Models\GradeLevel;
 use App\Models\GtkAdditionalTask;
 use App\Models\GtkEmployment;
+use App\Models\GtkProfile;
 use App\Models\InstitutionDecree;
 use App\Models\OtherTeacherTask;
 use App\Models\PersonalAccessToken;
@@ -69,6 +70,7 @@ use App\Observers\DormitoryResidentObserver;
 use App\Observers\DormitoryStaffAssignmentObserver;
 use App\Observers\GtkAdditionalTaskObserver;
 use App\Observers\GtkEmploymentObserver;
+use App\Observers\GtkProfileObserver;
 use App\Observers\InstitutionDecreeObserver;
 use App\Observers\OtherTeacherTaskObserver;
 use App\Observers\StudyGroupObserver;
@@ -272,6 +274,7 @@ class AppServiceProvider extends ServiceProvider
 
         BoardingPolicy::observe(BoardingPolicyObserver::class);
         GtkEmployment::observe(GtkEmploymentObserver::class);
+        GtkProfile::observe(GtkProfileObserver::class);
         DormitoryStaffAssignment::observe(DormitoryStaffAssignmentObserver::class);
 
         // Penugasan mengajar → provisioning buku nilai/SGS + notifikasi + pindah kepemilikan.

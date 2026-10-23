@@ -65,7 +65,8 @@ class DashboardCacheBumpTest extends TestCase
         Cache::put('sarpras_dashboard_version', 10);
 
         $controller = new SarprasAsetController(
-            app(AssetEventLogger::class)
+            app(AssetEventLogger::class),
+            app(\App\Services\Sarpras\AssetStatusTransitionService::class),
         );
         $reflection = new \ReflectionClass($controller);
         $method = $reflection->getMethod('bumpDashboardCache');

@@ -5,7 +5,8 @@ namespace Tests\Feature\Mobile;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryResident;
-use App\Models\Room;
+use App\Models\DormitoryRoom;
+use App\Models\DormitoryWing;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMahrom;
@@ -95,15 +96,27 @@ class MobileMahromIntegrationTest extends TestCase
     private function createResident(Student $student): DormitoryResident
     {
         $dorm = Dormitory::create([
+            'work_unit_id' => $student->school?->work_unit_id,
             'school_id' => $student->school_id,
             'name' => 'Asrama A',
             'code' => 'A-'.Str::random(4),
+            'gender' => 'putra',
         ]);
 
-        $room = Room::create([
+        $wing = DormitoryWing::create([
             'dormitory_id' => $dorm->id,
+            'name' => 'Gedung A',
+            'code' => 'A-'.Str::random(4),
+            'gender' => 'putra',
+        ]);
+
+        $room = DormitoryRoom::create([
+            'dormitory_id' => $dorm->id,
+            'wing_id' => $wing->id,
             'name' => '101',
             'code' => '101',
+            'gender' => 'putra',
+            'capacity' => 4,
         ]);
 
         $ay = AcademicYear::create([
@@ -139,7 +152,7 @@ class MobileMahromIntegrationTest extends TestCase
             'is_active' => false,
         ]);
 
-        $response = $this->postJson('/api/mobile/v1/dormitory-permit', [
+        $response = $this->postJson('/api/mobile/v1/dormitory/permit', [
             'student_id' => $stu->id,
             'permit_type' => 'pulang',
             'destination' => 'Rumah',
@@ -171,7 +184,7 @@ class MobileMahromIntegrationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->postJson('/api/mobile/v1/dormitory-permit', [
+        $response = $this->postJson('/api/mobile/v1/dormitory/permit', [
             'student_id' => $stu->id,
             'permit_type' => 'pulang',
             'destination' => 'Rumah',
@@ -201,7 +214,7 @@ class MobileMahromIntegrationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $response = $this->postJson('/api/mobile/v1/dormitory-permit', [
+        $response = $this->postJson('/api/mobile/v1/dormitory/permit', [
             'student_id' => $stu->id,
             'permit_type' => 'pulang',
             'destination' => 'Rumah',

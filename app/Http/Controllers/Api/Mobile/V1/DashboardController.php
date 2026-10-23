@@ -118,11 +118,13 @@ class DashboardController extends Controller
             ->count();
         $pendingPermits += $dpCount;
 
-        // Pending returns (DormitoryReturnLog)
-        $pendingReturns = \DB::table('dormitory_return_logs')
-            ->whereIn('student_id', $studentIds)
-            ->where('status', 'registered')
-            ->count();
+        // Pending returns (DormitoryReturnLog) — tabel opsional pada instalasi lama.
+        $pendingReturns = \Illuminate\Support\Facades\Schema::hasTable('dormitory_return_logs')
+            ? \DB::table('dormitory_return_logs')
+                ->whereIn('student_id', $studentIds)
+                ->where('status', 'registered')
+                ->count()
+            : 0;
 
         // Pending visits (DormitoryVisitLog)
         $pendingVisits = \DB::table('dormitory_visit_logs')

@@ -244,6 +244,15 @@ class BukuNilaiKonsolidasiTest extends TestCase
             'updated_at' => now(),
         ]);
 
+        DB::table('student_class_histories')->insert([
+            'id' => (string) Str::uuid(),
+            'student_id' => $studentId,
+            'study_group_id' => $this->studyGroup->id,
+            'academic_year_id' => $this->ay->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         // Guru pengampu tetapi bukan wali dan bukan kurikulum → ditolak.
         $this->actingAs($this->guruA)
             ->post("/{$this->guruA->id}/schools/nilai-kelas/{$this->studyGroup->id}/rapor/{$studentId}/catatan", [

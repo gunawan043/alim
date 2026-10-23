@@ -457,6 +457,36 @@ class DormitoryPermitController extends Controller
     }
 
     /**
+     * Cabut QR kartu secara manual (kartu hilang/difoto pihak lain).
+     */
+    public function revokeCard(Request $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
+
+        $permit->revokeScanToken('QR dicabut manual oleh '.auth()->user()?->name.' pada '.now()->format('d/m/Y H:i'));
+
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_QR_REVOKED', 'dormitory_permits', $permit->id);
+
+        return back()->with('success', 'QR kartu izin berhasil dicabut. Kartu lama tidak dapat digunakan lagi.');
+    }
+
+    /**
+     * Buat token QR baru untuk kartu izin.
+     */
+    public function regenerateCard(Request $request, string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
+
+        $permit->forceRegenerateScanToken();
+
+        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_QR_REGENERATED', 'dormitory_permits', $permit->id);
+
+        return back()->with('success', 'QR kartu izin berhasil dibuat ulang. Silakan cetak ulang kartu.');
+    }
+
+    /**
      * AJAX endpoint: hitung sisa kuota jika izin disetujui.
      * Mengembalikan informasi used / quota / over-quota untuk modal UI.
      */

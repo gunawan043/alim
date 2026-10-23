@@ -159,6 +159,10 @@ class DormitoryVisitLogController extends Controller
                 ->with('success', $autoApproved
                     ? 'Permintaan kunjungan diajukan dan langsung disetujui.'
                     : 'Permintaan kunjungan berhasil diajukan.');
+        } catch (\InvalidArgumentException $e) {
+            return redirect()->back()
+                ->with('error', $e->getMessage())
+                ->withInput();
         } catch (QuotaExceededException $e) {
             \Log::warning('Kuota kunjungan habis', [
                 'student_id' => $data['student_id'] ?? null,

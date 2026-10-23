@@ -345,7 +345,10 @@ class KaldikController extends Controller
             }
             $validated['category'] = Kaldik::CATEGORY_AGENDA;
             $validated['visibility'] = Kaldik::VISIBILITY_SATUAN;
-            $validated['work_unit_id'] = $this->getUserWorkUnitId($request);
+            // Super Admin dapat membuat agenda untuk satuan kerja lain.
+            $validated['work_unit_id'] = ($canKaldik && ! empty($validated['work_unit_id']))
+                ? $validated['work_unit_id']
+                : $this->getUserWorkUnitId($request);
         } else {
             $validated['category'] = Kaldik::CATEGORY_AGENDA;
             $validated['visibility'] = Kaldik::VISIBILITY_PRIBADI;

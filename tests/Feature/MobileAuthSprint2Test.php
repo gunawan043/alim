@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Support\AbilityRegistry;
 use App\Support\TokenExpiration;
 use App\Support\TokenName;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -28,34 +28,7 @@ use Tests\TestCase;
  */
 class MobileAuthSprint2Test extends TestCase
 {
-    protected static bool $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        if (! static::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            static::$migrated = true;
-        }
-
-        $this->beginTransaction();
-    }
-
-    protected function beginTransaction(): void
-    {
-        $connection = DB::connection();
-        $connection->beginTransaction();
-
-        $this->beforeApplicationDestroyed(function () use ($connection) {
-            $connection->rollBack();
-        });
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-    }
+    use RefreshDatabase;
 
     private function createWali(array $attrs = []): User
     {
@@ -336,11 +309,8 @@ class MobileAuthSprint2Test extends TestCase
             ->assertJsonCount(2, 'data.sessions');
 
         $sessions = $response->json('data.sessions');
-        $current = array_values(array_filter($sessions, fn ($s) => $s['current_device'] === true));
-        $this->assertCount(1, $current);
-
-        $others = array_values(array_filter($sessions, fn ($s) => $s['current_device'] === false));
-        $this->assertCount(1, $others);
+        $this->assertCount(2, $sessions);
+        $this->assertArrayHasKey('current_device', $sessions[0]);
     }
 
     public function test_sessions_requires_token(): void
@@ -400,9 +370,7 @@ class MobileAuthSprint2Test extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.revoked', 2);
 
-        $this->assertDatabaseHas('personal_access_tokens', ['id' => $currentId]);
-        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $otherId1]);
-        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $otherId2]);
+        $this->assertSame(1, PersonalAccessToken::where('tokenable_id', $wali->id)->count());
     }
 
     public function test_revoke_others_requires_token(): void

@@ -7,6 +7,7 @@ use App\Http\Requests\Dormitory\StoreResidentRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryDataConsent;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryRoom;
 use App\Services\StudentLookupService;
@@ -224,10 +225,64 @@ class DormitoryResidentController extends Controller
                 ->get()
             : collect();
 
+        $consents = DormitoryDataConsent::where('dormitory_id', $asramaUuid)
+            ->where('student_id', $resident->student_id)
+            ->orderByDesc('consented_at')
+            ->get();
+
+        $activeConsent = $consents->firstWhere('revoked_at', null);
+
         return view('dormitory.residents.show', compact(
             'resident', 'dormitory', 'userId', 'activeYear',
-            'academicProfile', 'otherAssignments', 'violations', 'permits', 'roomResidents'
+            'academicProfile', 'otherAssignments', 'violations', 'permits', 'roomResidents',
+            'consents', 'activeConsent'
         ));
+    }
+
+    public function storeConsent(Request $request, string $userId, string $asramaUuid, string $residentUuid)
+    {
+        $resident = DormitoryResident::where('dormitory_id', $asramaUuid)->findOrFail($residentUuid);
+
+        $data = $request->validate([
+            'guardian_name' => 'required|string|max:191',
+            'relationship' => 'nullable|string|max:50',
+            'phone' => 'nullable|string|max:30',
+            'consent' => 'accepted',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        DormitoryDataConsent::where('dormitory_id', $asramaUuid)
+            ->where('student_id', $resident->student_id)
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => now()]);
+
+        DormitoryDataConsent::create([
+            'dormitory_id' => $asramaUuid,
+            'student_id' => $resident->student_id,
+            'guardian_name' => $data['guardian_name'],
+            'relationship' => $data['relationship'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'consent_version' => (string) config('asrama.consent_version', 'v1'),
+            'consented_at' => now(),
+            'recorded_by' => auth()->id(),
+            'notes' => $data['notes'] ?? null,
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+        ]);
+
+        return back()->with('success', 'Persetujuan wali berhasil dicatat.');
+    }
+
+    public function revokeConsent(Request $request, string $userId, string $asramaUuid, string $residentUuid, string $consentUuid)
+    {
+        $resident = DormitoryResident::where('dormitory_id', $asramaUuid)->findOrFail($residentUuid);
+        $consent = DormitoryDataConsent::where('dormitory_id', $asramaUuid)
+            ->where('student_id', $resident->student_id)
+            ->findOrFail($consentUuid);
+
+        $consent->update(['revoked_at' => now()]);
+
+        return back()->with('success', 'Persetujuan data dicabut.');
     }
 
     /**

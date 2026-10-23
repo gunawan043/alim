@@ -294,6 +294,17 @@ class DormitoryPermit extends Model
             : now()->addDays(30);
     }
 
+    public function forceRegenerateScanToken(): string
+    {
+        $this->update([
+            'scan_token' => null,
+            'scan_token_expires_at' => null,
+            'scan_token_revoked_at' => null,
+        ]);
+
+        return $this->getOrCreateScanToken();
+    }
+
     public function revokeScanToken(?string $reason = null): void
     {
         $this->update([

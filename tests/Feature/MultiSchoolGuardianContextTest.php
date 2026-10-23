@@ -10,8 +10,8 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\WaliSantri;
-use Illuminate\Foundation\Http\Request;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Http\Request;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -36,30 +36,7 @@ use Tests\TestCase;
  */
 class MultiSchoolGuardianContextTest extends TestCase
 {
-    protected static bool $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        if (! static::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            static::$migrated = true;
-        }
-
-        $this->beginDatabaseTransaction();
-    }
-
-    protected function beginDatabaseTransaction(): void
-    {
-        $db = $this->app->make('db');
-        $connection = $db->connection();
-        $connection->beginTransaction();
-
-        $this->beforeApplicationDestroyed(function () use ($connection) {
-            $connection->rollBack();
-        });
-    }
+    use RefreshDatabase;
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -546,7 +523,7 @@ class MultiSchoolGuardianContextTest extends TestCase
         (new BindOrganizationContext)->handle($request, fn ($r) => response('ok'));
 
         $context = app(OrganizationContext::class);
-        $this->assertSame('unknown', $context->schoolId);
+        $this->assertNull($context->schoolId);
     }
 
     // ════════════════════════════════════════════════════════════════════════

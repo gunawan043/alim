@@ -125,6 +125,19 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->runInBackground();
 
+        // Backup database + file asrama otomatis setiap dini hari.
+        $schedule->command('app:backup --keep=14 --with-files --verify')
+            ->dailyAt('02:15')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->emailOutputOnFailure(config('mail.admin_address'));
+
+        // Retensi PDP data asrama: anonimkan data lama & bersihkan audit QR.
+        $schedule->command('dormitory:purge-retention')
+            ->monthlyOn(1, '03:30')
+            ->withoutOverlapping()
+            ->runInBackground();
+
         // Pengingat operasional Sarpras: kebersihan, program, perawatan, perbaikan.
         $schedule->command('sarpras:send-reminders')
             ->dailyAt('07:15')

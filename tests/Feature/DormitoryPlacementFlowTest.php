@@ -240,7 +240,7 @@ class DormitoryPlacementFlowTest extends TestCase
 
         $resident->refresh();
         $this->assertFalse((bool) $resident->is_active, 'Penghuni ditutup saat mutasi.');
-        $this->assertStringContainsString('Mutasi', (string) $resident->check_out_reason);
+        $this->assertStringContainsString('Mutasi', (string) $resident->notes);
         $this->assertSame('non_boarding', $this->santriPutra2->fresh()->boarding_status);
     }
 

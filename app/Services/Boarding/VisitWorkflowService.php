@@ -13,6 +13,7 @@ use App\Models\BoardingPolicy;
 use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
 use App\Models\DormitoryVisitLog;
+use App\Models\DormitoryVisitorRestriction;
 use App\Models\Student;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,8 @@ class VisitWorkflowService
     public function submit(array $data, string $dormitoryId): DormitoryVisitLog
     {
         $student = ! empty($data['student_id']) ? Student::find($data['student_id']) : null;
+
+        $this->assertVisitorNotRestricted($data, $dormitoryId);
 
         $visitorCount = max(1, (int) ($data['visitor_count'] ?? 1));
 
@@ -81,6 +84,35 @@ class VisitWorkflowService
         return DB::transaction(fn () => DormitoryVisitLog::create($data));
     }
 
+
+    private function assertVisitorNotRestricted(array $data, string $dormitoryId): void
+    {
+        $name = trim((string) ($data['visitor_name'] ?? ''));
+        $idNumber = trim((string) ($data['visitor_id_number'] ?? ''));
+        $phone = preg_replace('/\D+/', '', (string) ($data['visitor_phone'] ?? ''));
+
+        $restriction = DormitoryVisitorRestriction::query()
+            ->where('dormitory_id', $dormitoryId)
+            ->where('is_active', true)
+            ->where(function ($query) use ($name, $idNumber, $phone) {
+                if ($idNumber !== '') {
+                    $query->orWhere('id_number', $idNumber);
+                }
+                if ($phone !== '') {
+                    $query->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '+', '') = ?", [$phone]);
+                }
+                if ($name !== '') {
+                    $query->orWhereRaw('LOWER(visitor_name) = ?', [mb_strtolower($name)]);
+                }
+            })
+            ->first();
+
+        if ($restriction) {
+            throw new \InvalidArgumentException(
+                'Tamu ini masuk blacklist asrama: '.$restriction->reason
+            );
+        }
+    }
 
     /**
      * Kebijakan boarding aktif untuk sebuah asrama (prioritas assignment).

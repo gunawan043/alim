@@ -19,7 +19,7 @@ use App\Models\User;
 use App\Observers\GtkProfileObserver;
 use App\Observers\TeachingAssignmentObserver;
 use App\Services\GtkAnalysisEngine;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -27,26 +27,13 @@ use Tests\TestCase;
 
 class GtkRecalculationPipelineTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Register observers that are not registered in production AppServiceProvider
-        GtkProfile::observe(GtkProfileObserver::class);
-        TeachingAssignment::observe(TeachingAssignmentObserver::class);
-    }
-
-    protected function beginDatabaseTransaction(): void
-    {
-        $db = $this->app->make('db');
-        $connection = $db->connection();
-        $connection->beginTransaction();
-
-        $this->beforeApplicationDestroyed(function () use ($connection) {
-            $connection->rollBack();
-        });
+        // Observer sudah didaftarkan oleh AppServiceProvider.
     }
 
     /* ------------------------------------------------------------------
