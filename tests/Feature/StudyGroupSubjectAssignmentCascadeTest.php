@@ -16,7 +16,7 @@ use App\Models\SubjectKktp;
 use App\Models\User;
 use App\Observers\StudyGroupSubjectObserver;
 use App\Services\StudyGroupSubjectProvisioner;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -25,7 +25,7 @@ use Tests\TestCase;
 
 class StudyGroupSubjectAssignmentCascadeTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {

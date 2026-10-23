@@ -37,6 +37,8 @@ class WaliSantri extends Model
 
     public const STATUS_SUSPENDED = 'suspended';
 
+    public const STATUS_REVOKED = 'revoked';
+
     public const ROLE_AYAH = 'ayah';
 
     public const ROLE_IBU = 'ibu';

@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Models\WaliRegistrationToken;
 use App\Models\WaliSantri;
 use Illuminate\Foundation\Http\Request;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -37,30 +37,7 @@ use Tests\TestCase;
  */
 class TenantIsolationRegressionTest extends TestCase
 {
-    protected static bool $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        if (! static::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            static::$migrated = true;
-        }
-
-        $this->beginDatabaseTransaction();
-    }
-
-    protected function beginDatabaseTransaction(): void
-    {
-        $db = $this->app->make('db');
-        $connection = $db->connection();
-        $connection->beginTransaction();
-
-        $this->beforeApplicationDestroyed(function () use ($connection) {
-            $connection->rollBack();
-        });
-    }
+    use RefreshDatabase;
 
     // ═══════════════════════════════════════════════════════════════════
     // Fixture Builders

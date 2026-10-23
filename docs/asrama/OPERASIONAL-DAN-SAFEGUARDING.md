@@ -76,3 +76,36 @@ Data santri **tidak** diimpor dari modul asrama; sumbernya tetap Satuan Pendidik
 - kartu hilang/revoke;
 - cetak PDF single dan massal;
 - restore backup dan scan ulang.
+
+## 8. Revoke/regenerate kartu
+
+- Tombol **Cabut QR Kartu** membuat token lama tidak berlaku.
+- Tombol **Regenerate QR** membuat token baru; kartu wajib dicetak ulang.
+- Gunakan jika kartu hilang, difoto pihak lain, atau penjemput berubah.
+
+## 9. Backup otomatis
+
+```bash
+php artisan app:backup --keep=14 --with-files --verify
+php artisan app:backup:verify --latest
+php artisan app:backup:restore storage/app/backups/backup_xxx.sql.gz --database=alim_restore_drill --force
+```
+
+Backup berjalan setiap hari pukul 02:15. Restore harus diuji ke database drill/staging, bukan langsung ke produksi.
+
+## 10. Consent dan retensi PDP
+
+- Consent wali dicatat dari halaman Detail Santri → Persetujuan Data Wali.
+- Retensi:
+  - kunjungan dianonimkan setelah 24 bulan;
+  - izin dianonimkan setelah 36 bulan;
+  - audit scan QR dihapus setelah 365 hari.
+- Jalankan dry-run:
+
+```bash
+php artisan dormitory:purge-retention --dry-run
+```
+
+## 11. Blacklist tamu
+
+Menu **Operasional → Blacklist Tamu** menolak pengajuan kunjungan berdasarkan nama, NIK, atau nomor HP. Notifikasi penjemput pending dikirim ke staf asrama dan Kepala Asrama.
