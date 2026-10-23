@@ -948,6 +948,7 @@ class LeaveWorkflowService
         });
 
         $this->notifyPermitGuardian($permit->fresh(['student']), 'returned');
+        app(\App\Services\DormitoryService::class)->notifyPermitReturnedInApp($permit->fresh(['student']));
 
         return $permit;
     }

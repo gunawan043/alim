@@ -12,6 +12,7 @@ use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryReward;
 use App\Models\DormitoryViolation;
+use App\Models\Student;
 use App\Models\StudentHealthPermit;
 use App\Models\StudentMahrom;
 
@@ -36,29 +37,12 @@ class DormitoryService
             return;
         }
 
-        $mahrom = $student->mahroms()->where('is_primary', true)->first()
-            ?? $student->mahroms()->where('is_active', true)->first();
-
         try {
             app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
                 ->notifyPermitApproved($permit);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('WA notif approve izin gagal: '.$e->getMessage());
         }
-
-        $this->notifService->sendToRole('Wali Santri', [
-            'module' => 'dormitory',
-            'reference_type' => 'dormitory_permit',
-            'reference_id' => $permit->id,
-            'type' => 'success',
-            'action' => 'permit_approved',
-            'title' => "Izin Pulang Disetujui — {$student->name}",
-            'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", izin pulang untuk {$student->name} telah disetujui.\n"
-                ."Penjemput: {$permit->companion_name} ({$permit->companion_relation})\n"
-                ."Rencanaback: {$permit->expected_return_datetime->format('d/m/Y H:i')}",
-            'send_whatsapp' => false,
-            'priority' => 'medium',
-        ]);
     }
 
     /**
@@ -95,8 +79,9 @@ class DormitoryService
             \Illuminate\Support\Facades\Log::warning('WA notif pelanggaran gagal: '.$e->getMessage());
         }
 
-        // In-app untuk akun wali (tanpa WA agar tidak dobel dengan kiriman langsung).
-        $this->notifService->sendToRole('Wali Santri', [
+        // Notifikasi sistem untuk setiap akun wali yang terhubung ke santri.
+        // Baris ini juga menjadi sumber data API mobile wali di masa depan.
+        $this->notifyGuardiansForStudent($student, [
             'module' => 'dormitory',
             'reference_type' => 'dormitory_violation',
             'reference_id' => $violation->id,
@@ -107,7 +92,18 @@ class DormitoryService
                 ."pelanggaran {$violation->violation_type} (Kategori: {$categoryLabel})\n"
                 ."dengan poin: {$violation->points}.\n"
                 ."Tindakan: {$violation->action_taken}",
+            'data' => [
+                'student_id' => $student->id,
+                'student_name' => $student->name,
+                'dormitory_id' => $violation->dormitory_id,
+                'violation_id' => $violation->id,
+                'violation_type' => $violation->violation_type,
+                'violation_category' => $violation->violation_category,
+                'points' => (int) $violation->points,
+            ],
             'send_whatsapp' => false,
+            'send_email' => false,
+            'send_push' => false,
             'priority' => 'high',
         ]);
     }
@@ -130,7 +126,7 @@ class DormitoryService
             \Illuminate\Support\Facades\Log::warning('WA notif penghargaan gagal: '.$e->getMessage());
         }
 
-        $this->notifService->sendToRole('Wali Santri', [
+        $this->notifyGuardiansForStudent($reward->student, [
             'module' => 'dormitory',
             'reference_type' => 'dormitory_reward',
             'reference_id' => $reward->id,
@@ -139,7 +135,19 @@ class DormitoryService
             'title' => "Penghargaan Asrama — {$reward->student->name}",
             'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", anak Anda {$reward->student->name} menerima penghargaan "
                 ."\"{$reward->title}\" ({$reward->category_text}, {$reward->level_text}) dengan poin +{$reward->points}.",
+            'data' => [
+                'student_id' => $reward->student->id,
+                'student_name' => $reward->student->name,
+                'dormitory_id' => $reward->dormitory_id,
+                'reward_id' => $reward->id,
+                'reward_title' => $reward->title,
+                'category' => $reward->category,
+                'level' => $reward->level,
+                'points' => (int) $reward->points,
+            ],
             'send_whatsapp' => false,
+            'send_email' => false,
+            'send_push' => false,
             'priority' => 'medium',
         ]);
     }
@@ -164,7 +172,7 @@ class DormitoryService
             \Illuminate\Support\Facades\Log::warning('WA notif overdue gagal: '.$e->getMessage());
         }
 
-        $this->notifService->sendToRole('Wali Santri', [
+        $this->notifyGuardiansForStudent($student, [
             'module' => 'dormitory',
             'reference_type' => 'dormitory_permit',
             'reference_id' => $permit->id,
@@ -175,7 +183,16 @@ class DormitoryService
                 ."dari izin pulang hingga waktu yang dijadwalkan\n"
                 ."({$permit->expected_return_datetime->format('d/m/Y H:i')}).\n"
                 .'Mohon konfirmasi.',
+            'data' => [
+                'student_id' => $student->id,
+                'student_name' => $student->name,
+                'dormitory_id' => $permit->dormitory_id,
+                'permit_id' => $permit->id,
+                'expected_return_datetime' => $permit->expected_return_datetime?->toIso8601String(),
+            ],
             'send_whatsapp' => false,
+            'send_email' => false,
+            'send_push' => false,
             'priority' => 'high',
         ]);
     }
@@ -295,6 +312,95 @@ class DormitoryService
             });
 
         return $count;
+    }
+
+    /**
+     * Simpan notifikasi sistem untuk seluruh akun wali yang terhubung
+     * dengan satu santri. Ini adalah kanal "by sistem" yang nantinya
+     * dikonsumsi aplikasi mobile wali; WA tetap dikirim terpisah.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function notifyGuardiansForStudent(Student $student, array $data): int
+    {
+        try {
+            return $this->notifService->notifyGuardiansForStudents([$student->id], $data);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif sistem wali gagal: '.$e->getMessage());
+
+            return 0;
+        }
+    }
+
+    /**
+     * Notifikasi sistem saat santri dijemput keluar asrama.
+     */
+    public function notifyPermitPickedUpInApp(DormitoryPermit $permit): void
+    {
+        if (! $permit->student) {
+            return;
+        }
+
+        $this->notifyGuardiansForStudent($permit->student, [
+            'module' => 'dormitory',
+            'reference_type' => 'dormitory_permit',
+            'reference_id' => $permit->id,
+            'type' => 'info',
+            'action' => 'permit_picked_up',
+            'title' => "Santri Keluar Asrama — {$permit->student->name}",
+            'message' => "{$permit->student->name} telah dijemput keluar asrama"
+                .($permit->destination ? " menuju {$permit->destination}" : '')
+                .'. Estimasi kembali: '
+                .($permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-').'.',
+            'data' => [
+                'student_id' => $permit->student_id,
+                'student_name' => $permit->student->name,
+                'dormitory_id' => $permit->dormitory_id,
+                'permit_id' => $permit->id,
+                'permit_type' => $permit->permit_type,
+                'status' => 'picked_up',
+                'destination' => $permit->destination,
+                'expected_return_datetime' => $permit->expected_return_datetime?->toIso8601String(),
+            ],
+            'send_whatsapp' => false,
+            'send_email' => false,
+            'send_push' => false,
+            'priority' => 'medium',
+        ]);
+    }
+
+    /**
+     * Notifikasi sistem saat santri kembali ke asrama.
+     */
+    public function notifyPermitReturnedInApp(DormitoryPermit $permit): void
+    {
+        if (! $permit->student) {
+            return;
+        }
+
+        $this->notifyGuardiansForStudent($permit->student, [
+            'module' => 'dormitory',
+            'reference_type' => 'dormitory_permit',
+            'reference_id' => $permit->id,
+            'type' => 'success',
+            'action' => 'permit_returned',
+            'title' => "Santri Kembali ke Asrama — {$permit->student->name}",
+            'message' => "Alhamdulillah, {$permit->student->name} telah kembali ke asrama pada "
+                .($permit->actual_return_datetime?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i')).'.',
+            'data' => [
+                'student_id' => $permit->student_id,
+                'student_name' => $permit->student->name,
+                'dormitory_id' => $permit->dormitory_id,
+                'permit_id' => $permit->id,
+                'permit_type' => $permit->permit_type,
+                'status' => 'returned',
+                'actual_return_datetime' => $permit->actual_return_datetime?->toIso8601String(),
+            ],
+            'send_whatsapp' => false,
+            'send_email' => false,
+            'send_push' => false,
+            'priority' => 'medium',
+        ]);
     }
 
     /**

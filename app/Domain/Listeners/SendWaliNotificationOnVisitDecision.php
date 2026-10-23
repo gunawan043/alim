@@ -43,6 +43,14 @@ class SendWaliNotificationOnVisitDecision
                     : "Permohonan penjengukan untuk {$student->name} ditolak.".($event->note ? " Alasan: {$event->note}" : ''),
                 'reference_type' => DormitoryVisitLog::class,
                 'reference_id' => $visit->id,
+                'data' => [
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'dormitory_id' => $visit->dormitory_id,
+                    'visit_id' => $visit->id,
+                    'visitor_name' => $visit->visitor_name,
+                    'decision' => $event->decision,
+                ],
                 'action_url' => route('user.asrama.approval-center', [
                     'userId' => $wali->user_id,
                     'asramaUuid' => $visit->dormitory_id,

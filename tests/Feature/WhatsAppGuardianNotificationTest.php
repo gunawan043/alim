@@ -6,6 +6,8 @@ use App\Models\DormitoryPermit;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
+use App\Models\WaliSantri;
+use App\Services\DormitoryService;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\Notifications\WhatsAppGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -148,6 +150,49 @@ class WhatsAppGuardianNotificationTest extends TestCase
         $this->assertNull($gateway->normalizePhone(''));
     }
 
+
+    public function test_notifikasi_sistem_tersimpan_untuk_akun_wali(): void
+    {
+        $waliUser = User::create([
+            'name' => 'Wali Sistem',
+            'email' => 'wali.sistem@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'is_wali' => true,
+        ]);
+
+        WaliSantri::create([
+            'user_id' => $waliUser->id,
+            'student_id' => $this->student->id,
+            'school_id' => $this->student->school_id,
+            'role' => WaliSantri::ROLE_AYAH,
+            'is_primary' => true,
+            'status' => WaliSantri::STATUS_ACTIVE,
+            'verified_at' => now(),
+        ]);
+
+        $count = app(DormitoryService::class)->notifyGuardiansForStudent($this->student, [
+            'module' => 'dormitory',
+            'reference_type' => 'dormitory_permit',
+            'reference_id' => (string) Str::uuid(),
+            'type' => 'info',
+            'action' => 'permit_picked_up',
+            'title' => 'Santri Keluar Asrama — Santri Notif',
+            'message' => 'Santri Notif telah dijemput keluar asrama.',
+            'priority' => 'medium',
+        ]);
+
+        $this->assertSame(1, $count);
+        $this->assertDatabaseHas('notifications_universal', [
+            'user_id' => $waliUser->id,
+            'action' => 'permit_picked_up',
+            'title' => 'Santri Keluar Asrama — Santri Notif',
+        ]);
+
+        $notification = \App\Models\NotificationUniversal::where('user_id', $waliUser->id)->firstOrFail();
+        $this->assertSame($this->student->id, $notification->data['student_id']);
+        $this->assertSame($this->student->name, $notification->data['student_name']);
+    }
 
     public function test_notifikasi_penghargaan_terkirim_dan_bisa_dinonaktifkan(): void
     {

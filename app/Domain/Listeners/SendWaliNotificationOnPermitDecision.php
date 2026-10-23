@@ -61,6 +61,14 @@ class SendWaliNotificationOnPermitDecision
                 'message' => $message,
                 'reference_type' => DormitoryPermit::class,
                 'reference_id' => $permit->id,
+                'data' => [
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'dormitory_id' => $permit->dormitory_id,
+                    'permit_id' => $permit->id,
+                    'permit_type' => $permit->permit_type,
+                    'decision' => $event->decision,
+                ],
                 'action_url' => route('user.asrama.approval-center', [
                     'userId' => $wali->user_id,
                     'asramaUuid' => $permit->dormitory_id,

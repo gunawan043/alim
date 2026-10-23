@@ -859,6 +859,8 @@ class DormitoryPermitController extends Controller
                     \Illuminate\Support\Facades\Log::warning('WA notif picked_up gagal: '.$e->getMessage());
                 }
 
+                $this->service->notifyPermitPickedUpInApp($permit);
+
                 $studentName = $permit->student?->name ?? 'Santri';
                 $pickerDisplay = $pickerName !== ''
                     ? "oleh {$pickerName}".($pickerRelation !== '' ? ' ('.ucfirst($pickerRelation).')' : '')
@@ -897,6 +899,8 @@ class DormitoryPermitController extends Controller
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('WA notif returned gagal: '.$e->getMessage());
                 }
+
+                $this->service->notifyPermitReturnedInApp($permit);
 
                 $studentName = $permit->student?->name ?? 'Santri';
 
@@ -994,6 +998,8 @@ class DormitoryPermitController extends Controller
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('WA notif pickup manual gagal: '.$e->getMessage());
             }
+
+            $this->service->notifyPermitPickedUpInApp($permit->fresh(['student']));
 
             $pickerDisplay = $pickerName !== ''
                 ? "oleh {$pickerName}".($pickerRelation !== '' ? ' ('.ucfirst($pickerRelation).')' : '')
@@ -1095,6 +1101,12 @@ class DormitoryPermitController extends Controller
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('WA notif update status izin gagal: '.$e->getMessage());
+        }
+
+        if ($newStatus === 'picked_up') {
+            $this->service->notifyPermitPickedUpInApp($permit->fresh(['student']));
+        } elseif ($newStatus === 'returned') {
+            $this->service->notifyPermitReturnedInApp($permit->fresh(['student']));
         }
 
         $message = "Status izin {$permit->student->name} diubah menjadi '{$permit->status_text}'.";
