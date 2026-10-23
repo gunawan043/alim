@@ -188,6 +188,8 @@ class PaketNaskahService
                     'tp_id' => $soal->tp_id,
                     'wacana' => $soal->wacanaPayload(),
                     'pertanyaan' => $soal->pertanyaan,
+                    'gambar_path' => $soal->gambar_path,
+                    'gambar_keterangan' => $soal->gambar_keterangan,
                     'opsi' => $soal->options->map(fn ($option) => [
                         'label' => $option->label,
                         'teks' => $option->teks_opsi,

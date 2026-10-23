@@ -83,6 +83,7 @@
 
     <!-- JAVASCRIPT -->
     @include('layouts.vendor-scripts')
+    @include('layouts.partials.searchable-selects')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
     <script src="{{ URL::asset('build/libs/toastify-js/src/toastify.js') }}"></script>
     <script src="{{ URL::asset('build/js/sidebar-scroll.js') }}"></script>

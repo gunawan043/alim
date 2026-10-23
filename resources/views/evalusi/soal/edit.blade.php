@@ -50,7 +50,7 @@
 
                             <div class="col-md-6">
                                 <label class="form-label">Tujuan Pembelajaran</label>
-                                <select name="tp_id" class="form-control">
+                                <select name="tp_id" class="form-control" data-searchable>
                                     <option value="">— Tidak terkait —</option>
                                     @foreach($tps as $tp)
                                         <option value="{{ $tp->id }}" {{ $soal->tp_id === $tp->id ? 'selected' : '' }}>

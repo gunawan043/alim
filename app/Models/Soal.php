@@ -33,6 +33,7 @@ class Soal extends Model
         'pertanyaan',
         'pembahasan',
         'gambar_path',
+        'gambar_keterangan',
         'audio_path',
         'bobot_default',
         'tingkat_kesulitan_estimasi',
@@ -128,6 +129,7 @@ class Soal extends Model
             'judul' => $wacana->judul,
             'teks' => (string) $wacana->teks,
             'sumber' => $wacana->sumber,
+            'rentang_nomor' => $wacana->rentang_nomor,
         ];
     }
 

@@ -207,6 +207,7 @@ class SoalController extends Controller
             'judul' => 'nullable|string|max:150',
             'teks' => 'required|string',
             'sumber' => 'nullable|string|max:150',
+            'rentang_nomor' => 'nullable|string|max:100',
         ]);
 
         $wacana = WacanaSoal::create([
@@ -215,12 +216,13 @@ class SoalController extends Controller
             'judul' => $data['judul'] ?? null,
             'teks' => $data['teks'],
             'sumber' => $data['sumber'] ?? null,
+            'rentang_nomor' => $data['rentang_nomor'] ?? null,
             'created_by' => $userId,
         ]);
 
         return response()->json([
             'id' => $wacana->id,
-            'judul' => $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 60),
+            'judul' => ($wacana->judul ?: Str::limit(strip_tags($wacana->teks), 50)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : ''),
             'teks' => $wacana->teks,
         ]);
     }
@@ -241,6 +243,7 @@ class SoalController extends Controller
             'questions.*.pembahasan' => 'nullable|string|max:5000',
             'questions.*.tags' => 'nullable|string|max:255',
             'questions.*.gambar' => 'nullable|image|max:4096',
+            'questions.*.gambar_keterangan' => 'nullable|string|max:255',
             'questions.*.options' => 'nullable|array',
             'questions.*.options.*.teks_opsi' => 'nullable|string|max:1000',
             'questions.*.options.*.is_correct' => 'nullable|boolean',
@@ -297,6 +300,7 @@ class SoalController extends Controller
                     'pertanyaan' => $question['pertanyaan'],
                     'pembahasan' => $question['pembahasan'] ?? null,
                     'gambar_path' => $imagePath,
+                    'gambar_keterangan' => $question['gambar_keterangan'] ?? null,
                     'bobot_default' => $question['bobot_default'] ?? 1,
                     'tingkat_kesulitan_estimasi' => $question['tingkat_kesulitan_estimasi'] ?? 'sedang',
                     'waktu_estimasi_menit' => 2,

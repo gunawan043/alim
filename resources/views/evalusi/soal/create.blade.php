@@ -85,9 +85,16 @@
                         <label class="form-label">Judul Wacana</label>
                         <input type="text" id="wacanaJudul" class="form-control" maxlength="150" placeholder="mis. Teks Bacaan 1">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Sumber</label>
-                        <input type="text" id="wacanaSumber" class="form-control" maxlength="150" placeholder="mis. Buku Bahasa Arab hal. 12">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Sumber</label>
+                            <input type="text" id="wacanaSumber" class="form-control" maxlength="150" placeholder="mis. Buku Bahasa Arab hal. 12">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Untuk Soal Nomor</label>
+                            <input type="text" id="wacanaRentang" class="form-control" maxlength="100" placeholder="mis. 1–5">
+                            <small class="text-muted">Keterangan rentang nomor pada naskah.</small>
+                        </div>
                     </div>
                     <div>
                         <label class="form-label">Teks Wacana</label>
@@ -109,7 +116,7 @@ const bankType = @json($bankType);
 const isMixed = @json($isMixed);
 const typeOptions = @json($tipeSoal);
 const tpOptions = @json($tps->map(fn ($tp) => ['id' => $tp->id, 'label' => ($tp->kode_tp ? $tp->kode_tp.' — ' : '').\Str::limit($tp->deskripsi ?? $tp->id, 65)])->values());
-const wacanaOptions = @json($wacanas->map(fn ($wacana) => ['id' => $wacana->id, 'label' => $wacana->judul ?: \Str::limit(strip_tags($wacana->teks), 60)])->values());
+const wacanaOptions = @json($wacanas->map(fn ($wacana) => ['id' => $wacana->id, 'label' => ($wacana->judul ?: \Str::limit(strip_tags($wacana->teks), 50)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : '')])->values());
 let questionIndex = 0;
 let currentQuestionIndex = null;
 
@@ -163,7 +170,7 @@ function addQuestion() {
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Tujuan Pembelajaran</label>
-                    <select class="form-select" name="questions[${i}][tp_id]">
+                    <select class="form-select" name="questions[${i}][tp_id]" data-searchable>
                         <option value="">Tidak terkait</option>
                         ${tpOptions.map(tp => `<option value="${tp.id}">${escapeHtml(tp.label)}</option>`).join('')}
                     </select>
@@ -203,6 +210,10 @@ function addQuestion() {
                         <input type="file" class="form-control" name="questions[${i}][gambar]" accept="image/*">
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label">Keterangan Gambar / Nomor</label>
+                        <input type="text" class="form-control" name="questions[${i}][gambar_keterangan]" maxlength="255" placeholder="mis. Gambar untuk soal 1–5">
+                    </div>
+                    <div class="col-12">
                         <label class="form-label">Tags</label>
                         <input type="text" class="form-control" name="questions[${i}][tags]" placeholder="pisahkan dengan koma">
                     </div>
@@ -212,6 +223,7 @@ function addQuestion() {
     document.getElementById('questionList').appendChild(card);
     const typeField = card.querySelector(`[name="questions[${i}][tipe_soal]"]`);
     if (typeField) toggleOptions(typeField);
+    if (window.initSearchableSelects) window.initSearchableSelects(card);
     renumber();
     card.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
@@ -264,6 +276,7 @@ function openWacanaModal() {
     currentQuestionIndex = document.querySelectorAll('.question-card').length ? document.querySelector('.question-card:last-of-type')?.dataset.index : null;
     document.getElementById('wacanaJudul').value = '';
     document.getElementById('wacanaSumber').value = '';
+    document.getElementById('wacanaRentang').value = '';
     document.getElementById('wacanaTeks').value = '';
     new bootstrap.Modal(document.getElementById('wacanaModal')).show();
 }
@@ -277,6 +290,7 @@ async function saveWacana() {
         body: JSON.stringify({
             judul: document.getElementById('wacanaJudul').value,
             sumber: document.getElementById('wacanaSumber').value,
+            rentang_nomor: document.getElementById('wacanaRentang').value,
             teks: teks
         })
     });

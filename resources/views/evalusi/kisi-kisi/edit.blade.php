@@ -105,7 +105,7 @@
                                 <select name="items[{{ $idx }}][id]" style="display:none">
                                     <option value="{{ $item->id }}">{{ $item->id }}</option>
                                 </select>
-                                <select name="items[{{ $idx }}][tp_id]" class="form-select form-select-sm" data-tp-select required>
+                                <select name="items[{{ $idx }}][tp_id]" class="form-select form-select-sm" data-tp-select data-searchable required>
                                     <option value="">-- Pilih --</option>
                                     @foreach($tps as $tp)
                                         <option value="{{ $tp->id }}"
@@ -164,7 +164,7 @@ const tpOptionsHtml = `@foreach($tps as $tp)<option value="{{ $tp->id }}" data-s
 document.getElementById('btn-add-item').addEventListener('click', () => {
     const tbody = document.getElementById('items-tbody');
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><select name="items[${itemIdx}][tp_id]" class="form-select form-select-sm" data-tp-select><option value="">-- Pilih --</option>${tpOptionsHtml}</select></td>
+    tr.innerHTML = `<td><select name="items[${itemIdx}][tp_id]" class="form-select form-select-sm" data-tp-select data-searchable><option value="">-- Pilih --</option>${tpOptionsHtml}</select></td>
         <td><input type="text" name="items[${itemIdx}][materi]" class="form-control form-control-sm" maxlength="255" placeholder="Materi"></td>
         <td><select name="items[${itemIdx}][bentuk_soal]" class="form-select form-select-sm"><option value="">--</option>${bentukSoalOptions}</select></td>
         <td><input type="text" name="items[${itemIdx}][nomor_soal]" class="form-control form-control-sm" maxlength="40" placeholder="mis. 1-5"></td>
