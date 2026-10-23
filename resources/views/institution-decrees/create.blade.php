@@ -365,6 +365,31 @@ const taskTypeOptions = {!! json_encode($taskTypeOptions) !!};
 // Build grade columns for JS rendering
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
 
+function showWarning(message, title = 'Perhatian') {
+    if (window.Swal) {
+        Swal.fire({ icon: 'warning', title: title, text: message, confirmButtonText: 'Mengerti' });
+    } else {
+        alert(message);
+    }
+}
+
+function confirmRemoval(title, text, onConfirm) {
+    if (window.Swal) {
+        Swal.fire({
+            icon: 'warning',
+            title: title,
+            text: text,
+            showCancelButton: true,
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal',
+        }).then(result => {
+            if (result.isConfirmed) onConfirm();
+        });
+        return;
+    }
+    if (confirm(text)) onConfirm();
+}
+
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 }
@@ -402,9 +427,9 @@ function sgCells() {
 function addTeacherToMatrix(teacherId) {
     const sel = document.getElementById('newTeacherSelect');
     const tid = teacherId || sel.value;
-    if (!tid) { alert('Pilih guru terlebih dahulu.'); return; }
+    if (!tid) { showWarning('Pilih guru terlebih dahulu.'); return; }
     if (document.getElementById(`teacher-row-${tid}`)) {
-        alert('Guru sudah ada di tabel.');
+        showWarning('Guru sudah ada di tabel.');
         return;
     }
 
@@ -497,7 +522,6 @@ function renderSubjectRow(tid, sid, sname) {
             </td>
         `).join('')}
         <td class="text-center fw-semibold" id="sebaran-${tid}-${sid}">0</td>
-        <td class="text-center fw-semibold" id="subtotal-${tid}-${sid}">0</td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeSubjectRowByButton(this)" title="Hapus Mapel">
                 <i class="ri-delete-bin-line"></i>
@@ -567,7 +591,15 @@ function updateSubjectRow(row) {
         total += parseFloat(toggle.dataset.hours) || 0;
     });
     document.getElementById(`sebaran-${tid}-${sid}`).textContent = total;
-    document.getElementById(`subtotal-${tid}-${sid}`).textContent = total;
+    refreshTotal(tid);
+}
+
+function removeActiveTask(tid, index) {
+    if (!activeTasks[tid] || !activeTasks[tid][index]) return;
+    pushHistory();
+    const task = activeTasks[tid][index];
+    if (task.rowId) document.getElementById(task.rowId)?.remove();
+    activeTasks[tid].splice(index, 1);
     refreshTotal(tid);
 }
 
@@ -581,7 +613,7 @@ function toggleRombel(toggle) {
         const badge = toggle.closest('td')?.querySelector('.jp-badge');
         if (badge) badge.classList.add('d-none');
         updateSubjectRow(toggle.closest('tr'));
-        alert('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
+        showWarning('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
         return;
     }
 
@@ -606,7 +638,7 @@ function addActiveTask(tid, type, extra = {}) {
         return t.studyGroupId && t.studyGroupId === studyGroupId;
     });
     if (duplicate) {
-        alert('Tugas tersebut sudah ada untuk GTK ini.');
+        showWarning('Tugas tersebut sudah ada untuk GTK ini.');
         return false;
     }
 
@@ -644,7 +676,7 @@ function confirmTaskRombel() {
     const rombel = studyGroups.find(sg => sg.id === select.value);
     const pending = window._pendingTask;
     if (!pending || !rombel) {
-        alert('Pilih rombel terlebih dahulu.');
+        showWarning('Pilih rombel terlebih dahulu.');
         return;
     }
 
@@ -769,7 +801,7 @@ function changeSubject(select) {
     if (!tid || !newSid || newSid === oldSid) return;
 
     if ((activeSubjects[tid] || []).some(s => s.id === newSid)) {
-        alert('Mapel tersebut sudah ada untuk GTK ini.');
+        showWarning('Mapel tersebut sudah ada untuk GTK ini.');
         select.value = oldSid;
         return;
     }
@@ -779,7 +811,7 @@ function changeSubject(select) {
             subjectRombelTaken(toggle, newSid, toggle.dataset.sgid)
         );
         if (conflict) {
-            alert('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
+            showWarning('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
             select.value = oldSid;
             return;
         }
@@ -791,8 +823,6 @@ function changeSubject(select) {
     row.querySelectorAll('.rombel-toggle').forEach(toggle => toggle.dataset.sid = newSid);
     const sebaran = row.querySelector('[id^="sebaran-"]');
     if (sebaran) sebaran.id = `sebaran-${tid}-${newSid}`;
-    const subtotal = row.querySelector('[id^="subtotal-"]');
-    if (subtotal) subtotal.id = `subtotal-${tid}-${newSid}`;
     select.dataset.oldSid = newSid;
     activeSubjects[tid] = (activeSubjects[tid] || []).map(s =>
         s.id === oldSid ? { id: newSid, name: subject?.name || '' } : s
@@ -826,14 +856,19 @@ function refreshTotal(tid) {
     });
     const taskHours = (activeTasks[tid] || []).reduce((sum, t) => sum + (parseInt(t.hours) || 0), 0);
     const el = document.getElementById(`teacher-total-${tid}`);
-    if (el) el.textContent = sebaran + taskHours;
+    if (el) {
+        el.textContent = sebaran + taskHours;
+        el.rowSpan = Math.max(1, rows.length);
+    }
     const seb = document.getElementById(`teacher-sebaran-${tid}`);
     if (seb) seb.textContent = sebaran;
     const tug = document.getElementById(`task-badges-${tid}`) || document.getElementById(`teacher-tugas-${tid}`);
     if (tug) {
-        const tasks = (activeTasks[tid] || []).filter(t => t.name);
+        const tasks = (activeTasks[tid] || [])
+            .map((task, index) => ({ task, index }))
+            .filter(({ task }) => task.name);
         tug.innerHTML = tasks.length
-            ? tasks.map(t => `<span class="badge bg-warning-subtle text-warning me-1 mb-1">${escapeHtml(t.name)}${t.hours ? ` · ${t.hours} JP` : ''}</span>`).join('')
+            ? tasks.map(({ task, index }) => `<span class="badge bg-warning-subtle text-warning me-1 mb-1">${escapeHtml(task.name)}${task.hours ? ` · ${task.hours} JP` : ''}<button type="button" class="btn btn-sm p-0 ms-1 text-warning" onclick="removeActiveTask('${tid}', ${index})" title="Hapus tugas"><i class="ri-close-line"></i></button></span>`).join('')
             : '<span class="text-muted">-</span>';
     }
 }
@@ -848,13 +883,13 @@ function addTaskFromModal() {
     const name = document.getElementById('taskName').value;
     const code = document.getElementById('taskCode').value;
     const hours = parseInt(document.getElementById('taskHours').value) || 0;
-    if (!tid || !name) { alert('Pilih guru dan isi nama tugas.'); return; }
+    if (!tid || !name) { showWarning('Pilih guru dan isi nama tugas.'); return; }
 
     // Make sure teacher row exists
     if (!document.getElementById(`teacher-row-${tid}`)) {
         // Auto-add teacher first
         const teacher = teachers.find(t => t.id === tid);
-        if (!teacher) { alert('Guru tidak ditemukan.'); return; }
+        if (!teacher) { showWarning('Guru tidak ditemukan.'); return; }
         teacherCounter++;
         activeSubjects[tid] = [];
         activeTasks[tid] = (currentTasks[tid] || []).slice();
@@ -900,6 +935,7 @@ function addTaskFromModal() {
     // Render task row
     const taskRowsEl = document.getElementById(`task-rows-${tid}`) || createTaskContainer(tid);
     const rowId = `task-row-${tid}-${Date.now()}`;
+    if (activeTasks[tid]?.length) activeTasks[tid][activeTasks[tid].length - 1].rowId = rowId;
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.className = 'table-light';
@@ -912,7 +948,6 @@ function addTaskFromModal() {
         <td class="text-wrap fst-italic">${name}</td>
         ${sgCells()}
         <td></td>
-        <td class="text-center fw-semibold">${hours}</td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTask('${tid}', '${rowId}')" title="Hapus Tugas">
                 <i class="ri-delete-bin-line"></i>
@@ -938,9 +973,8 @@ function createTaskContainer(tid) {
 function removeTask(tid, rowId) {
     pushHistory();
     document.getElementById(rowId)?.remove();
-    // Remove from activeTasks
     if (activeTasks[tid]) {
-        const idx = activeTasks[tid].findIndex(t => rowId.endsWith(String(Date.now() - parseInt(rowId.split('-').pop()))));
+        activeTasks[tid] = activeTasks[tid].filter(task => task.rowId !== rowId);
     }
     refreshTotal(tid);
 }
@@ -956,7 +990,10 @@ function removeSubjectRow(tid, sid) {
 
 // Remove teacher row
 function removeTeacher(tid) {
-    if (!confirm('Hapus guru ini beserta semua barisnya?')) return;
+    confirmRemoval('Hapus GTK ini?', 'Semua baris mapel dan tugas GTK akan dihapus. Anda masih bisa mengurungkan tindakan ini.', () => doRemoveTeacher(tid));
+}
+
+function doRemoveTeacher(tid) {
     pushHistory();
     document.getElementById(`teacher-row-${tid}`)?.remove();
     document.querySelectorAll(`tr[data-teacher="${tid}"]`).forEach(r => r.remove());
@@ -1072,7 +1109,7 @@ function updateInfoPreview() {
 function addTaskFromModal() {
     const tid = document.getElementById('taskTeacherSelect').value;
     const type = document.getElementById('taskTypeSelect').value;
-    if (!tid) { alert('Pilih guru terlebih dahulu.'); return; }
+    if (!tid) { showWarning('Pilih guru terlebih dahulu.'); return; }
 
     let taskCode = '';
     let taskName = '';
@@ -1082,7 +1119,7 @@ function addTaskFromModal() {
     if (type === 'wali_kelas') {
         const sgId = document.getElementById('taskRombelSelect').value;
         const sgName = document.querySelector(`#taskRombelSelect option[value="${sgId}"]`)?.text || '';
-        if (!sgId) { alert('Pilih rombel untuk Wali Kelas.'); return; }
+        if (!sgId) { showWarning('Pilih rombel untuk Wali Kelas.'); return; }
         taskCode = 'wali_kelas';
         taskName = `Wali Kelas ${sgName}`;
         hours = 0;
@@ -1090,7 +1127,7 @@ function addTaskFromModal() {
     } else if (type === 'koordinator') {
         const mapelId = document.getElementById('koordinatorMapelSelect').value;
         const mapelName = document.querySelector(`#koordinatorMapelSelect option[value="${mapelId}"]`)?.text || '';
-        if (!mapelId) { alert('Pilih mata pelajaran.'); return; }
+        if (!mapelId) { showWarning('Pilih mata pelajaran.'); return; }
         taskCode = 'koordinator';
         taskName = `Koordinator ${mapelName}`;
         hours = 3;
@@ -1102,7 +1139,7 @@ function addTaskFromModal() {
         taskName = document.getElementById('taskName')?.value;
         taskCode = 'custom';
         hours = parseInt(document.getElementById('taskHours')?.value) || 3;
-        if (!taskName) { alert('Isi nama tugas.'); return; }
+        if (!taskName) { showWarning('Isi nama tugas.'); return; }
     }
 
     if (!activeTasks[tid]) activeTasks[tid] = [];
@@ -1153,6 +1190,7 @@ function addTaskFromModal() {
 
     // Render task row
     const rowId = `task-row-${tid}-${Date.now()}`;
+    if (activeTasks[tid]?.length) activeTasks[tid][activeTasks[tid].length - 1].rowId = rowId;
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.className = 'table-light';
@@ -1165,7 +1203,6 @@ function addTaskFromModal() {
         <td class="text-wrap fst-italic">${taskName}</td>
         ${sgCells()}
         <td></td>
-        <td class="text-center fw-semibold">${hours}</td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTask('${tid}', '${rowId}')" title="Hapus Tugas">
                 <i class="ri-delete-bin-line"></i>
@@ -1180,6 +1217,9 @@ function addTaskFromModal() {
 function removeTask(tid, rowId) {
     pushHistory();
     document.getElementById(rowId)?.remove();
+    if (activeTasks[tid]) {
+        activeTasks[tid] = activeTasks[tid].filter(task => task.rowId !== rowId);
+    }
     refreshTotal(tid);
 }
 
@@ -1194,7 +1234,10 @@ function removeSubjectRow(tid, sid) {
 
 // Remove teacher row + restore to dropdown
 function removeTeacher(tid) {
-    if (!confirm('Hapus guru ini beserta semua barisnya?')) return;
+    confirmRemoval('Hapus GTK ini?', 'Semua baris mapel dan tugas GTK akan dihapus. Anda masih bisa mengurungkan tindakan ini.', () => doRemoveTeacher(tid));
+}
+
+function doRemoveTeacher(tid) {
     pushHistory();
     document.getElementById(`teacher-row-${tid}`)?.remove();
     document.querySelectorAll(`tr[data-teacher="${tid}"]`).forEach(r => r.remove());
