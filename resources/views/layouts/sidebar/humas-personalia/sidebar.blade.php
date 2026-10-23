@@ -216,6 +216,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.cross-unit-assignments.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.cross-unit-assignments.index') }}">
+            <i class="ri-building-2-line"></i><span>Penugasan dari Pondok</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk-position-proposals.']) ? ' active' : '' }}"
            href="{{ $humasUrl('user.gtk-position-proposals.index') }}">
             <i class="ri-arrow-up-line"></i><span>Pengajuan Jabatan</span>

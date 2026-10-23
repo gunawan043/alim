@@ -365,7 +365,19 @@
 
 @section('script')
 <script>
-const teachers = {!! json_encode($teachers->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'role' => $t->getRoleNames()->first()])->values()->toArray()) !!};
+const teachers = {!! json_encode($teachers->map(function ($t) use ($crossUnitByTeacher) {
+    $cross = $crossUnitByTeacher->get($t->id);
+    return [
+        'id' => $t->id,
+        'name' => $t->name,
+        'role' => $t->getRoleNames()->first(),
+        'position' => $currentPositions[$t->id] ?? 'GTK',
+        'external' => (bool) $cross,
+        'home_work_unit' => $cross?->homeWorkUnit?->name,
+        'recommended_subject' => $cross?->subject?->name,
+        'cross_unit_assignment_id' => $cross?->id,
+    ];
+})->values()->toArray()) !!};
 const subjects = {!! json_encode($subjects->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values()->toArray()) !!};
 const studyGroups = {!! json_encode($studyGroups->map(fn($sg) => ['id' => $sg->id, 'name' => $sg->name, 'level' => $sg->gradeLevel->level ?? 0])->toArray()) !!};
 const currentAssignments = {!! json_encode($currentAssignments) !!};
@@ -466,11 +478,16 @@ function addTeacherToMatrix(teacherId) {
     tr.dataset.teacher = tid;
     tr.innerHTML = `
         <td class="text-center fw-semibold">${teacherCounter}</td>
-        <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
+        <td class="fw-semibold text-nowrap">
+            ${escapeHtml(teacher.name)}
+            ${teacher.external ? `<div class="small text-info"><i class="ri-building-2-line me-1"></i>GTK Penugasan Pondok${teacher.home_work_unit ? ` · ${escapeHtml(teacher.home_work_unit)}` : ''}</div>` : ''}
+        </td>
         <td class="text-wrap">
-            <select class="form-select form-select-sm position-select border-0 bg-transparent shadow-none w-auto" data-teacher-id="${tid}" onchange="changePosition(this)">
-                ${positionOptionsHtml(tid)}
-            </select>
+            ${teacher.external
+                ? `<span class="badge bg-info-subtle text-info">${escapeHtml(teacher.position || 'GTK')}</span>`
+                : `<select class="form-select form-select-sm position-select border-0 bg-transparent shadow-none w-auto" data-teacher-id="${tid}" onchange="changePosition(this)">
+                        ${positionOptionsHtml(tid)}
+                   </select>`}
         </td>
         <td class="text-nowrap">
             <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddSubject('${tid}')" title="Tambah Mapel">
@@ -487,9 +504,11 @@ function addTeacherToMatrix(teacherId) {
         <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
         <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
         <td class="text-center">
-            <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTeacher('${tid}')" title="Hapus GTK">
-                <i class="ri-delete-bin-line"></i>
-            </button>
+            ${teacher.external
+                ? '<span class="badge bg-info-subtle text-info" title="Penempatan dari Personalia">Pondok</span>'
+                : `<button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeTeacher('${tid}')" title="Hapus GTK">
+                        <i class="ri-delete-bin-line"></i>
+                   </button>`}
         </td>
     `;
     tbody.appendChild(tr);

@@ -162,6 +162,7 @@ use App\Http\Controllers\Perpustakaan\LibraryStudentOperatorController;
 use App\Http\Controllers\Perpustakaan\LibraryUnitController;
 use App\Http\Controllers\Perpustakaan\LibraryVisitController;
 use App\Http\Controllers\Personalia\AbsensiGtkController;
+use App\Http\Controllers\Personalia\CrossUnitAssignmentController;
 use App\Http\Controllers\Personalia\AnalisisGtkController;
 use App\Http\Controllers\Personalia\CutiController;
 use App\Http\Controllers\Personalia\JamKerjaController;
@@ -1696,6 +1697,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [OtherTeacherTaskController::class, 'store'])->name('store');
                 Route::put('/{id}', [OtherTeacherTaskController::class, 'update'])->name('update');
                 Route::delete('/{id}', [OtherTeacherTaskController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── PENUGASAN GTK DARI PONDOK ─────────────────────────
+            Route::prefix('cross-unit-assignments')->name('cross-unit-assignments.')->group(function () {
+                Route::get('/', [CrossUnitAssignmentController::class, 'index'])->name('index');
+                Route::post('/', [CrossUnitAssignmentController::class, 'store'])->name('store');
+                Route::patch('/{id}/toggle', [CrossUnitAssignmentController::class, 'toggle'])->name('toggle');
             });
 
             // ── GTK ADDITIONAL TASKS ───────────────────────────────

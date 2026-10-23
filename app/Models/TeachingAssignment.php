@@ -31,6 +31,8 @@ class TeachingAssignment extends Model
         'is_coordinator',
         'weekly_hours',
         'status',
+        'assignment_source',
+        'gtk_cross_unit_assignment_id',
     ];
 
     public function decree(): BelongsTo
@@ -51,6 +53,11 @@ class TeachingAssignment extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
+    }
+
+    public function crossUnitAssignment(): BelongsTo
+    {
+        return $this->belongsTo(GtkCrossUnitAssignment::class, 'gtk_cross_unit_assignment_id');
     }
 
     public function studyGroup(): BelongsTo

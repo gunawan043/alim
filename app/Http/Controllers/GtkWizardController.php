@@ -10,6 +10,7 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\GtkAddress;
 use App\Models\GtkContact;
+use App\Models\GtkCrossUnitAssignment;
 use App\Models\GtkEducation;
 use App\Models\GtkEmployment;
 use App\Models\GtkFamilyMember;
@@ -26,6 +27,7 @@ use App\Models\Village;
 use App\Models\WorkUnit;
 use App\Services\GtkFamilyService;
 use App\Services\SchoolGroupService;
+use App\Support\GtkAccess;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -88,14 +90,27 @@ class GtkWizardController extends Controller
             'gtkWorkUnits.workUnit',
             'gtkProfile.addresses',
             'educations',
-        ])->whereHas('employment');
+        ]);
+
+        // Scoped filter: GTK internal sekolah + penugasan resmi dari pondok.
+        $schoolId = $request->attributes->get('schoolContextId');
+        $crossUnitUserIds = collect();
+        if ($schoolId) {
+            $crossUnitUserIds = GtkCrossUnitAssignment::where('school_id', $schoolId)
+                ->where('status', 'active')
+                ->pluck('user_id');
+            $request->attributes->set('crossUnitUserIds', $crossUnitUserIds);
+        }
 
         $this->applyFilters($query, $request);
 
-        // Scoped filter: only GTK belonging to the user's school context
-        $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+            $query->where(function ($q) use ($schoolId, $crossUnitUserIds) {
+                $q->whereHas('employment')
+                    ->orWhereIn('users.id', $crossUnitUserIds);
+            });
+        } else {
+            $query->whereHas('employment');
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -115,7 +130,7 @@ class GtkWizardController extends Controller
         $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
 
         return view('gtk.index', compact(
-            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja', 'jenisGtk'
+            'gtkList', 'workUnits', 'provinces', 'statistics', 'satuanKerja', 'jenisGtk', 'crossUnitUserIds'
         ));
     }
 
@@ -188,7 +203,8 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+            $crossUnitUserIds = collect($request->attributes->get('crossUnitUserIds', []));
+            $query->whereIn('users.id', collect(SchoolGroupService::userIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -433,6 +449,15 @@ class GtkWizardController extends Controller
             $user = User::findOrFail($uuid);
             $data = $this->validateAndStructure($request, $user->id);
 
+            if (! GtkAccess::isManager($request->user())) {
+                // Self-service: jangan izinkan perubahan data kepegawaian,
+                // satuan kerja, atau status aktif. Mencegah eskalasi hak
+                // akses melalui jabatan/role yang tersinkron otomatis.
+                $data['employment'] = null;
+                $data['work_unit_id'] = null;
+                $data['user']['is_active'] = $user->is_active;
+            }
+
             $user->update([
                 'name' => $data['user']['name'],
                 'email' => $data['user']['email'],
@@ -452,7 +477,11 @@ class GtkWizardController extends Controller
             $this->syncEducation($user->id, $data['education'] ?? []);
             $this->syncContact($user->id, $data['contact'] ?? []);
             $this->syncEmployment($user->id, $data['employment'] ?? []);
-            $this->syncWorkUnit($user->id, $data['work_unit_id'], $data['employment']['jabatan'] ?? null);
+
+            if (! empty($data['work_unit_id'])) {
+                $this->syncWorkUnit($user->id, $data['work_unit_id'], $data['employment']['jabatan'] ?? null);
+            }
+
             $this->syncFamilyMembers($profileId, $data['family_members'] ?? []);
 
             DB::commit();
@@ -568,13 +597,20 @@ class GtkWizardController extends Controller
 
     public function datatable(Request $request): JsonResponse
     {
-        $query = User::with(['gtkProfile', 'employment', 'gtkWorkUnits.workUnit'])
-            ->whereHas('employment');
+        $query = User::with(['gtkProfile', 'employment', 'gtkWorkUnits.workUnit']);
 
-        // Scoped filter: only GTK belonging to the user's school context
+        // Scoped filter: GTK internal sekolah + penugasan resmi dari pondok.
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+            $crossUnitUserIds = GtkCrossUnitAssignment::where('school_id', $schoolId)
+                ->where('status', 'active')
+                ->pluck('user_id');
+
+            $query->where(function ($q) use ($crossUnitUserIds) {
+                $q->whereHas('employment')->orWhereIn('users.id', $crossUnitUserIds);
+            })->whereIn('users.id', collect(SchoolGroupService::userIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
+        } else {
+            $query->whereHas('employment');
         }
 
         if (! empty($request->input('search.value'))) {
@@ -971,7 +1007,8 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+            $crossUnitUserIds = collect($request->attributes->get('crossUnitUserIds', []));
+            $query->whereIn('users.id', collect(SchoolGroupService::userIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
         }
 
         if ($request->filled('search')) {
@@ -1967,7 +2004,7 @@ class GtkWizardController extends Controller
                 ]);
 
                 $importedFamily = $this->familyMembersFromImportRow($row, $profile);
-                app(\App\Services\GtkFamilyService::class)->sync($profile, $importedFamily);
+                app(GtkFamilyService::class)->sync($profile, $importedFamily);
 
                 $address = $this->resolveAddressFromNames($row);
                 if (! empty($address['province_code'])) {

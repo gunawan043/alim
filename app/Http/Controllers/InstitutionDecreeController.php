@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\AdditionalTaskType;
 use App\Models\AdditionalTaskTypeWorkUnitHour;
+use App\Models\GtkCrossUnitAssignment;
 use App\Models\GtkEmployment;
 use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
@@ -87,12 +88,25 @@ class InstitutionDecreeController extends Controller
         $subjects = collect();
         $studyGroups = collect();
 
+        $crossUnitAssignments = collect();
         if ($selectedSchoolId) {
-            // Guru: GTK yang tertaut ke sekolah (work unit/kepegawaian); jangan bergantung izin khusus.
+            // GTK internal sekolah + GTK yang ditugaskan resmi oleh Personalia/Pondok.
+            $crossUnitAssignments = GtkCrossUnitAssignment::with(['subject:id,name', 'homeWorkUnit:id,name'])
+                ->where('school_id', $selectedSchoolId)
+                ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+                ->active()
+                ->get();
+
+            $schoolTeacherIds = \App\Services\SchoolGroupService::userIdsForSchool($selectedSchoolId);
+            $teacherIds = collect($schoolTeacherIds)
+                ->merge($crossUnitAssignments->pluck('user_id'))
+                ->unique()
+                ->values();
+
             $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
             $teachers = User::query()
                 ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
-                ->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($selectedSchoolId))
+                ->whereIn('users.id', $teacherIds)
                 ->orderBy('name')->get();
 
             $subjects = Subject::where('is_active', true)
@@ -111,6 +125,7 @@ class InstitutionDecreeController extends Controller
         }
 
         $selectedSchool = $selectedSchoolId ? School::find($selectedSchoolId) : null;
+        $crossUnitByTeacher = $crossUnitAssignments->keyBy('user_id');
 
         $currentAssignments = [];
         $currentTasks = [];
@@ -155,9 +170,8 @@ class InstitutionDecreeController extends Controller
 
             $workUnitRows = GtkWorkUnit::query()
                 ->whereIn('user_id', $teacherIds)
-                ->when($workUnitId, fn ($q) => $q->where('work_unit_id', $workUnitId))
                 ->get()
-                ->keyBy('user_id');
+                ->groupBy('user_id');
 
             $workUnitPositionNames = GtkWorkUnit::query()
                 ->when($workUnitId, fn ($q) => $q->where('work_unit_id', $workUnitId))
@@ -188,7 +202,11 @@ class InstitutionDecreeController extends Controller
             foreach ($teachers as $teacher) {
                 $structural = $structuralRows->get($teacher->id);
                 $employment = $employmentRows->get($teacher->id)?->first();
-                $workUnitPosition = $workUnitRows->get($teacher->id)?->jabatan;
+                $externalAssignment = $crossUnitByTeacher->get($teacher->id);
+                $homeWorkUnitId = $externalAssignment?->home_work_unit_id;
+                $workUnitPosition = $homeWorkUnitId
+                    ? $workUnitRows->get($teacher->id)?->firstWhere('work_unit_id', $homeWorkUnitId)?->jabatan
+                    : $workUnitRows->get($teacher->id)?->firstWhere('work_unit_id', $workUnitId)?->jabatan;
                 $positionName = $workUnitPosition
                     ?? $structural?->position?->name
                     ?? $employment?->jabatanRel?->name
@@ -279,7 +297,7 @@ class InstitutionDecreeController extends Controller
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions', 'crossUnitByTeacher'
         ));
     }
 
@@ -375,6 +393,11 @@ class InstitutionDecreeController extends Controller
         $subjectNames = Subject::whereIn('id', collect($assignments)->flatMap(fn ($subjects) => array_keys($subjects))->unique())
             ->pluck('name', 'id');
         $usedSubjectGroups = [];
+        $crossAssignments = GtkCrossUnitAssignment::where('school_id', $decree->school_id ?? $schoolId)
+            ->where('academic_year_id', $decree->academic_year_id)
+            ->active()
+            ->get()
+            ->keyBy('user_id');
 
         foreach ($assignments as $teacherId => $subjects) {
             foreach ($subjects as $subjectId => $groups) {
@@ -401,6 +424,8 @@ class InstitutionDecreeController extends Controller
                         'weekly_hours' => $h,
                         'role' => 'guru_mapel',
                         'status' => 'active',
+                        'assignment_source' => $crossAssignments->has($teacherId) ? 'pondok' : 'unit',
+                        'gtk_cross_unit_assignment_id' => $crossAssignments->get($teacherId)?->id,
                     ]);
                 }
             }
@@ -430,10 +455,18 @@ class InstitutionDecreeController extends Controller
      */
     private function buildDecreeMatrixData(InstitutionDecree $decree): array
     {
-        $teacherIds = app(\App\Services\TeacherRosterService::class)->idsForSchool($decree->school_id);
+        $teacherIds = collect(app(\App\Services\TeacherRosterService::class)->idsForSchool($decree->school_id));
+        $crossUnitIds = GtkCrossUnitAssignment::where('school_id', $decree->school_id)
+            ->where('academic_year_id', $decree->academic_year_id)
+            ->active()
+            ->pluck('user_id');
+        $teacherIds = $teacherIds->merge($crossUnitIds)->unique()->values();
 
         $teachers = User::whereIn('id', $teacherIds)
-            ->whereHas('employments', fn ($q) => $q->where('school_id', $decree->school_id))
+            ->where(function ($q) use ($decree, $crossUnitIds) {
+                $q->whereHas('employments', fn ($employment) => $employment->where('school_id', $decree->school_id))
+                    ->orWhereIn('users.id', $crossUnitIds);
+            })
             ->orderBy('name')
             ->get();
 

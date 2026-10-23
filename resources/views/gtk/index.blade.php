@@ -698,6 +698,9 @@
                                                     <a href="{{ route('user.gtk.show', ['userId' => $userId, 'uuid' => $gtk->id]) }}" class="text-reset fw-semibold">
                                                         {{ $gtk->name }}
                                                     </a>
+                                                    @if(isset($crossUnitUserIds) && $crossUnitUserIds->contains($gtk->id))
+                                                        <span class="badge bg-info-subtle text-info ms-1" title="GTK penugasan pondok">Pondok</span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </td>
