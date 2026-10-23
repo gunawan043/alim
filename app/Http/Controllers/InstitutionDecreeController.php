@@ -228,11 +228,13 @@ class InstitutionDecreeController extends Controller
                         'name' => $row->nama_tugas,
                         'hours' => (int) $row->hours_per_week,
                         'code' => 'additional',
+                        'study_group_id' => null,
                     ])->values()->all())
                     ->merge($otherRows->where('teacher_id', $teacher->id)->map(fn ($row) => [
                         'name' => $row->task_name,
                         'hours' => (int) $row->weekly_hours,
                         'code' => $row->task_code,
+                        'study_group_id' => $row->study_group_id,
                     ])->values()->all())
                     ->values()->all();
             }

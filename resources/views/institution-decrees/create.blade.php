@@ -154,6 +154,12 @@
                             </span>
                         </div>
                         <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                            <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" id="undoBtn" onclick="undoTable()" disabled title="Undo">
+                                <i class="ri-arrow-go-back-line"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" id="redoBtn" onclick="redoTable()" disabled title="Redo">
+                                <i class="ri-arrow-go-forward-line"></i>
+                            </button>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text"><i class="ri-search-line"></i></span>
                                 <input type="search" id="rosterSearch" class="form-control" placeholder="Cari nama, jabatan, atau mapel..." size="28" oninput="filterRoster()">
@@ -287,6 +293,33 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-primary" onclick="addTaskFromModal()">
                         <i class="ri-add-line me-1"></i> Tambah
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: pilih rombel untuk Wali Kelas --}}
+    <div class="modal fade" id="taskRombelPickerModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-door-open-line me-2"></i>Pilih Rombel Wali Kelas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Rombel</label>
+                    <select id="taskRombelPickerSelect" class="form-select">
+                        <option value="">-- Pilih Rombel --</option>
+                        @foreach($studyGroups as $sg)
+                            <option value="{{ $sg->id }}">{{ $sg->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmTaskRombel()">
+                        <i class="ri-check-line me-1"></i> Tambahkan
                     </button>
                 </div>
             </div>
@@ -459,7 +492,7 @@ function renderSubjectRow(tid, sid, sname) {
                            data-hours="${jpDefaults[`${sid}|${sg.id}`] ?? ''}"
                            data-default="${jpDefaults[`${sid}|${sg.id}`] ?? ''}"
                            onchange="toggleRombel(this)" title="Pilih rombel">
-                    <span class="jp-badge small fw-semibold text-success ${jpDefaults[`${sid}|${sg.id}`] ? '' : 'd-none'}">${jpDefaults[`${sid}|${sg.id}`] ?? ''} JP</span>
+                    <span class="jp-badge small fw-semibold text-success d-none">${jpDefaults[`${sid}|${sg.id}`] ?? ''} JP</span>
                 </label>
             </td>
         `).join('')}
@@ -562,23 +595,155 @@ function toggleRombel(toggle) {
     updateSubjectRow(toggle.closest('tr'));
 }
 
+function addActiveTask(tid, type, extra = {}) {
+    const code = extra.code || type.kode || type.id;
+    const studyGroupId = extra.studyGroupId || null;
+    activeTasks[tid] = activeTasks[tid] || [];
+
+    const duplicate = activeTasks[tid].some(t => {
+        if ((t.code || t.name) !== code) return false;
+        if (!studyGroupId) return true;
+        return t.studyGroupId && t.studyGroupId === studyGroupId;
+    });
+    if (duplicate) {
+        alert('Tugas tersebut sudah ada untuk GTK ini.');
+        return false;
+    }
+
+    activeTasks[tid].push({
+        name: extra.name || type.nama,
+        code,
+        hours: extra.hours ?? 3,
+        studyGroupId,
+        rombel: extra.rombel || null,
+    });
+    refreshTotal(tid);
+    return true;
+}
+
 function addTaskFromSelect(select) {
     const tid = select.dataset.teacherId;
     const type = taskTypeOptions.find(t => t.id === select.value);
     if (!tid || !type) return;
 
-    const code = type.kode || type.id;
-    activeTasks[tid] = activeTasks[tid] || [];
-    if (activeTasks[tid].some(t => (t.code || t.name) === (code || type.nama))) {
-        alert('Tugas tersebut sudah ada untuk GTK ini.');
+    const isWaliKelas = type.kode === 'wali-kelas' || /wali kelas/i.test(type.nama || '');
+    if (isWaliKelas) {
+        window._pendingTask = { tid, type };
+        document.getElementById('taskRombelPickerSelect').value = '';
+        new bootstrap.Modal(document.getElementById('taskRombelPickerModal')).show();
         select.value = '';
         return;
     }
 
-    activeTasks[tid].push({ name: type.nama, code, hours: 3 });
-    refreshTotal(tid);
+    addActiveTask(tid, type);
     select.value = '';
 }
+
+function confirmTaskRombel() {
+    const select = document.getElementById('taskRombelPickerSelect');
+    const rombel = studyGroups.find(sg => sg.id === select.value);
+    const pending = window._pendingTask;
+    if (!pending || !rombel) {
+        alert('Pilih rombel terlebih dahulu.');
+        return;
+    }
+
+    addActiveTask(pending.tid, pending.type, {
+        name: `Wali Kelas ${rombel.name}`,
+        code: 'wali-kelas',
+        hours: 0,
+        studyGroupId: rombel.id,
+        rombel: rombel.name,
+    });
+    window._pendingTask = null;
+    bootstrap.Modal.getInstance(document.getElementById('taskRombelPickerModal')).hide();
+}
+
+let undoStack = [];
+let redoStack = [];
+
+function captureTableState() {
+    const body = document.getElementById('matrixBody');
+    return {
+        html: body.innerHTML,
+        subjects: JSON.parse(JSON.stringify(activeSubjects)),
+        tasks: JSON.parse(JSON.stringify(activeTasks)),
+        counter: teacherCounter,
+        teacherCount: document.getElementById('teacherCount')?.textContent || '0',
+        selects: Array.from(body.querySelectorAll('select')).map(select => select.value),
+        toggles: Array.from(body.querySelectorAll('.rombel-toggle')).map(toggle => ({
+            checked: toggle.checked,
+            active: toggle.dataset.active || '',
+            hours: toggle.dataset.hours || '',
+        })),
+    };
+}
+
+function restoreTableState(state) {
+    const body = document.getElementById('matrixBody');
+    body.innerHTML = state.html;
+    body.querySelectorAll('select').forEach((select, index) => {
+        if (state.selects[index] !== undefined) select.value = state.selects[index];
+    });
+    body.querySelectorAll('.rombel-toggle').forEach((toggle, index) => {
+        const snapshot = state.toggles[index];
+        if (!snapshot) return;
+        toggle.checked = snapshot.checked;
+        toggle.dataset.active = snapshot.active;
+        if (snapshot.hours !== '') toggle.dataset.hours = snapshot.hours;
+        const badge = toggle.closest('td')?.querySelector('.jp-badge');
+        if (badge) {
+            badge.textContent = `${toggle.dataset.hours || 0} JP`;
+            badge.classList.toggle('d-none', !toggle.checked);
+        }
+    });
+    activeSubjects = state.subjects;
+    activeTasks = state.tasks;
+    teacherCounter = state.counter;
+    document.getElementById('teacherCount').textContent = state.teacherCount;
+    refreshAllTotals();
+    updateHistoryButtons();
+}
+
+function refreshAllTotals() {
+    document.querySelectorAll('tr[id^="teacher-row-"]').forEach(row => {
+        refreshTotal(row.id.replace('teacher-row-', ''));
+    });
+}
+
+function updateHistoryButtons() {
+    const undo = document.getElementById('undoBtn');
+    const redo = document.getElementById('redoBtn');
+    if (undo) undo.disabled = undoStack.length === 0;
+    if (redo) redo.disabled = redoStack.length === 0;
+}
+
+function pushHistory() {
+    if (!document.getElementById('matrixBody')) return;
+    undoStack.push(captureTableState());
+    if (undoStack.length > 25) undoStack.shift();
+    redoStack = [];
+    updateHistoryButtons();
+}
+
+function undoTable() {
+    if (!undoStack.length) return;
+    redoStack.push(captureTableState());
+    restoreTableState(undoStack.pop());
+}
+
+function redoTable() {
+    if (!redoStack.length) return;
+    undoStack.push(captureTableState());
+    restoreTableState(redoStack.pop());
+}
+
+document.addEventListener('keydown', function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
+    if (event.target.closest('input, select, textarea')) return;
+    event.preventDefault();
+    event.shiftKey ? redoTable() : undoTable();
+});
 
 function filterRoster() {
     const query = (document.getElementById('rosterSearch')?.value || '').trim().toLowerCase();
@@ -771,6 +936,7 @@ function createTaskContainer(tid) {
 }
 
 function removeTask(tid, rowId) {
+    pushHistory();
     document.getElementById(rowId)?.remove();
     // Remove from activeTasks
     if (activeTasks[tid]) {
@@ -781,6 +947,7 @@ function removeTask(tid, rowId) {
 
 // Remove subject row
 function removeSubjectRow(tid, sid) {
+    pushHistory();
     const row = document.getElementById(`sub-row-${tid}-${sid}`);
     if (row) row.remove();
     if (activeSubjects[tid]) activeSubjects[tid] = activeSubjects[tid].filter(s => s.id !== sid);
@@ -790,6 +957,7 @@ function removeSubjectRow(tid, sid) {
 // Remove teacher row
 function removeTeacher(tid) {
     if (!confirm('Hapus guru ini beserta semua barisnya?')) return;
+    pushHistory();
     document.getElementById(`teacher-row-${tid}`)?.remove();
     document.querySelectorAll(`tr[data-teacher="${tid}"]`).forEach(r => r.remove());
     document.getElementById(`task-rows-${tid}`)?.remove();
@@ -839,7 +1007,7 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
     document.getElementById('positionsJson').value = JSON.stringify(positions);
     document.getElementById('otherTasksJson').value = JSON.stringify(
         Object.entries(activeTasks).flatMap(([tid, tasks]) =>
-            tasks.map(t => ({ teacher_id: tid, task_name: t.name, task_code: t.code, weekly_hours: t.hours }))
+            tasks.map(t => ({ teacher_id: tid, task_name: t.name, task_code: t.code, weekly_hours: t.hours, study_group_id: t.studyGroupId || null }))
         )
     );
 });
@@ -872,6 +1040,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         refreshTotal(teacher.id);
     });
+    updateHistoryButtons();
 });
 
 // Update info preview when form fields change
@@ -1009,12 +1178,14 @@ function addTaskFromModal() {
 }
 
 function removeTask(tid, rowId) {
+    pushHistory();
     document.getElementById(rowId)?.remove();
     refreshTotal(tid);
 }
 
 // Remove subject row
 function removeSubjectRow(tid, sid) {
+    pushHistory();
     const row = document.getElementById(`sub-row-${tid}-${sid}`);
     if (row) row.remove();
     if (activeSubjects[tid]) activeSubjects[tid] = activeSubjects[tid].filter(s => s.id !== sid);
@@ -1024,6 +1195,7 @@ function removeSubjectRow(tid, sid) {
 // Remove teacher row + restore to dropdown
 function removeTeacher(tid) {
     if (!confirm('Hapus guru ini beserta semua barisnya?')) return;
+    pushHistory();
     document.getElementById(`teacher-row-${tid}`)?.remove();
     document.querySelectorAll(`tr[data-teacher="${tid}"]`).forEach(r => r.remove());
     document.getElementById(`task-rows-${tid}`)?.remove();
@@ -1071,7 +1243,7 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
     document.getElementById('positionsJson').value = JSON.stringify(positions);
     document.getElementById('otherTasksJson').value = JSON.stringify(
         Object.values(activeTasks).flatMap(([tid, tasks]) =>
-            tasks.map(t => ({ teacher_id: tid, task_name: t.name, task_code: t.code, weekly_hours: t.hours }))
+            tasks.map(t => ({ teacher_id: tid, task_name: t.name, task_code: t.code, weekly_hours: t.hours, study_group_id: t.studyGroupId || null }))
         )
     );
 });
