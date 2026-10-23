@@ -174,9 +174,9 @@
                                 <tr>
                                     <th rowspan="2" class="text-nowrap">No</th>
                                     <th rowspan="2" class="text-nowrap">Nama</th>
-                                    <th rowspan="2" class="text-nowrap">Jabatan</th>
-                                    <th rowspan="2" class="text-nowrap">Mapel/Tugas</th>
-                                    <th rowspan="2" class="text-nowrap">Tugas Tambahan</th>
+                                    <th rowspan="2" class="text-wrap">Jabatan</th>
+                                    <th rowspan="2" class="text-wrap">Mapel/Tugas</th>
+                                    <th rowspan="2" class="text-wrap">Tugas Tambahan</th>
                                     @foreach($byGrade as $level => $groups)
                                         <th colspan="{{ $groups->count() }}" class="text-nowrap">
                                             {{ $groups->first()->gradeLevel->name ?? "Kelas $level" }}
@@ -326,6 +326,7 @@ const currentTasks = {!! json_encode($currentTasks) !!};
 const currentPositions = {!! json_encode($currentPositions) !!};
 const currentPositionIds = {!! json_encode($currentPositionIds) !!};
 const positionOptions = {!! json_encode($positionOptions) !!};
+const jpDefaults = {!! json_encode($jpDefaults) !!};
 
 // Build grade columns for JS rendering
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
@@ -387,8 +388,8 @@ function addTeacherToMatrix(teacherId) {
     tr.innerHTML = `
         <td class="text-center fw-semibold">${teacherCounter}</td>
         <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
-        <td class="text-nowrap">
-            <select class="form-select form-select-sm position-select" data-teacher-id="${tid}" onchange="changePosition(this)">
+        <td class="text-wrap">
+            <select class="form-select form-select-sm position-select border-0 bg-transparent shadow-none w-auto" data-teacher-id="${tid}" onchange="changePosition(this)">
                 ${positionOptionsHtml(tid)}
             </select>
         </td>
@@ -428,9 +429,9 @@ function renderSubjectRow(tid, sid, sname) {
         <td></td>
         <td></td>
         <td></td>
-        <td class="text-nowrap">
+        <td class="text-wrap">
             <div class="d-flex align-items-center gap-1">
-                <select class="form-select form-select-sm subject-select" data-old-sid="${sid}" onchange="changeSubject(this)">
+                <select class="form-select form-select-sm subject-select border-0 bg-transparent shadow-none w-auto" data-old-sid="${sid}" onchange="changeSubject(this)">
                     ${subjectOptionsHtml(sid)}
                 </select>
                 <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeSubjectRowByButton(this)" title="Hapus Mapel">
@@ -441,7 +442,14 @@ function renderSubjectRow(tid, sid, sname) {
         <td></td>
         ${gradeCols.map(sg => `
             <td class="text-center">
-                <input type="number" min="0" max="40" value="" class="form-control form-control-sm text-center col-jp-input"
+                <div class="form-check d-flex justify-content-center m-0">
+                    <input type="checkbox" class="form-check-input rounded-circle rombel-toggle m-0"
+                           data-tid="${tid}" data-sid="${sid}" data-sgid="${sg.id}"
+                           data-default="${jpDefaults[`${sid}|${sg.id}`] ?? ''}"
+                           onchange="toggleRombel(this)" title="Pilih rombel">
+                </div>
+                <input type="number" min="0" max="40" value=""
+                       class="form-control form-control-sm text-center col-jp-input d-none mt-1 mx-auto w-75"
                        data-tid="${tid}" data-sid="${sid}" data-sgid="${sg.id}"
                        oninput="updateHours(this)">
             </td>
@@ -497,6 +505,28 @@ function confirmAddSubjects() {
     refreshTotal(tid);
 }
 
+function inputIsActive(input) {
+    const toggle = input.closest('td')?.querySelector('.rombel-toggle');
+    return !toggle || toggle.checked;
+}
+
+function toggleRombel(toggle) {
+    const active = toggle.checked;
+    toggle.dataset.active = active ? '1' : '0';
+
+    const input = toggle.closest('td')?.querySelector('.col-jp-input');
+    if (!input) return;
+
+    if (active) {
+        if (input.value === '') input.value = toggle.dataset.default || '';
+        input.classList.remove('d-none');
+    } else {
+        input.value = '';
+        input.classList.add('d-none');
+    }
+    updateHours(input);
+}
+
 // Update hours on input
 function updateHours(input) {
     const tid = input.dataset.tid;
@@ -506,7 +536,7 @@ function updateHours(input) {
     const row = input.closest('tr');
     const inputs = row.querySelectorAll('.col-jp-input');
     let sebaran = 0;
-    inputs.forEach(i => { if (i.value) sebaran += parseInt(i.value); });
+    inputs.forEach(i => { if (inputIsActive(i) && i.value) sebaran += parseInt(i.value); });
     document.getElementById(`sebaran-${tid}-${sid}`).textContent = sebaran;
     document.getElementById(`subtotal-${tid}-${sid}`).textContent = sebaran;
     refreshTotal(tid);
@@ -553,6 +583,9 @@ function changeSubject(select) {
     activeSubjects[tid] = (activeSubjects[tid] || []).map(s =>
         s.id === oldSid ? { id: newSid, name: subject?.name || '' } : s
     );
+    row.querySelectorAll('.rombel-toggle').forEach(toggle => {
+        toggle.dataset.default = jpDefaults[`${newSid}|${toggle.dataset.sgid}`] ?? '';
+    });
     refreshTotal(tid);
 }
 
@@ -566,7 +599,9 @@ function refreshTotal(tid) {
     const rows = document.querySelectorAll(`tr[data-teacher="${tid}"]`);
     let sebaran = 0;
     rows.forEach(r => {
-        r.querySelectorAll('.col-jp-input').forEach(i => { if (i.value) sebaran += parseInt(i.value); });
+        r.querySelectorAll('.col-jp-input').forEach(i => {
+            if (inputIsActive(i) && i.value) sebaran += parseInt(i.value);
+        });
     });
     const taskHours = (activeTasks[tid] || []).reduce((sum, t) => sum + (parseInt(t.hours) || 0), 0);
     const el = document.getElementById(`teacher-total-${tid}`);
@@ -610,8 +645,8 @@ function addTaskFromModal() {
         tr.innerHTML = `
             <td class="text-center fw-semibold">${teacherCounter}</td>
             <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
-            <td class="text-nowrap">
-                <select class="form-select form-select-sm position-select" data-teacher-id="${tid}" onchange="changePosition(this)">
+            <td class="text-wrap">
+                <select class="form-select form-select-sm position-select border-0 bg-transparent shadow-none w-auto" data-teacher-id="${tid}" onchange="changePosition(this)">
                     ${positionOptionsHtml(tid)}
                 </select>
             </td>
@@ -648,7 +683,7 @@ function addTaskFromModal() {
         <td></td>
         <td></td>
         <td></td>
-        <td class="text-nowrap fst-italic">${name}</td>
+        <td class="text-wrap fst-italic">${name}</td>
         ${sgCells()}
         <td></td>
         <td class="text-center fw-semibold">${hours}</td>
@@ -722,7 +757,10 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
         let hasValue = false;
         const groupHours = {};
         inputs.forEach(inp => {
-            if (inp.value) { groupHours[inp.dataset.sgid] = parseInt(inp.value); hasValue = true; }
+            if (inputIsActive(inp) && inp.value) {
+                groupHours[inp.dataset.sgid] = parseInt(inp.value);
+                hasValue = true;
+            }
         });
         if (hasValue) {
             if (!assignments[tid]) assignments[tid] = {};
@@ -758,8 +796,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 `#sub-row-${teacher.id}-${assignment.subject_id} .col-jp-input[data-sgid="${assignment.study_group_id}"]`
             );
             if (input && assignment.hours) {
+                const toggle = input.closest('td')?.querySelector('.rombel-toggle');
+                if (toggle) {
+                    toggle.checked = true;
+                    toggle.dataset.active = '1';
+                }
                 input.value = assignment.hours;
-                input.classList.add('has-val');
+                input.classList.remove('d-none');
                 updateHours(input);
             }
         });
@@ -848,8 +891,8 @@ function addTaskFromModal() {
         trow.innerHTML = `
             <td class="text-center fw-semibold">${teacherCounter}</td>
             <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
-            <td class="text-nowrap">
-                <select class="form-select form-select-sm position-select" data-teacher-id="${tid}" onchange="changePosition(this)">
+            <td class="text-wrap">
+                <select class="form-select form-select-sm position-select border-0 bg-transparent shadow-none w-auto" data-teacher-id="${tid}" onchange="changePosition(this)">
                     ${positionOptionsHtml(tid)}
                 </select>
             </td>
@@ -882,7 +925,7 @@ function addTaskFromModal() {
         <td></td>
         <td></td>
         <td></td>
-        <td class="text-nowrap fst-italic">${taskName}</td>
+        <td class="text-wrap fst-italic">${taskName}</td>
         ${sgCells()}
         <td></td>
         <td class="text-center fw-semibold">${hours}</td>
@@ -939,7 +982,10 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
         let hasValue = false;
         const groupHours = {};
         inputs.forEach(inp => {
-            if (inp.value) { groupHours[inp.dataset.sgid] = parseInt(inp.value); hasValue = true; }
+            if (inputIsActive(inp) && inp.value) {
+                groupHours[inp.dataset.sgid] = parseInt(inp.value);
+                hasValue = true;
+            }
         });
         if (hasValue) {
             if (!assignments[tid]) assignments[tid] = {};

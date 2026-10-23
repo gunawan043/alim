@@ -11,6 +11,7 @@ use App\Models\School;
 use App\Models\StructuralPosition;
 use App\Models\StructuralAssignment;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
@@ -114,9 +115,18 @@ class InstitutionDecreeController extends Controller
         $currentPositions = [];
         $currentPositionIds = [];
         $positionOptions = collect();
+        $jpDefaults = [];
         if ($teachers->isNotEmpty()) {
             $teacherIds = $teachers->pluck('id');
             $workUnitId = $selectedSchool?->work_unit_id;
+
+            $jpDefaults = StudyGroupSubject::query()
+                ->whereIn('study_group_id', $studyGroups->pluck('id'))
+                ->whereIn('subject_id', $subjects->pluck('id'))
+                ->where('is_active', true)
+                ->get()
+                ->mapWithKeys(fn ($row) => [$row->subject_id.'|'.$row->study_group_id => (float) $row->weekly_hours])
+                ->all();
 
             $teachingRows = TeachingAssignment::with(['subject:id,name', 'studyGroup:id,name'])
                 ->whereIn('teacher_id', $teacherIds)
@@ -198,7 +208,6 @@ class InstitutionDecreeController extends Controller
                     ->where('work_unit_id', $workUnitId)
                     ->orWhereNull('work_unit_id')
                     ->orWhere('work_unit_id', '')))
-                ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
                 ->get();
 
             foreach ($teachers as $teacher) {
@@ -241,7 +250,7 @@ class InstitutionDecreeController extends Controller
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults'
         ));
     }
 
