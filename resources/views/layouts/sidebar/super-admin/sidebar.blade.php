@@ -137,7 +137,7 @@
 
 {{-- ─── Step 3: Data GTK Awal ──────────────────────────────────────────── --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.', 'user.gtk-requests.', 'user.gtk-positions.', 'user.gtk-position-proposals.', 'user.pension.']) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.', 'user.gtk-requests.', 'user.gtk-positions.', 'user.gtk-position-proposals.', 'user.cross-unit-assignments.', 'user.pension.']) ? ' active' : '' }}"
        href="#boot_gtk" data-bs-toggle="collapse" role="button"
        aria-expanded="{{ isActiveAny($currentRoute, ['user.gtk.', 'user.gtk-requests.', 'user.gtk-positions.', 'user.gtk-position-proposals.', 'user.pension.']) ? 'true' : 'false' }}"
        aria-controls="boot_gtk">
@@ -174,6 +174,12 @@
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk-positions.', 'user.gtk-position-proposals.']) ? ' active' : '' }}"
                    href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
                     <i class="ri-award-line me-1"></i> Jabatan GTK
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.cross-unit-assignments.']) ? ' active' : '' }}"
+                   href="{{ route('user.cross-unit-assignments.index', ['userId' => $userId]) }}">
+                    <i class="ri-building-2-line me-1"></i> Penugasan dari Pondok
                 </a>
             </li>
             <li class="nav-item">
