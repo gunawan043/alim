@@ -589,7 +589,7 @@
                                     Scan keluar diblokir sampai diverifikasi Kepala/Wakil Asrama.
                                 </div>
                                 @if($canAuthorizePickup)
-                                    <form method="POST" action="{{ route('user.asrama.permits.pickup-authorization', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'permitUuid' => $permit->id]) }}">
+                                    <form method="POST" action="{{ route('user.asrama.permits.pickup-authorization', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'permitUuid' => $permit->id]) }}">
                                         @csrf
                                         <label for="pickup_authorization_note" class="form-label small fw-semibold">Catatan verifikasi</label>
                                         <textarea name="pickup_authorization_note" id="pickup_authorization_note" class="form-control form-control-sm mb-2" rows="2" placeholder="Contoh: sudah dikonfirmasi ke orang tua via telepon"></textarea>
@@ -661,15 +661,17 @@
                             <i class="ri-edit-box-line me-1"></i> Ubah Status
                         </button>
                     @endif
-                    @if(! in_array($permit->status, ['returned', 'rejected'], true))
-                        <form method="POST" action="{{ route('user.asrama.permits.revoke-card', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'permitUuid' => $permit->id]) }}"
+                    @if($canAuthorizePickup && ! in_array($permit->status, ['returned', 'rejected'], true))
+                        <form method="POST" action="{{ route('user.asrama.permits.revoke-card', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'permitUuid' => $permit->id]) }}"
                               onsubmit="return confirm('Cabut QR kartu ini? Kartu lama tidak dapat digunakan lagi.')">
                             @csrf
+                            <label class="form-label small fw-semibold mb-1">Alasan pencabutan</label>
+                            <input type="text" name="reason" class="form-control form-control-sm mb-2" required maxlength="500" placeholder="mis. kartu hilang / difoto pihak lain">
                             <button type="submit" class="btn btn-outline-danger w-100 btn-sm">
                                 <i class="ri-qr-scan-2-line me-1"></i> Cabut QR Kartu
                             </button>
                         </form>
-                        <form method="POST" action="{{ route('user.asrama.permits.regenerate-card', ['userId' => $userId, 'asramaUuid' => $asramaUuid, 'permitUuid' => $permit->id]) }}"
+                        <form method="POST" action="{{ route('user.asrama.permits.regenerate-card', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'permitUuid' => $permit->id]) }}"
                               onsubmit="return confirm('Buat QR baru? Kartu harus dicetak ulang setelah ini.')">
                             @csrf
                             <button type="submit" class="btn btn-outline-primary w-100 btn-sm">

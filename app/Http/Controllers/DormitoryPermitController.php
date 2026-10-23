@@ -10,6 +10,7 @@ use App\Http\Requests\Dormitory\RejectPermitRequest;
 use App\Http\Requests\Dormitory\StorePermitRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryDataConsent;
 use App\Models\DormitoryLeavePolicy;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
@@ -201,6 +202,14 @@ class DormitoryPermitController extends Controller
 
         // Pastikan santri benar-benar penghuni asrama ini.
         $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
+
+        if (config('asrama.consent_required', true)
+            && ! $request->boolean('is_emergency')
+            && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
+            return back()->withInput()->withErrors([
+                'consent' => 'Persetujuan data wali belum dicatat. Catat consent di halaman Detail Santri terlebih dahulu.',
+            ]);
+        }
 
         // Jika permit_type = sakit, wajib ada StudentHealthPermit yg sudah approved
         if ($data['permit_type'] === 'sakit') {
@@ -461,10 +470,15 @@ class DormitoryPermitController extends Controller
      */
     public function revokeCard(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
+        $this->authorizeCardManager($asramaUuid);
+        $data = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
         $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
 
-        $permit->revokeScanToken('QR dicabut manual oleh '.auth()->user()?->name.' pada '.now()->format('d/m/Y H:i'));
+        $permit->revokeScanToken('QR dicabut manual oleh '.auth()->user()?->name.' pada '.now()->format('d/m/Y H:i').'. Alasan: '.$data['reason']);
 
         \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_QR_REVOKED', 'dormitory_permits', $permit->id);
 
@@ -476,6 +490,7 @@ class DormitoryPermitController extends Controller
      */
     public function regenerateCard(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
+        $this->authorizeCardManager($asramaUuid);
         $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
 
@@ -484,6 +499,16 @@ class DormitoryPermitController extends Controller
         \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_QR_REGENERATED', 'dormitory_permits', $permit->id);
 
         return back()->with('success', 'QR kartu izin berhasil dibuat ulang. Silakan cetak ulang kartu.');
+    }
+
+    private function authorizeCardManager(string $asramaUuid): void
+    {
+        abort_unless(
+            auth()->user() && app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+                ->canManageQuota(auth()->user(), $asramaUuid),
+            403,
+            'Hanya Kepala/Wakil Asrama yang dapat mencabut atau membuat ulang QR kartu.'
+        );
     }
 
     /**

@@ -3,6 +3,9 @@
 return [
     'consent_version' => env('ASRAMA_CONSENT_VERSION', '2026-10-v1'),
 
+    // Wajibkan consent wali sebelum pengajuan izin/kunjungan baru.
+    'consent_required' => env('ASRAMA_CONSENT_REQUIRED', true),
+
     'retention' => [
         // Data kunjungan yang lebih lama akan dianonimkan.
         'visit_months' => (int) env('ASRAMA_VISIT_RETENTION_MONTHS', 24),

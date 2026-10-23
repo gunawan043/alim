@@ -38,6 +38,8 @@ class BackupDatabase extends Command
             File::put($file.'.sha256', hash_file('sha256', $file).'  '.basename($file).PHP_EOL);
             $this->info('Backup database: '.$file);
 
+            $this->copyOffsite($file);
+
             if ($this->option('with-files')) {
                 $zip = $this->backupFiles($base.'_files.zip');
                 if ($zip) {
@@ -170,6 +172,27 @@ class BackupDatabase extends Command
         $zip->close();
 
         return $target;
+    }
+
+    private function copyOffsite(string $file): void
+    {
+        $offsite = trim((string) config('backup.offsite_path'));
+
+        if ($offsite === '') {
+            return;
+        }
+
+        try {
+            File::ensureDirectoryExists($offsite);
+            File::copy($file, rtrim($offsite, '/').'/'.basename($file));
+            if (is_file($file.'.sha256')) {
+                File::copy($file.'.sha256', rtrim($offsite, '/').'/'.basename($file).'.sha256');
+            }
+            $this->info('Salinan offsite: '.$offsite);
+        } catch (\Throwable $e) {
+            \Log::error('Backup offsite gagal: '.$e->getMessage());
+            $this->warn('Backup lokal berhasil, tetapi salinan offsite gagal: '.$e->getMessage());
+        }
     }
 
     private function prune(int $keep): void

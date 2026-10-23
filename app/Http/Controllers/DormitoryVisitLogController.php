@@ -9,6 +9,7 @@ use App\Http\Requests\Dormitory\StoreVisitRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryResident;
+use App\Models\DormitoryDataConsent;
 use App\Models\DormitoryVisitLog;
 use App\Models\DormitoryStaffAssignment;
 use App\Support\UserJabatan;
@@ -135,6 +136,14 @@ class DormitoryVisitLogController extends Controller
         $data = $request->validated();
 
         $this->assertDormitoryResident($asramaUuid, $data['student_id']);
+
+        if (config('asrama.consent_required', true)
+            && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
+            return back()->withInput()->withErrors([
+                'consent' => 'Persetujuan data wali belum dicatat. Catat consent di halaman Detail Santri terlebih dahulu.',
+            ]);
+        }
+
         if (! empty($data['room_id'])) {
             $this->assertDormitoryRoom($asramaUuid, $data['room_id']);
         }

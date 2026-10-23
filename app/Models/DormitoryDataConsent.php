@@ -41,6 +41,16 @@ class DormitoryDataConsent extends Model
         'revoked_at' => 'datetime',
     ];
 
+    public static function activeFor(string $studentId, string $dormitoryId): ?self
+    {
+        return static::query()
+            ->where('student_id', $studentId)
+            ->where('dormitory_id', $dormitoryId)
+            ->whereNull('revoked_at')
+            ->latest('consented_at')
+            ->first();
+    }
+
     public function dormitory(): BelongsTo
     {
         return $this->belongsTo(Dormitory::class);
