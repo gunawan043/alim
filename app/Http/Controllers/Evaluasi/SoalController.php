@@ -198,6 +198,33 @@ class SoalController extends Controller
         });
     }
 
+    public function uploadWacanaImage(Request $request, string $userId, string $bankId)
+    {
+        $bank = BankSoal::findOrFail($bankId);
+        $this->authorizeManage($request, $bank);
+
+        $request->validate([
+            'upload' => 'required|image|max:4096',
+        ]);
+
+        $path = $request->file('upload')->store('wacana/'.$bank->id, 'public');
+
+        return response()->json([
+            'uploaded' => 1,
+            'fileName' => basename($path),
+            'url' => Storage::url($path),
+        ]);
+    }
+
+    private function sanitizeWacanaHtml(string $html): string
+    {
+        $clean = strip_tags($html, '<p><br><strong><b><em><i><u><s><ul><ol><li><a><img><h2><h3><h4><blockquote><table><thead><tbody><tr><th><td>');
+        $clean = preg_replace('/\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $clean);
+        $clean = preg_replace('/\s(href|src)\s*=\s*([\'"])\s*javascript:[^\'"]*\2/i', '', $clean);
+
+        return trim($clean);
+    }
+
     public function storeWacana(Request $request, string $userId, string $bankId)
     {
         $bank = BankSoal::findOrFail($bankId);
@@ -214,7 +241,7 @@ class SoalController extends Controller
             'bank_soal_id' => $bank->id,
             'school_id' => $bank->school_id,
             'judul' => $data['judul'] ?? null,
-            'teks' => $data['teks'],
+            'teks' => $this->sanitizeWacanaHtml($data['teks']),
             'sumber' => $data['sumber'] ?? null,
             'rentang_nomor' => $data['rentang_nomor'] ?? null,
             'created_by' => $userId,

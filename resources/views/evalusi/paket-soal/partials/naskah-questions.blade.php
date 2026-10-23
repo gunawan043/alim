@@ -5,7 +5,8 @@
                 @if(! empty($row['wacana']['judul']))
                     <div class="fw-semibold">{{ $row['wacana']['judul'] }}</div>
                 @endif
-                {!! nl2br(e($row['wacana']['teks'] ?? '')) !!}
+                @php $wacanaText = $row['wacana']['teks'] ?? ''; @endphp
+                {!! str_contains($wacanaText, '<') ? $wacanaText : nl2br(e($wacanaText)) !!}
                 @if(! empty($row['wacana']['sumber']))
                     <div class="small text-muted">Sumber: {{ $row['wacana']['sumber'] }}</div>
                 @endif

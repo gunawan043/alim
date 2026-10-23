@@ -111,6 +111,7 @@
 @endsection
 
 @section('script')
+<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
 <script>
 const bankType = @json($bankType);
 const isMixed = @json($isMixed);
@@ -278,11 +279,15 @@ function openWacanaModal() {
     document.getElementById('wacanaSumber').value = '';
     document.getElementById('wacanaRentang').value = '';
     document.getElementById('wacanaTeks').value = '';
+    if (window.CKEDITOR && CKEDITOR.instances.wacanaTeks) {
+        CKEDITOR.instances.wacanaTeks.setData('');
+    }
     new bootstrap.Modal(document.getElementById('wacanaModal')).show();
 }
 
 async function saveWacana() {
-    const teks = document.getElementById('wacanaTeks').value.trim();
+    const editor = window.CKEDITOR && CKEDITOR.instances.wacanaTeks;
+    const teks = (editor ? editor.getData() : document.getElementById('wacanaTeks').value).trim();
     if (!teks) { alert('Teks wacana wajib diisi.'); return; }
     const response = await fetch('{{ route('user.soal.wacana.store', ['userId' => $userId, 'bankId' => $bank->id]) }}', {
         method: 'POST',
@@ -317,6 +322,22 @@ function openImagePicker() {
 
 document.addEventListener('DOMContentLoaded', function () {
     addQuestion();
+
+    if (window.CKEDITOR) {
+        CKEDITOR.replace('wacanaTeks', {
+            language: 'id',
+            height: 220,
+            toolbar: [
+                ['Bold', 'Italic', 'Underline', 'Strike'],
+                ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent'],
+                ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+                ['Link', 'Unlink'],
+                ['Image', 'Table', 'HorizontalRule'],
+                ['RemoveFormat', 'Source']
+            ],
+            filebrowserImageUploadUrl: '{{ route('user.soal.wacana.upload', ['userId' => $userId, 'bankId' => $bank->id]) }}?_token={{ csrf_token() }}'
+        });
+    }
 });
 </script>
 @endsection
