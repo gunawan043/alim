@@ -8,10 +8,13 @@
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label">GTK <span class="text-danger">*</span></label>
-        <select name="user_id" class="form-select" required>
-            <option value="">-- Pilih GTK --</option>
+        <select name="user_id" class="form-select js-gtk-select" required>
+            <option value="">-- Cari dan pilih GTK --</option>
             @foreach($gtkUsers as $gtk)
-                <option value="{{ $gtk->id }}" {{ (string) $selectedUser === (string) $gtk->id ? 'selected' : '' }}>{{ $gtk->name }}</option>
+                @php $primaryWorkUnit = $gtk->gtkWorkUnits->firstWhere('is_primary', true) ?? $gtk->gtkWorkUnits->first(); @endphp
+                <option value="{{ $gtk->id }}"
+                        data-work-unit-id="{{ $primaryWorkUnit?->work_unit_id }}"
+                        {{ (string) $selectedUser === (string) $gtk->id ? 'selected' : '' }}>{{ $gtk->name }}</option>
             @endforeach
         </select>
     </div>
@@ -29,7 +32,9 @@
         <select name="school_id" class="form-select" required>
             <option value="">-- Pilih Satuan Pendidikan --</option>
             @foreach($schools as $school)
-                <option value="{{ $school->id }}" {{ (string) $selectedSchool === (string) $school->id ? 'selected' : '' }}>{{ $school->name }}</option>
+                <option value="{{ $school->id }}"
+                        data-work-unit-id="{{ $school->work_unit_id }}"
+                        {{ (string) $selectedSchool === (string) $school->id ? 'selected' : '' }}>{{ $school->name }}</option>
             @endforeach
         </select>
     </div>

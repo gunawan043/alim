@@ -182,7 +182,7 @@
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.massal']) ? ' active' : '' }}"
            href="{{ $humasUrl('user.gtk.massal') }}">
-            <i class="ri-edit-box-line"></i><span>Manajemen Massal</span>
+            <i class="ri-team-settings-line"></i><span>Manajemen GTK</span>
         </a>
     </li>
 @endif
@@ -193,13 +193,6 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if(($showAll || $canPersonal) && menu_allowed('humas'))
     <li class="menu-title"><span>Struktur & Jabatan</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.positions', 'user.gtk-positions.']) ? ' active' : '' }}"
-           href="{{ $primaryWorkUnitId ? $workUnitUrl('user.schools.satuan-kerja.positions') : $humasUrl('user.gtk-positions.index') }}">
-            <i class="ri-briefcase-line"></i><span>Jabatan GTK</span>
-        </a>
-    </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.additional-tasks', 'user.gtk-additional-tasks.']) ? ' active' : '' }}"

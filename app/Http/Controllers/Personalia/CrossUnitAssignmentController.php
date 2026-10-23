@@ -43,7 +43,8 @@ class CrossUnitAssignmentController extends Controller
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $subjects = Subject::where('is_active', true)->orderBy('name')->get();
         $activeAcademicYearId = AcademicYear::active()->value('id');
-        $gtkUsers = User::where('is_active', true)
+        $gtkUsers = User::with(['gtkWorkUnits:id,user_id,work_unit_id,is_primary'])
+            ->where('is_active', true)
             ->whereHas('gtkWorkUnits')
             ->orderBy('name')
             ->get(['id', 'name']);

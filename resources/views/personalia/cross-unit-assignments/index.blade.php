@@ -262,13 +262,61 @@
 
 @section('script')
 <script>
+function syncSchoolWorkUnit(form, preserveHome = false) {
+    if (!form) return;
+    const user = form.querySelector('[name="user_id"]');
+    const home = form.querySelector('[name="home_work_unit_id"]');
+    const school = form.querySelector('[name="school_id"]');
+    if (!user || !home || !school) return;
+
+    if (!preserveHome) {
+        const option = user.options[user.selectedIndex];
+        const workUnitId = option?.dataset.workUnitId || '';
+        if (workUnitId) home.value = workUnitId;
+    }
+
+    const currentHome = home.value;
+    Array.from(school.options).forEach(function (option) {
+        option.disabled = !!currentHome && option.dataset.workUnitId === currentHome;
+    });
+    if (school.selectedOptions[0]?.disabled) school.value = '';
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const editForm = document.getElementById('editPenugasanForm');
+
+    if (window.jQuery && window.jQuery.fn.select2) {
+        window.jQuery('.js-gtk-select').each(function () {
+            const $select = window.jQuery(this);
+            $select.select2({
+                dropdownParent: $select.closest('.modal'),
+                width: '100%',
+                placeholder: 'Cari nama GTK...',
+                allowClear: true,
+            });
+            $select.on('change', function () {
+                syncSchoolWorkUnit(this.form, false);
+            });
+        });
+    }
+
+    document.querySelectorAll('form').forEach(function (form) {
+        const home = form.querySelector('[name="home_work_unit_id"]');
+        if (home) {
+            home.addEventListener('change', function () { syncSchoolWorkUnit(form, true); });
+            syncSchoolWorkUnit(form, true);
+        }
+    });
+
     document.querySelectorAll('.btn-edit-penugasan').forEach(function (button) {
         button.addEventListener('click', function () {
             const data = button.dataset;
             editForm.action = '{{ route('user.cross-unit-assignments.update', ['userId' => $userId, 'id' => '__ID__']) }}'.replace('__ID__', data.id);
-            editForm.querySelector('[name="user_id"]').value = data.userId || '';
+            const user = editForm.querySelector('[name="user_id"]');
+            user.value = data.userId || '';
+            if (window.jQuery && window.jQuery.fn.select2) {
+                window.jQuery(user).trigger('change.select2');
+            }
             editForm.querySelector('[name="home_work_unit_id"]').value = data.homeWorkUnitId || '';
             editForm.querySelector('[name="school_id"]').value = data.schoolId || '';
             editForm.querySelector('[name="academic_year_id"]').value = data.academicYearId || '';
@@ -277,6 +325,7 @@ document.addEventListener('DOMContentLoaded', function () {
             editForm.querySelector('[name="start_date"]').value = data.startDate || '';
             editForm.querySelector('[name="end_date"]').value = data.endDate || '';
             editForm.querySelector('[name="notes"]').value = data.notes || '';
+            syncSchoolWorkUnit(editForm, true);
         });
     });
 });

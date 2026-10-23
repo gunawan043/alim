@@ -165,15 +165,9 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk.massal']) ? ' active' : '' }}"
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk.massal', 'user.gtk-positions.']) ? ' active' : '' }}"
                    href="{{ route('user.gtk.massal', ['userId' => $userId]) }}">
-                    <i class="ri-edit-box-line me-1"></i> Manajemen Massal
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk-positions.', 'user.gtk-position-proposals.']) ? ' active' : '' }}"
-                   href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
-                    <i class="ri-award-line me-1"></i> Jabatan GTK
+                    <i class="ri-team-settings-line me-1"></i> Manajemen GTK
                 </a>
             </li>
             <li class="nav-item">

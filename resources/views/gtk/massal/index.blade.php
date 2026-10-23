@@ -1,6 +1,6 @@
 @extends('layouts.master')
 @section('title')
-    @lang('Manajemen Massal GTK')
+    Manajemen GTK
 @endsection
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
@@ -80,7 +80,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Data GTK @endslot
         @slot('li_2') <a href="{{ route('user.gtk.indexguru', ['userId' => $userId]) }}">Guru</a> @endslot
-        @slot('title') Manajemen Massal @endslot
+        @slot('title') Manajemen GTK @endslot
     @endcomponent
 
     @if(session('success'))
@@ -190,10 +190,10 @@
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <h5 class="card-title mb-0">
-                                <i class="ri-edit-box-line text-primary me-2"></i>Manajemen Massal GTK
+                                <i class="ri-team-settings-line text-primary me-2"></i>Manajemen GTK
                             </h5>
                             <p class="text-muted mb-0 small">
-                                Centang GTK yang ingin diupdate, lalu klik <strong>Update Massal</strong>.
+                                Kelola data dan jabatan GTK secara massal. Centang GTK, lalu klik <strong>Update Massal</strong>.
                                 Total: <span class="fw-semibold">{{ $gtkList->total() }}</span> GTK
                             </p>
                         </div>
