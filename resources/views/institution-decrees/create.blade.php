@@ -20,6 +20,11 @@
         </div>
     @endif
 
+    <div id="draftRestoredAlert" class="alert alert-info alert-dismissible fade show d-none" role="alert">
+        <i class="ri-draft-line me-1"></i> Draft tersimpan berhasil dipulihkan. Silakan lanjutkan pengeditan.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
     <form method="POST" id="decreeForm" action="{{ route('user.institution-decrees.store', ['userId' => $userId]) }}">
         @csrf
 
@@ -144,8 +149,8 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <div class="d-flex flex-wrap gap-2">
+                    <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 overflow-auto">
+                        <div class="d-flex flex-nowrap gap-2 align-items-center">
                             <span class="badge bg-primary-subtle text-primary">
                                 <i class="ri-group-line me-1"></i><span id="teacherCount">0</span> GTK
                             </span>
@@ -153,7 +158,7 @@
                                 <i class="ri-stack-line me-1"></i>{{ $studyGroups->count() }} Rombel
                             </span>
                         </div>
-                        <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                        <div class="d-flex flex-nowrap gap-2 align-items-center ms-auto">
                             <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" id="undoBtn" onclick="undoTable()" disabled title="Undo">
                                 <i class="ri-arrow-go-back-line"></i>
                             </button>
@@ -162,7 +167,7 @@
                             </button>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text"><i class="ri-search-line"></i></span>
-                                <input type="search" id="rosterSearch" class="form-control" placeholder="Cari nama, jabatan, atau mapel..." size="28" oninput="filterRoster()">
+                                <input type="search" id="rosterSearch" class="form-control" placeholder="Cari nama, jabatan, atau mapel..." size="22" oninput="filterRoster()">
                             </div>
                             <select id="newTeacherSelect" class="d-none"><option value="">-- Pilih Guru --</option>@foreach($teachers as $t)<option value="{{ $t->id }}">{{ $t->name }}</option>@endforeach</select>
                             <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddTask()">
@@ -215,8 +220,11 @@
         </div>
 
         {{-- Submit --}}
-        <div class="d-flex justify-content-end gap-2 sticky-bottom bg-body border-top py-2 z-3">
+        <div class="d-flex justify-content-start gap-2 sticky-bottom bg-body border-top z-3 py-2">
             <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
+            <button type="button" class="btn btn-soft-primary" onclick="saveDraft()">
+                <i class="ri-draft-line me-1"></i> Simpan Draft
+            </button>
             <button type="submit" class="btn btn-success">
                 <i class="ri-save-line me-1"></i> Simpan SK
             </button>
@@ -361,6 +369,7 @@ const currentPositionIds = {!! json_encode($currentPositionIds) !!};
 const positionOptions = {!! json_encode($positionOptions) !!};
 const jpDefaults = {!! json_encode($jpDefaults) !!};
 const taskTypeOptions = {!! json_encode($taskTypeOptions) !!};
+const draftStorageKey = {!! json_encode('institution-decree-draft:'.$userId.':'.($selectedSchoolId ?? 'none').':'.($selectedAyId ?? 'none')) !!};
 
 // Build grade columns for JS rendering
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
@@ -511,7 +520,7 @@ function renderSubjectRow(tid, sid, sname) {
         <td></td>
         ${gradeCols.map(sg => `
             <td class="text-center">
-                <label class="form-check d-inline-flex align-items-center gap-1 m-0">
+                <label class="form-check d-inline-flex flex-column align-items-center gap-1 m-0">
                     <input type="checkbox" class="form-check-input rounded-circle rombel-toggle m-0"
                            data-tid="${tid}" data-sid="${sid}" data-sgid="${sg.id}"
                            data-hours="${jpDefaults[`${sid}|${sg.id}`] ?? ''}"
@@ -683,7 +692,7 @@ function confirmTaskRombel() {
     addActiveTask(pending.tid, pending.type, {
         name: `Wali Kelas ${rombel.name}`,
         code: 'wali-kelas',
-        hours: 0,
+        hours: 12,
         studyGroupId: rombel.id,
         rombel: rombel.name,
     });
@@ -777,6 +786,60 @@ document.addEventListener('keydown', function (event) {
     event.shiftKey ? redoTable() : undoTable();
 });
 
+function collectDraftFields() {
+    const fields = {};
+    document.querySelectorAll('#decreeForm [name]').forEach(field => {
+        if (field.type === 'checkbox' || field.type === 'radio') {
+            fields[field.name] = field.checked;
+        } else {
+            fields[field.name] = field.value;
+        }
+    });
+    return fields;
+}
+
+function saveDraft() {
+    try {
+        document.getElementById('decreeForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        const payload = {
+            form: collectDraftFields(),
+            table: captureTableState(),
+            savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+        if (window.Swal) {
+            Swal.fire({ icon: 'success', title: 'Draft tersimpan', text: 'Data akan dipulihkan saat halaman dibuka kembali.', timer: 1800, showConfirmButton: false });
+        } else {
+            showWarning('Draft tersimpan.');
+        }
+    } catch (error) {
+        showWarning('Gagal menyimpan draft: ' + error.message);
+    }
+}
+
+function loadDraft() {
+    try {
+        const raw = localStorage.getItem(draftStorageKey);
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft?.table) return;
+
+        restoreTableState(draft.table);
+        Object.entries(draft.form || {}).forEach(([name, value]) => {
+            const field = document.querySelector(`#decreeForm [name="${name}"]`);
+            if (!field) return;
+            if (field.type === 'checkbox' || field.type === 'radio') {
+                field.checked = !!value;
+            } else {
+                field.value = value;
+            }
+        });
+        document.getElementById('draftRestoredAlert')?.classList.remove('d-none');
+    } catch (error) {
+        console.warn('Draft restore failed', error);
+    }
+}
+
 function filterRoster() {
     const query = (document.getElementById('rosterSearch')?.value || '').trim().toLowerCase();
     document.querySelectorAll('tr[id^="teacher-row-"]').forEach(teacherRow => {
@@ -857,7 +920,8 @@ function refreshTotal(tid) {
     const taskHours = (activeTasks[tid] || []).reduce((sum, t) => sum + (parseInt(t.hours) || 0), 0);
     const el = document.getElementById(`teacher-total-${tid}`);
     if (el) {
-        el.textContent = sebaran + taskHours;
+        const totalHours = sebaran + taskHours;
+        el.innerHTML = `<span class="d-block fw-bold">${totalHours}</span><span class="d-block small text-muted">${sebaran} mapel + ${taskHours} tugas</span>`;
         el.rowSpan = Math.max(1, rows.length);
     }
     const seb = document.getElementById(`teacher-sebaran-${tid}`);
@@ -1078,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshTotal(teacher.id);
     });
     updateHistoryButtons();
+    loadDraft();
 });
 
 // Update info preview when form fields change
@@ -1122,7 +1187,7 @@ function addTaskFromModal() {
         if (!sgId) { showWarning('Pilih rombel untuk Wali Kelas.'); return; }
         taskCode = 'wali_kelas';
         taskName = `Wali Kelas ${sgName}`;
-        hours = 0;
+        hours = 12;
         rombelId = sgId;
     } else if (type === 'koordinator') {
         const mapelId = document.getElementById('koordinatorMapelSelect').value;
