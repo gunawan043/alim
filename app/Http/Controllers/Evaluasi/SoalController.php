@@ -216,6 +216,21 @@ class SoalController extends Controller
         ]);
     }
 
+    public function destroyWacana(Request $request, string $userId, string $bankId, string $wacanaId)
+    {
+        $bank = BankSoal::findOrFail($bankId);
+        $this->authorizeManage($request, $bank);
+
+        $wacana = WacanaSoal::where('bank_soal_id', $bank->id)->findOrFail($wacanaId);
+
+        DB::transaction(function () use ($wacana) {
+            Soal::where('wacana_id', $wacana->id)->update(['wacana_id' => null]);
+            $wacana->delete();
+        });
+
+        return response()->json(['success' => true]);
+    }
+
     private function sanitizeWacanaHtml(string $html): string
     {
         $clean = strip_tags($html, '<p><br><strong><b><em><i><u><s><ul><ol><li><a><img><h2><h3><h4><blockquote><table><thead><tbody><tr><th><td>');

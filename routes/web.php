@@ -1825,6 +1825,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/create', [SoalController::class, 'create'])->name('create');
                 Route::post('/wacana', [SoalController::class, 'storeWacana'])->name('wacana.store');
                 Route::post('/wacana/upload', [SoalController::class, 'uploadWacanaImage'])->name('wacana.upload');
+                Route::delete('/wacana/{wacanaId}', [SoalController::class, 'destroyWacana'])->name('wacana.destroy');
                 Route::post('/', [SoalController::class, 'store'])->name('store');
                 Route::get('/{id}/edit', [SoalController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [SoalController::class, 'update'])->name('update');

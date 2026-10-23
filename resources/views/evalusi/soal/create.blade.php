@@ -94,6 +94,20 @@
                     <button type="button" class="btn btn-light btn-sm" onclick="resetWacanaEditor()"><i class="ri-refresh-line me-1"></i>Wacana Baru</button>
                     <button type="button" class="btn btn-primary btn-sm" onclick="saveWacana()"><i class="ri-save-line me-1"></i>Simpan Wacana</button>
                 </div>
+                <div class="mt-3">
+                    <div class="small fw-semibold text-muted mb-1">Wacana tersimpan</div>
+                    <div id="wacanaSavedList" class="d-flex flex-wrap gap-2">
+                        @forelse($wacanas as $wacana)
+                            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1" data-wacana-id="{{ $wacana->id }}">
+                                {{ $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 40) }}
+                                @if($wacana->posisi_setelah_soal > 0)<small class="text-muted">setelah {{ $wacana->posisi_setelah_soal }}</small>@endif
+                                <button type="button" class="btn btn-sm p-0 text-danger" onclick="deleteWacana('{{ $wacana->id }}', this)" title="Hapus wacana"><i class="ri-close-line"></i></button>
+                            </span>
+                        @empty
+                            <span class="text-muted small" id="wacanaEmpty">Belum ada wacana tersimpan.</span>
+                        @endforelse
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -111,7 +125,7 @@
 @endsection
 
 @section('script')
-<script src="https://cdn.ckeditor.com/4.25.2-lts/standard/ckeditor.js"></script>
+<script src="{{ URL::asset('build/libs/ckeditor4/ckeditor.js') }}"></script>
 <script>
 const bankType = @json($bankType);
 const isMixed = @json($isMixed);
@@ -153,7 +167,11 @@ function addQuestion() {
     card.innerHTML = `
         <div class="card-header d-flex justify-content-between align-items-center py-2">
             <span class="fw-semibold"><i class="ri-question-line me-1 text-primary"></i>Soal <span class="question-number"></span></span>
-            <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="this.closest('.question-card').remove(); renumber()" title="Hapus soal"><i class="ri-delete-bin-line"></i></button>
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveQuestion(this, -1)" title="Naikkan soal"><i class="ri-arrow-up-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveQuestion(this, 1)" title="Turunkan soal"><i class="ri-arrow-down-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="this.closest('.question-card').remove(); renumber()" title="Hapus soal"><i class="ri-delete-bin-line"></i></button>
+            </div>
         </div>
         <div class="card-body">
             <div class="row g-2">
@@ -285,6 +303,32 @@ function resetWacanaEditor() {
     }
 }
 
+function moveQuestion(button, direction) {
+    const card = button.closest('.question-card');
+    if (!card) return;
+    if (direction < 0 && card.previousElementSibling) {
+        card.parentNode.insertBefore(card, card.previousElementSibling);
+    } else if (direction > 0 && card.nextElementSibling) {
+        card.parentNode.insertBefore(card.nextElementSibling, card);
+    }
+    renumber();
+}
+
+async function deleteWacana(id, button) {
+    if (!confirm('Hapus wacana ini? Soal yang memakainya akan menjadi tanpa wacana.')) return;
+    const response = await fetch('{{ route('user.soal.wacana.destroy', ['userId' => $userId, 'bankId' => $bank->id, 'wacanaId' => '__ID__']) }}'.replace('__ID__', id), {
+        method: 'DELETE',
+        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+    });
+    if (!response.ok) { alert('Gagal menghapus wacana.'); return; }
+    document.querySelectorAll('.wacana-select option[value="' + id + '"]').forEach(option => option.remove());
+    button.closest('[data-wacana-id]')?.remove();
+    const list = document.getElementById('wacanaSavedList');
+    if (list && !list.querySelector('[data-wacana-id]') && !document.getElementById('wacanaEmpty')) {
+        list.innerHTML = '<span class="text-muted small" id="wacanaEmpty">Belum ada wacana tersimpan.</span>';
+    }
+}
+
 function focusWacanaEditor() {
     const cards = document.querySelectorAll('.question-card');
     currentQuestionIndex = cards.length ? cards[cards.length - 1].dataset.index : null;
@@ -319,6 +363,16 @@ async function saveWacana() {
         const card = document.querySelector(`.question-card[data-index="${currentQuestionIndex}"]`);
         const select = card?.querySelector('.wacana-select');
         if (select) select.value = data.id;
+    }
+
+    const list = document.getElementById('wacanaSavedList');
+    if (list) {
+        document.getElementById('wacanaEmpty')?.remove();
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-light text-dark border d-inline-flex align-items-center gap-1';
+        badge.dataset.wacanaId = data.id;
+        badge.innerHTML = `${escapeHtml(data.judul)} <button type="button" class="btn btn-sm p-0 text-danger" onclick="deleteWacana('${data.id}', this)" title="Hapus wacana"><i class="ri-close-line"></i></button>`;
+        list.appendChild(badge);
     }
 }
 
