@@ -61,7 +61,15 @@
                                         </option>
                                     @endforeach
                                 </select>
-                            </div>
+                                <small class="text-muted">Bentuk soal (PG, uraian, campuran), bukan bahasa.</small>
+                                <label class="form-label mt-3">Bahasa Utama</label>
+                                <select name="bahasa" class="form-control">
+                                    @foreach (\App\Models\Soal::BAHASA_OPTIONS as $key => $label)
+                                        <option value="{{ $key }}" {{ old('bahasa', 'latin') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Menentukan default bahasa saat input soal. Bahasa tetap bisa diubah per soal.</small>
+</div>
 
                             <div class="col-md-4">
                                 <label class="form-label">Tingkat Kesulitan <span class="text-danger">*</span></label>

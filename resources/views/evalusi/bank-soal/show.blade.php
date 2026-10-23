@@ -60,6 +60,10 @@
                             <td><span class="badge bg-info-subtle text-info">{{ $bank->jenis_soal }}</span></td>
                         </tr>
                         <tr>
+                            <td class="text-muted">Bahasa Utama</td>
+                            <td><span class="badge bg-primary-subtle text-primary">{{ \App\Models\Soal::BAHASA_OPTIONS[$bank->bahasa] ?? 'Latin' }}</span></td>
+                        </tr>
+                        <tr>
                             <td class="text-muted">Tingkat Kesulitan</td>
                             <td><span class="badge bg-primary-subtle text-primary">{{ ucfirst($bank->tingkat_kesulitan_target) }}</span></td>
                         </tr>
@@ -130,10 +134,13 @@
         <div class="col-xl-12">
             <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
-                    <h5 class="card-title mb-0">Daftar Soal</h5>
+                    <div>
+                        <h5 class="card-title mb-0">Daftar Soal</h5>
+                        <small class="text-muted">Bahasa soal diatur per butir. Gunakan tombol Input Soal untuk menambah butir.</small>
+                    </div>
                     <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}"
                        class="btn btn-success btn-sm">
-                        <i class="ri-add-line me-1"></i> Tambah Soal
+                        <i class="ri-add-line me-1"></i> Input Soal
                     </a>
                 </div>
                 <div class="card-body">
@@ -148,6 +155,7 @@
                                     <tr>
                                         <th style="width:60px">#</th>
                                         <th>Jenis Soal</th>
+                                        <th>Bahasa</th>
                                         <th>Pertanyaan (singkat)</th>
                                         <th>Bobot</th>
                                         <th>Status</th>
@@ -159,6 +167,7 @@
                                         <tr>
                                             <td>{{ $i + 1 }}</td>
                                             <td><span class="badge bg-secondary-subtle text-secondary">{{ $soal->tipe_soal ?? '-' }}</span></td>
+                                            <td><span class="badge bg-info-subtle text-info">{{ \App\Models\Soal::BAHASA_OPTIONS[$soal->bahasa] ?? 'Latin' }}</span></td>
                                             <td style="max-width:300px">{{ Str::limit(strip_tags($soal->pertanyaan ?? ''), 60) }}</td>
                                             <td>{{ $soal->bobot_default ?? '-' }}</td>
                                             <td>

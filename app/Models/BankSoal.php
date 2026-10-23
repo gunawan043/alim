@@ -34,6 +34,7 @@ class BankSoal extends Model
         'nama',
         'deskripsi',
         'jenis_soal',
+        'bahasa',
         'tingkat_kesulitan_target',
         'is_public',
         'shared_scope',

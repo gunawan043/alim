@@ -39,7 +39,7 @@
                                 <label class="form-label">Bahasa Soal</label>
                                 <select name="bahasa" class="form-control">
                                     @foreach (\App\Models\Soal::BAHASA_OPTIONS as $key => $label)
-                                        <option value="{{ $key }}" {{ old('bahasa', $soal->bahasa ?? 'latin') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                                        <option value="{{ $key }}" {{ old('bahasa', $soal->bahasa ?? $bank->bahasa ?? 'latin') === $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
                                 <small class="text-muted">

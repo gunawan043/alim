@@ -89,7 +89,7 @@
                         <div class="d-flex justify-content-between align-items-center border-bottom py-2 gap-2">
                             <div>
                                 <a href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}" class="fw-medium link-primary">{{ $bank->nama }}</a>
-                                <div class="small text-muted">{{ $bank->approved_soal_count }} soal approved</div>
+                                <div class="small text-muted">{{ $bank->approved_soal_count }} soal approved · {{ \App\Models\Soal::BAHASA_OPTIONS[$bank->bahasa] ?? 'Latin' }}</div>
                             </div>
                             <a href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}" class="btn btn-sm btn-soft-primary">Input Soal</a>
                         </div>

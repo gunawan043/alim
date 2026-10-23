@@ -176,7 +176,8 @@ class BankSoalController extends Controller
             'currentUser',
             'sharedScopes',
             'jenisSoal',
-            'tingkatKesulitan'
+            'tingkatKesulitan',
+            'userId'
         ));
     }
 
@@ -191,6 +192,7 @@ class BankSoalController extends Controller
             'subject_id' => 'required|exists:subjects,id',
             'fase' => 'nullable|string|max:5',
             'jenis_soal' => 'required|in:pilihan_ganda,multiple_choice_complex,benar_salah,menjodohkan,isian_singkat,uraian,campuran',
+            'bahasa' => 'nullable|in:latin,arab,gabungan',
             'tingkat_kesulitan_target' => 'required|in:mudah,sedang,sulit,campuran',
             'is_public' => 'nullable|boolean',
             'shared_scope' => 'required|in:private,internal_school,public_pool',
@@ -224,7 +226,7 @@ class BankSoalController extends Controller
         $bank = BankSoal::with(['school', 'subject', 'owner', 'creator', 'tujuanPembelajaran',
             'soal' => fn ($q) => $q->with('tujuanPembelajaran')
                 ->orderBy('created_at')
-                ->select('id', 'bank_soal_id', 'tipe_soal', 'pertanyaan',
+                ->select('id', 'bank_soal_id', 'tipe_soal', 'bahasa', 'pertanyaan',
                     'status', 'bobot_default', 'created_at')])
             ->findOrFail($id);
 
@@ -277,7 +279,8 @@ class BankSoalController extends Controller
             'subjects',
             'sharedScopes',
             'jenisSoal',
-            'tingkatKesulitan'
+            'tingkatKesulitan',
+            'userId'
         ));
     }
 
@@ -296,6 +299,7 @@ class BankSoalController extends Controller
             'subject_id' => 'required|exists:subjects,id',
             'fase' => 'nullable|string|max:5',
             'jenis_soal' => 'required|in:pilihan_ganda,multiple_choice_complex,benar_salah,menjodohkan,isian_singkat,uraian,campuran',
+            'bahasa' => 'nullable|in:latin,arab,gabungan',
             'tingkat_kesulitan_target' => 'required|in:mudah,sedang,sulit,campuran',
             'is_public' => 'nullable|boolean',
             'shared_scope' => 'required|in:private,internal_school,public_pool',
