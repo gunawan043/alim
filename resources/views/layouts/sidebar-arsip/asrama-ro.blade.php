@@ -226,7 +226,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.calendar.') ? ' active' : '' }}"
        href="{{ $hasAsramaContext ? route('user.calendar.return.index', ['userId' => $userId]) : $asramaProfileFallback }}">
         <i class="ri-calendar-event-line"></i>
-        <span>Kalender Kepulangan</span>
+        <span>Rencana Kepulangan</span>
     </a>
 </li>
 <li class="nav-item">

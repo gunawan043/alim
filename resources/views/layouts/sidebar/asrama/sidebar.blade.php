@@ -217,22 +217,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
     </li>
 @endif
 
-@if (! (($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama') && ($scanAsramaId ?? null)))
-    {{-- Tampil di sini hanya bila menu global Staf Perizinan tidak merender link yang sama. --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.') && ! isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.statistics') ? ' active' : '' }}"
-           href="{{ $hasAsramaContext
-                ? route('user.asrama.dormitory-returns.index', [
-                    'userId' => $userId,
-                    'asramaUuid' => $asramaUuid
-                ])
-                : $asramaProfileFallback }}">
-            <i class="ri-login-box-line"></i>
-            <span>Kedatangan Santri</span>
-        </a>
-    </li>
-@endif
-
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.dormitory-returns.statistics') ? ' active' : '' }}"
        href="{{ $hasAsramaContext
@@ -336,15 +320,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
         </a>
     </li>
 
-    {{-- Kedatangan Santri --}}
-    @if($scanAsramaId ?? null)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.dormitory-returns.index']) ? ' active' : '' }}"
-           href="{{ route('user.asrama.dormitory-returns.index', ['userId' => $userId, 'asramaUuid' => $scanAsramaId]) }}">
-            <i class="ri-login-box-line"></i><span>Kedatangan Santri</span>
-        </a>
-    </li>
-    @endif
 @endif
 
 
@@ -609,7 +584,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
     }}"
        href="{{ route('user.calendar.return.index', ['userId' => $userId]) }}">
         <i class="ri-calendar-event-line"></i>
-        <span>Kalender Kepulangan</span>
+        <span>Rencana Kepulangan</span>
     </a>
 </li>
 
@@ -620,7 +595,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
     }}"
        href="{{ route('user.calendar.visit.index', ['userId' => $userId]) }}">
         <i class="ri-footprint-line"></i>
-        <span>Kalender Kunjungan</span>
+        <span>Rencana Kunjungan</span>
     </a>
 </li>
 

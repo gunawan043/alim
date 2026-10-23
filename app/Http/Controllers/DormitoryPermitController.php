@@ -81,7 +81,11 @@ class DormitoryPermitController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            if ($request->status === 'awaiting_return') {
+                $query->whereIn('status', ['picked_up', 'overdue']);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         if ($request->filled('permit_type')) {

@@ -1,6 +1,6 @@
 @extends('layouts.master')
 
-@section('title', 'Kalender Kunjungan')
+@section('title', 'Rencana Kunjungan')
 
 @section('content')
 <div class="container-fluid">
@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                 <div>
-                    <h4 class="mb-sm-0">Kalender Kunjungan</h4>
+                    <h4 class="mb-sm-0">Rencana Kunjungan</h4>
                     <small class="text-muted">Jadwal kunjungan wali & keluarga ke asrama</small>
                 </div>
                 <a href="{{ route('user.asrama.visits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid ?? \App\Models\Dormitory::where('is_active', true)->first()?->id]) }}"

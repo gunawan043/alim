@@ -2334,7 +2334,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/izin/scan', [DormitoryPermitController::class, 'scan'])->name('permits.scan')->withoutMiddleware([EnsurePermission::class]);
                 Route::post('/{asramaUuid}/izin/scan', [DormitoryPermitController::class, 'scanStore'])->name('permits.scan.store')->middleware('throttle:30,1');
                 Route::get('/izin/verify', [DormitoryPermitController::class, 'verify'])->name('permits.verify')->withoutMiddleware([EnsurePermission::class]);
-                Route::post('/izin/verify', [DormitoryPermitController::class, 'verifyStore'])->name('permits.verify.store')->withoutMiddleware([EnsurePermission::class]);
                 // Public QR scan endpoint for mobile apps
                 Route::get('/izin/public-scan/{token}', [DormitoryPermitController::class, 'publicVerify'])->name('permits.public-verify');
 

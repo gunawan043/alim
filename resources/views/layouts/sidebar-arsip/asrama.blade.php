@@ -183,7 +183,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
                 <a class="nav-link{{ isActiveAsr($currentRoute, 'user.calendar.return.') ? ' active' : '' }}"
                    href="{{ route('user.calendar.return.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
-                    <i class="ri-calendar-event-line me-1"></i> Kalender Kepulangan
+                    <i class="ri-calendar-event-line me-1"></i> Rencana Kepulangan
                 </a>
             </li>
             <li class="nav-item">
@@ -197,7 +197,7 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
                 <a class="nav-link{{ isActiveAsr($currentRoute, 'user.calendar.visit.') ? ' active' : '' }}"
                    href="{{ route('user.calendar.visit.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">
-                    <i class="ri-footprint-line me-1"></i> Kalender Kunjungan
+                    <i class="ri-footprint-line me-1"></i> Rencana Kunjungan
                 </a>
             </li>
             <li class="nav-item">

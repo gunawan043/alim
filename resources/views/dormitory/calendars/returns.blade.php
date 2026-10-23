@@ -1,6 +1,6 @@
 @extends('layouts.master')
 
-@section('title', 'Kalender Kepulangan')
+@section('title', 'Rencana Kepulangan')
 
 @section('content')
 <div class="container-fluid">
@@ -8,7 +8,7 @@
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
                 <div>
-                    <h4 class="mb-sm-0">Kalender Kepulangan Santri</h4>
+                    <h4 class="mb-sm-0">Rencana Kepulangan Santri</h4>
                     <small class="text-muted">Pantau kepulangan berdasarkan izin pulang</small>
                 </div>
                 <a href="{{ route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid ?? \App\Models\Dormitory::where('is_active', true)->first()?->id]) }}"

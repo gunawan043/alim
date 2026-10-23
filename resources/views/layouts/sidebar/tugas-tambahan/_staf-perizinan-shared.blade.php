@@ -168,19 +168,19 @@
      KALENDER
      ═══════════════════════════════════════════════════════════════════════════ --}}
 
-{{-- 10. Kalender Kepulangan --}}
+{{-- 10. Rencana Kepulangan --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.calendar.return.']) ? ' active' : '' }}"
        href="{{ $spUrl('user.calendar.return.index') }}">
-        <i class="ri-calendar-event-line"></i><span>Kalender Kepulangan</span>
+        <i class="ri-calendar-event-line"></i><span>Rencana Kepulangan</span>
     </a>
 </li>
 
-{{-- 11. Kalender Kunjungan --}}
+{{-- 11. Rencana Kunjungan --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.calendar.visit.']) ? ' active' : '' }}"
        href="{{ $spUrl('user.calendar.visit.index') }}">
-        <i class="ri-calendar-2-line"></i><span>Kalender Kunjungan</span>
+        <i class="ri-calendar-2-line"></i><span>Rencana Kunjungan</span>
     </a>
 </li>
 

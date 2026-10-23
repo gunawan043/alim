@@ -184,7 +184,7 @@
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.calendar.return.']) ? ' active' : '' }}"
            href="{{ $giziUrl('user.calendar.return.index') }}">
-            <i class="ri-calendar-event-line"></i><span>Kalender Kepulangan</span>
+            <i class="ri-calendar-event-line"></i><span>Rencana Kepulangan</span>
         </a>
     </li>
 @endif

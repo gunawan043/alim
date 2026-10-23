@@ -67,10 +67,10 @@
                 </div>
                 <div class="card-body">
                     <a href="{{ route('user.calendar.return.index', ['userId' => auth()->id()]) }}" class="btn btn-primary mb-2">
-                        <i class="ri-calendar-event-line"></i> Kalender Kepulangan
+                        <i class="ri-calendar-event-line"></i> Rencana Kepulangan
                     </a>
                     <a href="{{ route('user.calendar.visit.index', ['userId' => auth()->id()]) }}" class="btn btn-info mb-2">
-                        <i class="ri-footprint-line"></i> Kalender Kunjungan
+                        <i class="ri-footprint-line"></i> Rencana Kunjungan
                     </a>
                     <a href="{{ route('user.boarding-policies.index', ['userId' => auth()->id()]) }}" class="btn btn-secondary mb-2">
                         <i class="ri-file-shield-2-line"></i> Kebijakan Asrama

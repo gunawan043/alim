@@ -356,6 +356,27 @@
                 </div>
 
                 <div class="card-body">
+                    @php
+                        $permitTabs = [
+                            '' => ['label' => 'Semua', 'icon' => 'ri-list-check'],
+                            'pending' => ['label' => 'Menunggu', 'icon' => 'ri-time-line'],
+                            'approved' => ['label' => 'Belum Keluar', 'icon' => 'ri-logout-box-r-line'],
+                            'awaiting_return' => ['label' => 'Menunggu Kembali', 'icon' => 'ri-login-box-line'],
+                            'returned' => ['label' => 'Sudah Kembali', 'icon' => 'ri-home-heart-line'],
+                            'overdue' => ['label' => 'Terlambat', 'icon' => 'ri-alarm-warning-line'],
+                        ];
+                    @endphp
+                    <ul class="nav nav-pills gap-2 mb-3 flex-wrap">
+                        @foreach($permitTabs as $value => $tab)
+                            <li class="nav-item">
+                                <a class="nav-link btn-sm {{ request('status', '') === $value ? 'active' : '' }}"
+                                   href="{{ route('user.asrama.permits.index', array_filter(['userId' => $userId, 'asramaUuid' => $dormitory->id, 'status' => $value])) }}">
+                                    <i class="{{ $tab['icon'] }} me-1"></i>{{ $tab['label'] }}
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+
                     {{-- Toolbar pencarian + filter modal (pola GTK) --}}
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                         <form method="GET" class="d-flex gap-2 flex-grow-1" style="max-width:520px;">
