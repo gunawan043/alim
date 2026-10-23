@@ -578,6 +578,16 @@ $isKepalaAsrama = in_array($currentUserJob, [
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.point-catalog.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.point-catalog.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-list-settings-line"></i>
+        <span>Katalog Poin</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.calendar.return.')
         ? ' active' : ''

@@ -2343,6 +2343,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/pengaturan', [DormitoryLeavePolicyController::class, 'storeOrUpdate'])->name('leave-policies.store');
                 Route::post('/{asramaUuid}/izin/pengaturan/apply-defaults', [DormitoryLeavePolicyController::class, 'applyDefaults'])->name('leave-policies.apply-defaults');
                 Route::post('/{asramaUuid}/izin/pengaturan/kunjungan', [DormitoryLeavePolicyController::class, 'updateVisitPolicy'])->name('leave-policies.visit');
+                Route::get('/{asramaUuid}/poin/katalog', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'index'])->name('point-catalog.index');
+                Route::post('/{asramaUuid}/poin/katalog', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'store'])->name('point-catalog.store');
+                Route::post('/{asramaUuid}/poin/katalog/{catalogUuid}/toggle', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'toggle'])->name('point-catalog.toggle');
 
                 // ── JENIS IZIN (PERMIT TYPES) CRUD ───────────────────────
                 Route::get('/{asramaUuid}/izin/pengaturan/permit-types', [PermitTypeController::class, 'index'])->name('permit-types.index');
