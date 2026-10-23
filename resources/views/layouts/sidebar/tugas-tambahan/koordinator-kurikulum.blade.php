@@ -172,41 +172,10 @@
 
 {{-- Bank Soal & Kisi-Kisi --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.']) ? ' active' : '' }}"
-       href="#koor_kur_soal" data-bs-toggle="collapse" role="button"
-       aria-expanded="{{ isActiveAny($currentRoute, ['user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.']) ? 'true' : 'false' }}"
-       aria-controls="koor_kur_soal">
-        <i class="ri-file-list-3-line"></i><span>Bank Soal & Evaluasi</span><span class="menu-arrow"></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.', 'user.ljk.']) ? ' active' : '' }}"
+       href="{{ $koorKurUrl('user.asesmen.index') }}">
+        <i class="ri-file-list-3-line"></i><span>Asesmen</span>
     </a>
-    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.']) ? ' show' : '' }}"
-         id="koor_kur_soal">
-        <ul class="nav nav-sm flex-column">
-            <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.']) ? ' active' : '' }}"
-                   href="{{ $koorKurUrl('user.kisi-kisi-soal.index') }}">
-                    Kisi-Kisi Soal
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
-                   href="{{ $koorKurUrl('user.bank-soal.index') }}">
-                    Bank Soal
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
-                   href="{{ $koorKurUrl('user.paket-soal.index') }}">
-                    Paket Soal Sumatif
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.ljk.']) ? ' active' : '' }}"
-                   href="{{ $koorKurUrl('user.ljk.index') }}">
-                    <i class="ri-scan-2-line me-1"></i>LJK Smart Scanner
-                </a>
-            </li>
-        </ul>
-    </div>
 </li>
 
 {{-- Validasi Perangkat Ajar --}}

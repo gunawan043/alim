@@ -876,62 +876,10 @@
     <li class="menu-title"><span>Bank Soal &amp; Asesmen</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' active' : '' }}"
-           href="#sp_asesmen" data-bs-toggle="collapse" role="button"
-           aria-expanded="{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? 'true' : 'false' }}"
-           aria-controls="sp_asesmen">
-            <i class="ri-file-edit-line"></i><span>Bank Soal &amp; Asesmen</span><span class="menu-arrow"></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.', 'user.ljk.']) ? ' active' : '' }}"
+           href="{{ route('user.asesmen.index', ['userId' => $userId]) }}">
+            <i class="ri-file-edit-line"></i><span>Asesmen</span>
         </a>
-        <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.']) ? ' show' : '' }}"
-             id="sp_asesmen">
-            <ul class="nav nav-sm flex-column">
-                <li class="nav-item"><div class="px-3 py-1 text-muted" style="font-size:.68rem;line-height:1.25">Alur: kisi-kisi → input soal → paket → validasi → cetak</div></li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kisi-kisi-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.kisi-kisi-soal.index', ['userId' => $userId]) }}">
-                        Kisi-Kisi Soal
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal.', 'user.soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
-                        Bank Soal &amp; Input Soal
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.review-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.review-soal.index', ['userId' => $userId]) }}">
-                        Review Soal Serumpun
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
-                       href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
-                        Repository Soal
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
-                       href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}">
-                        Paket &amp; Validasi Soal
-                    </a>
-                </li>
-                @if($showAll || $isAdminTU)
-                    <li class="nav-item">
-                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.tu-paket-soal.']) ? ' active' : '' }}"
-                           href="{{ route('user.tu-paket-soal.index', ['userId' => $userId]) }}">
-                            TU — Cetak Paket Final
-                        </a>
-                    </li>
-                @endif
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.ljk.']) ? ' active' : '' }}"
-                       href="{{ route('user.ljk.index', ['userId' => $userId]) }}">
-                        <i class="ri-scan-2-line me-1"></i>LJK Smart Scanner
-                    </a>
-                </li>
-            </ul>
-        </div>
     </li>
 
     {{-- KKTP kini diatur langsung di Peta Kurikulum (kolom N-KKTP) & Struktur Kurikulum. --}}

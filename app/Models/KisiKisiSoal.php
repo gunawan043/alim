@@ -79,6 +79,11 @@ class KisiKisiSoal extends Model
         return $this->hasMany(KisiKisiSoalItem::class, 'kisi_kisi_soal_id');
     }
 
+    public function pakets(): HasMany
+    {
+        return $this->hasMany(PaketSoal::class, 'kisi_kisi_soal_id')->orderByDesc('created_at');
+    }
+
     /**
      * Get all TPs mapped in this kisi-kisi
      */

@@ -82,6 +82,7 @@ use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
 use App\Http\Controllers\DormitoryStudentOperatorController;
 use App\Http\Controllers\DormitoryWingController;
+use App\Http\Controllers\Evaluasi\AsesmenController;
 use App\Http\Controllers\Evaluasi\BankSoalController;
 use App\Http\Controllers\Evaluasi\BankSoalTerpusatController;
 use App\Http\Controllers\Evaluasi\KisiKisiController;
@@ -1785,6 +1786,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/template', [JamPelajaranController::class, 'template'])->name('template');
                 Route::put('/{slotId}', [JamPelajaranController::class, 'update'])->name('update');
                 Route::delete('/{slotId}', [JamPelajaranController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── ASESMEN WORKSPACE ───────────────────────────────────
+            Route::prefix('asesmen')->name('asesmen.')->group(function () {
+                Route::get('/', [AsesmenController::class, 'index'])->name('index');
+                Route::get('/{kisiUuid}', [AsesmenController::class, 'show'])->name('show');
             });
 
             // ── EVALUASI: KISI-KISI SOAL ────────────────────────────

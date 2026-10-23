@@ -273,9 +273,15 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.kisi-kisi-soal.', 'user.bank-soal.', 'user.paket-soal.', 'user.ljk.']) ? ' active' : '' }}"
+                   href="{{ route('user.asesmen.index', ['userId' => $userId]) }}">
+                    <i class="ri-file-edit-line me-1"></i> Asesmen
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.bank-soal-terpusat.']) ? ' active' : '' }}"
                    href="{{ route('user.bank-soal-terpusat.index', ['userId' => $userId]) }}">
-                    <i class="ri-archive-2-line me-1"></i> Bank Soal Terpusat
+                    <i class="ri-archive-2-line me-1"></i> Repository Soal
                 </a>
             </li>
             <li class="nav-item">
