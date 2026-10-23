@@ -121,11 +121,27 @@ class DormitoryService
             return;
         }
 
+        $mahrom = $reward->student->mahroms()->where('is_primary', true)->first()
+            ?? $reward->student->mahroms()->where('is_active', true)->first();
+
         try {
             app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyReward($reward);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('WA notif penghargaan gagal: '.$e->getMessage());
         }
+
+        $this->notifService->sendToRole('Wali Santri', [
+            'module' => 'dormitory',
+            'reference_type' => 'dormitory_reward',
+            'reference_id' => $reward->id,
+            'type' => 'success',
+            'action' => 'reward_recorded',
+            'title' => "Penghargaan Asrama — {$reward->student->name}",
+            'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", anak Anda {$reward->student->name} menerima penghargaan "
+                ."\"{$reward->title}\" ({$reward->category_text}, {$reward->level_text}) dengan poin +{$reward->points}.",
+            'send_whatsapp' => false,
+            'priority' => 'medium',
+        ]);
     }
 
     /**
