@@ -24,7 +24,7 @@ class StudentLookupService
      * @param  string|null  $academicYearId  Filter by academic year
      * @param  int  $limit  Max results
      */
-    public function search(string $query, ?string $dormitoryId = null, ?string $academicYearId = null, int $limit = 20): Collection
+    public function search(string $query, ?string $dormitoryId = null, ?string $academicYearId = null, int $limit = 20): \Illuminate\Support\Collection
     {
         $activeYears = AcademicYear::pluck('id')->toArray();
         $yearId = $academicYearId ?? (AcademicYear::where('is_active', true)->value('id'));

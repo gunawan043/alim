@@ -152,6 +152,22 @@
 
     select.addEventListener('change', syncRewardCatalog);
     if (select.value) syncRewardCatalog();
+
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery(select).select2({
+            width: '100%',
+            placeholder: 'Cari kode atau nama penghargaan...',
+            allowClear: true,
+        });
+        const student = document.querySelector('select[name="student_id"]');
+        if (student) {
+            jQuery(student).select2({
+                width: '100%',
+                placeholder: 'Cari nama santri...',
+                allowClear: true,
+            });
+        }
+    }
 })();
 </script>
 @endsection

@@ -354,12 +354,14 @@
             resultsBox.classList.remove('d-none');
             searchInput.setAttribute('aria-busy', 'true');
 
-            const url = '/api/dormitory/' + dormitoryId + '/residents/find-student?q=' + encodeURIComponent(q);
-            fetch(url)
+            const url = "{{ route('user.asrama.residents.find-student', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                + '?dormitory_id=' + encodeURIComponent(dormitoryId)
+                + '&q=' + encodeURIComponent(q);
+            fetch(url, { headers: { 'Accept': 'application/json' } })
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
                     searchInput.removeAttribute('aria-busy');
-                    renderStudentResults(data.data || data);
+                    renderStudentResults(data.results || data.data || []);
                 })
                 .catch(function() {
                     searchInput.removeAttribute('aria-busy');
@@ -416,6 +418,14 @@
     if (catalogSelect) {
         catalogSelect.addEventListener('change', syncCatalogFields);
         if (catalogSelect.value) syncCatalogFields();
+
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery(catalogSelect).select2({
+                width: '100%',
+                placeholder: 'Cari kode atau nama pelanggaran...',
+                allowClear: true,
+            });
+        }
     }
 
     // ── Category + Points auto summary ─────────────────────────
