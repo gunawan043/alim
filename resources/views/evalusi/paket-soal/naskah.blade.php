@@ -30,7 +30,7 @@
                 <h5 class="mb-1">Naskah Soal — {{ $paket->judul }}</h5>
                 <p class="text-muted small mb-0">
                     {{ $paket->kisiKisi?->subject?->name ?? '-' }}
-                    &bull; {{ $paket->kisiKisi?->gradeLevel?->nama ?? '-' }}
+                    &bull; {{ $paket->kisiKisi?->gradeLevel?->name ?? '-' }}
                     &bull; {{ $paket->kisiKisi?->academicYear?->name ?? '-' }}
                     &bull; Semester {{ ucfirst($paket->kisiKisi?->semester ?? '-') }}
                     &bull; {{ strtoupper($paket->kisiKisi?->jenis_ujian ?? '-') }}

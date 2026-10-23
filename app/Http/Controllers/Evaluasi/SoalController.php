@@ -17,7 +17,10 @@ use App\Services\SubjectGroupResolver;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SoalController extends Controller
 {
@@ -115,6 +118,10 @@ class SoalController extends Controller
      */
     public function store(Request $request, string $userId, string $bankId)
     {
+        if ($request->has('questions')) {
+            return $this->storeQuestions($request, $userId, $bankId);
+        }
+
         $bank = BankSoal::findOrFail($bankId);
 
         $this->authorizeManage(request(), $bank);
@@ -189,6 +196,138 @@ class SoalController extends Controller
                 ->route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id])
                 ->with('success', 'Soal berhasil dibuat (status: draft). Submit untuk review.');
         });
+    }
+
+    public function storeWacana(Request $request, string $userId, string $bankId)
+    {
+        $bank = BankSoal::findOrFail($bankId);
+        $this->authorizeManage($request, $bank);
+
+        $data = $request->validate([
+            'judul' => 'nullable|string|max:150',
+            'teks' => 'required|string',
+            'sumber' => 'nullable|string|max:150',
+        ]);
+
+        $wacana = WacanaSoal::create([
+            'bank_soal_id' => $bank->id,
+            'school_id' => $bank->school_id,
+            'judul' => $data['judul'] ?? null,
+            'teks' => $data['teks'],
+            'sumber' => $data['sumber'] ?? null,
+            'created_by' => $userId,
+        ]);
+
+        return response()->json([
+            'id' => $wacana->id,
+            'judul' => $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 60),
+            'teks' => $wacana->teks,
+        ]);
+    }
+
+    private function storeQuestions(Request $request, string $userId, string $bankId)
+    {
+        $bank = BankSoal::findOrFail($bankId);
+        $this->authorizeManage($request, $bank);
+
+        $validated = $request->validate([
+            'questions' => 'required|array|min:1',
+            'questions.*.pertanyaan' => 'required|string',
+            'questions.*.tipe_soal' => 'nullable|in:pg,bs,jodoh,isian,uraian',
+            'questions.*.tingkat_kesulitan_estimasi' => 'nullable|in:mudah,sedang,sulit',
+            'questions.*.bobot_default' => 'nullable|numeric|min:0|max:100',
+            'questions.*.tp_id' => 'nullable|exists:tujuan_pembelajaran,id',
+            'questions.*.wacana_id' => 'nullable|uuid|exists:wacana_soal,id',
+            'questions.*.pembahasan' => 'nullable|string|max:5000',
+            'questions.*.tags' => 'nullable|string|max:255',
+            'questions.*.gambar' => 'nullable|image|max:4096',
+            'questions.*.options' => 'nullable|array',
+            'questions.*.options.*.teks_opsi' => 'nullable|string|max:1000',
+            'questions.*.options.*.is_correct' => 'nullable|boolean',
+        ]);
+
+        $typeMap = [
+            'pilihan_ganda' => 'pg',
+            'multiple_choice_complex' => 'pg',
+            'benar_salah' => 'bs',
+            'menjodohkan' => 'jodoh',
+            'isian_singkat' => 'isian',
+            'uraian' => 'uraian',
+        ];
+        $bankType = $typeMap[$bank->jenis_soal] ?? 'pg';
+        $engine = app(ContentHashEngine::class);
+        $created = 0;
+
+        DB::transaction(function () use ($validated, $request, $bank, $userId, $bankType, $engine, &$created) {
+            foreach ($validated['questions'] as $index => $question) {
+                $type = $bank->jenis_soal === 'campuran'
+                    ? ($question['tipe_soal'] ?? 'pg')
+                    : $bankType;
+                $options = collect($question['options'] ?? [])
+                    ->filter(fn ($option) => trim((string) ($option['teks_opsi'] ?? '')) !== '')
+                    ->values();
+
+                $hasCorrect = $options->contains(fn ($option) => filter_var($option['is_correct'] ?? false, FILTER_VALIDATE_BOOLEAN));
+                if (in_array($type, ['pg', 'bs', 'jodoh'], true) && $options->count() >= 2 && ! $hasCorrect) {
+                    throw ValidationException::withMessages([
+                        "questions.$index.options" => 'Pilih satu jawaban benar pada soal ini.',
+                    ]);
+                }
+
+                $wacanaId = $question['wacana_id'] ?? null;
+                if ($wacanaId) {
+                    $validWacana = WacanaSoal::whereKey($wacanaId)
+                        ->where(fn ($q) => $q->where('bank_soal_id', $bank->id)->orWhereNull('bank_soal_id'))
+                        ->exists();
+                    $wacanaId = $validWacana ? $wacanaId : null;
+                }
+
+                $imagePath = null;
+                if ($request->hasFile("questions.$index.gambar")) {
+                    $imagePath = $request->file("questions.$index.gambar")->store('soal/'.$bank->id, 'public');
+                }
+
+                $soal = new Soal;
+                $soal->fill([
+                    'bank_soal_id' => $bank->id,
+                    'tp_id' => $question['tp_id'] ?? null,
+                    'wacana_id' => $wacanaId,
+                    'tipe_soal' => $type,
+                    'bahasa' => $bank->bahasa ?? 'latin',
+                    'pertanyaan' => $question['pertanyaan'],
+                    'pembahasan' => $question['pembahasan'] ?? null,
+                    'gambar_path' => $imagePath,
+                    'bobot_default' => $question['bobot_default'] ?? 1,
+                    'tingkat_kesulitan_estimasi' => $question['tingkat_kesulitan_estimasi'] ?? 'sedang',
+                    'waktu_estimasi_menit' => 2,
+                    'tags' => ! empty($question['tags']) ? array_map('trim', explode(',', $question['tags'])) : null,
+                    'status' => 'draft',
+                    'workflow_status' => Soal::WORKFLOW_DRAFT,
+                    'dibuat_oleh' => $userId,
+                ]);
+                $soal->content_hash = $engine->hashFromSoal($soal->pertanyaan, $options->pluck('teks_opsi')->all());
+                $soal->shingles_hash = $engine->shinglesFromSoal($soal->pertanyaan);
+                $soal->save();
+
+                if (in_array($type, ['pg', 'bs', 'jodoh'], true)) {
+                    foreach ($options as $optionIndex => $option) {
+                        SoalOption::create([
+                            'soal_id' => $soal->id,
+                            'label' => chr(65 + $optionIndex),
+                            'teks_opsi' => $option['teks_opsi'],
+                            'is_correct' => filter_var($option['is_correct'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                            'urutan' => $optionIndex + 1,
+                        ]);
+                    }
+                }
+
+                $created++;
+            }
+        });
+
+        return redirect()
+            ->route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id])
+            ->with('success', $created.' soal berhasil dibuat (status: draft).');
     }
 
     /**

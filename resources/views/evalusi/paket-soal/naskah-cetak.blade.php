@@ -4,7 +4,7 @@
 @section('doc_title', 'NASKAH SOAL')
 @section('doc_subtitle')
     {{ $paket->kisiKisi?->subject?->name ?? '-' }} &bull;
-    Kelas {{ $paket->kisiKisi?->gradeLevel?->nama ?? '-' }} &bull;
+    Kelas {{ $paket->kisiKisi?->gradeLevel?->name ?? '-' }} &bull;
     TA {{ $paket->kisiKisi?->academicYear?->name ?? '-' }} &bull;
     Semester {{ ucfirst($paket->kisiKisi?->semester ?? '-') }} &bull;
     {{ strtoupper($paket->kisiKisi?->jenis_ujian ?? '-') }}

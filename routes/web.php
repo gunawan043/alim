@@ -1823,6 +1823,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── EVALUASI: SOAL (nested under bank-soal) ──────────────
             Route::prefix('bank-soal/{bankId}/soal')->name('soal.')->group(function () {
                 Route::get('/create', [SoalController::class, 'create'])->name('create');
+                Route::post('/wacana', [SoalController::class, 'storeWacana'])->name('wacana.store');
                 Route::post('/', [SoalController::class, 'store'])->name('store');
                 Route::get('/{id}/edit', [SoalController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [SoalController::class, 'update'])->name('update');

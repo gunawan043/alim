@@ -50,6 +50,13 @@
                                 <label class="form-label">Fase (opsional)</label>
                                 <input type="text" name="fase" class="form-control" placeholder="E, F"
                                        value="{{ old('fase') }}" maxlength="5">
+                                <label class="form-label mt-3">Tingkat Kelas</label>
+                                <select name="grade_level_id" class="form-select">
+                                    <option value="">Semua tingkat</option>
+                                    @foreach($gradeLevels as $gl)
+                                        <option value="{{ $gl->id }}" {{ (string) old('grade_level_id') === (string) $gl->id ? 'selected' : '' }}>{{ $gl->name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
 
                             <div class="col-md-4">

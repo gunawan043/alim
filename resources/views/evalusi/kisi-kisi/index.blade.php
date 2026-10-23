@@ -184,7 +184,7 @@
                                         @endif
                                     </td>
                                     <td>{{ $kisi->subject->name ?? '-' }}</td>
-                                    <td>{{ $kisi->gradeLevel->nama ?? '-' }}</td>
+                                    <td>{{ $kisi->gradeLevel->name ?? '-' }}</td>
                                     <td class="text-center">{{ ucfirst($kisi->semester) }}</td>
                                     <td class="text-center"><span class="badge bg-info-subtle text-info">{{ str_replace('_', ' ', $kisi->jenis_ujian) }}</span></td>
                                     <td class="text-center">

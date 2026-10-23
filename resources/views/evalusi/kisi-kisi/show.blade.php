@@ -33,7 +33,7 @@
         <div class="card-body">
             <dl class="row">
                 <dt class="col-sm-2">Mapel</dt><dd class="col-sm-10">{{ $kisi->subject->name ?? '-' }}</dd>
-                <dt class="col-sm-2">Fase</dt><dd class="col-sm-10">{{ $kisi->gradeLevel->nama ?? '-' }}</dd>
+                <dt class="col-sm-2">Fase</dt><dd class="col-sm-10">{{ $kisi->gradeLevel->name ?? '-' }}</dd>
                 <dt class="col-sm-2">Tingkat</dt><dd class="col-sm-10">{{ strtoupper($kisi->tingkat_sekolah) }}</dd>
                 <dt class="col-sm-2">Peminatan</dt><dd class="col-sm-10">{{ strtoupper($kisi->peminatan ?? '-') }}</dd>
                 <dt class="col-sm-2">Target Soal</dt><dd class="col-sm-10">{{ $kisi->total_soal_target }} butir</dd>

@@ -141,6 +141,7 @@ class BankSoalController extends Controller
             ->orWhereNull('school_id')
             ->orderBy('name')
             ->get();
+        $gradeLevels = \App\Models\GradeLevel::where(fn ($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'))->orderBy('level')->get();
 
         // Suggest current user as owner
         $currentUser = User::where('id', $userId)->first();
@@ -177,6 +178,7 @@ class BankSoalController extends Controller
             'sharedScopes',
             'jenisSoal',
             'tingkatKesulitan',
+            'gradeLevels',
             'userId'
         ));
     }
@@ -191,6 +193,7 @@ class BankSoalController extends Controller
             'deskripsi' => 'nullable|string|max:2000',
             'subject_id' => 'required|exists:subjects,id',
             'fase' => 'nullable|string|max:5',
+            'grade_level_id' => 'nullable|exists:grade_levels,id',
             'jenis_soal' => 'required|in:pilihan_ganda,multiple_choice_complex,benar_salah,menjodohkan,isian_singkat,uraian,campuran',
             'bahasa' => 'nullable|in:latin,arab,gabungan',
             'tingkat_kesulitan_target' => 'required|in:mudah,sedang,sulit,campuran',
@@ -250,6 +253,7 @@ class BankSoalController extends Controller
             ->orWhereNull('school_id')
             ->orderBy('name')
             ->get();
+        $gradeLevels = \App\Models\GradeLevel::where(fn ($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'))->orderBy('level')->get();
 
         $sharedScopes = [
             'private' => 'Privat (hanya pemilik)',
@@ -280,6 +284,7 @@ class BankSoalController extends Controller
             'sharedScopes',
             'jenisSoal',
             'tingkatKesulitan',
+            'gradeLevels',
             'userId'
         ));
     }
@@ -298,6 +303,7 @@ class BankSoalController extends Controller
             'deskripsi' => 'nullable|string|max:2000',
             'subject_id' => 'required|exists:subjects,id',
             'fase' => 'nullable|string|max:5',
+            'grade_level_id' => 'nullable|exists:grade_levels,id',
             'jenis_soal' => 'required|in:pilihan_ganda,multiple_choice_complex,benar_salah,menjodohkan,isian_singkat,uraian,campuran',
             'bahasa' => 'nullable|in:latin,arab,gabungan',
             'tingkat_kesulitan_target' => 'required|in:mudah,sedang,sulit,campuran',

@@ -59,7 +59,7 @@
                             <option value="">-- Pilih --</option>
                             @foreach($gradeLevels as $gl)
                                 <option value="{{ $gl->id }}" {{ old('grade_level_id', $gradeLevels->count() === 1 ? $gradeLevels->first()->id : null) === $gl->id ? 'selected' : '' }}>
-                                    {{ $gl->nama }}
+                                    {{ $gl->name }}
                                 </option>
                             @endforeach
                         </select>
