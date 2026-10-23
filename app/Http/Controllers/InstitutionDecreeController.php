@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\AdditionalTaskType;
 use App\Models\GtkEmployment;
 use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
@@ -116,6 +117,7 @@ class InstitutionDecreeController extends Controller
         $currentPositionIds = [];
         $positionOptions = collect();
         $jpDefaults = [];
+        $taskTypeOptions = collect();
         if ($teachers->isNotEmpty()) {
             $teacherIds = $teachers->pluck('id');
             $workUnitId = $selectedSchool?->work_unit_id;
@@ -235,6 +237,20 @@ class InstitutionDecreeController extends Controller
                     ->values()->all();
             }
 
+            $jenisGtkIds = $employmentRows->flatten()->pluck('jenis_gtk_id')->filter()->unique();
+            $taskTypeOptions = AdditionalTaskType::active()
+                ->when($jenisGtkIds->isNotEmpty(), fn ($q) => $q->whereIn('jenis_gtk_id', $jenisGtkIds))
+                ->orderBy('urutan')
+                ->orderBy('nama')
+                ->get(['id', 'nama', 'kode', 'jenis_gtk_id']);
+
+            if ($taskTypeOptions->isEmpty()) {
+                $taskTypeOptions = AdditionalTaskType::active()
+                    ->orderBy('urutan')
+                    ->orderBy('nama')
+                    ->get(['id', 'nama', 'kode', 'jenis_gtk_id']);
+            }
+
             $positionOrder = $positionOptions->mapWithKeys(
                 fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
             );
@@ -250,7 +266,7 @@ class InstitutionDecreeController extends Controller
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions'
         ));
     }
 
@@ -342,9 +358,10 @@ class InstitutionDecreeController extends Controller
     {
         $jsonInput = $request->input('assignments_json');
         $assignments = $jsonInput ? json_decode($jsonInput, true) : [];
-        if (empty($assignments)) {
-            return;
-        }
+
+        $subjectNames = Subject::whereIn('id', collect($assignments)->flatMap(fn ($subjects) => array_keys($subjects))->unique())
+            ->pluck('name', 'id');
+        $usedSubjectGroups = [];
 
         foreach ($assignments as $teacherId => $subjects) {
             foreach ($subjects as $subjectId => $groups) {
@@ -353,6 +370,13 @@ class InstitutionDecreeController extends Controller
                     if (! $h || $h <= 0) {
                         continue;
                     }
+
+                    $subjectName = mb_strtolower((string) ($subjectNames[$subjectId] ?? ''));
+                    $subjectGroupKey = $subjectId.'|'.$studyGroupId;
+                    if (isset($usedSubjectGroups[$subjectGroupKey]) && ! str_contains($subjectName, 'tahfidz')) {
+                        continue;
+                    }
+                    $usedSubjectGroups[$subjectGroupKey] = true;
 
                     TeachingAssignment::create([
                         'decree_id' => $decree->id,

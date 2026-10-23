@@ -209,7 +209,7 @@
         </div>
 
         {{-- Submit --}}
-        <div class="d-flex justify-content-end gap-2 mt-2 mb-3">
+        <div class="d-flex justify-content-end gap-2 sticky-bottom bg-body border-top py-2 z-3">
             <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}" class="btn btn-light">Batal</a>
             <button type="submit" class="btn btn-success">
                 <i class="ri-save-line me-1"></i> Simpan SK
@@ -327,6 +327,7 @@ const currentPositions = {!! json_encode($currentPositions) !!};
 const currentPositionIds = {!! json_encode($currentPositionIds) !!};
 const positionOptions = {!! json_encode($positionOptions) !!};
 const jpDefaults = {!! json_encode($jpDefaults) !!};
+const taskTypeOptions = {!! json_encode($taskTypeOptions) !!};
 
 // Build grade columns for JS rendering
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
@@ -347,6 +348,11 @@ function positionOptionsHtml(tid) {
 }
 function subjectOptionsHtml(sid) {
     return subjects.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
+}
+function taskOptionsHtml() {
+    return '<option value="">+ Tambah tugas...</option>' + taskTypeOptions.map(t =>
+        `<option value="${t.id}">${escapeHtml(t.nama)}</option>`
+    ).join('');
 }
 
 let activeSubjects = {}; // tid -> [{sid, name}]
@@ -398,7 +404,12 @@ function addTeacherToMatrix(teacherId) {
                 <i class="ri-add-line me-1"></i>Mapel
             </button>
         </td>
-        <td class="text-wrap" id="teacher-tugas-${tid}"></td>
+        <td class="text-wrap" id="teacher-tugas-${tid}">
+            <div id="task-badges-${tid}" class="d-flex flex-wrap gap-1 mb-1"></div>
+            <select class="form-select form-select-sm border-0 bg-transparent shadow-none text-muted w-auto" data-teacher-id="${tid}" onchange="addTaskFromSelect(this)">
+                ${taskOptionsHtml()}
+            </select>
+        </td>
         ${sgCells()}
         <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
         <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
@@ -442,16 +453,14 @@ function renderSubjectRow(tid, sid, sname) {
         <td></td>
         ${gradeCols.map(sg => `
             <td class="text-center">
-                <div class="form-check d-flex justify-content-center m-0">
+                <label class="form-check d-inline-flex align-items-center gap-1 m-0">
                     <input type="checkbox" class="form-check-input rounded-circle rombel-toggle m-0"
                            data-tid="${tid}" data-sid="${sid}" data-sgid="${sg.id}"
+                           data-hours="${jpDefaults[`${sid}|${sg.id}`] ?? ''}"
                            data-default="${jpDefaults[`${sid}|${sg.id}`] ?? ''}"
                            onchange="toggleRombel(this)" title="Pilih rombel">
-                </div>
-                <input type="number" min="0" max="40" value=""
-                       class="form-control form-control-sm text-center col-jp-input d-none mt-1 mx-auto w-75"
-                       data-tid="${tid}" data-sid="${sid}" data-sgid="${sg.id}"
-                       oninput="updateHours(this)">
+                    <span class="jp-badge small fw-semibold text-success ${jpDefaults[`${sid}|${sg.id}`] ? '' : 'd-none'}">${jpDefaults[`${sid}|${sg.id}`] ?? ''} JP</span>
+                </label>
             </td>
         `).join('')}
         <td class="text-center fw-semibold" id="sebaran-${tid}-${sid}">0</td>
@@ -505,41 +514,70 @@ function confirmAddSubjects() {
     refreshTotal(tid);
 }
 
-function inputIsActive(input) {
-    const toggle = input.closest('td')?.querySelector('.rombel-toggle');
-    return !toggle || toggle.checked;
+function subjectIsTahfidz(sid) {
+    const subject = subjects.find(s => s.id === sid);
+    return (subject?.name || '').toLowerCase().includes('tahfidz');
+}
+
+function subjectRombelTaken(toggle, sid, sgid) {
+    if (subjectIsTahfidz(sid)) return false;
+    return Array.from(document.querySelectorAll('.rombel-toggle:checked')).some(other =>
+        other !== toggle && other.dataset.sid === sid && other.dataset.sgid === sgid
+    );
+}
+
+function updateSubjectRow(row) {
+    const tid = row.dataset.teacher;
+    const sid = row.dataset.subject;
+    let total = 0;
+    row.querySelectorAll('.rombel-toggle:checked').forEach(toggle => {
+        total += parseFloat(toggle.dataset.hours) || 0;
+    });
+    document.getElementById(`sebaran-${tid}-${sid}`).textContent = total;
+    document.getElementById(`subtotal-${tid}-${sid}`).textContent = total;
+    refreshTotal(tid);
 }
 
 function toggleRombel(toggle) {
+    const sid = toggle.dataset.sid;
+    const sgid = toggle.dataset.sgid;
+
+    if (toggle.checked && subjectRombelTaken(toggle, sid, sgid)) {
+        toggle.checked = false;
+        toggle.dataset.active = '0';
+        const badge = toggle.closest('td')?.querySelector('.jp-badge');
+        if (badge) badge.classList.add('d-none');
+        updateSubjectRow(toggle.closest('tr'));
+        alert('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
+        return;
+    }
+
     const active = toggle.checked;
     toggle.dataset.active = active ? '1' : '0';
-
-    const input = toggle.closest('td')?.querySelector('.col-jp-input');
-    if (!input) return;
-
-    if (active) {
-        if (input.value === '') input.value = toggle.dataset.default || '';
-        input.classList.remove('d-none');
-    } else {
-        input.value = '';
-        input.classList.add('d-none');
+    const badge = toggle.closest('td')?.querySelector('.jp-badge');
+    if (badge) {
+        badge.textContent = `${toggle.dataset.hours || 0} JP`;
+        badge.classList.toggle('d-none', !active);
     }
-    updateHours(input);
+    updateSubjectRow(toggle.closest('tr'));
 }
 
-// Update hours on input
-function updateHours(input) {
-    const tid = input.dataset.tid;
-    const sid = input.dataset.sid;
-    const val = input.value;
-    input.classList.toggle('is-valid', !!val);
-    const row = input.closest('tr');
-    const inputs = row.querySelectorAll('.col-jp-input');
-    let sebaran = 0;
-    inputs.forEach(i => { if (inputIsActive(i) && i.value) sebaran += parseInt(i.value); });
-    document.getElementById(`sebaran-${tid}-${sid}`).textContent = sebaran;
-    document.getElementById(`subtotal-${tid}-${sid}`).textContent = sebaran;
+function addTaskFromSelect(select) {
+    const tid = select.dataset.teacherId;
+    const type = taskTypeOptions.find(t => t.id === select.value);
+    if (!tid || !type) return;
+
+    const code = type.kode || type.id;
+    activeTasks[tid] = activeTasks[tid] || [];
+    if (activeTasks[tid].some(t => (t.code || t.name) === (code || type.nama))) {
+        alert('Tugas tersebut sudah ada untuk GTK ini.');
+        select.value = '';
+        return;
+    }
+
+    activeTasks[tid].push({ name: type.nama, code, hours: 3 });
     refreshTotal(tid);
+    select.value = '';
 }
 
 function filterRoster() {
@@ -571,10 +609,21 @@ function changeSubject(select) {
         return;
     }
 
+    if (!subjectIsTahfidz(newSid)) {
+        const conflict = Array.from(row.querySelectorAll('.rombel-toggle:checked')).some(toggle =>
+            subjectRombelTaken(toggle, newSid, toggle.dataset.sgid)
+        );
+        if (conflict) {
+            alert('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
+            select.value = oldSid;
+            return;
+        }
+    }
+
     const subject = subjects.find(s => s.id === newSid);
     row.id = `sub-row-${tid}-${newSid}`;
     row.dataset.subject = newSid;
-    row.querySelectorAll('.col-jp-input').forEach(input => input.dataset.sid = newSid);
+    row.querySelectorAll('.rombel-toggle').forEach(toggle => toggle.dataset.sid = newSid);
     const sebaran = row.querySelector('[id^="sebaran-"]');
     if (sebaran) sebaran.id = `sebaran-${tid}-${newSid}`;
     const subtotal = row.querySelector('[id^="subtotal-"]');
@@ -584,9 +633,16 @@ function changeSubject(select) {
         s.id === oldSid ? { id: newSid, name: subject?.name || '' } : s
     );
     row.querySelectorAll('.rombel-toggle').forEach(toggle => {
-        toggle.dataset.default = jpDefaults[`${newSid}|${toggle.dataset.sgid}`] ?? '';
+        const hours = jpDefaults[`${newSid}|${toggle.dataset.sgid}`] ?? '';
+        toggle.dataset.default = hours;
+        toggle.dataset.hours = hours;
+        const badge = toggle.closest('td')?.querySelector('.jp-badge');
+        if (badge) {
+            badge.textContent = `${hours || 0} JP`;
+            badge.classList.toggle('d-none', !toggle.checked);
+        }
     });
-    refreshTotal(tid);
+    updateSubjectRow(row);
 }
 
 function removeSubjectRowByButton(button) {
@@ -599,8 +655,8 @@ function refreshTotal(tid) {
     const rows = document.querySelectorAll(`tr[data-teacher="${tid}"]`);
     let sebaran = 0;
     rows.forEach(r => {
-        r.querySelectorAll('.col-jp-input').forEach(i => {
-            if (inputIsActive(i) && i.value) sebaran += parseInt(i.value);
+        r.querySelectorAll('.rombel-toggle:checked').forEach(toggle => {
+            sebaran += parseFloat(toggle.dataset.hours) || 0;
         });
     });
     const taskHours = (activeTasks[tid] || []).reduce((sum, t) => sum + (parseInt(t.hours) || 0), 0);
@@ -608,7 +664,7 @@ function refreshTotal(tid) {
     if (el) el.textContent = sebaran + taskHours;
     const seb = document.getElementById(`teacher-sebaran-${tid}`);
     if (seb) seb.textContent = sebaran;
-    const tug = document.getElementById(`teacher-tugas-${tid}`);
+    const tug = document.getElementById(`task-badges-${tid}`) || document.getElementById(`teacher-tugas-${tid}`);
     if (tug) {
         const tasks = (activeTasks[tid] || []).filter(t => t.name);
         tug.innerHTML = tasks.length
@@ -655,7 +711,12 @@ function addTaskFromModal() {
                     <i class="ri-add-line me-1"></i>Mapel
                 </button>
             </td>
-            <td class="text-wrap" id="teacher-tugas-${tid}"></td>
+            <td class="text-wrap" id="teacher-tugas-${tid}">
+            <div id="task-badges-${tid}" class="d-flex flex-wrap gap-1 mb-1"></div>
+            <select class="form-select form-select-sm border-0 bg-transparent shadow-none text-muted w-auto" data-teacher-id="${tid}" onchange="addTaskFromSelect(this)">
+                ${taskOptionsHtml()}
+            </select>
+        </td>
             ${sgCells()}
             <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
             <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
@@ -753,12 +814,13 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
         const tid = row.dataset.teacher;
         const sid = row.dataset.subject;
         if (!tid || !sid) return;
-        const inputs = row.querySelectorAll('.col-jp-input');
+        const toggles = row.querySelectorAll('.rombel-toggle:checked');
         let hasValue = false;
         const groupHours = {};
-        inputs.forEach(inp => {
-            if (inputIsActive(inp) && inp.value) {
-                groupHours[inp.dataset.sgid] = parseInt(inp.value);
+        toggles.forEach(toggle => {
+            const hours = parseFloat(toggle.dataset.hours) || 0;
+            if (hours > 0) {
+                groupHours[toggle.dataset.sgid] = hours;
                 hasValue = true;
             }
         });
@@ -792,18 +854,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 activeSubjects[teacher.id].push({ id: assignment.subject_id, name: assignment.subject });
                 renderSubjectRow(teacher.id, assignment.subject_id, assignment.subject);
             }
-            const input = document.querySelector(
-                `#sub-row-${teacher.id}-${assignment.subject_id} .col-jp-input[data-sgid="${assignment.study_group_id}"]`
+            const toggle = document.querySelector(
+                `.rombel-toggle[data-tid="${teacher.id}"][data-sid="${assignment.subject_id}"][data-sgid="${assignment.study_group_id}"]`
             );
-            if (input && assignment.hours) {
-                const toggle = input.closest('td')?.querySelector('.rombel-toggle');
-                if (toggle) {
-                    toggle.checked = true;
-                    toggle.dataset.active = '1';
+            if (toggle && assignment.hours) {
+                toggle.checked = true;
+                toggle.dataset.active = '1';
+                toggle.dataset.hours = assignment.hours;
+                const badge = toggle.closest('td')?.querySelector('.jp-badge');
+                if (badge) {
+                    badge.textContent = `${assignment.hours} JP`;
+                    badge.classList.remove('d-none');
                 }
-                input.value = assignment.hours;
-                input.classList.remove('d-none');
-                updateHours(input);
+                updateSubjectRow(toggle.closest('tr'));
             }
         });
 
@@ -901,7 +964,12 @@ function addTaskFromModal() {
                     <i class="ri-add-line me-1"></i>Mapel
                 </button>
             </td>
-            <td class="text-wrap" id="teacher-tugas-${tid}"></td>
+            <td class="text-wrap" id="teacher-tugas-${tid}">
+            <div id="task-badges-${tid}" class="d-flex flex-wrap gap-1 mb-1"></div>
+            <select class="form-select form-select-sm border-0 bg-transparent shadow-none text-muted w-auto" data-teacher-id="${tid}" onchange="addTaskFromSelect(this)">
+                ${taskOptionsHtml()}
+            </select>
+        </td>
             ${sgCells()}
             <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
             <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
@@ -978,12 +1046,13 @@ document.getElementById('decreeForm').addEventListener('submit', function() {
         const tid = row.dataset.teacher;
         const sid = row.dataset.subject;
         if (!tid || !sid) return;
-        const inputs = row.querySelectorAll('.col-jp-input');
+        const toggles = row.querySelectorAll('.rombel-toggle:checked');
         let hasValue = false;
         const groupHours = {};
-        inputs.forEach(inp => {
-            if (inputIsActive(inp) && inp.value) {
-                groupHours[inp.dataset.sgid] = parseInt(inp.value);
+        toggles.forEach(toggle => {
+            const hours = parseFloat(toggle.dataset.hours) || 0;
+            if (hours > 0) {
+                groupHours[toggle.dataset.sgid] = hours;
                 hasValue = true;
             }
         });
