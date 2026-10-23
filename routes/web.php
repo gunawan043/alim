@@ -1703,6 +1703,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('cross-unit-assignments')->name('cross-unit-assignments.')->group(function () {
                 Route::get('/', [CrossUnitAssignmentController::class, 'index'])->name('index');
                 Route::post('/', [CrossUnitAssignmentController::class, 'store'])->name('store');
+                Route::put('/{id}', [CrossUnitAssignmentController::class, 'update'])->name('update');
                 Route::patch('/{id}/toggle', [CrossUnitAssignmentController::class, 'toggle'])->name('toggle');
             });
 
