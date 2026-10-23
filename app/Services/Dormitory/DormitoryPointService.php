@@ -57,8 +57,20 @@ class DormitoryPointService
                 $violation->academic_year_id
             );
 
-            // Ledger pelanggaran bernilai negatif. Reward positif mengurangi akumulasi.
-            $accumulated = max(0, -$total);
+            // Default: reward menambah poin positif dan TIDAK mengurangi poin
+            // pelanggaran. Offset hanya jika kebijakan mengaktifkannya.
+            if (config('asrama_points.reward_can_offset_violation', false)) {
+                $accumulated = max(0, -$total);
+            } else {
+                $accumulated = abs((int) DormitoryPointLedger::query()
+                    ->where('student_id', $violation->student_id)
+                    ->where('dormitory_id', $violation->dormitory_id)
+                    ->where('kind', 'violation')
+                    ->when($violation->academic_year_id, fn ($q) => $q->where(function ($q2) use ($violation) {
+                        $q2->where('academic_year_id', $violation->academic_year_id)->orWhere('is_permanent', true);
+                    }))
+                    ->sum('points'));
+            }
             $rule = $this->matchRuleForPoints($accumulated);
 
             $violation->forceFill([
@@ -84,7 +96,7 @@ class DormitoryPointService
         $semester = $reward->semester ?: $this->currentSemester();
         $recordedAt = now();
 
-        $maxPerSemester = config('dormitory.points.max_reward_per_semester');
+        $maxPerSemester = config('asrama_points.max_behavior_reward_per_semester');
 
         if ($maxPerSemester !== null && is_numeric($maxPerSemester)) {
             $earned = (int) DormitoryPointLedger::query()
