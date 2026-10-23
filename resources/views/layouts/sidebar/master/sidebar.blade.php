@@ -433,8 +433,8 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link{ isActiveMaster($currentRoute, 'user.schools.') ? ' active' : '' }"
-                   href="{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => auth()->id()]) }">
-                    Schools.nilai Kelas.rapor
+                   href="{{ route('user.schools.nilai-kelas.index', ['userId' => auth()->id()]) }}">
+                    Leger &amp; Cetak Rapor
                 </a>
             </li>
             <li class="nav-item">

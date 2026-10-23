@@ -864,11 +864,16 @@ class NilaiKelasController extends Controller
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
+        $activeAyId = $academicYears->firstWhere('is_active', true)?->id;
+        $isArchiveAy = $activeAyId && (string) $selectedAyId !== (string) $activeAyId;
 
+        // TA aktif hanya menampilkan penghuni yang masih aktif. Untuk TA arsip,
+        // riwayat kelas tetap ditampilkan meskipun is_active sudah berubah
+        // setelah kenaikan kelas — tanpa ini rapor TA lama menjadi kosong/404.
         $students = StudentClassHistory::with('student')
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
-            ->where('is_active', true)
+            ->when(! $isArchiveAy, fn ($q) => $q->where('is_active', true))
             ->orderBy('attendance_number')
             ->get();
 
@@ -1173,7 +1178,35 @@ class NilaiKelasController extends Controller
         $selectedAy = AcademicYear::orderByDesc('name')->get()->firstWhere('id', $selectedAyId);
 
         $student = Student::findOrFail($studentId);
-        $this->assertStudentInGroup($studentId, $studyGroup->id, $selectedAyId);
+        $history = StudentClassHistory::query()
+            ->where('student_id', $studentId)
+            ->where('study_group_id', $studyGroup->id)
+            ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+            ->first();
+
+        // Tautan dari halaman santri kadang tidak membawa academic_year_id.
+        // Jika TA aktif tidak cocok, pakai riwayat kelas terakhir santri di rombel ini.
+        if (! $history && ! $request->filled('academic_year_id')) {
+            $history = StudentClassHistory::query()
+                ->where('student_id', $studentId)
+                ->where('study_group_id', $studyGroup->id)
+                ->orderByDesc('academic_year_id')
+                ->first();
+
+            if ($history) {
+                $selectedAyId = (string) $history->academic_year_id;
+                $selectedAy = AcademicYear::find($selectedAyId);
+            }
+        }
+
+        if (! $history) {
+            return redirect()->route('user.schools.nilai-kelas.rapor', [
+                'userId' => $userId,
+                'studyGroupId' => $studyGroup->id,
+                'academic_year_id' => $selectedAyId,
+                'semester' => $selectedSem,
+            ])->with('error', 'Santri ini tidak tercatat pada rombel/TA yang dipilih. Pilih tahun ajaran yang sesuai lalu cetak kembali.');
+        }
 
         $pdf = app(RaporPdfService::class)->renderSingle(
             $schoolId,
@@ -1270,16 +1303,26 @@ class NilaiKelasController extends Controller
 
         $this->assertLegerAccess($userId, $studyGroup);
 
-        $selectedAy = AcademicYear::orderByDesc('name')->get()->firstWhere('id', $selectedAyId);
+        $academicYears = AcademicYear::orderByDesc('name')->get();
+        $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
+        $activeAyId = $academicYears->firstWhere('is_active', true)?->id;
+        $isArchiveAy = $activeAyId && (string) $selectedAyId !== (string) $activeAyId;
 
         $students = StudentClassHistory::with('student')
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
-            ->where('is_active', true)
+            ->when(! $isArchiveAy, fn ($q) => $q->where('is_active', true))
             ->orderBy('attendance_number')
             ->get();
 
-        abort_if($students->isEmpty(), 404, 'Belum ada santri aktif di rombel ini.');
+        if ($students->isEmpty()) {
+            return redirect()->route('user.schools.nilai-kelas.rapor', [
+                'userId' => $userId,
+                'studyGroupId' => $studyGroup->id,
+                'academic_year_id' => $selectedAyId,
+                'semester' => $selectedSem,
+            ])->with('error', 'Belum ada santri pada rombel/TA yang dipilih. Pilih tahun ajaran yang memiliki riwayat kelas lalu cetak kembali.');
+        }
 
         $pdf = app(RaporPdfService::class)->renderMassal(
             $schoolId,
