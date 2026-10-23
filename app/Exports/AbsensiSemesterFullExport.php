@@ -3,9 +3,10 @@
 namespace App\Exports;
 
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
-class AbsensiSemesterFullExport implements WithMultipleSheets
+class AbsensiSemesterFullExport implements Export, WithMultipleSheets
 {
     public function __construct(
         public Collection $studentRows,

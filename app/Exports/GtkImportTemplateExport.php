@@ -6,6 +6,7 @@ use App\Models\JenisGtk;
 use App\Models\StructuralPosition;
 use App\Models\WorkUnit;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
@@ -18,7 +19,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class GtkImportTemplateExport implements WithMultipleSheets
+class GtkImportTemplateExport implements Export, WithMultipleSheets
 {
     use Exportable;
 
