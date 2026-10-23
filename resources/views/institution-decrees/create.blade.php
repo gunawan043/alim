@@ -153,16 +153,24 @@
                                 <i class="ri-stack-line me-1"></i>{{ $studyGroups->count() }} Rombel
                             </span>
                         </div>
-                        <div class="d-flex gap-2 align-items-center">
+                        <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="ri-search-line"></i></span>
+                                <input type="search" id="rosterSearch" class="form-control" placeholder="Cari nama, jabatan, atau mapel..." size="28" oninput="filterRoster()">
+                            </div>
                             <select id="newTeacherSelect" class="d-none"><option value="">-- Pilih Guru --</option>@foreach($teachers as $t)<option value="{{ $t->id }}">{{ $t->name }}</option>@endforeach</select>
                             <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddTask()">
                                 <i class="ri-user-settings-line me-1"></i> Tugas Tambahan
                             </button>
                         </div>
                     </div>
+                    <div class="alert alert-info border-0 rounded-0 py-2 mb-0">
+                        <i class="ri-information-line me-1"></i>
+                        Ubah jabatan melalui dropdown, ganti mapel pada kolom Mapel/Tugas, dan isi JP pada kolom rombel. Total jam dihitung otomatis.
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle mb-0">
-                            <thead class="table-light text-center align-middle">
+                        <table class="table table-bordered table-hover table-sm align-middle mb-0">
+                            <thead class="table-light text-center align-middle position-sticky top-0 z-1">
                                 <tr>
                                     <th rowspan="2" class="text-nowrap">No</th>
                                     <th rowspan="2" class="text-nowrap">Nama</th>
@@ -375,6 +383,7 @@ function addTeacherToMatrix(teacherId) {
     const tr = document.createElement('tr');
     tr.id = `teacher-row-${tid}`;
     tr.className = 'table-light';
+    tr.dataset.teacher = tid;
     tr.innerHTML = `
         <td class="text-center fw-semibold">${teacherCounter}</td>
         <td class="fw-semibold text-nowrap">${escapeHtml(teacher.name)}</td>
@@ -388,7 +397,7 @@ function addTeacherToMatrix(teacherId) {
                 <i class="ri-add-line me-1"></i>Mapel
             </button>
         </td>
-        <td class="text-nowrap" id="teacher-tugas-${tid}"></td>
+        <td class="text-wrap" id="teacher-tugas-${tid}"></td>
         ${sgCells()}
         <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
         <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
@@ -420,9 +429,14 @@ function renderSubjectRow(tid, sid, sname) {
         <td></td>
         <td></td>
         <td class="text-nowrap">
-            <select class="form-select form-select-sm subject-select" data-old-sid="${sid}" onchange="changeSubject(this)">
-                ${subjectOptionsHtml(sid)}
-            </select>
+            <div class="d-flex align-items-center gap-1">
+                <select class="form-select form-select-sm subject-select" data-old-sid="${sid}" onchange="changeSubject(this)">
+                    ${subjectOptionsHtml(sid)}
+                </select>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeSubjectRowByButton(this)" title="Hapus Mapel">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+            </div>
         </td>
         <td></td>
         ${gradeCols.map(sg => `
@@ -498,6 +512,16 @@ function updateHours(input) {
     refreshTotal(tid);
 }
 
+function filterRoster() {
+    const query = (document.getElementById('rosterSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('tr[id^="teacher-row-"]').forEach(teacherRow => {
+        const tid = teacherRow.id.replace('teacher-row-', '');
+        const rows = [teacherRow, ...document.querySelectorAll(`tr[data-teacher="${tid}"]`)];
+        const text = rows.map(row => row.textContent).join(' ').toLowerCase();
+        rows.forEach(row => row.classList.toggle('d-none', !!query && !text.includes(query)));
+    });
+}
+
 function changePosition(select) {
     const tid = select.dataset.teacherId;
     if (!tid) return;
@@ -551,8 +575,10 @@ function refreshTotal(tid) {
     if (seb) seb.textContent = sebaran;
     const tug = document.getElementById(`teacher-tugas-${tid}`);
     if (tug) {
-        const names = (activeTasks[tid] || []).map(t => t.name).filter(Boolean).join(', ');
-        tug.textContent = names ? names + (taskHours ? ` (${taskHours} JP)` : '') : '';
+        const tasks = (activeTasks[tid] || []).filter(t => t.name);
+        tug.innerHTML = tasks.length
+            ? tasks.map(t => `<span class="badge bg-warning-subtle text-warning me-1 mb-1">${escapeHtml(t.name)}${t.hours ? ` · ${t.hours} JP` : ''}</span>`).join('')
+            : '<span class="text-muted">-</span>';
     }
 }
 
@@ -594,7 +620,7 @@ function addTaskFromModal() {
                     <i class="ri-add-line me-1"></i>Mapel
                 </button>
             </td>
-            <td class="text-nowrap" id="teacher-tugas-${tid}"></td>
+            <td class="text-wrap" id="teacher-tugas-${tid}"></td>
             ${sgCells()}
             <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
             <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
@@ -616,6 +642,7 @@ function addTaskFromModal() {
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.className = 'table-light';
+    tr.dataset.teacher = tid;
     tr.innerHTML = `
         <td></td>
         <td></td>
@@ -831,7 +858,7 @@ function addTaskFromModal() {
                     <i class="ri-add-line me-1"></i>Mapel
                 </button>
             </td>
-            <td class="text-nowrap" id="teacher-tugas-${tid}"></td>
+            <td class="text-wrap" id="teacher-tugas-${tid}"></td>
             ${sgCells()}
             <td class="text-center fw-semibold" id="teacher-sebaran-${tid}">0</td>
             <td class="text-center fw-bold" id="teacher-total-${tid}">0</td>
@@ -849,6 +876,7 @@ function addTaskFromModal() {
     const tr = document.createElement('tr');
     tr.id = rowId;
     tr.className = 'table-light';
+    tr.dataset.teacher = tid;
     tr.innerHTML = `
         <td></td>
         <td></td>

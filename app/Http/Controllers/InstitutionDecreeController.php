@@ -146,10 +146,28 @@ class InstitutionDecreeController extends Controller
                 ->get()
                 ->keyBy('user_id');
 
+            $workUnitPositionNames = GtkWorkUnit::query()
+                ->when($workUnitId, fn ($q) => $q->where('work_unit_id', $workUnitId))
+                ->pluck('jabatan')
+                ->filter()
+                ->map(fn ($name) => mb_strtolower(trim($name)))
+                ->unique();
+
             $positionOptions = StructuralPosition::active()
                 ->orderBy('urutan')
                 ->orderBy('name')
-                ->get(['id', 'name']);
+                ->get(['id', 'name', 'urutan'])
+                ->filter(fn ($position) => $workUnitPositionNames->isEmpty()
+                    || $workUnitPositionNames->contains(mb_strtolower($position->name)))
+                ->values();
+
+            if ($positionOptions->isEmpty()) {
+                $positionOptions = StructuralPosition::active()
+                    ->orderBy('urutan')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'urutan']);
+            }
+
             $positionOptionsByName = $positionOptions->keyBy(fn ($position) => mb_strtolower($position->name));
 
             $currentPositions = [];
@@ -207,6 +225,14 @@ class InstitutionDecreeController extends Controller
                     ])->values()->all())
                     ->values()->all();
             }
+
+            $positionOrder = $positionOptions->mapWithKeys(
+                fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
+            );
+            $teachers = $teachers->sortBy(function ($teacher) use ($currentPositions, $positionOrder) {
+                $position = mb_strtolower($currentPositions[$teacher->id] ?? '');
+                return sprintf('%03d|%s', $positionOrder->get($position, 999), mb_strtolower($teacher->name));
+            })->values();
         }
 
         // For non-global users, auto-select school from session and lock decree_type
