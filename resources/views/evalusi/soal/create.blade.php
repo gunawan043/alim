@@ -56,7 +56,38 @@
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-soft-primary btn-sm" onclick="addQuestion()"><i class="ri-add-line me-1"></i>Tambah Soal</button>
-                <button type="button" class="btn btn-soft-info btn-sm" onclick="openWacanaModal()"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita</button>
+                <button type="button" class="btn btn-soft-info btn-sm" onclick="focusWacanaEditor()"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita</button>
+            </div>
+        </div>
+
+        <div class="card mb-3" id="wacanaEditorCard">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0"><i class="ri-book-open-line me-1 text-primary"></i>Wacana / Soal Cerita</h5>
+                    <small class="text-muted">Opsional. Dipakai bersama oleh beberapa soal dan dicetak satu kali.</small>
+                </div>
+                <span class="badge bg-info-subtle text-info">CKEditor</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label">Judul Wacana</label>
+                        <input type="text" id="wacanaJudul" class="form-control" maxlength="150" placeholder="mis. Teks Bacaan 1">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sumber</label>
+                        <input type="text" id="wacanaSumber" class="form-control" maxlength="150" placeholder="mis. Buku Bahasa Arab hal. 12">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Untuk Soal Nomor</label>
+                        <input type="text" id="wacanaRentang" class="form-control" maxlength="100" placeholder="mis. 1–5">
+                    </div>
+                </div>
+                <label class="form-label">Teks Wacana</label>
+                <textarea id="wacanaTeks" class="form-control" rows="6" placeholder="Tulis paragraf/bacaan di sini..."></textarea>
+                <div class="d-flex justify-content-end mt-2">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveWacana()"><i class="ri-save-line me-1"></i>Simpan Wacana</button>
+                </div>
             </div>
         </div>
 
@@ -65,53 +96,16 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-4">
             <div class="d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="addQuestion()"><i class="ri-add-line me-1"></i>Tambah Soal</button>
-                <button type="button" class="btn btn-outline-info btn-sm" onclick="openWacanaModal()"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openImagePicker()"><i class="ri-image-add-line me-1"></i>Tambah Gambar</button>
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="focusWacanaEditor()"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita</button>
             </div>
             <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Semua Soal</button>
         </div>
     </form>
 
-    <div class="modal fade" id="wacanaModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita / Wacana</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info py-2 small">Wacana dapat dipakai bersama oleh beberapa soal. Setelah dibuat, pilih wacana pada baris soal yang membutuhkannya.</div>
-                    <div class="mb-3">
-                        <label class="form-label">Judul Wacana</label>
-                        <input type="text" id="wacanaJudul" class="form-control" maxlength="150" placeholder="mis. Teks Bacaan 1">
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Sumber</label>
-                            <input type="text" id="wacanaSumber" class="form-control" maxlength="150" placeholder="mis. Buku Bahasa Arab hal. 12">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Untuk Soal Nomor</label>
-                            <input type="text" id="wacanaRentang" class="form-control" maxlength="100" placeholder="mis. 1–5">
-                            <small class="text-muted">Keterangan rentang nomor pada naskah.</small>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="form-label">Teks Wacana</label>
-                        <textarea id="wacanaTeks" class="form-control" rows="6" placeholder="Tulis paragraf/bacaan di sini..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-primary" onclick="saveWacana()">Simpan Wacana</button>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('script')
-<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+<script src="https://cdn.ckeditor.com/4.25.2-lts/standard/ckeditor.js"></script>
 <script>
 const bankType = @json($bankType);
 const isMixed = @json($isMixed);
@@ -273,16 +267,13 @@ function markCorrect(radio, question, optionIndex) {
     if (target) target.value = '1';
 }
 
-function openWacanaModal() {
-    currentQuestionIndex = document.querySelectorAll('.question-card').length ? document.querySelector('.question-card:last-of-type')?.dataset.index : null;
-    document.getElementById('wacanaJudul').value = '';
-    document.getElementById('wacanaSumber').value = '';
-    document.getElementById('wacanaRentang').value = '';
-    document.getElementById('wacanaTeks').value = '';
+function focusWacanaEditor() {
+    const cards = document.querySelectorAll('.question-card');
+    currentQuestionIndex = cards.length ? cards[cards.length - 1].dataset.index : null;
+    document.getElementById('wacanaEditorCard')?.scrollIntoView({behavior: 'smooth', block: 'center'});
     if (window.CKEDITOR && CKEDITOR.instances.wacanaTeks) {
-        CKEDITOR.instances.wacanaTeks.setData('');
+        CKEDITOR.instances.wacanaTeks.focus();
     }
-    new bootstrap.Modal(document.getElementById('wacanaModal')).show();
 }
 
 async function saveWacana() {
@@ -310,14 +301,6 @@ async function saveWacana() {
         const select = card?.querySelector('.wacana-select');
         if (select) select.value = data.id;
     }
-    bootstrap.Modal.getInstance(document.getElementById('wacanaModal')).hide();
-}
-
-function openImagePicker() {
-    if (!document.querySelector('.question-card')) addQuestion();
-    const card = document.querySelector('.question-card:last-of-type');
-    card?.querySelector('.details-block')?.classList.remove('d-none');
-    card?.querySelector('input[type=file]')?.click();
 }
 
 document.addEventListener('DOMContentLoaded', function () {
