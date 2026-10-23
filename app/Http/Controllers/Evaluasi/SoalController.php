@@ -235,6 +235,7 @@ class SoalController extends Controller
             'teks' => 'required|string',
             'sumber' => 'nullable|string|max:150',
             'rentang_nomor' => 'nullable|string|max:100',
+            'posisi_setelah_soal' => 'nullable|integer|min:0|max:1000',
         ]);
 
         $wacana = WacanaSoal::create([
@@ -244,12 +245,14 @@ class SoalController extends Controller
             'teks' => $this->sanitizeWacanaHtml($data['teks']),
             'sumber' => $data['sumber'] ?? null,
             'rentang_nomor' => $data['rentang_nomor'] ?? null,
+            'posisi_setelah_soal' => $data['posisi_setelah_soal'] ?? 0,
             'created_by' => $userId,
         ]);
 
         return response()->json([
             'id' => $wacana->id,
             'judul' => ($wacana->judul ?: Str::limit(strip_tags($wacana->teks), 50)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : ''),
+            'posisi_setelah_soal' => (int) $wacana->posisi_setelah_soal,
             'teks' => $wacana->teks,
         ]);
     }

@@ -130,6 +130,7 @@ class Soal extends Model
             'teks' => (string) $wacana->teks,
             'sumber' => $wacana->sumber,
             'rentang_nomor' => $wacana->rentang_nomor,
+            'posisi_setelah_soal' => (int) $wacana->posisi_setelah_soal,
         ];
     }
 

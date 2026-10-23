@@ -1,21 +1,23 @@
 @foreach($rows as $row)
-    <div class="naskah-question">
-        @if(! empty($row['wacana']))
-            <div class="naskah-wacana">
-                @if(! empty($row['wacana']['judul']))
-                    <div class="fw-semibold">{{ $row['wacana']['judul'] }}</div>
-                @endif
-                @php $wacanaText = $row['wacana']['teks'] ?? ''; @endphp
-                {!! str_contains($wacanaText, '<') ? $wacanaText : nl2br(e($wacanaText)) !!}
-                @if(! empty($row['wacana']['sumber']))
-                    <div class="small text-muted">Sumber: {{ $row['wacana']['sumber'] }}</div>
-                @endif
-                @if(! empty($row['wacana']['rentang_nomor']))
-                    <div class="small text-muted">Untuk soal nomor: {{ $row['wacana']['rentang_nomor'] }}</div>
-                @endif
-            </div>
-        @endif
+    @if(($row['type'] ?? 'question') === 'wacana')
+        @php $wacana = $row['wacana'] ?? []; @endphp
+        <div class="naskah-wacana">
+            @if(! empty($wacana['judul']))
+                <div class="fw-semibold">{{ $wacana['judul'] }}</div>
+            @endif
+            @php $wacanaText = $wacana['teks'] ?? ''; @endphp
+            {!! str_contains($wacanaText, '<') ? $wacanaText : nl2br(e($wacanaText)) !!}
+            @if(! empty($wacana['sumber']))
+                <div class="small text-muted">Sumber: {{ $wacana['sumber'] }}</div>
+            @endif
+            @if(! empty($wacana['rentang_nomor']))
+                <div class="small text-muted">Untuk soal nomor: {{ $wacana['rentang_nomor'] }}</div>
+            @endif
+        </div>
+        @continue
+    @endif
 
+    <div class="naskah-question">
         <div class="naskah-question-row">
             <div class="naskah-number">{{ $row['nomor'] }}.</div>
             <div class="naskah-question-body">

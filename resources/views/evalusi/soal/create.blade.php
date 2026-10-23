@@ -78,14 +78,20 @@
                         <label class="form-label">Sumber</label>
                         <input type="text" id="wacanaSumber" class="form-control" maxlength="150" placeholder="mis. Buku Bahasa Arab hal. 12">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-2">
                         <label class="form-label">Untuk Soal Nomor</label>
-                        <input type="text" id="wacanaRentang" class="form-control" maxlength="100" placeholder="mis. 1–5">
+                        <input type="text" id="wacanaRentang" class="form-control" maxlength="100" placeholder="1–5">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Sisipkan Setelah</label>
+                        <input type="number" id="wacanaPosisi" class="form-control" min="0" max="1000" value="0" title="0 = sebelum soal pertama">
+                        <small class="text-muted">No. soal</small>
                     </div>
                 </div>
                 <label class="form-label">Teks Wacana</label>
                 <textarea id="wacanaTeks" class="form-control" rows="6" placeholder="Tulis paragraf/bacaan di sini..."></textarea>
-                <div class="d-flex justify-content-end mt-2">
+                <div class="d-flex justify-content-end gap-2 mt-2">
+                    <button type="button" class="btn btn-light btn-sm" onclick="resetWacanaEditor()"><i class="ri-refresh-line me-1"></i>Wacana Baru</button>
                     <button type="button" class="btn btn-primary btn-sm" onclick="saveWacana()"><i class="ri-save-line me-1"></i>Simpan Wacana</button>
                 </div>
             </div>
@@ -267,6 +273,18 @@ function markCorrect(radio, question, optionIndex) {
     if (target) target.value = '1';
 }
 
+function resetWacanaEditor() {
+    document.getElementById('wacanaJudul').value = '';
+    document.getElementById('wacanaSumber').value = '';
+    document.getElementById('wacanaRentang').value = '';
+    document.getElementById('wacanaPosisi').value = '0';
+    if (window.CKEDITOR && CKEDITOR.instances.wacanaTeks) {
+        CKEDITOR.instances.wacanaTeks.setData('');
+    } else {
+        document.getElementById('wacanaTeks').value = '';
+    }
+}
+
 function focusWacanaEditor() {
     const cards = document.querySelectorAll('.question-card');
     currentQuestionIndex = cards.length ? cards[cards.length - 1].dataset.index : null;
@@ -287,6 +305,7 @@ async function saveWacana() {
             judul: document.getElementById('wacanaJudul').value,
             sumber: document.getElementById('wacanaSumber').value,
             rentang_nomor: document.getElementById('wacanaRentang').value,
+            posisi_setelah_soal: document.getElementById('wacanaPosisi').value || 0,
             teks: teks
         })
     });

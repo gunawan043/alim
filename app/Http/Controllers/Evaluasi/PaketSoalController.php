@@ -698,7 +698,7 @@ class PaketSoalController extends Controller
 
         $this->authorizePaket($request, $paket, false);
 
-        $rows = $paket->items()
+        $questions = $paket->items()
             ->with('soal')
             ->orderBy('urutan')
             ->get()
@@ -706,13 +706,47 @@ class PaketSoalController extends Controller
                 $konten = $item->kontenFinal();
 
                 return [
-                    'nomor' => $konten['nomor'] ?? $item->urutan,
+                    'type' => 'question',
+                    'nomor' => (int) ($konten['nomor'] ?? $item->urutan),
                     'jenis' => $konten['jenis'] ?? $item->soal?->tipe_soal,
                     'wacana' => $konten['wacana'] ?? null,
                     'pertanyaan' => (string) ($konten['pertanyaan'] ?? ''),
+                    'gambar_path' => $konten['gambar_path'] ?? null,
+                    'gambar_keterangan' => $konten['gambar_keterangan'] ?? null,
                     'opsi' => collect($konten['opsi'] ?? [])->values()->all(),
                 ];
             });
+
+        // Wacana dicetak sekali pada posisi yang ditentukan (setelah soal ke-N),
+        // bukan diulang di setiap soal yang memakainya.
+        $wacanas = [];
+        foreach ($questions as $question) {
+            if (! empty($question['wacana']['id']) && ! isset($wacanas[$question['wacana']['id']])) {
+                $wacanas[$question['wacana']['id']] = $question['wacana'];
+            }
+            $question['wacana'] = null;
+        }
+        $questions = $questions->sortBy('nomor')->values();
+
+        $rows = collect();
+        $inserted = [];
+        foreach ($questions as $question) {
+            foreach ($wacanas as $id => $wacana) {
+                $position = (int) ($wacana['posisi_setelah_soal'] ?? 0);
+                if (! isset($inserted[$id]) && $position < $question['nomor']) {
+                    $rows->push(['type' => 'wacana', 'wacana' => $wacana]);
+                    $inserted[$id] = true;
+                }
+            }
+
+            $rows->push($question);
+        }
+
+        foreach ($wacanas as $id => $wacana) {
+            if (! isset($inserted[$id])) {
+                $rows->push(['type' => 'wacana', 'wacana' => $wacana]);
+            }
+        }
 
         $school = $paket->kisiKisi?->school_id
             ? School::find($paket->kisiKisi->school_id)

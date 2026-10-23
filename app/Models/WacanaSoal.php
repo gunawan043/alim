@@ -24,7 +24,7 @@ class WacanaSoal extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'bank_soal_id', 'school_id', 'judul', 'teks', 'sumber', 'rentang_nomor', 'created_by',
+        'bank_soal_id', 'school_id', 'judul', 'teks', 'sumber', 'rentang_nomor', 'posisi_setelah_soal', 'created_by',
     ];
 
     protected static function boot()
