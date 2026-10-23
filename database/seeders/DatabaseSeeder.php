@@ -39,6 +39,7 @@ class DatabaseSeeder extends Seeder
             SarprasWasteSeeder::class, // sumber sampah awal untuk laporan DLH
             // UksWorkUnitSeeder::class,      // UKS Putra & UKS Putri satker units
             PermitTypeSeeder::class,       // master jenis izin (pulang, sakit, dll.)
+            DormitoryPointSeeder::class,   // master pelanggaran, reward, dan ambang poin asrama
             StafPerizinanSeeder::class,    // granular permissions for Staf Perizinan
             SchoolSeeder::class,       // master jenis izin (pulang, sakit, dll.)
             DormitorySeeder::class,       // master jenis izin (pulang, sakit, dll.)
