@@ -45,7 +45,6 @@
     <form method="POST"
           action="{{ route('user.asrama.violations.store', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
         @csrf
-        <input type="hidden" name="student_id" id="student_id" value="{{ old('student_id') }}">
         <input type="hidden" name="room_id"    id="room_id"    value="{{ old('room_id') }}">
 
         <div class="row">
@@ -63,7 +62,7 @@
                                 Jenis Pelanggaran (Katalog) <span class="text-danger">*</span>
                             </label>
                             <select name="point_catalog_id" id="point_catalog_id"
-                                    class="form-select @error('point_catalog_id') is-invalid @enderror" required>
+                                    class="form-select @error('point_catalog_id') is-invalid @enderror" required onchange="window.syncViolationCatalog && window.syncViolationCatalog()">
                                 <option value="">-- Pilih katalog pelanggaran --</option>
                                 @foreach($catalogs as $catalog)
                                     <option value="{{ $catalog->id }}"
@@ -87,26 +86,29 @@
                             <div class="form-text">Poin, kategori, dan tindakan otomatis mengikuti katalog resmi.</div>
                         </div>
 
-                        {{-- Student Search --}}
+                        {{-- Student Dropdown --}}
                         <div class="mb-4">
-                            <label class="form-label fw-semibold">
-                                Santri <span class="text-danger">*</span>
-                            </label>
-                            <div class="student-search-wrapper" id="studentSearchWrapper">
-                                <input type="text" id="student_search" class="form-control"
-                                       placeholder="Ketik nama lengkap untuk mencari..."
-                                       autocomplete="off" value="{{ old('student_search') }}">
-                                <div id="studentSearchResults" class="student-search-results d-none"></div>
-                            </div>
-                            @error('student_id')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                            @enderror
+                            <label class="form-label fw-semibold">Santri <span class="text-danger">*</span></label>
+                            <select name="student_id" id="studentSelect" class="form-select @error('student_id') is-invalid @enderror" required onchange="window.syncViolationStudent && window.syncViolationStudent()">
+                                <option value="">-- Cari dan pilih santri --</option>
+                                @foreach($residents as $resident)
+                                    @if($resident->student)
+                                        <option value="{{ $resident->student->id }}"
+                                                data-room-id="{{ $resident->room_id }}"
+                                                data-room-name="{{ $resident->room?->name ?? 'Tanpa Kamar' }}"
+                                                @selected(old('student_id') === $resident->student->id)>
+                                            {{ $resident->student->name }} — {{ $resident->student->nisn ?? 'N/A' }} — {{ $resident->room?->name ?? 'Tanpa Kamar' }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('student_id')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                             <div id="selectedStudentInfo" class="mt-2 {{ old('student_id') ? '' : 'd-none' }}">
-                                <div class="alert alert-success py-2 d-flex align-items-center gap-2">
-                                    <i class="ri-user-follow-line"></i>
+                                <div class="alert alert-success py-2 mb-0">
+                                    <i class="ri-user-follow-line me-1"></i>
                                     <span id="selectedStudentName"></span>
-                                    <span class="text-muted">—</span>
-                                    <span id="selectedStudentRoom" class="text-muted"></span>
+                                    <span class="text-muted ms-1">—</span>
+                                    <span id="selectedStudentRoom" class="text-muted ms-1"></span>
                                 </div>
                             </div>
                         </div>
@@ -284,172 +286,73 @@
 
 @section('script')
 <script>
-(function() {
+(function () {
     'use strict';
 
-    const dormitoryId = '{{ $dormitory->id }}';
-    const oldStudentId = '{{ old('student_id') }}';
-
-    // ── Student Autocomplete ───────────────────────────────────
-    const searchInput   = document.getElementById('student_search');
-    const resultsBox    = document.getElementById('studentSearchResults');
-    const selectedInfo  = document.getElementById('selectedStudentInfo');
-    const selectedName  = document.getElementById('selectedStudentName');
-    const selectedRoom  = document.getElementById('selectedStudentRoom');
-    const studentIdInput = document.getElementById('student_id');
-    const roomIdInput   = document.getElementById('room_id');
-
-    const summaryStudent   = document.getElementById('summaryStudent');
-    const summaryRoom      = document.getElementById('summaryRoom');
-
-    let searchTimeout;
-
-    function renderStudentResults(students) {
-        resultsBox.innerHTML = '';
-        if (!students || students.length === 0) {
-            resultsBox.innerHTML = '<div class="list-group-item text-muted py-2">Tidak ditemukan.</div>';
-            resultsBox.classList.remove('d-none');
-            return;
-        }
-        const ul = document.createElement('ul');
-        ul.className = 'list-group list-group-flush';
-        students.forEach(function(s) {
-            const li = document.createElement('li');
-            li.className = 'list-group-item py-2';
-            li.innerHTML = '<div class="fw-semibold">' + s.name + '</div>' +
-                '<div class="text-muted small">Kamar: ' + (s.room_name || '—') + '</div>';
-            li.addEventListener('click', function() {
-                selectStudent(s);
-            });
-            ul.appendChild(li);
-        });
-        resultsBox.appendChild(ul);
-        resultsBox.classList.remove('d-none');
-    }
-
-    function selectStudent(student) {
-        searchInput.value = student.name;
-        studentIdInput.value = student.id;
-        if (student.room_id) roomIdInput.value = student.room_id;
-        resultsBox.classList.add('d-none');
-
-        selectedName.textContent = student.name;
-        selectedRoom.textContent = 'Kamar: ' + (student.room_name || '—');
-        selectedInfo.classList.remove('d-none');
-
-        summaryStudent.textContent = student.name;
-        summaryRoom.textContent = student.room_name || '—';
-    }
-
-    searchInput.addEventListener('input', function() {
-        const q = this.value.trim();
-        clearTimeout(searchTimeout);
-        if (q.length < 2) {
-            resultsBox.classList.add('d-none');
-            return;
-        }
-        searchTimeout = setTimeout(function() {
-            // Show loading state
-            resultsBox.innerHTML = '<div class="list-group-item text-center py-3"><div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div> <span class="ms-2 text-muted small">Mencari santri...</span></div>';
-            resultsBox.classList.remove('d-none');
-            searchInput.setAttribute('aria-busy', 'true');
-
-            const url = "{{ route('user.asrama.residents.find-student', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                + '?dormitory_id=' + encodeURIComponent(dormitoryId)
-                + '&q=' + encodeURIComponent(q);
-            fetch(url, { headers: { 'Accept': 'application/json' } })
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
-                    searchInput.removeAttribute('aria-busy');
-                    renderStudentResults(data.results || data.data || []);
-                })
-                .catch(function() {
-                    searchInput.removeAttribute('aria-busy');
-                    resultsBox.innerHTML = '<div class="list-group-item text-muted py-2">Gagal mencari.</div>';
-                    resultsBox.classList.remove('d-none');
-                });
-        }, 350);
-    });
-
-    // Close on outside click
-    document.addEventListener('click', function(e) {
-        if (!document.getElementById('studentSearchWrapper').contains(e.target)) {
-            resultsBox.classList.add('d-none');
-        }
-    });
-
-    // Keyboard navigation for student search dropdown
-    searchInput.addEventListener('keydown', function(e) {
-        const firstLi = resultsBox.querySelector('.list-group-item:not(.text-center)');
-        if (!firstLi) return;
-
-        if (e.key === 'Enter' && !resultsBox.classList.contains('d-none')) {
-            e.preventDefault();
-            firstLi.click();
-        }
-        if (e.key === 'Escape') {
-            resultsBox.classList.add('d-none');
-            searchInput.blur();
-        }
-    });
-
-    // ── Catalog auto-fill ───────────────────────────────────────
     const catalogSelect = document.getElementById('point_catalog_id');
     const categorySelect = document.getElementById('violation_category');
     const typeInput = document.getElementById('violation_type');
     const pointsInput = document.getElementById('points');
+    const studentSelect = document.getElementById('studentSelect');
+    const roomInput = document.getElementById('room_id');
 
     function syncCatalogFields() {
-        const option = catalogSelect.selectedOptions[0];
+        if (!catalogSelect) return;
+        const option = catalogSelect.options[catalogSelect.selectedIndex];
         if (!option || !option.value) return;
 
-        const category = option.dataset.category || '';
-        const points = option.dataset.points || '';
+        const category = option.getAttribute('data-category') || '';
+        const points = option.getAttribute('data-points') || '';
 
-        typeInput.value = option.dataset.name || '';
-        pointsInput.value = points;
-        categorySelect.value = category;
+        if (typeInput) typeInput.value = option.getAttribute('data-name') || '';
+        if (pointsInput) pointsInput.value = points;
+        if (categorySelect) categorySelect.value = category;
 
         const map = { ringan: 'Ringan', sedang: 'Sedang', berat: 'Berat' };
-        document.getElementById('summaryCategory').textContent = map[category] || '—';
-        document.getElementById('summaryPoints').textContent = points ? points + ' poin' : '—';
+        const summaryCategory = document.getElementById('summaryCategory');
+        const summaryPoints = document.getElementById('summaryPoints');
+        if (summaryCategory) summaryCategory.textContent = map[category] || '—';
+        if (summaryPoints) summaryPoints.textContent = points ? points + ' poin' : '—';
     }
 
+    window.syncViolationCatalog = function () { syncCatalogFields(); };
     if (catalogSelect) {
         catalogSelect.addEventListener('change', syncCatalogFields);
-        if (catalogSelect.value) syncCatalogFields();
-
         if (window.jQuery && jQuery.fn.select2) {
-            jQuery(catalogSelect).select2({
-                width: '100%',
-                placeholder: 'Cari kode atau nama pelanggaran...',
-                allowClear: true,
-            });
+            jQuery(catalogSelect).select2({ width: '100%', placeholder: 'Cari kode atau nama pelanggaran...', allowClear: true });
+            jQuery(catalogSelect).on('select2:select select2:clear', syncCatalogFields);
+        }
+        syncCatalogFields();
+    }
+
+    function syncStudent() {
+        if (!studentSelect) return;
+        const option = studentSelect.options[studentSelect.selectedIndex];
+        const has = option && option.value;
+        if (roomInput) roomInput.value = has ? (option.getAttribute('data-room-id') || '') : '';
+        const info = document.getElementById('selectedStudentInfo');
+        const name = document.getElementById('selectedStudentName');
+        const room = document.getElementById('selectedStudentRoom');
+        const summaryStudent = document.getElementById('summaryStudent');
+        const summaryRoom = document.getElementById('summaryRoom');
+        if (info) info.classList.toggle('d-none', !has);
+        if (has) {
+            if (name) name.textContent = option.textContent.split(' — ')[0];
+            if (room) room.textContent = 'Kamar: ' + (option.getAttribute('data-room-name') || '—');
+            if (summaryStudent) summaryStudent.textContent = option.textContent.split(' — ')[0];
+            if (summaryRoom) summaryRoom.textContent = option.getAttribute('data-room-name') || '—';
         }
     }
 
-    // ── Category + Points auto summary ─────────────────────────
-    categorySelect.addEventListener('change', function() {
-        const map = { ringan: 'Ringan', sedang: 'Sedang', berat: 'Berat' };
-        document.getElementById('summaryCategory').textContent = map[this.value] || '—';
-    });
-
-    pointsInput.addEventListener('input', function() {
-        document.getElementById('summaryPoints').textContent = this.value ? this.value + ' poin' : '—';
-    });
-
-    // ── Pre-load if editing (old value) ─────────────────────────
-    if (oldStudentId) {
-        fetch('/api/dormitory/' + dormitoryId + '/residents/find-student?q=' + encodeURIComponent(oldStudentId))
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                const students = data.data || data;
-                const student = students.find(function(s) { return s.id === oldStudentId; });
-                if (student) selectStudent(student);
-            })
-            .catch(function() {});
+    window.syncViolationStudent = syncStudent;
+    if (studentSelect) {
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery(studentSelect).select2({ width: '100%', placeholder: 'Cari nama santri...', allowClear: true });
+            jQuery(studentSelect).on('select2:select select2:clear', syncStudent);
+        }
+        studentSelect.addEventListener('change', syncStudent);
+        syncStudent();
     }
-
 })();
 </script>
 @endsection

@@ -26,7 +26,7 @@
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label">Katalog Penghargaan <span class="text-danger">*</span></label>
-                        <select name="point_catalog_id" id="point_catalog_id" class="form-select form-select-sm" required>
+                        <select name="point_catalog_id" id="point_catalog_id" class="form-select form-select-sm" required onchange="window.syncRewardCatalog && window.syncRewardCatalog()">
                             <option value="">-- Pilih katalog penghargaan --</option>
                             @foreach($catalogs as $catalog)
                                 <option value="{{ $catalog->id }}"
@@ -138,16 +138,20 @@
     if (!select) return;
 
     function syncRewardCatalog() {
-        const option = select.selectedOptions[0];
+        const option = select.options[select.selectedIndex];
         if (!option || !option.value) return;
 
-        document.getElementById('reward_title').value = option.dataset.title || '';
-        document.getElementById('reward_category').value = option.dataset.category || '';
-        document.getElementById('reward_level').value = option.dataset.level || '';
-        document.getElementById('reward_points').value = option.dataset.points || '0';
+        document.getElementById('reward_title').value = option.getAttribute('data-title') || '';
+        document.getElementById('reward_category').value = option.getAttribute('data-category') || '';
+        document.getElementById('reward_level').value = option.getAttribute('data-level') || '';
+        document.getElementById('reward_points').value = option.getAttribute('data-points') || '0';
     }
+    window.syncRewardCatalog = syncRewardCatalog;
 
     select.addEventListener('change', syncRewardCatalog);
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery(select).on('select2:select select2:clear', syncRewardCatalog);
+    }
     if (select.value) syncRewardCatalog();
 
     if (window.jQuery && jQuery.fn.select2) {
