@@ -170,6 +170,12 @@
                                 <input type="search" id="rosterSearch" class="form-control" placeholder="Cari nama, jabatan, atau mapel..." size="22" oninput="filterRoster()">
                             </div>
                             <select id="newTeacherSelect" class="d-none"><option value="">-- Pilih Guru --</option>@foreach($teachers as $t)<option value="{{ $t->id }}">{{ $t->name }}</option>@endforeach</select>
+                            @if($selectedSchool?->work_unit_id)
+                                <a href="{{ route('user.schools.satuan-kerja.task-hours', ['userId' => $userId, 'workUnitId' => $selectedSchool->work_unit_id]) }}"
+                                   class="btn btn-sm btn-soft-secondary" target="_blank" title="Atur JP tugas tambahan">
+                                    <i class="ri-settings-3-line me-1"></i> JP Tugas
+                                </a>
+                            @endif
                             <button type="button" class="btn btn-sm btn-soft-primary" onclick="showAddTask()">
                                 <i class="ri-user-settings-line me-1"></i> Tugas Tambahan
                             </button>
@@ -654,7 +660,7 @@ function addActiveTask(tid, type, extra = {}) {
     activeTasks[tid].push({
         name: extra.name || type.nama,
         code,
-        hours: extra.hours ?? 3,
+        hours: extra.hours ?? type.hours ?? 3,
         studyGroupId,
         rombel: extra.rombel || null,
     });
@@ -692,7 +698,7 @@ function confirmTaskRombel() {
     addActiveTask(pending.tid, pending.type, {
         name: `Wali Kelas ${rombel.name}`,
         code: 'wali-kelas',
-        hours: 12,
+        hours: pending.type.hours ?? 12,
         studyGroupId: rombel.id,
         rombel: rombel.name,
     });

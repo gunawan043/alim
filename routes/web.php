@@ -795,6 +795,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/tugas-tambahan', [SatuanTaskController::class, 'storeAdditionalTask'])->name('additional-tasks.store');
                     Route::put('/tugas-tambahan/{id}', [SatuanTaskController::class, 'updateAdditionalTask'])->name('additional-tasks.update');
                     Route::delete('/tugas-tambahan/{id}', [SatuanTaskController::class, 'destroyAdditionalTask'])->name('additional-tasks.destroy');
+                    Route::get('/jp-tugas-tambahan', [SatuanTaskController::class, 'taskHours'])->name('task-hours');
+                    Route::put('/jp-tugas-tambahan', [SatuanTaskController::class, 'updateTaskHours'])->name('task-hours.update');
 
                     // Tugas Tambahan Guru per satuan kerja
                     Route::get('/tugas-guru', [SatuanTaskController::class, 'otherTasks'])->name('other-tasks');

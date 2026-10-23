@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\SatuanKerja;
 
 use App\Models\AdditionalTaskType;
+use App\Models\AdditionalTaskTypeWorkUnitHour;
+use App\Models\GtkEmployment;
 use App\Models\GtkAdditionalTask;
 use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
@@ -51,6 +53,68 @@ class TaskController
             ->get();
 
         return view('satuan-kerja.tasks.additional', compact('tasks', 'teachers', 'decrees', 'workUnit', 'userId'));
+    }
+
+    public function taskHours(string $userId, string $workUnitId)
+    {
+        $workUnit = WorkUnit::where('id', $workUnitId)->where('is_active', true)->firstOrFail();
+        $this->authorizeWorkUnit($workUnitId);
+
+        $userIds = GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id');
+        $jenisIds = GtkEmployment::whereIn('user_id', $userIds)
+            ->pluck('jenis_gtk_id')
+            ->filter()
+            ->unique();
+
+        $taskTypes = AdditionalTaskType::active()
+            ->when($jenisIds->isNotEmpty(), fn ($q) => $q->whereIn('jenis_gtk_id', $jenisIds))
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->get();
+
+        if ($taskTypes->isEmpty()) {
+            $taskTypes = AdditionalTaskType::active()->orderBy('urutan')->orderBy('nama')->get();
+        }
+
+        $hours = AdditionalTaskTypeWorkUnitHour::where('work_unit_id', $workUnitId)
+            ->pluck('weekly_hours', 'additional_task_type_id');
+
+        return view('satuan-kerja.tasks.hours', compact('workUnit', 'taskTypes', 'hours', 'workUnitId', 'userId'));
+    }
+
+    public function updateTaskHours(Request $request, string $userId, string $workUnitId)
+    {
+        $workUnit = WorkUnit::where('id', $workUnitId)->where('is_active', true)->firstOrFail();
+        $this->authorizeWorkUnit($workUnitId);
+
+        $data = $request->validate([
+            'hours' => 'required|array',
+            'hours.*' => 'nullable|numeric|min:0|max:40',
+        ]);
+
+        DB::transaction(function () use ($data, $workUnitId) {
+            foreach ($data['hours'] as $taskTypeId => $value) {
+                AdditionalTaskTypeWorkUnitHour::updateOrCreate(
+                    [
+                        'work_unit_id' => $workUnitId,
+                        'additional_task_type_id' => $taskTypeId,
+                    ],
+                    ['weekly_hours' => $value ?? 0]
+                );
+            }
+        });
+
+        return back()->with('success', 'Pengaturan JP tugas tambahan berhasil disimpan.');
+    }
+
+    private function authorizeWorkUnit(string $workUnitId): void
+    {
+        $user = auth()->user();
+        $allowed = GtkWorkUnit::where('user_id', $user->id)
+            ->where('work_unit_id', $workUnitId)
+            ->exists();
+
+        abort_unless($allowed || canPermission('institution-decree-all-access'), 403, 'Anda tidak memiliki akses ke satuan kerja ini.');
     }
 
     public function storeAdditionalTask(Request $request, string $userId, string $workUnitId)

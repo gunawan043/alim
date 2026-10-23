@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
 use App\Models\AdditionalTaskType;
+use App\Models\AdditionalTaskTypeWorkUnitHour;
 use App\Models\GtkEmployment;
 use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
@@ -239,6 +240,9 @@ class InstitutionDecreeController extends Controller
                     ->values()->all();
             }
 
+            $taskHourMap = AdditionalTaskTypeWorkUnitHour::where('work_unit_id', $workUnitId)
+                ->pluck('weekly_hours', 'additional_task_type_id');
+
             $jenisGtkIds = $employmentRows->flatten()->pluck('jenis_gtk_id')->filter()->unique();
             $taskTypeOptions = AdditionalTaskType::active()
                 ->when($jenisGtkIds->isNotEmpty(), fn ($q) => $q->whereIn('jenis_gtk_id', $jenisGtkIds))
@@ -252,6 +256,13 @@ class InstitutionDecreeController extends Controller
                     ->orderBy('nama')
                     ->get(['id', 'nama', 'kode', 'jenis_gtk_id']);
             }
+
+            $taskTypeOptions = $taskTypeOptions->map(fn ($type) => [
+                'id' => $type->id,
+                'nama' => $type->nama,
+                'kode' => $type->kode,
+                'hours' => (float) ($taskHourMap[$type->id] ?? ($type->kode === 'wali-kelas' ? 12 : 3)),
+            ])->values();
 
             $positionOrder = $positionOptions->mapWithKeys(
                 fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
