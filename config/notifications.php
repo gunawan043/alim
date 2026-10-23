@@ -19,9 +19,13 @@ return [
         // Perizinan & asrama
         'permit_approved' => ['group' => 'Perizinan & Asrama', 'label' => 'Izin disetujui'],
         'permit_rejected' => ['group' => 'Perizinan & Asrama', 'label' => 'Izin ditolak'],
+        'permit_picked_up' => ['group' => 'Perizinan & Asrama', 'label' => 'Santri dijemput keluar asrama'],
+        'permit_returned' => ['group' => 'Perizinan & Asrama', 'label' => 'Santri kembali ke asrama'],
         'overdue_permit' => ['group' => 'Perizinan & Asrama', 'label' => 'Izin melewati batas waktu'],
         'violation_recorded' => ['group' => 'Perizinan & Asrama', 'label' => 'Pelanggaran santri tercatat'],
+        'reward_recorded' => ['group' => 'Perizinan & Asrama', 'label' => 'Penghargaan santri tercatat'],
         'visit_approved' => ['group' => 'Perizinan & Asrama', 'label' => 'Kunjungan disetujui'],
+        'visit_rejected' => ['group' => 'Perizinan & Asrama', 'label' => 'Kunjungan ditolak'],
         'student_mutated_in' => ['group' => 'Perizinan & Asrama', 'label' => 'Santri mutasi masuk'],
 
         // Akademik
