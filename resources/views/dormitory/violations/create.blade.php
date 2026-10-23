@@ -57,6 +57,36 @@
                     </div>
                     <div class="card-body">
 
+                        {{-- Point Catalog --}}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Jenis Pelanggaran (Katalog) <span class="text-danger">*</span>
+                            </label>
+                            <select name="point_catalog_id" id="point_catalog_id"
+                                    class="form-select @error('point_catalog_id') is-invalid @enderror" required>
+                                <option value="">-- Pilih katalog pelanggaran --</option>
+                                @foreach($catalogs as $catalog)
+                                    <option value="{{ $catalog->id }}"
+                                            data-name="{{ $catalog->name }}"
+                                            data-category="{{ $catalog->severityCategory() }}"
+                                            data-points="{{ $catalog->points_min }}"
+                                            data-permanent="{{ $catalog->is_permanent ? '1' : '0' }}"
+                                            @selected(old('point_catalog_id') === $catalog->id)>
+                                        {{ $catalog->code }} — {{ $catalog->name }} ({{ $catalog->points_min }} poin)
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('point_catalog_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            @if($catalogs->isEmpty())
+                                <div class="alert alert-warning py-2 mt-2 mb-0 small">
+                                    <i class="ri-alert-line me-1"></i>Belum ada katalog pelanggaran aktif. Hubungi Superadmin untuk menambahkan katalog.
+                                </div>
+                            @endif
+                            <div class="form-text">Poin, kategori, dan tindakan otomatis mengikuti katalog resmi.</div>
+                        </div>
+
                         {{-- Student Search --}}
                         <div class="mb-4">
                             <label class="form-label fw-semibold">
@@ -114,12 +144,12 @@
                         {{-- Violation Type --}}
                         <div class="mb-4">
                             <label class="form-label fw-semibold">
-                                Jenis Pelanggaran <span class="text-danger">*</span>
+                                Nama Pelanggaran <span class="text-muted fw-normal">(otomatis dari katalog)</span>
                             </label>
                             <input type="text" name="violation_type" id="violation_type"
                                    class="form-control @error('violation_type') is-invalid @enderror"
-                                   placeholder="Contoh: Terlambat, Tidak mengikuti apel pagi, Membawa barang terlarang"
-                                   value="{{ old('violation_type') }}" required>
+                                   placeholder="Pilih katalog pelanggaran di atas"
+                                   value="{{ old('violation_type') }}" readonly>
                             @error('violation_type')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -140,13 +170,13 @@
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">
-                                    Poin Pelanggaran <span class="text-danger">*</span>
+                                    Poin Pelanggaran <span class="text-muted fw-normal">(otomatis)</span>
                                 </label>
                                 <input type="number" name="points" id="points"
                                        class="form-control @error('points') is-invalid @enderror"
-                                       placeholder="Contoh: 5"
-                                       value="{{ old('points') }}" min="1" max="100" required>
-                                <div class="form-text">1–100 poin</div>
+                                       placeholder="Pilih katalog"
+                                       value="{{ old('points') }}" readonly>
+                                <div class="form-text">Mengikuti katalog resmi.</div>
                                 @error('points')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -361,13 +391,40 @@
         }
     });
 
+    // ── Catalog auto-fill ───────────────────────────────────────
+    const catalogSelect = document.getElementById('point_catalog_id');
+    const categorySelect = document.getElementById('violation_category');
+    const typeInput = document.getElementById('violation_type');
+    const pointsInput = document.getElementById('points');
+
+    function syncCatalogFields() {
+        const option = catalogSelect.selectedOptions[0];
+        if (!option || !option.value) return;
+
+        const category = option.dataset.category || '';
+        const points = option.dataset.points || '';
+
+        typeInput.value = option.dataset.name || '';
+        pointsInput.value = points;
+        categorySelect.value = category;
+
+        const map = { ringan: 'Ringan', sedang: 'Sedang', berat: 'Berat' };
+        document.getElementById('summaryCategory').textContent = map[category] || '—';
+        document.getElementById('summaryPoints').textContent = points ? points + ' poin' : '—';
+    }
+
+    if (catalogSelect) {
+        catalogSelect.addEventListener('change', syncCatalogFields);
+        if (catalogSelect.value) syncCatalogFields();
+    }
+
     // ── Category + Points auto summary ─────────────────────────
-    document.getElementById('violation_category').addEventListener('change', function() {
+    categorySelect.addEventListener('change', function() {
         const map = { ringan: 'Ringan', sedang: 'Sedang', berat: 'Berat' };
         document.getElementById('summaryCategory').textContent = map[this.value] || '—';
     });
 
-    document.getElementById('points').addEventListener('input', function() {
+    pointsInput.addEventListener('input', function() {
         document.getElementById('summaryPoints').textContent = this.value ? this.value + ' poin' : '—';
     });
 

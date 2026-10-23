@@ -11,6 +11,6 @@ class DormitoryPointRule extends Model
     protected $keyType = 'string';
     public $incrementing = false;
     protected $fillable = ['name','min_points','max_points','action','requires_approval','notify_roles','is_active','sort_order'];
-    protected $casts = ['requires_approval'=>'boolean','is_active'=>'boolean','notify_roles'=>'array'];
+    protected $casts = ['min_points'=>'integer','max_points'=>'integer','requires_approval'=>'boolean','is_active'=>'boolean','notify_roles'=>'array','sort_order'=>'integer'];
     protected static function booted(): void { static::creating(fn (self $m) => $m->id = $m->id ?: (string) Str::uuid()); }
 }

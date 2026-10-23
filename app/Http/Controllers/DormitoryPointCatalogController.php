@@ -65,6 +65,20 @@ class DormitoryPointCatalogController extends Controller
         return back()->with('success', 'Status katalog diperbarui.');
     }
 
+    public function destroy(Request $request, string $userId, string $asramaUuid, string $catalogUuid)
+    {
+        $this->authorizeManager();
+        $catalog = DormitoryPointCatalog::findOrFail($catalogUuid);
+
+        if ($catalog->violations()->exists() || $catalog->rewards()->exists()) {
+            return back()->with('error', 'Katalog sudah dipakai pada data pelanggaran/penghargaan. Nonaktifkan saja agar riwayat tetap utuh.');
+        }
+
+        $catalog->delete();
+
+        return back()->with('success', 'Katalog poin dihapus.');
+    }
+
     private function canManage(): bool
     {
         $u = request()->user();

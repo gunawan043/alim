@@ -31,6 +31,10 @@ class DormitoryViolation extends Model
         'violation_type',
         'description',
         'points',
+        'point_catalog_id',
+        'point_rule_id',
+        'recommended_action',
+        'action_status',
         'action_taken',
         'follow_up',
         'witness_id',
@@ -71,5 +75,15 @@ class DormitoryViolation extends Model
     public function witness(): BelongsTo
     {
         return $this->belongsTo(User::class, 'witness_id');
+    }
+
+    public function pointCatalog(): BelongsTo
+    {
+        return $this->belongsTo(DormitoryPointCatalog::class, 'point_catalog_id');
+    }
+
+    public function pointRule(): BelongsTo
+    {
+        return $this->belongsTo(DormitoryPointRule::class, 'point_rule_id');
     }
 }

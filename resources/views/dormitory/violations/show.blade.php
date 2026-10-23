@@ -104,6 +104,24 @@
                             </div>
                         </div>
                         @endif
+                        {{-- Tindakan Otomatis --}}
+                        @if($violation->pointRule || $violation->recommended_action)
+                        <div class="col-12">
+                            <div class="bg-danger-subtle rounded p-3">
+                                <div class="text-muted small mb-1">Tindakan Otomatis Berdasarkan Ambang Poin</div>
+                                <div class="fw-semibold">{{ $violation->recommended_action ?: ($violation->pointRule?->action ?? '—') }}</div>
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    @if($violation->pointRule)
+                                        <span class="badge bg-danger">{{ $violation->pointRule->name }}</span>
+                                    @endif
+                                    <span class="badge bg-{{ $violation->action_status === 'pending' ? 'warning' : ($violation->action_status === 'auto' ? 'success' : 'secondary') }}">
+                                        {{ $violation->action_status === 'pending' ? 'Menunggu Persetujuan' : ($violation->action_status === 'auto' ? 'Otomatis' : 'Tidak Ada') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
                         {{-- Follow Up --}}
                         @if($violation->follow_up)
                         <div class="col-12">

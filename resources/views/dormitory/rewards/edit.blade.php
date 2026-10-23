@@ -25,6 +25,27 @@
                 @method('PUT')
 
                 <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Katalog Penghargaan <span class="text-danger">*</span></label>
+                        <select name="point_catalog_id" id="point_catalog_id" class="form-select form-select-sm" required>
+                            <option value="">-- Pilih katalog penghargaan --</option>
+                            @foreach($catalogs as $catalog)
+                                <option value="{{ $catalog->id }}"
+                                        data-title="{{ $catalog->name }}"
+                                        data-category="{{ $catalog->rewardCategoryValue() }}"
+                                        data-level="{{ $catalog->rewardLevelValue() }}"
+                                        data-points="{{ $catalog->points_min }}"
+                                        @selected(old('point_catalog_id', $reward->point_catalog_id) === $catalog->id)>
+                                    {{ $catalog->code }} — {{ $catalog->name }} ({{ $catalog->points_min }} poin)
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('point_catalog_id')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">Judul, kategori, level, dan poin diisi otomatis dari katalog.</small>
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label">Santri <span class="text-danger">*</span></label>
                         <select name="student_id" class="form-select form-select-sm" required>
@@ -50,8 +71,8 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label">Judul <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control form-control-sm" value="{{ old('title', $reward->title) }}" required>
+                        <label class="form-label">Judul <span class="text-muted">(otomatis)</span></label>
+                        <input type="text" name="title" id="reward_title" class="form-control form-control-sm" value="{{ old('title', $reward->title) }}" readonly>
                     </div>
 
                     <div class="col-md-6">
@@ -59,9 +80,9 @@
                         <input type="date" name="awarded_date" class="form-control form-control-sm" value="{{ old('awarded_date', $reward->awarded_date->format('Y-m-d')) }}" required>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Kategori <span class="text-danger">*</span></label>
-                        <select name="category" class="form-select form-select-sm" required>
+                    <div class="col-md-4">
+                        <label class="form-label">Kategori <span class="text-muted">(otomatis)</span></label>
+                        <select name="category" id="reward_category" class="form-select form-select-sm" required>
                             <option value="">-- Pilih Kategori --</option>
                             @foreach(\App\Models\DormitoryReward::categories() as $key => $label)
                                 <option value="{{ $key }}" {{ old('category', $reward->category) === $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -69,14 +90,19 @@
                         </select>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Level <span class="text-danger">*</span></label>
-                        <select name="level" class="form-select form-select-sm" required>
+                    <div class="col-md-4">
+                        <label class="form-label">Level <span class="text-muted">(otomatis)</span></label>
+                        <select name="level" id="reward_level" class="form-select form-select-sm" required>
                             <option value="">-- Pilih Level --</option>
                             @foreach(\App\Models\DormitoryReward::levels() as $key => $label)
                                 <option value="{{ $key }}" {{ old('level', $reward->level) === $key ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Poin <span class="text-muted">(otomatis)</span></label>
+                        <input type="number" name="points" id="reward_points" class="form-control form-control-sm" value="{{ old('points', $reward->points) }}" readonly>
                     </div>
 
                     <div class="col-12">
@@ -105,4 +131,27 @@
             </form>
         </div>
     </div>
+@endsection
+
+@section('script')
+<script>
+(function () {
+    'use strict';
+    const select = document.getElementById('point_catalog_id');
+    if (!select) return;
+
+    function syncRewardCatalog() {
+        const option = select.selectedOptions[0];
+        if (!option || !option.value) return;
+
+        document.getElementById('reward_title').value = option.dataset.title || '';
+        document.getElementById('reward_category').value = option.dataset.category || '';
+        document.getElementById('reward_level').value = option.dataset.level || '';
+        document.getElementById('reward_points').value = option.dataset.points || '0';
+    }
+
+    select.addEventListener('change', syncRewardCatalog);
+    if (select.value) syncRewardCatalog();
+})();
+</script>
 @endsection

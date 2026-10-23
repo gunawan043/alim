@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Dormitory\StoreViolationRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryPointCatalog;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryViolation;
+use App\Services\Dormitory\DormitoryPointService;
 use App\Services\DormitoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +18,7 @@ class DormitoryViolationController extends Controller
     use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
     protected DormitoryService $service;
 
-    public function __construct(DormitoryService $service)
+    public function __construct(DormitoryService $service, private readonly DormitoryPointService $pointService)
     {
         $this->service = $service;
     }
@@ -76,7 +78,14 @@ class DormitoryViolationController extends Controller
             ->orderBy('room_id')
             ->get();
 
-        return view('dormitory.violations.create', compact('dormitory', 'residents', 'userId', 'activeYear'));
+        $catalogs = DormitoryPointCatalog::query()
+            ->active()
+            ->kind('violation')
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
+
+        return view('dormitory.violations.create', compact('dormitory', 'residents', 'userId', 'activeYear', 'catalogs'));
     }
 
     public function store(StoreViolationRequest $request, string $userId, string $asramaUuid)
@@ -88,6 +97,15 @@ class DormitoryViolationController extends Controller
 
         $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
 
+        $catalog = DormitoryPointCatalog::query()
+            ->active()
+            ->kind('violation')
+            ->findOrFail($data['point_catalog_id']);
+
+        // Katalog adalah sumber kebenaran; input manual hanya fallback lama.
+        $data['violation_type'] = $catalog->name;
+        $data['violation_category'] = $catalog->severityCategory();
+        $data['points'] = (int) $catalog->points_min;
         $data['dormitory_id'] = $asramaUuid;
         $data['academic_year_id'] = $activeYear->id;
         $data['recorded_by'] = auth()->id();
@@ -95,6 +113,9 @@ class DormitoryViolationController extends Controller
         $violation = DB::transaction(function () use ($data) {
             return DormitoryViolation::create($data);
         });
+
+        // Tulis ledger + jalankan aturan ambang + notifikasi petugas asrama.
+        $this->pointService->recordViolation($violation);
 
         // Kirim notifikasi ke wali (outside transaction — side effect)
         $this->service->notifyMahromOnViolation($violation);
@@ -106,7 +127,7 @@ class DormitoryViolationController extends Controller
     public function show(Request $request, string $userId, string $asramaUuid, string $violationUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
-        $violation = DormitoryViolation::with(['student', 'room', 'recordedBy', 'witness'])
+        $violation = DormitoryViolation::with(['student', 'room', 'recordedBy', 'witness', 'pointCatalog', 'pointRule'])
             ->where('dormitory_id', $asramaUuid)
             ->findOrFail($violationUuid);
 

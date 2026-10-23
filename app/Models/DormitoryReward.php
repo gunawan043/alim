@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class DormitoryReward extends Model
 {
@@ -16,6 +17,11 @@ class DormitoryReward extends Model
 
     public $incrementing = false;
 
+    protected static function booted(): void
+    {
+        static::creating(fn (self $model) => $model->id = $model->id ?: (string) Str::uuid());
+    }
+
     protected $fillable = [
         'student_id',
         'dormitory_id',
@@ -24,6 +30,10 @@ class DormitoryReward extends Model
         'category',
         'description',
         'level',
+        'point_catalog_id',
+        'points',
+        'semester',
+        'ledger_recorded_at',
         'proof_path',
         'given_by',
         'awarded_date',
@@ -31,6 +41,8 @@ class DormitoryReward extends Model
 
     protected $casts = [
         'awarded_date' => 'date',
+        'points' => 'integer',
+        'ledger_recorded_at' => 'datetime',
     ];
 
     // ── Category constants ─────────────────────────────────────────
@@ -94,6 +106,11 @@ class DormitoryReward extends Model
     public function givenBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'given_by');
+    }
+
+    public function pointCatalog(): BelongsTo
+    {
+        return $this->belongsTo(DormitoryPointCatalog::class, 'point_catalog_id');
     }
 
     // ── Accessors ──────────────────────────────────────────────────

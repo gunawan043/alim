@@ -36,6 +36,10 @@
                     <div>@if($reward->level === 'unggulan')<span class="badge bg-warning">{{ $reward->level_text }}</span>@elseif($reward->level === 'istimewa')<span class="badge bg-danger">{{ $reward->level_text }}</span>@else<span class="badge bg-secondary">{{ $reward->level_text }}</span>@endif</div>
                 </div>
                 <div class="col-md-6">
+                    <label class="text-muted small">Poin Penghargaan</label>
+                    <div><span class="badge bg-success">{{ $reward->points }} poin</span> <span class="text-muted small">Semester {{ ucfirst($reward->semester ?? '—') }}</span></div>
+                </div>
+                <div class="col-md-6">
                     <label class="text-muted small">Tanggal Pemberian</label>
                     <div class="fw-semibold">{{ $reward->awarded_date->format('d F Y') }}</div>
                 </div>

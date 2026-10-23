@@ -8,12 +8,19 @@ use App\Http\Requests\Dormitory\StoreRewardRequest;
 use App\Http\Requests\Dormitory\UpdateRewardRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\DormitoryPointCatalog;
+use App\Models\DormitoryPointLedger;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryReward;
+use App\Services\Dormitory\DormitoryPointService;
 use Illuminate\Http\Request;
 
 class DormitoryRewardController extends Controller
 {
+    public function __construct(private readonly DormitoryPointService $pointService)
+    {
+    }
+
     public function index(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
@@ -77,7 +84,9 @@ class DormitoryRewardController extends Controller
             ->unique('id')
             ->values();
 
-        return view('dormitory.rewards.create', compact('dormitory', 'students', 'userId'));
+        $catalogs = $this->rewardCatalogs();
+
+        return view('dormitory.rewards.create', compact('dormitory', 'students', 'userId', 'catalogs'));
     }
 
     public function store(StoreRewardRequest $request, string $userId, string $asramaUuid)
@@ -91,8 +100,12 @@ class DormitoryRewardController extends Controller
 
         $validated['dormitory_id'] = $dormitory->id;
         $validated['given_by'] = $request->user()->id;
+        $validated['semester'] = $this->pointService->currentSemester();
 
-        DormitoryReward::create($validated);
+        $this->applyCatalog($validated);
+
+        $reward = DormitoryReward::create($validated);
+        $this->pointService->recordReward($reward);
 
         return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Penghargaan berhasil ditambahkan.');
@@ -122,7 +135,9 @@ class DormitoryRewardController extends Controller
             ->unique('id')
             ->values();
 
-        return view('dormitory.rewards.edit', compact('reward', 'students', 'userId', 'asramaUuid'));
+        $catalogs = $this->rewardCatalogs();
+
+        return view('dormitory.rewards.edit', compact('reward', 'students', 'userId', 'asramaUuid', 'catalogs'));
     }
 
     public function update(UpdateRewardRequest $request, string $userId, string $asramaUuid, string $rewardUuid)
@@ -137,10 +152,46 @@ class DormitoryRewardController extends Controller
             $validated['proof_path'] = $request->file('proof_path')->store('dormitory/rewards', 'public');
         }
 
+        if (! empty($validated['point_catalog_id'])) {
+            $validated['semester'] = $this->pointService->currentSemester();
+            $this->applyCatalog($validated);
+        }
+
         $reward->update($validated);
+
+        if (! empty($validated['point_catalog_id'])) {
+            $this->pointService->recordReward($reward->fresh());
+        }
 
         return redirect()->route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Penghargaan berhasil diperbarui.');
+    }
+
+    private function rewardCatalogs()
+    {
+        return DormitoryPointCatalog::query()
+            ->active()
+            ->kind('reward')
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
+    }
+
+    private function applyCatalog(array &$validated): void
+    {
+        if (empty($validated['point_catalog_id'])) {
+            return;
+        }
+
+        $catalog = DormitoryPointCatalog::query()
+            ->active()
+            ->kind('reward')
+            ->findOrFail($validated['point_catalog_id']);
+
+        $validated['title'] = $catalog->name;
+        $validated['category'] = $catalog->rewardCategoryValue();
+        $validated['level'] = $catalog->rewardLevelValue();
+        $validated['points'] = (int) $catalog->points_min;
     }
 
     public function destroy(string $userId, string $asramaUuid, string $rewardUuid)
@@ -150,6 +201,11 @@ class DormitoryRewardController extends Controller
         if ($reward->proof_path) {
             \Storage::disk('public')->delete($reward->proof_path);
         }
+
+        DormitoryPointLedger::query()
+            ->where('reference_type', 'dormitory_reward')
+            ->where('reference_id', $reward->id)
+            ->delete();
 
         $reward->delete();
 
