@@ -51,77 +51,44 @@
 
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
             <div>
-                <h5 class="mb-1">Daftar Soal</h5>
-                <p class="text-muted mb-0 small">Semua soal dibuat dalam satu halaman. Tambahkan baris soal, soal cerita, atau gambar sesuai kebutuhan.</p>
+                <h5 class="mb-1">Susunan Soal</h5>
+                <p class="text-muted mb-0 small">Susun soal dan wacana sesuai urutan cetak. Gunakan tombol naik/turun untuk memindahkan blok.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-soft-primary btn-sm" onclick="addQuestion()"><i class="ri-add-line me-1"></i>Tambah Soal</button>
-                <button type="button" class="btn btn-soft-info btn-sm" onclick="focusWacanaEditor()"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita</button>
+                <button type="button" class="btn btn-soft-info btn-sm" onclick="addWacanaBlock()"><i class="ri-book-open-line me-1"></i>Tambah Wacana</button>
             </div>
         </div>
 
-        <div class="card mb-3" id="wacanaEditorCard">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-0"><i class="ri-book-open-line me-1 text-primary"></i>Wacana / Soal Cerita</h5>
-                    <small class="text-muted">Opsional. Dipakai bersama oleh beberapa soal dan dicetak satu kali.</small>
-                </div>
-                <span class="badge bg-info-subtle text-info">CKEditor</span>
+        <div id="blockList"></div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-3">
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addQuestion()"><i class="ri-add-line me-1"></i>Tambah Soal</button>
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="addWacanaBlock()"><i class="ri-book-open-line me-1"></i>Tambah Wacana</button>
             </div>
-            <div class="card-body">
-                <div class="row g-2 mb-3">
-                    <div class="col-md-5">
-                        <label class="form-label">Judul Wacana</label>
-                        <input type="text" id="wacanaJudul" class="form-control" maxlength="150" placeholder="mis. Teks Bacaan 1">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Sumber</label>
-                        <input type="text" id="wacanaSumber" class="form-control" maxlength="150" placeholder="mis. Buku Bahasa Arab hal. 12">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Untuk Soal Nomor</label>
-                        <input type="text" id="wacanaRentang" class="form-control" maxlength="100" placeholder="1–5">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Sisipkan Setelah</label>
-                        <input type="number" id="wacanaPosisi" class="form-control" min="0" max="1000" value="0" title="0 = sebelum soal pertama">
-                        <small class="text-muted">No. soal</small>
-                    </div>
-                </div>
-                <label class="form-label">Teks Wacana</label>
-                <textarea id="wacanaTeks" class="form-control" rows="6" placeholder="Tulis paragraf/bacaan di sini..."></textarea>
-                <div class="d-flex justify-content-end gap-2 mt-2">
-                    <button type="button" class="btn btn-light btn-sm" onclick="resetWacanaEditor()"><i class="ri-refresh-line me-1"></i>Wacana Baru</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="saveWacana()"><i class="ri-save-line me-1"></i>Simpan Wacana</button>
-                </div>
-                <div class="mt-3">
-                    <div class="small fw-semibold text-muted mb-1">Wacana tersimpan</div>
-                    <div id="wacanaSavedList" class="d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Semua Soal</button>
+        </div>
+
+        <div class="card" id="savedWacanaStrip">
+            <div class="card-body py-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="small fw-semibold text-muted"><i class="ri-bookmark-line me-1"></i>Wacana tersimpan:</span>
+                    <div id="savedWacanaList" class="d-flex flex-wrap gap-2">
                         @forelse($wacanas as $wacana)
-                            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1" data-wacana-id="{{ $wacana->id }}">
-                                {{ $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 40) }}
+                            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1" data-saved-wacana="{{ $wacana->id }}">
+                                {{ $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 35) }}
                                 @if($wacana->posisi_setelah_soal > 0)<small class="text-muted">setelah {{ $wacana->posisi_setelah_soal }}</small>@endif
-                                <button type="button" class="btn btn-sm p-0 text-danger" onclick="deleteWacana('{{ $wacana->id }}', this)" title="Hapus wacana"><i class="ri-close-line"></i></button>
+                                <button type="button" class="btn btn-sm p-0 text-danger" onclick="deleteSavedWacana('{{ $wacana->id }}', this)" title="Hapus wacana"><i class="ri-close-line"></i></button>
                             </span>
                         @empty
-                            <span class="text-muted small" id="wacanaEmpty">Belum ada wacana tersimpan.</span>
+                            <span class="text-muted small" id="savedWacanaEmpty">Belum ada wacana.</span>
                         @endforelse
                     </div>
                 </div>
             </div>
         </div>
-
-        <div id="questionList"></div>
-
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 mb-4">
-            <div class="d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addQuestion()"><i class="ri-add-line me-1"></i>Tambah Soal</button>
-                <button type="button" class="btn btn-outline-info btn-sm" onclick="focusWacanaEditor()"><i class="ri-book-open-line me-1"></i>Tambah Soal Cerita</button>
-            </div>
-            <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Semua Soal</button>
-        </div>
     </form>
-
 @endsection
 
 @section('script')
@@ -131,12 +98,61 @@ const bankType = @json($bankType);
 const isMixed = @json($isMixed);
 const typeOptions = @json($tipeSoal);
 const tpOptions = @json($tps->map(fn ($tp) => ['id' => $tp->id, 'label' => ($tp->kode_tp ? $tp->kode_tp.' — ' : '').\Str::limit($tp->deskripsi ?? $tp->id, 65)])->values());
-const wacanaOptions = @json($wacanas->map(fn ($wacana) => ['id' => $wacana->id, 'label' => ($wacana->judul ?: \Str::limit(strip_tags($wacana->teks), 50)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : '')])->values());
+let savedWacanas = @json($wacanas->map(fn ($wacana) => ['id' => $wacana->id, 'label' => ($wacana->judul ?: \Str::limit(strip_tags($wacana->teks), 45)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : '')])->values());
 let questionIndex = 0;
-let currentQuestionIndex = null;
+let wacanaIndex = 0;
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+}
+
+function getEditor(id) {
+    return window.CKEDITOR && CKEDITOR.instances[id] ? CKEDITOR.instances[id] : null;
+}
+
+function wacanaOptionsHtml(selected) {
+    const current = selected || '';
+    return '<option value="">Tidak memakai wacana</option>' + savedWacanas.map(w =>
+        `<option value="${w.id}" ${String(current) === String(w.id) ? 'selected' : ''}>${escapeHtml(w.label)}</option>`
+    ).join('');
+}
+
+function refreshWacanaSelects() {
+    document.querySelectorAll('.wacana-select').forEach(select => {
+        const current = select.value;
+        select.innerHTML = wacanaOptionsHtml(current);
+    });
+}
+
+function blockPosition(card) {
+    let count = 0;
+    let node = card.previousElementSibling;
+    while (node) {
+        if (node.classList.contains('question-card')) count++;
+        node = node.previousElementSibling;
+    }
+    return count;
+}
+
+function renumber() {
+    let n = 1;
+    document.querySelectorAll('.question-card').forEach(card => {
+        card.querySelector('.question-number').textContent = n++;
+    });
+}
+
+function moveBlock(button, direction) {
+    const card = button.closest('.block-item');
+    if (!card) return;
+    if (direction < 0 && card.previousElementSibling) {
+        card.parentNode.insertBefore(card, card.previousElementSibling);
+    } else if (direction > 0 && card.nextElementSibling) {
+        card.parentNode.insertBefore(card.nextElementSibling, card);
+    }
+    renumber();
+    if (card.classList.contains('wacana-block') && card.dataset.wacanaId) {
+        persistWacana(card, true);
+    }
 }
 
 function typeSelect(i) {
@@ -162,15 +178,15 @@ function optionRows(i, count = 4) {
 function addQuestion() {
     const i = questionIndex++;
     const card = document.createElement('div');
-    card.className = 'card mb-3 question-card';
-    card.dataset.index = i;
+    card.className = 'card mb-3 question-card block-item';
+    card.dataset.key = `q${i}`;
     card.innerHTML = `
         <div class="card-header d-flex justify-content-between align-items-center py-2">
             <span class="fw-semibold"><i class="ri-question-line me-1 text-primary"></i>Soal <span class="question-number"></span></span>
             <div class="d-flex gap-1">
-                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveQuestion(this, -1)" title="Naikkan soal"><i class="ri-arrow-up-line"></i></button>
-                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveQuestion(this, 1)" title="Turunkan soal"><i class="ri-arrow-down-line"></i></button>
-                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="this.closest('.question-card').remove(); renumber()" title="Hapus soal"><i class="ri-delete-bin-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveBlock(this, -1)" title="Naikkan"><i class="ri-arrow-up-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveBlock(this, 1)" title="Turunkan"><i class="ri-arrow-down-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="this.closest('.block-item').remove(); renumber()" title="Hapus soal"><i class="ri-delete-bin-line"></i></button>
             </div>
         </div>
         <div class="card-body">
@@ -182,9 +198,7 @@ function addQuestion() {
                 <div class="col-lg-3">
                     <label class="form-label">Level</label>
                     <select class="form-select" name="questions[${i}][tingkat_kesulitan_estimasi]">
-                        <option value="mudah">Mudah</option>
-                        <option value="sedang" selected>Sedang</option>
-                        <option value="sulit">Sulit</option>
+                        <option value="mudah">Mudah</option><option value="sedang" selected>Sedang</option><option value="sulit">Sulit</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -199,85 +213,169 @@ function addQuestion() {
                     ${typeSelect(i)}
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Wacana / Soal Cerita</label>
-                    <select class="form-select wacana-select" name="questions[${i}][wacana_id]">
-                        <option value="">Tidak memakai wacana</option>
-                        ${wacanaOptions.map(w => `<option value="${w.id}">${escapeHtml(w.label)}</option>`).join('')}
-                    </select>
+                    <label class="form-label">Wacana</label>
+                    <select class="form-select wacana-select" name="questions[${i}][wacana_id]">${wacanaOptionsHtml('')}</select>
                 </div>
             </div>
-
             <div class="options-block mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label mb-0">Pilihan Jawaban <small class="text-muted">(klik ikon kunci untuk jawaban benar)</small></label>
+                    <label class="form-label mb-0">Pilihan Jawaban <small class="text-muted">(klik kunci untuk jawaban benar)</small></label>
                     <button type="button" class="btn btn-sm btn-link p-0" onclick="addOption(this)">+ Pilihan</button>
                 </div>
                 <div class="options-list">${optionRows(i)}</div>
             </div>
-
-            <div class="mt-2 d-flex flex-wrap gap-2">
-                <button type="button" class="btn btn-sm btn-soft-secondary" onclick="toggleDetails(this)"><i class="ri-settings-3-line me-1"></i>Pembahasan & Media</button>
-            </div>
+            <div class="mt-2"><button type="button" class="btn btn-sm btn-soft-secondary" onclick="this.closest('.card-body').querySelector('.details-block').classList.toggle('d-none')"><i class="ri-settings-3-line me-1"></i>Pembahasan & Media</button></div>
             <div class="details-block d-none mt-3 border-top pt-3">
-                <div class="mb-2">
-                    <label class="form-label">Pembahasan</label>
-                    <textarea class="form-control" name="questions[${i}][pembahasan]" rows="2" placeholder="Penjelasan kunci jawaban..."></textarea>
-                </div>
+                <div class="mb-2"><label class="form-label">Pembahasan</label><textarea class="form-control" name="questions[${i}][pembahasan]" rows="2"></textarea></div>
                 <div class="row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label">Gambar Soal</label>
-                        <input type="file" class="form-control" name="questions[${i}][gambar]" accept="image/*">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Keterangan Gambar / Nomor</label>
-                        <input type="text" class="form-control" name="questions[${i}][gambar_keterangan]" maxlength="255" placeholder="mis. Gambar untuk soal 1–5">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Tags</label>
-                        <input type="text" class="form-control" name="questions[${i}][tags]" placeholder="pisahkan dengan koma">
-                    </div>
+                    <div class="col-md-6"><label class="form-label">Gambar Soal</label><input type="file" class="form-control" name="questions[${i}][gambar]" accept="image/*"></div>
+                    <div class="col-md-6"><label class="form-label">Keterangan Gambar / Nomor</label><input type="text" class="form-control" name="questions[${i}][gambar_keterangan]" maxlength="255" placeholder="mis. Gambar untuk soal 1–5"></div>
+                    <div class="col-12"><label class="form-label">Tags</label><input type="text" class="form-control" name="questions[${i}][tags]" placeholder="pisahkan dengan koma"></div>
                 </div>
             </div>
         </div>`;
-    document.getElementById('questionList').appendChild(card);
-    const typeField = card.querySelector(`[name="questions[${i}][tipe_soal]"]`);
-    if (typeField) toggleOptions(typeField);
-    if (window.initSearchableSelects) window.initSearchableSelects(card);
+    document.getElementById('blockList').appendChild(card);
     renumber();
+    if (window.initSearchableSelects) window.initSearchableSelects(card);
     card.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
-function renumber() {
-    document.querySelectorAll('.question-card').forEach((card, index) => {
-        card.querySelector('.question-number').textContent = index + 1;
-    });
+function addWacanaBlock(data = {}) {
+    const key = wacanaIndex++;
+    const id = data.id || '';
+    const card = document.createElement('div');
+    card.className = 'card mb-3 wacana-block block-item';
+    card.dataset.key = `w${key}`;
+    card.dataset.wacanaId = id;
+    card.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <span class="fw-semibold"><i class="ri-book-open-line me-1 text-info"></i>Wacana <span class="wacana-number"></span> <span class="badge bg-success-subtle text-success saved-label ${id ? '' : 'd-none'}">Tersimpan</span></span>
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveBlock(this, -1)" title="Naikkan"><i class="ri-arrow-up-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveBlock(this, 1)" title="Turunkan"><i class="ri-arrow-down-line"></i></button>
+                <button type="button" class="btn btn-sm btn-icon btn-soft-danger" onclick="removeWacanaBlock(this)" title="Hapus wacana"><i class="ri-delete-bin-line"></i></button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-2 mb-2">
+                <div class="col-md-5"><label class="form-label">Judul Wacana</label><input type="text" class="form-control wacana-judul" value="${escapeHtml(data.judul || '')}" maxlength="150" placeholder="mis. Teks Bacaan 1"></div>
+                <div class="col-md-3"><label class="form-label">Sumber</label><input type="text" class="form-control wacana-sumber" value="${escapeHtml(data.sumber || '')}" maxlength="150"></div>
+                <div class="col-md-4"><label class="form-label">Untuk Soal Nomor</label><input type="text" class="form-control wacana-rentang" value="${escapeHtml(data.rentang_nomor || '')}" maxlength="100" placeholder="mis. 1–5"></div>
+            </div>
+            <label class="form-label">Teks Wacana</label>
+            <textarea class="form-control wacana-teks" id="wacanaTeks_${key}" rows="6">${escapeHtml(data.teks || '')}</textarea>
+            <div class="d-flex justify-content-end mt-2">
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveWacanaBlock(this)"><i class="ri-save-line me-1"></i>Simpan Wacana</button>
+            </div>
+        </div>`;
+    document.getElementById('blockList').appendChild(card);
+    if (data.posisi_setelah_soal) {
+        const questions = document.querySelectorAll('.question-card');
+        if (questions[data.posisi_setelah_soal - 1]) questions[data.posisi_setelah_soal - 1].after(card);
+    }
+    if (window.CKEDITOR) {
+        CKEDITOR.replace(`wacanaTeks_${key}`, ckEditorConfig());
+    }
+    card.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
-function toggleDetails(button) {
-    button.closest('.card-body').querySelector('.details-block').classList.toggle('d-none');
+function ckEditorConfig() {
+    return {
+        language: 'id',
+        height: 220,
+        toolbar: [
+            ['Bold', 'Italic', 'Underline', 'Strike'],
+            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent'],
+            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
+            ['Link', 'Unlink'], ['Image', 'Table', 'HorizontalRule'], ['RemoveFormat', 'Source']
+        ],
+        filebrowserImageUploadUrl: '{{ route('user.soal.wacana.upload', ['userId' => $userId, 'bankId' => $bank->id]) }}?_token={{ csrf_token() }}'
+    };
+}
+
+async function persistWacana(card, silent = false) {
+    const editor = getEditor(card.querySelector('.wacana-teks').id);
+    const teks = (editor ? editor.getData() : card.querySelector('.wacana-teks').value).trim();
+    if (!teks) { if (!silent) alert('Teks wacana wajib diisi.'); return false; }
+
+    const id = card.dataset.wacanaId;
+    const payload = {
+        judul: card.querySelector('.wacana-judul').value,
+        sumber: card.querySelector('.wacana-sumber').value,
+        rentang_nomor: card.querySelector('.wacana-rentang').value,
+        posisi_setelah_soal: blockPosition(card),
+        teks: teks
+    };
+    const url = id
+        ? '{{ route('user.soal.wacana.update', ['userId' => $userId, 'bankId' => $bank->id, 'wacanaId' => '__ID__']) }}'.replace('__ID__', id)
+        : '{{ route('user.soal.wacana.store', ['userId' => $userId, 'bankId' => $bank->id]) }}';
+
+    const response = await fetch(url, {
+        method: id ? 'PUT' : 'POST',
+        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) { if (!silent) alert('Gagal menyimpan wacana.'); return false; }
+    const data = await response.json();
+    card.dataset.wacanaId = data.id;
+    card.querySelector('.saved-label').classList.remove('d-none');
+    const label = data.judul || payload.judul || 'Wacana';
+    const index = savedWacanas.findIndex(w => String(w.id) === String(data.id));
+    if (index >= 0) savedWacanas[index] = {id: data.id, label}; else savedWacanas.push({id: data.id, label});
+    refreshWacanaSelects();
+    if (!silent) {
+        const btn = card.querySelector('button.btn-primary');
+        btn.innerHTML = '<i class="ri-check-line me-1"></i>Tersimpan';
+        setTimeout(() => btn.innerHTML = '<i class="ri-save-line me-1"></i>Simpan Wacana', 1500);
+    }
+    return true;
+}
+
+function saveWacanaBlock(button) { persistWacana(button.closest('.wacana-block')); }
+
+async function removeWacanaBlock(button) {
+    const card = button.closest('.wacana-block');
+    const id = card.dataset.wacanaId;
+    if (id && !confirm('Hapus wacana ini? Soal yang memakainya akan menjadi tanpa wacana.')) return;
+    if (id) await deleteWacanaRequest(id);
+    card.remove();
+    renumber();
+}
+
+async function deleteWacanaRequest(id) {
+    await fetch('{{ route('user.soal.wacana.destroy', ['userId' => $userId, 'bankId' => $bank->id, 'wacanaId' => '__ID__']) }}'.replace('__ID__', id), {
+        method: 'DELETE',
+        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+    });
+    savedWacanas = savedWacanas.filter(w => String(w.id) !== String(id));
+    refreshWacanaSelects();
+    document.querySelectorAll(`[data-saved-wacana="${id}"]`).forEach(el => el.remove());
+}
+
+async function deleteSavedWacana(id, button) {
+    if (!confirm('Hapus wacana ini? Soal yang memakainya akan menjadi tanpa wacana.')) return;
+    await deleteWacanaRequest(id);
+    button.closest('[data-saved-wacana]')?.remove();
+    if (!document.querySelector('[data-saved-wacana]')) {
+        document.getElementById('savedWacanaList').innerHTML = '<span class="text-muted small" id="savedWacanaEmpty">Belum ada wacana.</span>';
+    }
 }
 
 function toggleOptions(select) {
     const card = select.closest('.question-card');
-    const block = card.querySelector('.options-block');
-    if (!block) return;
-    block.classList.toggle('d-none', ['isian', 'uraian'].includes(select.value));
+    card.querySelector('.options-block').classList.toggle('d-none', ['isian', 'uraian'].includes(select.value));
 }
 
 function addOption(button) {
     const card = button.closest('.question-card');
     const list = card.querySelector('.options-list');
     const count = list.querySelectorAll('.option-row').length;
-    const i = card.dataset.index;
+    const i = card.dataset.key.replace('q', '');
     const wrapper = document.createElement('div');
     wrapper.innerHTML = optionRows(i, 1);
     const row = wrapper.firstElementChild;
     row.querySelector('.input-group-text').textContent = String.fromCharCode(65 + count);
-    row.querySelector('input[type="text"]').placeholder = 'Teks pilihan ' + String.fromCharCode(65 + count);
-    // Correct the names for the new option index
-    row.querySelectorAll('[name]').forEach(input => {
-        input.name = input.name.replace(/options\[\d+\]/, 'options[' + count + ']');
-    });
+    row.querySelectorAll('[name]').forEach(input => { input.name = input.name.replace(/options\[\d+\]/, 'options[' + count + ']'); });
     const radio = row.querySelector('input[type="radio"]');
     radio.value = count;
     radio.onchange = function () { markCorrect(this, i, count); };
@@ -287,113 +385,32 @@ function addOption(button) {
 function markCorrect(radio, question, optionIndex) {
     const card = radio.closest('.question-card');
     card.querySelectorAll('.correct-input').forEach(input => input.value = '0');
-    const target = card.querySelectorAll('.correct-input')[optionIndex];
-    if (target) target.value = '1';
+    card.querySelectorAll('.correct-input')[optionIndex].value = '1';
 }
 
-function resetWacanaEditor() {
-    document.getElementById('wacanaJudul').value = '';
-    document.getElementById('wacanaSumber').value = '';
-    document.getElementById('wacanaRentang').value = '';
-    document.getElementById('wacanaPosisi').value = '0';
-    if (window.CKEDITOR && CKEDITOR.instances.wacanaTeks) {
-        CKEDITOR.instances.wacanaTeks.setData('');
-    } else {
-        document.getElementById('wacanaTeks').value = '';
-    }
-}
+document.getElementById('questionBuilder').addEventListener('submit', async function (event) {
+    if (this.dataset.submitting === '1') return;
 
-function moveQuestion(button, direction) {
-    const card = button.closest('.question-card');
-    if (!card) return;
-    if (direction < 0 && card.previousElementSibling) {
-        card.parentNode.insertBefore(card, card.previousElementSibling);
-    } else if (direction > 0 && card.nextElementSibling) {
-        card.parentNode.insertBefore(card.nextElementSibling, card);
-    }
-    renumber();
-}
-
-async function deleteWacana(id, button) {
-    if (!confirm('Hapus wacana ini? Soal yang memakainya akan menjadi tanpa wacana.')) return;
-    const response = await fetch('{{ route('user.soal.wacana.destroy', ['userId' => $userId, 'bankId' => $bank->id, 'wacanaId' => '__ID__']) }}'.replace('__ID__', id), {
-        method: 'DELETE',
-        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+    const unsaved = Array.from(document.querySelectorAll('.wacana-block')).filter(card => {
+        const editor = getEditor(card.querySelector('.wacana-teks').id);
+        const text = (editor ? editor.getData() : card.querySelector('.wacana-teks').value).trim();
+        return !card.dataset.wacanaId && text !== '';
     });
-    if (!response.ok) { alert('Gagal menghapus wacana.'); return; }
-    document.querySelectorAll('.wacana-select option[value="' + id + '"]').forEach(option => option.remove());
-    button.closest('[data-wacana-id]')?.remove();
-    const list = document.getElementById('wacanaSavedList');
-    if (list && !list.querySelector('[data-wacana-id]') && !document.getElementById('wacanaEmpty')) {
-        list.innerHTML = '<span class="text-muted small" id="wacanaEmpty">Belum ada wacana tersimpan.</span>';
-    }
-}
 
-function focusWacanaEditor() {
-    const cards = document.querySelectorAll('.question-card');
-    currentQuestionIndex = cards.length ? cards[cards.length - 1].dataset.index : null;
-    document.getElementById('wacanaEditorCard')?.scrollIntoView({behavior: 'smooth', block: 'center'});
-    if (window.CKEDITOR && CKEDITOR.instances.wacanaTeks) {
-        CKEDITOR.instances.wacanaTeks.focus();
+    if (unsaved.length) {
+        event.preventDefault();
+        for (const card of unsaved) {
+            const ok = await persistWacana(card, true);
+            if (!ok) return;
+        }
+        this.dataset.submitting = '1';
+        this.submit();
     }
-}
-
-async function saveWacana() {
-    const editor = window.CKEDITOR && CKEDITOR.instances.wacanaTeks;
-    const teks = (editor ? editor.getData() : document.getElementById('wacanaTeks').value).trim();
-    if (!teks) { alert('Teks wacana wajib diisi.'); return; }
-    const response = await fetch('{{ route('user.soal.wacana.store', ['userId' => $userId, 'bankId' => $bank->id]) }}', {
-        method: 'POST',
-        headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            judul: document.getElementById('wacanaJudul').value,
-            sumber: document.getElementById('wacanaSumber').value,
-            rentang_nomor: document.getElementById('wacanaRentang').value,
-            posisi_setelah_soal: document.getElementById('wacanaPosisi').value || 0,
-            teks: teks
-        })
-    });
-    if (!response.ok) { alert('Gagal menyimpan wacana.'); return; }
-    const data = await response.json();
-    document.querySelectorAll('.wacana-select').forEach(select => {
-        const option = new Option(data.judul, data.id);
-        select.add(option);
-    });
-    if (currentQuestionIndex !== null) {
-        const card = document.querySelector(`.question-card[data-index="${currentQuestionIndex}"]`);
-        const select = card?.querySelector('.wacana-select');
-        if (select) select.value = data.id;
-    }
-
-    const list = document.getElementById('wacanaSavedList');
-    if (list) {
-        document.getElementById('wacanaEmpty')?.remove();
-        const badge = document.createElement('span');
-        badge.className = 'badge bg-light text-dark border d-inline-flex align-items-center gap-1';
-        badge.dataset.wacanaId = data.id;
-        badge.innerHTML = `${escapeHtml(data.judul)} <button type="button" class="btn btn-sm p-0 text-danger" onclick="deleteWacana('${data.id}', this)" title="Hapus wacana"><i class="ri-close-line"></i></button>`;
-        list.appendChild(badge);
-    }
-}
+});
 
 document.addEventListener('DOMContentLoaded', function () {
     addQuestion();
-
-    if (window.CKEDITOR) {
-        CKEDITOR.replace('wacanaTeks', {
-            language: 'id',
-            height: 220,
-            toolbar: [
-                ['Bold', 'Italic', 'Underline', 'Strike'],
-                ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent'],
-                ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
-                ['Link', 'Unlink'],
-                ['Image', 'Table', 'HorizontalRule'],
-                ['RemoveFormat', 'Source']
-            ],
-            filebrowserImageUploadUrl: '{{ route('user.soal.wacana.upload', ['userId' => $userId, 'bankId' => $bank->id]) }}?_token={{ csrf_token() }}'
-        });
-    }
+    renumber();
 });
 </script>
 @endsection

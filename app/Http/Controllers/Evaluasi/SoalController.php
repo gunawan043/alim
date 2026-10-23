@@ -216,6 +216,35 @@ class SoalController extends Controller
         ]);
     }
 
+    public function updateWacana(Request $request, string $userId, string $bankId, string $wacanaId)
+    {
+        $bank = BankSoal::findOrFail($bankId);
+        $this->authorizeManage($request, $bank);
+
+        $data = $request->validate([
+            'judul' => 'nullable|string|max:150',
+            'teks' => 'required|string',
+            'sumber' => 'nullable|string|max:150',
+            'rentang_nomor' => 'nullable|string|max:100',
+            'posisi_setelah_soal' => 'nullable|integer|min:0|max:1000',
+        ]);
+
+        $wacana = WacanaSoal::where('bank_soal_id', $bank->id)->findOrFail($wacanaId);
+        $wacana->update([
+            'judul' => $data['judul'] ?? null,
+            'teks' => $this->sanitizeWacanaHtml($data['teks']),
+            'sumber' => $data['sumber'] ?? null,
+            'rentang_nomor' => $data['rentang_nomor'] ?? null,
+            'posisi_setelah_soal' => $data['posisi_setelah_soal'] ?? 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'id' => $wacana->id,
+            'judul' => $wacana->judul ?: Str::limit(strip_tags($wacana->teks), 50),
+        ]);
+    }
+
     public function destroyWacana(Request $request, string $userId, string $bankId, string $wacanaId)
     {
         $bank = BankSoal::findOrFail($bankId);
