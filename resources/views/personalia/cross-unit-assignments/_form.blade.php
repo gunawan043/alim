@@ -11,9 +11,15 @@
         <select name="user_id" class="form-select js-gtk-select" required>
             <option value="">-- Cari dan pilih GTK --</option>
             @foreach($gtkUsers as $gtk)
-                @php $primaryWorkUnit = $gtk->gtkWorkUnits->firstWhere('is_primary', true) ?? $gtk->gtkWorkUnits->first(); @endphp
+                @php
+                    $primaryWorkUnit = $gtk->gtkWorkUnits->firstWhere('is_primary', true) ?? $gtk->gtkWorkUnits->first();
+                    $currentSchoolId = $gtk->employment?->school_id ?: ($primaryWorkUnit?->work_unit_id
+                        ? \App\Models\School::where('work_unit_id', $primaryWorkUnit->work_unit_id)->value('id')
+                        : null);
+                @endphp
                 <option value="{{ $gtk->id }}"
                         data-work-unit-id="{{ $primaryWorkUnit?->work_unit_id }}"
+                        data-current-school-id="{{ $currentSchoolId }}"
                         {{ (string) $selectedUser === (string) $gtk->id ? 'selected' : '' }}>{{ $gtk->name }}</option>
             @endforeach
         </select>
@@ -49,7 +55,7 @@
     </div>
     <div class="col-md-6">
         <label class="form-label">Mapel Rekomendasi</label>
-        <select name="subject_id" class="form-select">
+        <select name="subject_id" class="form-select js-subject-select">
             <option value="">Ditentukan satuan pendidikan</option>
             @foreach($subjects as $subject)
                 <option value="{{ $subject->id }}" {{ (string) $selectedSubject === (string) $subject->id ? 'selected' : '' }}>{{ $subject->name }}</option>

@@ -276,8 +276,11 @@ function syncSchoolWorkUnit(form, preserveHome = false) {
     }
 
     const currentHome = home.value;
+    const currentSchoolId = user.options[user.selectedIndex]?.dataset.currentSchoolId || '';
     Array.from(school.options).forEach(function (option) {
-        option.disabled = !!currentHome && option.dataset.workUnitId === currentHome;
+        const sameWorkUnit = !!currentHome && option.dataset.workUnitId === currentHome;
+        const currentSchool = !!currentSchoolId && option.value === currentSchoolId;
+        option.disabled = sameWorkUnit || currentSchool;
     });
     if (school.selectedOptions[0]?.disabled) school.value = '';
 }
@@ -296,6 +299,16 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             $select.on('change', function () {
                 syncSchoolWorkUnit(this.form, false);
+            });
+        });
+
+        window.jQuery('.js-subject-select').each(function () {
+            const $select = window.jQuery(this);
+            $select.select2({
+                dropdownParent: $select.closest('.modal'),
+                width: '100%',
+                placeholder: 'Cari mapel...',
+                allowClear: true,
             });
         });
     }

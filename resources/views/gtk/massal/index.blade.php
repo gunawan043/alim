@@ -288,6 +288,7 @@
                                     <th>TMT</th>
                                     <th>Satuan Kerja</th>
                                     <th>Aktif</th>
+                                    <th class="text-end">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="list">
@@ -345,10 +346,22 @@
                                                 <span class="badge bg-danger-subtle text-danger">Nonaktif</span>
                                             @endif
                                         </td>
+                                        <td class="text-end">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-soft-primary quick-position-btn"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#quickPositionModal"
+                                                    data-id="{{ $gtk->id }}"
+                                                    data-name="{{ $gtk->name }}"
+                                                    data-jabatan-id="{{ $gtk->employment?->jabatan_id }}"
+                                                    title="Atur jabatan GTK">
+                                                <i class="ri-award-line me-1"></i>Jabatan
+                                            </button>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="text-center py-5">
+                                        <td colspan="10" class="text-center py-5">
                                             <lord-icon src="https://cdn.lordicon.com/msoeawqm.json" trigger="loop"
                                                 colors="primary:#121331,secondary:#08a88a" style="width:60px;height:60px"></lord-icon>
                                             <h5 class="mt-2 text-muted">Tidak ada GTK ditemukan</h5>
@@ -366,6 +379,31 @@
                         {{ $gtkList->links() }}
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="quickPositionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-award-line me-1"></i>Atur Jabatan GTK</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="quickJabatanUserId">
+                    <p class="text-muted mb-3">GTK: <strong id="quickJabatanUserName">-</strong></p>
+                    <label class="form-label">Jabatan</label>
+                    <select id="quickJabatanSelect" class="form-select">
+                        <option value="">-- Pilih Jabatan --</option>
+                        @foreach($jabatan as $j)
+                            <option value="{{ $j->id }}">{{ $j->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" id="quickJabatanSave">Simpan Jabatan</button>
+                </div>
             </div>
         </div>
     </div>
@@ -459,6 +497,47 @@
                 } catch(e) { console.error(e); }
             });
         }
+
+        document.querySelectorAll('.quick-position-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                document.getElementById('quickJabatanUserId').value = this.dataset.id;
+                document.getElementById('quickJabatanUserName').textContent = this.dataset.name || '-';
+                document.getElementById('quickJabatanSelect').value = this.dataset.jabatanId || '';
+            });
+        });
+
+        document.getElementById('quickJabatanSave')?.addEventListener('click', async function () {
+            const id = document.getElementById('quickJabatanUserId').value;
+            const jabatanId = document.getElementById('quickJabatanSelect').value;
+            if (!id || !jabatanId) {
+                Swal.fire('Perhatian', 'Pilih jabatan terlebih dahulu.', 'warning');
+                return;
+            }
+
+            this.disabled = true;
+            try {
+                const res = await fetch('{{ route("user.gtk.mass-update", ["userId" => $userId]) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ ids: [id], jabatan_id: jabatanId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message, timer: 1200, showConfirmButton: false });
+                    setTimeout(() => window.location.reload(), 1300);
+                } else {
+                    Swal.fire('Gagal', data.message || 'Gagal menyimpan jabatan.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Gagal', 'Terjadi kesalahan jaringan.', 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
 
         document.getElementById('confirmMassUpdate').addEventListener('click', async function () {
             const checked = document.querySelectorAll('.bulk-gtk-select:checked');

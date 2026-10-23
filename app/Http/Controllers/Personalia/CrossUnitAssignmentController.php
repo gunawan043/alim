@@ -41,9 +41,16 @@ class CrossUnitAssignmentController extends Controller
         $schools = School::where('is_active', true)->orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
         $academicYears = AcademicYear::orderByDesc('name')->get();
-        $subjects = Subject::where('is_active', true)->orderBy('name')->get();
+        $subjects = Subject::where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->unique(fn ($subject) => mb_strtolower(trim($subject->name)))
+            ->values();
         $activeAcademicYearId = AcademicYear::active()->value('id');
-        $gtkUsers = User::with(['gtkWorkUnits:id,user_id,work_unit_id,is_primary'])
+        $gtkUsers = User::with([
+            'gtkWorkUnits:id,user_id,work_unit_id,is_primary',
+            'employment:id,user_id,school_id',
+        ])
             ->where('is_active', true)
             ->whereHas('gtkWorkUnits')
             ->orderBy('name')
@@ -74,6 +81,14 @@ class CrossUnitAssignmentController extends Controller
         if ($school->work_unit_id && $school->work_unit_id === $data['home_work_unit_id']) {
             throw ValidationException::withMessages([
                 'home_work_unit_id' => 'Work unit asal harus berbeda dari work unit satuan pendidikan tujuan.',
+            ]);
+        }
+
+        $currentSchoolId = \App\Models\GtkEmployment::where('user_id', $data['user_id'])->value('school_id')
+            ?: School::where('work_unit_id', $data['home_work_unit_id'])->value('id');
+        if ($currentSchoolId && (string) $currentSchoolId === (string) $data['school_id']) {
+            throw ValidationException::withMessages([
+                'school_id' => 'GTK tidak dapat ditugaskan ke satuan pendidikan tempat ia saat ini bertugas.',
             ]);
         }
 
@@ -121,6 +136,14 @@ class CrossUnitAssignmentController extends Controller
         if ($school->work_unit_id && $school->work_unit_id === $data['home_work_unit_id']) {
             throw ValidationException::withMessages([
                 'home_work_unit_id' => 'Work unit asal harus berbeda dari work unit satuan pendidikan tujuan.',
+            ]);
+        }
+
+        $currentSchoolId = \App\Models\GtkEmployment::where('user_id', $data['user_id'])->value('school_id')
+            ?: School::where('work_unit_id', $data['home_work_unit_id'])->value('id');
+        if ($currentSchoolId && (string) $currentSchoolId === (string) $data['school_id']) {
+            throw ValidationException::withMessages([
+                'school_id' => 'GTK tidak dapat ditugaskan ke satuan pendidikan tempat ia saat ini bertugas.',
             ]);
         }
 

@@ -2529,8 +2529,9 @@ class GtkWizardController extends Controller
                 // Scope check — only allow update if user's school matches context
                 $schoolId = $request->attributes->get('schoolContextId');
                 if ($schoolId) {
-                    $hasSchoolScope = $user->employment?->school_id === $schoolId
-                        || $user->gtkWorkUnits()->where('work_unit_id', $schoolId)->exists();
+                    $schoolWorkUnitId = \App\Models\School::find($schoolId)?->work_unit_id;
+                    $hasSchoolScope = (string) $user->employment?->school_id === (string) $schoolId
+                        || ($schoolWorkUnitId && $user->gtkWorkUnits()->where('work_unit_id', $schoolWorkUnitId)->exists());
                     if (! $hasSchoolScope) {
                         continue;
                     }
