@@ -96,13 +96,13 @@
                         <h5 class="card-title mb-0"><i class="ri-eye-line text-primary me-1"></i>Preview Naskah</h5>
                         <p class="text-muted mb-0 small">Preview mengikuti tata letak yang tersimpan.</p>
                     </div>
-                    <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-outline-success btn-sm">
+                    <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id, 'v' => $paket->updated_at?->timestamp]) }}" target="_blank" class="btn btn-outline-success btn-sm">
                         <i class="ri-external-link-line me-1"></i>Buka PDF
                     </a>
                 </div>
                 <div class="card-body p-2">
                     <div class="border rounded overflow-hidden bg-light" style="height:720px;">
-                        <iframe src="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id]) }}"
+                        <iframe src="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id, 'v' => $paket->updated_at?->timestamp]) }}"
                                 title="Preview naskah soal"
                                 style="width:100%;height:100%;border:0;background:#fff;"
                                 loading="lazy"></iframe>

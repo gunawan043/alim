@@ -696,13 +696,17 @@ class PaketSoalController extends Controller
 
     public function naskahCetak(Request $request, string $userId, string $paketUuid)
     {
-        $data = $this->buildNaskahData($request, $paketUuid);
+        $paket = PaketSoal::findOrFail($paketUuid);
+        $this->authorizePaket($request, $paket, false);
 
-        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
-            'evalusi.paket-soal.naskah-cetak',
-            $data,
-            'Naskah-Soal-'.$data['paket']->judul,
-        );
+        $bytes = app(\App\Services\Evaluasi\PaketSoalNaskahPdfService::class)->pdf($paket);
+        $filename = 'Naskah-Soal-'.$paket->judul.'.pdf';
+
+        return response($bytes, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'no-store, max-age=0',
+        ]);
     }
 
     /**

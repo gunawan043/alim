@@ -189,7 +189,8 @@
                     <div class="wacana-title">{!! LjkArabicText::toHtml($block['judul']) !!}</div>
                 @endif
                 <div class="wacana-text {{ ($block['rtl'] ?? false) ? 'ar-block' : '' }}">
-                    {!! LjkArabicText::toHtml($block['teks']) !!}
+                    @php $wacanaHtml = (string) ($block['teks'] ?? ''); @endphp
+                    {!! strip_tags($wacanaHtml) !== $wacanaHtml ? $wacanaHtml : LjkArabicText::toHtml($wacanaHtml) !!}
                 </div>
                 @if(! empty($block['sumber']))
                     <div class="wacana-caption paper-note">Sumber: {!! LjkArabicText::toHtml($block['sumber']) !!}</div>
@@ -212,6 +213,9 @@
                         @if($rtl)
                             <td class="qbody" style="text-align: right;">
                                 <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>
+                                @if(! empty($block['gambar_path']))
+                                    <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
+                                @endif
                                 @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
                             </td>
                             <td class="qno" style="text-align: right;">
@@ -223,6 +227,9 @@
                             </td>
                             <td class="qbody">
                                 <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>
+                                @if(! empty($block['gambar_path']))
+                                    <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
+                                @endif
                                 @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
                             </td>
                         @endif

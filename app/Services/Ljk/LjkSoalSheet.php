@@ -284,6 +284,8 @@ class LjkSoalSheet
                     'isArabic' => $isArabic,
                     'rtl' => $rtl,
                     'wacana' => is_array($wacana) && ! empty($wacana['teks']) ? $wacana : null,
+                    'gambar_path' => $konten['gambar_path'] ?? null,
+                    'gambar_keterangan' => $konten['gambar_keterangan'] ?? null,
                 ];
             })
             ->all();
