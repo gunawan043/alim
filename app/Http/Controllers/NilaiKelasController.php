@@ -899,6 +899,14 @@ class NilaiKelasController extends Controller
         $docBahasa = in_array($request->input('doc_bahasa'), ['id', 'ar'], true) ? $request->input('doc_bahasa') : 'id';
         $layout = $distributionSetting?->variantLayoutSettings($docJenis, $docBahasa) ?? RaporDistributionSetting::defaultLayout();
 
+        $variantLayouts = [];
+        foreach (['sts', 'sas'] as $variantJenis) {
+            foreach (['id', 'ar'] as $variantBahasa) {
+                $variantLayouts[$variantJenis.':'.$variantBahasa] = $distributionSetting?->variantLayoutSettings($variantJenis, $variantBahasa)
+                    ?? RaporDistributionSetting::defaultLayout();
+            }
+        }
+
         $raporPdf = app(RaporPdfService::class);
         $availableSubjects = $selectedAyId
             ? $raporPdf->availableSubjects($schoolId, $studyGroup, (string) $selectedAyId, (string) $selectedSem)
@@ -931,7 +939,7 @@ class NilaiKelasController extends Controller
 
         return view('nilai-kelas.rapor-index', compact(
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
-            'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'docJenis', 'docBahasa',
+            'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'variantLayouts', 'docJenis', 'docBahasa',
             'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish',
         ));
     }
@@ -1245,7 +1253,14 @@ class NilaiKelasController extends Controller
 
         RaporDistributionSetting::updateOrCreate($context, $update);
 
-        return back()->with('success', 'Pengaturan tata letak rapor berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
+        return redirect()->route('user.schools.nilai-kelas.rapor', [
+            'userId' => $userId,
+            'studyGroupId' => $studyGroup->id,
+            'academic_year_id' => $validated['academic_year_id'],
+            'semester' => $validated['semester'],
+            'doc_jenis' => $validated['doc_jenis'] ?? 'sts',
+            'doc_bahasa' => $validated['doc_bahasa'] ?? 'id',
+        ])->with('success', 'Pengaturan tata letak rapor berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
     }
 
     /**
@@ -1325,7 +1340,14 @@ class NilaiKelasController extends Controller
 
         RaporDistributionSetting::updateOrCreate($context, $update);
 
-        return back()->with('success', 'Pengaturan kop, TTD, dan stempel berhasil disimpan.');
+        return redirect()->route('user.schools.nilai-kelas.rapor', [
+            'userId' => $userId,
+            'studyGroupId' => $studyGroup->id,
+            'academic_year_id' => $validated['academic_year_id'],
+            'semester' => $validated['semester'],
+            'doc_jenis' => $validated['doc_jenis'] ?? 'sts',
+            'doc_bahasa' => $validated['doc_bahasa'] ?? 'id',
+        ])->with('success', 'Pengaturan kop, TTD, dan stempel berhasil disimpan.');
     }
 
     /**

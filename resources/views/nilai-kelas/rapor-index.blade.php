@@ -422,10 +422,13 @@
                                     ['sas', 'id', 'SAS — Indonesia'],
                                     ['sas', 'ar', 'SAS — Arab'],
                                 ] as [$variantJenis, $variantBahasa, $variantLabel])
-                                    <a href="{{ request()->fullUrlWithQuery(['doc_jenis' => $variantJenis, 'doc_bahasa' => $variantBahasa]) }}"
-                                       class="btn btn-sm {{ $docJenis === $variantJenis && $docBahasa === $variantBahasa ? 'btn-primary' : 'btn-outline-secondary' }}">
+                                    <button type="button"
+                                            class="btn btn-sm js-variant-settings {{ $docJenis === $variantJenis && $docBahasa === $variantBahasa ? 'btn-primary' : 'btn-outline-secondary' }}"
+                                            data-variant-jenis="{{ $variantJenis }}"
+                                            data-variant-bahasa="{{ $variantBahasa }}"
+                                            data-variant-label="{{ $variantLabel }}">
                                         {{ $variantLabel }}
-                                    </a>
+                                    </button>
                                 @endforeach
                             </div>
                         </div>
@@ -604,7 +607,7 @@
     <div class="modal fade" id="layoutSettingsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <form method="POST"
+                <form id="layoutSettingsForm" method="POST"
                       action="{{ route('user.schools.nilai-kelas.rapor.layout', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
                     @csrf
                     <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
@@ -613,7 +616,7 @@
                     <input type="hidden" name="doc_bahasa" value="{{ $docBahasa }}">
 
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="ri-layout-line me-2 text-primary"></i>Margin, Font &amp; Kertas</h5>
+                        <h5 class="modal-title"><i class="ri-layout-line me-2 text-primary"></i>Margin, Font &amp; Kertas <span id="layoutVariantLabel" class="text-muted fw-normal small"></span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
@@ -684,7 +687,7 @@
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="ri-image-line me-2 text-primary"></i>Pengaturan Kop, TTD &amp; Stempel</h5>
+                    <h5 class="modal-title"><i class="ri-image-line me-2 text-primary"></i>Pengaturan Kop, TTD &amp; Stempel <span id="mediaVariantLabel" class="text-muted fw-normal small"></span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
@@ -883,6 +886,71 @@ function moveSubjectRow(button, direction) {
 
 document.addEventListener('DOMContentLoaded', renumberSubjectRows);
 renumberSubjectRows();
+
+(function () {
+    const variantLayouts = @json($variantLayouts);
+    const layoutForm = document.getElementById('layoutSettingsForm');
+    const mediaForm = document.getElementById('raporMediaForm');
+    const layoutVariantLabel = document.getElementById('layoutVariantLabel');
+    const mediaVariantLabel = document.getElementById('mediaVariantLabel');
+    const labels = {
+        'sts:id': 'STS — Indonesia',
+        'sts:ar': 'STS — Arab',
+        'sas:id': 'SAS — Indonesia',
+        'sas:ar': 'SAS — Arab',
+    };
+
+    function setFormValue(form, key, value) {
+        if (!form) return;
+        const checkbox = form.querySelector('input[type="checkbox"][name="' + key + '"]');
+        const field = checkbox || form.querySelector('[name="' + key + '"]');
+        if (!field) return;
+        if (field.type === 'checkbox') {
+            field.checked = Boolean(value);
+        } else {
+            field.value = value ?? '';
+        }
+    }
+
+    function applyVariant(jenis, bahasa) {
+        const key = jenis + ':' + bahasa;
+        const layout = variantLayouts[key] || {};
+
+        [layoutForm, mediaForm].forEach(function (form) {
+            if (!form) return;
+            setFormValue(form, 'doc_jenis', jenis);
+            setFormValue(form, 'doc_bahasa', bahasa);
+        });
+
+        [
+            'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
+            'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
+            'footer_font_size', 'line_height', 'paper_size',
+            'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp',
+            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
+            'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
+        ].forEach(function (key) {
+            if (layoutForm && layoutForm.querySelector('[name="' + key + '"]')) {
+                setFormValue(layoutForm, key, layout[key]);
+            }
+            if (mediaForm && mediaForm.querySelector('[name="' + key + '"]')) {
+                setFormValue(mediaForm, key, layout[key]);
+            }
+        });
+
+        if (layoutVariantLabel) layoutVariantLabel.textContent = labels[key] || key;
+        if (mediaVariantLabel) mediaVariantLabel.textContent = labels[key] || key;
+    }
+
+    document.querySelectorAll('.js-variant-settings').forEach(function (button) {
+        button.addEventListener('click', function () {
+            applyVariant(this.dataset.variantJenis, this.dataset.variantBahasa);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('layoutSettingsModal')).show();
+        });
+    });
+
+    window.applyRaporVariant = applyVariant;
+})();
 
 @if($errors->any() && (old('kop_height') !== null || $errors->has('ttd_wali_file')))
     new bootstrap.Modal(document.getElementById('signatureSettingsModal')).show();
