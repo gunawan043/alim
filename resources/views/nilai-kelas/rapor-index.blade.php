@@ -543,78 +543,87 @@
                     @endif
                 </div>
             </div>
+
+            {{-- Pengaturan Mapel Rapor & Urutan --}}
+            <div class="card mt-3">
+                <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <h5 class="card-title mb-0"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h5>
+            <p class="text-muted mb-0 small">Centang mapel yang dicetak, lalu gunakan tombol panah untuk mengatur urutan. Berlaku untuk STS dan SAS.</p>
         </div>
+        <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
     </div>
-
-    {{-- Pengaturan Mapel Rapor & Urutan --}}
-    <div class="card mt-3">
-        <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <div>
-                <h5 class="card-title mb-0"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h5>
-                <p class="text-muted mb-0 small">Centang mapel yang dicetak, lalu atur nomor urut. Nomor lebih kecil tampil lebih dulu. Berlaku untuk STS dan SAS.</p>
+    <div class="card-body">
+        @if($availableSubjects->isEmpty())
+            <div class="alert alert-warning py-2 mb-0 small">
+                <i class="ri-information-line me-1"></i>Belum ada buku/mapel aktif untuk rombel dan semester ini.
             </div>
-            <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
-        </div>
-        <div class="card-body">
-            @if($availableSubjects->isEmpty())
-                <div class="alert alert-warning py-2 mb-0 small">
-                    <i class="ri-information-line me-1"></i>Belum ada buku/mapel aktif untuk rombel dan semester ini.
-                </div>
-            @else
-                <form method="POST"
-                      action="{{ route('user.schools.nilai-kelas.rapor.subjects', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
-                    @csrf
-                    <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
-                    <input type="hidden" name="semester" value="{{ $selectedSem }}">
+        @else
+            <form method="POST"
+                  action="{{ route('user.schools.nilai-kelas.rapor.subjects', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                @csrf
+                <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                <input type="hidden" name="semester" value="{{ $selectedSem }}">
 
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-3">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width:70px;" class="text-center">Masuk</th>
-                                    <th>Mata Pelajaran</th>
-                                    <th style="width:120px;" class="text-center">Urutan</th>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-3">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:70px;" class="text-center">Masuk</th>
+                                <th>Mata Pelajaran</th>
+                                <th style="width:140px;" class="text-center">Urutan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subjectOrderBody">
+                            @foreach($availableSubjects as $subject)
+                                @php
+                                    $isSelected = in_array($subject->id, $selectedSubjectIds, true);
+                                @endphp
+                                <tr class="subject-row" data-subject-id="{{ $subject->id }}">
+                                    <td class="text-center">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="subject_ids[]" value="{{ $subject->id }}"
+                                               id="subject-{{ $subject->id }}" @checked($isSelected)>
+                                    </td>
+                                    <td>
+                                        <label class="fw-semibold mb-0" for="subject-{{ $subject->id }}">{{ $subject->name }}</label>
+                                        @if($subject->category)
+                                            <small class="text-muted ms-1">({{ $subject->category }})</small>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="hidden" name="subject_order[{{ $subject->id }}]"
+                                               class="subject-order-input" value="{{ $loop->iteration }}">
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <span class="badge bg-light text-dark subject-order-label">{{ $loop->iteration }}</span>
+                                            <div class="btn-group btn-group-sm" role="group" aria-label="Atur urutan {{ $subject->name }}">
+                                                <button type="button" class="btn btn-outline-secondary subject-move-up"
+                                                        onclick="moveSubjectRow(this, -1)" title="Naikkan">
+                                                    <i class="ri-arrow-up-line"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary subject-move-down"
+                                                        onclick="moveSubjectRow(this, 1)" title="Turunkan">
+                                                    <i class="ri-arrow-down-line"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @php $nextOrder = count($selectedSubjectIds) + 1; @endphp
-                                @foreach($availableSubjects as $subject)
-                                    @php
-                                        $isSelected = in_array($subject->id, $selectedSubjectIds, true);
-                                        $orderIndex = array_search($subject->id, $selectedSubjectIds, true);
-                                    @endphp
-                                    <tr>
-                                        <td class="text-center">
-                                            <input class="form-check-input" type="checkbox"
-                                                   name="subject_ids[]" value="{{ $subject->id }}"
-                                                   id="subject-{{ $subject->id }}" @checked($isSelected)>
-                                        </td>
-                                        <td>
-                                            <label class="fw-semibold mb-0" for="subject-{{ $subject->id }}">{{ $subject->name }}</label>
-                                            @if($subject->category)
-                                                <small class="text-muted ms-1">({{ $subject->category }})</small>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            <input type="number" class="form-control form-control-sm text-center mx-auto"
-                                                   style="max-width:90px;" name="subject_order[{{ $subject->id }}]"
-                                                   min="1" max="99" step="1"
-                                                   value="{{ $isSelected && $orderIndex !== false ? $orderIndex + 1 : $nextOrder++ }}">
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
 
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Urutan hanya dipakai untuk mapel yang dicentang.</small>
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="ri-save-3-line me-1"></i>Simpan Mapel &amp; Urutan
-                        </button>
-                    </div>
-                </form>
-            @endif
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Urutan mengikuti posisi baris; tombol panah langsung memindahkan mapel.</small>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="ri-save-3-line me-1"></i>Simpan Mapel &amp; Urutan
+                    </button>
+                </div>
+            </form>
+        @endif
+                </div>
+            </div>
         </div>
     </div>
 
@@ -646,6 +655,41 @@
 
 @push('scripts')
 <script>
+function renumberSubjectRows() {
+    const body = document.getElementById('subjectOrderBody');
+    if (!body) return;
+
+    const rows = Array.from(body.querySelectorAll('.subject-row'));
+
+    rows.forEach(function (row, index) {
+        const input = row.querySelector('.subject-order-input');
+        const label = row.querySelector('.subject-order-label');
+        const up = row.querySelector('.subject-move-up');
+        const down = row.querySelector('.subject-move-down');
+
+        if (input) input.value = index + 1;
+        if (label) label.textContent = index + 1;
+        if (up) up.disabled = index === 0;
+        if (down) down.disabled = index === rows.length - 1;
+    });
+}
+
+function moveSubjectRow(button, direction) {
+    const row = button.closest('.subject-row');
+    if (!row) return;
+
+    if (direction < 0 && row.previousElementSibling) {
+        row.parentNode.insertBefore(row, row.previousElementSibling);
+    } else if (direction > 0 && row.nextElementSibling) {
+        row.parentNode.insertBefore(row.nextElementSibling, row);
+    }
+
+    renumberSubjectRows();
+}
+
+document.addEventListener('DOMContentLoaded', renumberSubjectRows);
+renumberSubjectRows();
+
 document.querySelectorAll('.js-note').forEach(function (btn) {
     btn.addEventListener('click', function () {
         document.getElementById('noteForm').action = btn.dataset.action;
