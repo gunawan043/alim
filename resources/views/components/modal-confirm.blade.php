@@ -2,6 +2,7 @@
     'id' => 'confirmModal',
     'icon' => 'https://cdn.lordicon.com/lupuorrc.json',
     'iconClass' => null,
+    'image' => null,
     'primaryColor' => '#121331',
     'secondaryColor' => '#08a88a',
     'title' => 'Konfirmasi',
@@ -23,7 +24,9 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-body text-center p-5">
-                @if($iconClass)
+                @if($image)
+                    <img src="{{ $image }}" alt="" style="width:120px;height:120px;object-fit:contain;">
+                @elseif($iconClass)
                     <i class="{{ $iconClass }} fs-1 text-primary"></i>
                 @else
                     <lord-icon src="{{ $icon }}" trigger="loop" colors="primary:{{ $primaryColor }},secondary:{{ $secondaryColor }}" style="width:120px;height:120px"></lord-icon>

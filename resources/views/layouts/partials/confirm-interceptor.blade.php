@@ -1,6 +1,6 @@
 {{-- Konfirmasi global: form/tombol data-confirm dan pola confirm() lama memakai modal, bukan dialog browser. --}}
 <x-modal-confirm id="globalConfirmModal" class="zoomIn"
-    iconClass="ri-send-plane-line"
+    image="https://media.lordicon.com/icons/wired/outline/2234-firework.gif"
     title="Konfirmasi"
     submitLabel="Ya, Lanjutkan"
     submitIcon="ri-check-line"
