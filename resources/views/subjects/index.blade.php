@@ -193,6 +193,7 @@
                             @if($canViewAllSchools)<th>Satuan Pendidikan</th>@endif
                             <th style="width:90px;">Kode</th>
                             <th>Nama Mata Pelajaran</th>
+                            <th>Nama Arab</th>
                             <th class="text-center">Kategori</th>
                             <th class="text-center">JP/Minggu</th>
                             <th class="text-center">Status</th>
@@ -208,7 +209,7 @@
                             @endif
                             @php $meta = $kelompokLabels[$key]; @endphp
                             <tr class="kelompok-header">
-                                <td colspan="{{ $canViewAllSchools ? '8' : '7' }}">
+                                <td colspan="{{ $canViewAllSchools ? '9' : '8' }}">
                                     <i class="{{ $meta['icon'] }} me-1"></i>
                                     {{ $meta['label'] }}
                                     <span class="text-muted ms-2" style="font-weight:400;text-transform:none;font-size:11px;">
@@ -231,6 +232,9 @@
                                             <br><small class="text-muted">{{ $sub->description }}</small>
                                         @endif
                                     </td>
+                                    <td class="text-end" dir="rtl" style="font-size:14px;">
+                                        {{ $sub->name_ar ?: \App\Support\SubjectArabicName::resolve($sub->name) ?: '—' }}
+                                    </td>
                                     <td class="text-center">
                                         @if($sub->category === 'nasional')
                                             <span class="badge bg-info-subtle text-info" style="font-size:11px;">Nasional</span>
@@ -246,6 +250,14 @@
                                               style="font-size:11px;">{{ $sub->is_active ? 'Aktif' : 'Nonaktif' }}</span>
                                     </td>
                                     <td class="text-end">
+                                        <button type="button"
+                                                class="btn btn-soft-info btn-sm js-edit-name"
+                                                title="Atur nama Indonesia & Arab"
+                                                data-action="{{ route('user.subjects.names.update', ['userId' => $userId, 'id' => $sub->id]) }}"
+                                                data-name="{{ $sub->name }}"
+                                                data-name-ar="{{ $sub->name_ar ?: \App\Support\SubjectArabicName::resolve($sub->name) }}">
+                                            <i class="ri-translate-2"></i>
+                                        </button>
                                         <a href="{{ route('user.subjects.edit', ['userId' => $userId, 'id' => $sub->id]) }}"
                                            class="btn btn-soft-primary btn-sm" title="Edit"><i class="ri-pencil-line"></i></a>
                                         <button class="btn btn-soft-danger btn-sm delete-sub"
@@ -259,7 +271,7 @@
 
                         @if($subjects->isEmpty())
                             <tr>
-                                <td colspan="{{ $canViewAllSchools ? '8' : '7' }}" class="text-center py-5">
+                                <td colspan="{{ $canViewAllSchools ? '9' : '8' }}" class="text-center py-5">
                                     <div class="avatar-lg mx-auto mb-3">
                                         <div class="avatar-title bg-light rounded-circle">
                                             <i class="ri-book-open-line fs-1 text-muted"></i>
@@ -278,11 +290,52 @@
         </div>
     </div>
 </div>
+    {{-- Modal: Atur nama mapel Indonesia & Arab --}}
+    <div class="modal fade" id="subjectNameModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" id="subjectNameForm">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-translate-2 me-1 text-info"></i>Atur Nama Mapel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nama Indonesia <span class="text-danger">*</span></label>
+                            <input type="text" name="name" id="subjectNameId" class="form-control" required maxlength="100">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">Nama Arab</label>
+                            <input type="text" name="name_ar" id="subjectNameAr" class="form-control" maxlength="100" dir="rtl" placeholder="مثال: الرياضيات">
+                            <div class="form-text">Kosongkan untuk otomatis dari kamus mapel.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Nama</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('script')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
     <script>
+        document.querySelectorAll('.js-edit-name').forEach(function(btn) {
+            btn.addEventListener('click', function () {
+                var form = document.getElementById('subjectNameForm');
+                form.action = this.dataset.action;
+                document.getElementById('subjectNameId').value = this.dataset.name || '';
+                document.getElementById('subjectNameAr').value = this.dataset.nameAr || '';
+                new bootstrap.Modal(document.getElementById('subjectNameModal')).show();
+            });
+        });
+
         document.querySelectorAll('.delete-sub').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var id = this.dataset.id;

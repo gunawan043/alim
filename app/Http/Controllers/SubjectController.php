@@ -7,6 +7,7 @@ use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\Subject;
+use App\Support\SubjectArabicName;
 use Illuminate\Http\Request;
 
 class SubjectController extends Controller
@@ -22,7 +23,11 @@ class SubjectController extends Controller
             $query->where('school_id', $request->school_id);
         }
         if ($request->filled('search')) {
-            $query->where('name', 'like', "%{$request->search}%");
+            $q = $request->search;
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('name_ar', 'like', "%{$q}%");
+            });
         }
         if ($request->filled('category')) {
             $query->where('category', $request->category);
@@ -116,6 +121,9 @@ class SubjectController extends Controller
             ['school_id' => $schoolId, 'code' => strtoupper($data['code'])],
             [
                 'name' => $data['name'],
+                'name_ar' => filled($data['name_ar'] ?? null)
+                    ? $data['name_ar']
+                    : SubjectArabicName::resolve($data['name']),
                 'category' => 'lokal',
                 'source' => 'pemadatan',
                 'description' => $data['description'] ?? null,
@@ -188,6 +196,9 @@ class SubjectController extends Controller
         }
 
         $data = $request->validate($rules);
+        $data['name_ar'] = filled($data['name_ar'] ?? null)
+            ? $data['name_ar']
+            : SubjectArabicName::resolve($data['name']);
 
         if ($schoolId) {
             $data['school_id'] = $schoolId;
@@ -266,6 +277,9 @@ class SubjectController extends Controller
         }
 
         $data = $request->validate($rules);
+        $data['name_ar'] = filled($data['name_ar'] ?? null)
+            ? $data['name_ar']
+            : SubjectArabicName::resolve($data['name']);
 
         if ($schoolId) {
             $data['school_id'] = $schoolId;
@@ -283,6 +297,32 @@ class SubjectController extends Controller
 
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])
             ->with('success', 'Mata pelajaran berhasil diperbarui.');
+    }
+
+    /**
+     * Simpan cepat nama mapel Indonesia + Arab dari halaman daftar mapel.
+     */
+    public function updateNames(Request $request, string $userId, string $id)
+    {
+        $subject = Subject::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $subject->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'name_ar' => 'nullable|string|max:100',
+        ]);
+
+        $validated['name_ar'] = filled($validated['name_ar'] ?? null)
+            ? $validated['name_ar']
+            : SubjectArabicName::resolve($validated['name']);
+
+        $subject->update($validated);
+
+        return back()->with('success', 'Nama mapel Indonesia dan Arab berhasil disimpan.');
     }
 
     public function destroy(Request $request, string $userId, string $id)

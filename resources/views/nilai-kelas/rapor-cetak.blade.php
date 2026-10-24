@@ -65,6 +65,34 @@
             direction: rtl;
         }
 
+        /* RTL: tabel, urutan kolom, dan perataan teks mengikuti arah Arab. */
+        body.ar table,
+        body.ar .info-grid,
+        body.ar .ringkasan-box,
+        body.ar .catatan-box,
+        body.ar .ttd-grid,
+        body.ar .footer-bar {
+            direction: rtl;
+        }
+        body.ar table.nilai th,
+        body.ar table.nilai td,
+        body.ar .info-grid td,
+        body.ar .ringkasan-box td,
+        body.ar .catatan-box td {
+            text-align: right;
+        }
+        body.ar table.nilai td.no,
+        body.ar table.nilai td.kkm,
+        body.ar table.nilai td.nilai-col,
+        body.ar table.nilai td.ket-col,
+        body.ar .ringkasan-box td.colon,
+        body.ar .ringkasan-box td.val {
+            text-align: center;
+        }
+        body.ar .info-grid td.colon {
+            text-align: center;
+        }
+
         .ar {
             font-family: 'DejaVu Sans', sans-serif;
         }
@@ -316,7 +344,7 @@
     <div class="judul">{!! $text($label(($data['Jenis'] ?? 'sts') === 'sas' ? 'title_sas' : 'title_sts')) !!}</div>
 
     {{-- Info Santri --}}
-    <table class="info-grid">
+    <table class="info-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
             <td class="lbl">{!! $text($label('nama')) !!}</td>
             <td class="colon">:</td>
@@ -341,7 +369,7 @@
     </table>
 
     {{-- Tabel Nilai --}}
-    <table class="nilai">
+    <table class="nilai" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <thead>
             <tr>
                 <th class="no">{!! $text($label('no')) !!}</th>
@@ -365,7 +393,7 @@
     </table>
 
     {{-- Ringkasan --}}
-    <table class="ringkasan-box">
+    <table class="ringkasan-box" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
             <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('jumlah_nilai')) !!}</td>
             <td class="colon">:</td>
@@ -386,7 +414,7 @@
     </table>
 
     {{-- Catatan --}}
-    <table class="catatan-box">
+    <table class="catatan-box" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
             <td class="hdr lbl-col">{!! $text($label('catatan_kehadiran')) !!}</td>
             <td class="hdr">{!! $text($label('catatan_wali')) !!}</td>
@@ -412,7 +440,7 @@
     </table>
 
     {{-- TTD --}}
-    <table class="ttd-grid">
+    <table class="ttd-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
             <td class="with-gap" style="width:30%;">
                 <br><br><br><br><br>

@@ -56,7 +56,8 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Nama Mata Pelajaran (Arab)</label>
-                                <input type="text" name="name_ar" class="form-control" value="{{ old('name_ar', $subject->name_ar) }}" maxlength="100" dir="rtl" placeholder="مثال: الرياضيات">
+                                <input type="text" name="name_ar" class="form-control" value="{{ old('name_ar', $subject->name_ar ?: \App\Support\SubjectArabicName::resolve($subject->name)) }}" maxlength="100" dir="rtl" placeholder="مثال: الرياضيات">
+                                <div class="form-text">Kosongkan untuk otomatis dari kamus mapel.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>

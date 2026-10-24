@@ -836,6 +836,37 @@ class ArsipInventarisTest extends TestCase
         $this->assertSame(24.0, $layout['ttd_wali_width']);
     }
 
+    public function test_nama_mapel_arab_otomatis_dari_halaman_mapel(): void
+    {
+        $this->actingAs($this->tu)
+            ->put("/{$this->tu->id}/subjects/{$this->subject->id}/names", [
+                'name' => 'Fiqih',
+                'name_ar' => '',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame('الفقه', $this->subject->fresh()->name_ar);
+    }
+
+    public function test_rapor_arab_memakai_nama_mapel_arab_dan_tabel_rtl(): void
+    {
+        $html = app(RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->activeRombel,
+            $this->activeAy,
+            $this->activeAy->id,
+            'ganjil',
+            'sts',
+            $this->activeStudent,
+            'ar',
+        );
+
+        $this->assertStringContainsString('<table class="nilai" dir="rtl">', $html);
+        $this->assertStringContainsString('body.ar table', $html);
+        $this->assertSame('الفقه', app(\App\Services\ArabicName\ArabicNameResolver::class)->subjectName($this->subject));
+    }
+
     public function test_tanggal_hijriah_arab_otomatis(): void
     {
         $hijri = ArabicText::formatHijriDate('2026-10-20');

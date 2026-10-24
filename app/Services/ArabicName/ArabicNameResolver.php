@@ -6,6 +6,7 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
+use App\Support\SubjectArabicName;
 
 /**
  * Satu sumber penentuan nama Arab yang dipakai pada dokumen resmi.
@@ -32,7 +33,13 @@ class ArabicNameResolver
 
     public function subjectName(?Subject $subject): ?string
     {
-        return $subject && filled($subject->name_ar) ? $subject->name_ar : null;
+        if (! $subject) {
+            return null;
+        }
+
+        return filled($subject->name_ar)
+            ? $subject->name_ar
+            : SubjectArabicName::resolve($subject->name);
     }
 
     public function principalName(?School $school): ?string
