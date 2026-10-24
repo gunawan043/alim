@@ -120,11 +120,10 @@ class LjkController extends Controller
 
         // Buku nilai yang boleh dikelola guru ini (sumber rombel & mapel).
         $books = TeacherAdminBook::query()
-            ->with(['subject:id,name', 'studyGroup:id,name,grade_level_id', 'academicYear:id,name'])
+            ->with(['subject:id,name', 'studyGroup:id,name,grade_level_id', 'studyGroup.gradeLevel:id,level,name', 'academicYear:id,name'])
             ->where('is_active', true)
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByDesc('created_at')
-            ->limit(200)
             ->get()
             ->filter(fn (TeacherAdminBook $book) => $this->access->managesBook($user, $book) || $this->access->isOfficer($user))
             ->unique(fn (TeacherAdminBook $book) => $book->subject_id.'|'.$book->study_group_id.'|'.$book->academic_year_id.'|'.$book->semester)
@@ -132,11 +131,10 @@ class LjkController extends Controller
 
         if ($books->isEmpty() && $this->access->isOfficer($user)) {
             $books = TeacherAdminBook::query()
-                ->with(['subject:id,name', 'studyGroup:id,name', 'academicYear:id,name'])
+                ->with(['subject:id,name', 'studyGroup:id,name,grade_level_id', 'studyGroup.gradeLevel:id,level,name', 'academicYear:id,name'])
                 ->where('is_active', true)
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->orderByDesc('created_at')
-                ->limit(100)
                 ->get();
         }
 
@@ -144,7 +142,12 @@ class LjkController extends Controller
         $paketQuery = PaketSoal::query()
             ->where('is_published', true)
             ->whereIn('workflow_status', [PaketSoal::WORKFLOW_APPROVED, PaketSoal::WORKFLOW_PUBLISHED])
-            ->with(['kisiKisi:id,subject_id,academic_year_id,semester,school_id', 'kisiKisi.subject:id,name'])
+            ->with([
+                'kisiKisi:id,subject_id,academic_year_id,semester,school_id,jenis_ujian,grade_level_id',
+                'kisiKisi.subject:id,name',
+                'kisiKisi.gradeLevel:id,level,name',
+                'items.soal:id,bahasa,pertanyaan',
+            ])
             ->orderByDesc('published_at');
 
         if ($schoolId) {
@@ -153,10 +156,57 @@ class LjkController extends Controller
 
         $pakets = $paketQuery->limit(200)->get();
 
+        // Metadata paket untuk isian otomatis di form.
+        $paketMeta = $pakets->mapWithKeys(function (PaketSoal $paket) {
+            return [$paket->id => [
+                'jenis' => $paket->kisiKisi?->jenis_ujian ?: 'sts',
+                'bahasa' => $this->bahasaForPaket($paket),
+                'subject_name' => $paket->kisiKisi?->subject?->name ?? '',
+                'grade_name' => $paket->kisiKisi?->gradeLevel?->name ?? '',
+                'instruksi' => (string) ($paket->instruksi_umum ?? ''),
+            ]];
+        });
+
         // Kolom sumatif harian (untuk jenis ujian ulangan/try out/latihan).
         $sumatifColumns = app(\App\Services\SumatifHarianService::class)->defaultColumns();
 
-        return view('ljk.create', compact('books', 'pakets', 'sumatifColumns', 'userId'));
+        // Isi otomatis berdasarkan paket soal yang dipilih.
+        $requestedPaket = $pakets->firstWhere(
+            'id',
+            old('paket_soal_id', $request->input('paket_soal_id'))
+        );
+        $autoBook = null;
+        $defaultJenis = 'sts';
+        $defaultBahasa = 'gabungan';
+        $defaultTitle = 'STS ';
+        $defaultInstruksi = '';
+        $defaultTanggal = now()->toDateString();
+
+        if ($requestedPaket) {
+            $requestedPaket->loadMissing(['kisiKisi.subject', 'kisiKisi.gradeLevel', 'items.soal']);
+            $kisi = $requestedPaket->kisiKisi;
+            $defaultJenis = $kisi?->jenis_ujian ?: 'sts';
+            $defaultInstruksi = (string) ($requestedPaket->instruksi_umum ?? '');
+
+            $autoBook = $books->first(function ($book) use ($kisi) {
+                return (! $kisi?->subject_id || $book->subject_id === $kisi->subject_id)
+                    && (! $kisi?->academic_year_id || $book->academic_year_id === $kisi->academic_year_id)
+                    && (! $kisi?->semester || $book->semester === $kisi->semester)
+                    && (! $kisi?->grade_level_id || $book->studyGroup?->grade_level_id === $kisi->grade_level_id);
+            });
+
+            $defaultBahasa = $paketMeta[$requestedPaket->id]['bahasa'] ?? 'gabungan';
+
+            $subjectName = $kisi?->subject?->name ?? 'Mapel';
+            $groupName = $autoBook?->studyGroup?->name ?? $kisi?->gradeLevel?->name;
+            $defaultTitle = trim($this->jenisLabel($defaultJenis).' '.$subjectName.' '.($groupName ?? ''));
+        }
+
+        return view('ljk.create', compact(
+            'books', 'pakets', 'sumatifColumns', 'userId',
+            'requestedPaket', 'autoBook', 'defaultJenis', 'defaultBahasa', 'defaultTitle', 'defaultInstruksi',
+            'defaultTanggal', 'paketMeta'
+        ));
     }
 
     public function store(Request $request, string $userId)
@@ -487,5 +537,34 @@ class LjkController extends Controller
             ]);
 
         return response()->json(['success' => true, 'data' => ['candidates' => $rows]]);
+    }
+
+    private function bahasaForPaket(PaketSoal $paket): string
+    {
+        $paket->loadMissing('items.soal:id,bahasa,pertanyaan');
+
+        $modes = $paket->items
+            ->map(fn ($item) => $item->soal?->bahasaEfektif() ?? 'latin');
+
+        if ($modes->isEmpty()) {
+            return 'gabungan';
+        }
+
+        if ($modes->every(fn ($mode) => $mode === 'arab')) {
+            return 'arab';
+        }
+
+        return $modes->contains('arab') ? 'gabungan' : 'latin';
+    }
+
+    private function jenisLabel(string $jenis): string
+    {
+        return match ($jenis) {
+            'sas' => 'SAS',
+            'ulangan_harian' => 'Ulangan Harian',
+            'try_out' => 'Try Out',
+            'latihan' => 'Latihan',
+            default => 'STS',
+        };
     }
 }

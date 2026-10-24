@@ -56,16 +56,22 @@
                                         <option value="{{ $book->id }}"
                                                 data-subject="{{ $book->subject_id }}"
                                                 data-group="{{ $book->study_group_id }}"
+                                                data-group-name="{{ $book->studyGroup?->name }}"
+                                                data-grade="{{ $book->studyGroup?->grade_level_id }}"
+                                                data-grade-name="{{ $book->studyGroup?->gradeLevel?->name }}"
                                                 data-year="{{ $book->academic_year_id }}"
                                                 data-semester="{{ $book->semester }}"
                                                 data-school="{{ $book->school_id }}"
-                                                {{ old('admin_book_id') === $book->id ? 'selected' : '' }}>
+                                                {{ old('admin_book_id', $autoBook?->id) === $book->id ? 'selected' : '' }}>
                                             {{ $book->subject?->name }} · {{ $book->studyGroup?->name }} ·
                                             {{ $book->academicYear?->name }} · {{ ucfirst($book->semester) }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="form-text">Menentukan rombel peserta dan tujuan sinkronisasi nilai.</div>
+                                <div class="form-text">
+                                    Menentukan rombel peserta dan tujuan sinkronisasi nilai.
+                                    Jika dibuka dari paket, buku yang cocok dipilih otomatis — sesuaikan bila ada beberapa rombel.
+                                </div>
                                 @error('admin_book_id')<div class="text-danger small">{{ $message }}</div>@enderror
                             </div>
 
@@ -74,10 +80,17 @@
                                 <select name="paket_soal_id" id="paket-select" class="form-select" required>
                                     <option value="">— pilih paket soal —</option>
                                     @foreach ($pakets as $paket)
+                                        @php $meta = $paketMeta[$paket->id] ?? []; @endphp
                                         <option value="{{ $paket->id }}"
                                                 data-subject="{{ $paket->kisiKisi?->subject_id }}"
                                                 data-year="{{ $paket->kisiKisi?->academic_year_id }}"
                                                 data-semester="{{ $paket->kisiKisi?->semester }}"
+                                                data-grade="{{ $paket->kisiKisi?->grade_level_id }}"
+                                                data-jenis="{{ $meta['jenis'] ?? 'sts' }}"
+                                                data-bahasa="{{ $meta['bahasa'] ?? 'gabungan' }}"
+                                                data-subject-name="{{ $meta['subject_name'] ?? '' }}"
+                                                data-grade-name="{{ $meta['grade_name'] ?? '' }}"
+                                                data-instruksi="{{ $meta['instruksi'] ?? '' }}"
                                                 {{ old('paket_soal_id', request('paket_soal_id')) === $paket->id ? 'selected' : '' }}>
                                             {{ $paket->judul }} · {{ $paket->kisiKisi?->subject?->name }} · v{{ $paket->versi }}
                                             ({{ $paket->kode_paket }})
@@ -99,28 +112,28 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Judul Ujian <span class="text-danger">*</span></label>
-                                <input type="text" name="judul" class="form-control"
-                                       value="{{ old('judul', 'STS ') }}" maxlength="150" required>
+                                <input type="text" name="judul" id="judul-ujian" class="form-control"
+                                       value="{{ old('judul', $defaultTitle ?: 'STS ') }}" maxlength="150" required>
                                 @error('judul')<div class="text-danger small">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Jenis Ujian <span class="text-danger">*</span></label>
                                 <select name="jenis_ujian" id="jenis-ujian" class="form-select" required>
                                     @foreach (['sts' => 'STS', 'sas' => 'SAS', 'ulangan_harian' => 'Ulangan Harian', 'try_out' => 'Try Out', 'latihan' => 'Latihan'] as $value => $label)
-                                        <option value="{{ $value }}" @selected(old('jenis_ujian') === $value)>{{ $label }}</option>
+                                        <option value="{{ $value }}" @selected(old('jenis_ujian', $defaultJenis) === $value)>{{ $label }}</option>
                                     @endforeach
                                 </select>
                                 <div class="form-text">Menentukan kolom nilai tujuan.</div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Tanggal</label>
-                                <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal') }}">
+                                <input type="date" name="tanggal" class="form-control" value="{{ old('tanggal', $defaultTanggal) }}">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Bahasa Naskah</label>
                                 <select name="bahasa" id="bahasa-naskah" class="form-select">
                                     @foreach (\App\Models\Soal::BAHASA_OPTIONS as $key => $label)
-                                        <option value="{{ $key }}" @selected(old('bahasa', 'gabungan') === $key)>{{ $label }}</option>
+                                        <option value="{{ $key }}" @selected(old('bahasa', $defaultBahasa) === $key)>{{ $label }}</option>
                                     @endforeach
                                 </select>
                                 <div class="form-text">
@@ -149,8 +162,8 @@
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Instruksi tambahan (opsional)</label>
-                                <textarea name="instruksi" rows="2" class="form-control" maxlength="2000"
-                                          placeholder="mis. kerjakan dengan pulpen hitam, tidak ada pengurangan nilai">{{ old('instruksi') }}</textarea>
+                                <textarea name="instruksi" id="instruksi-ujian" rows="2" class="form-control" maxlength="2000"
+                                          placeholder="mis. kerjakan dengan pulpen hitam, tidak ada pengurangan nilai">{{ old('instruksi', $defaultInstruksi) }}</textarea>
                             </div>
                             <div class="col-12">
                                 <div class="form-check">
@@ -251,13 +264,48 @@
 
 @section('script')
     <script>
-        // Saring paket soal agar sesuai mapel + tahun ajaran + semester buku nilai.
+        // Isi otomatis dari paket soal: buku nilai, jenis, bahasa, judul, dan instruksi.
         document.addEventListener('DOMContentLoaded', function () {
             const bookSelect = document.getElementById('book-select');
             const paketSelect = document.getElementById('paket-select');
+            const titleInput = document.getElementById('judul-ujian');
+            const jenisSelect = document.getElementById('jenis-ujian');
+            const bahasaSelect = document.getElementById('bahasa-naskah');
+            const instruksiInput = document.getElementById('instruksi-ujian');
+            const sumatifWrap = document.getElementById('sumatif-column-wrap');
+            const jenisLabels = {
+                sts: 'STS',
+                sas: 'SAS',
+                ulangan_harian: 'Ulangan Harian',
+                try_out: 'Try Out',
+                latihan: 'Latihan',
+            };
 
+            let lastAutoTitle = @json($defaultTitle);
+            let lastAutoInstruksi = @json($defaultInstruksi);
+
+            function selectedOption(select) {
+                return select.options[select.selectedIndex] || null;
+            }
+
+            function bookMatchesPaket(book, paket) {
+                if (!book || !paket) return false;
+
+                return (!paket.dataset.subject || book.dataset.subject === paket.dataset.subject)
+                    && (!paket.dataset.year || book.dataset.year === paket.dataset.year)
+                    && (!paket.dataset.semester || book.dataset.semester === paket.dataset.semester)
+                    && (!paket.dataset.grade || !book.dataset.grade || book.dataset.grade === paket.dataset.grade);
+            }
+
+            function findMatchingBook(paket) {
+                return Array.from(bookSelect.options).find(function (option) {
+                    return option.value && bookMatchesPaket(option, paket);
+                }) || null;
+            }
+
+            // Saring paket soal agar sesuai mapel + tahun ajaran + semester buku nilai.
             function filterPakets() {
-                const book = bookSelect.options[bookSelect.selectedIndex];
+                const book = selectedOption(bookSelect);
                 const subject = book?.dataset?.subject || '';
                 const year = book?.dataset?.year || '';
                 const semester = book?.dataset?.semester || '';
@@ -276,19 +324,82 @@
                 }
             }
 
-            bookSelect.addEventListener('change', filterPakets);
-            filterPakets();
+            function autofillFromPaket(force) {
+                const paket = selectedOption(paketSelect);
+                if (!paket || !paket.value) return;
+
+                let book = selectedOption(bookSelect);
+
+                // Saat paket diganti, pilih buku nilai yang cocok secara otomatis.
+                if ((!book || !book.value || (force && !bookMatchesPaket(book, paket)))) {
+                    const candidate = findMatchingBook(paket);
+                    if (candidate) {
+                        bookSelect.value = candidate.value;
+                        book = candidate;
+                        filterPakets();
+                    }
+                }
+
+                const jenis = paket.dataset.jenis || 'sts';
+                const bahasa = paket.dataset.bahasa || 'gabungan';
+
+                if (force || !jenisSelect.value) {
+                    jenisSelect.value = jenis;
+                }
+                if (force || !bahasaSelect.value) {
+                    bahasaSelect.value = bahasa;
+                }
+
+                const title = [
+                    jenisLabels[jenis] || 'STS',
+                    paket.dataset.subjectName || '',
+                    book?.dataset?.groupName || paket.dataset.gradeName || '',
+                ].filter(Boolean).join(' ');
+
+                if (title && (force || !titleInput.value.trim() || titleInput.value === lastAutoTitle)) {
+                    titleInput.value = title;
+                    lastAutoTitle = title;
+                }
+
+                const instruksi = paket.dataset.instruksi || '';
+                if (instruksi && (force || !instruksiInput.value.trim() || instruksiInput.value === lastAutoInstruksi)) {
+                    instruksiInput.value = instruksi;
+                    lastAutoInstruksi = instruksi;
+                }
+            }
+
+            bookSelect.addEventListener('change', function () {
+                filterPakets();
+
+                // Jika paket belum dipilih, pilih paket final pertama yang cocok dengan buku.
+                if (!paketSelect.value) {
+                    const firstPaket = Array.from(paketSelect.options).find(function (option, index) {
+                        return index > 0 && option.value && !option.disabled;
+                    });
+                    if (firstPaket) {
+                        paketSelect.value = firstPaket.value;
+                        autofillFromPaket(true);
+                        return;
+                    }
+                }
+
+                autofillFromPaket(false);
+            });
+
+            paketSelect.addEventListener('change', function () {
+                autofillFromPaket(true);
+            });
 
             // Kolom sumatif harian hanya relevan untuk ulangan/try out/latihan.
-            const jenisSelect = document.getElementById('jenis-ujian');
-            const sumatifWrap = document.getElementById('sumatif-column-wrap');
-
             function toggleSumatifColumn() {
                 const jenis = jenisSelect.value;
                 sumatifWrap.style.display = (jenis === 'sts' || jenis === 'sas') ? 'none' : '';
             }
 
             jenisSelect.addEventListener('change', toggleSumatifColumn);
+
+            filterPakets();
+            autofillFromPaket(false);
             toggleSumatifColumn();
         });
     </script>
