@@ -68,7 +68,6 @@
         }
 
         /* RTL: tabel, urutan kolom, dan perataan teks mengikuti arah Arab. */
-        body.ar .info-grid,
         body.ar .ringkasan-box,
         body.ar .catatan-box,
         body.ar .ttd-grid,
@@ -348,28 +347,52 @@
     <div class="judul">{!! $text($label(($data['Jenis'] ?? 'sts') === 'sas' ? 'title_sas' : 'title_sts')) !!}</div>
 
     {{-- Info Santri --}}
-    <table class="info-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
-        <tr>
-            <td class="lbl">{!! $text($label('nama')) !!}</td>
-            <td class="colon">:</td>
-            <td class="val">{!! $text(($isArabic && ! empty($data['NamaAr'])) ? $data['NamaAr'] : ($data['Nama'] ?? '-')) !!}</td>
-            <td class="lbl">{!! $text($label('semester')) !!}</td>
-            <td class="colon">:</td>
-            <td class="val">{{ ucfirst((string) ($data['Semester'] ?? '-')) }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">{!! $text($label('kelas')) !!}</td>
-            <td class="colon">:</td>
-            <td class="val">{!! $text($data['Kelas'] ?? '-') !!}</td>
-            <td class="lbl">{!! $text($label('tahun_ajaran')) !!}</td>
-            <td class="colon">:</td>
-            <td class="val">{{ $data['TahunAjaran'] ?? '-' }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
-            <td class="colon">:</td>
-            <td class="val" colspan="3">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
-        </tr>
+    <table class="info-grid">
+        @if($isArabic)
+            <tr>
+                <td class="val">{{ ucfirst((string) ($data['Semester'] ?? '-')) }}</td>
+                <td class="colon">:</td>
+                <td class="lbl">{!! $text($label('semester')) !!}</td>
+                <td class="val">{!! $text(($isArabic && ! empty($data['NamaAr'])) ? $data['NamaAr'] : ($data['Nama'] ?? '-')) !!}</td>
+                <td class="colon">:</td>
+                <td class="lbl">{!! $text($label('nama')) !!}</td>
+            </tr>
+            <tr>
+                <td class="val">{{ $data['TahunAjaran'] ?? '-' }}</td>
+                <td class="colon">:</td>
+                <td class="lbl">{!! $text($label('tahun_ajaran')) !!}</td>
+                <td class="val">{!! $text($data['Kelas'] ?? '-') !!}</td>
+                <td class="colon">:</td>
+                <td class="lbl">{!! $text($label('kelas')) !!}</td>
+            </tr>
+            <tr>
+                <td class="val" colspan="3">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
+                <td class="colon">:</td>
+                <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
+            </tr>
+        @else
+            <tr>
+                <td class="lbl">{!! $text($label('nama')) !!}</td>
+                <td class="colon">:</td>
+                <td class="val">{!! $text($data['Nama'] ?? '-') !!}</td>
+                <td class="lbl">{!! $text($label('semester')) !!}</td>
+                <td class="colon">:</td>
+                <td class="val">{{ ucfirst((string) ($data['Semester'] ?? '-')) }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">{!! $text($label('kelas')) !!}</td>
+                <td class="colon">:</td>
+                <td class="val">{!! $text($data['Kelas'] ?? '-') !!}</td>
+                <td class="lbl">{!! $text($label('tahun_ajaran')) !!}</td>
+                <td class="colon">:</td>
+                <td class="val">{{ $data['TahunAjaran'] ?? '-' }}</td>
+            </tr>
+            <tr>
+                <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
+                <td class="colon">:</td>
+                <td class="val" colspan="3">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
+            </tr>
+        @endif
     </table>
 
     {{-- Tabel Nilai: urutan kolom dibalik eksplisit untuk RTL. --}}

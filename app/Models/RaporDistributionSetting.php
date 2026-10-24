@@ -43,6 +43,7 @@ class RaporDistributionSetting extends Model
         'footer_font_size',
         'line_height',
         'paper_size',
+        'variant_layouts',
         'show_kop',
         'show_ttd_ksp',
         'show_ttd_wali',
@@ -60,6 +61,7 @@ class RaporDistributionSetting extends Model
     protected $casts = [
         'distribution_date' => 'date',
         'report_subject_ids' => 'array',
+        'variant_layouts' => 'array',
         'margin_top' => 'float',
         'margin_right' => 'float',
         'margin_bottom' => 'float',
@@ -131,6 +133,39 @@ class RaporDistributionSetting extends Model
         $ids = array_values(array_filter($this->report_subject_ids, fn ($id) => is_string($id) && $id !== ''));
 
         return $ids === [] ? null : $ids;
+    }
+
+    /**
+     * Pengaturan layout khusus varian dokumen: jenis (sts/sas) + bahasa (id/ar).
+     * Varian yang belum pernah disimpan memakai pengaturan global sebagai default.
+     *
+     * @return array<string, mixed>
+     */
+    public function variantLayoutSettings(?string $jenis, ?string $bahasa): array
+    {
+        $base = $this->layoutSettings();
+        $key = self::variantKey($jenis, $bahasa);
+
+        if ($key === null) {
+            return $base;
+        }
+
+        $variants = is_array($this->variant_layouts) ? $this->variant_layouts : [];
+        $variant = $variants[$key] ?? null;
+
+        return is_array($variant) ? array_merge($base, $variant) : $base;
+    }
+
+    public static function variantKey(?string $jenis, ?string $bahasa): ?string
+    {
+        $jenis = strtolower((string) $jenis);
+        $bahasa = strtolower((string) $bahasa);
+
+        if (! in_array($jenis, ['sts', 'sas'], true) || ! in_array($bahasa, ['id', 'ar'], true)) {
+            return null;
+        }
+
+        return $jenis.':'.$bahasa;
     }
 
     /**

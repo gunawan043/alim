@@ -397,7 +397,7 @@ class RaporPdfService
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
-        $layout = $layout ?? ($setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout());
+        $layout = $layout ?? ($setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout());
 
         $resolver = app(ArabicNameResolver::class);
 
@@ -432,7 +432,7 @@ class RaporPdfService
         string $bahasa = self::BAHASA_ID,
     ): string {
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
-        $layout = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+        $layout = $setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout();
 
         return $this->renderPdf($this->renderHtml(
             $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $bahasa, $layout
@@ -467,7 +467,7 @@ class RaporPdfService
             $santri += $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
         }
 
-        $layout = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+        $layout = $setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout();
 
         $resolver = app(ArabicNameResolver::class);
 

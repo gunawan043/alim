@@ -404,8 +404,8 @@
                         'studentId' => $previewStudent->id,
                         'academic_year_id' => $selectedAyId,
                         'semester' => $selectedSem,
-                        'jenis' => 'sts',
-                        'bahasa' => 'id',
+                        'jenis' => $docJenis,
+                        'bahasa' => $docBahasa,
                     ])
                     : null;
             @endphp
@@ -414,7 +414,20 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
                             <h5 class="card-title mb-0"><i class="ri-settings-3-line text-success me-1"></i>Pengaturan &amp; Preview PDF</h5>
-                            <p class="text-muted mb-0 small">Berlaku untuk rapor <strong>STS</strong> dan <strong>SAS</strong> pada TA/semester ini.</p>
+                            <p class="text-muted mb-0 small">Pengaturan disimpan per varian dokumen: STS/SAS dan Indonesia/Arab.</p>
+                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                @foreach([
+                                    ['sts', 'id', 'STS — Indonesia'],
+                                    ['sts', 'ar', 'STS — Arab'],
+                                    ['sas', 'id', 'SAS — Indonesia'],
+                                    ['sas', 'ar', 'SAS — Arab'],
+                                ] as [$variantJenis, $variantBahasa, $variantLabel])
+                                    <a href="{{ request()->fullUrlWithQuery(['doc_jenis' => $variantJenis, 'doc_bahasa' => $variantBahasa]) }}"
+                                       class="btn btn-sm {{ $docJenis === $variantJenis && $docBahasa === $variantBahasa ? 'btn-primary' : 'btn-outline-secondary' }}">
+                                        {{ $variantLabel }}
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
                         <button type="button" class="btn btn-outline-primary btn-sm"
                                 data-bs-toggle="modal" data-bs-target="#signatureSettingsModal">
@@ -434,6 +447,8 @@
                         @csrf
                         <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
                         <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <input type="hidden" name="doc_jenis" value="{{ $docJenis }}">
+                        <input type="hidden" name="doc_bahasa" value="{{ $docBahasa }}">
 
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <h6 class="mb-0 small fw-semibold"><i class="ri-layout-line me-1"></i>Margin (mm)</h6>
@@ -515,14 +530,14 @@
                             </div>
                             <div class="col-5">
                                 <select id="previewJenis" class="form-select form-select-sm">
-                                    <option value="sts">STS</option>
-                                    <option value="sas">SAS</option>
+                                    <option value="sts" @selected($docJenis === 'sts')>STS</option>
+                                    <option value="sas" @selected($docJenis === 'sas')>SAS</option>
                                 </select>
                             </div>
                             <div class="col-4">
                                 <select id="previewBahasa" class="form-select form-select-sm">
-                                    <option value="id">Indonesia</option>
-                                    <option value="ar">Arab</option>
+                                    <option value="id" @selected($docBahasa === 'id')>Indonesia</option>
+                                    <option value="ar" @selected($docBahasa === 'ar')>Arab</option>
                                 </select>
                             </div>
                             <div class="col-3">
@@ -669,6 +684,8 @@
                         @csrf
                         <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
                         <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <input type="hidden" name="doc_jenis" value="{{ $docJenis }}">
+                        <input type="hidden" name="doc_bahasa" value="{{ $docBahasa }}">
 
                         <div class="row g-2 mb-3">
                             @foreach([

@@ -873,6 +873,49 @@ class ArsipInventarisTest extends TestCase
         $this->assertSame('الفقه', app(\App\Services\ArabicName\ArabicNameResolver::class)->subjectName($this->subject));
     }
 
+    public function test_pengaturan_rapor_terpisah_per_jenis_dan_bahasa(): void
+    {
+        $base = [
+            'academic_year_id' => $this->activeAy->id,
+            'semester' => 'ganjil',
+            'margin_top' => 10,
+            'margin_right' => 15,
+            'margin_bottom' => 15,
+            'margin_left' => 15,
+            'font_size' => 11,
+            'title_font_size' => 14,
+            'table_font_size' => 10,
+            'info_font_size' => 10,
+            'footer_font_size' => 8,
+            'line_height' => 1.4,
+            'paper_size' => 'a4',
+        ];
+
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/layout";
+
+        $this->actingAs($this->tu)->post($url, array_merge($base, [
+            'doc_jenis' => 'sts',
+            'doc_bahasa' => 'ar',
+            'margin_top' => 25,
+        ]))->assertRedirect();
+
+        $this->actingAs($this->tu)->post($url, array_merge($base, [
+            'doc_jenis' => 'sas',
+            'doc_bahasa' => 'id',
+            'margin_top' => 30,
+        ]))->assertRedirect();
+
+        $setting = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail();
+
+        $this->assertEquals(25, $setting->variantLayoutSettings('sts', 'ar')['margin_top']);
+        $this->assertEquals(30, $setting->variantLayoutSettings('sas', 'id')['margin_top']);
+        $this->assertEquals(10, $setting->layoutSettings()['margin_top']);
+    }
+
     public function test_tanggal_hijriah_arab_otomatis(): void
     {
         $hijri = ArabicText::formatHijriDate('2026-10-20');

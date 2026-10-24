@@ -895,7 +895,9 @@ class NilaiKelasController extends Controller
         // Pengaturan tanggal pembagian, tata letak PDF, dan mapel rapor
         // (per sekolah + TA + semester; berlaku untuk STS dan SAS).
         $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
-        $layout = $distributionSetting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+        $docJenis = in_array($request->input('doc_jenis'), ['sts', 'sas'], true) ? $request->input('doc_jenis') : 'sts';
+        $docBahasa = in_array($request->input('doc_bahasa'), ['id', 'ar'], true) ? $request->input('doc_bahasa') : 'id';
+        $layout = $distributionSetting?->variantLayoutSettings($docJenis, $docBahasa) ?? RaporDistributionSetting::defaultLayout();
 
         $raporPdf = app(RaporPdfService::class);
         $availableSubjects = $selectedAyId
@@ -929,7 +931,7 @@ class NilaiKelasController extends Controller
 
         return view('nilai-kelas.rapor-index', compact(
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
-            'students', 'registrations', 'stats', 'distributionSetting', 'layout',
+            'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'docJenis', 'docBahasa',
             'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish',
         ));
     }
@@ -1170,6 +1172,8 @@ class NilaiKelasController extends Controller
             'footer_font_size' => 'required|numeric|min:5|max:16',
             'line_height' => 'required|numeric|min:1|max:2.5',
             'paper_size' => 'required|in:a4,folio,letter',
+            'doc_jenis' => 'nullable|in:sts,sas',
+            'doc_bahasa' => 'nullable|in:id,ar',
             'show_kop' => 'nullable|boolean',
             'show_ttd_ksp' => 'nullable|boolean',
             'show_ttd_wali' => 'nullable|boolean',
@@ -1192,7 +1196,14 @@ class NilaiKelasController extends Controller
         $setting = RaporDistributionSetting::forContext(
             $context['school_id'], $context['academic_year_id'], $context['semester']
         );
-        $values = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+        $variantKey = RaporDistributionSetting::variantKey(
+            $validated['doc_jenis'] ?? null,
+            $validated['doc_bahasa'] ?? null,
+        );
+        $values = $setting?->variantLayoutSettings(
+            $validated['doc_jenis'] ?? null,
+            $validated['doc_bahasa'] ?? null,
+        ) ?? RaporDistributionSetting::defaultLayout();
 
         foreach ([
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
@@ -1212,9 +1223,27 @@ class NilaiKelasController extends Controller
             }
         }
 
-        RaporDistributionSetting::updateOrCreate($context, $values + [
-            'updated_by' => $request->user()?->id,
-        ]);
+        $update = $values + ['updated_by' => $request->user()?->id];
+
+        if ($variantKey) {
+            $variants = is_array($setting?->variant_layouts) ? $setting->variant_layouts : [];
+            $variants[$variantKey] = $values;
+
+            if ($setting) {
+                // Jangan ubah nilai global saat menyimpan varian; varian lain
+                // yang belum diatur tetap memakai fallback global.
+                $update = ['variant_layouts' => $variants, 'updated_by' => $request->user()?->id];
+            } else {
+                // Baris baru: global tetap default agar varian yang belum
+                // diatur tidak ikut berubah.
+                $update = RaporDistributionSetting::defaultLayout() + [
+                    'variant_layouts' => $variants,
+                    'updated_by' => $request->user()?->id,
+                ];
+            }
+        }
+
+        RaporDistributionSetting::updateOrCreate($context, $update);
 
         return back()->with('success', 'Pengaturan tata letak rapor berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
     }
@@ -1235,6 +1264,8 @@ class NilaiKelasController extends Controller
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester' => 'required|in:ganjil,genap',
+            'doc_jenis' => 'nullable|in:sts,sas',
+            'doc_bahasa' => 'nullable|in:id,ar',
             'show_kop' => 'nullable|boolean',
             'show_ttd_ksp' => 'nullable|boolean',
             'show_ttd_wali' => 'nullable|boolean',
@@ -1257,7 +1288,14 @@ class NilaiKelasController extends Controller
         $setting = RaporDistributionSetting::forContext(
             $context['school_id'], $context['academic_year_id'], $context['semester']
         );
-        $values = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+        $variantKey = RaporDistributionSetting::variantKey(
+            $validated['doc_jenis'] ?? null,
+            $validated['doc_bahasa'] ?? null,
+        );
+        $values = $setting?->variantLayoutSettings(
+            $validated['doc_jenis'] ?? null,
+            $validated['doc_bahasa'] ?? null,
+        ) ?? RaporDistributionSetting::defaultLayout();
 
         foreach ([
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
@@ -1269,9 +1307,23 @@ class NilaiKelasController extends Controller
             $values[$key] = $request->boolean($key);
         }
 
-        RaporDistributionSetting::updateOrCreate($context, $values + [
-            'updated_by' => $request->user()?->id,
-        ]);
+        $update = $values + ['updated_by' => $request->user()?->id];
+
+        if ($variantKey) {
+            $variants = is_array($setting?->variant_layouts) ? $setting->variant_layouts : [];
+            $variants[$variantKey] = $values;
+
+            if ($setting) {
+                $update = ['variant_layouts' => $variants, 'updated_by' => $request->user()?->id];
+            } else {
+                $update = RaporDistributionSetting::defaultLayout() + [
+                    'variant_layouts' => $variants,
+                    'updated_by' => $request->user()?->id,
+                ];
+            }
+        }
+
+        RaporDistributionSetting::updateOrCreate($context, $update);
 
         return back()->with('success', 'Pengaturan kop, TTD, dan stempel berhasil disimpan.');
     }
