@@ -33,14 +33,22 @@
                 @endif
 
                 @if(! empty($row['opsi']))
-                    <div class="naskah-options">
-                        @foreach($row['opsi'] as $index => $opsi)
-                            <div>
-                                <span class="naskah-option-label">{{ $opsi['label'] ?? chr(65 + $index) }}.</span>
-                                {{ $opsi['teks'] ?? '' }}
-                            </div>
-                        @endforeach
-                    </div>
+                    @php $optionCount = max(4, count($row['opsi'])); @endphp
+                    <table class="naskah-options">
+                        <tr>
+                            @for($index = 0; $index < $optionCount; $index++)
+                                @php $opsi = $row['opsi'][$index] ?? null; @endphp
+                                <td style="width: {{ 100 / $optionCount }}%;">
+                                    @if($opsi)
+                                        <span class="naskah-option-label">{{ $opsi['label'] ?? chr(65 + $index) }}.</span>
+                                        {{ $opsi['teks'] ?? '' }}
+                                    @else
+                                        &nbsp;
+                                    @endif
+                                </td>
+                            @endfor
+                        </tr>
+                    </table>
                 @endif
             </div>
         </div>
