@@ -11,7 +11,7 @@
             'title' => $publishBlocked ? 'Publikasi Dibatalkan' : 'Gagal',
             'message' => session('error'),
             'image' => $publishBlocked
-                ? asset('build/icons/road-barrier-red.svg')
+                ? asset('build/icons/road-barrier.gif')
                 : null,
         ];
     }
