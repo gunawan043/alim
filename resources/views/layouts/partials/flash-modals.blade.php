@@ -11,7 +11,7 @@
             'title' => $publishBlocked ? 'Publikasi Dibatalkan' : 'Gagal',
             'message' => session('error'),
             'image' => $publishBlocked
-                ? 'https://media.lordicon.com/icons/wired/outline/926-road-barrier.gif'
+                ? asset('build/icons/road-barrier-red.svg')
                 : null,
         ];
     }

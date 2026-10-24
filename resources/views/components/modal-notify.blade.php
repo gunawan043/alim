@@ -30,8 +30,7 @@
             </div>
             <div class="modal-body text-center px-4 pb-4">
                 @if($image)
-                    <img src="{{ $image }}" alt=""
-                         style="width:110px;height:110px;object-fit:contain;filter:brightness(0) saturate(100%) invert(23%) sepia(93%) saturate(3000%) hue-rotate(345deg) brightness(95%) contrast(100%);">
+                    <img src="{{ $image }}" alt="" style="width:110px;height:110px;object-fit:contain;">
                 @else
                     <lord-icon src="{{ $p['icon'] }}" trigger="loop"
                                colors="primary:{{ $p['primary'] }},secondary:{{ $p['secondary'] }}"
