@@ -689,9 +689,11 @@ class PaketSoalController extends Controller
 
     public function naskah(Request $request, string $userId, string $paketUuid)
     {
-        $data = $this->buildNaskahData($request, $paketUuid);
-
-        return view('evalusi.paket-soal.naskah', $data + ['userId' => $userId]);
+        // Halaman ini sudah digantikan oleh preview + tombol cetak di detail paket.
+        return redirect()->route('user.paket-soal.show', [
+            'userId' => $userId,
+            'paketUuid' => $paketUuid,
+        ])->with('success', 'Gunakan preview dan tombol Cetak Naskah di halaman detail paket.');
     }
 
     public function naskahCetak(Request $request, string $userId, string $paketUuid)

@@ -48,8 +48,8 @@
                 </form>
                 @endif
 
-                <a href="{{ route('user.paket-soal.naskah', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" class="btn btn-sm btn-primary">
-                    <i class="ri-printer-line"></i> Naskah & Cetak
+                <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id, 'v' => $paket->updated_at?->timestamp]) }}" target="_blank" class="btn btn-sm btn-primary">
+                    <i class="ri-printer-line"></i> Cetak Naskah
                 </a>
                 @if($paket->isFinal())
                     <a href="{{ route('user.ljk.create', ['userId' => $userId, 'paket_soal_id' => $paket->id]) }}" class="btn btn-sm btn-success">
