@@ -73,6 +73,44 @@
         .kop-surat {
             width: 100%;
             display: block;
+            object-fit: contain;
+        }
+
+        .signature-block {
+            display: inline-flex;
+            align-items: flex-end;
+            justify-content: center;
+            vertical-align: bottom;
+        }
+        .signature-stack {
+            position: relative;
+            display: inline-block;
+            vertical-align: bottom;
+        }
+        .signature-image {
+            display: block;
+            object-fit: contain;
+        }
+        .signature-stack .stamp-image {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            opacity: 0.9;
+            object-fit: contain;
+        }
+        .signature-stack .ttd-image {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            z-index: 2;
+            object-fit: contain;
+        }
+        .signature-line {
+            letter-spacing: 1px;
+            white-space: nowrap;
         }
 
         /* ── Page wrapper per siswa ── */
@@ -270,8 +308,8 @@
 <div class="page{{ !$loop->last ? ' page-break' : '' }}">
 
     {{-- Kop Surat --}}
-    @if($kopBase64)
-    <img src="{{ $kopBase64 }}" class="kop-surat" alt="Kop Surat">
+    @if(($layout['show_kop'] ?? true) && $kopBase64)
+    <img src="{{ $kopBase64 }}" class="kop-surat" style="height: {{ $layout['kop_height'] }}mm;" alt="Kop Surat">
     @endif
 
     {{-- Judul --}}
@@ -382,8 +420,14 @@
                 <br>{!! $text($label('orang_tua')) !!}
             </td>
             <td class="with-gap" style="width:30%;">
-                <br><br><br><br><br>
-                ________________________
+                <div class="signature-block" style="min-height: {{ $layout['ttd_wali_height'] }}mm;">
+                    @if(($layout['show_ttd_wali'] ?? true) && ! empty($ttdWaliBase64))
+                        <img src="{{ $ttdWaliBase64 }}" class="signature-image"
+                             style="width: {{ $layout['ttd_wali_width'] }}mm; height: {{ $layout['ttd_wali_height'] }}mm;"
+                             alt="TTD Wali Kelas">
+                    @endif
+                </div>
+                <div class="signature-line">________________________</div>
                 <br>{!! $text($label('wali_kelas')) !!}
             </td>
             <td class="with-gap center-col" style="width:40%;">
@@ -400,8 +444,20 @@
             <td colspan="3" class="ks-row">
                 <br>
                 {!! $text($label('mengetahui_kepala')) !!}
-                <br><br><br><br><br>
-                ________________________
+                <div class="signature-stack"
+                     style="width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm; margin-top: 4mm;">
+                    @if(($layout['show_stamp'] ?? true) && ! empty($stampBase64))
+                        <img src="{{ $stampBase64 }}" class="stamp-image"
+                             style="width: {{ $layout['stamp_width'] }}mm; height: {{ $layout['stamp_height'] }}mm;"
+                             alt="Stempel Sekolah">
+                    @endif
+                    @if(($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
+                        <img src="{{ $ttdKspBase64 }}" class="ttd-image"
+                             style="width: {{ $layout['ttd_ksp_width'] }}mm; height: {{ $layout['ttd_ksp_height'] }}mm;"
+                             alt="TTD Kepala Sekolah">
+                    @endif
+                </div>
+                <div class="signature-line">________________________</div>
                 <br><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($studyGroup->school?->principal_name ?? '................................')) !!}</strong>
                 <br>{!! $text($label('nip')) !!} {{ $studyGroup->school?->principal_nip ?? '...................' }}
             </td>

@@ -43,6 +43,17 @@ class RaporDistributionSetting extends Model
         'footer_font_size',
         'line_height',
         'paper_size',
+        'show_kop',
+        'show_ttd_ksp',
+        'show_ttd_wali',
+        'show_stamp',
+        'kop_height',
+        'ttd_ksp_width',
+        'ttd_ksp_height',
+        'ttd_wali_width',
+        'ttd_wali_height',
+        'stamp_width',
+        'stamp_height',
         'updated_by',
     ];
 
@@ -59,6 +70,17 @@ class RaporDistributionSetting extends Model
         'info_font_size' => 'float',
         'footer_font_size' => 'float',
         'line_height' => 'float',
+        'show_kop' => 'boolean',
+        'show_ttd_ksp' => 'boolean',
+        'show_ttd_wali' => 'boolean',
+        'show_stamp' => 'boolean',
+        'kop_height' => 'float',
+        'ttd_ksp_width' => 'float',
+        'ttd_ksp_height' => 'float',
+        'ttd_wali_width' => 'float',
+        'ttd_wali_height' => 'float',
+        'stamp_width' => 'float',
+        'stamp_height' => 'float',
     ];
 
     /**
@@ -80,6 +102,17 @@ class RaporDistributionSetting extends Model
             'footer_font_size' => 8.0,
             'line_height' => 1.4,
             'paper_size' => 'a4',
+            'show_kop' => true,
+            'show_ttd_ksp' => true,
+            'show_ttd_wali' => true,
+            'show_stamp' => true,
+            'kop_height' => 25.0,
+            'ttd_ksp_width' => 30.0,
+            'ttd_ksp_height' => 15.0,
+            'ttd_wali_width' => 30.0,
+            'ttd_wali_height' => 15.0,
+            'stamp_width' => 30.0,
+            'stamp_height' => 30.0,
         ];
     }
 
@@ -120,6 +153,17 @@ class RaporDistributionSetting extends Model
             'footer_font_size' => (float) ($this->footer_font_size ?? $defaults['footer_font_size']),
             'line_height' => (float) ($this->line_height ?? $defaults['line_height']),
             'paper_size' => in_array($paper, ['a4', 'folio', 'letter'], true) ? $paper : 'a4',
+            'show_kop' => (bool) ($this->show_kop ?? $defaults['show_kop']),
+            'show_ttd_ksp' => (bool) ($this->show_ttd_ksp ?? $defaults['show_ttd_ksp']),
+            'show_ttd_wali' => (bool) ($this->show_ttd_wali ?? $defaults['show_ttd_wali']),
+            'show_stamp' => (bool) ($this->show_stamp ?? $defaults['show_stamp']),
+            'kop_height' => (float) ($this->kop_height ?? $defaults['kop_height']),
+            'ttd_ksp_width' => (float) ($this->ttd_ksp_width ?? $defaults['ttd_ksp_width']),
+            'ttd_ksp_height' => (float) ($this->ttd_ksp_height ?? $defaults['ttd_ksp_height']),
+            'ttd_wali_width' => (float) ($this->ttd_wali_width ?? $defaults['ttd_wali_width']),
+            'ttd_wali_height' => (float) ($this->ttd_wali_height ?? $defaults['ttd_wali_height']),
+            'stamp_width' => (float) ($this->stamp_width ?? $defaults['stamp_width']),
+            'stamp_height' => (float) ($this->stamp_height ?? $defaults['stamp_height']),
         ];
     }
 

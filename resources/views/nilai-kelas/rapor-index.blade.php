@@ -470,6 +470,56 @@
                             </div>
                         </div>
 
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-image-line me-1"></i>Tampilan &amp; Ukuran Gambar (mm)</h6>
+                        <div class="row g-2 mb-2">
+                            @foreach([
+                                'show_kop' => 'Tampilkan kop',
+                                'show_ttd_ksp' => 'Tampilkan TTD KSP',
+                                'show_ttd_wali' => 'Tampilkan TTD wali',
+                                'show_stamp' => 'Tampilkan stempel',
+                            ] as $field => $label)
+                                <div class="col-6 col-md-3">
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" name="{{ $field }}" value="0">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               id="{{ $field }}" name="{{ $field }}" value="1"
+                                               {{ old($field, $layout[$field] ?? true) ? 'checked' : '' }}>
+                                        <label class="form-check-label small" for="{{ $field }}">{{ $label }}</label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Tinggi Kop</label>
+                                <input type="number" name="kop_height" class="form-control form-control-sm" min="5" max="80" step="0.5" value="{{ old('kop_height', $layout['kop_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD KSP — Lebar</label>
+                                <input type="number" name="ttd_ksp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('ttd_ksp_width', $layout['ttd_ksp_width']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD KSP — Tinggi</label>
+                                <input type="number" name="ttd_ksp_height" class="form-control form-control-sm" min="5" max="60" step="0.5" value="{{ old('ttd_ksp_height', $layout['ttd_ksp_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD Wali — Lebar</label>
+                                <input type="number" name="ttd_wali_width" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('ttd_wali_width', $layout['ttd_wali_width']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD Wali — Tinggi</label>
+                                <input type="number" name="ttd_wali_height" class="form-control form-control-sm" min="5" max="60" step="0.5" value="{{ old('ttd_wali_height', $layout['ttd_wali_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Stempel — Lebar</label>
+                                <input type="number" name="stamp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('stamp_width', $layout['stamp_width']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Stempel — Tinggi</label>
+                                <input type="number" name="stamp_height" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('stamp_height', $layout['stamp_height']) }}">
+                            </div>
+                        </div>
+
                         <div class="row g-2 align-items-end">
                             <div class="col-md-6">
                                 <label class="form-label small mb-1">Ukuran Kertas</label>
@@ -486,6 +536,62 @@
                             </div>
                         </div>
                     </form>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <h6 class="mb-0 small fw-semibold"><i class="ri-pen-nib-line me-1"></i>TTD Wali Kelas</h6>
+                        <a href="{{ route('user.schools.edit', ['userId' => $userId, 'schoolId' => $studyGroup->school_id]) }}"
+                           target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-settings-4-line me-1"></i>Kelola TTD KSP &amp; Stempel
+                        </a>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <span class="badge bg-{{ $studyGroup->school?->ttd_ksp_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->school?->ttd_ksp_path ? 'success' : 'secondary' }}">
+                            TTD KSP: {{ $studyGroup->school?->ttd_ksp_path ? 'tersedia' : 'belum ada' }}
+                        </span>
+                        <span class="badge bg-{{ $studyGroup->school?->stamp_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->school?->stamp_path ? 'success' : 'secondary' }}">
+                            Stempel: {{ $studyGroup->school?->stamp_path ? 'tersedia' : 'belum ada' }}
+                        </span>
+                        <span class="badge bg-{{ $studyGroup->homeroomTeacher?->ttd_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->homeroomTeacher?->ttd_path ? 'success' : 'secondary' }}">
+                            TTD wali: {{ $studyGroup->homeroomTeacher?->ttd_path ? 'tersedia' : 'belum ada' }}
+                        </span>
+                    </div>
+                    @if($studyGroup->homeroomTeacher)
+                        @if($studyGroup->homeroomTeacher->ttd_path)
+                            <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
+                                <img src="{{ asset('storage/'.$studyGroup->homeroomTeacher->ttd_path) }}"
+                                     alt="TTD wali kelas" style="max-height:70px;max-width:160px;object-fit:contain;">
+                                <small class="text-muted">{{ $studyGroup->homeroomTeacher->name }}</small>
+                            </div>
+                        @endif
+                        <form method="POST" enctype="multipart/form-data"
+                              action="{{ route('user.schools.nilai-kelas.rapor.wali-ttd', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                            @csrf
+                            <div class="row g-2 align-items-end">
+                                <div class="col-12 col-md-7">
+                                    <label class="form-label small mb-1">Upload / ganti TTD wali kelas</label>
+                                    <input type="file" name="ttd_wali_file" class="form-control form-control-sm" accept="image/png,image/jpeg">
+                                    <div class="form-text">PNG/JPG, maks. 1 MB. TTD ini dipakai pada rapor kelas ini.</div>
+                                </div>
+                                <div class="col-12 col-md-5">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                                        <i class="ri-upload-2-line me-1"></i>Upload TTD Wali
+                                    </button>
+                                </div>
+                            </div>
+                            @if($studyGroup->homeroomTeacher->ttd_path)
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="remove_ttd_wali" value="1" id="remove_ttd_wali">
+                                    <label class="form-check-label small text-danger" for="remove_ttd_wali">Hapus TTD wali yang tersimpan</label>
+                                </div>
+                            @endif
+                        </form>
+                    @else
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="ri-information-line me-1"></i>Rombel ini belum memiliki wali kelas. TTD tidak dapat diunggah.
+                        </div>
+                    @endif
 
                     <hr class="my-4">
 
@@ -541,87 +647,84 @@
                             <i class="ri-information-line me-1"></i>Belum ada santri pada TA/semester ini, preview belum tersedia.
                         </div>
                     @endif
-                </div>
-            </div>
+                    <hr class="my-4">
 
-            {{-- Pengaturan Mapel Rapor & Urutan --}}
-            <div class="card mt-3">
-                <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <div>
-            <h5 class="card-title mb-0"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h5>
-            <p class="text-muted mb-0 small">Centang mapel yang dicetak, lalu gunakan tombol panah untuk mengatur urutan. Berlaku untuk STS dan SAS.</p>
-        </div>
-        <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
-    </div>
-    <div class="card-body">
-        @if($availableSubjects->isEmpty())
-            <div class="alert alert-warning py-2 mb-0 small">
-                <i class="ri-information-line me-1"></i>Belum ada buku/mapel aktif untuk rombel dan semester ini.
-            </div>
-        @else
-            <form method="POST"
-                  action="{{ route('user.schools.nilai-kelas.rapor.subjects', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
-                @csrf
-                <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
-                <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div>
+                            <h6 class="mb-1 fw-semibold"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h6>
+                            <p class="text-muted mb-0 small">Centang mapel yang dicetak, lalu gunakan tombol panah untuk mengatur urutan. Berlaku untuk STS dan SAS.</p>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
+                    </div>
 
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover align-middle mb-3">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width:70px;" class="text-center">Masuk</th>
-                                <th>Mata Pelajaran</th>
-                                <th style="width:140px;" class="text-center">Urutan</th>
-                            </tr>
-                        </thead>
-                        <tbody id="subjectOrderBody">
-                            @foreach($availableSubjects as $subject)
-                                @php
-                                    $isSelected = in_array($subject->id, $selectedSubjectIds, true);
-                                @endphp
-                                <tr class="subject-row" data-subject-id="{{ $subject->id }}">
-                                    <td class="text-center">
-                                        <input class="form-check-input" type="checkbox"
-                                               name="subject_ids[]" value="{{ $subject->id }}"
-                                               id="subject-{{ $subject->id }}" @checked($isSelected)>
-                                    </td>
-                                    <td>
-                                        <label class="fw-semibold mb-0" for="subject-{{ $subject->id }}">{{ $subject->name }}</label>
-                                        @if($subject->category)
-                                            <small class="text-muted ms-1">({{ $subject->category }})</small>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        <input type="hidden" name="subject_order[{{ $subject->id }}]"
-                                               class="subject-order-input" value="{{ $loop->iteration }}">
-                                        <div class="d-inline-flex align-items-center gap-1">
-                                            <span class="badge bg-light text-dark subject-order-label">{{ $loop->iteration }}</span>
-                                            <div class="btn-group btn-group-sm" role="group" aria-label="Atur urutan {{ $subject->name }}">
-                                                <button type="button" class="btn btn-outline-secondary subject-move-up"
-                                                        onclick="moveSubjectRow(this, -1)" title="Naikkan">
-                                                    <i class="ri-arrow-up-line"></i>
-                                                </button>
-                                                <button type="button" class="btn btn-outline-secondary subject-move-down"
-                                                        onclick="moveSubjectRow(this, 1)" title="Turunkan">
-                                                    <i class="ri-arrow-down-line"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                    @if($availableSubjects->isEmpty())
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="ri-information-line me-1"></i>Belum ada buku/mapel aktif untuk rombel dan semester ini.
+                        </div>
+                    @else
+                        <form method="POST"
+                              action="{{ route('user.schools.nilai-kelas.rapor.subjects', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                            @csrf
+                            <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                            <input type="hidden" name="semester" value="{{ $selectedSem }}">
 
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Urutan mengikuti posisi baris; tombol panah langsung memindahkan mapel.</small>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="ri-save-3-line me-1"></i>Simpan Mapel &amp; Urutan
-                    </button>
-                </div>
-            </form>
-        @endif
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-3">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:70px;" class="text-center">Masuk</th>
+                                            <th>Mata Pelajaran</th>
+                                            <th style="width:140px;" class="text-center">Urutan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="subjectOrderBody">
+                                        @foreach($availableSubjects as $subject)
+                                            @php
+                                                $isSelected = in_array($subject->id, $selectedSubjectIds, true);
+                                            @endphp
+                                            <tr class="subject-row" data-subject-id="{{ $subject->id }}">
+                                                <td class="text-center">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="subject_ids[]" value="{{ $subject->id }}"
+                                                           id="subject-{{ $subject->id }}" @checked($isSelected)>
+                                                </td>
+                                                <td>
+                                                    <label class="fw-semibold mb-0" for="subject-{{ $subject->id }}">{{ $subject->name }}</label>
+                                                    @if($subject->category)
+                                                        <small class="text-muted ms-1">({{ $subject->category }})</small>
+                                                    @endif
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="hidden" name="subject_order[{{ $subject->id }}]"
+                                                           class="subject-order-input" value="{{ $loop->iteration }}">
+                                                    <div class="d-inline-flex align-items-center gap-1">
+                                                        <span class="badge bg-light text-dark subject-order-label">{{ $loop->iteration }}</span>
+                                                        <div class="btn-group btn-group-sm" role="group" aria-label="Atur urutan {{ $subject->name }}">
+                                                            <button type="button" class="btn btn-outline-secondary subject-move-up"
+                                                                    onclick="moveSubjectRow(this, -1)" title="Naikkan">
+                                                                <i class="ri-arrow-up-line"></i>
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary subject-move-down"
+                                                                    onclick="moveSubjectRow(this, 1)" title="Turunkan">
+                                                                <i class="ri-arrow-down-line"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Urutan mengikuti posisi baris; tombol panah langsung memindahkan mapel.</small>
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="ri-save-3-line me-1"></i>Simpan Mapel &amp; Urutan
+                                </button>
+                            </div>
+                        </form>
+                    @endif
                 </div>
             </div>
         </div>

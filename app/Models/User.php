@@ -36,6 +36,7 @@ class User extends Authenticatable
         'email',
         'password',
         'avatar',
+        'ttd_path',
         'is_active',
         'must_change_password',
         'is_system_admin',

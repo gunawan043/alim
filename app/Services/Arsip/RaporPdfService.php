@@ -409,6 +409,9 @@ class RaporPdfService
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
             'layout' => $layout,
+            'ttdKspBase64' => $this->imageDataUri($studyGroup->school?->ttd_ksp_path),
+            'stampBase64' => $this->imageDataUri($studyGroup->school?->stamp_path),
+            'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($studyGroup->school),
         ])->render();
@@ -476,6 +479,9 @@ class RaporPdfService
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
             'layout' => $layout,
+            'ttdKspBase64' => $this->imageDataUri($studyGroup->school?->ttd_ksp_path),
+            'stampBase64' => $this->imageDataUri($studyGroup->school?->stamp_path),
+            'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($studyGroup->school),
         ])->render();
@@ -498,6 +504,28 @@ class RaporPdfService
         $dompdf->render();
 
         return (string) $dompdf->output();
+    }
+
+    /**
+     * Ubah gambar di storage publik menjadi data URI agar aman dirender Dompdf.
+     */
+    public function imageDataUri(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        $absolute = storage_path('app/public/'.$path);
+        if (! is_file($absolute)) {
+            return null;
+        }
+
+        $mime = mime_content_type($absolute) ?: 'image/png';
+        if (! str_starts_with($mime, 'image/')) {
+            return null;
+        }
+
+        return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($absolute));
     }
 
     /**

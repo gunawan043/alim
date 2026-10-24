@@ -29,6 +29,7 @@ use App\Support\AcademicNilai;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -1169,31 +1170,107 @@ class NilaiKelasController extends Controller
             'footer_font_size' => 'required|numeric|min:5|max:16',
             'line_height' => 'required|numeric|min:1|max:2.5',
             'paper_size' => 'required|in:a4,folio,letter',
+            'show_kop' => 'nullable|boolean',
+            'show_ttd_ksp' => 'nullable|boolean',
+            'show_ttd_wali' => 'nullable|boolean',
+            'show_stamp' => 'nullable|boolean',
+            'kop_height' => 'nullable|numeric|min:5|max:80',
+            'ttd_ksp_width' => 'nullable|numeric|min:5|max:100',
+            'ttd_ksp_height' => 'nullable|numeric|min:5|max:60',
+            'ttd_wali_width' => 'nullable|numeric|min:5|max:100',
+            'ttd_wali_height' => 'nullable|numeric|min:5|max:60',
+            'stamp_width' => 'nullable|numeric|min:5|max:100',
+            'stamp_height' => 'nullable|numeric|min:5|max:100',
         ]);
 
-        RaporDistributionSetting::updateOrCreate(
-            [
-                'school_id' => $studyGroup->school_id,
-                'academic_year_id' => $validated['academic_year_id'],
-                'semester' => $validated['semester'],
-            ],
-            [
-                'margin_top' => $validated['margin_top'],
-                'margin_right' => $validated['margin_right'],
-                'margin_bottom' => $validated['margin_bottom'],
-                'margin_left' => $validated['margin_left'],
-                'font_size' => $validated['font_size'],
-                'title_font_size' => $validated['title_font_size'],
-                'table_font_size' => $validated['table_font_size'],
-                'info_font_size' => $validated['info_font_size'],
-                'footer_font_size' => $validated['footer_font_size'],
-                'line_height' => $validated['line_height'],
-                'paper_size' => $validated['paper_size'],
-                'updated_by' => $request->user()?->id,
-            ]
+        $context = [
+            'school_id' => $studyGroup->school_id,
+            'academic_year_id' => $validated['academic_year_id'],
+            'semester' => $validated['semester'],
+        ];
+
+        $setting = RaporDistributionSetting::forContext(
+            $context['school_id'], $context['academic_year_id'], $context['semester']
         );
+        $values = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+
+        foreach ([
+            'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
+            'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
+            'footer_font_size', 'line_height', 'paper_size',
+            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
+            'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
+        ] as $key) {
+            if (array_key_exists($key, $validated)) {
+                $values[$key] = $validated[$key];
+            }
+        }
+
+        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp'] as $key) {
+            if ($request->has($key)) {
+                $values[$key] = $request->boolean($key);
+            }
+        }
+
+        RaporDistributionSetting::updateOrCreate($context, $values + [
+            'updated_by' => $request->user()?->id,
+        ]);
 
         return back()->with('success', 'Pengaturan tata letak rapor berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
+    }
+
+    /**
+     * Upload/ganti TTD wali kelas. Bisa dilakukan TU/Kurikulum atau wali kelas ybs.
+     */
+    public function raporWaliTtd(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::with('homeroomTeacher')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $user = $request->user();
+        $access = self::legerAccessFor($userId, $studyGroup);
+        $isWali = (string) ($studyGroup->homeroom_teacher_id ?? '') === (string) $user?->id;
+
+        abort_unless(
+            $access === 'full' || $isWali,
+            403,
+            'TTD wali kelas hanya dapat diunggah oleh wali kelas, TU, Kurikulum, atau Kepala.'
+        );
+
+        $request->validate([
+            'ttd_wali_file' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
+            'remove_ttd_wali' => 'nullable|boolean',
+        ]);
+
+        $teacher = $studyGroup->homeroomTeacher;
+        if (! $teacher) {
+            return back()->with('error', 'Rombel ini belum memiliki wali kelas.');
+        }
+
+        if ($request->boolean('remove_ttd_wali')) {
+            if ($teacher->ttd_path) {
+                Storage::disk('public')->delete($teacher->ttd_path);
+            }
+            $teacher->update(['ttd_path' => null]);
+
+            return back()->with('success', 'TTD wali kelas berhasil dihapus.');
+        }
+
+        if (! $request->hasFile('ttd_wali_file')) {
+            return back()->with('error', 'Pilih file TTD terlebih dahulu.');
+        }
+
+        if ($teacher->ttd_path) {
+            Storage::disk('public')->delete($teacher->ttd_path);
+        }
+
+        $path = $request->file('ttd_wali_file')->store('users/ttd', 'public');
+        $teacher->update(['ttd_path' => $path]);
+
+        return back()->with('success', 'TTD wali kelas berhasil diunggah.');
     }
 
     /**

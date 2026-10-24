@@ -30,6 +30,7 @@ use App\Services\Arsip\RaporPdfService;
 use App\Support\ArabicText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -667,6 +668,78 @@ class ArsipInventarisTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame([$subjects->first()->id], $setting->reportSubjectIds());
+    }
+
+    public function test_pengaturan_ttd_stempel_dan_ukuran_gambar_disimpan(): void
+    {
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/layout", [
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'margin_top' => 10,
+                'margin_right' => 15,
+                'margin_bottom' => 15,
+                'margin_left' => 15,
+                'font_size' => 11,
+                'title_font_size' => 14,
+                'table_font_size' => 10,
+                'info_font_size' => 10,
+                'footer_font_size' => 8,
+                'line_height' => 1.4,
+                'paper_size' => 'a4',
+                'show_kop' => 0,
+                'show_ttd_ksp' => 1,
+                'show_ttd_wali' => 1,
+                'show_stamp' => 0,
+                'kop_height' => 22,
+                'ttd_ksp_width' => 28,
+                'ttd_ksp_height' => 14,
+                'ttd_wali_width' => 26,
+                'ttd_wali_height' => 13,
+                'stamp_width' => 24,
+                'stamp_height' => 24,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $setting = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail();
+
+        $layout = $setting->layoutSettings();
+        $this->assertFalse($layout['show_kop']);
+        $this->assertTrue($layout['show_ttd_ksp']);
+        $this->assertTrue($layout['show_ttd_wali']);
+        $this->assertFalse($layout['show_stamp']);
+        $this->assertSame(22.0, $layout['kop_height']);
+        $this->assertSame(28.0, $layout['ttd_ksp_width']);
+        $this->assertSame(24.0, $layout['stamp_width']);
+    }
+
+    public function test_ttd_wali_kelas_dapat_diupload_dan_dihapus(): void
+    {
+        Storage::fake('public');
+        $this->activeRombel->update(['homeroom_teacher_id' => $this->tu->id]);
+
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/ttd-wali";
+
+        $this->actingAs($this->tu)
+            ->post($url, ['ttd_wali_file' => UploadedFile::fake()->image('ttd.png', 300, 100)])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->tu->refresh();
+        $this->assertNotNull($this->tu->ttd_path);
+        Storage::disk('public')->assertExists($this->tu->ttd_path);
+
+        $this->actingAs($this->tu)
+            ->post($url, ['remove_ttd_wali' => 1])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertNull($this->tu->fresh()->ttd_path);
     }
 
     public function test_tanggal_hijriah_arab_otomatis(): void
