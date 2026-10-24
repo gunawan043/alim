@@ -429,10 +429,16 @@
                                 @endforeach
                             </div>
                         </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm"
-                                data-bs-toggle="modal" data-bs-target="#signatureSettingsModal">
-                            <i class="ri-image-line me-1"></i>Pengaturan Kop, TTD &amp; Stempel
-                        </button>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#layoutSettingsModal">
+                                <i class="ri-layout-line me-1"></i>Margin, Font &amp; Kertas
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#signatureSettingsModal">
+                                <i class="ri-image-line me-1"></i>Kop, TTD &amp; Stempel
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -442,73 +448,20 @@
                         </div>
                     @endif
 
-                    <form method="POST"
-                          action="{{ route('user.schools.nilai-kelas.rapor.layout', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
-                        @csrf
-                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
-                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
-                        <input type="hidden" name="doc_jenis" value="{{ $docJenis }}">
-                        <input type="hidden" name="doc_bahasa" value="{{ $docBahasa }}">
-
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <h6 class="mb-0 small fw-semibold"><i class="ri-layout-line me-1"></i>Margin (mm)</h6>
-                            <span class="text-muted" style="font-size:11px;">Atas / Kanan / Bawah / Kiri</span>
+                    <div class="alert alert-light border py-2 mb-3 small">
+                        <div class="d-flex flex-wrap gap-3">
+                            <span><i class="ri-layout-line me-1 text-primary"></i>Margin:
+                                {{ $layout['margin_top'] }}/{{ $layout['margin_right'] }}/{{ $layout['margin_bottom'] }}/{{ $layout['margin_left'] }} mm
+                            </span>
+                            <span><i class="ri-font-size-2 me-1 text-primary"></i>Font isi:
+                                {{ $layout['font_size'] }} pt
+                            </span>
+                            <span><i class="ri-file-paper-2-line me-1 text-primary"></i>Kertas:
+                                {{ strtoupper($layout['paper_size']) }}
+                            </span>
+                            <span class="text-muted">Varian: {{ strtoupper($docJenis) }} — {{ strtoupper($docBahasa) }}</span>
                         </div>
-                        <div class="row g-2 mb-3">
-                            @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
-                                <div class="col-6 col-md-3">
-                                    <label class="form-label small mb-1">{{ $label }}</label>
-                                    <input type="number" name="{{ $field }}" class="form-control form-control-sm"
-                                           min="0" max="50" step="0.5" required
-                                           value="{{ old($field, $layout[$field]) }}">
-                                </div>
-                            @endforeach
-                        </div>
-
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-font-size-2 me-1"></i>Ukuran Font (pt) &amp; Baris</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Isi</label>
-                                <input type="number" name="font_size" class="form-control form-control-sm" min="6" max="24" step="0.5" required value="{{ old('font_size', $layout['font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Judul</label>
-                                <input type="number" name="title_font_size" class="form-control form-control-sm" min="8" max="30" step="0.5" required value="{{ old('title_font_size', $layout['title_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Tabel</label>
-                                <input type="number" name="table_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('table_font_size', $layout['table_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Info Santri</label>
-                                <input type="number" name="info_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('info_font_size', $layout['info_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Footer/TTD</label>
-                                <input type="number" name="footer_font_size" class="form-control form-control-sm" min="5" max="16" step="0.5" required value="{{ old('footer_font_size', $layout['footer_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Tinggi Baris</label>
-                                <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
-                            </div>
-                        </div>
-
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-6">
-                                <label class="form-label small mb-1">Ukuran Kertas</label>
-                                <select name="paper_size" class="form-select form-select-sm" required>
-                                    <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
-                                    <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
-                                    <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <button type="submit" class="btn btn-success btn-sm w-100">
-                                    <i class="ri-save-3-line me-1"></i>Simpan Tata Letak
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                    </div>
 
                     <hr class="my-4">
 
@@ -643,6 +596,85 @@
                         </form>
                     @endif
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal: Pengaturan Margin, Font & Kertas --}}
+    <div class="modal fade" id="layoutSettingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="POST"
+                      action="{{ route('user.schools.nilai-kelas.rapor.layout', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                    @csrf
+                    <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                    <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                    <input type="hidden" name="doc_jenis" value="{{ $docJenis }}">
+                    <input type="hidden" name="doc_bahasa" value="{{ $docBahasa }}">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-layout-line me-2 text-primary"></i>Margin, Font &amp; Kertas</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Pengaturan untuk varian <strong>{{ strtoupper($docJenis) }} — {{ strtoupper($docBahasa) }}</strong>.
+                        </p>
+
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-layout-line me-1"></i>Margin (mm)</h6>
+                        <div class="row g-2 mb-3">
+                            @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label small mb-1">{{ $label }}</label>
+                                    <input type="number" name="{{ $field }}" class="form-control form-control-sm"
+                                           min="0" max="50" step="0.5" required
+                                           value="{{ old($field, $layout[$field]) }}">
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-font-size-2 me-1"></i>Ukuran Font (pt) &amp; Baris</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Isi</label>
+                                <input type="number" name="font_size" class="form-control form-control-sm" min="6" max="24" step="0.5" required value="{{ old('font_size', $layout['font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Judul</label>
+                                <input type="number" name="title_font_size" class="form-control form-control-sm" min="8" max="30" step="0.5" required value="{{ old('title_font_size', $layout['title_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Tabel</label>
+                                <input type="number" name="table_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('table_font_size', $layout['table_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Info Santri</label>
+                                <input type="number" name="info_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('info_font_size', $layout['info_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Footer/TTD</label>
+                                <input type="number" name="footer_font_size" class="form-control form-control-sm" min="5" max="16" step="0.5" required value="{{ old('footer_font_size', $layout['footer_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Tinggi Baris</label>
+                                <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 px-0">
+                            <label class="form-label small mb-1">Ukuran Kertas</label>
+                            <select name="paper_size" class="form-select form-select-sm" required>
+                                <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
+                                <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
+                                <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success"><i class="ri-save-3-line me-1"></i>Simpan Tata Letak</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -854,6 +886,10 @@ renumberSubjectRows();
 
 @if($errors->any() && (old('kop_height') !== null || $errors->has('ttd_wali_file')))
     new bootstrap.Modal(document.getElementById('signatureSettingsModal')).show();
+@endif
+
+@if($errors->any() && old('margin_top') !== null)
+    new bootstrap.Modal(document.getElementById('layoutSettingsModal')).show();
 @endif
 
 document.querySelectorAll('.js-note').forEach(function (btn) {
