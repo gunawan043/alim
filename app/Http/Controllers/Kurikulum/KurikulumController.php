@@ -91,14 +91,15 @@ class KurikulumController extends Controller
             ->unique()
             ->values();
 
+        $taughtPairs = $teachingAssignments
+            ->map(fn ($assignment) => $assignment->subject_id.'|'.$assignment->studyGroup?->grade_level_id)
+            ->filter()
+            ->unique()
+            ->values();
+
         $authorablePairs = $access->isKurikulumEditor($request->user())
             ? null
-            : $teachingAssignments
-                ->map(fn ($assignment) => $assignment->subject_id.'|'.$assignment->studyGroup?->grade_level_id)
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
+            : $taughtPairs->all();
 
         $mapelFilter = $request->input('mapel') === 'diampu' ? 'diampu' : 'all';
 
@@ -132,10 +133,19 @@ class KurikulumController extends Controller
                 ->orderByAcademicYearFirst()
                 ->get()
                 ->groupBy('grade_level_id')
-                ->map(fn ($rows) => $rows
-                    ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
-                    ->filter(fn ($r) => $r->is_active)
-                    ->values());
+                ->map(function ($rows, $gradeLevelId) use ($mapelFilter, $taughtPairs) {
+                    $rows = $rows
+                        ->unique(fn ($r) => $r->subject_id.'|'.($r->track ?? ''))
+                        ->filter(fn ($r) => $r->is_active);
+
+                    if ($mapelFilter === 'diampu') {
+                        $rows = $rows->filter(fn ($r) => $taughtPairs->contains(
+                            $r->subject_id.'|'.$gradeLevelId
+                        ));
+                    }
+
+                    return $rows->values();
+                });
 
             // Peta Kurikulum menampilkan SELURUH struktur jenjang dalam cakupan satuan pendidikan
             // (termasuk mapel yang tidak diampu guru) agar GTK memahami keseluruhan kurikulum.
@@ -279,6 +289,7 @@ class KurikulumController extends Controller
             'canEditKktp',
             'canPrepare',
             'taughtSubjectIds',
+            'taughtPairs',
             'mapelFilter',
             'canManageProfile',
             'curriculumUpdates',

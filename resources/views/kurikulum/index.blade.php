@@ -296,9 +296,11 @@
                             <span class="text-muted small ms-2 me-2">·</span>
                             <span class="text-muted small fw-semibold me-2">Mapel:</span>
                             <a href="{{ request()->fullUrlWithQuery(['mapel' => null]) }}" class="filter-badge {{ ($mapelFilter ?? 'all') !== 'diampu' ? 'active' : '' }}">Semua</a>
-                            <a href="{{ request()->fullUrlWithQuery(['mapel' => 'diampu']) }}" class="filter-badge {{ ($mapelFilter ?? 'all') === 'diampu' ? 'active' : '' }}">
+                            <a href="{{ request()->fullUrlWithQuery(['mapel' => 'diampu']) }}"
+                               class="filter-badge {{ ($mapelFilter ?? 'all') === 'diampu' ? 'active' : '' }}"
+                               title="Hanya mapel + tingkat yang Anda ampu">
                                 <i class="ri-user-star-line me-1"></i>Mapel Saya
-                                <span class="badge bg-primary-subtle text-primary ms-1">{{ $taughtSubjectIds->count() }}</span>
+                                <span class="badge bg-primary-subtle text-primary ms-1">{{ ($taughtPairs ?? collect())->count() }}</span>
                             </a>
                         @endif
                         <span class="text-muted small ms-2 me-2">·</span>

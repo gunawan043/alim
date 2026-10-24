@@ -166,6 +166,34 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertDontSee('Fisika');
     }
 
+    public function test_filter_mapel_saya_mengikuti_mapel_dan_tingkat_yang_diampu(): void
+    {
+        // Matematika juga ada di tingkat lain, tetapi guru hanya mengampu kelas 7.
+        $grade8 = GradeLevel::create([
+            'school_id' => $this->school->id,
+            'level' => 8,
+            'name' => 'Kelas 8',
+            'code' => 'VIII',
+            'fase' => 'D',
+            'is_active' => true,
+        ]);
+        GradeLevelSubject::create([
+            'grade_level_id' => $grade8->id,
+            'subject_id' => $this->math->id,
+            'allocation_hours' => 5,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum?mapel=diampu")
+            ->assertOk();
+
+        $table = substr($response->getContent(), (int) strpos($response->getContent(), 'id="kurikulumList"'));
+
+        // Hanya baris Matematika kelas 7 yang boleh muncul.
+        $this->assertSame(1, substr_count($table, '<td>Matematika</td>'));
+    }
+
     public function test_tombol_susun_atp_hanya_untuk_mapel_yang_diampu(): void
     {
         $guruPage = $this->actingAs($this->guru)
