@@ -3,8 +3,10 @@
 namespace App\Services\Evaluasi;
 
 use App\Models\LjkExam;
+use App\Models\TeacherAdminBook;
 use App\Models\PaketSoal;
 use App\Models\StudyGroup;
+use App\Models\TeachingAssignment;
 use App\Services\Ljk\LjkPdfFonts;
 use App\Services\Ljk\LjkSoalSheet;
 use Dompdf\Dompdf;
@@ -59,6 +61,18 @@ class PaketSoalNaskahPdfService
         $data['fontSize'] = (float) $layout['font_size'];
         $data['lineHeight'] = (float) $layout['line_height'];
         $data['questionGap'] = 1.15;
+        $teacherName = $this->teacherNames($paket);
+        if ($teacherName !== '') {
+            foreach ($data['identityRows'] as &$identityRow) {
+                foreach ($identityRow as &$pair) {
+                    if (($pair[0] ?? null) === 'Guru Pengampu') {
+                        $pair[1] = $teacherName;
+                    }
+                }
+            }
+            unset($identityRow, $pair);
+        }
+
         $data['paper'] = match ($layout['paper_size']) {
             'folio' => ['key' => 'f4', 'width_mm' => 215.0, 'height_mm' => 330.0, 'label' => 'F4 (Folio)'],
             'letter' => ['key' => 'letter', 'width_mm' => 215.9, 'height_mm' => 279.4, 'label' => 'Letter'],
@@ -66,6 +80,36 @@ class PaketSoalNaskahPdfService
         };
 
         return $data;
+    }
+
+    private function teacherNames(PaketSoal $paket): string
+    {
+        $kisi = $paket->kisiKisi;
+        if (! $kisi) {
+            return '';
+        }
+
+        $query = TeacherAdminBook::with('teacher:id,name')
+            ->where('subject_id', $kisi->subject_id)
+            ->where('academic_year_id', $kisi->academic_year_id)
+            ->where('semester', $kisi->semester)
+            ->when($kisi->school_id, fn ($q) => $q->where('school_id', $kisi->school_id))
+            ->when($kisi->grade_level_id, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('grade_level_id', $kisi->grade_level_id)));
+
+        $names = $query->get()->pluck('teacher.name')->filter()->unique()->values();
+
+        if ($names->isEmpty()) {
+            $names = TeachingAssignment::with('teacher:id,name')
+                ->where('subject_id', $kisi->subject_id)
+                ->where('academic_year_id', $kisi->academic_year_id)
+                ->where('status', 'active')
+                ->when($kisi->school_id, fn ($q) => $q->where('school_id', $kisi->school_id))
+                ->when($kisi->grade_level_id, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('grade_level_id', $kisi->grade_level_id)))
+                ->get()
+                ->pluck('teacher.name')->filter()->unique()->values();
+        }
+
+        return $names->implode(', ');
     }
 
     public function html(PaketSoal $paket): string
