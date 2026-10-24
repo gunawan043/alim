@@ -9,9 +9,13 @@
     .naskah-question-row { display: flex; gap: 10px; align-items: flex-start; }
     .naskah-number { width: 28px; flex-shrink: 0; font-weight: 700; }
     .naskah-question-body { flex: 1; min-width: 0; }
-    .naskah-options { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 8px; }
-    .naskah-options td { vertical-align: top; padding: 0 10px 0 0; }
-    .naskah-option-label { display: inline-block; min-width: 20px; font-weight: 600; }
+    table.qwrap { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.qwrap td { vertical-align: top; padding: 0; }
+    table.qwrap td.qno { width: 4.5%; font-weight: 700; }
+    table.qwrap td.qbody { width: 95.5%; }
+    table.opts { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4px 0 0; }
+    table.opts td { vertical-align: top; padding: 0 10px 0 0; }
+    table.opts td .letter { font-weight: 600; }
     .naskah-wacana { padding: 12px; margin-bottom: 10px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; }
 </style>
 @endpush

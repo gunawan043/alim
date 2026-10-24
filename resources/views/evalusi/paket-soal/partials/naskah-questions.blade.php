@@ -17,40 +17,46 @@
         @continue
     @endif
 
-    <div class="naskah-question">
-        <div class="naskah-question-row">
-            <div class="naskah-number">{{ $row['nomor'] }}.</div>
-            <div class="naskah-question-body">
-                <div>{!! nl2br(e($row['pertanyaan'] ?: '—')) !!}</div>
+    @php
+        $rtl = (bool) ($row['rtl'] ?? false);
+        $maxOptions = max(4, count($row['opsi'] ?? []));
+        $colWidth = round(100 / $maxOptions, 4);
+        $block = ['opsi' => $row['opsi'] ?? []];
+    @endphp
 
-                @if(! empty($row['gambar_path']))
-                    <div class="mt-2">
-                        <img src="{{ \Illuminate\Support\Facades\Storage::url($row['gambar_path']) }}" alt="Gambar soal" style="max-width:320px;max-height:240px;">
-                        @if(! empty($row['gambar_keterangan']))
-                            <div class="small text-muted">{{ $row['gambar_keterangan'] }}</div>
+    <div class="naskah-question q">
+        <table class="qwrap">
+            <tr>
+                @if($rtl)
+                    <td class="qbody" style="text-align:right;">
+                        <div>{!! nl2br(e($row['pertanyaan'] ?: '—')) !!}</div>
+                        @if(! empty($row['gambar_path']))
+                            <div class="mt-2">
+                                <img src="{{ \Illuminate\Support\Facades\Storage::url($row['gambar_path']) }}" alt="Gambar soal" style="max-width:320px;max-height:240px;">
+                                @if(! empty($row['gambar_keterangan']))
+                                    <div class="small text-muted">{{ $row['gambar_keterangan'] }}</div>
+                                @endif
+                            </div>
                         @endif
-                    </div>
+                        @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                    </td>
+                    <td class="qno" style="text-align:right;">{{ $row['nomor'] }}.</td>
+                @else
+                    <td class="qno">{{ $row['nomor'] }}.</td>
+                    <td class="qbody">
+                        <div>{!! nl2br(e($row['pertanyaan'] ?: '—')) !!}</div>
+                        @if(! empty($row['gambar_path']))
+                            <div class="mt-2">
+                                <img src="{{ \Illuminate\Support\Facades\Storage::url($row['gambar_path']) }}" alt="Gambar soal" style="max-width:320px;max-height:240px;">
+                                @if(! empty($row['gambar_keterangan']))
+                                    <div class="small text-muted">{{ $row['gambar_keterangan'] }}</div>
+                                @endif
+                            </div>
+                        @endif
+                        @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                    </td>
                 @endif
-
-                @if(! empty($row['opsi']))
-                    @php $optionCount = max(4, count($row['opsi'])); @endphp
-                    <table class="naskah-options">
-                        <tr>
-                            @for($index = 0; $index < $optionCount; $index++)
-                                @php $opsi = $row['opsi'][$index] ?? null; @endphp
-                                <td style="width: {{ 100 / $optionCount }}%;">
-                                    @if($opsi)
-                                        <span class="naskah-option-label">{{ $opsi['label'] ?? chr(65 + $index) }}.</span>
-                                        {{ $opsi['teks'] ?? '' }}
-                                    @else
-                                        &nbsp;
-                                    @endif
-                                </td>
-                            @endfor
-                        </tr>
-                    </table>
-                @endif
-            </div>
-        </div>
+            </tr>
+        </table>
     </div>
 @endforeach

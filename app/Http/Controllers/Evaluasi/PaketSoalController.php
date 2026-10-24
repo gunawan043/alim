@@ -731,6 +731,8 @@ class PaketSoalController extends Controller
                     'type' => 'question',
                     'nomor' => (int) ($konten['nomor'] ?? $item->urutan),
                     'jenis' => $konten['jenis'] ?? $item->soal?->tipe_soal,
+                    'bahasa' => $konten['bahasa'] ?? $item->soal?->bahasaEfektif() ?? 'latin',
+                    'rtl' => ($konten['bahasa'] ?? $item->soal?->bahasaEfektif() ?? 'latin') === 'arab',
                     'wacana' => $konten['wacana'] ?? null,
                     'pertanyaan' => (string) ($konten['pertanyaan'] ?? ''),
                     'gambar_path' => $konten['gambar_path'] ?? null,

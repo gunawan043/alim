@@ -30,9 +30,13 @@
     .naskah-question-row { display: flex; gap: 8px; align-items: flex-start; }
     .naskah-number { width: 22px; flex-shrink: 0; font-weight: bold; }
     .naskah-question-body { flex: 1; }
-    .naskah-options { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
-    .naskah-options td { vertical-align: top; padding: 0 4px 0 0; }
-    .naskah-option-label { display: inline-block; min-width: 16px; font-weight: bold; }
+    table.qwrap { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.qwrap td { vertical-align: top; padding: 0; }
+    table.qwrap td.qno { width: 4.5%; font-weight: bold; }
+    table.qwrap td.qbody { width: 95.5%; }
+    table.opts { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4px 0 0; }
+    table.opts td { vertical-align: top; padding: 0 4px 0 0; }
+    table.opts td .letter { font-weight: bold; }
     .naskah-wacana { border: 1px solid #999; background: #fafafa; padding: 6px 8px; margin-bottom: 6px; font-size: 9.5px; }
     .naskah-note { text-align: center; margin-top: 18px; font-size: 9px; color: #555; }
 </style>
