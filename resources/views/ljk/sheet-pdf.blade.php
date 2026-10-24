@@ -50,9 +50,11 @@
     // Pada mode Arab, instruksi Arab menambah satu baris; blok karakter
     // dilewati agar tidak menimpa baris jawaban pertama.
     $arabLine = ($hasArabic ?? false) && ($instruksiArab ?? '') !== '';
+    // Blok karakter memakai alur normal agar judul, butir, dan petunjuk tidak
+    // saling menimpa. Bila ruang header tidak cukup, blok karakter dilewati.
     $karakterFits = ! empty($karakter) && ! $arabLine && ($karakterY + 30.0) <= ($headerMm - 1.0);
-    $instructionY = $karakterFits
-        ? round($karakterY + 18.4, 2)
+    $extraTop = $karakterFits
+        ? $karakterY
         : round($tableY + $tableH + 2.4, 2);
 
     $line1 = $judulLjk[0] ?? 'LEMBAR JAWABAN KOMPUTER (LJK)';
@@ -76,8 +78,8 @@
     .fiducial { background: #000; }
     .qr { border: 0; }
     .strip-cell { background: #000; }
-    .question-number { font-size: 7pt; color: #333; }
-    .option-label { font-size: 5.5pt; color: #555; text-align: center; line-height: 1; }
+    .question-number { font-size: 7.5pt; color: #222; }
+    .option-label { font-size: 6.2pt; color: #333; text-align: center; line-height: 1; }
     .option-box { border: 0.45mm solid #000; }
     .manual-area { border: 0.3mm dashed #777; }
     .kop-img { display: block; }
@@ -100,29 +102,37 @@
         font-size: {{ max(7.5, $fontSize - 1.6) }}pt;
         line-height: 1.15;
     }
-    table.identitas td.label { width: 20%; }
-    table.identitas td.value { width: 30%; }
+    table.identitas td.label {
+        width: 26%;
+        font-weight: bold;
+        background: #f2f2f2;
+    }
+    table.identitas td.value { width: 24%; }
     .nama-line { display: inline-block; width: 100%; border-bottom: 0.3mm dotted #000; }
 
     .karakter-title {
         font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
         font-size: {{ max(6.5, $fontSize - 1) }}pt;
         font-weight: bold;
+        margin-bottom: 1.0mm;
     }
-    ol.karakter {
-        margin: 0;
-        padding: 0 0 0 5mm;
+    .karakter-line {
         font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
-        font-size: {{ max(6.5, $fontSize - 1.2) }}pt;
+        font-size: {{ max(6.3, $fontSize - 1.4) }}pt;
+        line-height: 1.25;
     }
-    ol.karakter li { margin-bottom: 0.2mm; }
+    .karakter-item { margin-right: 3mm; }
+    .karakter-no { font-weight: bold; }
 
     .instructions {
         font-family: {!! \App\Services\Ljk\LjkPdfFonts::stack() !!};
         font-size: {{ max(6.5, $fontSize - 1.4) }}pt;
         color: #222;
-        line-height: 1.3;
+        line-height: 1.35;
+        border-left: 0.7mm solid #222;
+        padding-left: 2.2mm;
     }
+    .instructions.with-karakter { margin-top: 1.4mm; }
     .small { font-size: 5.5pt; color: #666; }
 </style>
 </head>
@@ -191,34 +201,33 @@
         </table>
     </div>
 
-    {{-- PENANAMAN KARAKTER (bila ruang header cukup) --}}
-    @if($karakterFits)
-        <div class="abs karakter-title" style="left: {{ $contentLeft }}mm; top: {{ $karakterY }}mm; width: {{ $flowWidth }}mm;">
-            PENANAMAN KARAKTER:
-        </div>
-        <ol class="abs karakter" style="left: {{ $contentLeft }}mm; top: {{ $karakterY + 4.2 }}mm; width: {{ $flowWidth }}mm;">
-            @foreach($karakter as $butir)
-                <li>{!! \App\Services\Ljk\LjkArabicText::toHtml($butir) !!}</li>
-            @endforeach
-        </ol>
-    @endif
+    {{-- PENANAMAN KARAKTER & PETUNJUK — satu alur agar tidak bertumpuk --}}
+    <div class="abs" style="left: {{ $contentLeft }}mm; top: {{ $extraTop }}mm; width: {{ $flowWidth }}mm;">
+        @if($karakterFits)
+            <div class="karakter-title">PENANAMAN KARAKTER:</div>
+            <div class="karakter-line">
+                @foreach($karakter as $karakterIndex => $butir)
+                    <span class="karakter-item"><span class="karakter-no">{{ $karakterIndex + 1 }}.</span> {!! \App\Services\Ljk\LjkArabicText::toHtml($butir) !!}</span>
+                @endforeach
+            </div>
+        @endif
 
-    {{-- PETUNJUK --}}
-    <div class="abs instructions" style="left: {{ $contentLeft }}mm; top: {{ $instructionY }}mm; width: {{ $flowWidth }}mm;">
-        <strong>A.</strong> {{ $instruksiLjk }}
-        @if(! $master)
-            Jumlah nomor: {{ count($geometry['questions']) }}.
-            @if(($exam->skor_config['manual_count'] ?? 0) > 0)
-                Soal uraian/isian dinilai manual oleh guru.
+        <div class="instructions {{ $karakterFits ? 'with-karakter' : '' }}">
+            <strong>A.</strong> {{ $instruksiLjk }}
+            @if(! $master)
+                Jumlah nomor: {{ count($geometry['questions']) }}.
+                @if(($exam->skor_config['manual_count'] ?? 0) > 0)
+                    Soal uraian/isian dinilai manual oleh guru.
+                @endif
+                @if(! empty($wacanaRanges))
+                    <br><strong>Wacana/soal cerita:</strong> soal nomor
+                    @if($arabAngka ?? false)<span class="ar">{{ implode(', ', $wacanaRanges) }}</span>@else{{ implode(', ', $wacanaRanges) }}@endif.
+                @endif
             @endif
-            @if(! empty($wacanaRanges))
-                <br><strong>Wacana/soal cerita:</strong> soal nomor
-                @if($arabAngka ?? false)<span class="ar">{{ implode(', ', $wacanaRanges) }}</span>@else{{ implode(', ', $wacanaRanges) }}@endif.
+            @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
+                <br><span class="ar-block"><span class="ar">{!! \App\Services\Ljk\LjkArabicText::toHtml($instruksiArab, false) !!}</span></span>
             @endif
-        @endif
-        @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
-            <br><span class="ar-block"><span class="ar">{!! \App\Services\Ljk\LjkArabicText::toHtml($instruksiArab, false) !!}</span></span>
-        @endif
+        </div>
     </div>
 
     {{-- Butir soal --}}

@@ -41,7 +41,7 @@
                                 <td class="text-center">{{ $paket->print_jobs_count }}</td>
                                 <td class="text-end">
                                     <div class="btn-group">
-                                        <a href="{{ route('user.paket-soal.naskah', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-sm btn-soft-primary" title="Naskah"><i class="ri-file-text-line"></i> Naskah</a>
+                                        <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-sm btn-soft-primary" title="Naskah"><i class="ri-file-text-line"></i> Naskah</a>
                                         <a href="{{ route('user.paket-soal.kartu-soal', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-sm btn-soft-secondary" title="Kartu Soal"><i class="ri-file-list-3-line"></i> Kartu</a>
                                         <a href="{{ route('user.paket-soal.validasi-soal', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-sm btn-soft-secondary" title="Validasi"><i class="ri-shield-check-line"></i> Validasi</a>
                                     </div>

@@ -46,25 +46,75 @@ class AsesmenController extends Controller
             }
         }
 
-        $assessments = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
+        $assessments = $query
+            ->withCount(['items', 'pakets'])
+            ->orderByDesc('updated_at')
+            ->paginate(15)
+            ->withQueryString();
 
-        $stats = [
-            'total' => (clone $base)->count(),
-            'no_bank' => 0,
-            'paket' => 0,
-            'final' => 0,
-        ];
+        // Dokumen terakhir per kisi/paket untuk tombol aksi di tabel pusat.
+        $assessmentIds = $assessments->getCollection()->pluck('id');
+        $latestPakets = PaketSoal::query()
+            ->whereIn('kisi_kisi_soal_id', $assessmentIds)
+            ->withCount('items')
+            ->orderByDesc('updated_at')
+            ->get()
+            ->unique('kisi_kisi_soal_id')
+            ->keyBy('kisi_kisi_soal_id');
+
+        $latestLjks = LjkExam::query()
+            ->whereIn('paket_soal_id', $latestPakets->pluck('id'))
+            ->orderByDesc('created_at')
+            ->get()
+            ->unique('paket_soal_id')
+            ->keyBy('paket_soal_id');
+
         $states = [];
         foreach ($assessments as $assessment) {
             $states[$assessment->id] = $this->assessmentState($assessment, $userId, $schoolId);
-            if ($states[$assessment->id]['step'] === 'soal') $stats['no_bank']++;
-            if (in_array($states[$assessment->id]['step'], ['paket', 'review'], true)) $stats['paket']++;
-            if ($states[$assessment->id]['step'] === 'selesai') $stats['final']++;
         }
+
+        $bankBase = BankSoal::query()->accessibleBy($userId, $schoolId);
+        $paketBase = PaketSoal::query()
+            ->when($schoolId, fn ($q) => $q->whereHas('kisiKisi', fn ($kisi) => $kisi->where('school_id', $schoolId)));
+        $ljkBase = LjkExam::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
+
+        $stats = [
+            'total' => (clone $base)->count(),
+            'banks' => (clone $bankBase)->count(),
+            'pakets' => (clone $paketBase)->count(),
+            'ljk' => (clone $ljkBase)->count(),
+            'final' => (clone $base)->whereHas('pakets', fn ($q) => $q->where('is_published', true))->count(),
+        ];
+
+        $banks = (clone $bankBase)
+            ->with(['subject:id,name', 'gradeLevel:id,name', 'academicYear:id,name'])
+            ->withCount(['soal', 'soalApproved as approved_soal_count'])
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->get();
+
+        $pakets = (clone $paketBase)
+            ->with(['kisiKisi.subject:id,name', 'kisiKisi.gradeLevel:id,name'])
+            ->withCount('items')
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->get();
+
+        $ljkExams = (clone $ljkBase)
+            ->with(['paketSoal:id,judul,kode_paket', 'subject:id,name', 'studyGroup:id,name'])
+            ->withCount(['participants', 'sheets'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
 
-        return view('evalusi.asesmen.index', compact('assessments', 'states', 'stats', 'academicYears', 'userId'));
+        return view('evalusi.asesmen.index', compact(
+            'assessments', 'states', 'stats', 'academicYears', 'userId',
+            'latestPakets', 'latestLjks', 'banks', 'pakets', 'ljkExams'
+        ));
     }
 
     public function show(Request $request, string $userId, string $kisiUuid)

@@ -176,7 +176,7 @@
                 <div class="card-body">
                     @if($latestPaket)
                         <div class="d-grid gap-2">
-                            <a href="{{ route('user.paket-soal.naskah', ['userId' => $userId, 'paketUuid' => $latestPaket->id]) }}" class="btn btn-soft-primary btn-sm" target="_blank"><i class="ri-file-text-line me-1"></i>Naskah Soal</a>
+                            <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $latestPaket->id]) }}" class="btn btn-soft-primary btn-sm" target="_blank"><i class="ri-file-text-line me-1"></i>Naskah Soal</a>
                             <a href="{{ route('user.paket-soal.kartu-soal', ['userId' => $userId, 'paketUuid' => $latestPaket->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank"><i class="ri-file-list-3-line me-1"></i>Kartu Soal</a>
                             @if($ljkExams->isNotEmpty())
                                 <a href="{{ route('user.ljk.show', ['userId' => $userId, 'ljkUuid' => $ljkExams->first()->id]) }}" class="btn btn-soft-secondary btn-sm"><i class="ri-scan-2-line me-1"></i>LJK</a>
