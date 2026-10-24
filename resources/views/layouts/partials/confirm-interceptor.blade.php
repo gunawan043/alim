@@ -1,7 +1,6 @@
-{{-- Konfirmasi global: form/link/tombol dengan atribut data-confirm memakai modal lord-icon, bukan confirm(). --}}
+{{-- Konfirmasi global: form/tombol data-confirm dan pola confirm() lama memakai modal, bukan dialog browser. --}}
 <x-modal-confirm id="globalConfirmModal" class="zoomIn"
-    icon="https://cdn.lordicon.com/gsqxdxog.json"
-    primaryColor="#f7b84b" secondaryColor="#f06548"
+    iconClass="ri-send-plane-line"
     title="Konfirmasi"
     submitLabel="Ya, Lanjutkan"
     submitIcon="ri-check-line"
@@ -31,6 +30,39 @@
             pendingButton = null;
             pendingAction = null;
         }
+
+        function parseConfirmMessage(attribute) {
+            if (!attribute) return null;
+
+            var start = attribute.indexOf('confirm(');
+            if (start === -1) return null;
+
+            var body = attribute.slice(start + 'confirm('.length).trim();
+            var end = body.lastIndexOf(')');
+            if (end !== -1) body = body.slice(0, end).trim();
+            if ((body.charAt(0) === "'" && body.charAt(body.length - 1) === "'")
+                || (body.charAt(0) === '"' && body.charAt(body.length - 1) === '"')) {
+                body = body.slice(1, -1);
+            }
+
+            return body.replace(/\\n/g, '\n').replace(/\\'/g, "'").replace(/\\"/g, '"').trim();
+        }
+
+        // Konversi pola lama confirm() pada form/tombol menjadi data-confirm
+        // agar semua halaman memakai modal yang sama.
+        document.querySelectorAll('form[onsubmit*="confirm"]').forEach(function (form) {
+            var message = parseConfirmMessage(form.getAttribute('onsubmit'));
+            if (message) form.setAttribute('data-confirm', message);
+            form.removeAttribute('onsubmit');
+        });
+
+        document.querySelectorAll('button[onclick*="confirm"], input[type="submit"][onclick*="confirm"]').forEach(function (button) {
+            var form = button.closest('form');
+            if (!form) return;
+            var message = parseConfirmMessage(button.getAttribute('onclick'));
+            if (message) form.setAttribute('data-confirm', message);
+            button.removeAttribute('onclick');
+        });
 
         document.addEventListener('submit', function (event) {
             var form = event.target.closest('form[data-confirm]');

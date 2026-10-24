@@ -83,7 +83,6 @@
 
     <!-- JAVASCRIPT -->
     @include('layouts.vendor-scripts')
-    @include('components.global-confirm-modal')
     @include('layouts.partials.searchable-selects')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
     <script src="{{ URL::asset('build/libs/toastify-js/src/toastify.js') }}"></script>

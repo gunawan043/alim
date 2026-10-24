@@ -1,6 +1,7 @@
 @props([
     'id' => 'confirmModal',
     'icon' => 'https://cdn.lordicon.com/lupuorrc.json',
+    'iconClass' => null,
     'primaryColor' => '#121331',
     'secondaryColor' => '#08a88a',
     'title' => 'Konfirmasi',
@@ -22,7 +23,11 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-body text-center p-5">
-                <lord-icon src="{{ $icon }}" trigger="loop" colors="primary:{{ $primaryColor }},secondary:{{ $secondaryColor }}" style="width:120px;height:120px"></lord-icon>
+                @if($iconClass)
+                    <i class="{{ $iconClass }} fs-1 text-primary"></i>
+                @else
+                    <lord-icon src="{{ $icon }}" trigger="loop" colors="primary:{{ $primaryColor }},secondary:{{ $secondaryColor }}" style="width:120px;height:120px"></lord-icon>
+                @endif
 
                 <div class="mt-4">
                     <h4 class="mb-3">{{ $title }}</h4>
