@@ -74,6 +74,25 @@ class KurikulumController extends Controller
 
         $rows = collect();
 
+        // Mapel + tingkat yang benar-benar diampu guru pada periode ini.
+        // Null berarti editor/tim kurikulum (boleh menyusun semua mapel).
+        $access = app(KurikulumAccess::class);
+        $authorablePairs = null;
+        if (! $access->isKurikulumEditor($request->user())) {
+            $authorablePairs = TeachingAssignment::query()
+                ->where('teacher_id', $request->user()->id)
+                ->where('status', 'active')
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+                ->with('studyGroup:id,grade_level_id')
+                ->get()
+                ->map(fn ($assignment) => $assignment->subject_id.'|'.$assignment->studyGroup?->grade_level_id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
         // Filter per tingkat (Kelas 1, 2, 3, …) — "Semua Tingkat" bila kosong.
         $gradeLevelId = $request->input('grade_level_id');
         $gradeLevelOptions = GradeLevel::query()
@@ -180,6 +199,8 @@ class KurikulumController extends Controller
                         'atp_id' => $atp?->id,
                         'atp_total_jp' => $atp?->total_jp,
                         'atp_status' => $atp?->status,
+                        'can_author_atp' => $authorablePairs === null
+                            || in_array($subject->id.'|'.$grade->id, $authorablePairs, true),
                     ]);
                 }
             }
@@ -205,7 +226,7 @@ class KurikulumController extends Controller
         $isKoorMapelUser = (bool) optional($request->user()?->tugasTambahan)
             ->pluck('nama')
             ->contains(fn ($n) => str_contains(mb_strtolower((string) $n), 'koordinator guru'));
-        $canEditKktp = app(KurikulumAccess::class)->isKurikulumTeam($request->user()) || $isKoorMapelUser;
+        $canEditKktp = $access->isKurikulumTeam($request->user()) || $isKoorMapelUser;
 
         // ── Total JP per tingkat (struktur periode terpilih, bukan baris tampil) ──
         $jpTotals = GradeLevelSubject::query()
@@ -225,7 +246,7 @@ class KurikulumController extends Controller
         ])->values();
 
         // Izin menyiapkan Peta TA baru: editor kurikulum (tim/koordinator kurikulum, super admin).
-        $canPrepare = app(KurikulumAccess::class)->isKurikulumEditor($request->user());
+        $canPrepare = $access->isKurikulumEditor($request->user());
         $canManageProfile = app(KurikulumAccess::class)->isKurikulumTeam($request->user());
 
         $curriculumUpdates = (array) config('curriculum_updates.items', []);

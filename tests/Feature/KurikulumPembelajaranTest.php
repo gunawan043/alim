@@ -156,6 +156,23 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertSee('100'); // JP efektif math = 4 × 25
     }
 
+    public function test_tombol_susun_atp_hanya_untuk_mapel_yang_diampu(): void
+    {
+        $guruPage = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum")
+            ->assertOk();
+
+        // Guru hanya mengampu Matematika; Fisika tidak boleh mendapat tombol.
+        $this->assertSame(1, substr_count($guruPage->getContent(), 'Susun ATP'));
+
+        $editorPage = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum")
+            ->assertOk();
+
+        // Editor kurikulum boleh menyiapkan ATP untuk seluruh mapel.
+        $this->assertSame(2, substr_count($editorPage->getContent(), 'Susun ATP'));
+    }
+
     public function test_kktp_lama_yang_hanya_punya_kkm_tetap_tampil(): void
     {
         DB::table('subject_kktp')->insert([

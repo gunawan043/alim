@@ -114,7 +114,7 @@
     </div>
 
     {{-- INFO PEMBARUAN KURIKULUM + ALUR KE PERANGKAT --}}
-    <div class="row g-3 mb-3">
+    <!-- <div class="row g-3 mb-3">
         <div class="col-xl-8">
             <div class="card h-100 border-info-subtle">
                 <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -210,7 +210,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <div class="row">
         <div class="col-lg-12">
@@ -370,11 +370,13 @@
                                                class="badge {{ $row['atp_status'] === 'published' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }} text-decoration-none">
                                                 {{ \App\Models\AlurTujuanPembelajaran::STATUS_OPTIONS[$row['atp_status']] ?? $row['atp_status'] }} · {{ $row['atp_total_jp'] }} JP
                                             </a>
-                                        @else
+                                        @elseif($row['can_author_atp'] ?? false)
                                             <a href="{{ route('user.kurikulum.atp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester, 'subject_id' => $row['subject_id']]) }}"
                                                class="link-primary small text-decoration-underline">
                                                 Susun ATP
                                             </a>
+                                        @else
+                                            <span class="text-muted small" title="Anda tidak mengampu mapel ini">—</span>
                                         @endif
                                     </td>
                                     <td class="text-center">{{ $row['rombel'] }}</td>
