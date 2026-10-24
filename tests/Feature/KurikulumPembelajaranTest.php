@@ -961,6 +961,17 @@ class KurikulumPembelajaranTest extends TestCase
         return $user;
     }
 
+    public function test_guru_dapat_melihat_info_kurikulum_tanpa_melihat_pengaturan_profil(): void
+    {
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum/profil")
+            ->assertOk()
+            ->assertSee('Info Pembaruan Kurikulum')
+            ->assertSee('Baca sumber:')
+            ->assertDontSee('Pengaturan Profil')
+            ->assertDontSee('Simpan Profil');
+    }
+
     public function test_ksp_dapat_mengubah_profil_kurikulum(): void
     {
         $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);

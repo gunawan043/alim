@@ -32,6 +32,11 @@
         </div>
     </div>
 
+    @include('kurikulum.partials.curriculum-updates', [
+        'curriculumUpdates' => $curriculumUpdates ?? [],
+        'curriculumUpdatesAt' => $curriculumUpdatesAt ?? '',
+    ])
+
     <div class="row g-3">
         @if($canManage)
         <div class="col-lg-7">

@@ -22,8 +22,9 @@ class CurriculumProfileController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
         abort_unless($schoolId, 404, 'Konteks satuan pendidikan tidak ditemukan.');
-        abort_unless($this->access->isKurikulumTeam($request->user()), 403, 'Hanya tim kurikulum yang dapat membuka profil kurikulum.');
 
+        // Profil Kurikulum memuat informasi kurikulum yang boleh dibaca seluruh
+        // GTK pada satuan pendidikan. Pengaturan tetap dibatasi oleh $canManage.
         $school = School::findOrFail($schoolId);
         $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('created_at')->get();
         $activeYear = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
@@ -40,6 +41,8 @@ class CurriculumProfileController extends Controller
         $resolvedProfile = $setting?->profile ?? $this->profiles->resolve($schoolId, $academicYearId);
         $labels = $this->profiles->labels($resolvedProfile);
         $canManage = $this->access->isKurikulumTeam($request->user());
+        $curriculumUpdates = (array) config('curriculum_updates.items', []);
+        $curriculumUpdatesAt = (string) config('curriculum_updates.updated_at', '');
 
         $kokurikulerOptions = $profileList
             ->flatMap(fn ($profile) => (array) $profile->configValue('kokurikuler_options', []))
@@ -49,7 +52,7 @@ class CurriculumProfileController extends Controller
         return view('kurikulum.profil.index', compact(
             'userId', 'school', 'academicYears', 'academicYear', 'academicYearId',
             'profileList', 'setting', 'resolvedProfile', 'labels', 'canManage',
-            'kokurikulerOptions'
+            'kokurikulerOptions', 'curriculumUpdates', 'curriculumUpdatesAt'
         ));
     }
 

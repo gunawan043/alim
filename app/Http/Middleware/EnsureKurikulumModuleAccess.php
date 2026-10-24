@@ -21,8 +21,16 @@ class EnsureKurikulumModuleAccess
     {
         $user = $request->user();
 
-        if ($user && app(KurikulumAccess::class)->canAccessKurikulumModule($user)) {
-            return $next($request);
+        if ($user) {
+            // Profil Kurikulum juga memuat info pembaruan yang perlu dibaca
+            // seluruh GTK. Pengaturan edit tetap dijaga di controller.
+            if ($request->routeIs('user.kurikulum.profil.index')) {
+                return $next($request);
+            }
+
+            if (app(KurikulumAccess::class)->canAccessKurikulumModule($user)) {
+                return $next($request);
+            }
         }
 
         abort(403, 'Anda tidak memiliki akses ke modul Kurikulum.');
