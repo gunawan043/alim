@@ -92,7 +92,7 @@
 @endsection
 
 @section('script')
-<script src="{{ URL::asset('build/libs/ckeditor4/ckeditor.js') }}"></script>
+<script src="{{ URL::asset('build/libs/ckeditor5/ckeditor.js') }}"></script>
 <script>
 const bankType = @json($bankType);
 const isMixed = @json($isMixed);
@@ -101,13 +101,14 @@ const tpOptions = @json($tps->map(fn ($tp) => ['id' => $tp->id, 'label' => ($tp-
 let savedWacanas = @json($wacanas->map(fn ($wacana) => ['id' => $wacana->id, 'label' => ($wacana->judul ?: \Str::limit(strip_tags($wacana->teks), 45)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : '')])->values());
 let questionIndex = 0;
 let wacanaIndex = 0;
+const wacanaEditors = {};
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 }
 
 function getEditor(id) {
-    return window.CKEDITOR && CKEDITOR.instances[id] ? CKEDITOR.instances[id] : null;
+    return wacanaEditors[id] || null;
 }
 
 function wacanaOptionsHtml(selected) {
@@ -273,23 +274,26 @@ function addWacanaBlock(data = {}) {
         const questions = document.querySelectorAll('.question-card');
         if (questions[data.posisi_setelah_soal - 1]) questions[data.posisi_setelah_soal - 1].after(card);
     }
-    if (window.CKEDITOR) {
-        CKEDITOR.replace(`wacanaTeks_${key}`, ckEditorConfig());
+    if (window.ClassicEditor) {
+        ClassicEditor.create(card.querySelector('.wacana-teks'), ckEditorConfig())
+            .then(editor => { wacanaEditors[`wacanaTeks_${key}`] = editor; })
+            .catch(error => console.error('CKEditor gagal dimuat', error));
     }
     card.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
 function ckEditorConfig() {
     return {
-        language: 'id',
-        height: 220,
-        toolbar: [
-            ['Bold', 'Italic', 'Underline', 'Strike'],
-            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent'],
-            ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
-            ['Link', 'Unlink'], ['Image', 'Table', 'HorizontalRule'], ['RemoveFormat', 'Source']
-        ],
-        filebrowserImageUploadUrl: '{{ route('user.soal.wacana.upload', ['userId' => $userId, 'bankId' => $bank->id]) }}?_token={{ csrf_token() }}'
+        licenseKey: 'GPL',
+        language: 'en',
+        toolbar: ['undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'link', 'uploadImage', 'insertTable', 'blockQuote', '|', 'bulletedList', 'numberedList', 'outdent', 'indent'],
+        image: {
+            toolbar: ['imageStyle:inline', 'imageStyle:block', 'imageStyle:side', '|', 'toggleImageCaption', 'imageTextAlternative']
+        },
+        simpleUpload: {
+            uploadUrl: '{{ route('user.soal.wacana.upload', ['userId' => $userId, 'bankId' => $bank->id]) }}',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}
+        }
     };
 }
 
