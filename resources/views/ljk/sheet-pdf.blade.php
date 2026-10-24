@@ -17,15 +17,20 @@
     // Area konten dimulai di x=14.99mm (margin kiri soal), tidak menimpa
     // penanda sudut (x 8–14mm) maupun QR (x ≥ 170mm).
     $contentLeft = 14.99;
-    $qrLeft = (float) ($pageData['qr']['x_mm'] ?? 170.0);
-    $contentWidth = max(90.0, $qrLeft - 2.0 - $contentLeft);
 
-    // Lebar alur teks (judul, karakter, instruksi) = lebar grid jawaban,
-    // sehingga tepi kanan sejajar dengan kolom kotak (tabel identitas tetap
-    // lebih sempit karena menghindari QR di kanan atas).
+    // Tabel identitas memakai lebar penuh area isi. QR dipindahkan ke
+    // ruang atas di atas tabel agar tidak memotong kolom tabel.
     $flowWidth = (float) config('ljk.template.paper.width_mm', 210.0)
         - $contentLeft
         - (float) config('ljk.template.margin_mm.right', 11.0);
+    $contentWidth = $flowWidth;
+
+    $qrSize = 17.0;
+    $qrX = round((float) config('ljk.template.paper.width_mm', 210.0)
+        - (float) config('ljk.template.margin_mm.right', 11.0)
+        - $qrSize
+        - 4.0, 2);
+    $qrY = 2.0;
 
     $fontSize = $fontSize ?? 9.6;
     $headerMm = $headerMm ?? 58.0;
@@ -105,7 +110,6 @@
     table.identitas td.label {
         width: 26%;
         font-weight: bold;
-        background: #f2f2f2;
     }
     table.identitas td.value { width: 24%; }
     .nama-line { display: inline-block; width: 100%; border-bottom: 0.3mm dotted #000; }
@@ -147,7 +151,7 @@
     {{-- QR identitas mesin (tanpa kunci jawaban) — tidak ada pada lembar master --}}
     @if(! $master && $qrDataUri)
         <img class="abs qr" src="{{ $qrDataUri }}"
-             style="left: {{ $pageData['qr']['x_mm'] }}mm; top: {{ $pageData['qr']['y_mm'] }}mm; width: {{ $pageData['qr']['size_mm'] }}mm; height: {{ $pageData['qr']['size_mm'] }}mm;">
+             style="left: {{ $qrX }}mm; top: {{ $qrY }}mm; width: {{ $qrSize }}mm; height: {{ $qrSize }}mm;">
     @endif
 
     {{-- Data strip mesin — tidak ada pada lembar master --}}
