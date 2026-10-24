@@ -230,6 +230,7 @@
                         <div class="col-sm-auto">
                             <div class="d-flex flex-wrap align-items-center gap-2">
                                 <form method="GET" action="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    <input type="hidden" name="mapel" value="{{ ($mapelFilter ?? 'all') === 'diampu' ? 'diampu' : '' }}">
                                     <select name="academic_year_id" class="form-select" style="width:200px" onchange="this.form.submit()">
                                         @foreach($academicYears as $ay)
                                             <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }} ({{ $ay->semester_text }})</option>
@@ -291,6 +292,15 @@
                         <span class="text-muted small fw-semibold me-2">Semester:</span>
                         <a href="{{ request()->fullUrlWithQuery(['semester' => 'ganjil']) }}" class="filter-badge {{ $semester === 'ganjil' ? 'active' : '' }}">Ganjil</a>
                         <a href="{{ request()->fullUrlWithQuery(['semester' => 'genap']) }}" class="filter-badge {{ $semester === 'genap' ? 'active' : '' }}">Genap</a>
+                        @if(($taughtSubjectIds ?? collect())->isNotEmpty())
+                            <span class="text-muted small ms-2 me-2">·</span>
+                            <span class="text-muted small fw-semibold me-2">Mapel:</span>
+                            <a href="{{ request()->fullUrlWithQuery(['mapel' => null]) }}" class="filter-badge {{ ($mapelFilter ?? 'all') !== 'diampu' ? 'active' : '' }}">Semua</a>
+                            <a href="{{ request()->fullUrlWithQuery(['mapel' => 'diampu']) }}" class="filter-badge {{ ($mapelFilter ?? 'all') === 'diampu' ? 'active' : '' }}">
+                                <i class="ri-user-star-line me-1"></i>Mapel Saya
+                                <span class="badge bg-primary-subtle text-primary ms-1">{{ $taughtSubjectIds->count() }}</span>
+                            </a>
+                        @endif
                         <span class="text-muted small ms-2 me-2">·</span>
                         <span class="text-muted small">{{ $totalMapel }} mapel · {{ $atpCount }} ATP tersusun</span>
                     </div>
@@ -387,8 +397,12 @@
                                     <td colspan="11" class="text-center py-5">
                                         <div class="text-muted">
                                             <i class="ri-inbox-archive-line fs-1 d-block mb-2"></i>
-                                            Belum ada mapel per jenjang. Lengkapi di
-                                            <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}" class="link-primary">Data Kelas</a>.
+                                            @if(($mapelFilter ?? 'all') === 'diampu')
+                                                Belum ada mapel yang diampu pada tahun ajaran dan semester ini.
+                                            @else
+                                                Belum ada mapel per jenjang. Lengkapi di
+                                                <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}" class="link-primary">Data Kelas</a>.
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

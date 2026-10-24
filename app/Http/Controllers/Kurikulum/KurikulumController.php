@@ -75,23 +75,32 @@ class KurikulumController extends Controller
         $rows = collect();
 
         // Mapel + tingkat yang benar-benar diampu guru pada periode ini.
-        // Null berarti editor/tim kurikulum (boleh menyusun semua mapel).
+        // Null pada authorablePairs berarti editor/tim kurikulum (boleh menyusun semua mapel).
         $access = app(KurikulumAccess::class);
-        $authorablePairs = null;
-        if (! $access->isKurikulumEditor($request->user())) {
-            $authorablePairs = TeachingAssignment::query()
-                ->where('teacher_id', $request->user()->id)
-                ->where('status', 'active')
-                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
-                ->with('studyGroup:id,grade_level_id')
-                ->get()
+        $teachingAssignments = TeachingAssignment::query()
+            ->where('teacher_id', $request->user()->id)
+            ->where('status', 'active')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->with('studyGroup:id,grade_level_id')
+            ->get();
+
+        $taughtSubjectIds = $teachingAssignments
+            ->pluck('subject_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $authorablePairs = $access->isKurikulumEditor($request->user())
+            ? null
+            : $teachingAssignments
                 ->map(fn ($assignment) => $assignment->subject_id.'|'.$assignment->studyGroup?->grade_level_id)
                 ->filter()
                 ->unique()
                 ->values()
                 ->all();
-        }
+
+        $mapelFilter = $request->input('mapel') === 'diampu' ? 'diampu' : 'all';
 
         // Filter per tingkat (Kelas 1, 2, 3, …) — "Semua Tingkat" bila kosong.
         $gradeLevelId = $request->input('grade_level_id');
@@ -119,6 +128,7 @@ class KurikulumController extends Controller
             $gradeSubjects = GradeLevelSubject::with('subject')
                 ->whereIn('grade_level_id', $gradeLevelIds)
                 ->forAcademicYear($academicYearId)
+                ->when($mapelFilter === 'diampu', fn ($q) => $q->whereIn('subject_id', $taughtSubjectIds->all() ?: ['-']))
                 ->orderByAcademicYearFirst()
                 ->get()
                 ->groupBy('grade_level_id')
@@ -268,6 +278,8 @@ class KurikulumController extends Controller
             'gradeLevelId',
             'canEditKktp',
             'canPrepare',
+            'taughtSubjectIds',
+            'mapelFilter',
             'canManageProfile',
             'curriculumUpdates',
             'curriculumUpdatesAt',

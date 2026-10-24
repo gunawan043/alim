@@ -156,6 +156,16 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertSee('100'); // JP efektif math = 4 × 25
     }
 
+    public function test_filter_mapel_saya_hanya_menampilkan_mapel_diampu(): void
+    {
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum?mapel=diampu")
+            ->assertOk()
+            ->assertSee('Mapel Saya')
+            ->assertSee('Matematika')
+            ->assertDontSee('Fisika');
+    }
+
     public function test_tombol_susun_atp_hanya_untuk_mapel_yang_diampu(): void
     {
         $guruPage = $this->actingAs($this->guru)
