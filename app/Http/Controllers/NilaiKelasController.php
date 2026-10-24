@@ -891,13 +891,45 @@ class NilaiKelasController extends Controller
             'published' => $registrations->filter(fn ($r) => $r->isPublished())->count(),
         ];
 
-        // Pengaturan tanggal pembagian & tata letak PDF rapor
+        // Pengaturan tanggal pembagian, tata letak PDF, dan mapel rapor
         // (per sekolah + TA + semester; berlaku untuk STS dan SAS).
         $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $layout = $distributionSetting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
 
+        $raporPdf = app(RaporPdfService::class);
+        $availableSubjects = $selectedAyId
+            ? $raporPdf->availableSubjects($schoolId, $studyGroup, (string) $selectedAyId, (string) $selectedSem)
+            : collect();
+        $availableSubjectIds = $availableSubjects->pluck('id')->all();
+        $savedSubjectIds = $distributionSetting?->reportSubjectIds();
+        $selectedSubjectIds = $savedSubjectIds
+            ? array_values(array_intersect($savedSubjectIds, $availableSubjectIds))
+            : $availableSubjectIds;
+        if ($selectedSubjectIds === []) {
+            $selectedSubjectIds = $availableSubjectIds;
+        }
+
+        $subjectOrder = array_flip($selectedSubjectIds);
+        $availableSubjects = $availableSubjects
+            ->sortBy(fn ($subject) => $subjectOrder[$subject->id] ?? PHP_INT_MAX)
+            ->values();
+
+        $summaries = $selectedAyId && $students->isNotEmpty()
+            ? $raporPdf->summariesForStudents(
+                $schoolId,
+                $studyGroup,
+                (string) $selectedAyId,
+                (string) $selectedSem,
+                'sas',
+                $students->pluck('student')->filter(),
+                $selectedSubjectIds,
+            )
+            : [];
+
         return view('nilai-kelas.rapor-index', compact(
-            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy', 'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'canPublish',
+            'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
+            'students', 'registrations', 'stats', 'distributionSetting', 'layout',
+            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish',
         ));
     }
 
@@ -1162,6 +1194,60 @@ class NilaiKelasController extends Controller
         );
 
         return back()->with('success', 'Pengaturan tata letak rapor berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
+    }
+
+    /**
+     * Simpan mapel yang masuk rapor beserta urutannya.
+     */
+    public function raporSubjectSettings(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $access = $this->assertLegerAccess($userId, $studyGroup);
+        abort_unless($access === 'full', 403, 'Pengaturan mapel rapor hanya untuk TU/Kurikulum/Kepala.');
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'subject_ids' => 'required|array|min:1',
+            'subject_order' => 'nullable|array',
+        ]);
+
+        $available = app(RaporPdfService::class)
+            ->availableSubjects($schoolId, $studyGroup, (string) $validated['academic_year_id'], (string) $validated['semester'])
+            ->pluck('id')
+            ->all();
+
+        $selected = collect($validated['subject_ids'])
+            ->filter(fn ($id) => is_string($id) && in_array($id, $available, true))
+            ->unique()
+            ->values();
+
+        if ($selected->isEmpty()) {
+            return back()->with('error', 'Pilih minimal satu mapel yang tersedia untuk rombel ini.');
+        }
+
+        $order = (array) ($validated['subject_order'] ?? []);
+        $selected = $selected
+            ->sortBy(fn ($id) => (int) ($order[$id] ?? 9999))
+            ->values();
+
+        RaporDistributionSetting::updateOrCreate(
+            [
+                'school_id' => $studyGroup->school_id,
+                'academic_year_id' => $validated['academic_year_id'],
+                'semester' => $validated['semester'],
+            ],
+            [
+                'report_subject_ids' => $selected->all(),
+                'updated_by' => $request->user()?->id,
+            ]
+        );
+
+        return back()->with('success', 'Mapel rapor dan urutannya berhasil disimpan.');
     }
 
     /**

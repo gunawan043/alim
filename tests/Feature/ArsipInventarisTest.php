@@ -624,6 +624,51 @@ class ArsipInventarisTest extends TestCase
         $this->assertSame('folio', $layout['paper_size']);
     }
 
+    public function test_tabel_rapor_menampilkan_nilai_predikat_dan_peringkat(): void
+    {
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor"
+            ."?academic_year_id={$this->activeAy->id}&semester=ganjil";
+
+        $this->actingAs($this->tu)
+            ->get($url)
+            ->assertOk()
+            ->assertSee('Nilai', false)
+            ->assertSee('Predikat', false)
+            ->assertSee('Peringkat', false)
+            ->assertSee('85.0', false)
+            ->assertSee('Jayyid Jiddan', false)
+            ->assertSee('#1', false);
+    }
+
+    public function test_mapel_rapor_dapat_disimpan_untuk_rombel(): void
+    {
+        $subjects = app(RaporPdfService::class)->availableSubjects(
+            $this->school->id,
+            $this->activeRombel,
+            $this->activeAy->id,
+            'ganjil',
+        );
+        $this->assertNotEmpty($subjects);
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/mapel", [
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'subject_ids' => [$subjects->first()->id],
+                'subject_order' => [$subjects->first()->id => 1],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $setting = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail();
+
+        $this->assertSame([$subjects->first()->id], $setting->reportSubjectIds());
+    }
+
     public function test_tanggal_hijriah_arab_otomatis(): void
     {
         $hijri = ArabicText::formatHijriDate('2026-10-20');

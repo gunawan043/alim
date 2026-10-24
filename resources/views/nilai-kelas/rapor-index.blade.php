@@ -215,8 +215,8 @@
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-xl-6">
+    <div class="row g-3 mb-5">
+        <div class="col-xl-7">
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
@@ -297,6 +297,9 @@
                                     <th style="width:40px;">No</th>
                                     <th>NIS</th>
                                     <th>Nama Santri</th>
+                                    <th style="width:75px;text-align:center;">Nilai</th>
+                                    <th style="width:90px;text-align:center;">Predikat</th>
+                                    <th style="width:70px;text-align:center;">Peringkat</th>
                                     <th style="width:120px;text-align:center;">Aksi</th>
                                 </tr>
                             </thead>
@@ -308,7 +311,18 @@
                                         if (request('search') && stripos($student->name, request('search')) === false)
                                             continue;
                                     @endphp
-                                    @php $rowNum++; @endphp
+                                    @php
+                                        $rowNum++;
+                                        $summary = $summaries[$student->id] ?? ['nilai' => null, 'predikat' => '—', 'rank' => null];
+                                        $predicateClass = match ($summary['predikat']) {
+                                            'Mumtaz Murtafi\'', 'Mumtaz' => 'success',
+                                            'Jayyid Jiddan' => 'info',
+                                            'Jayyid' => 'warning',
+                                            'Maqbul' => 'secondary',
+                                            'Roosib' => 'danger',
+                                            default => 'secondary',
+                                        };
+                                    @endphp
                                     <tr>
                                         <td class="text-center text-muted">{{ $rowNum }}</td>
                                         <td class="text-center">{{ $student->nis ?? '-' }}</td>
@@ -321,6 +335,21 @@
                                                 </div>
                                                 <span class="fw-semibold">{{ $student->name }}</span>
                                             </div>
+                                        </td>
+                                        <td class="text-center fw-semibold">
+                                            {{ $summary['nilai'] !== null ? number_format((float) $summary['nilai'], 1) : '—' }}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-{{ $predicateClass }}-subtle text-{{ $predicateClass }}">
+                                                {{ $summary['predikat'] ?: '—' }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if($summary['rank'])
+                                                <span class="badge bg-primary-subtle text-primary">#{{ $summary['rank'] }}</span>
+                                            @else
+                                                —
+                                            @endif
                                         </td>
                                         <td class="text-center">
                                             <div class="btn-group">
@@ -353,7 +382,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">
+                                        <td colspan="7" class="text-center text-muted py-4">
                                             <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                         </td>
                                     </tr>
@@ -365,7 +394,7 @@
             </div>
         </div>
 
-        <div class="col-xl-6">
+        <div class="col-xl-5">
             @php
                 $previewStudent = $students->first()?->student;
                 $previewUrl = $previewStudent
@@ -494,7 +523,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="border rounded overflow-hidden bg-light" style="height:620px;">
+                        <div class="border rounded overflow-hidden bg-light" style="height:720px;">
                             <iframe id="raporPreview"
                                     src="{{ $previewUrl }}"
                                     title="Preview PDF rapor"
@@ -514,6 +543,78 @@
                     @endif
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- Pengaturan Mapel Rapor & Urutan --}}
+    <div class="card mt-3">
+        <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <h5 class="card-title mb-0"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h5>
+                <p class="text-muted mb-0 small">Centang mapel yang dicetak, lalu atur nomor urut. Nomor lebih kecil tampil lebih dulu. Berlaku untuk STS dan SAS.</p>
+            </div>
+            <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
+        </div>
+        <div class="card-body">
+            @if($availableSubjects->isEmpty())
+                <div class="alert alert-warning py-2 mb-0 small">
+                    <i class="ri-information-line me-1"></i>Belum ada buku/mapel aktif untuk rombel dan semester ini.
+                </div>
+            @else
+                <form method="POST"
+                      action="{{ route('user.schools.nilai-kelas.rapor.subjects', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                    @csrf
+                    <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                    <input type="hidden" name="semester" value="{{ $selectedSem }}">
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:70px;" class="text-center">Masuk</th>
+                                    <th>Mata Pelajaran</th>
+                                    <th style="width:120px;" class="text-center">Urutan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $nextOrder = count($selectedSubjectIds) + 1; @endphp
+                                @foreach($availableSubjects as $subject)
+                                    @php
+                                        $isSelected = in_array($subject->id, $selectedSubjectIds, true);
+                                        $orderIndex = array_search($subject->id, $selectedSubjectIds, true);
+                                    @endphp
+                                    <tr>
+                                        <td class="text-center">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="subject_ids[]" value="{{ $subject->id }}"
+                                                   id="subject-{{ $subject->id }}" @checked($isSelected)>
+                                        </td>
+                                        <td>
+                                            <label class="fw-semibold mb-0" for="subject-{{ $subject->id }}">{{ $subject->name }}</label>
+                                            @if($subject->category)
+                                                <small class="text-muted ms-1">({{ $subject->category }})</small>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="number" class="form-control form-control-sm text-center mx-auto"
+                                                   style="max-width:90px;" name="subject_order[{{ $subject->id }}]"
+                                                   min="1" max="99" step="1"
+                                                   value="{{ $isSelected && $orderIndex !== false ? $orderIndex + 1 : $nextOrder++ }}">
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Urutan hanya dipakai untuk mapel yang dicentang.</small>
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="ri-save-3-line me-1"></i>Simpan Mapel &amp; Urutan
+                        </button>
+                    </div>
+                </form>
+            @endif
         </div>
     </div>
 

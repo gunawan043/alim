@@ -104,20 +104,19 @@ class RaporPdfService
     }
 
     /**
-     * @return array<string, mixed> peta studentId => data santri (format view rapor)
+     * Mapel + buku yang dipakai rapor, sudah difilter dan diurutkan
+     * berdasarkan pengaturan mapel rapor.
+     *
+     * @param  array<int, string>|null  $reportSubjectIds
+     * @return array{0: \Illuminate\Support\Collection, 1: \Illuminate\Support\Collection}
      */
-    public function buildSantriData(
+    private function subjectBooks(
         ?string $schoolId,
-        StudyGroup $studyGroup,
-        ?AcademicYear $selectedAy,
+        string $studyGroupId,
         string $selectedAyId,
         string $selectedSem,
-        string $jenis,
-        Student $student
+        ?array $reportSubjectIds = null,
     ): array {
-        $studentId = $student->id;
-        $studyGroupId = $studyGroup->id;
-
         $subjectMap = TeacherAdminBook::with('subject')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
@@ -133,6 +132,14 @@ class RaporPdfService
             ->sortBy(fn ($s) => AcademicNilai::subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
 
+        if (! empty($reportSubjectIds)) {
+            $order = array_flip($reportSubjectIds);
+            $subjectMap = $subjectMap
+                ->filter(fn ($subject) => isset($order[$subject->id]))
+                ->sortBy(fn ($subject) => $order[$subject->id])
+                ->values();
+        }
+
         $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -142,6 +149,134 @@ class RaporPdfService
                 ->where('semester', $selectedSem)
                 ->where('is_active', true)->first(),
         ]);
+
+        return [$subjectMap, $bookMap];
+    }
+
+    /**
+     * Semua mapel yang tersedia untuk rombel/TA/semester ini.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function availableSubjects(
+        ?string $schoolId,
+        StudyGroup $studyGroup,
+        string $selectedAyId,
+        string $selectedSem,
+    ) {
+        [$subjects] = $this->subjectBooks($schoolId, $studyGroup->id, $selectedAyId, $selectedSem);
+
+        return $subjects;
+    }
+
+    /**
+     * Ringkasan nilai/predikat/peringkat untuk tabel daftar santri.
+     * Nilai dihitung dari mapel yang dipilih dengan jenis nilai akhir (SAS).
+     *
+     * @param  iterable<int, Student>  $students
+     * @param  array<int, string>|null  $reportSubjectIds
+     * @return array<string, array{nilai: float|null, predikat: string, rank: int|null}>
+     */
+    public function summariesForStudents(
+        ?string $schoolId,
+        StudyGroup $studyGroup,
+        string $selectedAyId,
+        string $selectedSem,
+        string $jenis,
+        iterable $students,
+        ?array $reportSubjectIds = null,
+    ): array {
+        [$subjectMap, $bookMap] = $this->subjectBooks(
+            $schoolId, $studyGroup->id, $selectedAyId, $selectedSem, $reportSubjectIds
+        );
+
+        $students = collect($students)->filter(fn ($s) => $s instanceof Student)->values();
+        $studentIds = $students->pluck('id')->all();
+
+        $nilaiRows = NilaiSumatif::query()
+            ->whereIn('admin_book_id', $bookMap->pluck('id'))
+            ->whereIn('student_id', $studentIds)
+            ->where('semester', $selectedSem)
+            ->get()
+            ->groupBy('student_id');
+
+        $tahfidz = app(TahfidzRaporService::class);
+        $summaries = [];
+
+        foreach ($students as $student) {
+            $nilaiMap = $nilaiRows->get($student->id, collect())->keyBy('admin_book_id');
+            $total = 0.0;
+            $count = 0;
+
+            foreach ($subjectMap as $subject) {
+                $book = $bookMap[$subject->id] ?? null;
+                if (! $book) {
+                    continue;
+                }
+
+                $score = $tahfidz->scoreFor(
+                    $student->id,
+                    $book,
+                    $selectedAyId,
+                    $selectedSem,
+                    $jenis,
+                    $nilaiMap[$book->id] ?? null,
+                );
+
+                // Sebelum SAS diisi, tampilkan nilai STS sebagai ringkasan sementara
+                // agar tabel data tidak kosong saat guru baru menyiapkan rapor.
+                if ($score === null && $jenis === 'sas') {
+                    $score = $tahfidz->scoreFor(
+                        $student->id,
+                        $book,
+                        $selectedAyId,
+                        $selectedSem,
+                        'sts',
+                        $nilaiMap[$book->id] ?? null,
+                    );
+                }
+
+                if ($score !== null) {
+                    $total += (float) $score;
+                    $count++;
+                }
+            }
+
+            $average = $count > 0 ? round($total / $count, 1) : null;
+            $summaries[$student->id] = [
+                'nilai' => $average,
+                'predikat' => AcademicNilai::predikat($average),
+                'rank' => null,
+            ];
+        }
+
+        $rank = 1;
+        foreach (collect($summaries)->filter(fn ($row) => $row['nilai'] !== null)->sortByDesc('nilai') as $studentId => $row) {
+            $summaries[$studentId]['rank'] = $rank++;
+        }
+
+        return $summaries;
+    }
+
+    /**
+     * @return array<string, mixed> peta studentId => data santri (format view rapor)
+     */
+    public function buildSantriData(
+        ?string $schoolId,
+        StudyGroup $studyGroup,
+        ?AcademicYear $selectedAy,
+        string $selectedAyId,
+        string $selectedSem,
+        string $jenis,
+        Student $student,
+        ?array $reportSubjectIds = null,
+    ): array {
+        $studentId = $student->id;
+        $studyGroupId = $studyGroup->id;
+
+        [$subjectMap, $bookMap] = $this->subjectBooks(
+            $schoolId, $studyGroupId, $selectedAyId, $selectedSem, $reportSubjectIds
+        );
 
         $nilaiMap = [];
         $studentNilaiRows = NilaiSumatif::whereIn('admin_book_id', $bookMap->pluck('id'))
@@ -259,8 +394,8 @@ class RaporPdfService
     ): string {
         $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
 
-        $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+        $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
         $layout = $layout ?? ($setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout());
 
         $resolver = app(ArabicNameResolver::class);
@@ -317,6 +452,7 @@ class RaporPdfService
     ): string {
         $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
 
+        $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $santri = [];
 
         foreach ($students as $student) {
@@ -324,10 +460,9 @@ class RaporPdfService
                 continue;
             }
 
-            $santri += $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student);
+            $santri += $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
         }
 
-        $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $layout = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
 
         $resolver = app(ArabicNameResolver::class);

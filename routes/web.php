@@ -845,6 +845,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{studyGroupId}/rapor', [NilaiKelasController::class, 'rapor'])->name('rapor');
                     Route::post('/{studyGroupId}/rapor/pengaturan', [NilaiKelasController::class, 'raporSettings'])->name('rapor.pengaturan');
                     Route::post('/{studyGroupId}/rapor/layout', [NilaiKelasController::class, 'raporLayoutSettings'])->name('rapor.layout');
+                    Route::post('/{studyGroupId}/rapor/mapel', [NilaiKelasController::class, 'raporSubjectSettings'])->name('rapor.subjects');
                     Route::post('/{studyGroupId}/rapor/{studentId}/catatan', [NilaiKelasController::class, 'raporNote'])->name('rapor.note');
                     Route::post('/{studyGroupId}/rapor/finalize', [NilaiKelasController::class, 'raporFinalize'])->name('rapor.finalize');
                     Route::post('/{studyGroupId}/rapor/publish', [NilaiKelasController::class, 'raporPublish'])->name('rapor.publish');

@@ -31,6 +31,7 @@ class RaporDistributionSetting extends Model
         'distribution_date',
         'city',
         'notes',
+        'report_subject_ids',
         'margin_top',
         'margin_right',
         'margin_bottom',
@@ -47,6 +48,7 @@ class RaporDistributionSetting extends Model
 
     protected $casts = [
         'distribution_date' => 'date',
+        'report_subject_ids' => 'array',
         'margin_top' => 'float',
         'margin_right' => 'float',
         'margin_bottom' => 'float',
@@ -79,6 +81,23 @@ class RaporDistributionSetting extends Model
             'line_height' => 1.4,
             'paper_size' => 'a4',
         ];
+    }
+
+    /**
+     * ID mapel yang masuk rapor, sesuai urutan tampil.
+     * Null berarti semua mapel tersedia.
+     *
+     * @return array<int, string>|null
+     */
+    public function reportSubjectIds(): ?array
+    {
+        if (! is_array($this->report_subject_ids)) {
+            return null;
+        }
+
+        $ids = array_values(array_filter($this->report_subject_ids, fn ($id) => is_string($id) && $id !== ''));
+
+        return $ids === [] ? null : $ids;
     }
 
     /**
