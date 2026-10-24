@@ -395,6 +395,24 @@
              id="guru_kurikulum">
             <ul class="nav nav-sm flex-column">
                 <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
+                        Profil &amp; Info Kurikulum
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
+                        Peta Kurikulum
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.cp.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}">
+                        Capaian Pembelajaran
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.tp.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.tp.index', ['userId' => $userId]) }}">
                         Tujuan Pembelajaran
@@ -425,29 +443,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.akses-edit.']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}">
-                        Permintaan Akses Edit
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
-                        Peta Kurikulum
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
-                       href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
-                        Profil &amp; Info Kurikulum
-                    </a>
-                </li>
-
-                <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.ai.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.ai.index', ['userId' => $userId]) }}">
                         AI Assistant (RPM &amp; Soal)
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.akses-edit.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}">
+                        Permintaan Akses Edit
                     </a>
                 </li>
             </ul>
