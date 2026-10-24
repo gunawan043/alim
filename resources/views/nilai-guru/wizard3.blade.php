@@ -49,7 +49,19 @@
                 </div>
                 <div class="col-md-auto d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
                     @php $ab = $book['adminBook']; @endphp
-                    @if($ab->isPublished())
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="autoPublishToggle"
+                               {{ $ab->auto_publish ? 'checked' : '' }}>
+                        <label class="form-check-label small" for="autoPublishToggle">
+                            Auto publish
+                        </label>
+                    </div>
+                    @if($ab->auto_publish)
+                        <span class="badge bg-success-subtle text-success" style="font-size:11px;padding:6px 10px;">
+                            <i class="ri-flashlight-line me-1"></i>Nilai langsung terbaca wali
+                        </span>
+                    @endif
+                    @if(! $ab->auto_publish && $ab->isPublished())
                         <span class="badge bg-success-subtle text-success" style="font-size:11px;padding:6px 10px;">
                             <i class="ri-eye-line me-1"></i>Dipublikasikan ke wali
                         </span>
@@ -58,7 +70,7 @@
                             @csrf
                             <button class="btn btn-outline-danger btn-sm"><i class="ri-eye-off-line me-1"></i>Batalkan Publish</button>
                         </form>
-                    @else
+                    @elseif(! $ab->auto_publish)
                         <form method="POST" action="{{ route('user.schools.nilai-kelas.buku.publish', ['userId' => $userId, 'studyGroupId' => $ab->study_group_id, 'adminBookId' => $ab->id]) }}"
                               class="d-inline" onsubmit="return confirm('Publikasikan nilai buku ini ke wali santri?')">
                             @csrf
@@ -867,5 +879,37 @@ function guardianColumnsSave() {
             if (status) status.textContent = error.message || 'Gagal menyimpan kolom.';
         });
 }
+</script>
+<script>
+(function () {
+    const toggle = document.getElementById('autoPublishToggle');
+    if (!toggle || toggle.dataset.bound === '1') return;
+    toggle.dataset.bound = '1';
+
+    toggle.addEventListener('change', function () {
+        const target = this.checked;
+        toggle.disabled = true;
+
+        fetch(@json(route('user.schools.guru-mapel.w3.publish-mode', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id])), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': @json(csrf_token()),
+            },
+            body: JSON.stringify({ auto_publish: target ? 1 : 0 }),
+        })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.success) throw new Error(data.message || 'Gagal mengubah mode publikasi.');
+                window.location.reload();
+            })
+            .catch(function (error) {
+                toggle.checked = !target;
+                toggle.disabled = false;
+                alert(error.message || 'Gagal mengubah mode publikasi.');
+            });
+    });
+})();
 </script>
 @endpush

@@ -345,6 +345,33 @@ class RaporPublishTest extends TestCase
         $this->assertStringContainsString('belum ada santri aktif', (string) session('error'));
     }
 
+    public function test_mode_publish_buku_bisa_otomatis_atau_manual(): void
+    {
+        $this->assertTrue((bool) $this->book->fresh()->auto_publish);
+
+        $this->actingAs($this->admin)
+            ->post(route('user.schools.guru-mapel.w3.publish-mode', [
+                'userId' => $this->admin->id,
+                'adminBookId' => $this->book->id,
+            ]), ['auto_publish' => 0])
+            ->assertOk()
+            ->assertJsonPath('auto_publish', false);
+
+        $manual = $this->book->fresh();
+        $this->assertFalse((bool) $manual->auto_publish);
+        $this->assertNull($manual->published_at);
+
+        $this->actingAs($this->admin)
+            ->post(route('user.schools.guru-mapel.w3.publish-mode', [
+                'userId' => $this->admin->id,
+                'adminBookId' => $this->book->id,
+            ]), ['auto_publish' => 1])
+            ->assertOk()
+            ->assertJsonPath('auto_publish', true);
+
+        $this->assertNotNull($this->book->fresh()->published_at);
+    }
+
     public function test_kolom_api_hanya_mengembalikan_kolom_yang_diizinkan(): void
     {
         $this->book->update(['guardian_visible_columns' => ['nr_final']]);

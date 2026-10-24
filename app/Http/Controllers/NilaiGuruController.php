@@ -516,7 +516,7 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
-        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+        abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $request->validate([
             'columns' => 'required|array|min:1',
@@ -563,11 +563,39 @@ class NilaiGuruController extends Controller
         ]);
     }
 
+    /**
+     * Atur mode publikasi buku: otomatis (default) atau manual.
+     */
+    public function wizard3PublishMode(Request $request, string $userId, string $adminBookId)
+    {
+        $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        $validated = $request->validate([
+            'auto_publish' => 'required|boolean',
+        ]);
+
+        $auto = (bool) $validated['auto_publish'];
+
+        $book['adminBook']->update([
+            'auto_publish' => $auto,
+            'published_at' => $auto ? ($book['adminBook']->published_at ?? now()) : null,
+            'published_by' => $auto ? ($book['adminBook']->published_by ?? auth()->id()) : null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'auto_publish' => $auto,
+            'message' => $auto
+                ? 'Mode otomatis aktif. Nilai yang disimpan langsung terbaca wali.'
+                : 'Mode manual aktif. Nilai hanya terbaca wali setelah dipublikasikan.',
+        ]);
+    }
+
     public function wizard3Store(Request $request, string $userId, string $adminBookId)
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
-        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+        abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $request->validate([
             'sumatif' => 'required|array',
@@ -679,6 +707,8 @@ class NilaiGuruController extends Controller
                 ->update(['paket_soal_id' => $paketId]);
         }
 
+        $this->autoPublishBook($book['adminBook']);
+
         return redirect()->back()->with('success', 'Nilai Sumatif berhasil disimpan.');
     }
 
@@ -686,7 +716,7 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
-        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+        abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $validated = $request->validate([
             'nr_final_weight_rs' => 'required|numeric|min:0|max:100',
@@ -772,7 +802,7 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
-        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+        abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
         $request->validate([
             'formatif' => 'required|array',
@@ -791,6 +821,7 @@ class NilaiGuruController extends Controller
         ]);
 
         $this->saveFormatifRows($book, (array) $request->formatif);
+        $this->autoPublishBook($book['adminBook']);
 
         return redirect()->back()->with('success', 'Nilai Formatif berhasil disimpan.');
     }
@@ -994,6 +1025,8 @@ class NilaiGuruController extends Controller
             );
         }
 
+        $this->autoPublishBook($book['adminBook']);
+
         return redirect()->back()->with('success', 'Penghargaan Akademik berhasil disimpan.');
     }
 
@@ -1057,7 +1090,12 @@ class NilaiGuruController extends Controller
     {
         $book = $this->loadAdminBook($userId, $adminBookId, true);
 
-        abort_if($book['adminBook']->isPublished(), 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+        abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+
+        if ($book['adminBook']->auto_publish && in_array($request->input('type'), ['sumatif', 'formatif', 'penghargaan'], true)) {
+            $this->autoPublishBook($book['adminBook']);
+        }
+
         $semester = $book['adminBook']->semester;
         $academicYearId = $book['adminBook']->academic_year_id;
         $data = $request->all();
@@ -1357,6 +1395,21 @@ class NilaiGuruController extends Controller
         return $books
             ->unique(fn ($b) => $b->subject_id.'|'.$b->study_group_id.'|'.$b->academic_year_id.'|'.$b->semester)
             ->values();
+    }
+
+    /**
+     * Publikasikan buku otomatis bila mode auto_publish aktif.
+     */
+    private function autoPublishBook(TeacherAdminBook $book): void
+    {
+        if (! $book->auto_publish) {
+            return;
+        }
+
+        $book->forceFill([
+            'published_at' => now(),
+            'published_by' => auth()->id(),
+        ])->save();
     }
 
     private function loadAdminBook(string $userId, string $adminBookId, bool $forWrite = false): array

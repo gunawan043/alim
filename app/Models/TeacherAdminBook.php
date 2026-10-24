@@ -36,6 +36,7 @@ class TeacherAdminBook extends Model
         'locked_by',
         'published_at',
         'published_by',
+        'auto_publish',
         'guardian_visible_columns',
         'nr_final_weight_rs',
         'nr_final_weight_sts',
@@ -52,6 +53,7 @@ class TeacherAdminBook extends Model
         'formatif_columns' => 'array',
         'locked_at' => 'datetime',
         'published_at' => 'datetime',
+        'auto_publish' => 'boolean',
         'guardian_visible_columns' => 'array',
     ];
 
