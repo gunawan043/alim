@@ -4,7 +4,16 @@
         $flashModals[] = ['id' => 'flashSuccessModal', 'tone' => 'success', 'title' => 'Berhasil', 'message' => session('success')];
     }
     if (session('error')) {
-        $flashModals[] = ['id' => 'flashErrorModal', 'tone' => 'danger', 'title' => 'Gagal', 'message' => session('error')];
+        $publishBlocked = str_contains((string) session('error'), 'Publikasi dibatalkan');
+        $flashModals[] = [
+            'id' => 'flashErrorModal',
+            'tone' => 'danger',
+            'title' => $publishBlocked ? 'Publikasi Dibatalkan' : 'Gagal',
+            'message' => session('error'),
+            'image' => $publishBlocked
+                ? 'https://media.lordicon.com/icons/wired/outline/926-road-barrier.gif'
+                : null,
+        ];
     }
     if (session('warning')) {
         $flashModals[] = ['id' => 'flashWarningModal', 'tone' => 'warning', 'title' => 'Peringatan', 'message' => session('warning')];
@@ -18,7 +27,7 @@
 @endphp
 
 @foreach($flashModals as $modal)
-    <x-modal-notify :id="$modal['id']" :tone="$modal['tone']" :title="$modal['title']" :message="$modal['message']" />
+    <x-modal-notify :id="$modal['id']" :tone="$modal['tone']" :title="$modal['title']" :message="$modal['message']" :image="$modal['image'] ?? null" />
 @endforeach
 
 @if(count($flashModals))

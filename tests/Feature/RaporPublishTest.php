@@ -247,7 +247,7 @@ class RaporPublishTest extends TestCase
                 'semester' => 'ganjil',
             ]))
             ->assertOk()
-            ->assertSee('publishBlockedModal', false)
+            ->assertSee('flashErrorModal', false)
             ->assertSee('926-road-barrier.gif', false);
     }
 

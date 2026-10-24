@@ -3,6 +3,7 @@
     'tone' => 'info',
     'title' => 'Informasi',
     'message' => '',
+    'image' => null,
 ])
 
 @php
@@ -28,9 +29,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body text-center px-4 pb-4">
-                <lord-icon src="{{ $p['icon'] }}" trigger="loop"
-                           colors="primary:{{ $p['primary'] }},secondary:{{ $p['secondary'] }}"
-                           style="width:110px;height:110px;"></lord-icon>
+                @if($image)
+                    <img src="{{ $image }}" alt=""
+                         style="width:110px;height:110px;object-fit:contain;filter:brightness(0) saturate(100%) invert(23%) sepia(93%) saturate(3000%) hue-rotate(345deg) brightness(95%) contrast(100%);">
+                @else
+                    <lord-icon src="{{ $p['icon'] }}" trigger="loop"
+                               colors="primary:{{ $p['primary'] }},secondary:{{ $p['secondary'] }}"
+                               style="width:110px;height:110px;"></lord-icon>
+                @endif
                 <h4 class="mt-2 mb-2">{{ $title }}</h4>
                 <div class="text-muted mb-4">{!! nl2br(e($message)) !!}</div>
                 <button type="button" class="btn {{ $p['button'] }} px-4" data-bs-dismiss="modal">

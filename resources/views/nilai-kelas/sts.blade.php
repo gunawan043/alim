@@ -862,7 +862,6 @@
         </div>
     </div>
 
-    @include('components.publish-blocked-modal')
 @endsection
 
 @section('script')
