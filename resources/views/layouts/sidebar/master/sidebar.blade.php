@@ -435,6 +435,7 @@
                 <a class="nav-link{ isActiveMaster($currentRoute, 'user.schools.') ? ' active' : '' }"
                    href="{{ route('user.schools.nilai-kelas.index', ['userId' => auth()->id()]) }}">
                     Leger &amp; Cetak Rapor
+                    @include('layouts.sidebar.partials.nilai-badge')
                 </a>
             </li>
             <li class="nav-item">

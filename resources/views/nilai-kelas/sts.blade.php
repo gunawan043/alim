@@ -28,7 +28,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
-    @if(session('error'))
+    @if(session('error') && ! str_contains((string) session('error'), 'Publikasi dibatalkan'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -153,8 +153,9 @@
                                 </form>
                             @else
                                 <form method="POST" action="{{ route('user.schools.nilai-kelas.buku.publish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'adminBookId' => $activeBook->id]) }}"
-                                      class="d-inline" onsubmit="return confirm('Publikasikan nilai mapel ini ke wali santri?')">
+                                      class="d-inline" onsubmit="return confirm('Publikasikan nilai {{ strtoupper($legerMode ?? 'sts') }} mapel ini ke wali santri?')">
                                     @csrf
+                                    <input type="hidden" name="jenis" value="{{ $legerMode ?? 'sts' }}">
                                     <button class="btn btn-success btn-md me-1"><i class="ri-send-plane-line me-1"></i>Publish Nilai</button>
                                 </form>
                             @endif
@@ -854,6 +855,8 @@
             </div>
         </div>
     </div>
+
+    @include('components.publish-blocked-modal')
 @endsection
 
 @section('script')

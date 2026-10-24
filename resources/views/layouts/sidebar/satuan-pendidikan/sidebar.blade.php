@@ -5,7 +5,7 @@
        1. Menu                → semua (Dashboard root, Profil, Sekolah, Notifikasi, Approval)
        2. Dashboard           → sesuai jabatan & tugas (multi dashboard)
        3. KBM Saya            → Guru: Buku Nilai, Absensi, Jadwal, Jurnal, Modul Ajar
-       4. Kesiswaan           → Santri, Rombel, Wali Kelas, Mutasi, Kedisiplinan, Prestasi
+       4. Kesiswaan           → Santri, Rombel, Wali Kelas, Mutasi, Kedisiplinan, Prestasi, Konseling
        5. Akademik            → Kurikulum, Plotting, SK, Jadwal, Jam, Kaldik, Asesmen
        6. GTK & Tugas         → Data GTK, Pengajuan, Tugas Tambahan, Kinerja, Koor Mapel
        7. Ekstrakurikuler
@@ -91,6 +91,9 @@
     $isWaliKelas       = $hasTugas('Wali Kelas') && $isActuallyWaliKelas;
     $isTimKurikulum    = $hasTugas('Tim Kurikulum');
     $isTimKesiswaan    = $hasTugas('Tim Kesiswaan');
+    $isGuruBK          = $hasJabatan('Guru BK') || $hasJabatan('Guru Bimbingan Konseling')
+        || $hasTugas('Guru BK') || $hasTugas('Guru Bimbingan Konseling')
+        || $hasTugas('Koordinator BK') || $hasTugas('Konselor');
     $isPembinaEkskul   = $hasTugas('Pembina Ekstrakurikuler');
     $isKoorLab         = $hasTugas('Koordinator Laboratorium');
     $isKoorSarpras     = $hasTugas('Koordinator Sarpras Satuan Pendidikan');
@@ -485,9 +488,9 @@
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 4 — KESISWAAN
-     Santri, Rombel, Wali Kelas, Mutasi, Kedisiplinan, Prestasi
+     Santri, Rombel, Wali Kelas, Mutasi, Kedisiplinan, Prestasi, Konseling
      ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan || $isWaliKelas)
+@if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan || $isGuruBK || $isWaliKelas)
     <li class="menu-title"><span>Kesiswaan</span></li>
 
     {{-- Santri (TU/Struktural/Tim Kesiswaan) --}}
@@ -623,7 +626,7 @@
                href="{{ $waliKelasGroups->isNotEmpty()
                     ? route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $waliKelasGroups->first()->id])
                     : route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
-                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
+                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.nilai-badge')
             </a>
         </li>
 
@@ -655,7 +658,7 @@
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
                href="{{ route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
-                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
+                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.nilai-badge')
             </a>
         </li>
     @endif
@@ -716,6 +719,16 @@
                     </li>
                 </ul>
             </div>
+        </li>
+    @endif
+
+    {{-- Konseling & Bimbingan Konseling (Kesiswaan, bukan UKS) --}}
+    @if($showAll || $isKepala || $isWakil || $isKoorKesiswa || $isTimKesiswaan || $isGuruBK)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kesiswaan.counseling-records.', 'user.uks.counseling-records.']) ? ' active' : '' }}"
+               href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}">
+                <i class="ri-chat-heart-line"></i><span>Konseling Santri</span>
+            </a>
         </li>
     @endif
 @endif

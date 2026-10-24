@@ -166,7 +166,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
        href="{{ $koorKurUrl('user.schools.nilai-kelas.index') }}">
-        <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
+        <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.nilai-badge')
     </a>
 </li>
 

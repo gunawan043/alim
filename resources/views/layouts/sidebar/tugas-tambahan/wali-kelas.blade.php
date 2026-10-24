@@ -61,7 +61,7 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.rapor', 'user.schools.nilai-kelas.leger']) ? ' active' : '' }}"
        href="{{ $waliUrl('user.schools.nilai-kelas.sts', ['studyGroupId' => $waliKelasGroups->first()->id]) }}">
-        <i class="ri-file-text-line"></i><span>Rapor & Leger</span>
+        <i class="ri-file-text-line"></i><span>Rapor &amp; Leger</span>@include('layouts.sidebar.partials.nilai-badge')
     </a>
 </li>
 

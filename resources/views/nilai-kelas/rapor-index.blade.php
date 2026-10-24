@@ -27,7 +27,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
-    @if(session('error'))
+    @if(session('error') && ! str_contains((string) session('error'), 'Publikasi dibatalkan'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -156,12 +156,23 @@
                         </button>
                     </form>
                     <form method="POST" action="{{ route('user.schools.nilai-kelas.rapor.publish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
-                          onsubmit="return confirm('Publikasikan rapor ini ke wali santri?')">
+                          onsubmit="return confirm('Publikasikan rapor STS ke wali santri?')">
                         @csrf
                         <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
                         <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <input type="hidden" name="jenis" value="sts">
                         <button type="submit" class="btn btn-success btn-sm">
-                            <i class="ri-send-plane-line me-1"></i>Publikasikan Rapor
+                            <i class="ri-send-plane-line me-1"></i>Publikasikan STS
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('user.schools.nilai-kelas.rapor.publish', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                          onsubmit="return confirm('Publikasikan rapor SAS ke wali santri?')">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <input type="hidden" name="jenis" value="sas">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="ri-send-plane-line me-1"></i>Publikasikan SAS
                         </button>
                     </form>
                 </div>
@@ -433,10 +444,6 @@
                             </div>
                         </div>
                         <div class="d-flex flex-wrap gap-1">
-                            <button type="button" class="btn btn-outline-primary btn-sm"
-                                    data-bs-toggle="modal" data-bs-target="#layoutSettingsModal">
-                                <i class="ri-layout-line me-1"></i>Margin, Font &amp; Kertas
-                            </button>
                             <button type="button" class="btn btn-outline-primary btn-sm"
                                     data-bs-toggle="modal" data-bs-target="#signatureSettingsModal">
                                 <i class="ri-image-line me-1"></i>Kop, TTD &amp; Stempel
@@ -848,6 +855,7 @@
             </div>
         </div>
     </div>
+    @include('components.publish-blocked-modal')
 @endsection
 
 @push('scripts')

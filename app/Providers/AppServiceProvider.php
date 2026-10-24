@@ -199,6 +199,15 @@ class AppServiceProvider extends ServiceProvider
         // Register sidebar access composer globally
         view()->composer(['layouts.sidebar'], SidebarAccessComposer::class);
 
+        view()->composer([
+            'layouts.sidebar.satuan-pendidikan.sidebar',
+            'layouts.sidebar.tugas-tambahan.koordinator-kurikulum',
+            'layouts.sidebar.tugas-tambahan.wali-kelas',
+            'layouts.sidebar.master.sidebar',
+        ], function ($view) {
+            $view->with('nilaiPendingCount', app(\App\Services\NilaiReminderService::class)->countForUser(auth()->user()));
+        });
+
         // System Admin Menu (when current user is is_system_admin and not View-As)
         // Bound to '*' so viewAsSwitcherVisible is shared to ALL views (needed because
         // @include chains in master.blade.php don't trigger per-view composers).

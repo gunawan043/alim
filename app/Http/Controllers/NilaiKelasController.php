@@ -545,7 +545,10 @@ class NilaiKelasController extends Controller
                         ->first();
 
                     if ($existing) {
-                        $existing->updateQuietly(['kkm_score' => $kkmVal]);
+                        $existing->updateQuietly([
+                            'kkm_score' => $kkmVal,
+                            'kktp_score' => $kkmVal,
+                        ]);
                         $kktpId = $existing->id;
                     } else {
                         $kktp = SubjectKktp::create([
@@ -555,6 +558,7 @@ class NilaiKelasController extends Controller
                             'academic_year_id' => $selectedAyId,
                             'semester' => $selectedSem,
                             'kkm_score' => $kkmVal,
+                            'kktp_score' => $kkmVal,
                             'created_by' => $userId,
                         ]);
                         $kktpId = $kktp->id;
@@ -993,8 +997,10 @@ class NilaiKelasController extends Controller
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester' => 'required|in:ganjil,genap',
+            'jenis' => 'nullable|in:sts,sas',
         ]);
 
+        $jenis = $validated['jenis'] ?? 'sas';
         $this->assertNotArchivedAcademicYear($validated['academic_year_id']);
 
         $studentIds = StudentClassHistory::where('study_group_id', $studyGroupId)
@@ -1015,9 +1021,15 @@ class NilaiKelasController extends Controller
             return back()->with('error', 'Publikasi dibatalkan: belum ada mapel/buku nilai aktif pada rombel dan semester ini.');
         }
 
-        $incomplete = $this->incompleteLegerSubjects($studyGroup, (string) $validated['academic_year_id'], (string) $validated['semester']);
+        $incomplete = $this->incompleteLegerSubjects(
+            $studyGroup,
+            (string) $validated['academic_year_id'],
+            (string) $validated['semester'],
+            null,
+            $jenis,
+        );
         if ($incomplete !== []) {
-            return back()->with('error', $this->legerIncompleteMessage($incomplete));
+            return back()->with('error', $this->legerIncompleteMessage($incomplete, $jenis));
         }
 
         foreach ($studentIds as $studentId) {
@@ -1085,6 +1097,7 @@ class NilaiKelasController extends Controller
     public function bookPublish(Request $request, string $userId, string $studyGroupId, string $adminBookId)
     {
         $book = $this->publishableBook($request, $userId, $studyGroupId, $adminBookId);
+        $jenis = in_array($request->input('jenis'), ['sts', 'sas'], true) ? $request->input('jenis') : 'sas';
 
         $studentCount = StudentClassHistory::where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $book->academic_year_id)
@@ -1099,9 +1112,10 @@ class NilaiKelasController extends Controller
             (string) $book->academic_year_id,
             (string) $book->semester,
             $book,
+            $jenis,
         );
         if ($incomplete !== []) {
-            return back()->with('error', $this->legerIncompleteMessage($incomplete));
+            return back()->with('error', $this->legerIncompleteMessage($incomplete, $jenis));
         }
 
         $book->update(['published_at' => now(), 'published_by' => $request->user()?->id]);
@@ -1178,6 +1192,7 @@ class NilaiKelasController extends Controller
         string $academicYearId,
         string $semester,
         ?TeacherAdminBook $onlyBook = null,
+        string $jenis = 'sas',
     ): array {
         $books = $this->activeLegerBooks($studyGroup, $academicYearId, $semester, $onlyBook);
 
@@ -1220,14 +1235,14 @@ class NilaiKelasController extends Controller
                 $row = $nilaiRows->get($book->id.'|'.$studentId);
 
                 if ($tahfidz->isTahfidzSubject($book->subject)) {
-                    $sts = $tahfidz->scoreFor($studentId, $book, $academicYearId, $semester, 'sts', $row);
-                    $sas = $tahfidz->scoreFor($studentId, $book, $academicYearId, $semester, 'sas', $row);
+                    $score = $tahfidz->scoreFor($studentId, $book, $academicYearId, $semester, $jenis, $row);
+                } elseif ($jenis === 'sts') {
+                    $score = $row?->sts;
                 } else {
-                    $sts = $row?->sts;
-                    $sas = $row?->nr_final ?? $row?->sas;
+                    $score = $row?->nr_final ?? $row?->sas;
                 }
 
-                if ($sts === null || $sas === null) {
+                if ($score === null) {
                     $missing[] = $studentId;
                 }
             }
@@ -1246,7 +1261,7 @@ class NilaiKelasController extends Controller
     /**
      * @param  array<int, array{subject: string, missing: int}>  $incomplete
      */
-    private function legerIncompleteMessage(array $incomplete): string
+    private function legerIncompleteMessage(array $incomplete, string $jenis = 'sas'): string
     {
         $details = collect($incomplete)
             ->take(5)
@@ -1258,7 +1273,7 @@ class NilaiKelasController extends Controller
         }
 
         return 'Publikasi dibatalkan: leger belum terisi lengkap pada '.$details
-            .'. Lengkapi nilai STS dan SAS terlebih dahulu. Mapel Liqo dikecualikan.';
+            .'. Lengkapi nilai '.strtoupper($jenis).' terlebih dahulu. Mapel Liqo dikecualikan.';
     }
 
     private function publishableBook(Request $request, string $userId, string $studyGroupId, string $adminBookId): TeacherAdminBook

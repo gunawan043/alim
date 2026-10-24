@@ -196,6 +196,40 @@ class RaporPublishTest extends TestCase
         $this->assertSame(403, $blocked->getStatusCode());
     }
 
+    public function test_publish_sts_tidak_memerlukan_nilai_sas(): void
+    {
+        NilaiSumatif::where('admin_book_id', $this->book->id)
+            ->update(['sas' => null, 'nr_final' => null]);
+
+        $controller = app(NilaiKelasController::class);
+        $request = $this->request('POST', [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'jenis' => 'sts',
+        ]);
+
+        $controller->raporPublish($request, $this->admin->id, $this->group->id);
+
+        $this->assertTrue(
+            RaportRegistration::where('student_id', $this->student->id)->where('is_published', true)->exists()
+        );
+    }
+
+    public function test_halaman_rapor_menampilkan_modal_publish_dibatalkan(): void
+    {
+        $this->actingAs($this->admin)
+            ->withSession(['error' => 'Publikasi dibatalkan: leger belum terisi lengkap.'])
+            ->get(route('user.schools.nilai-kelas.rapor', [
+                'userId' => $this->admin->id,
+                'studyGroupId' => $this->group->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+            ]))
+            ->assertOk()
+            ->assertSee('publishBlockedModal', false)
+            ->assertSee('926-road-barrier.gif', false);
+    }
+
     public function test_publish_ditolak_jika_leger_belum_lengkap(): void
     {
         NilaiSumatif::where('admin_book_id', $this->book->id)
