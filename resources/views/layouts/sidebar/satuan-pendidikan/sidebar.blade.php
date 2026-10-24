@@ -208,7 +208,7 @@
     </a>
 </li>
 
-@if(! $showAll && ! $isTimKurikulumG && ! $isAdminTU)
+@if(! $showAll && ! $isTimKurikulumG && ! $isAdminTU && (! $isGuru || $isGuruTahfidz))
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
        href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
@@ -434,6 +434,13 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.index']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">
                         Peta Kurikulum
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
+                       href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
+                        Profil &amp; Info Kurikulum
                     </a>
                 </li>
 
