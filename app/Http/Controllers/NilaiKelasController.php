@@ -1220,6 +1220,63 @@ class NilaiKelasController extends Controller
     }
 
     /**
+     * Simpan pengaturan tampil & ukuran kop/TTD/stempel dari modal.
+     */
+    public function raporMediaSettings(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+
+        $access = $this->assertLegerAccess($userId, $studyGroup);
+        abort_unless($access === 'full', 403, 'Pengaturan kop, TTD, dan stempel hanya untuk TU/Kurikulum/Kepala.');
+
+        $validated = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'show_kop' => 'nullable|boolean',
+            'show_ttd_ksp' => 'nullable|boolean',
+            'show_ttd_wali' => 'nullable|boolean',
+            'show_stamp' => 'nullable|boolean',
+            'kop_height' => 'required|numeric|min:5|max:80',
+            'ttd_ksp_width' => 'required|numeric|min:5|max:100',
+            'ttd_ksp_height' => 'required|numeric|min:5|max:60',
+            'ttd_wali_width' => 'required|numeric|min:5|max:100',
+            'ttd_wali_height' => 'required|numeric|min:5|max:60',
+            'stamp_width' => 'required|numeric|min:5|max:100',
+            'stamp_height' => 'required|numeric|min:5|max:100',
+        ]);
+
+        $context = [
+            'school_id' => $studyGroup->school_id,
+            'academic_year_id' => $validated['academic_year_id'],
+            'semester' => $validated['semester'],
+        ];
+
+        $setting = RaporDistributionSetting::forContext(
+            $context['school_id'], $context['academic_year_id'], $context['semester']
+        );
+        $values = $setting?->layoutSettings() ?? RaporDistributionSetting::defaultLayout();
+
+        foreach ([
+            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
+            'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
+        ] as $key) {
+            $values[$key] = $validated[$key];
+        }
+        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp'] as $key) {
+            $values[$key] = $request->boolean($key);
+        }
+
+        RaporDistributionSetting::updateOrCreate($context, $values + [
+            'updated_by' => $request->user()?->id,
+        ]);
+
+        return back()->with('success', 'Pengaturan kop, TTD, dan stempel berhasil disimpan.');
+    }
+
+    /**
      * Upload/ganti TTD wali kelas. Bisa dilakukan TU/Kurikulum atau wali kelas ybs.
      */
     public function raporWaliTtd(Request $request, string $userId, string $studyGroupId)

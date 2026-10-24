@@ -742,6 +742,61 @@ class ArsipInventarisTest extends TestCase
         $this->assertNull($this->tu->fresh()->ttd_path);
     }
 
+    public function test_ksp_waka_dan_tu_dapat_membuka_edit_sekolah(): void
+    {
+        foreach ([
+            'Kepala Satuan Pendidikan',
+            'Wakil Kepala Satuan Pendidikan',
+            'Staf Tata Usaha',
+        ] as $index => $jabatan) {
+            $user = $this->makeUser(
+                'Editor '.$jabatan,
+                'editor.'.($index + 1).'@test.local',
+                $jabatan,
+            );
+
+            $this->actingAs($user)
+                ->get("/{$user->id}/schools/{$this->school->id}/edit")
+                ->assertOk()
+                ->assertSee('Kop Surat', false);
+        }
+    }
+
+    public function test_pengaturan_media_rapor_disimpan_melalui_modal(): void
+    {
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/media", [
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'show_kop' => 1,
+                'show_ttd_ksp' => 0,
+                'show_ttd_wali' => 1,
+                'show_stamp' => 0,
+                'kop_height' => 20,
+                'ttd_ksp_width' => 25,
+                'ttd_ksp_height' => 12,
+                'ttd_wali_width' => 24,
+                'ttd_wali_height' => 11,
+                'stamp_width' => 22,
+                'stamp_height' => 22,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $layout = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail()
+            ->layoutSettings();
+
+        $this->assertTrue($layout['show_kop']);
+        $this->assertFalse($layout['show_ttd_ksp']);
+        $this->assertFalse($layout['show_stamp']);
+        $this->assertSame(20.0, $layout['kop_height']);
+        $this->assertSame(24.0, $layout['ttd_wali_width']);
+    }
+
     public function test_tanggal_hijriah_arab_otomatis(): void
     {
         $hijri = ArabicText::formatHijriDate('2026-10-20');

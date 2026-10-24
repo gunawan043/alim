@@ -7,11 +7,45 @@ use App\Models\Province;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class SchoolController extends Controller
 {
+    /**
+     * KSP, Waka, dan TU boleh mengubah profil sekolah (termasuk kop/TTD/stempel).
+     */
+    private function canEditSchool(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isSystemAdmin()
+            || canPermission('school-update')
+            || $user->hasRole('Kepala Sekolah')
+            || $user->hasRole('Kepala Satuan Pendidikan')) {
+            return true;
+        }
+
+        return UserJabatan::hasAny($user, [
+            'kepala sekolah',
+            'wakil kepala sekolah',
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala tata usaha',
+            'tata usaha',
+            'staf tata usaha',
+            'kepala tu sekolah',
+            'tu sekolah',
+            'staf tu sekolah',
+            'tata usaha sekolah',
+        ]);
+    }
+
     /**
      * Validate user has access to the given school via their work unit.
      * If user has view_global_school_data permission → always allowed.
@@ -178,6 +212,10 @@ class SchoolController extends Controller
             'bank_rekening' => 'nullable|string|max:50',
             'bank_an' => 'nullable|string|max:100',
             'npwp' => 'nullable|string|max:30',
+            'logo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'kop_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'ttd_ksp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
+            'stamp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
         ]);
 
         // Auto-fill name from WorkUnit if work_unit_id is selected
@@ -224,12 +262,7 @@ class SchoolController extends Controller
     public function edit(string $userId, string $schoolId)
     {
         // Super Admin bypasses userId matching check via validateSchoolAccess already
-
-        // Tata Usaha juga bisa mengedit sekolah
-        $hasUpdatePerm = canPermission('school-update') ||
-                         (auth()->user() && auth()->user()->hasRole('Kepala Sekolah'));
-
-        abort_unless($hasUpdatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengedit sekolah.');
+        abort_unless($this->canEditSchool(), 403, 'Hanya Super Admin, KSP, Waka, atau Tata Usaha yang dapat mengedit sekolah.');
 
         $school = $this->validateSchoolAccess($userId, $schoolId);
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
@@ -245,11 +278,7 @@ class SchoolController extends Controller
 
     public function update(Request $request, string $userId, string $schoolId)
     {
-        // Tata Usaha juga bisa mengedit sekolah
-        $hasUpdatePerm = canPermission('school-update') ||
-                         (auth()->user() && auth()->user()->hasRole('Kepala Sekolah'));
-
-        abort_unless($hasUpdatePerm, 403, 'Hanya Super Admin, Administrator, atau Tata Usaha yang dapat mengedit sekolah.');
+        abort_unless($this->canEditSchool(), 403, 'Hanya Super Admin, KSP, Waka, atau Tata Usaha yang dapat mengedit sekolah.');
 
         $school = $this->validateSchoolAccess($userId, $schoolId);
 
@@ -295,6 +324,10 @@ class SchoolController extends Controller
             'bank_rekening' => 'nullable|string|max:50',
             'bank_an' => 'nullable|string|max:100',
             'npwp' => 'nullable|string|max:30',
+            'logo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'kop_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'ttd_ksp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
+            'stamp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
         ]);
 
         foreach (['logo_path', 'kop_path', 'ttd_ksp_path', 'stamp_path'] as $field) {

@@ -411,8 +411,16 @@
             @endphp
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed">
-                    <h5 class="card-title mb-0"><i class="ri-settings-3-line text-success me-1"></i>Pengaturan &amp; Preview PDF</h5>
-                    <p class="text-muted mb-0 small">Berlaku untuk rapor <strong>STS</strong> dan <strong>SAS</strong> pada TA/semester ini.</p>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <h5 class="card-title mb-0"><i class="ri-settings-3-line text-success me-1"></i>Pengaturan &amp; Preview PDF</h5>
+                            <p class="text-muted mb-0 small">Berlaku untuk rapor <strong>STS</strong> dan <strong>SAS</strong> pada TA/semester ini.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                data-bs-toggle="modal" data-bs-target="#signatureSettingsModal">
+                            <i class="ri-image-line me-1"></i>Pengaturan Kop, TTD &amp; Stempel
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     @if($errors->any())
@@ -470,56 +478,6 @@
                             </div>
                         </div>
 
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-image-line me-1"></i>Tampilan &amp; Ukuran Gambar (mm)</h6>
-                        <div class="row g-2 mb-2">
-                            @foreach([
-                                'show_kop' => 'Tampilkan kop',
-                                'show_ttd_ksp' => 'Tampilkan TTD KSP',
-                                'show_ttd_wali' => 'Tampilkan TTD wali',
-                                'show_stamp' => 'Tampilkan stempel',
-                            ] as $field => $label)
-                                <div class="col-6 col-md-3">
-                                    <div class="form-check form-switch">
-                                        <input type="hidden" name="{{ $field }}" value="0">
-                                        <input class="form-check-input" type="checkbox" role="switch"
-                                               id="{{ $field }}" name="{{ $field }}" value="1"
-                                               {{ old($field, $layout[$field] ?? true) ? 'checked' : '' }}>
-                                        <label class="form-check-label small" for="{{ $field }}">{{ $label }}</label>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Tinggi Kop</label>
-                                <input type="number" name="kop_height" class="form-control form-control-sm" min="5" max="80" step="0.5" value="{{ old('kop_height', $layout['kop_height']) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">TTD KSP — Lebar</label>
-                                <input type="number" name="ttd_ksp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('ttd_ksp_width', $layout['ttd_ksp_width']) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">TTD KSP — Tinggi</label>
-                                <input type="number" name="ttd_ksp_height" class="form-control form-control-sm" min="5" max="60" step="0.5" value="{{ old('ttd_ksp_height', $layout['ttd_ksp_height']) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">TTD Wali — Lebar</label>
-                                <input type="number" name="ttd_wali_width" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('ttd_wali_width', $layout['ttd_wali_width']) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">TTD Wali — Tinggi</label>
-                                <input type="number" name="ttd_wali_height" class="form-control form-control-sm" min="5" max="60" step="0.5" value="{{ old('ttd_wali_height', $layout['ttd_wali_height']) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Stempel — Lebar</label>
-                                <input type="number" name="stamp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('stamp_width', $layout['stamp_width']) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Stempel — Tinggi</label>
-                                <input type="number" name="stamp_height" class="form-control form-control-sm" min="5" max="100" step="0.5" value="{{ old('stamp_height', $layout['stamp_height']) }}">
-                            </div>
-                        </div>
-
                         <div class="row g-2 align-items-end">
                             <div class="col-md-6">
                                 <label class="form-label small mb-1">Ukuran Kertas</label>
@@ -536,62 +494,6 @@
                             </div>
                         </div>
                     </form>
-
-                    <hr class="my-4">
-
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                        <h6 class="mb-0 small fw-semibold"><i class="ri-pen-nib-line me-1"></i>TTD Wali Kelas</h6>
-                        <a href="{{ route('user.schools.edit', ['userId' => $userId, 'schoolId' => $studyGroup->school_id]) }}"
-                           target="_blank" class="btn btn-outline-secondary btn-sm">
-                            <i class="ri-settings-4-line me-1"></i>Kelola TTD KSP &amp; Stempel
-                        </a>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 mb-2">
-                        <span class="badge bg-{{ $studyGroup->school?->ttd_ksp_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->school?->ttd_ksp_path ? 'success' : 'secondary' }}">
-                            TTD KSP: {{ $studyGroup->school?->ttd_ksp_path ? 'tersedia' : 'belum ada' }}
-                        </span>
-                        <span class="badge bg-{{ $studyGroup->school?->stamp_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->school?->stamp_path ? 'success' : 'secondary' }}">
-                            Stempel: {{ $studyGroup->school?->stamp_path ? 'tersedia' : 'belum ada' }}
-                        </span>
-                        <span class="badge bg-{{ $studyGroup->homeroomTeacher?->ttd_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->homeroomTeacher?->ttd_path ? 'success' : 'secondary' }}">
-                            TTD wali: {{ $studyGroup->homeroomTeacher?->ttd_path ? 'tersedia' : 'belum ada' }}
-                        </span>
-                    </div>
-                    @if($studyGroup->homeroomTeacher)
-                        @if($studyGroup->homeroomTeacher->ttd_path)
-                            <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
-                                <img src="{{ asset('storage/'.$studyGroup->homeroomTeacher->ttd_path) }}"
-                                     alt="TTD wali kelas" style="max-height:70px;max-width:160px;object-fit:contain;">
-                                <small class="text-muted">{{ $studyGroup->homeroomTeacher->name }}</small>
-                            </div>
-                        @endif
-                        <form method="POST" enctype="multipart/form-data"
-                              action="{{ route('user.schools.nilai-kelas.rapor.wali-ttd', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
-                            @csrf
-                            <div class="row g-2 align-items-end">
-                                <div class="col-12 col-md-7">
-                                    <label class="form-label small mb-1">Upload / ganti TTD wali kelas</label>
-                                    <input type="file" name="ttd_wali_file" class="form-control form-control-sm" accept="image/png,image/jpeg">
-                                    <div class="form-text">PNG/JPG, maks. 1 MB. TTD ini dipakai pada rapor kelas ini.</div>
-                                </div>
-                                <div class="col-12 col-md-5">
-                                    <button type="submit" class="btn btn-outline-primary btn-sm w-100">
-                                        <i class="ri-upload-2-line me-1"></i>Upload TTD Wali
-                                    </button>
-                                </div>
-                            </div>
-                            @if($studyGroup->homeroomTeacher->ttd_path)
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" name="remove_ttd_wali" value="1" id="remove_ttd_wali">
-                                    <label class="form-check-label small text-danger" for="remove_ttd_wali">Hapus TTD wali yang tersimpan</label>
-                                </div>
-                            @endif
-                        </form>
-                    @else
-                        <div class="alert alert-warning py-2 mb-0 small">
-                            <i class="ri-information-line me-1"></i>Rombel ini belum memiliki wali kelas. TTD tidak dapat diunggah.
-                        </div>
-                    @endif
 
                     <hr class="my-4">
 
@@ -730,6 +632,146 @@
         </div>
     </div>
 
+    {{-- Modal: Pengaturan Kop, TTD & Stempel --}}
+    <div class="modal fade" id="signatureSettingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-image-line me-2 text-primary"></i>Pengaturan Kop, TTD &amp; Stempel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <div>
+                            <h6 class="mb-1">Tampilan &amp; Ukuran Gambar (mm)</h6>
+                            <p class="text-muted mb-0 small">Atur gambar yang tampil pada PDF rapor. Upload TTD KSP dan stempel tetap di menu Sekolah.</p>
+                        </div>
+                        <a href="{{ route('user.schools.edit', ['userId' => $userId, 'schoolId' => $studyGroup->school_id]) }}"
+                           target="_blank" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-settings-4-line me-1"></i>Kelola TTD KSP &amp; Stempel
+                        </a>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <span class="badge bg-{{ $studyGroup->school?->ttd_ksp_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->school?->ttd_ksp_path ? 'success' : 'secondary' }}">
+                            TTD KSP: {{ $studyGroup->school?->ttd_ksp_path ? 'tersedia' : 'belum ada' }}
+                        </span>
+                        <span class="badge bg-{{ $studyGroup->school?->stamp_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->school?->stamp_path ? 'success' : 'secondary' }}">
+                            Stempel: {{ $studyGroup->school?->stamp_path ? 'tersedia' : 'belum ada' }}
+                        </span>
+                        <span class="badge bg-{{ $studyGroup->homeroomTeacher?->ttd_path ? 'success' : 'secondary' }}-subtle text-{{ $studyGroup->homeroomTeacher?->ttd_path ? 'success' : 'secondary' }}">
+                            TTD wali: {{ $studyGroup->homeroomTeacher?->ttd_path ? 'tersedia' : 'belum ada' }}
+                        </span>
+                    </div>
+
+                    <form id="raporMediaForm" method="POST"
+                          action="{{ route('user.schools.nilai-kelas.rapor.media', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+
+                        <div class="row g-2 mb-3">
+                            @foreach([
+                                'show_kop' => 'Tampilkan kop',
+                                'show_ttd_ksp' => 'Tampilkan TTD KSP',
+                                'show_ttd_wali' => 'Tampilkan TTD wali',
+                                'show_stamp' => 'Tampilkan stempel',
+                            ] as $field => $label)
+                                <div class="col-6 col-md-3">
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" name="{{ $field }}" value="0">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               id="modal_{{ $field }}" name="{{ $field }}" value="1"
+                                               {{ old($field, $layout[$field] ?? true) ? 'checked' : '' }}>
+                                        <label class="form-check-label small" for="modal_{{ $field }}">{{ $label }}</label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Tinggi Kop (mm)</label>
+                                <input type="number" name="kop_height" class="form-control form-control-sm" min="5" max="80" step="0.5" required value="{{ old('kop_height', $layout['kop_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD KSP — Lebar</label>
+                                <input type="number" name="ttd_ksp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('ttd_ksp_width', $layout['ttd_ksp_width']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD KSP — Tinggi</label>
+                                <input type="number" name="ttd_ksp_height" class="form-control form-control-sm" min="5" max="60" step="0.5" required value="{{ old('ttd_ksp_height', $layout['ttd_ksp_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD Wali — Lebar</label>
+                                <input type="number" name="ttd_wali_width" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('ttd_wali_width', $layout['ttd_wali_width']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD Wali — Tinggi</label>
+                                <input type="number" name="ttd_wali_height" class="form-control form-control-sm" min="5" max="60" step="0.5" required value="{{ old('ttd_wali_height', $layout['ttd_wali_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Stempel — Lebar</label>
+                                <input type="number" name="stamp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('stamp_width', $layout['stamp_width']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Stempel — Tinggi</label>
+                                <input type="number" name="stamp_height" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('stamp_height', $layout['stamp_height']) }}">
+                            </div>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <h6 class="mb-2"><i class="ri-pen-nib-line me-1"></i>TTD Wali Kelas</h6>
+                    @if($studyGroup->homeroomTeacher)
+                        @if($studyGroup->homeroomTeacher->ttd_path)
+                            <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
+                                <img src="{{ asset('storage/'.$studyGroup->homeroomTeacher->ttd_path) }}"
+                                     alt="TTD wali kelas" style="max-height:70px;max-width:160px;object-fit:contain;">
+                                <small class="text-muted">{{ $studyGroup->homeroomTeacher->name }}</small>
+                            </div>
+                        @endif
+                        <form id="waliTtdForm" method="POST" enctype="multipart/form-data"
+                              action="{{ route('user.schools.nilai-kelas.rapor.wali-ttd', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                            @csrf
+                            <div class="row g-2 align-items-end">
+                                <div class="col-12 col-md-8">
+                                    <label class="form-label small mb-1">Upload / ganti TTD wali kelas</label>
+                                    <input type="file" name="ttd_wali_file" class="form-control form-control-sm" accept="image/png,image/jpeg">
+                                    <div class="form-text">PNG/JPG, maks. 1 MB. TTD ini dipakai pada rapor kelas ini.</div>
+                                </div>
+                                @if($studyGroup->homeroomTeacher->ttd_path)
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="remove_ttd_wali" value="1" id="remove_ttd_wali">
+                                            <label class="form-check-label small text-danger" for="remove_ttd_wali">Hapus TTD wali yang tersimpan</label>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        </form>
+                    @else
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="ri-information-line me-1"></i>Rombel ini belum memiliki wali kelas. TTD tidak dapat diunggah.
+                        </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    @if($studyGroup->homeroomTeacher)
+                        <button type="submit" form="waliTtdForm" class="btn btn-outline-primary">
+                            <i class="ri-upload-2-line me-1"></i>Upload TTD Wali
+                        </button>
+                    @endif
+                    <button type="submit" form="raporMediaForm" class="btn btn-success">
+                        <i class="ri-save-3-line me-1"></i>Simpan Pengaturan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal: Catatan Wali Kelas --}}
     <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -792,6 +834,10 @@ function moveSubjectRow(button, direction) {
 
 document.addEventListener('DOMContentLoaded', renumberSubjectRows);
 renumberSubjectRows();
+
+@if($errors->any() && (old('kop_height') !== null || $errors->has('ttd_wali_file')))
+    new bootstrap.Modal(document.getElementById('signatureSettingsModal')).show();
+@endif
 
 document.querySelectorAll('.js-note').forEach(function (btn) {
     btn.addEventListener('click', function () {
