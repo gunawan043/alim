@@ -23,6 +23,7 @@ use App\Services\Arsip\LegerPdfService;
 use App\Services\Arsip\RaporPdfService;
 use App\Services\KurikulumAccess;
 use App\Services\NotificationUniversalService;
+use App\Services\Pdf\DocumentPdfService;
 use App\Services\SumatifHarianService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
@@ -689,7 +690,7 @@ class NilaiKelasController extends Controller
             $jenis,
         );
 
-        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+        return app(DocumentPdfService::class)->fromView(
             'nilai-kelas.leger-cetak',
             $data + ['userId' => $userId],
             'Leger-'.strtoupper($jenis).'-'.$studyGroup->name.'-'.$selectedSem,
@@ -1005,6 +1006,15 @@ class NilaiKelasController extends Controller
             return back()->with('error', 'Belum ada santri aktif pada rombel/tahun ajaran ini.');
         }
 
+        $activeBooks = $this->activeLegerBooks(
+            $studyGroup,
+            (string) $validated['academic_year_id'],
+            (string) $validated['semester'],
+        );
+        if ($activeBooks->isEmpty()) {
+            return back()->with('error', 'Publikasi dibatalkan: belum ada mapel/buku nilai aktif pada rombel dan semester ini.');
+        }
+
         $incomplete = $this->incompleteLegerSubjects($studyGroup, (string) $validated['academic_year_id'], (string) $validated['semester']);
         if ($incomplete !== []) {
             return back()->with('error', $this->legerIncompleteMessage($incomplete));
@@ -1076,6 +1086,14 @@ class NilaiKelasController extends Controller
     {
         $book = $this->publishableBook($request, $userId, $studyGroupId, $adminBookId);
 
+        $studentCount = StudentClassHistory::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $book->academic_year_id)
+            ->where('is_active', true)
+            ->count();
+        if ($studentCount === 0) {
+            return back()->with('error', 'Publikasi dibatalkan: belum ada santri aktif pada rombel dan tahun ajaran ini.');
+        }
+
         $incomplete = $this->incompleteLegerSubjects(
             $book->studyGroup,
             (string) $book->academic_year_id,
@@ -1116,17 +1134,16 @@ class NilaiKelasController extends Controller
     }
 
     /**
-     * Cari mapel yang leger-nya belum lengkap (STS/SAS).
-     * Mapel Liqo dikecualikan karena merupakan kegiatan rutin, bukan mapel.
+     * Buku nilai aktif yang relevan untuk leger/rapor.
      *
-     * @return array<int, array{subject: string, missing: int}>
+     * @return \Illuminate\Database\Eloquent\Collection
      */
-    private function incompleteLegerSubjects(
+    private function activeLegerBooks(
         StudyGroup $studyGroup,
         string $academicYearId,
         string $semester,
         ?TeacherAdminBook $onlyBook = null,
-    ): array {
+    ) {
         $books = TeacherAdminBook::with('subject')
             ->where('study_group_id', $studyGroup->id)
             ->where('academic_year_id', $academicYearId)
@@ -1146,6 +1163,23 @@ class NilaiKelasController extends Controller
                 $books = $books->whereIn('subject_id', $subjectIds);
             }
         }
+
+        return $books;
+    }
+
+    /**
+     * Cari mapel yang leger-nya belum lengkap (STS/SAS).
+     * Mapel Liqo dikecualikan karena merupakan kegiatan rutin, bukan mapel.
+     *
+     * @return array<int, array{subject: string, missing: int}>
+     */
+    private function incompleteLegerSubjects(
+        StudyGroup $studyGroup,
+        string $academicYearId,
+        string $semester,
+        ?TeacherAdminBook $onlyBook = null,
+    ): array {
+        $books = $this->activeLegerBooks($studyGroup, $academicYearId, $semester, $onlyBook);
 
         if ($books->isEmpty()) {
             return [];

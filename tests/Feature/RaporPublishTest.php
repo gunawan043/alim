@@ -253,6 +253,42 @@ class RaporPublishTest extends TestCase
         );
     }
 
+    public function test_publish_ditolak_jika_tidak_ada_buku_mapel_aktif(): void
+    {
+        $this->book->update(['is_active' => false]);
+
+        $controller = app(NilaiKelasController::class);
+        $request = $this->request('POST', [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]);
+
+        $controller->raporPublish($request, $this->admin->id, $this->group->id);
+
+        $this->assertFalse(
+            RaportRegistration::where('student_id', $this->student->id)->where('is_published', true)->exists()
+        );
+        $this->assertTrue(session()->has('error'));
+        $this->assertStringContainsString('belum ada mapel', (string) session('error'));
+    }
+
+    public function test_publish_mapel_ditolak_jika_tidak_ada_santri_aktif(): void
+    {
+        StudentClassHistory::where('student_id', $this->student->id)->update(['is_active' => false]);
+
+        $controller = app(NilaiKelasController::class);
+        $request = $this->request('POST', [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]);
+
+        $controller->bookPublish($request, $this->admin->id, $this->group->id, $this->book->id);
+
+        $this->assertNull($this->book->fresh()->published_at);
+        $this->assertTrue(session()->has('error'));
+        $this->assertStringContainsString('belum ada santri aktif', (string) session('error'));
+    }
+
     private function request(string $method, array $data = [], ?User $user = null): Request
     {
         $request = Request::create('/nilai-kelas', $method, $data);
