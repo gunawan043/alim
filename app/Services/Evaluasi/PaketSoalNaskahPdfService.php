@@ -61,7 +61,7 @@ class PaketSoalNaskahPdfService
         $data['fontSize'] = (float) $layout['font_size'];
         $data['lineHeight'] = (float) $layout['line_height'];
         $data['questionGap'] = 1.15;
-        $teacherName = $this->teacherNames($paket);
+        $teacherName = $this->teacherName($paket);
         if ($teacherName !== '') {
             foreach ($data['identityRows'] as &$identityRow) {
                 foreach ($identityRow as &$pair) {
@@ -82,34 +82,46 @@ class PaketSoalNaskahPdfService
         return $data;
     }
 
-    private function teacherNames(PaketSoal $paket): string
+    private function teacherName(PaketSoal $paket): string
     {
         $kisi = $paket->kisiKisi;
         if (! $kisi) {
             return '';
         }
 
-        $query = TeacherAdminBook::with('teacher:id,name')
+        $creatorId = $paket->items
+            ->map(fn ($item) => $item->soal?->dibuat_oleh)
+            ->filter()
+            ->first() ?: $kisi->created_by;
+
+        $adminBooks = TeacherAdminBook::with('teacher:id,name')
             ->where('subject_id', $kisi->subject_id)
             ->where('academic_year_id', $kisi->academic_year_id)
             ->where('semester', $kisi->semester)
             ->when($kisi->school_id, fn ($q) => $q->where('school_id', $kisi->school_id))
-            ->when($kisi->grade_level_id, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('grade_level_id', $kisi->grade_level_id)));
+            ->when($kisi->grade_level_id, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('grade_level_id', $kisi->grade_level_id)))
+            ->get()
+            ->sortBy(fn ($book) => $book->teacher?->name ?? '')
+            ->values();
 
-        $names = $query->get()->pluck('teacher.name')->filter()->unique()->values();
-
-        if ($names->isEmpty()) {
-            $names = TeachingAssignment::with('teacher:id,name')
-                ->where('subject_id', $kisi->subject_id)
-                ->where('academic_year_id', $kisi->academic_year_id)
-                ->where('status', 'active')
-                ->when($kisi->school_id, fn ($q) => $q->where('school_id', $kisi->school_id))
-                ->when($kisi->grade_level_id, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('grade_level_id', $kisi->grade_level_id)))
-                ->get()
-                ->pluck('teacher.name')->filter()->unique()->values();
+        $preferred = $adminBooks->firstWhere('teacher_id', $creatorId) ?? $adminBooks->first();
+        if ($preferred?->teacher?->name) {
+            return $preferred->teacher->name;
         }
 
-        return $names->implode(', ');
+        $assignments = TeachingAssignment::with('teacher:id,name')
+            ->where('subject_id', $kisi->subject_id)
+            ->where('academic_year_id', $kisi->academic_year_id)
+            ->where('status', 'active')
+            ->when($kisi->school_id, fn ($q) => $q->where('school_id', $kisi->school_id))
+            ->when($kisi->grade_level_id, fn ($q) => $q->whereHas('studyGroup', fn ($sg) => $sg->where('grade_level_id', $kisi->grade_level_id)))
+            ->get()
+            ->sortBy(fn ($assignment) => $assignment->teacher?->name ?? '')
+            ->values();
+
+        $preferred = $assignments->firstWhere('teacher_id', $creatorId) ?? $assignments->first();
+
+        return $preferred?->teacher?->name ?? '';
     }
 
     public function html(PaketSoal $paket): string
