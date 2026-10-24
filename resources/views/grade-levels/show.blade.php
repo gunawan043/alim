@@ -273,8 +273,8 @@
                                             <td class="text-center">
                                                 @if($kktp)
                                                     <span class="badge bg-success-subtle text-success border border-success border-opacity-25"
-                                                          style="font-size:0.8rem" title="KKTP: {{ $kktp->kkm_score ?? '-' }}">
-                                                        <i class="ri-check-line me-1"></i>{{ $kktp->kktp_score }}
+                                                          style="font-size:0.8rem" title="KKTP: {{ $kktp->kkm_score ?? $kktp->kktp_score ?? '-' }}">
+                                                        <i class="ri-check-line me-1"></i>{{ $kktp->kktp_score ?? $kktp->kkm_score }}
                                                     </span>
                                                 @else
                                                     <span class="badge bg-secondary-subtle text-secondary" style="font-size:0.8rem">
@@ -442,7 +442,7 @@
                                     @foreach($gradeLevelSubjects as $gls)
                                         @php
                                             $cat = $gls->subject->category ?? 'nasional';
-                                            $savedKktp = $kktpMap[$gls->subject_id]->kktp_score ?? null;
+                                            $savedKktp = $kktpMap[$gls->subject_id]->kktp_score ?? $kktpMap[$gls->subject_id]->kkm_score ?? null;
                                         @endphp
                                         <tr>
                                             <td>

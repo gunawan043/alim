@@ -33,6 +33,7 @@
     </div>
 
     <div class="row g-3">
+        @if($canManage)
         <div class="col-lg-7">
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -110,12 +111,14 @@
                                 <button class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Profil</button>
                             </div>
                         @else
-                            <div class="alert alert-info py-2 mt-3 mb-0"><i class="ri-information-line me-1"></i>Hanya tim kurikulum yang dapat mengubah profil.</div>
+                            <div class="alert alert-info py-2 mt-3 mb-0"><i class="ri-information-line me-1"></i>Hanya KSP, Wakil Kepala, dan tim kurikulum yang dapat mengubah profil.</div>
                         @endif
                     </form>
                 </div>
             </div>
         </div>
+
+        @endif
 
         <div class="col-lg-5">
             <div class="card h-100">

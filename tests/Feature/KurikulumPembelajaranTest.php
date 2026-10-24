@@ -156,6 +156,28 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertSee('100'); // JP efektif math = 4 × 25
     }
 
+    public function test_kktp_lama_yang_hanya_punya_kkm_tetap_tampil(): void
+    {
+        DB::table('subject_kktp')->insert([
+            'id' => (string) Str::uuid(),
+            'subject_id' => $this->math->id,
+            'school_id' => $this->school->id,
+            'grade_level_id' => $this->grade->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'kktp_score' => null,
+            'kkm_score' => 77,
+            'created_by' => $this->kurikulum->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum")
+            ->assertOk()
+            ->assertSee('value="77"', false);
+    }
+
     public function test_akses_kelola_cp_hanya_tim_kurikulum(): void
     {
         $this->actingAs($this->guru);
@@ -937,6 +959,32 @@ class KurikulumPembelajaranTest extends TestCase
         }
 
         return $user;
+    }
+
+    public function test_ksp_dapat_mengubah_profil_kurikulum(): void
+    {
+        $this->seed(\Database\Seeders\CurriculumProfileSeeder::class);
+        $kbc = CurriculumProfile::where('code', 'kbc_kemenag')->firstOrFail();
+        $ksp = $this->makeExtraUser('Kepala Satuan Pendidikan Uji', 'ksp.profil@test.local', 'Kepala Satuan Pendidikan');
+
+        $this->actingAs($ksp)
+            ->get("/{$ksp->id}/kurikulum/profil")
+            ->assertOk()
+            ->assertSee('Simpan Profil');
+
+        $this->actingAs($ksp)
+            ->post("/{$ksp->id}/kurikulum/profil", [
+                'academic_year_id' => $this->ay->id,
+                'curriculum_profile_id' => $kbc->id,
+                'kokurikuler_type' => 'p5ra',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('school_curriculum_settings', [
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'curriculum_profile_id' => $kbc->id,
+        ]);
     }
 
     public function test_profil_kurikulum_kbc_ditetapkan_dan_tp_membawa_nilai_cinta(): void

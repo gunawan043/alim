@@ -42,6 +42,17 @@ class SubjectKktp extends Model
                 $model->created_by = null;
             }
         });
+
+        // Satu nilai KKTP disimpan di dua kolom: kkm_score (otoritatif untuk
+        // leger/rapor) dan kktp_score (mirror untuk Peta Kurikulum). Jaga
+        // keduanya tetap sinkron saat data dibuat atau diubah dari mana pun.
+        static::saving(function (self $model) {
+            if ($model->isDirty('kkm_score')) {
+                $model->kktp_score = $model->kkm_score;
+            } elseif ($model->isDirty('kktp_score')) {
+                $model->kkm_score = $model->kktp_score;
+            }
+        });
     }
 
     public function subject(): BelongsTo

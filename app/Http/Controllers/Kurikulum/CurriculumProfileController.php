@@ -39,7 +39,7 @@ class CurriculumProfileController extends Controller
         $setting = $this->profiles->setting($schoolId, $academicYearId);
         $resolvedProfile = $setting?->profile ?? $this->profiles->resolve($schoolId, $academicYearId);
         $labels = $this->profiles->labels($resolvedProfile);
-        $canManage = $this->access->isKurikulumEditor($request->user());
+        $canManage = $this->access->isKurikulumTeam($request->user());
 
         $kokurikulerOptions = $profileList
             ->flatMap(fn ($profile) => (array) $profile->configValue('kokurikuler_options', []))
@@ -57,7 +57,7 @@ class CurriculumProfileController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
         abort_unless($schoolId, 404, 'Konteks satuan pendidikan tidak ditemukan.');
-        abort_unless($this->access->isKurikulumEditor($request->user()), 403, 'Hanya editor kurikulum yang dapat menetapkan profil kurikulum.');
+        abort_unless($this->access->isKurikulumTeam($request->user()), 403, 'Hanya KSP, Wakil Kepala, atau tim kurikulum yang dapat menetapkan profil kurikulum.');
 
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',

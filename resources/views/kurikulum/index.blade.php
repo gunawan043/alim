@@ -113,6 +113,105 @@
         </div>
     </div>
 
+    {{-- INFO PEMBARUAN KURIKULUM + ALUR KE PERANGKAT --}}
+    <div class="row g-3 mb-3">
+        <div class="col-xl-8">
+            <div class="card h-100 border-info-subtle">
+                <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h5 class="card-title mb-1"><i class="ri-newspaper-line me-1 text-info"></i>Info Pembaruan Kurikulum</h5>
+                        <p class="text-muted mb-0 small">Ringkasan dari publikasi resmi Kemendikdasmen dan Kemenag.</p>
+                    </div>
+                    <div class="text-md-end">
+                        <span class="badge bg-info-subtle text-info">AI + sumber resmi</span>
+                        <div class="small text-muted mt-1">Diperbarui {{ $curriculumUpdatesAt ? \Carbon\Carbon::parse($curriculumUpdatesAt)->format('d/m/Y') : '-' }}</div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @forelse($curriculumUpdates as $update)
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                        <span class="badge bg-primary-subtle text-primary">{{ $update['tag'] ?? 'Kurikulum' }}</span>
+                                        <small class="text-muted">{{ $update['date'] ?? '' }}</small>
+                                    </div>
+                                    <div class="fw-semibold mt-2">{{ $update['title'] ?? '' }}</div>
+                                    <p class="small text-muted mb-2 mt-1">{{ $update['summary'] ?? '' }}</p>
+                                    @if(! empty($update['url']))
+                                        <a href="{{ $update['url'] }}" target="_blank" rel="noopener noreferrer" class="small text-decoration-underline">
+                                            Baca sumber: {{ $update['source'] ?? 'tautan resmi' }} <i class="ri-external-link-line ms-1"></i>
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                        @empty
+                            <div class="col-12"><div class="alert alert-light border mb-0">Belum ada info pembaruan kurikulum.</div></div>
+                        @endforelse
+                    </div>
+                    <div class="alert alert-light border mt-3 mb-0 small">
+                        <i class="ri-information-line me-1 text-info"></i>
+                        Ringkasan ini dibantu AI dan dapat berubah bila regulasi diperbarui. Selalu cek tautan sumber resmi sebelum mengambil keputusan kurikulum.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card h-100 border-primary-subtle">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-1"><i class="ri-route-line me-1 text-primary"></i>Alur ke Perangkat Pembelajaran</h5>
+                    <p class="text-muted mb-0 small">Ikuti urutan ini agar perangkat tidak yatim dari CP/TP.</p>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        @if($canManageProfile ?? false)
+                            <a href="{{ route('user.kurikulum.profil.index', ['userId' => $userId, 'academic_year_id' => $academicYearId]) }}" class="border rounded p-2 text-decoration-none text-body">
+                                <div class="d-flex gap-2"><span class="badge bg-primary">1</span><div><strong>Profil Kurikulum</strong><div class="small text-muted">KSP/Waka/tim menetapkan label dan struktur.</div></div></div>
+                            </a>
+                        @else
+                            <div class="border rounded p-2">
+                                <div class="d-flex gap-2"><span class="badge bg-secondary">1</span><div><strong>Profil Kurikulum</strong><div class="small text-muted">Ditetapkan KSP, Waka, atau tim kurikulum.</div></div></div>
+                            </div>
+                        @endif
+
+                        <a href="{{ route('user.kaldik.index', ['userId' => $userId]) }}" class="border rounded p-2 text-decoration-none text-body">
+                            <div class="d-flex gap-2"><span class="badge bg-primary">2</span><div><strong>Kalender &amp; Pekan Efektif</strong><div class="small text-muted">Tentukan minggu efektif dan JP efektif.</div></div></div>
+                        </a>
+
+                        <a href="#kurikulumList" class="border rounded p-2 text-decoration-none text-body">
+                            <div class="d-flex gap-2"><span class="badge bg-primary">3</span><div><strong>Peta Kurikulum &amp; KKTP</strong><div class="small text-muted">Cek mapel × tingkat, JP, dan N-KKTP.</div></div></div>
+                        </a>
+
+                        <div class="border rounded p-2">
+                            <div class="d-flex gap-2"><span class="badge bg-primary">4</span><div><strong>CP &amp; TP</strong><div class="small text-muted">
+                                <a href="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}">Capaian Pembelajaran</a>
+                                <span class="mx-1">·</span>
+                                <a href="{{ route('user.kurikulum.tp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}">Tujuan Pembelajaran</a>
+                            </div></div></div>
+                        </div>
+
+                        <a href="{{ route('user.kurikulum.atp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="border rounded p-2 text-decoration-none text-body">
+                            <div class="d-flex gap-2"><span class="badge bg-primary">5</span><div><strong>ATP</strong><div class="small text-muted">Urutkan TP dan alokasikan JP.</div></div></div>
+                        </a>
+
+                        <div class="border rounded p-2">
+                            <div class="d-flex gap-2"><span class="badge bg-primary">6</span><div><strong>PROTA &amp; PROSEM</strong><div class="small text-muted">
+                                <a href="{{ route('user.kurikulum.prota.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}">PROTA</a>
+                                <span class="mx-1">·</span>
+                                <a href="{{ route('user.kurikulum.prosem.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}">PROSEM</a>
+                            </div></div></div>
+                        </div>
+
+                        <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="border border-success-subtle rounded p-2 text-decoration-none text-body bg-success-subtle">
+                            <div class="d-flex gap-2"><span class="badge bg-success">7</span><div><strong>Perangkat Pembelajaran</strong><div class="small text-muted">RPM/Modul Ajar siap digunakan dan dicetak.</div></div></div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card" id="kurikulumList">

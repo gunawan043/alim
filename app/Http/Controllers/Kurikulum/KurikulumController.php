@@ -190,11 +190,13 @@ class KurikulumController extends Controller
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('academic_year_id', $academicYearId)
             ->where('semester', $semester)
-            ->get(['subject_id', 'grade_level_id', 'kktp_score'])
+            ->get(['subject_id', 'grade_level_id', 'kktp_score', 'kkm_score'])
             ->keyBy(fn ($k) => $k->subject_id.'|'.$k->grade_level_id);
 
         $rows = $rows->map(function ($row) use ($kktpMap) {
-            $row['kktp'] = $kktpMap->get($row['subject_id'].'|'.$row['grade_level_id'])?->kktp_score;
+            $kktp = $kktpMap->get($row['subject_id'].'|'.$row['grade_level_id']);
+            // kkm_score adalah nilai otoritatif; kktp_score adalah mirror lama.
+            $row['kktp'] = $kktp?->kktp_score ?? $kktp?->kkm_score;
 
             return $row;
         });
@@ -224,6 +226,10 @@ class KurikulumController extends Controller
 
         // Izin menyiapkan Peta TA baru: editor kurikulum (tim/koordinator kurikulum, super admin).
         $canPrepare = app(KurikulumAccess::class)->isKurikulumEditor($request->user());
+        $canManageProfile = app(KurikulumAccess::class)->isKurikulumTeam($request->user());
+
+        $curriculumUpdates = (array) config('curriculum_updates.items', []);
+        $curriculumUpdatesAt = (string) config('curriculum_updates.updated_at', '');
 
         $profileService = app(CurriculumProfileService::class);
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
@@ -241,6 +247,9 @@ class KurikulumController extends Controller
             'gradeLevelId',
             'canEditKktp',
             'canPrepare',
+            'canManageProfile',
+            'curriculumUpdates',
+            'curriculumUpdatesAt',
             'isArchive',
             'activeAcademicYearId',
             'jpSummary',
