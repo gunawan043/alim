@@ -88,6 +88,83 @@
         </div>
     </div>
 
+    <div class="row g-3 mb-3">
+        <div class="col-xl-7">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title mb-0"><i class="ri-eye-line text-primary me-1"></i>Preview Naskah</h5>
+                        <p class="text-muted mb-0 small">Preview mengikuti tata letak yang tersimpan.</p>
+                    </div>
+                    <a href="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" target="_blank" class="btn btn-outline-success btn-sm">
+                        <i class="ri-external-link-line me-1"></i>Buka PDF
+                    </a>
+                </div>
+                <div class="card-body p-2">
+                    <div class="border rounded overflow-hidden bg-light" style="height:720px;">
+                        <iframe src="{{ route('user.paket-soal.naskah.cetak', ['userId' => $userId, 'paketUuid' => $paket->id]) }}"
+                                title="Preview naskah soal"
+                                style="width:100%;height:100%;border:0;background:#fff;"
+                                loading="lazy"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-settings-3-line text-success me-1"></i>Tata Letak Naskah</h5>
+                    <p class="text-muted mb-0 small">Atur margin, font, dan ukuran kertas.</p>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ route('user.paket-soal.layout', ['userId' => $userId, 'paketUuid' => $paket->id]) }}">
+                        @csrf
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 small fw-semibold">Margin (mm)</h6>
+                            <span class="text-muted" style="font-size:11px;">Atas / Kanan / Bawah / Kiri</span>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label small mb-1">{{ $label }}</label>
+                                    <input type="number" name="{{ $field }}" class="form-control form-control-sm" min="0" max="50" step="0.5" required value="{{ old($field, $layout[$field]) }}">
+                                </div>
+                            @endforeach
+                        </div>
+                        <h6 class="mb-2 small fw-semibold">Font (pt) &amp; Baris</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Isi</label>
+                                <input type="number" name="font_size" class="form-control form-control-sm" min="6" max="24" step="0.5" required value="{{ old('font_size', $layout['font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Judul</label>
+                                <input type="number" name="title_font_size" class="form-control form-control-sm" min="8" max="30" step="0.5" required value="{{ old('title_font_size', $layout['title_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Info</label>
+                                <input type="number" name="info_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('info_font_size', $layout['info_font_size']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Tinggi Baris</label>
+                                <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-8">
+                                <label class="form-label small mb-1">Ukuran Kertas</label>
+                                <select name="paper_size" class="form-select form-select-sm" required>
+                                    <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
+                                    <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
+                                    <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm w-100"><i class="ri-save-3-line me-1"></i>Simpan Tata Letak</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0"><i class="ri-list-check-3 text-primary me-1"></i>Komposisi Naskah</h5>

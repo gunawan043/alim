@@ -52,7 +52,7 @@
             <div><strong>{{ $paket->judul }}</strong> <span class="badge bg-info ms-1">{{ $paket->kode_paket }}</span></div>
             <div class="small text-muted">Waktu: {{ $paket->waktu_pengerjaan_menit }} menit · {{ $rows->count() }} butir</div>
         </div>
-        <div class="card-body">
+        <div class="card-body" style="font-size: {{ ($layout['font_size'] ?? 11) }}pt; line-height: {{ ($layout['line_height'] ?? 1.4) }};">
             @if($paket->instruksi_umum)
                 <div class="alert alert-light border small"><strong>Petunjuk Umum:</strong><br>{!! nl2br(e($paket->instruksi_umum)) !!}</div>
             @endif

@@ -29,7 +29,7 @@ class PaketSoal extends Model
         'is_published', 'published_by', 'published_at',
         'workflow_status', 'approved_at', 'approved_by',
         'similarity_checked_at', 'similarity_summary', 'distributed_at',
-        'shared_scope', 'kkm',
+        'shared_scope', 'kkm', 'layout_settings',
     ];
 
     const WORKFLOW_DRAFT = 'draft';
@@ -69,6 +69,7 @@ class PaketSoal extends Model
         'waktu_pengerjaan_menit' => 'integer',
         'versi' => 'integer',
         'kkm' => 'decimal:2',
+        'layout_settings' => 'array',
     ];
 
     protected static function boot()
@@ -85,6 +86,41 @@ class PaketSoal extends Model
     protected static function generateKodePaket(): string
     {
         return 'PKT-'.strtoupper(Str::random(8)).'-'.now()->format('ymd');
+    }
+
+    public static function defaultLayout(): array
+    {
+        return [
+            'margin_top' => 15.0,
+            'margin_right' => 15.0,
+            'margin_bottom' => 15.0,
+            'margin_left' => 20.0,
+            'font_size' => 11.0,
+            'title_font_size' => 14.0,
+            'info_font_size' => 10.0,
+            'line_height' => 1.4,
+            'paper_size' => 'a4',
+        ];
+    }
+
+    public function layoutSettings(): array
+    {
+        $defaults = static::defaultLayout();
+        $saved = is_array($this->layout_settings) ? $this->layout_settings : [];
+
+        return [
+            'margin_top' => (float) ($saved['margin_top'] ?? $defaults['margin_top']),
+            'margin_right' => (float) ($saved['margin_right'] ?? $defaults['margin_right']),
+            'margin_bottom' => (float) ($saved['margin_bottom'] ?? $defaults['margin_bottom']),
+            'margin_left' => (float) ($saved['margin_left'] ?? $defaults['margin_left']),
+            'font_size' => (float) ($saved['font_size'] ?? $defaults['font_size']),
+            'title_font_size' => (float) ($saved['title_font_size'] ?? $defaults['title_font_size']),
+            'info_font_size' => (float) ($saved['info_font_size'] ?? $defaults['info_font_size']),
+            'line_height' => (float) ($saved['line_height'] ?? $defaults['line_height']),
+            'paper_size' => in_array(($saved['paper_size'] ?? $defaults['paper_size']), ['a4', 'folio', 'letter'], true)
+                ? ($saved['paper_size'] ?? $defaults['paper_size'])
+                : 'a4',
+        ];
     }
 
     public function kisiKisi(): BelongsTo

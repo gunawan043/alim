@@ -215,7 +215,7 @@ class PaketSoalController extends Controller
         $bisaKelolaNaskah = ! $paket->is_published && ! $paket->hasSnapshot()
             && in_array($paket->workflow_status, [PaketSoal::WORKFLOW_DRAFT, PaketSoal::WORKFLOW_REVISI], true);
 
-        return view('evalusi.paket-soal.show', compact('paket', 'komposisi', 'validasiNaskah', 'bisaKelolaNaskah'));
+        return view('evalusi.paket-soal.show', compact('paket', 'komposisi', 'validasiNaskah', 'bisaKelolaNaskah') + ['layout' => $paket->layoutSettings()]);
     }
 
     /**
@@ -665,6 +665,28 @@ class PaketSoalController extends Controller
     /**
      * Kartu Soal (web) — satu baris per butir soal paket.
      */
+    public function simpanLayout(Request $request, string $userId, string $paketUuid)
+    {
+        $paket = PaketSoal::findOrFail($paketUuid);
+        $this->authorizePaket($request, $paket);
+
+        $data = $request->validate([
+            'margin_top' => 'required|numeric|min:0|max:50',
+            'margin_right' => 'required|numeric|min:0|max:50',
+            'margin_bottom' => 'required|numeric|min:0|max:50',
+            'margin_left' => 'required|numeric|min:0|max:50',
+            'font_size' => 'required|numeric|min:6|max:24',
+            'title_font_size' => 'required|numeric|min:8|max:30',
+            'info_font_size' => 'required|numeric|min:6|max:20',
+            'line_height' => 'required|numeric|min:1|max:2.5',
+            'paper_size' => 'required|in:a4,folio,letter',
+        ]);
+
+        $paket->update(['layout_settings' => $data]);
+
+        return back()->with('success', 'Tata letak naskah berhasil disimpan.');
+    }
+
     public function naskah(Request $request, string $userId, string $paketUuid)
     {
         $data = $this->buildNaskahData($request, $paketUuid);
@@ -756,6 +778,7 @@ class PaketSoalController extends Controller
             'paket' => $paket,
             'rows' => $rows,
             'school' => $school,
+            'layout' => $paket->layoutSettings(),
         ];
     }
 

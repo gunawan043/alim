@@ -11,7 +11,17 @@
 @endsection
 
 
+@php $layout = $layout ?? \App\Models\PaketSoal::defaultLayout(); @endphp
 <style>
+    @page {
+        size: {{ $layout['paper_size'] }};
+        margin: {{ $layout['margin_top'] }}mm {{ $layout['margin_right'] }}mm {{ $layout['margin_bottom'] }}mm {{ $layout['margin_left'] }}mm;
+    }
+    body { font-size: {{ $layout['font_size'] }}pt; line-height: {{ $layout['line_height'] }}; }
+    .doc-title { font-size: {{ $layout['title_font_size'] }}pt; }
+    .doc-subtitle, .identitas, .petunjuk, .naskah-options, .summary-box, .naskah-note { font-size: {{ $layout['info_font_size'] }}pt; }
+    .naskah-question { font-size: {{ $layout['font_size'] }}pt; }
+
     .identitas { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
     .identitas td { padding: 3px 4px; vertical-align: bottom; }
     .identitas .line { border-bottom: 1px solid #333; display: inline-block; min-width: 210px; }
@@ -24,6 +34,13 @@
     .naskah-option-label { display: inline-block; min-width: 16px; font-weight: bold; }
     .naskah-wacana { border: 1px solid #999; background: #fafafa; padding: 6px 8px; margin-bottom: 6px; font-size: 9.5px; }
     .naskah-note { text-align: center; margin-top: 18px; font-size: 9px; color: #555; }
+</style>
+<style>
+    body { font-size: {{ $layout['font_size'] }}pt !important; line-height: {{ $layout['line_height'] }} !important; }
+    .doc-title { font-size: {{ $layout['title_font_size'] }}pt !important; }
+    .doc-subtitle, .identitas, .identitas td, .petunjuk, .naskah-options, .summary-box, .naskah-note { font-size: {{ $layout['info_font_size'] }}pt !important; }
+    .naskah-question, .naskah-question-body { font-size: {{ $layout['font_size'] }}pt !important; }
+    .naskah-wacana { font-size: {{ $layout['info_font_size'] }}pt !important; }
 </style>
 
 

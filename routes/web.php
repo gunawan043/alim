@@ -1844,6 +1844,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{kisiKisiId}', [PaketSoalController::class, 'store'])->name('store');
                 Route::get('/{paketUuid}', [PaketSoalController::class, 'show'])->name('show');
                 Route::post('/{paketUuid}/publish', [PaketSoalController::class, 'publish'])->name('publish');
+                Route::post('/{paketUuid}/layout', [PaketSoalController::class, 'simpanLayout'])->name('layout');
                 Route::post('/{paketUuid}/unpublish', [PaketSoalController::class, 'unpublish'])->name('unpublish');
                 Route::post('/{paketUuid}/reroll', [PaketSoalController::class, 'reroll'])->name('reroll');
                 Route::delete('/{paketUuid}', [PaketSoalController::class, 'destroy'])->name('destroy');
