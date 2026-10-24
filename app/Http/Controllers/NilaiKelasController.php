@@ -1001,6 +1001,15 @@ class NilaiKelasController extends Controller
             ->where('is_active', true)
             ->pluck('student_id');
 
+        if ($studentIds->isEmpty()) {
+            return back()->with('error', 'Belum ada santri aktif pada rombel/tahun ajaran ini.');
+        }
+
+        $incomplete = $this->incompleteLegerSubjects($studyGroup, (string) $validated['academic_year_id'], (string) $validated['semester']);
+        if ($incomplete !== []) {
+            return back()->with('error', $this->legerIncompleteMessage($incomplete));
+        }
+
         foreach ($studentIds as $studentId) {
             RaportRegistration::updateOrCreate(
                 [
@@ -1066,6 +1075,17 @@ class NilaiKelasController extends Controller
     public function bookPublish(Request $request, string $userId, string $studyGroupId, string $adminBookId)
     {
         $book = $this->publishableBook($request, $userId, $studyGroupId, $adminBookId);
+
+        $incomplete = $this->incompleteLegerSubjects(
+            $book->studyGroup,
+            (string) $book->academic_year_id,
+            (string) $book->semester,
+            $book,
+        );
+        if ($incomplete !== []) {
+            return back()->with('error', $this->legerIncompleteMessage($incomplete));
+        }
+
         $book->update(['published_at' => now(), 'published_by' => $request->user()?->id]);
 
         $studentIds = StudentClassHistory::where('study_group_id', $studyGroupId)
@@ -1093,6 +1113,118 @@ class NilaiKelasController extends Controller
         $book->update(['published_at' => null, 'published_by' => null]);
 
         return back()->with('success', 'Publikasi nilai '.($book->subject?->name ?? 'mapel').' dibatalkan.');
+    }
+
+    /**
+     * Cari mapel yang leger-nya belum lengkap (STS/SAS).
+     * Mapel Liqo dikecualikan karena merupakan kegiatan rutin, bukan mapel.
+     *
+     * @return array<int, array{subject: string, missing: int}>
+     */
+    private function incompleteLegerSubjects(
+        StudyGroup $studyGroup,
+        string $academicYearId,
+        string $semester,
+        ?TeacherAdminBook $onlyBook = null,
+    ): array {
+        $books = TeacherAdminBook::with('subject')
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester', $semester)
+            ->where('is_active', true)
+            ->when($onlyBook, fn ($query) => $query->whereKey($onlyBook->id))
+            ->get();
+
+        if (! $onlyBook) {
+            $subjectIds = RaporDistributionSetting::forContext(
+                $studyGroup->school_id,
+                $academicYearId,
+                $semester,
+            )?->reportSubjectIds();
+
+            if (! empty($subjectIds)) {
+                $books = $books->whereIn('subject_id', $subjectIds);
+            }
+        }
+
+        if ($books->isEmpty()) {
+            return [];
+        }
+
+        $studentIds = StudentClassHistory::query()
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('is_active', true)
+            ->pluck('student_id')
+            ->values();
+
+        if ($studentIds->isEmpty()) {
+            return [];
+        }
+
+        $nilaiRows = NilaiSumatif::query()
+            ->whereIn('admin_book_id', $books->pluck('id'))
+            ->whereIn('student_id', $studentIds)
+            ->where('semester', $semester)
+            ->get()
+            ->keyBy(fn ($row) => $row->admin_book_id.'|'.$row->student_id);
+
+        $tahfidz = app(TahfidzRaporService::class);
+        $incomplete = [];
+
+        foreach ($books as $book) {
+            $subjectName = (string) ($book->subject?->name ?? '');
+            $subjectCode = (string) ($book->subject?->code ?? '');
+
+            if (preg_match('/liqo/i', $subjectName.' '.$subjectCode)) {
+                continue;
+            }
+
+            $missing = [];
+
+            foreach ($studentIds as $studentId) {
+                $row = $nilaiRows->get($book->id.'|'.$studentId);
+
+                if ($tahfidz->isTahfidzSubject($book->subject)) {
+                    $sts = $tahfidz->scoreFor($studentId, $book, $academicYearId, $semester, 'sts', $row);
+                    $sas = $tahfidz->scoreFor($studentId, $book, $academicYearId, $semester, 'sas', $row);
+                } else {
+                    $sts = $row?->sts;
+                    $sas = $row?->nr_final ?? $row?->sas;
+                }
+
+                if ($sts === null || $sas === null) {
+                    $missing[] = $studentId;
+                }
+            }
+
+            if ($missing !== []) {
+                $incomplete[] = [
+                    'subject' => $subjectName !== '' ? $subjectName : 'Tanpa nama mapel',
+                    'missing' => count($missing),
+                ];
+            }
+        }
+
+        return $incomplete;
+    }
+
+    /**
+     * @param  array<int, array{subject: string, missing: int}>  $incomplete
+     */
+    private function legerIncompleteMessage(array $incomplete): string
+    {
+        $details = collect($incomplete)
+            ->take(5)
+            ->map(fn ($item) => $item['subject'].' ('.$item['missing'].' santri)')
+            ->implode(', ');
+
+        if (count($incomplete) > 5) {
+            $details .= ', dan '.(count($incomplete) - 5).' mapel lainnya';
+        }
+
+        return 'Publikasi dibatalkan: leger belum terisi lengkap pada '.$details
+            .'. Lengkapi nilai STS dan SAS terlebih dahulu. Mapel Liqo dikecualikan.';
     }
 
     private function publishableBook(Request $request, string $userId, string $studyGroupId, string $adminBookId): TeacherAdminBook

@@ -196,6 +196,63 @@ class RaporPublishTest extends TestCase
         $this->assertSame(403, $blocked->getStatusCode());
     }
 
+    public function test_publish_ditolak_jika_leger_belum_lengkap(): void
+    {
+        NilaiSumatif::where('admin_book_id', $this->book->id)
+            ->update(['sas' => null, 'nr_final' => null]);
+
+        $controller = app(NilaiKelasController::class);
+        $request = $this->request('POST', [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]);
+
+        $bookResponse = $controller->bookPublish($request, $this->admin->id, $this->group->id, $this->book->id);
+        $this->assertNull($this->book->fresh()->published_at);
+        $this->assertTrue(session()->has('error'));
+
+        $raporResponse = $controller->raporPublish($request, $this->admin->id, $this->group->id);
+        $this->assertFalse(
+            RaportRegistration::where('student_id', $this->student->id)->where('is_published', true)->exists()
+        );
+        $this->assertTrue(session()->has('error'));
+    }
+
+    public function test_mapel_liqo_tidak_menghalangi_publish_walau_kosong(): void
+    {
+        $liqo = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'LIQO',
+            'name' => "Liqo Maftuh (Upacara)",
+            'credit_hours' => 1,
+            'is_active' => true,
+        ]);
+
+        $liqoBook = TeacherAdminBook::create([
+            'teacher_id' => $this->admin->id,
+            'subject_id' => $liqo->id,
+            'study_group_id' => $this->group->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'is_active' => true,
+        ]);
+
+        $controller = app(NilaiKelasController::class);
+        $request = $this->request('POST', [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]);
+
+        $controller->bookPublish($request, $this->admin->id, $this->group->id, $liqoBook->id);
+        $this->assertNotNull($liqoBook->fresh()->published_at);
+
+        $controller->raporPublish($request, $this->admin->id, $this->group->id);
+        $this->assertTrue(
+            RaportRegistration::where('student_id', $this->student->id)->where('is_published', true)->exists()
+        );
+    }
+
     private function request(string $method, array $data = [], ?User $user = null): Request
     {
         $request = Request::create('/nilai-kelas', $method, $data);
