@@ -256,7 +256,11 @@ class SchoolController extends Controller
     {
         $school = $this->validateSchoolAccess($userId, $schoolId);
 
-        return view('schools.show', compact('school', 'userId'));
+        return view('schools.show', [
+            'school' => $school,
+            'userId' => $userId,
+            'canEditSchool' => $this->canEditSchool(),
+        ]);
     }
 
     public function edit(string $userId, string $schoolId)
@@ -265,6 +269,7 @@ class SchoolController extends Controller
         abort_unless($this->canEditSchool(), 403, 'Hanya Super Admin, KSP, Waka, atau Tata Usaha yang dapat mengedit sekolah.');
 
         $school = $this->validateSchoolAccess($userId, $schoolId);
+        $canEditSchool = $this->canEditSchool();
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
         $principals = User::whereHas('employment')
@@ -273,7 +278,7 @@ class SchoolController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('schools.edit', compact('school', 'workUnits', 'provinces', 'principals', 'userId'));
+        return view('schools.edit', compact('school', 'workUnits', 'provinces', 'principals', 'userId', 'canEditSchool'));
     }
 
     public function updateMedia(Request $request, string $userId, string $schoolId)

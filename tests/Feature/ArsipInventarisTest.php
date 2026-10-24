@@ -793,6 +793,11 @@ class ArsipInventarisTest extends TestCase
                 ->get("/{$user->id}/schools/{$this->school->id}/edit")
                 ->assertOk()
                 ->assertSee('Kop Surat', false);
+
+            $this->actingAs($user)
+                ->get("/{$user->id}/schools/{$this->school->id}")
+                ->assertOk()
+                ->assertSee('Upload Logo, Kop, TTD', false);
         }
     }
 

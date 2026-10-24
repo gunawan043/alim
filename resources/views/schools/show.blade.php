@@ -73,11 +73,14 @@
                         @endif
                     </div>
                 </div>
-                <div class="col-auto d-flex gap-2">
-                    @if(auth()->user()->hasPermissionTo('school-update'))
-                    <a href="{{ route('user.schools.edit', ['userId' => $userId, 'schoolId' => $school->id]) }}" class="btn btn-soft-secondary">
-                        <i class="ri-pencil-line me-1"></i> Edit
-                    </a>
+                <div class="col-auto d-flex flex-wrap gap-2">
+                    @if($canEditSchool ?? false)
+                        <a href="{{ route('user.schools.edit', ['userId' => $userId, 'schoolId' => $school->id]) }}" class="btn btn-soft-secondary">
+                            <i class="ri-pencil-line me-1"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#schoolMediaModal">
+                            <i class="ri-upload-cloud-2-line me-1"></i> Upload Logo, Kop, TTD &amp; Stempel
+                        </button>
                     @endif
                 </div>
             </div>
@@ -389,4 +392,6 @@
         });
     });
     </script>
+
+    @include('schools._media_modal')
 @endsection
