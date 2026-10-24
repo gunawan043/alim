@@ -6,10 +6,12 @@ use App\Http\Controllers\NilaiKelasController;
 use App\Models\AcademicYear;
 use App\Models\NilaiSumatif;
 use App\Models\RaportRegistration;
+use App\Models\RaporDistributionSetting;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\TahfidzRaporService;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -53,11 +55,18 @@ class NilaiReminderService
                     ->where('is_active', true)
                     ->pluck('student_id');
 
+                $reportSubjectIds = RaporDistributionSetting::forContext(
+                    $group->school_id,
+                    $academicYear->id,
+                    $semester,
+                )?->reportSubjectIds();
+
                 $books = TeacherAdminBook::with('subject')
                     ->where('study_group_id', $group->id)
                     ->where('academic_year_id', $academicYear->id)
                     ->where('semester', $semester)
                     ->where('is_active', true)
+                    ->when($reportSubjectIds, fn ($query) => $query->whereIn('subject_id', $reportSubjectIds))
                     ->get()
                     ->reject(fn ($book) => preg_match(
                         '/liqo/i',
@@ -77,13 +86,19 @@ class NilaiReminderService
                     ->keyBy(fn ($row) => $row->admin_book_id.'|'.$row->student_id);
 
                 $incomplete = false;
+                $tahfidz = app(TahfidzRaporService::class);
 
                 foreach ($books as $book) {
                     foreach ($studentIds as $studentId) {
                         $row = $nilaiRows->get($book->id.'|'.$studentId);
 
-                        $sts = $row?->sts;
-                        $sas = $row?->nr_final ?? $row?->sas;
+                        if ($tahfidz->isTahfidzSubject($book->subject)) {
+                            $sts = $tahfidz->scoreFor($studentId, $book, $academicYear->id, $semester, 'sts', $row);
+                            $sas = $tahfidz->scoreFor($studentId, $book, $academicYear->id, $semester, 'sas', $row);
+                        } else {
+                            $sts = $row?->sts;
+                            $sas = $row?->nr_final ?? $row?->sas;
+                        }
 
                         if ($sts === null || $sas === null) {
                             $incomplete = true;

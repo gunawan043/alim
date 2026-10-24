@@ -1021,12 +1021,14 @@ class NilaiKelasController extends Controller
             return back()->with('error', 'Publikasi dibatalkan: belum ada mapel/buku nilai aktif pada rombel dan semester ini.');
         }
 
+        $belowKktp = [];
         $incomplete = $this->incompleteLegerSubjects(
             $studyGroup,
             (string) $validated['academic_year_id'],
             (string) $validated['semester'],
             null,
             $jenis,
+            $belowKktp,
         );
         if ($incomplete !== []) {
             return back()->with('error', $this->legerIncompleteMessage($incomplete, $jenis));
@@ -1064,7 +1066,13 @@ class NilaiKelasController extends Controller
             'priority' => 'high',
         ]);
 
-        return back()->with('success', 'Rapor dipublikasikan untuk '.$studentIds->count().' santri. Wali santri kini dapat melihat rapor.');
+        $response = back()->with('success', 'Rapor '.strtoupper($jenis).' dipublikasikan untuk '.$studentIds->count().' santri. Wali santri kini dapat melihat rapor.');
+
+        if ($belowKktp !== []) {
+            $response->with('warning', $this->belowKktpMessage($belowKktp, $jenis));
+        }
+
+        return $response;
     }
 
     public function raporUnpublish(Request $request, string $userId, string $studyGroupId)
@@ -1107,12 +1115,14 @@ class NilaiKelasController extends Controller
             return back()->with('error', 'Publikasi dibatalkan: belum ada santri aktif pada rombel dan tahun ajaran ini.');
         }
 
+        $belowKktp = [];
         $incomplete = $this->incompleteLegerSubjects(
             $book->studyGroup,
             (string) $book->academic_year_id,
             (string) $book->semester,
             $book,
             $jenis,
+            $belowKktp,
         );
         if ($incomplete !== []) {
             return back()->with('error', $this->legerIncompleteMessage($incomplete, $jenis));
@@ -1136,7 +1146,13 @@ class NilaiKelasController extends Controller
             'priority' => 'medium',
         ]);
 
-        return back()->with('success', 'Nilai '.($book->subject?->name ?? 'mapel').' dipublikasikan ke wali santri.');
+        $response = back()->with('success', 'Nilai '.($book->subject?->name ?? 'mapel').' '.strtoupper($jenis).' dipublikasikan ke wali santri.');
+
+        if ($belowKktp !== []) {
+            $response->with('warning', $this->belowKktpMessage($belowKktp, $jenis));
+        }
+
+        return $response;
     }
 
     public function bookUnpublish(Request $request, string $userId, string $studyGroupId, string $adminBookId)
@@ -1193,6 +1209,7 @@ class NilaiKelasController extends Controller
         string $semester,
         ?TeacherAdminBook $onlyBook = null,
         string $jenis = 'sas',
+        array &$belowKktp = [],
     ): array {
         $books = $this->activeLegerBooks($studyGroup, $academicYearId, $semester, $onlyBook);
 
@@ -1220,6 +1237,7 @@ class NilaiKelasController extends Controller
 
         $tahfidz = app(TahfidzRaporService::class);
         $incomplete = [];
+        $belowKktp = [];
 
         foreach ($books as $book) {
             $subjectName = (string) ($book->subject?->name ?? '');
@@ -1244,6 +1262,8 @@ class NilaiKelasController extends Controller
 
                 if ($score === null) {
                     $missing[] = $studentId;
+                } elseif ($score < AcademicNilai::kkm($book)) {
+                    $belowKktp[$book->id] = $subjectName !== '' ? $subjectName : 'Tanpa nama mapel';
                 }
             }
 
@@ -1255,7 +1275,23 @@ class NilaiKelasController extends Controller
             }
         }
 
+        $belowKktp = array_values($belowKktp);
+
         return $incomplete;
+    }
+
+    /**
+     * @param  array<int, string>  $belowKktp
+     */
+    private function belowKktpMessage(array $belowKktp, string $jenis = 'sas'): string
+    {
+        $details = implode(', ', array_slice($belowKktp, 0, 5));
+
+        if (count($belowKktp) > 5) {
+            $details .= ', dan '.(count($belowKktp) - 5).' mapel lainnya';
+        }
+
+        return 'Rapor '.strtoupper($jenis).' sudah dipublikasikan, tetapi ada nilai di bawah KKTP pada: '.$details.'.';
     }
 
     /**

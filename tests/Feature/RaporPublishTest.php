@@ -196,6 +196,27 @@ class RaporPublishTest extends TestCase
         $this->assertSame(403, $blocked->getStatusCode());
     }
 
+    public function test_publish_berhasil_dengan_peringatan_nilai_di_bawah_kktp(): void
+    {
+        NilaiSumatif::where('admin_book_id', $this->book->id)
+            ->update(['sts' => 60, 'sas' => 60, 'nr_final' => 60]);
+
+        $controller = app(NilaiKelasController::class);
+        $request = $this->request('POST', [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'jenis' => 'sas',
+        ]);
+
+        $controller->raporPublish($request, $this->admin->id, $this->group->id);
+
+        $this->assertTrue(
+            RaportRegistration::where('student_id', $this->student->id)->where('is_published', true)->exists()
+        );
+        $this->assertTrue(session()->has('warning'));
+        $this->assertStringContainsString('bawah KKTP', (string) session('warning'));
+    }
+
     public function test_publish_sts_tidak_memerlukan_nilai_sas(): void
     {
         NilaiSumatif::where('admin_book_id', $this->book->id)
