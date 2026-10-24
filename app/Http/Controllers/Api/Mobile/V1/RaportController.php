@@ -11,6 +11,7 @@ use App\Models\PembiasaanPagi;
 use App\Models\RaportRegistration;
 use App\Models\StudentHealthCheckup;
 use App\Models\WaliSantri;
+use App\Services\GuardianGradeColumnService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -122,7 +123,7 @@ class RaportController extends Controller
             ->whereHas('adminBook', fn ($q) => $q->whereNotNull('published_at'))
             ->get()
             ->map(function ($row) use ($sumatifService) {
-                return [
+                $payload = [
                     'id' => $row->id,
                     'subject_name' => $row->adminBook?->subject?->name,
                     's1' => $row->s1,
@@ -134,14 +135,20 @@ class RaportController extends Controller
                     'sumatif_harian' => $row->sumatif_harian,
                     'kolom_sumatif' => $sumatifService->columnsFor($row->adminBook),
                     'rs' => $row->rs,
+                    'sts_murni' => $row->sts_murni,
                     'sts' => $row->sts,
                     'raport_sts' => $row->raport_sts,
+                    'sas_murni' => $row->sas_murni,
                     'sas' => $row->sas,
                     'rsa' => $row->rsa,
                     'nr_murni' => $row->nr_murni,
                     'nr_final' => $row->nr_final,
                     'ket' => $row->ket,
                 ];
+
+                return $row->adminBook
+                    ? GuardianGradeColumnService::filterPayload($payload, $row->adminBook)
+                    : $payload;
             });
 
         // Get Pembiasaan data

@@ -877,6 +877,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                         Route::post('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3Store'])->name('w3.store');
                         Route::post('/{adminBookId}/w3/bobot', [NilaiGuruController::class, 'wizard3Bobot'])->name('w3.bobot');
                         Route::post('/{adminBookId}/w3/kolom', [NilaiGuruController::class, 'wizard3Columns'])->name('w3.columns');
+                        Route::post('/{adminBookId}/w3/visibilitas', [NilaiGuruController::class, 'wizard3Visibility'])->name('w3.visibility');
                         Route::post('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4Store'])->name('w4.store');
                         Route::post('/{adminBookId}/w4/kolom', [NilaiGuruController::class, 'wizard4Columns'])->name('w4.kolom');
                         Route::post('/{adminBookId}/w5', [NilaiGuruController::class, 'wizard5Store'])->name('w5.store');

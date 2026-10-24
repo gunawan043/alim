@@ -11,6 +11,7 @@ use App\Models\DormitoryResident;
 use App\Models\DormitoryViolation;
 use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
+use App\Services\GuardianGradeColumnService;
 use App\Models\StudentAchievement;
 use App\Models\StudentAttendance;
 use App\Models\StudentClassHistory;
@@ -136,32 +137,40 @@ class SantriDataController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->first();
         $yearId = $request->query('academic_year_id', $activeYear?->id);
 
-        $sumatif = NilaiSumatif::with('adminBook:id,subject_id,published_at')
+        $sumatif = NilaiSumatif::with('adminBook:id,subject_id,published_at,guardian_visible_columns')
             ->where('student_id', $id)
             ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
             ->whereHas('adminBook', fn ($q) => $q->whereNotNull('published_at'))
             ->orderBy('semester')
             ->get()
-            ->map(fn ($n) => [
-                'id' => $n->id,
-                'mata_pelajaran_id' => $n->adminBook?->subject_id,
-                'semester' => $n->semester,
-                's1' => $n->s1,
-                's2' => $n->s2,
-                's3' => $n->s3,
-                's4' => $n->s4,
-                's5' => $n->s5,
-                's6' => $n->s6,
-                'sumatif_harian' => $n->sumatif_harian,
-                'kolom_sumatif' => app(\App\Services\SumatifHarianService::class)->columnsFor($n->adminBook),
-                'rs' => $n->rs,
-                'sts' => $n->sts,
-                'sas' => $n->sas,
-                'rsa' => $n->rsa,
-                'nr_murni' => $n->nr_murni,
-                'nr_final' => $n->nr_final,
-                'keterangan' => $n->ket,
-            ]);
+            ->map(function ($n) {
+                $payload = [
+                    'id' => $n->id,
+                    'mata_pelajaran_id' => $n->adminBook?->subject_id,
+                    'semester' => $n->semester,
+                    's1' => $n->s1,
+                    's2' => $n->s2,
+                    's3' => $n->s3,
+                    's4' => $n->s4,
+                    's5' => $n->s5,
+                    's6' => $n->s6,
+                    'sumatif_harian' => $n->sumatif_harian,
+                    'kolom_sumatif' => app(\App\Services\SumatifHarianService::class)->columnsFor($n->adminBook),
+                    'rs' => $n->rs,
+                    'sts_murni' => $n->sts_murni,
+                    'sts' => $n->sts,
+                    'sas_murni' => $n->sas_murni,
+                    'sas' => $n->sas,
+                    'rsa' => $n->rsa,
+                    'nr_murni' => $n->nr_murni,
+                    'nr_final' => $n->nr_final,
+                    'keterangan' => $n->ket,
+                ];
+
+                return $n->adminBook
+                    ? GuardianGradeColumnService::filterPayload($payload, $n->adminBook)
+                    : $payload;
+            });
 
         $formatif = NilaiFormatif::with('adminBook:id,subject_id,published_at')
             ->where('student_id', $id)

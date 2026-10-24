@@ -22,6 +22,7 @@ use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Services\KurikulumAccess;
+use App\Services\GuardianGradeColumnService;
 use App\Services\SumatifHarianService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -497,8 +498,13 @@ class NilaiGuruController extends Controller
             ->get()
             ->keyBy('student_id');
 
+        $guardianColumns = GuardianGradeColumnService::options();
+        $guardianVisibleColumns = $book['adminBook']->guardianVisibleColumns()
+            ?? GuardianGradeColumnService::keys();
+
         return view('nilai-guru.wizard3', compact(
             'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap', 'paketOptions', 'selectedPaketId', 'formatifMap',
+            'guardianColumns', 'guardianVisibleColumns',
         ));
     }
 
@@ -527,6 +533,33 @@ class NilaiGuruController extends Controller
             'success' => true,
             'columns' => $columns,
             'message' => 'Kolom Sumatif Harian berhasil disimpan.',
+        ]);
+    }
+
+    /**
+     * Simpan kolom nilai yang boleh dilihat wali/API untuk buku mapel ini.
+     */
+    public function wizard3Visibility(Request $request, string $userId, string $adminBookId)
+    {
+        $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        $request->validate([
+            'columns' => 'nullable|array',
+            'columns.*' => 'string',
+        ]);
+
+        $selected = collect((array) $request->input('columns', []))
+            ->filter(fn ($key) => in_array($key, GuardianGradeColumnService::keys(), true))
+            ->unique()
+            ->values()
+            ->all();
+
+        $book['adminBook']->update(['guardian_visible_columns' => $selected]);
+
+        return response()->json([
+            'success' => true,
+            'columns' => $selected,
+            'message' => 'Kolom untuk wali dan API berhasil disimpan.',
         ]);
     }
 

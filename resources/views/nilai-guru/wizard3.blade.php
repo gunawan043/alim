@@ -71,6 +71,10 @@
                     <a class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" href="#collapseBobotNR" role="button" aria-expanded="false" aria-controls="collapseBobotNR">
                         <i class="ri-settings-3-line me-1"></i> Pengaturan NR Final
                     </a>
+                    <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#guardianColumnsModal">
+                        <i class="ri-eye-line me-1"></i> Kolom Wali &amp; API
+                        <span class="badge bg-success-subtle text-success ms-1" id="guardian-visible-count">{{ count($guardianVisibleColumns) }}</span>
+                    </button>
                     <select class="form-select form-select-sm" style="width:auto;" onchange="location.href=this.value">
                         @foreach($books as $b)
                             <option value="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $b->id]) }}" {{ $b->id == $book['adminBook']->id ? 'selected' : '' }}>
@@ -367,6 +371,44 @@
         </div>
     </div>
     @include('nilai-guru.partials.table-tools')
+    {{-- Modal: kolom nilai yang boleh dilihat wali & API --}}
+    <div class="modal fade" id="guardianColumnsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-eye-line me-2 text-success"></i>Kolom Wali &amp; API</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Pilih kolom nilai yang boleh dilihat wali santri dan diproses API untuk mapel
+                        <strong>{{ $book['adminBook']->subject->name ?? '-' }}</strong>.
+                    </p>
+                    <div class="row g-2">
+                        @foreach($guardianColumns as $columnKey => $columnLabel)
+                            <div class="col-12 col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input guardian-column-checkbox" type="checkbox"
+                                           name="guardian_columns[]" value="{{ $columnKey }}"
+                                           id="guardian-col-{{ $columnKey }}"
+                                           @checked(in_array($columnKey, $guardianVisibleColumns, true))>
+                                    <label class="form-check-label" for="guardian-col-{{ $columnKey }}">{{ $columnLabel }}</label>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div id="guardian-columns-status" class="small mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-success" onclick="guardianColumnsSave()">
+                        <i class="ri-save-3-line me-1"></i>Simpan Kolom
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('scripts')
@@ -791,4 +833,39 @@ applyMurniGate();
     submitId="hapusKolomSumatifConfirm">
     <p class="text-center text-muted mb-0" id="hapusKolomSumatifBody">Kolom akan dihapus.</p>
 </x-modal-confirm>
+<script>
+const guardianVisibilityUrl = @json(route('user.schools.guru-mapel.w3.visibility', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]));
+
+function guardianColumnsSave() {
+    const status = document.getElementById('guardian-columns-status');
+    const columns = Array.from(document.querySelectorAll('.guardian-column-checkbox:checked')).map(function (el) {
+        return el.value;
+    });
+
+    if (status) status.textContent = 'Menyimpan...';
+
+    fetch(guardianVisibilityUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': @json(csrf_token()),
+        },
+        body: JSON.stringify({ columns: columns }),
+    })
+        .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+        .then(function (result) {
+            if (!result.ok || !result.data.success) {
+                throw new Error(result.data.message || 'Gagal menyimpan kolom.');
+            }
+            const badge = document.getElementById('guardian-visible-count');
+            if (badge) badge.textContent = columns.length;
+            if (status) status.textContent = result.data.message || 'Kolom berhasil disimpan.';
+            bootstrap.Modal.getInstance(document.getElementById('guardianColumnsModal'))?.hide();
+        })
+        .catch(function (error) {
+            if (status) status.textContent = error.message || 'Gagal menyimpan kolom.';
+        });
+}
+</script>
 @endpush

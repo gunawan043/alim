@@ -36,6 +36,7 @@ class TeacherAdminBook extends Model
         'locked_by',
         'published_at',
         'published_by',
+        'guardian_visible_columns',
         'nr_final_weight_rs',
         'nr_final_weight_sts',
         'nr_final_weight_sas',
@@ -51,6 +52,7 @@ class TeacherAdminBook extends Model
         'formatif_columns' => 'array',
         'locked_at' => 'datetime',
         'published_at' => 'datetime',
+        'guardian_visible_columns' => 'array',
     ];
 
     /**
@@ -64,6 +66,17 @@ class TeacherAdminBook extends Model
     public function isPublished(): bool
     {
         return $this->published_at !== null;
+    }
+
+    /**
+     * Kolom nilai yang boleh dilihat wali/API.
+     * Null berarti semua kolom (kompatibel dengan data lama).
+     *
+     * @return array<int, string>|null
+     */
+    public function guardianVisibleColumns(): ?array
+    {
+        return is_array($this->guardian_visible_columns) ? $this->guardian_visible_columns : null;
     }
 
     public function teacher(): BelongsTo

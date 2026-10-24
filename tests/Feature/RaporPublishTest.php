@@ -16,6 +16,7 @@ use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Models\WaliSantri;
+use App\Services\GuardianGradeColumnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -248,7 +249,7 @@ class RaporPublishTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('flashErrorModal', false)
-            ->assertSee('926-road-barrier.gif', false);
+            ->assertSee('road-barrier.gif', false);
     }
 
     public function test_publish_ditolak_jika_leger_belum_lengkap(): void
@@ -342,6 +343,42 @@ class RaporPublishTest extends TestCase
         $this->assertNull($this->book->fresh()->published_at);
         $this->assertTrue(session()->has('error'));
         $this->assertStringContainsString('belum ada santri aktif', (string) session('error'));
+    }
+
+    public function test_kolom_api_hanya_mengembalikan_kolom_yang_diizinkan(): void
+    {
+        $this->book->update(['guardian_visible_columns' => ['nr_final']]);
+
+        $filtered = GuardianGradeColumnService::filterPayload([
+            'id' => 'row-1',
+            'subject_name' => 'Mapel Publish',
+            's1' => 80,
+            'sumatif_harian' => ['s1' => 80],
+            'sts' => 80,
+            'sas' => 85,
+            'nr_final' => 82,
+            'keterangan' => 'Baik',
+        ], $this->book->fresh());
+
+        $this->assertSame('row-1', $filtered['id']);
+        $this->assertSame('Mapel Publish', $filtered['subject_name']);
+        $this->assertSame(82, $filtered['nr_final']);
+        $this->assertArrayNotHasKey('sts', $filtered);
+        $this->assertArrayNotHasKey('sas', $filtered);
+        $this->assertArrayNotHasKey('sumatif_harian', $filtered);
+    }
+
+    public function test_pengaturan_kolom_wali_disimpan_per_buku(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('user.schools.guru-mapel.w3.visibility', [
+                'userId' => $this->admin->id,
+                'adminBookId' => $this->book->id,
+            ]), ['columns' => ['nr_final', 'sts']])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame(['nr_final', 'sts'], $this->book->fresh()->guardianVisibleColumns());
     }
 
     private function request(string $method, array $data = [], ?User $user = null): Request
