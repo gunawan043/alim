@@ -12,8 +12,8 @@ use App\Support\SubjectArabicName;
  * Satu sumber penentuan nama Arab yang dipakai pada dokumen resmi.
  *
  * Nama santri/GTK hanya dipakai bila statusnya **approved** (sudah ditinjau);
- * nama mapel & kepala sekolah diisi manual oleh pengguna berwenang sehingga
- * langsung dipakai. Fallback ke nama Latin dilakukan pemanggil.
+ * nama mapel memakai isian manual bila ada, lalu kamus otomatis; nama kepala
+ * sekolah diisi manual. Fallback ke nama Latin dilakukan pemanggil.
  */
 class ArabicNameResolver
 {

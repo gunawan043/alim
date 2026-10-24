@@ -862,8 +862,14 @@ class ArsipInventarisTest extends TestCase
             'ar',
         );
 
-        $this->assertStringContainsString('<table class="nilai" dir="rtl">', $html);
+        $this->assertStringContainsString('<table class="nilai">', $html);
         $this->assertStringContainsString('body.ar table', $html);
+        $this->assertStringContainsString('LJK-Arabic', $html);
+        $this->assertLessThan(
+            strpos($html, '<th class="no">'),
+            strpos($html, '<th class="ket-col">'),
+            'Kolom keterangan harus berada di kiri DOM agar tampil paling kanan pada RTL.'
+        );
         $this->assertSame('الفقه', app(\App\Services\ArabicName\ArabicNameResolver::class)->subjectName($this->subject));
     }
 

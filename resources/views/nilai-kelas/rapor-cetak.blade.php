@@ -42,6 +42,8 @@
     <meta charset="UTF-8">
     <title>Rapor — {{ $santri[array_key_first($santri)]['Nama'] ?? '' }}</title>
     <style>
+        {!! \App\Services\Ljk\LjkPdfFonts::arabicFaceCss() !!}
+
         @page {
             size: {{ $paperCss }};
             margin: 0;
@@ -61,12 +63,11 @@
         }
 
         body.ar {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
             direction: rtl;
         }
 
         /* RTL: tabel, urutan kolom, dan perataan teks mengikuti arah Arab. */
-        body.ar table,
         body.ar .info-grid,
         body.ar .ringkasan-box,
         body.ar .catatan-box,
@@ -94,7 +95,10 @@
         }
 
         .ar {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
+            direction: rtl;
+            unicode-bidi: embed;
+            font-style: normal;
         }
 
         /* ── Kop Surat ── */
@@ -368,25 +372,41 @@
         </tr>
     </table>
 
-    {{-- Tabel Nilai --}}
-    <table class="nilai" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
+    {{-- Tabel Nilai: urutan kolom dibalik eksplisit untuk RTL. --}}
+    <table class="nilai">
         <thead>
             <tr>
-                <th class="no">{!! $text($label('no')) !!}</th>
-                <th class="mapel">{!! $text($label('mapel')) !!}</th>
-                <th class="kkm">{!! $text($label('kktp')) !!}</th>
-                <th class="nilai-col">{!! $text($label('nilai')) !!}</th>
-                <th class="ket-col">{!! $text($label('keterangan')) !!}</th>
+                @if($isArabic)
+                    <th class="ket-col">{!! $text($label('keterangan')) !!}</th>
+                    <th class="nilai-col">{!! $text($label('nilai')) !!}</th>
+                    <th class="kkm">{!! $text($label('kktp')) !!}</th>
+                    <th class="mapel">{!! $text($label('mapel')) !!}</th>
+                    <th class="no">{!! $text($label('no')) !!}</th>
+                @else
+                    <th class="no">{!! $text($label('no')) !!}</th>
+                    <th class="mapel">{!! $text($label('mapel')) !!}</th>
+                    <th class="kkm">{!! $text($label('kktp')) !!}</th>
+                    <th class="nilai-col">{!! $text($label('nilai')) !!}</th>
+                    <th class="ket-col">{!! $text($label('keterangan')) !!}</th>
+                @endif
             </tr>
         </thead>
         <tbody>
             @foreach($data['Mapel'] as $row)
             <tr>
-                <td class="no">{{ $num($row['no']) }}</td>
-                <td class="mapel">{!! $text(($isArabic && ! empty($row['mapel_ar'])) ? $row['mapel_ar'] : $row['mapel']) !!}</td>
-                <td class="kkm">{{ $num($row['kkm']) }}</td>
-                <td class="nilai-col">{{ $num($row['nilai']) }}</td>
-                <td class="ket-col">{!! $text($ket($row['keterangan'])) !!}</td>
+                @if($isArabic)
+                    <td class="ket-col">{!! $text($ket($row['keterangan'])) !!}</td>
+                    <td class="nilai-col">{{ $num($row['nilai']) }}</td>
+                    <td class="kkm">{{ $num($row['kkm']) }}</td>
+                    <td class="mapel">{!! $text(($isArabic && ! empty($row['mapel_ar'])) ? $row['mapel_ar'] : $row['mapel']) !!}</td>
+                    <td class="no">{{ $num($row['no']) }}</td>
+                @else
+                    <td class="no">{{ $num($row['no']) }}</td>
+                    <td class="mapel">{!! $text(($isArabic && ! empty($row['mapel_ar'])) ? $row['mapel_ar'] : $row['mapel']) !!}</td>
+                    <td class="kkm">{{ $num($row['kkm']) }}</td>
+                    <td class="nilai-col">{{ $num($row['nilai']) }}</td>
+                    <td class="ket-col">{!! $text($ket($row['keterangan'])) !!}</td>
+                @endif
             </tr>
             @endforeach
         </tbody>

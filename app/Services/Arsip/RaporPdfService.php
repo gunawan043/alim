@@ -12,6 +12,7 @@ use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Services\ArabicName\ArabicNameResolver;
+use App\Services\Ljk\LjkPdfFonts;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
@@ -498,6 +499,7 @@ class RaporPdfService
         $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
+        LjkPdfFonts::configure($options);
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
         $dompdf->setPaper($paper, 'portrait');
