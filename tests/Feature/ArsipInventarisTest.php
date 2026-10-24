@@ -742,6 +742,40 @@ class ArsipInventarisTest extends TestCase
         $this->assertNull($this->tu->fresh()->ttd_path);
     }
 
+    public function test_dokumen_kop_ttd_dan_stempel_dapat_diupload_dari_edit_sekolah(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/{$this->school->id}/media", [
+                'logo_path' => UploadedFile::fake()->image('logo.png', 100, 100),
+                'kop_path' => UploadedFile::fake()->image('kop.png', 600, 200),
+                'ttd_ksp_path' => UploadedFile::fake()->image('ttd.png', 300, 100),
+                'stamp_path' => UploadedFile::fake()->image('stamp.png', 200, 200),
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $school = $this->school->fresh();
+        $this->assertNotNull($school->logo_path);
+        $this->assertNotNull($school->kop_path);
+        $this->assertNotNull($school->ttd_ksp_path);
+        $this->assertNotNull($school->stamp_path);
+        Storage::disk('public')->assertExists($school->kop_path);
+        Storage::disk('public')->assertExists($school->ttd_ksp_path);
+
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/{$this->school->id}/media", [
+                'remove_ttd_ksp_path' => 1,
+                'remove_stamp_path' => 1,
+            ])
+            ->assertRedirect();
+
+        $school = $this->school->fresh();
+        $this->assertNull($school->ttd_ksp_path);
+        $this->assertNull($school->stamp_path);
+    }
+
     public function test_ksp_waka_dan_tu_dapat_membuka_edit_sekolah(): void
     {
         foreach ([

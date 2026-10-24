@@ -888,6 +888,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{schoolId}', [SchoolController::class, 'show'])->name('show');
                 Route::get('/{schoolId}/edit', [SchoolController::class, 'edit'])->name('edit');
                 Route::put('/{schoolId}', [SchoolController::class, 'update'])->name('update');
+                Route::post('/{schoolId}/media', [SchoolController::class, 'updateMedia'])->name('media');
                 Route::delete('/{schoolId}', [SchoolController::class, 'destroy'])->name('destroy');
             });
 

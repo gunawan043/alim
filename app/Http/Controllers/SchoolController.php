@@ -276,6 +276,54 @@ class SchoolController extends Controller
         return view('schools.edit', compact('school', 'workUnits', 'provinces', 'principals', 'userId'));
     }
 
+    public function updateMedia(Request $request, string $userId, string $schoolId)
+    {
+        abort_unless($this->canEditSchool(), 403, 'Hanya Super Admin, KSP, Waka, atau Tata Usaha yang dapat mengunggah dokumen sekolah.');
+
+        $school = $this->validateSchoolAccess($userId, $schoolId);
+
+        $request->validate([
+            'logo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'kop_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'ttd_ksp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
+            'stamp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
+            'remove_logo_path' => 'nullable|boolean',
+            'remove_kop_path' => 'nullable|boolean',
+            'remove_ttd_ksp_path' => 'nullable|boolean',
+            'remove_stamp_path' => 'nullable|boolean',
+        ]);
+
+        $updated = [];
+
+        foreach (['logo_path', 'kop_path', 'ttd_ksp_path', 'stamp_path'] as $field) {
+            if ($request->boolean("remove_{$field}")) {
+                if ($school->{$field}) {
+                    Storage::disk('public')->delete($school->{$field});
+                }
+                $school->{$field} = null;
+                $updated[] = $field;
+                continue;
+            }
+
+            if ($request->hasFile($field)) {
+                if ($school->{$field}) {
+                    Storage::disk('public')->delete($school->{$field});
+                }
+                $school->{$field} = $request->file($field)->store("schools/{$field}", 'public');
+                $updated[] = $field;
+            }
+        }
+
+        $school->save();
+
+        return back()->with(
+            'success',
+            $updated === []
+                ? 'Tidak ada file yang diubah.'
+                : 'Dokumen sekolah berhasil diperbarui: '.implode(', ', $updated).'.'
+        );
+    }
+
     public function update(Request $request, string $userId, string $schoolId)
     {
         abort_unless($this->canEditSchool(), 403, 'Hanya Super Admin, KSP, Waka, atau Tata Usaha yang dapat mengedit sekolah.');
