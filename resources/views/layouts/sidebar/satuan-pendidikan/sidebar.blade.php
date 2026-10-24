@@ -208,6 +208,15 @@
     </a>
 </li>
 
+@if(! $showAll && ! $isTimKurikulumG && ! $isAdminTU)
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
+       href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
+        <i class="ri-book-open-line"></i><span>Info &amp; Profil Kurikulum</span>
+    </a>
+</li>
+@endif
+
 <li class="nav-item">
     @if($sekolahId)
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.show']) ? ' active' : '' }}"
@@ -814,14 +823,12 @@
                         Peta Kurikulum
                     </a>
                 </li>
-                @if($isTimKurikulumG)
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.profil.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.profil.index', ['userId' => $userId]) }}">
-                        Profil Kurikulum
+                        Profil &amp; Info Kurikulum
                     </a>
                 </li>
-                @endif
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.proyek.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.proyek.index', ['userId' => $userId]) }}">

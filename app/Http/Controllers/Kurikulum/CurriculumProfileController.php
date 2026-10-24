@@ -43,6 +43,71 @@ class CurriculumProfileController extends Controller
         $canManage = $this->access->isKurikulumTeam($request->user());
         $curriculumUpdates = (array) config('curriculum_updates.items', []);
         $curriculumUpdatesAt = (string) config('curriculum_updates.updated_at', '');
+        $semester = $academicYear?->semester === 'genap' ? 'genap' : 'ganjil';
+
+        $curriculumFlow = [
+            [
+                'title' => 'Profil Kurikulum',
+                'description' => 'Tetapkan profil, label, dan jenis kokurikuler.',
+                'icon' => 'ri-settings-4-line',
+                'url' => route('user.kurikulum.profil.index', ['userId' => $userId, 'academic_year_id' => $academicYearId]),
+            ],
+            [
+                'title' => 'Kalender Pendidikan',
+                'description' => 'Atur hari efektif, libur, dan agenda sekolah.',
+                'icon' => 'ri-calendar-event-line',
+                'url' => route('user.kaldik.index', ['userId' => $userId]),
+            ],
+            [
+                'title' => 'Pekan Efektif',
+                'description' => 'Hitung minggu dan JP efektif per semester.',
+                'icon' => 'ri-calendar-todo-line',
+                'url' => route('user.pekan-efektif.index', ['userId' => $userId, 'academic_year_id' => $academicYearId]),
+            ],
+            [
+                'title' => 'Peta Kurikulum & KKTP',
+                'description' => 'Cek mapel × tingkat, JP, dan nilai N-KKTP.',
+                'icon' => 'ri-table-line',
+                'url' => route('user.kurikulum.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+            ],
+            [
+                'title' => 'Capaian Pembelajaran',
+                'description' => 'Rumuskan CP sesuai fase dan mata pelajaran.',
+                'icon' => 'ri-flag-2-line',
+                'url' => route('user.kurikulum.cp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+            ],
+            [
+                'title' => 'Tujuan Pembelajaran',
+                'description' => 'Turunkan CP menjadi tujuan yang terukur.',
+                'icon' => 'ri-list-check-2',
+                'url' => route('user.kurikulum.tp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+            ],
+            [
+                'title' => 'ATP',
+                'description' => 'Urutkan TP dan alokasikan JP pembelajaran.',
+                'icon' => 'ri-route-line',
+                'url' => route('user.kurikulum.atp.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+            ],
+            [
+                'title' => 'PROTA',
+                'description' => 'Distribusikan ATP ke seluruh tahun ajaran.',
+                'icon' => 'ri-calendar-schedule-line',
+                'url' => route('user.kurikulum.prota.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+            ],
+            [
+                'title' => 'PROSEM',
+                'description' => 'Susun rencana pembelajaran per minggu efektif.',
+                'icon' => 'ri-calendar-2-line',
+                'url' => route('user.kurikulum.prosem.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+            ],
+            [
+                'title' => 'Perangkat Pembelajaran',
+                'description' => 'Buat RPM/Modul Ajar, review, lalu finalkan.',
+                'icon' => 'ri-booklet-line',
+                'url' => route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]),
+                'final' => true,
+            ],
+        ];
 
         $kokurikulerOptions = $profileList
             ->flatMap(fn ($profile) => (array) $profile->configValue('kokurikuler_options', []))
@@ -52,7 +117,7 @@ class CurriculumProfileController extends Controller
         return view('kurikulum.profil.index', compact(
             'userId', 'school', 'academicYears', 'academicYear', 'academicYearId',
             'profileList', 'setting', 'resolvedProfile', 'labels', 'canManage',
-            'kokurikulerOptions', 'curriculumUpdates', 'curriculumUpdatesAt'
+            'kokurikulerOptions', 'curriculumUpdates', 'curriculumUpdatesAt', 'curriculumFlow'
         ));
     }
 

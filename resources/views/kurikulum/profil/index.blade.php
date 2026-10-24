@@ -22,11 +22,12 @@
                     <h5 class="card-title mb-2"><i class="ri-settings-4-line me-1 text-primary"></i>Profil Kurikulum Satuan Pendidikan</h5>
                     <p class="text-muted mb-0 small">Profil menentukan label, struktur perangkat, nilai karakter, dan format cetak. Profil disimpan per tahun ajaran agar dokumen lama tetap utuh.</p>
                 </div>
-                <div class="col-md-auto">
+                <div class="col-md-auto d-flex flex-wrap gap-2">
                     <span class="badge bg-primary-subtle text-primary p-2">{{ $school->name }}</span>
                     @if($resolvedProfile)
                         <span class="badge bg-success-subtle text-success p-2">{{ $resolvedProfile->name }}</span>
                     @endif
+                    <span class="badge bg-info-subtle text-info p-2">Dapat dibaca seluruh GTK</span>
                 </div>
             </div>
         </div>
@@ -35,6 +36,10 @@
     @include('kurikulum.partials.curriculum-updates', [
         'curriculumUpdates' => $curriculumUpdates ?? [],
         'curriculumUpdatesAt' => $curriculumUpdatesAt ?? '',
+    ])
+
+    @include('kurikulum.partials.curriculum-flow', [
+        'curriculumFlow' => $curriculumFlow ?? [],
     ])
 
     <div class="row g-3">
@@ -125,7 +130,7 @@
 
         @endif
 
-        <div class="col-lg-5">
+        <div class="{{ $canManage ? 'col-lg-5' : 'col-lg-12' }}">
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-profile-line text-primary me-1"></i>Profil Efektif</h5></div>
                 <div class="card-body">

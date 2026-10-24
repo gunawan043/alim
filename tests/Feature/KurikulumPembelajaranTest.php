@@ -968,8 +968,21 @@ class KurikulumPembelajaranTest extends TestCase
             ->assertOk()
             ->assertSee('Info Pembaruan Kurikulum')
             ->assertSee('Baca sumber:')
+            ->assertSee('Alur Lengkap Penyusunan Kurikulum')
             ->assertDontSee('Pengaturan Profil')
             ->assertDontSee('Simpan Profil');
+    }
+
+    public function test_tu_dapat_melihat_info_kurikulum_tanpa_mengubah_profil(): void
+    {
+        $tu = $this->makeExtraUser('Tata Usaha Uji', 'tu.profil@test.local', 'Tata Usaha');
+
+        $this->actingAs($tu)
+            ->get("/{$tu->id}/kurikulum/profil")
+            ->assertOk()
+            ->assertSee('Info Pembaruan Kurikulum')
+            ->assertSee('Alur Lengkap Penyusunan Kurikulum')
+            ->assertDontSee('Pengaturan Profil');
     }
 
     public function test_ksp_dapat_mengubah_profil_kurikulum(): void
