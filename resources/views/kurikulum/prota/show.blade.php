@@ -60,15 +60,6 @@
         </div>
     @endif
 
-    @include('kurikulum.partials.print-preview-panel', [
-        'printVersion' => $printVersion,
-        'layout' => $layout,
-        'previewUrl' => $previewUrl,
-        'versionUrls' => $versionUrls,
-        'canManagePrint' => $canManagePrint,
-        'layoutRoute' => route('user.kurikulum.prota.layout', ['userId' => $userId, 'id' => $prota->id]),
-    ])
-
     @if($stale['stale'])
         <div class="alert alert-warning" role="alert">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
@@ -184,21 +175,23 @@
         </div>
     </div>
 
+    <div class="row g-3">
+        <div class="col-xl-8">
     <div class="card">
         <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0"><i class="ri-list-ordered-2 text-primary me-1"></i> Rincian TP / BAB / Materi</h5>
             <span class="badge bg-primary-subtle text-primary">{{ $prota->items->count() }} baris · {{ $itemsTotal }} JP</span>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-sm table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="text-center" style="width:50px">No</th>
-                        <th style="width:180px">BAB / Elemen</th>
+                        <th class="text-center" style="width:35px">No</th>
+                        <th style="width:100px">BAB / Elemen</th>
                         <th>TP / Materi</th>
-                        <th style="width:150px">Alokasi JP</th>
-                        <th style="width:180px">Keterangan</th>
-                        <th class="text-end" style="width:60px">Aksi</th>
+                        <th style="width:75px">Alokasi JP</th>
+                        <th style="width:90px">Keterangan</th>
+                        <th class="text-end" style="width:50px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -267,6 +260,19 @@
                     <button class="btn btn-sm btn-success w-100"><i class="ri-add-line"></i></button>
                 </div>
             </form>
+        </div>
+    </div>
+
+        </div>
+        <div class="col-xl-4">
+            @include('kurikulum.partials.print-preview-panel', [
+                'printVersion' => $printVersion,
+                'layout' => $layout,
+                'previewUrl' => $previewUrl,
+                'versionUrls' => $versionUrls,
+                'canManagePrint' => $canManagePrint,
+                'layoutRoute' => route('user.kurikulum.prota.layout', ['userId' => $userId, 'id' => $prota->id]),
+            ])
         </div>
     </div>
 

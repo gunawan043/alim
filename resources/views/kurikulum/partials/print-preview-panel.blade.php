@@ -24,19 +24,16 @@
         </div>
     </div>
     <div class="card-body">
-        <div class="row g-3">
-            <div class="col-xl-8">
-                <div class="border rounded overflow-hidden bg-light" style="height:720px;">
+        <div class="border rounded overflow-hidden bg-light" style="height:520px;">
                     <iframe src="{{ $previewUrl }}" title="Preview cetak"
                             style="width:100%;height:100%;border:0;background:#fff;" loading="lazy"></iframe>
                 </div>
-                <div class="d-flex flex-wrap gap-3 small text-muted mt-2">
-                    <span><i class="ri-layout-line me-1"></i>Margin {{ $layout['margin_top'] ?? 0 }}/{{ $layout['margin_right'] ?? 0 }}/{{ $layout['margin_bottom'] ?? 0 }}/{{ $layout['margin_left'] ?? 0 }} mm</span>
-                    <span><i class="ri-font-size-2 me-1"></i>Font {{ $layout['font_size'] ?? 11 }} pt</span>
-                    <span><i class="ri-file-paper-2-line me-1"></i>{{ strtoupper($layout['paper_size'] ?? 'A4') }}</span>
-                </div>
-            </div>
-            <div class="col-xl-4">
+        <div class="d-flex flex-wrap gap-3 small text-muted mt-2">
+            <span><i class="ri-layout-line me-1"></i>Margin {{ $layout['margin_top'] ?? 0 }}/{{ $layout['margin_right'] ?? 0 }}/{{ $layout['margin_bottom'] ?? 0 }}/{{ $layout['margin_left'] ?? 0 }} mm</span>
+            <span><i class="ri-font-size-2 me-1"></i>Font {{ $layout['font_size'] ?? 11 }} pt</span>
+            <span><i class="ri-file-paper-2-line me-1"></i>{{ strtoupper($layout['paper_size'] ?? 'A4') }}</span>
+        </div>
+        <div class="mt-3">
                 @if($canManagePrint)
                     <form method="POST" action="{{ $layoutRoute }}">
                         @csrf
@@ -95,7 +92,6 @@
                         Pengaturan tata letak hanya dapat diubah oleh penyusun atau tim kurikulum.
                     </div>
                 @endif
-            </div>
         </div>
     </div>
 </div>

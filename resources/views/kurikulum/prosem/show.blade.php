@@ -101,15 +101,6 @@
         </div>
     </div>
 
-    @include('kurikulum.partials.print-preview-panel', [
-        'printVersion' => $printVersion,
-        'layout' => $layout,
-        'previewUrl' => $previewUrl,
-        'versionUrls' => $versionUrls,
-        'canManagePrint' => $canManagePrint,
-        'layoutRoute' => route('user.kurikulum.prosem.layout', ['userId' => $userId, 'id' => $prosem->id]),
-    ])
-
     {{-- ═══ Alert perubahan sumber ═══ --}}
     @if($stale['stale'] || $manualInvalidCount > 0)
         <div class="alert alert-warning" role="alert">
@@ -229,13 +220,15 @@
     </div>
 
     {{-- ═══ Tabel Distribusi ═══ --}}
+    <div class="row g-3">
+        <div class="col-xl-8">
     <div class="card" id="tabel-distribusi">
         <div class="card-header border-bottom-dashed d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0"><i class="ri-calendar-2-line text-primary me-1"></i> Distribusi TP / Materi</h5>
             <span class="badge bg-primary-subtle text-primary">{{ $prosem->items->count() }} baris · {{ $totalJp }} JP</span>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-sm table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th class="text-center" style="width:50px">No</th>
@@ -356,6 +349,19 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+
+        </div>
+        <div class="col-xl-4">
+            @include('kurikulum.partials.print-preview-panel', [
+                'printVersion' => $printVersion,
+                'layout' => $layout,
+                'previewUrl' => $previewUrl,
+                'versionUrls' => $versionUrls,
+                'canManagePrint' => $canManagePrint,
+                'layoutRoute' => route('user.kurikulum.prosem.layout', ['userId' => $userId, 'id' => $prosem->id]),
+            ])
         </div>
     </div>
 
