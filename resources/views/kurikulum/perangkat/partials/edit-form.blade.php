@@ -12,12 +12,8 @@
                     </div>
                     <div class="col-lg-4">
                         <label class="form-label">Kelas</label>
-                        <select name="study_group_id" class="form-select" {{ $disabled }}>
-                            <option value="">— Semua Kelas —</option>
-                            @foreach($studyGroups as $group)
-                                <option value="{{ $group->id }}" {{ $perangkat->study_group_id === $group->id ? 'selected' : '' }}>{{ $group->name }}</option>
-                            @endforeach
-                        </select>
+                        <div class="form-control bg-light">{{ $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}</div>
+                        <div class="form-text">Perangkat berlaku untuk seluruh rombel pada tingkat ini.</div>
                     </div>
                     <div class="col-lg-3">
                         <label class="form-label">Format Cetak</label>

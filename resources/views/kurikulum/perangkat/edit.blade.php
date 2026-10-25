@@ -29,9 +29,22 @@
             <h4 class="mb-1">Edit {{ $perangkat->judul }}</h4>
             <p class="text-muted mb-0 small">Perubahan disimpan ke data perangkat yang sama dan langsung dipakai di semua format cetak.</p>
         </div>
-        <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-light btn-sm">
-            <i class="ri-eye-line me-1"></i>Kembali ke Preview
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('user.kurikulum.ai.index', [
+                'userId' => $userId,
+                'type' => 'rpm',
+                'subject_id' => $perangkat->subject_id,
+                'grade_level_id' => $perangkat->grade_level_id,
+                'academic_year_id' => $perangkat->academic_year_id,
+                'semester' => $perangkat->semester,
+                'topik' => $perangkat->judul,
+            ]) }}" target="_blank" class="btn btn-soft-info btn-sm">
+                <i class="ri-sparkling-line me-1"></i>AI Assistant
+            </a>
+            <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-light btn-sm">
+                <i class="ri-eye-line me-1"></i>Kembali ke Preview
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -48,4 +61,40 @@
     @endif
 
     @include('kurikulum.perangkat.partials.edit-form')
+@endsection
+
+
+@section('script')
+    <script src="{{ URL::asset('build/libs/ckeditor5/ckeditor.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.ClassicEditor) return;
+
+            const richKeys = new Set([
+                'identifikasi_peserta_didik', 'identifikasi_materi', 'profil_lulusan',
+                'kbc_kesiapan_belajar', 'kbc_karakteristik_materi', 'kbc_iklim_budaya',
+                'kbc_topik_kontekstual', 'kbc_indikator', 'kbc_diferensiasi',
+                'tema_kbc', 'materi_insersi', 'pilar_kbc', 'indikator_kbc', 'refleksi_kbc', 'asesmen_kbc',
+                'kegiatan_awal', 'pengalaman_memahami', 'pengalaman_mengaplikasi',
+                'pengalaman_refleksi', 'penutup',
+                'kompetensi_awal', 'sarana_prasarana', 'target_peserta_didik', 'iktp',
+                'merdeka_pemahaman_bermakna', 'merdeka_pertanyaan_pemantik', 'model_pembelajaran',
+                'pengayaan', 'remedial', 'refleksi_guru', 'refleksi_peserta_didik',
+                'lampiran_lkpd', 'lampiran_bahan_bacaan', 'glosarium', 'daftar_pustaka',
+            ]);
+
+            document.querySelectorAll('textarea[name^="desain["]').forEach(function (textarea) {
+                const key = (textarea.name.match(/^desain\[([^\]]+)\]/) || [])[1];
+                if (!key || !richKeys.has(key)) return;
+
+                ClassicEditor.create(textarea, {
+                    licenseKey: 'GPL',
+                    language: 'en',
+                    toolbar: ['undo', 'redo', '|', 'heading', '|', 'bold', 'italic', 'link', 'insertTable', 'blockQuote', '|', 'bulletedList', 'numberedList', 'outdent', 'indent'],
+                }).catch(function (error) {
+                    console.error('CKEditor gagal dimuat', error);
+                });
+            });
+        });
+    </script>
 @endsection

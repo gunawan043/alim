@@ -54,9 +54,9 @@
                             <div class="col-12">
                                 <label class="form-label">Jenis Draft <span class="text-danger">*</span></label>
                                 <select name="type" id="aiType" class="form-select" onchange="toggleAiFields()">
-                                    <option value="soal" {{ old('type', 'soal') === 'soal' ? 'selected' : '' }}>Soal</option>
-                                    <option value="rpm" {{ old('type') === 'rpm' ? 'selected' : '' }}>{{ $curriculumLabels['perangkat_label'] ?? 'RPM / Modul Ajar' }}</option>
-                                    <option value="projek" {{ old('type') === 'projek' ? 'selected' : '' }}>Projek {{ $curriculumLabels['kokurikuler_label'] ?? 'P5 / P5RA' }}</option>
+                                    <option value="soal" {{ old('type', request('type', 'soal')) === 'soal' ? 'selected' : '' }}>Soal</option>
+                                    <option value="rpm" {{ old('type', request('type')) === 'rpm' ? 'selected' : '' }}>{{ $curriculumLabels['perangkat_label'] ?? 'RPM / Modul Ajar' }}</option>
+                                    <option value="projek" {{ old('type', request('type')) === 'projek' ? 'selected' : '' }}>Projek {{ $curriculumLabels['kokurikuler_label'] ?? 'P5 / P5RA' }}</option>
                                 </select>
                             </div>
 
@@ -65,7 +65,7 @@
                                 <select name="subject_id" class="form-select" required>
                                     <option value="">— Pilih Mapel —</option>
                                     @foreach($subjects as $subject)
-                                        <option value="{{ $subject->id }}" {{ old('subject_id') === $subject->id ? 'selected' : '' }}>
+                                        <option value="{{ $subject->id }}" {{ old('subject_id', request('subject_id')) === $subject->id ? 'selected' : '' }}>
                                             {{ $subject->name }}{{ $subject->name_ar ? ' — '.$subject->name_ar : '' }}
                                         </option>
                                     @endforeach
@@ -76,7 +76,7 @@
                                 <select name="grade_level_id" class="form-select">
                                     <option value="">— Semua / Sesuai Mapel —</option>
                                     @foreach($gradeLevels as $grade)
-                                        <option value="{{ $grade->id }}" {{ old('grade_level_id') === $grade->id ? 'selected' : '' }}>
+                                        <option value="{{ $grade->id }}" {{ old('grade_level_id', request('grade_level_id')) === $grade->id ? 'selected' : '' }}>
                                             {{ $grade->name }}{{ $grade->fase ? ' (Fase '.$grade->fase.')' : '' }}
                                         </option>
                                     @endforeach
@@ -86,7 +86,7 @@
                                 <label class="form-label">Tahun Ajaran <span class="text-danger">*</span></label>
                                 <select name="academic_year_id" class="form-select" required>
                                     @foreach($academicYears as $ay)
-                                        <option value="{{ $ay->id }}" {{ (string) old('academic_year_id', $activeAy?->id) === (string) $ay->id ? 'selected' : '' }}>
+                                        <option value="{{ $ay->id }}" {{ (string) old('academic_year_id', request('academic_year_id', $activeAy?->id)) === (string) $ay->id ? 'selected' : '' }}>
                                             {{ $ay->name }} ({{ $ay->semester_text }})
                                         </option>
                                     @endforeach
@@ -95,15 +95,15 @@
                             <div class="col-md-4">
                                 <label class="form-label">Semester <span class="text-danger">*</span></label>
                                 <select name="semester" class="form-select" required>
-                                    <option value="ganjil" {{ old('semester', $activeAy?->semester) === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
-                                    <option value="genap" {{ old('semester', $activeAy?->semester) === 'genap' ? 'selected' : '' }}>Genap</option>
+                                    <option value="ganjil" {{ old('semester', request('semester', $activeAy?->semester)) === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                    <option value="genap" {{ old('semester', request('semester', $activeAy?->semester)) === 'genap' ? 'selected' : '' }}>Genap</option>
                                 </select>
                             </div>
 
                             <div class="col-12">
                                 <label class="form-label">Materi / TP / CP (konteks)</label>
                                 <textarea name="topik" class="form-control" rows="3" maxlength="2000"
-                                          placeholder="Tempel TP/CP atau uraikan materi yang ingin dibuat...">{{ old('topik') }}</textarea>
+                                          placeholder="Tempel TP/CP atau uraikan materi yang ingin dibuat...">{{ old('topik', request('topik')) }}</textarea>
                             </div>
 
                             <div class="col-md-4 ai-soal-fields">

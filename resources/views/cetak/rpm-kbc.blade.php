@@ -4,10 +4,21 @@
     $atp = $perangkat->atp;
     $tps = $atp?->items?->map(fn ($item) => $item->tujuanPembelajaran)->filter() ?? collect();
     $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
-    $text = fn ($value) => filled($value) ? nl2br(e($value)) : '<span class="muted">—</span>';
+    $text = function ($value) {
+        if (! filled($value)) {
+            return '<span class="muted">—</span>';
+        }
+
+        $value = (string) $value;
+        $allowed = '<p><br><strong><b><em><i><u><ul><ol><li><h1><h2><h3><h4><blockquote><table><thead><tbody><tr><th><td>';
+
+        return preg_match('/<(p|br|ul|ol|li|strong|em|h[1-6]|blockquote|table)\b/i', $value)
+            ? strip_tags($value, $allowed)
+            : nl2br(e($value));
+    };
     $nilai = fn (string $key) => $perangkat->desainValue($key);
     $matrix = $perangkat->assessmentMatrix();
-    $gradeLabel = $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? 'Semua Kelas';
+    $gradeLabel = $perangkat->gradeLevel?->name ?? 'Semua Kelas';
     $fase = $perangkat->gradeLevel?->fase;
     $useDigitalSignature = $useDigitalSignature ?? false;
     $ttdKspBase64 = $ttdKspBase64 ?? null;

@@ -29,7 +29,7 @@
             <h4 class="mb-1">{{ $perangkat->judul }}</h4>
             <p class="text-muted mb-0 small">
                 {{ $perangkat->subject?->name }}
-                · {{ $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}
+                · {{ $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}
                 · {{ $perangkat->academicYear?->name }}
                 · Semester {{ ucfirst($perangkat->semester) }}
                 · Guru: {{ $perangkat->teacher?->name ?? '—' }}
@@ -54,9 +54,9 @@
                 </a>
             @else
                 @if($canEdit ?? false)
-                    <button type="button" class="btn btn-soft-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#perangkatEditForm">
+                    <a href="{{ route('user.kurikulum.perangkat.edit', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-primary btn-sm">
                         <i class="ri-edit-line align-bottom me-1"></i> Edit Perangkat
-                    </button>
+                    </a>
                 @else
                     <a href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}" class="btn btn-soft-primary btn-sm">
                         <i class="ri-lock-unlock-line align-bottom me-1"></i> Ajukan Akses Edit / Copy

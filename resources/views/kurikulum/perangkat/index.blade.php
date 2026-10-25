@@ -149,6 +149,9 @@
                                         <i class="ri-shield-check-line align-bottom me-1"></i> Laporan Kesiapan KSP
                                     </a>
                                 @endif
+                                <a href="{{ route('user.kurikulum.ai.index', ['userId' => $userId, 'type' => 'rpm']) }}" target="_blank" class="btn btn-soft-info">
+                                    <i class="ri-sparkling-line align-bottom me-1"></i> AI Assistant
+                                </a>
                                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#perangkat-modal">
                                     <i class="ri-add-line align-bottom me-1"></i> Buat {{ $perangkatShort }}
                                 </button>
@@ -198,7 +201,7 @@
                                             <span class="badge bg-info-subtle text-info ms-1" title="RPM bersama untuk mapel & jenjang/fase yang sama">Serumpun</span>
                                         @endif
                                     </td>
-                                    <td>{{ $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? '—' }}</td>
+                                    <td>{{ $perangkat->gradeLevel?->name ?? '—' }}</td>
                                     <td class="small">{{ $perangkat->teacher?->name ?? '—' }}</td>
                                     <td class="text-center">
                                         <span class="badge {{ $perangkat->tipe === 'agama' ? 'bg-success-subtle text-success' : 'bg-primary-subtle text-primary' }}">
@@ -297,15 +300,6 @@
                                         @endforeach
                                     </select>
                                     <small class="text-muted">Guru Agama &amp; Guru Umum memiliki struktur RPM yang berbeda — pilih sesuai kebutuhan.</small>
-                                </div>
-                                <div class="col-md-12">
-                                    <label class="form-label">Kelas</label>
-                                    <select name="study_group_id" class="form-select">
-                                        <option value="">— Semua Kelas —</option>
-                                        @foreach($studyGroups as $group)
-                                            <option value="{{ $group->id }}">{{ $group->name }}</option>
-                                        @endforeach
-                                    </select>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="form-label">Catatan</label>

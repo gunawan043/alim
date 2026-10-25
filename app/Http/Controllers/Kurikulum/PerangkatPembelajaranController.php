@@ -221,7 +221,7 @@ class PerangkatPembelajaranController extends Controller
             'semester' => $atp->semester,
             'subject_id' => $atp->subject_id,
             'grade_level_id' => $atp->grade_level_id,
-            'study_group_id' => $validated['study_group_id'] ?? null,
+            'study_group_id' => null,
             'atp_id' => $atp->id,
             'teacher_id' => $request->user()->id,
             'judul' => $validated['judul'],
@@ -483,7 +483,7 @@ class PerangkatPembelajaranController extends Controller
         $formatType = app(PerangkatFormatResolver::class)->resolve($perangkat->subject);
         $payload = [
             'judul' => $validated['judul'],
-            'study_group_id' => $validated['study_group_id'] ?? null,
+            'study_group_id' => null,
             'tipe' => $formatType === PerangkatFormatResolver::AGAMA
                 ? PerangkatPembelajaran::TIPE_AGAMA
                 : PerangkatPembelajaran::TIPE_UMUM,
