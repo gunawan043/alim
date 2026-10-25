@@ -5,17 +5,11 @@
     @include('kurikulum._styles')
 
     <style>
-        .sticky-actions {
+        .edit-header-sticky {
             position: sticky;
-            bottom: 0;
-            z-index: 10;
+            top: 72px;
+            z-index: 1020;
             background: var(--bs-body-bg, #fff);
-            border-top: 1px solid var(--bs-border-color, #dee2e6);
-            padding: 0.75rem 1rem;
-            margin-left: -1rem;
-            margin-right: -1rem;
-            border-radius: 0 0 .375rem .375rem;
-            box-shadow: 0 -4px 12px rgba(0,0,0,.05);
         }
     </style>
 @endsection
@@ -41,7 +35,7 @@
     @endcomponent
 
     {{-- HEADER HALAMAN --}}
-    <div class="card mb-3">
+    <div class="card mb-3 edit-header-sticky">
         <div class="card-header border-bottom-dashed">
             <div class="row g-3 align-items-center">
                 <div class="col-sm">
@@ -50,6 +44,9 @@
                 </div>
                 <div class="col-sm-auto">
                     <div class="toolbar-actions">
+                        <button type="submit" form="perangkat-edit-form" class="btn btn-success btn-sm">
+                            <i class="ri-save-3-line me-1"></i> Simpan Perangkat
+                        </button>
                         <a href="{{ route('user.kurikulum.ai.index', [
                             'userId' => $userId,
                             'type' => 'rpm',
@@ -95,21 +92,8 @@
         </div>
     @endif
 
-    {{-- FORM (partial) — tombol simpan sticky via CSS .sticky-actions --}}
+    {{-- FORM (partial) — tombol simpan ada di header sticky --}}
     @include('kurikulum.perangkat.partials.edit-form')
-
-    <div class="position-fixed bottom-0 end-0 m-3 d-flex align-items-center gap-2 p-2 bg-white border rounded shadow"
-         style="z-index: 1050;">
-        <span class="small text-muted d-none d-md-inline me-2">
-            <i class="ri-information-line me-1"></i>Perubahan belum tersimpan
-        </span>
-        <button type="submit" form="perangkat-edit-form" class="btn btn-success">
-            <i class="ri-save-3-line me-1"></i>Simpan Perangkat
-        </button>
-        <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-light">
-            Batal
-        </a>
-    </div>
 @endsection
 
 @section('script')
