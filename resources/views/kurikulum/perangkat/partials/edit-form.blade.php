@@ -1,4 +1,4 @@
-    <form method="POST" action="{{ route('user.kurikulum.perangkat.update', ['userId' => $userId, 'id' => $perangkat->id]) }}">
+    <form id="perangkat-edit-form" method="POST" action="{{ route('user.kurikulum.perangkat.update', ['userId' => $userId, 'id' => $perangkat->id]) }}">
         @csrf @method('PUT')
 
         {{-- ── Informasi Umum ─────────────────────────────────────── --}}

@@ -1,39 +1,53 @@
 @extends('layouts.master')
 @section('title', 'Edit Perangkat')
+
 @section('css')
     @include('kurikulum._styles')
+
+    <style>
+        .sticky-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            background: var(--bs-body-bg, #fff);
+            border-top: 1px solid var(--bs-border-color, #dee2e6);
+            padding: 0.75rem 1rem;
+            margin-left: -1rem;
+            margin-right: -1rem;
+            border-radius: 0 0 .375rem .375rem;
+            box-shadow: 0 -4px 12px rgba(0,0,0,.05);
+        }
+    </style>
 @endsection
 
-@section('content')
-    @php
-        $userId = $userId ?? auth()->id();
-        $sections = \App\Models\PerangkatPembelajaran::SECTIONS_RPM;
-        $legacyFilled = $perangkat->legacyFilledSections();
-        $atp = $perangkat->atp;
-        $tps = $atp?->items?->map(fn ($item) => $item->tujuanPembelajaran)->filter() ?? collect();
-        $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
-        $canEdit = true;
-        $disabled = '';
-        $isAgama = ($formatType ?? 'umum') === 'agama';
-        $alokasiValue = old('desain.alokasi_waktu', $perangkat->desainValue('alokasi_waktu') ?? ($perangkat->atp?->total_jp ? $perangkat->atp->total_jp.' JP' : ''));
-    @endphp
+@php
+    $userId = $userId ?? auth()->id();
+    $sections = \App\Models\PerangkatPembelajaran::SECTIONS_RPM;
+    $legacyFilled = $perangkat->legacyFilledSections();
+    $atp = $perangkat->atp;
+    $tps = $atp?->items?->map(fn ($item) => $item->tujuanPembelajaran)->filter() ?? collect();
+    $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
+    $canEdit = true;
+    $disabled = '';
+    $isAgama = ($formatType ?? 'umum') === 'agama';
+    $alokasiValue = old('desain.alokasi_waktu', $perangkat->desainValue('alokasi_waktu') ?? ($perangkat->atp?->total_jp ? $perangkat->atp->total_jp.' JP' : ''));
+@endphp
 
+@section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}">Kurikulum</a> @endslot
         @slot('li_2') <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}">Preview</a> @endslot
         @slot('title') Edit Perangkat @endslot
     @endcomponent
 
+    {{-- HEADER HALAMAN --}}
     <div class="card mb-3">
         <div class="card-header border-bottom-dashed">
             <div class="row g-3 align-items-center">
-                {{-- Kiri: judul + subjudul --}}
                 <div class="col-sm">
                     <h5 class="card-title mb-0">Edit {{ $perangkat->judul }}</h5>
                     <p class="text-muted mb-0 small">Perubahan disimpan ke data perangkat yang sama dan langsung dipakai di semua format cetak.</p>
                 </div>
-
-                {{-- Kanan: tombol aksi --}}
                 <div class="col-sm-auto">
                     <div class="toolbar-actions">
                         <a href="{{ route('user.kurikulum.ai.index', [
@@ -56,22 +70,47 @@
         </div>
     </div>
 
+    {{-- FLASH --}}
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            <i class="ri-check-line me-1"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="ri-check-line me-2"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">
-            <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-2"></i> Terjadi kesalahan pada formulir:
+            <ul class="mb-0 mt-2 small">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
+    {{-- FORM (partial) — tombol simpan sticky via CSS .sticky-actions --}}
     @include('kurikulum.perangkat.partials.edit-form')
-@endsection
 
+    <div class="position-fixed bottom-0 end-0 m-3 d-flex align-items-center gap-2 p-2 bg-white border rounded shadow"
+         style="z-index: 1050;">
+        <span class="small text-muted d-none d-md-inline me-2">
+            <i class="ri-information-line me-1"></i>Perubahan belum tersimpan
+        </span>
+        <button type="submit" form="perangkat-edit-form" class="btn btn-success">
+            <i class="ri-save-3-line me-1"></i>Simpan Perangkat
+        </button>
+        <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-light">
+            Batal
+        </a>
+    </div>
+@endsection
 
 @section('script')
     <script src="{{ URL::asset('build/libs/ckeditor5/ckeditor.js') }}"></script>
