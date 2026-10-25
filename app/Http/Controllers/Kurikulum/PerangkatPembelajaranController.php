@@ -295,38 +295,48 @@ class PerangkatPembelajaranController extends Controller
         $kbcFormatIssues = $perangkat->kbcFormatIssues();
         $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
 
+        $printVersion = in_array($request->query('version'), ['pondok', 'dinas', 'kemenag'], true)
+            ? $request->query('version')
+            : 'pondok';
+        $layout = $perangkat->layoutSettings();
+        $previewUrl = route('user.kurikulum.cetak.rpm', [
+            'userId' => $userId,
+            'id' => $perangkat->id,
+            'version' => $printVersion,
+            'v' => $perangkat->updated_at?->timestamp,
+        ]);
+        $versionOptions = [
+            'pondok' => 'Pondok',
+            'dinas' => 'Dinas Pendidikan',
+            'kemenag' => 'Kemenag',
+        ];
+        $versionUrls = [];
+        foreach ($versionOptions as $versionKey => $versionLabel) {
+            $versionUrls[$versionKey] = route('user.kurikulum.perangkat.show', [
+                'userId' => $userId,
+                'id' => $perangkat->id,
+                'version' => $versionKey,
+            ]);
+        }
+        $canManagePrint = $isOwner
+            || $this->access->isKurikulumEditor($request->user())
+            || $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $schoolId);
+
         return view('kurikulum.perangkat.show', compact(
             'userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit',
             'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion', 'canApproveKsp',
             'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing', 'kbcFormatIssues',
-            'formatType'
+            'formatType', 'printVersion', 'layout', 'previewUrl', 'versionOptions', 'versionUrls', 'canManagePrint'
         ));
     }
 
     public function preview(Request $request, string $userId, string $id)
     {
-        $perangkat = PerangkatPembelajaran::with([
-            'subject.subjectGroup', 'gradeLevel', 'studyGroup', 'teacher', 'atp',
-        ])->findOrFail($id);
-        $this->authorizeView($request, $perangkat);
-
-        $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
-        if ($formatType === PerangkatFormatResolver::TAHFIDZ) {
-            return redirect()
-                ->route('user.tahfidz.rpp.index', ['userId' => $userId])
-                ->with('error', 'Perangkat mapel Tahfidz dikelola melalui modul RPP Tahfizh di Departemen.');
-        }
-
-        $layout = $perangkat->layoutSettings();
-        $previewUrl = route('user.kurikulum.cetak.rpm', [
+        return redirect()->route('user.kurikulum.perangkat.show', [
             'userId' => $userId,
-            'id' => $perangkat->id,
-            'v' => $perangkat->updated_at?->timestamp,
+            'id' => $id,
+            'version' => $request->query('version', 'pondok'),
         ]);
-
-        return view('kurikulum.perangkat.preview', compact(
-            'userId', 'perangkat', 'formatType', 'layout', 'previewUrl'
-        ));
     }
 
     public function saveLayout(Request $request, string $userId, string $id)
@@ -376,7 +386,11 @@ class PerangkatPembelajaranController extends Controller
         $perangkat->update(['layout_settings' => $layout]);
 
         return redirect()
-            ->route('user.kurikulum.perangkat.preview', ['userId' => $userId, 'id' => $perangkat->id])
+            ->route('user.kurikulum.perangkat.show', [
+                'userId' => $userId,
+                'id' => $perangkat->id,
+                'version' => $request->input('version', 'pondok'),
+            ])
             ->with('success', 'Pengaturan margin, font, dan kertas berhasil disimpan.');
     }
 

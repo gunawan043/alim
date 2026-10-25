@@ -2,6 +2,7 @@
     $printVersion = $printVersion ?? 'pondok';
     $layout = $layout ?? [];
     $versionUrls = $versionUrls ?? [];
+    $versionOptions = $versionOptions ?? ['pemerintah' => 'Pemerintah', 'pondok' => 'Pondok'];
     $canManagePrint = $canManagePrint ?? false;
 @endphp
 
@@ -9,10 +10,10 @@
     <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="card-title mb-1"><i class="ri-eye-line text-primary me-1"></i>Preview &amp; Cetak</h5>
-            <p class="text-muted mb-0 small">Pilih format pemerintah atau pondok, lalu atur margin dan font langsung di sini.</p>
+            <p class="text-muted mb-0 small">Pilih format cetak, lalu atur margin dan font langsung di sini.</p>
         </div>
         <div class="d-flex flex-wrap gap-1">
-            @foreach(['pemerintah' => 'Pemerintah', 'pondok' => 'Pondok'] as $versionKey => $versionLabel)
+            @foreach($versionOptions as $versionKey => $versionLabel)
                 <a href="{{ $versionUrls[$versionKey] ?? '#' }}"
                    class="btn btn-sm {{ $printVersion === $versionKey ? 'btn-primary' : 'btn-outline-secondary' }}">
                     {{ $versionLabel }}

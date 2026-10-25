@@ -275,10 +275,16 @@ class ProtaProsemRpmTest extends TestCase
         ]);
 
         $this->actingAs($this->guru1)
-            ->get("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}/preview")
+            ->get("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}")
             ->assertOk()
-            ->assertSee('Preview PDF')
-            ->assertSee('Tata Letak Cetak');
+            ->assertSee('Preview &amp; Cetak', false)
+            ->assertSee('Pondok')
+            ->assertSee('Dinas Pendidikan')
+            ->assertSee('Kemenag');
+
+        $this->actingAs($this->guru1)
+            ->get("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}/preview")
+            ->assertRedirect();
 
         $this->actingAs($this->guru1)
             ->put("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}/layout", [
@@ -300,6 +306,15 @@ class ProtaProsemRpmTest extends TestCase
         $this->assertSame(14.0, $perangkat->layoutSettings()['margin_top']);
         $this->assertSame(10.5, $perangkat->layoutSettings()['font_size']);
         $this->assertSame('folio', $perangkat->layoutSettings()['paper_size']);
+
+        foreach (['pondok', 'dinas', 'kemenag'] as $version) {
+            $pdf = $this->actingAs($this->guru1)
+                ->get("/{$this->guru1->id}/kurikulum/cetak/rpm/{$perangkat->id}?version={$version}");
+
+            $pdf->assertOk();
+            $this->assertSame('application/pdf', $pdf->headers->get('content-type'));
+            $this->assertStringStartsWith('%PDF', $pdf->getContent());
+        }
     }
 
     public function test_rpm_serumpun_dapat_melihat_tetapi_hanya_penyusun_yang_mengubah(): void

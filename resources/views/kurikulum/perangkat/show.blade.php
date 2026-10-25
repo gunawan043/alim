@@ -53,10 +53,7 @@
                     <i class="ri-arrow-right-up-line align-bottom me-1"></i> RPP Tahfizh
                 </a>
             @else
-                <a href="{{ route('user.kurikulum.perangkat.preview', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-primary btn-sm">
-                    <i class="ri-eye-line align-bottom me-1"></i> Preview &amp; Tata Letak
-                </a>
-                <a href="{{ route('user.kurikulum.cetak.rpm', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
+                <a href="{{ $previewUrl }}" class="btn btn-soft-secondary btn-sm" target="_blank">
                     <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
                 </a>
             @endif
@@ -98,6 +95,18 @@
             perubahan hanya dapat dilakukan penyusun atau tim kurikulum.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+    @endif
+
+    @if(($formatType ?? 'umum') !== 'tahfidz')
+        @include('kurikulum.partials.print-preview-panel', [
+            'printVersion' => $printVersion,
+            'layout' => $layout,
+            'previewUrl' => $previewUrl,
+            'versionUrls' => $versionUrls,
+            'versionOptions' => $versionOptions,
+            'canManagePrint' => $canManagePrint,
+            'layoutRoute' => route('user.kurikulum.perangkat.layout', ['userId' => $userId, 'id' => $perangkat->id]),
+        ])
     @endif
 
     {{-- Tahap 2: alur dokumen, approval rumpun, versi & penguncian --}}

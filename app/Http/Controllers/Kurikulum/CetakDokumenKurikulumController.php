@@ -205,10 +205,15 @@ class CetakDokumenKurikulumController extends Controller
         $stampBase64 = $useDigitalSignature && ($layout['show_stamp'] ?? true)
             ? $this->schoolImageDataUri($school?->stamp_path)
             : null;
+        $printVersion = match ($request->query('version')) {
+            'dinas', 'resmi' => 'dinas',
+            'kemenag' => 'kemenag',
+            default => 'pondok',
+        };
 
         $html = view('cetak.rpm', compact(
             'school', 'perangkat', 'groups', 'legacyFilled', 'curriculumProfile', 'curriculumLabels',
-            'formatType', 'layout', 'useDigitalSignature', 'ttdKspBase64', 'stampBase64'
+            'formatType', 'layout', 'useDigitalSignature', 'ttdKspBase64', 'stampBase64', 'printVersion'
         ))->render();
 
         return $this->pdf(

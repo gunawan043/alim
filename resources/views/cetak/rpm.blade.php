@@ -2,6 +2,10 @@
 
 @php
     $isAgama = ($formatType ?? (($perangkat->tipe ?? 'umum') === 'agama' ? 'agama' : 'umum')) === 'agama';
+    $printVersion = $printVersion ?? 'pondok';
+    $docTitle = $printVersion === 'kemenag' || ($printVersion === 'pondok' && $isAgama)
+        ? 'RENCANA PEMBELAJARAN MENDALAM'
+        : 'PERENCANAAN PEMBELAJARAN MENDALAM';
     $atp = $perangkat->atp;
     $tps = $atp?->items?->map(fn ($item) => $item->tujuanPembelajaran)->filter() ?? collect();
     $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
@@ -16,8 +20,8 @@
     $stampBase64 = $stampBase64 ?? null;
 @endphp
 
-@section('title', $isAgama ? 'Rencana Pembelajaran Mendalam' : 'Perencanaan Pembelajaran Mendalam')
-@section('doc_title', $isAgama ? 'RENCANA PEMBELAJARAN MENDALAM' : 'PERENCANAAN PEMBELAJARAN MENDALAM')
+@section('title', $docTitle)
+@section('doc_title', $docTitle)
 @section('doc_subtitle', '')
 
 @section('content')
