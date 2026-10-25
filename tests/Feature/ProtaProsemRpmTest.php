@@ -279,8 +279,8 @@ class ProtaProsemRpmTest extends TestCase
             ->assertOk()
             ->assertSee('Preview &amp; Cetak', false)
             ->assertSee('Pondok')
-            ->assertSee('Dinas Pendidikan')
-            ->assertSee('Kemenag');
+            ->assertDontSee('Dinas Pendidikan')
+            ->assertDontSee('Kemenag');
 
         $this->actingAs($this->guru1)
             ->get("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}/preview")
@@ -370,14 +370,14 @@ class ProtaProsemRpmTest extends TestCase
             ->get("/{$this->guru1->id}/kurikulum/prota/{$prota->id}?version=pondok")
             ->assertOk()
             ->assertSee('Preview &amp; Cetak', false)
-            ->assertSee('Pemerintah')
+            ->assertDontSee('Pemerintah')
             ->assertSee('Pondok');
 
         $this->actingAs($this->guru1)
             ->get("/{$this->guru1->id}/kurikulum/prosem/{$prosem->id}?version=pondok")
             ->assertOk()
             ->assertSee('Preview &amp; Cetak', false)
-            ->assertSee('Pemerintah')
+            ->assertDontSee('Pemerintah')
             ->assertSee('Pondok');
 
         $this->actingAs($this->guru1)

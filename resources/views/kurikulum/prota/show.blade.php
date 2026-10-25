@@ -270,6 +270,7 @@
                 'layout' => $layout,
                 'previewUrl' => $previewUrl,
                 'versionUrls' => $versionUrls,
+                'versionOptions' => $versionOptions,
                 'canManagePrint' => $canManagePrint,
                 'layoutRoute' => route('user.kurikulum.prota.layout', ['userId' => $userId, 'id' => $prota->id]),
             ])

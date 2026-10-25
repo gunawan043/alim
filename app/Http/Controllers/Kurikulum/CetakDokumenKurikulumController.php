@@ -149,7 +149,7 @@ class CetakDokumenKurikulumController extends Controller
     {
         $prosem = Prosem::with([
             'subject', 'gradeLevel', 'academicYear', 'teacher', 'school',
-            'prota.subject', 'items.tujuanPembelajaran',
+            'prota.subject', 'items.tujuanPembelajaran', 'items.weeks', 'items.protaItem',
         ])->findOrFail($id);
 
         $this->authorizeKurikulumDoc($request, $prosem->school_id, $prosem->subject_id, $prosem->academic_year_id);

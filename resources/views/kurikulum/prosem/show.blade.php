@@ -359,6 +359,7 @@
                 'layout' => $layout,
                 'previewUrl' => $previewUrl,
                 'versionUrls' => $versionUrls,
+                'versionOptions' => $versionOptions,
                 'canManagePrint' => $canManagePrint,
                 'layoutRoute' => route('user.kurikulum.prosem.layout', ['userId' => $userId, 'id' => $prosem->id]),
             ])

@@ -239,7 +239,7 @@ class ProsemController extends Controller
             ->get()
             ->keyBy('prosem_item_id');
 
-        $printVersion = $this->normalizePrintVersion($request->query('version'));
+        $printVersion = 'pondok';
         $layout = $prosem->layoutSettings();
         $previewUrl = route('user.kurikulum.cetak.prosem', [
             'userId' => $userId,
@@ -248,9 +248,9 @@ class ProsemController extends Controller
             'v' => $prosem->updated_at?->timestamp,
         ]);
         $versionUrls = [
-            'pemerintah' => route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id, 'version' => 'pemerintah']),
             'pondok' => route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id, 'version' => 'pondok']),
         ];
+        $versionOptions = ['pondok' => 'Pondok'];
         $canManagePrint = $prosem->created_by === $request->user()->id
             || $prosem->teacher_id === $request->user()->id
             || $this->access->isKurikulumEditor($request->user());
@@ -276,6 +276,7 @@ class ProsemController extends Controller
             'layout',
             'previewUrl',
             'versionUrls',
+            'versionOptions',
             'canManagePrint'
         ));
     }

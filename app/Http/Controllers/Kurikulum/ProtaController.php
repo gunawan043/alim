@@ -183,7 +183,7 @@ class ProtaController extends Controller
         $teachers = $this->teachersForSchool($prota->school_id);
 
         $itemsTotal = (int) $prota->items->sum('alokasi_jp');
-        $printVersion = $this->normalizePrintVersion($request->query('version'));
+        $printVersion = 'pondok';
         $layout = $prota->layoutSettings();
         $previewUrl = route('user.kurikulum.cetak.prota', [
             'userId' => $userId,
@@ -192,9 +192,9 @@ class ProtaController extends Controller
             'v' => $prota->updated_at?->timestamp,
         ]);
         $versionUrls = [
-            'pemerintah' => route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id, 'version' => 'pemerintah']),
             'pondok' => route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id, 'version' => 'pondok']),
         ];
+        $versionOptions = ['pondok' => 'Pondok'];
         $canManagePrint = $prota->created_by === $request->user()->id
             || $prota->teacher_id === $request->user()->id
             || $this->access->isKurikulumEditor($request->user());
@@ -210,6 +210,7 @@ class ProtaController extends Controller
             'layout',
             'previewUrl',
             'versionUrls',
+            'versionOptions',
             'canManagePrint'
         ));
     }

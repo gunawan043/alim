@@ -53,6 +53,15 @@
                     <i class="ri-arrow-right-up-line align-bottom me-1"></i> RPP Tahfizh
                 </a>
             @else
+                @if($canEdit ?? false)
+                    <button type="button" class="btn btn-soft-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#perangkatEditForm">
+                        <i class="ri-edit-line align-bottom me-1"></i> Edit Perangkat
+                    </button>
+                @else
+                    <a href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}" class="btn btn-soft-primary btn-sm">
+                        <i class="ri-lock-unlock-line align-bottom me-1"></i> Ajukan Akses Edit / Copy
+                    </a>
+                @endif
                 <a href="{{ $previewUrl }}" class="btn btn-soft-secondary btn-sm" target="_blank">
                     <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
                 </a>
@@ -221,6 +230,8 @@
         </div>
     @endif
 
+    @if($canEdit ?? false)
+        <div class="collapse" id="perangkatEditForm">
     <form method="POST" action="{{ route('user.kurikulum.perangkat.update', ['userId' => $userId, 'id' => $perangkat->id]) }}">
         @csrf @method('PUT')
 
@@ -399,6 +410,14 @@
             </div>
         @endif
     </form>
+        </div>
+    @else
+        <div class="alert alert-info">
+            <i class="ri-eye-line me-1"></i>
+            Anda hanya dapat melihat dan mencetak perangkat ini. Untuk mengubah atau menyalinnya, ajukan akses edit kepada penyusun/tim kurikulum.
+            <a href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}" class="alert-link">Ajukan akses edit</a>.
+        </div>
+    @endif
 
     @if($canEdit)
         <form method="POST" action="{{ route('user.kurikulum.perangkat.destroy', ['userId' => $userId, 'id' => $perangkat->id]) }}"

@@ -2,7 +2,7 @@
     $printVersion = $printVersion ?? 'pondok';
     $layout = $layout ?? [];
     $versionUrls = $versionUrls ?? [];
-    $versionOptions = $versionOptions ?? ['pemerintah' => 'Pemerintah', 'pondok' => 'Pondok'];
+    $versionOptions = $versionOptions ?? ['pondok' => 'Pondok'];
     $canManagePrint = $canManagePrint ?? false;
 @endphp
 
@@ -10,7 +10,7 @@
     <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="card-title mb-1"><i class="ri-eye-line text-primary me-1"></i>Preview &amp; Cetak</h5>
-            <p class="text-muted mb-0 small">Pilih format cetak, lalu atur margin dan font langsung di sini.</p>
+            <p class="text-muted mb-0 small">Pilih format cetak, lihat hasilnya, lalu atur margin/font melalui tombol pengaturan.</p>
         </div>
         <div class="d-flex flex-wrap gap-1">
             @foreach($versionOptions as $versionKey => $versionLabel)
@@ -19,28 +19,44 @@
                     {{ $versionLabel }}
                 </a>
             @endforeach
+            @if($canManagePrint)
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#printLayoutModal">
+                    <i class="ri-settings-3-line me-1"></i>Pengaturan
+                </button>
+            @endif
             <a href="{{ $previewUrl }}" target="_blank" class="btn btn-sm btn-soft-success">
                 <i class="ri-external-link-line me-1"></i>Buka PDF
             </a>
         </div>
     </div>
     <div class="card-body">
-        <div class="border rounded overflow-hidden bg-light" style="height:520px;">
-                    <iframe src="{{ $previewUrl }}" title="Preview cetak"
-                            style="width:100%;height:100%;border:0;background:#fff;" loading="lazy"></iframe>
-                </div>
+        <div class="border rounded overflow-hidden bg-light" style="height:620px;">
+            <iframe src="{{ $previewUrl }}" title="Preview cetak"
+                    style="width:100%;height:100%;border:0;background:#fff;" loading="lazy"></iframe>
+        </div>
         <div class="d-flex flex-wrap gap-3 small text-muted mt-2">
             <span><i class="ri-layout-line me-1"></i>Margin {{ $layout['margin_top'] ?? 0 }}/{{ $layout['margin_right'] ?? 0 }}/{{ $layout['margin_bottom'] ?? 0 }}/{{ $layout['margin_left'] ?? 0 }} mm</span>
             <span><i class="ri-font-size-2 me-1"></i>Font {{ $layout['font_size'] ?? 11 }} pt</span>
             <span><i class="ri-file-paper-2-line me-1"></i>{{ strtoupper($layout['paper_size'] ?? 'A4') }}</span>
+            <span><i class="ri-checkbox-circle-line me-1"></i>Kop {{ ($layout['show_kop'] ?? true) ? 'tampil' : 'disembunyikan' }}</span>
         </div>
-        <div class="mt-3">
-                @if($canManagePrint)
-                    <form method="POST" action="{{ $layoutRoute }}">
-                        @csrf
-                        @method('PUT')
-                        <input type="hidden" name="version" value="{{ $printVersion }}">
+    </div>
+</div>
 
+@if($canManagePrint)
+    <div class="modal fade" id="printLayoutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="POST" action="{{ $layoutRoute }}">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="version" value="{{ $printVersion }}">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-settings-3-line text-primary me-1"></i>Pengaturan Cetak</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
                         <h6 class="small fw-semibold mb-2">Margin (mm)</h6>
                         <div class="row g-2 mb-3">
                             @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
@@ -72,7 +88,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small mb-1">Kertas</label>
+                            <label class="form-label small mb-1">Ukuran kertas</label>
                             <select name="paper_size" class="form-select form-select-sm" required>
                                 <option value="a4" @selected(($layout['paper_size'] ?? 'a4') === 'a4')>A4</option>
                                 <option value="folio" @selected(($layout['paper_size'] ?? 'a4') === 'folio')>F4 / Folio</option>
@@ -80,19 +96,18 @@
                             </select>
                         </div>
 
-                        <div class="form-check form-switch mb-3">
+                        <div class="form-check form-switch mb-0">
                             <input type="hidden" name="show_kop" value="0">
-                            <input class="form-check-input" type="checkbox" role="switch" id="show_kop" name="show_kop" value="1" @checked($layout['show_kop'] ?? true)>
-                            <label class="form-check-label small" for="show_kop">Tampilkan kop sekolah</label>
+                            <input class="form-check-input" type="checkbox" role="switch" id="print_show_kop" name="show_kop" value="1" @checked($layout['show_kop'] ?? true)>
+                            <label class="form-check-label small" for="print_show_kop">Tampilkan kop sekolah</label>
                         </div>
-
-                        <button type="submit" class="btn btn-primary w-100"><i class="ri-save-3-line me-1"></i>Simpan Tata Letak</button>
-                    </form>
-                @else
-                    <div class="alert alert-light border mb-0 small">
-                        Pengaturan tata letak hanya dapat diubah oleh penyusun atau tim kurikulum.
                     </div>
-                @endif
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary"><i class="ri-save-3-line me-1"></i>Simpan</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+@endif
