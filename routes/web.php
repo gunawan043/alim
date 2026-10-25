@@ -1131,6 +1131,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/', [PerangkatPembelajaranController::class, 'store'])->name('store');
                     Route::get('/{id}', [PerangkatPembelajaranController::class, 'show'])->name('show');
                     Route::get('/{id}/preview', [PerangkatPembelajaranController::class, 'preview'])->name('preview');
+                    Route::get('/{id}/edit', [PerangkatPembelajaranController::class, 'edit'])->name('edit');
                     Route::put('/{id}/layout', [PerangkatPembelajaranController::class, 'saveLayout'])->name('layout');
                     Route::put('/{id}', [PerangkatPembelajaranController::class, 'update'])->name('update');
                     Route::delete('/{id}', [PerangkatPembelajaranController::class, 'destroy'])->name('destroy');

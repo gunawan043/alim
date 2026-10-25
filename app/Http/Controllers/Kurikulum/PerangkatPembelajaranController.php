@@ -295,21 +295,22 @@ class PerangkatPembelajaranController extends Controller
         $kbcFormatIssues = $perangkat->kbcFormatIssues();
         $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
 
-        $printVersion = in_array($request->query('version'), ['pondok', 'kbc', 'merdeka'], true)
-            ? $request->query('version')
-            : 'pondok';
         $layout = $perangkat->layoutSettings();
+        $versionOptions = ['pondok' => 'Pondok'];
+        if (($curriculumProfile ?? null)?->isKemenag()) {
+            $versionOptions['kbc'] = 'KBC';
+        } elseif (($curriculumProfile ?? null)?->isDinas()) {
+            $versionOptions['merdeka'] = 'Merdeka';
+        }
+
+        $requestedVersion = (string) $request->query('version');
+        $printVersion = array_key_exists($requestedVersion, $versionOptions) ? $requestedVersion : 'pondok';
         $previewUrl = route('user.kurikulum.cetak.rpm', [
             'userId' => $userId,
             'id' => $perangkat->id,
             'version' => $printVersion,
             'v' => $perangkat->updated_at?->timestamp,
         ]);
-        $versionOptions = [
-            'pondok' => 'Pondok',
-            'kbc' => 'KBC',
-            'merdeka' => 'Merdeka',
-        ];
         $versionUrls = [];
         foreach ($versionOptions as $versionKey => $versionLabel) {
             $versionUrls[$versionKey] = route('user.kurikulum.perangkat.show', [
@@ -327,6 +328,34 @@ class PerangkatPembelajaranController extends Controller
             'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion', 'canApproveKsp',
             'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing', 'kbcFormatIssues',
             'formatType', 'printVersion', 'layout', 'previewUrl', 'versionOptions', 'versionUrls', 'canManagePrint'
+        ));
+    }
+
+    public function edit(Request $request, string $userId, string $id)
+    {
+        $perangkat = PerangkatPembelajaran::with([
+            'subject', 'gradeLevel', 'studyGroup', 'teacher', 'creator',
+            'atp.items.tujuanPembelajaran.capaianPembelajaran',
+        ])->findOrFail($id);
+
+        $this->authorizeEdit($request, $perangkat);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        $studyGroups = StudyGroup::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('academic_year_id', $perangkat->academic_year_id)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $profileService = app(CurriculumProfileService::class);
+        $curriculumProfile = $perangkat->curriculumProfile
+            ?? $profileService->resolve($perangkat->school_id, $perangkat->academic_year_id);
+        $perangkat->setRelation('curriculumProfile', $curriculumProfile);
+        $curriculumLabels = $profileService->labels($curriculumProfile);
+        $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
+
+        return view('kurikulum.perangkat.edit', compact(
+            'userId', 'perangkat', 'studyGroups', 'curriculumProfile', 'curriculumLabels', 'formatType'
         ));
     }
 
