@@ -93,6 +93,9 @@
                             </button>
                         @endif
                     @endif
+                    <a href="{{ route('user.kurikulum.prosem.preview', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-soft-primary btn-sm">
+                        <i class="ri-eye-line align-bottom me-1"></i> Preview &amp; Tata Letak
+                    </a>
                     <a href="{{ route('user.kurikulum.cetak.prosem', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
                         <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
                     </a>

@@ -207,6 +207,9 @@
                                         <a href="{{ route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
                                             <i class="ri-eye-line"></i>
                                         </a>
+                                        <a href="{{ route('user.kurikulum.prota.preview', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-primary" title="Preview & Tata Letak">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
                                         <a href="{{ route('user.kurikulum.cetak.prota', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-secondary" title="Cetak PDF" target="_blank">
                                             <i class="ri-printer-line"></i>
                                         </a>
@@ -253,7 +256,7 @@
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="form-label">ATP <span class="text-danger">*</span></label>
-                                    <select name="atp_id" class="form-select" required>
+                                    <select name="atp_id" class="form-select" data-searchable required>
                                         <option value="">-- Pilih ATP --</option>
                                         @foreach($atpOptions as $atp)
                                             <option value="{{ $atp->id }}" {{ in_array($atp->id, $existingAtpIds, true) ? 'disabled' : '' }}>

@@ -343,6 +343,52 @@ class ProtaProsemRpmTest extends TestCase
     // CETAK PDF (6 DOKUMEN)
     // ─────────────────────────────────────────────────────────────
 
+    public function test_prota_dan_prosem_punya_preview_dua_versi_dan_tata_letak(): void
+    {
+        $this->makeLiburAwalTahun();
+        $this->generatePekan();
+        $atp = $this->makeAtp(60, 40);
+        $prota = app(ProtaService::class)->createFromAtp($atp, $this->guru1);
+        $prosem = app(ProsemService::class)->createFromProta($prota, $this->guru1);
+
+        $this->actingAs($this->guru1)
+            ->get("/{$this->guru1->id}/kurikulum/prota/{$prota->id}/preview")
+            ->assertOk()
+            ->assertSee('Preview PROTA')
+            ->assertSee('Versi ALIM');
+
+        $this->actingAs($this->guru1)
+            ->get("/{$this->guru1->id}/kurikulum/prosem/{$prosem->id}/preview")
+            ->assertOk()
+            ->assertSee('Preview PROSEM')
+            ->assertSee('Versi ALIM');
+
+        $this->actingAs($this->guru1)
+            ->put("/{$this->guru1->id}/kurikulum/prota/{$prota->id}/layout", [
+                'margin_top' => 13,
+                'margin_right' => 11,
+                'margin_bottom' => 12,
+                'margin_left' => 14,
+                'font_size' => 10,
+                'title_font_size' => 14,
+                'table_font_size' => 9,
+                'line_height' => 1.3,
+                'paper_size' => 'a4',
+                'show_kop' => 1,
+            ])->assertRedirect();
+
+        $this->assertSame(13.0, $prota->fresh()->layoutSettings()['margin_top']);
+
+        foreach (['resmi', 'alim'] as $version) {
+            $response = $this->actingAs($this->guru1)
+                ->get("/{$this->guru1->id}/kurikulum/cetak/prota/{$prota->id}?version={$version}");
+
+            $response->assertOk();
+            $this->assertSame('application/pdf', $response->headers->get('content-type'));
+            $this->assertStringStartsWith('%PDF', $response->getContent());
+        }
+    }
+
     public function test_ksp_dapat_menyetujui_perangkat_dan_melihat_laporan(): void
     {
         $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);

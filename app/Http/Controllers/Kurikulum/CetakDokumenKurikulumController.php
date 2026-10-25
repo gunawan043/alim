@@ -129,10 +129,18 @@ class CetakDokumenKurikulumController extends Controller
         $totalJp = (int) $prota->items->sum('alokasi_jp');
         $curriculumProfile = $this->profiles->resolve($prota->school_id, $prota->academic_year_id);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
+        $layout = $prota->layoutSettings();
+        $version = $request->query('version') === 'resmi' ? 'resmi' : 'alim';
+        $view = $version === 'resmi' ? 'cetak.prota-resmi' : 'cetak.prota';
 
-        $html = view('cetak.prota', compact('school', 'prota', 'totalJp', 'curriculumProfile', 'curriculumLabels'))->render();
+        $html = view($view, compact('school', 'prota', 'totalJp', 'curriculumProfile', 'curriculumLabels', 'layout'))->render();
 
-        return $this->pdf($html, 'PROTA-'.($prota->subject?->name ?? '').'-'.($prota->gradeLevel?->name ?? ''), 'portrait');
+        return $this->pdf(
+            $html,
+            'PROTA-'.($prota->subject?->name ?? '').'-'.($prota->gradeLevel?->name ?? ''),
+            'portrait',
+            $layout['paper_size'] ?? 'a4'
+        );
     }
 
     // ── 5. PROSEM ────────────────────────────────────────────────────
@@ -151,10 +159,18 @@ class CetakDokumenKurikulumController extends Controller
         $totalJp = (int) $prosem->items->sum('jp');
         $curriculumProfile = $this->profiles->resolve($prosem->school_id, $prosem->academic_year_id);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
+        $layout = $prosem->layoutSettings();
+        $version = $request->query('version') === 'resmi' ? 'resmi' : 'alim';
+        $view = $version === 'resmi' ? 'cetak.prosem-resmi' : 'cetak.prosem';
 
-        $html = view('cetak.prosem', compact('school', 'prosem', 'weeks', 'totalJp', 'curriculumProfile', 'curriculumLabels'))->render();
+        $html = view($view, compact('school', 'prosem', 'weeks', 'totalJp', 'curriculumProfile', 'curriculumLabels', 'layout'))->render();
 
-        return $this->pdf($html, 'PROSEM-'.($prosem->subject?->name ?? '').'-'.($prosem->gradeLevel?->name ?? ''), 'landscape');
+        return $this->pdf(
+            $html,
+            'PROSEM-'.($prosem->subject?->name ?? '').'-'.($prosem->gradeLevel?->name ?? ''),
+            'landscape',
+            $layout['paper_size'] ?? 'a4'
+        );
     }
 
     // ── 6. RPM / Perangkat Pembelajaran ──────────────────────────────

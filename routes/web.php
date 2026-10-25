@@ -1143,6 +1143,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('prota')->name('prota.')->group(function () {
                     Route::get('/', [ProtaController::class, 'index'])->name('index');
                     Route::post('/', [ProtaController::class, 'store'])->name('store');
+                    Route::get('/{id}/preview', [ProtaController::class, 'preview'])->name('preview');
+                    Route::put('/{id}/layout', [ProtaController::class, 'saveLayout'])->name('layout');
                     Route::get('/{id}', [ProtaController::class, 'show'])->name('show');
                     Route::put('/{id}', [ProtaController::class, 'update'])->name('update');
                     Route::delete('/{id}', [ProtaController::class, 'destroy'])->name('destroy');
@@ -1156,6 +1158,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('prosem')->name('prosem.')->group(function () {
                     Route::get('/', [ProsemController::class, 'index'])->name('index');
                     Route::post('/', [ProsemController::class, 'store'])->name('store');
+                    Route::get('/{id}/preview', [ProsemController::class, 'preview'])->name('preview');
+                    Route::put('/{id}/layout', [ProsemController::class, 'saveLayout'])->name('layout');
                     Route::get('/{id}', [ProsemController::class, 'show'])->name('show');
                     Route::put('/{id}', [ProsemController::class, 'update'])->name('update');
                     Route::delete('/{id}', [ProsemController::class, 'destroy'])->name('destroy');

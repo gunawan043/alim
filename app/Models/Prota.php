@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasCurriculumProfile;
+use App\Models\Concerns\HasPrintLayout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +17,7 @@ use Illuminate\Support\Str;
 class Prota extends Model
 {
     use HasCurriculumProfile;
+    use HasPrintLayout;
 
     use SoftDeletes;
 
@@ -58,6 +60,7 @@ class Prota extends Model
         'synced_at',
         'status',
         'catatan',
+        'layout_settings',
         'created_by',
     ];
 
@@ -67,6 +70,7 @@ class Prota extends Model
         'jp_efektif' => 'integer',
         'total_jp' => 'integer',
         'synced_at' => 'datetime',
+        'layout_settings' => 'array',
     ];
 
     // ── Relations ────────────────────────────────────────────────────

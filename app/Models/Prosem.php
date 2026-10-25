@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasCurriculumProfile;
+use App\Models\Concerns\HasPrintLayout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,6 +17,7 @@ use Illuminate\Support\Str;
 class Prosem extends Model
 {
     use HasCurriculumProfile;
+    use HasPrintLayout;
 
     use SoftDeletes;
 
@@ -54,11 +56,13 @@ class Prosem extends Model
         'adjusted_at',
         'status',
         'catatan',
+        'layout_settings',
         'created_by',
     ];
 
     protected $casts = [
         'synced_at' => 'datetime',
+        'layout_settings' => 'array',
         'adjusted_at' => 'datetime',
     ];
 

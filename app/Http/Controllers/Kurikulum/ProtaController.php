@@ -287,6 +287,86 @@ class ProtaController extends Controller
         );
     }
 
+    public function preview(Request $request, string $userId, string $id)
+    {
+        $prota = Prota::with(['subject', 'gradeLevel', 'academicYear', 'teacher'])->findOrFail($id);
+        $this->authorizeView($request, $prota);
+
+        $version = in_array($request->query('version'), ['resmi', 'alim'], true) ? $request->query('version') : 'alim';
+        $layout = $prota->layoutSettings();
+        $versionUrls = [];
+        foreach (['resmi' => 'Resmi', 'alim' => 'ALIM'] as $key => $label) {
+            $versionUrls[$key] = route('user.kurikulum.prota.preview', [
+                'userId' => $userId,
+                'id' => $prota->id,
+                'version' => $key,
+            ]);
+        }
+        $previewUrl = route('user.kurikulum.cetak.prota', [
+            'userId' => $userId,
+            'id' => $prota->id,
+            'version' => $version,
+            'v' => $prota->updated_at?->timestamp,
+        ]);
+
+        return view('kurikulum.print-preview', [
+            'userId' => $userId,
+            'documentTitle' => 'Preview PROTA',
+            'documentDescription' => ($prota->subject?->name ?? '-').' · '.($prota->gradeLevel?->name ?? 'Semua Jenjang').' · '.($prota->academicYear?->name ?? '-'),
+            'previewUrl' => $previewUrl,
+            'version' => $version,
+            'versionUrls' => $versionUrls,
+            'layout' => $layout,
+            'layoutRoute' => route('user.kurikulum.prota.layout', ['userId' => $userId, 'id' => $prota->id]),
+            'backUrl' => route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id]),
+        ]);
+    }
+
+    public function saveLayout(Request $request, string $userId, string $id)
+    {
+        $prota = Prota::findOrFail($id);
+        $this->authorizeManage($request, $prota);
+        $layout = $this->validatedLayout($request);
+        $prota->update(['layout_settings' => $layout]);
+
+        return redirect()
+            ->route('user.kurikulum.prota.preview', [
+                'userId' => $userId,
+                'id' => $prota->id,
+                'version' => $request->input('version', 'alim'),
+            ])
+            ->with('success', 'Tata letak PROTA berhasil disimpan.');
+    }
+
+    private function validatedLayout(Request $request): array
+    {
+        $validated = $request->validate([
+            'margin_top' => 'required|numeric|min:0|max:50',
+            'margin_right' => 'required|numeric|min:0|max:50',
+            'margin_bottom' => 'required|numeric|min:0|max:50',
+            'margin_left' => 'required|numeric|min:0|max:50',
+            'font_size' => 'required|numeric|min:6|max:24',
+            'title_font_size' => 'required|numeric|min:8|max:30',
+            'table_font_size' => 'required|numeric|min:6|max:20',
+            'line_height' => 'required|numeric|min:1|max:2.5',
+            'paper_size' => 'required|in:a4,folio,letter',
+            'show_kop' => 'nullable|boolean',
+        ]);
+
+        return array_merge(Prota::defaultLayout(), [
+            'margin_top' => (float) $validated['margin_top'],
+            'margin_right' => (float) $validated['margin_right'],
+            'margin_bottom' => (float) $validated['margin_bottom'],
+            'margin_left' => (float) $validated['margin_left'],
+            'font_size' => (float) $validated['font_size'],
+            'title_font_size' => (float) $validated['title_font_size'],
+            'table_font_size' => (float) $validated['table_font_size'],
+            'line_height' => (float) $validated['line_height'],
+            'paper_size' => $validated['paper_size'],
+            'show_kop' => $request->boolean('show_kop'),
+        ]);
+    }
+
     public function destroy(Request $request, string $userId, string $id)
     {
         $prota = Prota::findOrFail($id);

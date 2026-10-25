@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AssertsPeriodLock;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\AdminJurnalPembelajaran;
+use App\Models\PekanEfektif;
 use App\Models\Prosem;
 use App\Models\ProsemItem;
 use App\Models\Prota;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\CurriculumProfileFilterService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
+use App\Services\PekanEfektifService;
 use App\Services\ProsemService;
 use Illuminate\Http\Request;
 
@@ -170,8 +172,11 @@ class ProsemController extends Controller
         $weekRows = $this->prosemService->pekanEfektif($prosem);
         $weeks = $weekRows->keyBy('minggu_ke');
 
+        $minEffectiveDays = app(PekanEfektifService::class)
+            ->minEffectiveDays($prosem->school_id);
         $effectiveWeekNumbers = $weekRows
-            ->filter(fn ($p) => (int) $p->hari_efektif > 0)
+            ->filter(fn ($p) => (int) $p->hari_efektif >= $minEffectiveDays
+                && ! in_array($p->jenis, [PekanEfektif::JENIS_LIBUR, PekanEfektif::JENIS_TIDAK_EFEKTIF], true))
             ->pluck('minggu_ke')
             ->map(fn ($v) => (int) $v)
             ->values()
@@ -360,6 +365,82 @@ class ProsemController extends Controller
         $this->prosemService->resetToAutomatic($item);
 
         return back()->with('success', 'Distribusi dikembalikan ke otomatis.');
+    }
+
+    public function preview(Request $request, string $userId, string $id)
+    {
+        $prosem = Prosem::with(['subject', 'gradeLevel', 'academicYear', 'teacher'])->findOrFail($id);
+        $this->authorizeView($request, $prosem);
+
+        $version = in_array($request->query('version'), ['resmi', 'alim'], true) ? $request->query('version') : 'alim';
+        $layout = $prosem->layoutSettings();
+        $versionUrls = [];
+        foreach (['resmi' => 'Resmi', 'alim' => 'ALIM'] as $key => $label) {
+            $versionUrls[$key] = route('user.kurikulum.prosem.preview', [
+                'userId' => $userId,
+                'id' => $prosem->id,
+                'version' => $key,
+            ]);
+        }
+        $previewUrl = route('user.kurikulum.cetak.prosem', [
+            'userId' => $userId,
+            'id' => $prosem->id,
+            'version' => $version,
+            'v' => $prosem->updated_at?->timestamp,
+        ]);
+
+        return view('kurikulum.print-preview', [
+            'userId' => $userId,
+            'documentTitle' => 'Preview PROSEM',
+            'documentDescription' => ($prosem->subject?->name ?? '-').' · '.($prosem->gradeLevel?->name ?? 'Semua Jenjang').' · Semester '.ucfirst($prosem->semester),
+            'previewUrl' => $previewUrl,
+            'version' => $version,
+            'versionUrls' => $versionUrls,
+            'layout' => $layout,
+            'layoutRoute' => route('user.kurikulum.prosem.layout', ['userId' => $userId, 'id' => $prosem->id]),
+            'backUrl' => route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id]),
+        ]);
+    }
+
+    public function saveLayout(Request $request, string $userId, string $id)
+    {
+        $prosem = Prosem::findOrFail($id);
+        $this->authorizeManage($request, $prosem);
+        $validated = $request->validate([
+            'margin_top' => 'required|numeric|min:0|max:50',
+            'margin_right' => 'required|numeric|min:0|max:50',
+            'margin_bottom' => 'required|numeric|min:0|max:50',
+            'margin_left' => 'required|numeric|min:0|max:50',
+            'font_size' => 'required|numeric|min:6|max:24',
+            'title_font_size' => 'required|numeric|min:8|max:30',
+            'table_font_size' => 'required|numeric|min:6|max:20',
+            'line_height' => 'required|numeric|min:1|max:2.5',
+            'paper_size' => 'required|in:a4,folio,letter',
+            'show_kop' => 'nullable|boolean',
+        ]);
+
+        $layout = array_merge(Prosem::defaultLayout(), [
+            'margin_top' => (float) $validated['margin_top'],
+            'margin_right' => (float) $validated['margin_right'],
+            'margin_bottom' => (float) $validated['margin_bottom'],
+            'margin_left' => (float) $validated['margin_left'],
+            'font_size' => (float) $validated['font_size'],
+            'title_font_size' => (float) $validated['title_font_size'],
+            'table_font_size' => (float) $validated['table_font_size'],
+            'line_height' => (float) $validated['line_height'],
+            'paper_size' => $validated['paper_size'],
+            'show_kop' => $request->boolean('show_kop'),
+        ]);
+
+        $prosem->update(['layout_settings' => $layout]);
+
+        return redirect()
+            ->route('user.kurikulum.prosem.preview', [
+                'userId' => $userId,
+                'id' => $prosem->id,
+                'version' => $request->input('version', 'alim'),
+            ])
+            ->with('success', 'Tata letak PROSEM berhasil disimpan.');
     }
 
     public function destroy(Request $request, string $userId, string $id)
