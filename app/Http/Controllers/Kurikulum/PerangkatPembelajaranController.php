@@ -295,7 +295,7 @@ class PerangkatPembelajaranController extends Controller
         $kbcFormatIssues = $perangkat->kbcFormatIssues();
         $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
 
-        $printVersion = in_array($request->query('version'), ['pondok', 'dinas', 'kemenag'], true)
+        $printVersion = in_array($request->query('version'), ['pondok', 'kbc', 'merdeka'], true)
             ? $request->query('version')
             : 'pondok';
         $layout = $perangkat->layoutSettings();
@@ -307,8 +307,8 @@ class PerangkatPembelajaranController extends Controller
         ]);
         $versionOptions = [
             'pondok' => 'Pondok',
-            'dinas' => 'Dinas Pendidikan',
-            'kemenag' => 'Kemenag',
+            'kbc' => 'KBC',
+            'merdeka' => 'Merdeka',
         ];
         $versionUrls = [];
         foreach ($versionOptions as $versionKey => $versionLabel) {

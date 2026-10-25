@@ -224,12 +224,17 @@ class CetakDokumenKurikulumController extends Controller
             ? $this->schoolImageDataUri($school?->stamp_path)
             : null;
         $printVersion = match ($request->query('version')) {
-            'dinas', 'resmi' => 'dinas',
-            'kemenag' => 'kemenag',
+            'kbc', 'kemenag' => 'kbc',
+            'merdeka', 'dinas' => 'merdeka',
             default => 'pondok',
         };
+        $view = match ($printVersion) {
+            'kbc' => 'cetak.rpm-kbc',
+            'merdeka' => 'cetak.rpm-merdeka',
+            default => 'cetak.rpm',
+        };
 
-        $html = view('cetak.rpm', compact(
+        $html = view($view, compact(
             'school', 'perangkat', 'groups', 'legacyFilled', 'curriculumProfile', 'curriculumLabels',
             'formatType', 'layout', 'useDigitalSignature', 'ttdKspBase64', 'stampBase64', 'printVersion',
             'kokurikulerProjects'

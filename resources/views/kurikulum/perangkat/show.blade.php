@@ -345,6 +345,75 @@
             </div>
         @endforeach
 
+        @if(($curriculumProfile ?? null)?->isKemenag())
+            {{-- ── Isian Tambahan KBC ─────────────────────────────── --}}
+            <div class="card">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-heart-3-line text-danger me-1"></i> Isian Format KBC</h5>
+                    <p class="text-muted mb-0 small mt-1">Dipakai untuk cetak format KBC; format Pondok tetap memakai isian yang sama.</p>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @if($isAgama)
+                            <div class="col-md-6">
+                                <label class="form-label">Dimensi Profil Lulusan</label>
+                                <textarea name="desain[profil_lulusan]" rows="3" class="form-control" maxlength="5000" {{ $disabled }}>{{ $perangkat->desainValue('profil_lulusan') }}</textarea>
+                            </div>
+                        @endif
+                        @foreach([
+                            'kbc_kesiapan_belajar' => 'Identifikasi Kesiapan Peserta Didik',
+                            'kbc_karakteristik_materi' => 'Karakteristik Materi Pelajaran',
+                            'kbc_iklim_budaya' => 'Iklim / Budaya Madrasah',
+                            'kbc_topik_kontekstual' => 'Topik Pembelajaran Kontekstual',
+                            'kbc_indikator' => 'Indikator Ketercapaian',
+                            'kbc_diferensiasi' => 'Diferensiasi Pembelajaran',
+                        ] as $key => $label)
+                            <div class="col-md-6">
+                                <label class="form-label">{{ $label }}</label>
+                                <textarea name="desain[{{ $key }}]" rows="3" class="form-control" maxlength="5000" {{ $disabled }}>{{ $perangkat->desainValue($key) }}</textarea>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if((! $isAgama) && (($curriculumProfile ?? null)?->isDinas() ?? true))
+            {{-- ── Isian Tambahan Merdeka ─────────────────────────── --}}
+            <div class="card">
+                <div class="card-header border-bottom-dashed">
+                    <h5 class="card-title mb-0"><i class="ri-government-line text-primary me-1"></i> Isian Format Merdeka</h5>
+                    <p class="text-muted mb-0 small mt-1">Dipakai untuk cetak format Merdeka; format Pondok tetap memakai isian yang sama.</p>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach([
+                            'kompetensi_awal' => 'Kompetensi Awal',
+                            'sarana_prasarana' => 'Sarana dan Prasarana',
+                            'target_peserta_didik' => 'Target Peserta Didik',
+                            'iktp' => 'Indikator Ketercapaian Tujuan Pembelajaran (IKTP)',
+                            'merdeka_pemahaman_bermakna' => 'Pemahaman Bermakna',
+                            'merdeka_pertanyaan_pemantik' => 'Pertanyaan Pemantik',
+                            'model_pembelajaran' => 'Model Pembelajaran',
+                            'pengayaan' => 'Pengayaan',
+                            'remedial' => 'Remedial',
+                            'refleksi_guru' => 'Refleksi Guru',
+                            'refleksi_peserta_didik' => 'Refleksi Peserta Didik',
+                            'lampiran_lkpd' => 'Lampiran — LKPD',
+                            'lampiran_bahan_bacaan' => 'Lampiran — Bahan Bacaan',
+                            'glosarium' => 'Glosarium',
+                            'daftar_pustaka' => 'Daftar Pustaka',
+                        ] as $key => $label)
+                            <div class="col-md-6">
+                                <label class="form-label">{{ $label }}</label>
+                                <textarea name="desain[{{ $key }}]" rows="2" class="form-control" maxlength="5000" {{ $disabled }}>{{ $perangkat->desainValue($key) }}</textarea>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
         {{-- ── Matriks Asesmen Formatif dan Sumatif ───────────────── --}}
         <div class="card">
             <div class="card-header border-bottom-dashed">
