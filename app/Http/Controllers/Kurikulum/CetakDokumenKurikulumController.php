@@ -200,6 +200,24 @@ class CetakDokumenKurikulumController extends Controller
         }
 
         $layout = $perangkat->layoutSettings();
+
+        // Projek kokurikuler P5/P5RA yang sesuai konteks perangkat.
+        // Projek bersifat lintas mapel; yang ditampilkan adalah projek untuk
+        // sekolah, tahun ajaran, semester, dan kelas yang sama.
+        $kokurikulerProjects = \App\Models\CurriculumProject::query()
+            ->where('school_id', $perangkat->school_id)
+            ->where('academic_year_id', $perangkat->academic_year_id)
+            ->where('semester', $perangkat->semester)
+            ->whereIn('status', [
+                \App\Models\CurriculumProject::STATUS_ACTIVE,
+                \App\Models\CurriculumProject::STATUS_COMPLETED,
+            ])
+            ->orderByDesc('start_date')
+            ->get()
+            ->filter(fn ($project) => empty($project->grade_level_ids)
+                || in_array((string) $perangkat->grade_level_id, array_map('strval', (array) $project->grade_level_ids), true))
+            ->values();
+
         $useDigitalSignature = (bool) ($layout['use_digital_signature'] ?? false) && $perangkat->isKspApproved();
         $ttdKspBase64 = $useDigitalSignature ? $this->schoolImageDataUri($school?->ttd_ksp_path) : null;
         $stampBase64 = $useDigitalSignature && ($layout['show_stamp'] ?? true)
@@ -213,7 +231,8 @@ class CetakDokumenKurikulumController extends Controller
 
         $html = view('cetak.rpm', compact(
             'school', 'perangkat', 'groups', 'legacyFilled', 'curriculumProfile', 'curriculumLabels',
-            'formatType', 'layout', 'useDigitalSignature', 'ttdKspBase64', 'stampBase64', 'printVersion'
+            'formatType', 'layout', 'useDigitalSignature', 'ttdKspBase64', 'stampBase64', 'printVersion',
+            'kokurikulerProjects'
         ))->render();
 
         return $this->pdf(

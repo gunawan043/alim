@@ -159,6 +159,62 @@
         </table>
     </div>
 
+    {{-- INTEGRASI KBC (profil Kemenag) --}}
+    @if($curriculumProfile?->isKemenag())
+        @php
+            $kbcFilled = collect(\App\Models\PerangkatPembelajaran::KBC_FIELDS)
+                ->filter(fn ($label, $key) => filled($nilai($key)));
+        @endphp
+        @if($kbcFilled->isNotEmpty())
+            <div class="section-title">Integrasi Kurikulum Berbasis Cinta (KBC)</div>
+            <div class="section-body">
+                <table class="inside">
+                    @foreach($kbcFilled as $key => $label)
+                        <tr><td class="label">{{ $label }}</td><td>{!! $text($nilai($key)) !!}</td></tr>
+                    @endforeach
+                </table>
+            </div>
+        @endif
+    @endif
+
+    {{-- PROJEK P5 / P5RA --}}
+    @if(($kokurikulerProjects ?? collect())->isNotEmpty())
+        <div class="section-title">Projek {{ $curriculumProfile?->label('kokurikuler_label', 'P5 / P5RA') }}</div>
+        <div class="section-body">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th style="width:30px">No</th>
+                        <th>Judul Projek</th>
+                        <th style="width:150px">Tema</th>
+                        <th style="width:160px">Dimensi / Nilai</th>
+                        <th style="width:130px">Pelaksanaan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($kokurikulerProjects as $index => $project)
+                        @php
+                            $projectDimensions = collect($project->dimensions ?? [])
+                                ->map(fn ($key) => $curriculumProfile?->values()[$key] ?? $key)
+                                ->filter()
+                                ->implode(', ');
+                        @endphp
+                        <tr>
+                            <td class="center">{{ $index + 1 }}</td>
+                            <td><strong>{{ $project->title }}</strong><br><span class="small">{{ $project->description }}</span></td>
+                            <td>{{ $project->theme ?: '—' }}</td>
+                            <td class="small">{{ $projectDimensions ?: '—' }}</td>
+                            <td class="small">
+                                {{ $project->start_date?->format('d/m/Y') ?? '—' }}
+                                @if($project->end_date) – {{ $project->end_date->format('d/m/Y') }} @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     {{-- TANDA TANGAN --}}
     <table class="sign">
         <tr>
