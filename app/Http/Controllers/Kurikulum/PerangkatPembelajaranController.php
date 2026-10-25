@@ -14,6 +14,7 @@ use App\Services\Evaluasi\ReviewWorkflowService;
 use App\Services\CurriculumProfileFilterService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
+use App\Services\Kurikulum\PerangkatFormatResolver;
 use Illuminate\Http\Request;
 
 /**
@@ -119,6 +120,7 @@ class PerangkatPembelajaranController extends Controller
             ->get(['id', 'name', 'code']);
 
         $curriculumLabels = $profileService->labels($curriculumProfile);
+        $isKspSupervisor = $this->access->isKurikulumSupervisor($user);
 
         return view('kurikulum.perangkat.index', compact(
             'userId',
@@ -133,7 +135,39 @@ class PerangkatPembelajaranController extends Controller
             'mySubjectIds',
             'curriculumProfile',
             'curriculumLabels',
-            'profileScope'
+            'profileScope',
+            'isKspSupervisor'
+        ));
+    }
+
+    public function kspReport(Request $request, string $userId)
+    {
+        abort_unless($this->access->isKurikulumSupervisor($request->user()), 403, 'Laporan KSP hanya untuk Kepala/Wakil Satuan Pendidikan.');
+
+        $schoolId = $request->attributes->get('schoolContextId');
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('created_at')->get();
+        $activeAy = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
+        $academicYearId = $request->input('academic_year_id', $activeAy?->id);
+        $semester = $request->input('semester', 'ganjil');
+
+        $rows = PerangkatPembelajaran::with([
+            'subject:id,name', 'teacher:id,name', 'gradeLevel:id,name', 'studyGroup:id,name',
+        ])
+            ->where('school_id', $schoolId)
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->where('semester', $semester)
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $stats = [
+            'total' => $rows->count(),
+            'rumpun' => $rows->where('workflow_status', PerangkatPembelajaran::WORKFLOW_APPROVED)->count(),
+            'ksp' => $rows->filter(fn ($row) => $row->isKspApproved())->count(),
+            'draft' => $rows->where('status', PerangkatPembelajaran::STATUS_DRAFT)->count(),
+        ];
+
+        return view('kurikulum.perangkat.ksp-report', compact(
+            'userId', 'rows', 'stats', 'academicYears', 'academicYearId', 'semester'
         ));
     }
 
@@ -153,6 +187,15 @@ class PerangkatPembelajaranController extends Controller
         if (! $this->access->canAuthorSubject($request->user(), $atp->subject_id, $atp->academic_year_id, $schoolId)) {
             abort(403, 'Anda hanya dapat menyusun RPM untuk mata pelajaran yang diampu.');
         }
+
+        $formatType = app(PerangkatFormatResolver::class)->resolve($atp->subject);
+
+        if ($formatType === PerangkatFormatResolver::TAHFIDZ) {
+            return redirect()
+                ->route('user.tahfidz.rpp.index', ['userId' => $userId])
+                ->with('error', 'Mapel Tahfidz disusun melalui modul RPP Tahfizh di Departemen.');
+        }
+
         $this->assertPeriodNotLocked($atp->academic_year_id, 'Dokumen RPM/Perangkat');
 
         // Kebijakan Tahap 2: SATU dokumen current per konteks akademik
@@ -182,7 +225,9 @@ class PerangkatPembelajaranController extends Controller
             'atp_id' => $atp->id,
             'teacher_id' => $request->user()->id,
             'judul' => $validated['judul'],
-            'tipe' => $validated['tipe'] ?? PerangkatPembelajaran::TIPE_UMUM,
+            'tipe' => $formatType === PerangkatFormatResolver::AGAMA
+                ? PerangkatPembelajaran::TIPE_AGAMA
+                : PerangkatPembelajaran::TIPE_UMUM,
             'source' => 'manual',
             'status' => PerangkatPembelajaran::STATUS_DRAFT,
             'desain' => PerangkatPembelajaran::defaultDesain(),
@@ -233,6 +278,10 @@ class PerangkatPembelajaranController extends Controller
             || $this->access->isKurikulumEditor($request->user())
             || $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $schoolId))
             && $perangkat->isLocked();
+        $canApproveKsp = $this->access->isKurikulumSupervisor($request->user())
+            && $perangkat->workflow_status === PerangkatPembelajaran::WORKFLOW_APPROVED
+            && $perangkat->status === PerangkatPembelajaran::STATUS_FINAL
+            && ! $perangkat->isKspApproved();
 
         $profileService = app(CurriculumProfileService::class);
         $curriculumProfile = $perangkat->curriculumProfile
@@ -244,12 +293,91 @@ class PerangkatPembelajaranController extends Controller
         $kbcMissing = $perangkat->missingKbcFields('final');
         $kbcReviewMissing = $perangkat->missingKbcFields('review');
         $kbcFormatIssues = $perangkat->kbcFormatIssues();
+        $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
 
         return view('kurikulum.perangkat.show', compact(
             'userId', 'perangkat', 'studyGroups', 'isOwner', 'canEdit',
-            'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion',
-            'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing', 'kbcFormatIssues'
+            'workflowProgress', 'versions', 'myReviewAssignment', 'canSubmitReview', 'canCreateVersion', 'canApproveKsp',
+            'curriculumProfile', 'curriculumLabels', 'kbcChecklist', 'kbcPercentage', 'kbcMissing', 'kbcReviewMissing', 'kbcFormatIssues',
+            'formatType'
         ));
+    }
+
+    public function preview(Request $request, string $userId, string $id)
+    {
+        $perangkat = PerangkatPembelajaran::with([
+            'subject.subjectGroup', 'gradeLevel', 'studyGroup', 'teacher', 'atp',
+        ])->findOrFail($id);
+        $this->authorizeView($request, $perangkat);
+
+        $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
+        if ($formatType === PerangkatFormatResolver::TAHFIDZ) {
+            return redirect()
+                ->route('user.tahfidz.rpp.index', ['userId' => $userId])
+                ->with('error', 'Perangkat mapel Tahfidz dikelola melalui modul RPP Tahfizh di Departemen.');
+        }
+
+        $layout = $perangkat->layoutSettings();
+        $previewUrl = route('user.kurikulum.cetak.rpm', [
+            'userId' => $userId,
+            'id' => $perangkat->id,
+            'v' => $perangkat->updated_at?->timestamp,
+        ]);
+
+        return view('kurikulum.perangkat.preview', compact(
+            'userId', 'perangkat', 'formatType', 'layout', 'previewUrl'
+        ));
+    }
+
+    public function saveLayout(Request $request, string $userId, string $id)
+    {
+        $perangkat = PerangkatPembelajaran::findOrFail($id);
+        $this->authorizeView($request, $perangkat);
+
+        $isOwner = $this->isOwner($request, $perangkat);
+        abort_unless(
+            $isOwner
+                || $this->access->isKurikulumEditor($request->user())
+                || $this->access->hasEditGrant($request->user(), $perangkat->subject_id, $perangkat->academic_year_id, $request->attributes->get('schoolContextId')),
+            403,
+            'Anda tidak berwenang mengatur tampilan perangkat ini.'
+        );
+
+        $validated = $request->validate([
+            'margin_top' => 'required|numeric|min:0|max:50',
+            'margin_right' => 'required|numeric|min:0|max:50',
+            'margin_bottom' => 'required|numeric|min:0|max:50',
+            'margin_left' => 'required|numeric|min:0|max:50',
+            'font_size' => 'required|numeric|min:6|max:24',
+            'title_font_size' => 'required|numeric|min:8|max:30',
+            'table_font_size' => 'required|numeric|min:6|max:20',
+            'line_height' => 'required|numeric|min:1|max:2.5',
+            'paper_size' => 'required|in:a4,folio,letter',
+            'show_kop' => 'nullable|boolean',
+            'use_digital_signature' => 'nullable|boolean',
+            'show_stamp' => 'nullable|boolean',
+        ]);
+
+        $layout = array_merge($perangkat->layoutSettings(), [
+            'margin_top' => (float) $validated['margin_top'],
+            'margin_right' => (float) $validated['margin_right'],
+            'margin_bottom' => (float) $validated['margin_bottom'],
+            'margin_left' => (float) $validated['margin_left'],
+            'font_size' => (float) $validated['font_size'],
+            'title_font_size' => (float) $validated['title_font_size'],
+            'table_font_size' => (float) $validated['table_font_size'],
+            'line_height' => (float) $validated['line_height'],
+            'paper_size' => $validated['paper_size'],
+            'show_kop' => $request->boolean('show_kop'),
+            'use_digital_signature' => $request->boolean('use_digital_signature'),
+            'show_stamp' => $request->boolean('show_stamp'),
+        ]);
+
+        $perangkat->update(['layout_settings' => $layout]);
+
+        return redirect()
+            ->route('user.kurikulum.perangkat.preview', ['userId' => $userId, 'id' => $perangkat->id])
+            ->with('success', 'Pengaturan margin, font, dan kertas berhasil disimpan.');
     }
 
     public function update(Request $request, string $userId, string $id)
@@ -309,10 +437,13 @@ class PerangkatPembelajaranController extends Controller
             }
         }
 
+        $formatType = app(PerangkatFormatResolver::class)->resolve($perangkat->subject);
         $payload = [
             'judul' => $validated['judul'],
             'study_group_id' => $validated['study_group_id'] ?? null,
-            'tipe' => $validated['tipe'] ?? $perangkat->tipe,
+            'tipe' => $formatType === PerangkatFormatResolver::AGAMA
+                ? PerangkatPembelajaran::TIPE_AGAMA
+                : PerangkatPembelajaran::TIPE_UMUM,
             'status' => $validated['status'],
             'catatan' => $validated['catatan'] ?? null,
             'desain' => $desain,
@@ -400,6 +531,39 @@ class PerangkatPembelajaranController extends Controller
         );
 
         return back()->with('success', 'RPM diajukan untuk approval ('.count($assignments).' anggota rumpun).');
+    }
+
+    /**
+     * Persetujuan KSP setelah approval rumpun. TTD/stempel digital baru boleh
+     * dipakai pada cetak setelah approval ini.
+     */
+    public function approveKsp(Request $request, string $userId, string $id)
+    {
+        $perangkat = PerangkatPembelajaran::findOrFail($id);
+        $this->authorizeView($request, $perangkat);
+
+        abort_unless(
+            $this->access->isKurikulumSupervisor($request->user()),
+            403,
+            'Persetujuan KSP hanya dapat dilakukan Kepala/Wakil Satuan Pendidikan.'
+        );
+
+        if ($perangkat->workflow_status !== PerangkatPembelajaran::WORKFLOW_APPROVED
+            || $perangkat->status !== PerangkatPembelajaran::STATUS_FINAL) {
+            return back()->with('error', 'Perangkat harus disetujui rumpun dan berstatus final sebelum disetujui KSP.');
+        }
+
+        if ($perangkat->isKspApproved()) {
+            return back()->with('error', 'Perangkat ini sudah disetujui KSP.');
+        }
+
+        $perangkat->update([
+            'ksp_approved_at' => now(),
+            'ksp_approved_by' => $request->user()->id,
+            'ksp_note' => $request->input('ksp_note'),
+        ]);
+
+        return back()->with('success', 'Perangkat disetujui KSP. TTD dan stempel digital dapat diaktifkan pada halaman preview.');
     }
 
     /**

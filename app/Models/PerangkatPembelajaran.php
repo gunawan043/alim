@@ -119,6 +119,35 @@ class PerangkatPembelajaran extends Model
         'indikator_kbc' => 'Indikator Nilai Cinta',
         'refleksi_kbc' => 'Refleksi Nilai Cinta',
         'asesmen_kbc' => 'Asesmen Nilai Cinta',
+        'alokasi_waktu' => 'Alokasi Waktu',
+        'asesmen_awal_jenis' => 'Jenis Asesmen — Awal',
+        'asesmen_awal_teknik' => 'Teknik — Awal',
+        'asesmen_awal_indikator' => 'Indikator — Awal',
+        'asesmen_awal_instrumen' => 'Instrumen/Bukti — Awal',
+        'asesmen_proses_jenis' => 'Jenis Asesmen — Proses',
+        'asesmen_proses_teknik' => 'Teknik — Proses',
+        'asesmen_proses_indikator' => 'Indikator — Proses',
+        'asesmen_proses_instrumen' => 'Instrumen/Bukti — Proses',
+        'asesmen_akhir_jenis' => 'Jenis Asesmen — Akhir',
+        'asesmen_akhir_teknik' => 'Teknik — Akhir',
+        'asesmen_akhir_indikator' => 'Indikator — Akhir',
+        'asesmen_akhir_instrumen' => 'Instrumen/Bukti — Akhir',
+    ];
+
+    /**
+     * Baris dan kolom tabel asesmen formatif/sumatif.
+     */
+    const ASSESSMENT_ROWS = [
+        'awal' => 'Awal Pembelajaran',
+        'proses' => 'Proses Pembelajaran',
+        'akhir' => 'Akhir Pembelajaran',
+    ];
+
+    const ASSESSMENT_COLUMNS = [
+        'jenis' => 'Jenis Asesmen',
+        'teknik' => 'Teknik',
+        'indikator' => 'Indikator',
+        'instrumen' => 'Instrumen/Bukti',
     ];
 
     /**
@@ -230,19 +259,25 @@ class PerangkatPembelajaran extends Model
         'submitted_at',
         'approved_at',
         'approved_by',
+        'ksp_approved_at',
+        'ksp_approved_by',
+        'ksp_note',
         'locked_at',
         'locked_by',
         'desain',
+        'layout_settings',
         'catatan',
         'created_by',
     ];
 
     protected $casts = [
         'desain' => 'array',
+        'layout_settings' => 'array',
         'is_current' => 'boolean',
         'version' => 'integer',
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
+        'ksp_approved_at' => 'datetime',
         'locked_at' => 'datetime',
     ];
 
@@ -338,6 +373,11 @@ class PerangkatPembelajaran extends Model
         return ! $this->isLocked();
     }
 
+    public function isKspApproved(): bool
+    {
+        return $this->ksp_approved_at !== null;
+    }
+
     public function isApproved(): bool
     {
         return $this->workflow_status === self::WORKFLOW_APPROVED;
@@ -360,6 +400,9 @@ class PerangkatPembelajaran extends Model
         $new->submitted_at = null;
         $new->approved_at = null;
         $new->approved_by = null;
+        $new->ksp_approved_at = null;
+        $new->ksp_approved_by = null;
+        $new->ksp_note = null;
         $new->locked_at = null;
         $new->locked_by = null;
         $new->save();
@@ -389,7 +432,10 @@ class PerangkatPembelajaran extends Model
      */
     public function groups(): array
     {
-        $groups = $this->tipe === self::TIPE_AGAMA ? self::GROUPS_AGAMA : self::GROUPS_UMUM;
+        $format = $this->formatType();
+        $groups = $format === \App\Services\Kurikulum\PerangkatFormatResolver::AGAMA
+            ? self::GROUPS_AGAMA
+            : self::GROUPS_UMUM;
 
         if ($this->curriculumProfile?->isKemenag()) {
             $groups = array_merge(self::GROUPS_KBC, $groups);
@@ -485,6 +531,47 @@ class PerangkatPembelajaran extends Model
      *
      * @return array<string, string|null>
      */
+    public static function defaultLayout(): array
+    {
+        return [
+            'margin_top' => 12.0,
+            'margin_right' => 12.0,
+            'margin_bottom' => 14.0,
+            'margin_left' => 15.0,
+            'font_size' => 11.0,
+            'title_font_size' => 13.0,
+            'table_font_size' => 10.0,
+            'line_height' => 1.25,
+            'paper_size' => 'a4',
+            'show_kop' => true,
+            'use_digital_signature' => false,
+            'show_stamp' => true,
+        ];
+    }
+
+    public function layoutSettings(): array
+    {
+        $defaults = static::defaultLayout();
+        $saved = is_array($this->layout_settings) ? $this->layout_settings : [];
+
+        return [
+            'margin_top' => (float) ($saved['margin_top'] ?? $defaults['margin_top']),
+            'margin_right' => (float) ($saved['margin_right'] ?? $defaults['margin_right']),
+            'margin_bottom' => (float) ($saved['margin_bottom'] ?? $defaults['margin_bottom']),
+            'margin_left' => (float) ($saved['margin_left'] ?? $defaults['margin_left']),
+            'font_size' => (float) ($saved['font_size'] ?? $defaults['font_size']),
+            'title_font_size' => (float) ($saved['title_font_size'] ?? $defaults['title_font_size']),
+            'table_font_size' => (float) ($saved['table_font_size'] ?? $defaults['table_font_size']),
+            'line_height' => (float) ($saved['line_height'] ?? $defaults['line_height']),
+            'paper_size' => in_array(($saved['paper_size'] ?? $defaults['paper_size']), ['a4', 'folio', 'letter'], true)
+                ? ($saved['paper_size'] ?? $defaults['paper_size'])
+                : 'a4',
+            'show_kop' => (bool) ($saved['show_kop'] ?? $defaults['show_kop']),
+            'use_digital_signature' => (bool) ($saved['use_digital_signature'] ?? $defaults['use_digital_signature']),
+            'show_stamp' => (bool) ($saved['show_stamp'] ?? $defaults['show_stamp']),
+        ];
+    }
+
     public static function defaultDesain(): array
     {
         return array_fill_keys(self::allDesainKeys(), null);
@@ -519,6 +606,63 @@ class PerangkatPembelajaran extends Model
         $desain = $this->desain ?? [];
 
         return filled($desain[$key] ?? null) ? (string) $desain[$key] : null;
+    }
+
+    /**
+     * Format cetak berdasarkan jenis mapel (umum/agama/tahfidz).
+     */
+    public function formatType(): string
+    {
+        return app(\App\Services\Kurikulum\PerangkatFormatResolver::class)->forPerangkat($this);
+    }
+
+    /**
+     * Alokasi waktu: nilai manual bila ada, selain itu total JP ATP.
+     */
+    public function alokasiWaktu(): string
+    {
+        $value = $this->desainValue('alokasi_waktu');
+        if ($value !== null) {
+            return $value;
+        }
+
+        $total = $this->atp?->total_jp;
+
+        return $total ? (rtrim(rtrim(number_format((float) $total, 1, ',', '.'), '0'), ',').' JP') : '—';
+    }
+
+    /**
+     * Matriks asesmen 3×4 dengan fallback dokumen lama.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function assessmentMatrix(): array
+    {
+        $matrix = [];
+        $legacyProcess = (string) ($this->desainValue('asesmen_formatif') ?? '');
+        $legacyFinal = (string) ($this->desainValue('asesmen_sumatif') ?? '');
+        $fallback = [
+            'proses' => $legacyProcess !== '' ? [
+                'jenis' => 'Asesmen Formatif (data lama)',
+                'instrumen' => $legacyProcess,
+            ] : [],
+            'akhir' => $legacyFinal !== '' ? [
+                'jenis' => 'Asesmen Sumatif (data lama)',
+                'instrumen' => $legacyFinal,
+            ] : [],
+        ];
+
+        foreach (array_keys(self::ASSESSMENT_ROWS) as $row) {
+            foreach (array_keys(self::ASSESSMENT_COLUMNS) as $column) {
+                $value = (string) ($this->desainValue('asesmen_'.$row.'_'.$column) ?? '');
+                if ($value === '' && isset($fallback[$row][$column])) {
+                    $value = $fallback[$row][$column];
+                }
+                $matrix[$row][$column] = $value;
+            }
+        }
+
+        return $matrix;
     }
 
     /**

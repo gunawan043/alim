@@ -1,135 +1,182 @@
 @extends('cetak.layout')
 
-@section('title', 'RPM')
-@section('doc_title', ($curriculumLabels['perangkat_label'] ?? 'RPM').' — '.($curriculumProfile?->isKemenag() ? 'Kurikulum Berbasis Cinta' : 'Pembelajaran Mendalam'))
-@section('doc_subtitle')
-    {{ $perangkat->judul }}
-@endsection
+@php
+    $isAgama = ($formatType ?? (($perangkat->tipe ?? 'umum') === 'agama' ? 'agama' : 'umum')) === 'agama';
+    $atp = $perangkat->atp;
+    $tps = $atp?->items?->map(fn ($item) => $item->tujuanPembelajaran)->filter() ?? collect();
+    $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
+    $alokasiWaktu = $perangkat->alokasiWaktu();
+    $matrix = $perangkat->assessmentMatrix();
+    $text = fn ($value) => filled($value) ? nl2br(e($value)) : '<span class="muted">—</span>';
+    $gradeLabel = $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? 'Semua Kelas';
+    $fase = $perangkat->gradeLevel?->fase;
+    $nilai = fn (string $key) => $perangkat->desainValue($key);
+    $useDigitalSignature = $useDigitalSignature ?? false;
+    $ttdKspBase64 = $ttdKspBase64 ?? null;
+    $stampBase64 = $stampBase64 ?? null;
+@endphp
+
+@section('title', $isAgama ? 'Rencana Pembelajaran Mendalam' : 'Perencanaan Pembelajaran Mendalam')
+@section('doc_title', $isAgama ? 'RENCANA PEMBELAJARAN MENDALAM' : 'PERENCANAAN PEMBELAJARAN MENDALAM')
+@section('doc_subtitle', '')
 
 @section('content')
-    @php
-        $tipeLabel = \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? 'RPM';
-        $atp = $perangkat->atp;
-        $tps = $atp?->items?->map(fn ($i) => $i->tujuanPembelajaran)->filter() ?? collect();
-        $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
-
-        $renderText = function (?string $text) {
-            return $value = $text
-                ? nl2br(e($text))
-                : '<span class="muted">—</span>';
-        };
-    @endphp
-
-    <div class="section-title">Informasi Umum</div>
+    {{-- A. INFORMASI UMUM --}}
+    <div class="section-title">A. Informasi Umum</div>
     <div class="section-body">
-        <table class="inside">
+        <table class="info">
             <tr>
-                <td class="label">Satuan Pendidikan</td><td>: {{ $school?->name ?? '-' }}</td>
-                <td class="label">Guru Penyusun</td><td>: {{ $perangkat->teacher?->name ?? '—' }}</td>
+                <td class="label">Nama Guru</td><td class="colon">:</td><td>{{ $perangkat->teacher?->name ?? '—' }}</td>
+                <td class="label">Satuan Pendidikan</td><td class="colon">:</td><td>{{ $school?->name ?? '—' }}</td>
             </tr>
             <tr>
-                <td class="label">Mata Pelajaran</td><td>: {{ $perangkat->subject?->name ?? '-' }}</td>
-                <td class="label">Kelas / Fase</td><td>: {{ $perangkat->studyGroup?->name ?? $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}{{ $perangkat->gradeLevel?->fase ? ' / '.$perangkat->gradeLevel->fase : '' }}</td>
+                <td class="label">{{ $isAgama ? 'Kelas' : 'Kelas / Fase' }}</td><td class="colon">:</td>
+                <td>{{ $gradeLabel }}{{ ! $isAgama && $fase ? ' / '.$fase : '' }}</td>
+                <td class="label">Mata Pelajaran / Semester</td><td class="colon">:</td>
+                <td>{{ $perangkat->subject?->name ?? '—' }} / {{ ucfirst($perangkat->semester) }}</td>
             </tr>
+            @if($isAgama)
+                <tr>
+                    <td class="label">Materi Pelajaran</td><td class="colon">:</td>
+                    <td colspan="3">{!! $text($nilai('identifikasi_materi')) !!}</td>
+                </tr>
+            @endif
             <tr>
-                <td class="label">Semester</td><td>: {{ ucfirst($perangkat->semester) }}</td>
-                <td class="label">Fase</td><td>: {{ $perangkat->gradeLevel?->fase ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Tipe {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}</td><td>: {{ $tipeLabel }}</td>
-                <td class="label">Profil Kurikulum</td><td>: {{ $curriculumProfile?->name ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">ATP Acuan</td><td>: {{ $atp?->subject?->name ?? '-' }} {{ $atp ? '('.$atp->total_jp.' JP)' : '' }}</td>
-                <td class="label">Tahun Ajaran</td><td>: {{ $perangkat->academicYear?->name ?? '-' }}</td>
+                <td class="label">Alokasi Waktu</td><td class="colon">:</td><td>{{ $alokasiWaktu }}</td>
+                <td class="label">Tahun Ajaran</td><td class="colon">:</td><td>{{ $perangkat->academicYear?->name ?? '—' }}</td>
             </tr>
         </table>
     </div>
 
-    @if($cps->isNotEmpty())
-        <div class="section-title">Capaian Pembelajaran (CP)</div>
-        <div class="section-body">
-            @foreach($cps as $cp)
-                <p>
-                    <strong>[Fase {{ $cp->fase }}{{ $cp->elemen ? ' — '.$cp->elemen : '' }}]</strong>
-                    {{ $cp->deskripsi }}
-                </p>
-            @endforeach
-        </div>
-    @endif
-
-    @if($tps->isNotEmpty())
-        <div class="section-title">Tujuan Pembelajaran (TP) — dari ATP</div>
+    {{-- B. IDENTIFIKASI (umum) --}}
+    @if(! $isAgama)
+        <div class="section-title">B. Identifikasi</div>
         <div class="section-body">
             <table class="inside">
-                @foreach($tps as $tp)
-                    <tr>
-                        <td style="width:70px"><strong>{{ $tp->kode_tp }}</strong></td>
-                        <td>
-                            {{ $tp->deskripsi }}
-                            @if(($curriculumProfile ?? null)?->isKemenag() && ! empty($tp->kbc_values))
-                                @php $kbcMap = ($curriculumProfile ?? null)?->values() ?? []; @endphp
-                                <div class="small" style="margin-top:2px">
-                                    <strong>Nilai Cinta:</strong>
-                                    @foreach($tp->kbc_values as $value){{ $kbcMap[$value] ?? $value }}@if(! $loop->last), @endif @endforeach
-                                    @if($tp->kbc_indicator) · {{ $tp->kbc_indicator }} @endif
-                                </div>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
+                <tr><td class="label">Peserta Didik</td><td>{!! $text($nilai('identifikasi_peserta_didik')) !!}</td></tr>
+                <tr><td class="label">Materi Pelajaran</td><td>{!! $text($nilai('identifikasi_materi')) !!}</td></tr>
+                <tr><td class="label">Profil Lulusan</td><td>{!! $text($nilai('profil_lulusan')) !!}</td></tr>
             </table>
         </div>
     @endif
 
-    @foreach($groups as $group)
-        @php
-            $filledKeys = collect($group['keys'])->filter(fn ($key) => $perangkat->desainValue($key));
-        @endphp
-        <div class="section-title">{{ $group['label'] }}</div>
-        <div class="section-body">
-            @if($filledKeys->isEmpty())
-                <p class="muted">Belum diisi.</p>
+    {{-- C. DESAIN PEMBELAJARAN --}}
+    <div class="section-title">{{ $isAgama ? 'B. Desain Pembelajaran' : 'C. Desain Pembelajaran' }}</div>
+    <div class="section-body">
+        @if(! $isAgama)
+            <table class="inside">
+                <tr>
+                    <td class="label">Capaian Pembelajaran</td>
+                    <td>
+                        @forelse($cps as $cp)
+                            <p><strong>[Fase {{ $cp->fase }}{{ $cp->elemen ? ' — '.$cp->elemen : '' }}]</strong> {{ $cp->deskripsi }}</p>
+                        @empty
+                            <span class="muted">—</span>
+                        @endforelse
+                    </td>
+                </tr>
+                <tr><td class="label">Topik Pembelajaran</td><td>{!! $text($nilai('topik')) !!}</td></tr>
+                <tr><td class="label">Lintas Disiplin Ilmu</td><td>{!! $text($nilai('lintas_disiplin')) !!}</td></tr>
+            </table>
+        @endif
+
+        <table class="inside">
+            <tr>
+                <td class="label">Tujuan Pembelajaran</td>
+                <td>
+                    @forelse($tps as $tp)
+                        <p><strong>{{ $tp->kode_tp }}</strong> — {{ $tp->deskripsi }}</p>
+                    @empty
+                        <span class="muted">Belum ada TP dari ATP.</span>
+                    @endforelse
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- D. KERANGKA PEMBELAJARAN --}}
+    <div class="section-title">{{ $isAgama ? 'C. Kerangka Pembelajaran' : 'D. Kerangka Pembelajaran' }}</div>
+    <div class="section-body">
+        <table class="inside">
+            @if($isAgama)
+                <tr><td class="label">Model Pembelajaran</td><td>{!! $text($nilai('model_pembelajaran')) !!}</td></tr>
             @else
-                <table class="inside">
-                    @foreach($filledKeys as $key)
-                        <tr>
-                            <td class="label">{{ \App\Models\PerangkatPembelajaran::SECTIONS_RPM[$key] ?? (\App\Models\PerangkatPembelajaran::DESAIN_SECTIONS[$key] ?? $key) }}</td>
-                            <td>{!! $renderText($perangkat->desainValue($key)) !!}</td>
-                        </tr>
-                    @endforeach
-                </table>
+                <tr><td class="label">Praktik Pedagogik</td><td>{!! $text($nilai('praktik_pedagogik')) !!}</td></tr>
             @endif
-        </div>
-    @endforeach
+            <tr><td class="label">Kemitraan Pembelajaran</td><td>{!! $text($nilai('kemitraan_pembelajaran')) !!}</td></tr>
+            <tr><td class="label">Lingkungan Pembelajaran</td><td>{!! $text($nilai('lingkungan_pembelajaran')) !!}</td></tr>
+            <tr><td class="label">Pemanfaatan Digital</td><td>{!! $text($nilai('pemanfaatan_digital')) !!}</td></tr>
+        </table>
+    </div>
 
-    @if(! empty($legacyFilled))
-        <div class="section-title">Fondasi Pembelajaran Mendalam</div>
-        <div class="section-body">
-            <table class="inside">
-                @foreach($legacyFilled as $key => $label)
+    {{-- E. PENGALAMAN BELAJAR --}}
+    <div class="section-title">{{ $isAgama ? 'D. Pengalaman Belajar' : 'E. Pengalaman Belajar' }}</div>
+    <div class="section-body">
+        <table class="data">
+            <thead>
+                <tr><th style="width:24%">Tahap</th><th>Aktivitas Pembelajaran</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Kegiatan Awal</td><td>{!! $text($nilai('kegiatan_awal')) !!}</td></tr>
+                <tr>
+                    <td rowspan="3">Kegiatan Inti</td>
+                    <td><strong>Memahami</strong><br>{!! $text($nilai('pengalaman_memahami')) !!}</td>
+                </tr>
+                <tr><td><strong>Mengaplikasikan</strong><br>{!! $text($nilai('pengalaman_mengaplikasi')) !!}</td></tr>
+                <tr><td><strong>Merefleksikan</strong><br>{!! $text($nilai('pengalaman_refleksi')) !!}</td></tr>
+                <tr><td>Penutup</td><td>{!! $text($nilai('penutup')) !!}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    {{-- F. ASESMEN --}}
+    <div class="section-title">{{ $isAgama ? 'E. Asesmen Formatif dan Sumatif' : 'F. Asesmen Formatif dan Sumatif' }}</div>
+    <div class="section-body">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th style="width:18%">Jenis Asesmen</th>
+                    <th style="width:20%">Teknik</th>
+                    <th style="width:28%">Indikator</th>
+                    <th>Instrumen/Bukti</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(\App\Models\PerangkatPembelajaran::ASSESSMENT_ROWS as $rowKey => $rowLabel)
                     <tr>
-                        <td class="label">{{ $label }}</td>
-                        <td>{!! $renderText($perangkat->desainValue($key)) !!}</td>
+                        <td>{{ $matrix[$rowKey]['jenis'] ?: $rowLabel }}</td>
+                        @foreach(\App\Models\PerangkatPembelajaran::ASSESSMENT_COLUMNS as $columnKey => $columnLabel)
+                            @continue($columnKey === 'jenis')
+                            <td>{!! $text($matrix[$rowKey][$columnKey] ?? '') !!}</td>
+                        @endforeach
                     </tr>
                 @endforeach
-            </table>
-        </div>
-    @endif
+            </tbody>
+        </table>
+    </div>
 
+    {{-- TANDA TANGAN --}}
     <table class="sign">
         <tr>
             <td style="width:50%">
                 Mengetahui,<br>Kepala Satuan Pendidikan
-                <div class="space"></div>
-                <div class="name">{{ $school?->principal_name ?? '................................' }}</div>
-                @if($curriculumProfile?->isKemenag() && $school?->principal_nupy)<div class="nip">NUPY. {{ $school->principal_nupy }}</div>
-                @elseif($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
+                @if($useDigitalSignature && $ttdKspBase64)
+                    <div class="signature-box">
+                        @if($stampBase64)
+                            <img src="{{ $stampBase64 }}" class="stamp-img" alt="Stempel">
+                        @endif
+                        <img src="{{ $ttdKspBase64 }}" class="ttd-img" alt="TTD KSP">
+                    </div>
+                @else
+                    <div class="space"></div>
+                    <div class="name">__________________________</div>
+                @endif
             </td>
             <td style="width:50%">
-                {{ now()->locale('id')->translatedFormat('d F Y') }}<br>Guru Mata Pelajaran
+                {{ $school?->city?->name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>
+                Guru Mata Pelajaran
                 <div class="space"></div>
-                <div class="name">{{ $perangkat->teacher?->name ?? '................................' }}</div>
+                <div class="name">__________________________</div>
             </td>
         </tr>
     </table>

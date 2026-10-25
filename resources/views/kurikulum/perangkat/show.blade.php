@@ -14,6 +14,8 @@
         $tps = $atp?->items?->map(fn ($i) => $i->tujuanPembelajaran)->filter() ?? collect();
         $cps = $tps->map(fn ($tp) => $tp->capaianPembelajaran)->filter()->unique('id');
         $disabled = $canEdit ? '' : 'disabled';
+        $isAgama = ($formatType ?? 'umum') === 'agama';
+        $alokasiValue = old('desain.alokasi_waktu', $perangkat->desainValue('alokasi_waktu') ?? ($perangkat->atp?->total_jp ? $perangkat->atp->total_jp.' JP' : ''));
     @endphp
 
     @component('components.breadcrumb')
@@ -46,9 +48,18 @@
             <span class="badge {{ $perangkat->status === 'final' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }} p-2">
                 {{ \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$perangkat->status] ?? $perangkat->status }}
             </span>
-            <a href="{{ route('user.kurikulum.cetak.rpm', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
-                <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
-            </a>
+            @if(($formatType ?? 'umum') === 'tahfidz')
+                <a href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}" class="btn btn-soft-success btn-sm">
+                    <i class="ri-arrow-right-up-line align-bottom me-1"></i> RPP Tahfizh
+                </a>
+            @else
+                <a href="{{ route('user.kurikulum.perangkat.preview', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-primary btn-sm">
+                    <i class="ri-eye-line align-bottom me-1"></i> Preview &amp; Tata Letak
+                </a>
+                <a href="{{ route('user.kurikulum.cetak.rpm', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
+                    <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
+                </a>
+            @endif
             @if($atp)
                 <a href="{{ route('user.kurikulum.atp.show', ['userId' => $userId, 'id' => $atp->id]) }}" class="btn btn-soft-primary btn-sm">
                     <i class="ri-link align-bottom me-1"></i> ATP ({{ $atp->total_jp }} JP)
@@ -109,6 +120,11 @@
                 @if($perangkat->isLocked())
                     <span class="badge bg-success-subtle text-success p-2 ms-1"><i class="ri-lock-line me-1"></i>Terkunci (final)</span>
                 @endif
+                @if($perangkat->isKspApproved())
+                    <span class="badge bg-success-subtle text-success p-2 ms-1"><i class="ri-shield-check-line me-1"></i>Disetujui KSP</span>
+                @elseif($perangkat->workflow_status === \App\Models\PerangkatPembelajaran::WORKFLOW_APPROVED)
+                    <span class="badge bg-warning-subtle text-warning p-2 ms-1"><i class="ri-time-line me-1"></i>Menunggu KSP</span>
+                @endif
             </div>
             <div class="d-flex flex-wrap gap-2">
                 @if($myReviewAssignment)
@@ -131,6 +147,13 @@
                     @else
                         <button class="btn btn-sm btn-secondary" disabled title="Lengkapi checklist KBC wajib review terlebih dahulu."><i class="ri-lock-line me-1"></i>Ajukan Approval Rumpun</button>
                     @endif
+                @endif
+                @if($canApproveKsp ?? false)
+                    <form method="POST" action="{{ route('user.kurikulum.perangkat.approve-ksp', ['userId' => $userId, 'id' => $perangkat->id]) }}"
+                          onsubmit="return confirm('Setujui perangkat ini sebagai KSP? TTD dan stempel digital baru dapat digunakan setelah persetujuan ini.');">
+                        @csrf
+                        <button class="btn btn-sm btn-success"><i class="ri-shield-check-line me-1"></i>Setujui sebagai KSP</button>
+                    </form>
                 @endif
                 @if($canCreateVersion)
                     <form method="POST" action="{{ route('user.kurikulum.perangkat.new-version', ['userId' => $userId, 'id' => $perangkat->id]) }}"
@@ -211,12 +234,12 @@
                         </select>
                     </div>
                     <div class="col-lg-3">
-                        <label class="form-label">Struktur {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}</label>
-                        <select name="tipe" class="form-select" {{ $disabled }}>
-                            @foreach(\App\Models\PerangkatPembelajaran::TIPE_OPTIONS as $value => $label)
-                                <option value="{{ $value }}" {{ $perangkat->tipe === $value ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        <label class="form-label">Format Cetak</label>
+                        <input type="hidden" name="tipe" value="{{ $isAgama ? 'agama' : 'umum' }}">
+                        <div class="form-control bg-light">
+                            {{ $isAgama ? 'Agama / Bahasa Arab' : 'Umum' }}
+                        </div>
+                        <div class="form-text">Mengikuti jenis mapel.</div>
                     </div>
                     <div class="col-lg-3">
                         <label class="form-label">Status</label>
@@ -228,6 +251,18 @@
                         </select>
                         <div class="form-text">Final ditetapkan otomatis setelah seluruh guru serumpun menyetujui.</div>
                     </div>
+                    <div class="col-lg-3">
+                        <label class="form-label">Alokasi Waktu</label>
+                        <input type="text" name="desain[alokasi_waktu]" class="form-control"
+                               value="{{ $alokasiValue }}" maxlength="100" {{ $disabled }}>
+                        <div class="form-text">Otomatis dari total JP ATP; dapat disesuaikan.</div>
+                    </div>
+                    @if($isAgama)
+                        <div class="col-12">
+                            <label class="form-label">Materi Pelajaran</label>
+                            <textarea name="desain[identifikasi_materi]" rows="2" class="form-control" maxlength="5000" {{ $disabled }}>{{ old('desain.identifikasi_materi', $perangkat->desainValue('identifikasi_materi')) }}</textarea>
+                        </div>
+                    @endif
                     <div class="col-lg-9">
                         <label class="form-label">Catatan</label>
                         <input type="text" name="catatan" class="form-control" value="{{ $perangkat->catatan }}" maxlength="2000" {{ $disabled }}>
@@ -244,7 +279,7 @@
                     <span class="badge bg-secondary-subtle text-secondary">Tidak perlu diisi ulang</span>
                 </div>
                 <div class="card-body">
-                    @if($cps->isNotEmpty())
+                    @if(! $isAgama && $cps->isNotEmpty())
                         <h6 class="text-muted small text-uppercase mb-2">Capaian Pembelajaran</h6>
                         @foreach($cps as $cp)
                             <p class="small mb-1">
@@ -267,7 +302,8 @@
         @endif
 
         {{-- ── Desain Pembelajaran / Pengalaman / Asesmen per tipe ── --}}
-        @foreach($perangkat->groups() as $group)
+        @foreach($perangkat->groups() as $groupKey => $group)
+            @continue($groupKey === 'asesmen')
             <div class="card">
                 <div class="card-header border-bottom-dashed">
                     <h5 class="card-title mb-0"><i class="{{ $group['icon'] }} text-primary me-1"></i> {{ $group['label'] }}</h5>
@@ -276,6 +312,9 @@
                 <div class="card-body">
                     <div class="row g-3">
                         @foreach($group['keys'] as $key)
+                            @if(($key === 'model_pembelajaran' && ! $isAgama) || ($key === 'praktik_pedagogik' && $isAgama))
+                                @continue
+                            @endif
                             <div class="col-md-6">
                                 <label class="form-label">{{ $sections[$key] ?? $key }}</label>
                                 <textarea name="desain[{{ $key }}]" rows="3" class="form-control" maxlength="5000" {{ $disabled }}>{{ $perangkat->desainValue($key) }}</textarea>
@@ -285,6 +324,42 @@
                 </div>
             </div>
         @endforeach
+
+        {{-- ── Matriks Asesmen Formatif dan Sumatif ───────────────── --}}
+        <div class="card">
+            <div class="card-header border-bottom-dashed">
+                <h5 class="card-title mb-0"><i class="ri-draft-line text-primary me-1"></i> Asesmen Formatif dan Sumatif</h5>
+                <p class="text-muted mb-0 small mt-1">Isi teknik, indikator, dan instrumen/bukti untuk awal, proses, dan akhir pembelajaran.</p>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:18%">Jenis Asesmen</th>
+                                <th style="width:20%">Teknik</th>
+                                <th style="width:28%">Indikator</th>
+                                <th>Instrumen/Bukti</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach(\App\Models\PerangkatPembelajaran::ASSESSMENT_ROWS as $rowKey => $rowLabel)
+                                <tr>
+                                    <td class="fw-semibold">{{ $rowLabel }}</td>
+                                    @foreach(\App\Models\PerangkatPembelajaran::ASSESSMENT_COLUMNS as $columnKey => $columnLabel)
+                                        @continue($columnKey === 'jenis')
+                                        <td>
+                                            <textarea name="desain[asesmen_{{ $rowKey }}_{{ $columnKey }}]" rows="2"
+                                                      class="form-control form-control-sm" maxlength="5000" {{ $disabled }}>{{ old('desain.asesmen_'.$rowKey.'_'.$columnKey, $perangkat->desainValue('asesmen_'.$rowKey.'_'.$columnKey)) }}</textarea>
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         {{-- ── Bagian fondasi lama (bila masih terisi) ────────────── --}}
         @if(! empty($legacyFilled))

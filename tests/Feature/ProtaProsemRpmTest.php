@@ -213,6 +213,8 @@ class ProtaProsemRpmTest extends TestCase
 
         // RPM Agama — struktur tanpa bagian umum, pada KONTEKS BERBEDA
         // (kebijakan satu RPM per konteks: mapel Fisika, penyusun guru3).
+        $agamaGroup = \App\Models\SubjectGroup::where('code', 'agama')->firstOrFail();
+        $this->fisika->update(['subject_group_id' => $agamaGroup->id]);
         $atpFisika = $this->makeAtp(40, 20, $this->fisika);
 
         $this->actingAs($this->guru3);
@@ -228,6 +230,76 @@ class ProtaProsemRpmTest extends TestCase
             ->assertOk()
             ->assertSee('Kemitraan Pembelajaran')
             ->assertDontSee('Profil Lulusan');
+    }
+
+    public function test_format_perangkat_ditentukan_oleh_jenis_mapel(): void
+    {
+        $resolver = app(\App\Services\Kurikulum\PerangkatFormatResolver::class);
+        $groups = \App\Models\SubjectGroup::query()->pluck('id', 'code');
+
+        $make = function (string $name, string $group) use ($groups) {
+            return Subject::create([
+                'school_id' => $this->school->id,
+                'code' => strtoupper(substr($name, 0, 5)).Str::random(3),
+                'name' => $name,
+                'subject_group_id' => $groups[$group] ?? null,
+                'is_active' => true,
+            ]);
+        };
+
+        $this->assertSame('umum', $resolver->resolve($make('Matematika', 'umum')));
+        $this->assertSame('umum', $resolver->resolve($make('Bahasa Inggris', 'bahasa')));
+        $this->assertSame('agama', $resolver->resolve($make('Bahasa Arab', 'bahasa')));
+        $this->assertSame('agama', $resolver->resolve($make('Nahwu', 'bahasa')));
+        $this->assertSame('agama', $resolver->resolve($make('Fiqih', 'agama')));
+        $this->assertSame('tahfidz', $resolver->resolve($make('Tahfidzul Qur\'an', 'tahfidz')));
+    }
+
+    public function test_preview_dan_tata_letak_perangkat_dapat_diatur(): void
+    {
+        $atp = $this->makeAtp(60, 40);
+        $perangkat = PerangkatPembelajaran::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'subject_id' => $this->math->id,
+            'grade_level_id' => $this->grade->id,
+            'study_group_id' => $this->group->id,
+            'atp_id' => $atp->id,
+            'teacher_id' => $this->guru1->id,
+            'judul' => 'RPM Preview',
+            'tipe' => 'umum',
+            'status' => 'draft',
+            'desain' => PerangkatPembelajaran::defaultDesain(),
+            'created_by' => $this->guru1->id,
+        ]);
+
+        $this->actingAs($this->guru1)
+            ->get("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}/preview")
+            ->assertOk()
+            ->assertSee('Preview PDF')
+            ->assertSee('Tata Letak Cetak');
+
+        $this->actingAs($this->guru1)
+            ->put("/{$this->guru1->id}/kurikulum/perangkat/{$perangkat->id}/layout", [
+                'margin_top' => 14,
+                'margin_right' => 11,
+                'margin_bottom' => 12,
+                'margin_left' => 13,
+                'font_size' => 10.5,
+                'title_font_size' => 14,
+                'table_font_size' => 9.5,
+                'line_height' => 1.3,
+                'paper_size' => 'folio',
+                'show_kop' => 1,
+                'show_stamp' => 1,
+                'use_digital_signature' => 0,
+            ])->assertRedirect();
+
+        $perangkat->refresh();
+        $this->assertSame(14.0, $perangkat->layoutSettings()['margin_top']);
+        $this->assertSame(10.5, $perangkat->layoutSettings()['font_size']);
+        $this->assertSame('folio', $perangkat->layoutSettings()['paper_size']);
     }
 
     public function test_rpm_serumpun_dapat_melihat_tetapi_hanya_penyusun_yang_mengubah(): void
@@ -270,6 +342,65 @@ class ProtaProsemRpmTest extends TestCase
     // ─────────────────────────────────────────────────────────────
     // CETAK PDF (6 DOKUMEN)
     // ─────────────────────────────────────────────────────────────
+
+    public function test_ksp_dapat_menyetujui_perangkat_dan_melihat_laporan(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
+        $ksp = User::create([
+            'name' => 'Kepala Uji',
+            'email' => 'ksp.prota@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $ksp->assignRole($role);
+
+        DB::table('gtk_employments')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $ksp->id,
+            'school_id' => $this->school->id,
+            'status_kepegawaian' => 'GTY',
+            'jenis_gtk' => 'Pendidik / Guru',
+            'jabatan' => 'Kepala Satuan Pendidikan',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $atp = $this->makeAtp(60, 40);
+        $perangkat = PerangkatPembelajaran::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'subject_id' => $this->math->id,
+            'grade_level_id' => $this->grade->id,
+            'study_group_id' => $this->group->id,
+            'atp_id' => $atp->id,
+            'teacher_id' => $this->guru1->id,
+            'judul' => 'RPM Menunggu KSP',
+            'tipe' => 'umum',
+            'status' => 'final',
+            'workflow_status' => PerangkatPembelajaran::WORKFLOW_APPROVED,
+            'approved_at' => now(),
+            'approved_by' => $this->kurikulum->id,
+            'locked_at' => now(),
+            'locked_by' => $this->kurikulum->id,
+            'desain' => PerangkatPembelajaran::defaultDesain(),
+            'created_by' => $this->guru1->id,
+        ]);
+
+        $this->actingAs($ksp)
+            ->post("/{$ksp->id}/kurikulum/perangkat/{$perangkat->id}/approve-ksp")
+            ->assertRedirect();
+
+        $perangkat->refresh();
+        $this->assertNotNull($perangkat->ksp_approved_at);
+        $this->assertSame($ksp->id, $perangkat->ksp_approved_by);
+
+        $this->actingAs($ksp)
+            ->get("/{$ksp->id}/kurikulum/perangkat/laporan-ksp")
+            ->assertOk()
+            ->assertSee('Laporan Kesiapan Perangkat')
+            ->assertSee('Disetujui KSP');
+    }
 
     public function test_cetak_pdf_semua_dokumen_menghasilkan_pdf(): void
     {

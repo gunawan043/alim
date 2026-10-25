@@ -12,6 +12,7 @@ use App\Models\Prosem;
 use App\Models\Prota;
 use App\Models\School;
 use App\Services\CurriculumProfileService;
+use App\Services\Kurikulum\PerangkatFormatResolver;
 use App\Services\KurikulumAccess;
 use App\Services\Pdf\CurriculumPdfStyle;
 use App\Services\PekanEfektifService;
@@ -174,15 +175,54 @@ class CetakDokumenKurikulumController extends Controller
         $perangkat->setRelation('curriculumProfile', $curriculumProfile);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
         $groups = $perangkat->groups();
+        $formatType = app(PerangkatFormatResolver::class)->forPerangkat($perangkat);
 
-        $html = view('cetak.rpm', compact('school', 'perangkat', 'groups', 'legacyFilled', 'curriculumProfile', 'curriculumLabels'))->render();
+        if ($formatType === PerangkatFormatResolver::TAHFIDZ) {
+            return redirect()
+                ->route('user.tahfidz.rpp.index', ['userId' => $userId])
+                ->with('error', 'Perangkat mapel Tahfidz dicetak melalui modul RPP Tahfizh di Departemen.');
+        }
 
-        return $this->pdf($html, 'RPM-'.($perangkat->subject?->name ?? '').'-'.($perangkat->judul ?? ''), 'portrait');
+        $layout = $perangkat->layoutSettings();
+        $useDigitalSignature = (bool) ($layout['use_digital_signature'] ?? false) && $perangkat->isKspApproved();
+        $ttdKspBase64 = $useDigitalSignature ? $this->schoolImageDataUri($school?->ttd_ksp_path) : null;
+        $stampBase64 = $useDigitalSignature && ($layout['show_stamp'] ?? true)
+            ? $this->schoolImageDataUri($school?->stamp_path)
+            : null;
+
+        $html = view('cetak.rpm', compact(
+            'school', 'perangkat', 'groups', 'legacyFilled', 'curriculumProfile', 'curriculumLabels',
+            'formatType', 'layout', 'useDigitalSignature', 'ttdKspBase64', 'stampBase64'
+        ))->render();
+
+        return $this->pdf(
+            $html,
+            'RPM-'.($perangkat->subject?->name ?? '').'-'.($perangkat->judul ?? ''),
+            'portrait',
+            $layout['paper_size'] ?? 'a4'
+        );
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
 
-    private function pdf(string $html, string $filename, string $orientation = 'portrait')
+    private function schoolImageDataUri(?string $relativePath): ?string
+    {
+        if (! $relativePath) {
+            return null;
+        }
+
+        $path = storage_path('app/public/'.ltrim($relativePath, '/'));
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime = in_array($extension, ['jpg', 'jpeg'], true) ? 'image/jpeg' : 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($path));
+    }
+
+    private function pdf(string $html, string $filename, string $orientation = 'portrait', string $paperSize = 'a4')
     {
         $options = new Options;
         $options->set('isRemoteEnabled', true);
@@ -197,7 +237,7 @@ class CetakDokumenKurikulumController extends Controller
         $dompdf = new Dompdf($options);
         app(CurriculumPdfStyle::class)->registerCambria($dompdf);
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', $orientation);
+        $dompdf->setPaper($paperSize ?: 'a4', $orientation);
         $dompdf->render();
 
         // Nomor halaman (kanan bawah).

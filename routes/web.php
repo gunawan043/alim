@@ -1127,11 +1127,15 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 Route::prefix('perangkat')->name('perangkat.')->group(function () {
                     Route::get('/', [PerangkatPembelajaranController::class, 'index'])->name('index');
+                    Route::get('/laporan-ksp', [PerangkatPembelajaranController::class, 'kspReport'])->name('ksp-report');
                     Route::post('/', [PerangkatPembelajaranController::class, 'store'])->name('store');
                     Route::get('/{id}', [PerangkatPembelajaranController::class, 'show'])->name('show');
+                    Route::get('/{id}/preview', [PerangkatPembelajaranController::class, 'preview'])->name('preview');
+                    Route::put('/{id}/layout', [PerangkatPembelajaranController::class, 'saveLayout'])->name('layout');
                     Route::put('/{id}', [PerangkatPembelajaranController::class, 'update'])->name('update');
                     Route::delete('/{id}', [PerangkatPembelajaranController::class, 'destroy'])->name('destroy');
                     Route::post('/{id}/submit-review', [PerangkatPembelajaranController::class, 'submitReview'])->name('submit-review');
+                    Route::post('/{id}/approve-ksp', [PerangkatPembelajaranController::class, 'approveKsp'])->name('approve-ksp');
                     Route::post('/{id}/new-version', [PerangkatPembelajaranController::class, 'newVersion'])->name('new-version');
                 });
 

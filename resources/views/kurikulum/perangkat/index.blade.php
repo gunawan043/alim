@@ -144,6 +144,11 @@
                                     </select>
                                     <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 </form>
+                                @if($isKspSupervisor ?? false)
+                                    <a href="{{ route('user.kurikulum.perangkat.ksp-report', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}" class="btn btn-outline-primary">
+                                        <i class="ri-shield-check-line align-bottom me-1"></i> Laporan Kesiapan KSP
+                                    </a>
+                                @endif
                                 <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#perangkat-modal">
                                     <i class="ri-add-line align-bottom me-1"></i> Buat {{ $perangkatShort }}
                                 </button>

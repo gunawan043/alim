@@ -1,18 +1,30 @@
+@php
+    $layout = $layout ?? [];
+    $pageMarginTop = (float) ($layout['margin_top'] ?? 8);
+    $pageMarginRight = (float) ($layout['margin_right'] ?? 10);
+    $pageMarginBottom = (float) ($layout['margin_bottom'] ?? 14);
+    $pageMarginLeft = (float) ($layout['margin_left'] ?? 10);
+    $bodyFontSize = (float) ($layout['font_size'] ?? 11);
+    $titleFontSize = (float) ($layout['title_font_size'] ?? 13);
+    $tableFontSize = (float) ($layout['table_font_size'] ?? 11);
+    $bodyLineHeight = (float) ($layout['line_height'] ?? 1.15);
+    $showKop = (bool) ($layout['show_kop'] ?? true);
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="utf-8">
     <title>@yield('title', 'Dokumen')</title>
     <style>
-        @page { margin: 8mm 10mm 14mm 10mm; }
+        @page { margin: {{ $pageMarginTop }}mm {{ $pageMarginRight }}mm {{ $pageMarginBottom }}mm {{ $pageMarginLeft }}mm; }
 
         * { box-sizing: border-box; }
 
         body {
             font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 11pt;
+            font-size: {{ $bodyFontSize }}pt;
             color: #111;
-            line-height: 1.15;
+            line-height: {{ $bodyLineHeight }};
         }
 
         /* ── Kop identitas satuan pendidikan ─────────────────────── */
@@ -29,7 +41,7 @@
 
         .doc-title {
             text-align: center;
-            font-size: 13px;
+            font-size: {{ $titleFontSize }}pt;
             font-weight: bold;
             text-transform: uppercase;
             margin: 6px 0 2px;
@@ -39,9 +51,9 @@
 
         /* ── Tabel umum ──────────────────────────────────────────── */
         table.data { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        table.data th, table.data td { border: 1px solid #444; padding: 3px 5px; vertical-align: top; }
-        table.data th { background: #ececec; font-size: 11pt; text-align: center; }
-        table.data td { font-size: 11pt; }
+        table.data th, table.data td { border: 1px solid #444; padding: 3px 5px; vertical-align: top; font-size: {{ $tableFontSize }}pt; }
+        table.data th { background: #ececec; font-size: {{ $tableFontSize }}pt; text-align: center; }
+        table.data td { font-size: {{ $tableFontSize }}pt; }
         table.data tr { page-break-inside: avoid; }
         table.data td.center { text-align: center; }
         table.data td.right { text-align: right; }
@@ -76,6 +88,9 @@
         table.sign .space { height: 62px; }
         table.sign .name { font-weight: bold; text-decoration: underline; }
         table.sign .nip { font-size: 9px; color: #333; }
+        .signature-box { position: relative; display: inline-block; width: 42mm; height: 24mm; margin: 4mm auto 0; }
+        .signature-box .stamp-img { position: absolute; left: 0; top: 0; width: 26mm; height: 26mm; object-fit: contain; opacity: .85; }
+        .signature-box .ttd-img { position: absolute; left: 6mm; top: 2mm; width: 34mm; height: 18mm; object-fit: contain; }
 
         .muted { color: #555; }
         .small { font-size: 10px; }
@@ -85,7 +100,9 @@
 </head>
 <body>
 
-@include('cetak._kop', ['school' => $school ?? null])
+@if($showKop)
+    @include('cetak._kop', ['school' => $school ?? null])
+@endif
 
 <div class="doc-title">@yield('doc_title', 'Dokumen')</div>
 <div class="doc-subtitle">@yield('doc_subtitle', '')</div>
