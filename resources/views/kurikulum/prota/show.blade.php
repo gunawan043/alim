@@ -27,10 +27,7 @@
             </p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('user.kurikulum.prota.preview', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-soft-primary btn-sm">
-                <i class="ri-eye-line align-bottom me-1"></i> Preview &amp; Tata Letak
-            </a>
-            <a href="{{ route('user.kurikulum.cetak.prota', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
+            <a href="{{ $previewUrl }}" class="btn btn-soft-secondary btn-sm" target="_blank">
                 <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
             </a>
             @if($prosem)
@@ -62,6 +59,15 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
+
+    @include('kurikulum.partials.print-preview-panel', [
+        'printVersion' => $printVersion,
+        'layout' => $layout,
+        'previewUrl' => $previewUrl,
+        'versionUrls' => $versionUrls,
+        'canManagePrint' => $canManagePrint,
+        'layoutRoute' => route('user.kurikulum.prota.layout', ['userId' => $userId, 'id' => $prota->id]),
+    ])
 
     @if($stale['stale'])
         <div class="alert alert-warning" role="alert">

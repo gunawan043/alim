@@ -239,23 +239,44 @@ class ProsemController extends Controller
             ->get()
             ->keyBy('prosem_item_id');
 
+        $printVersion = $this->normalizePrintVersion($request->query('version'));
+        $layout = $prosem->layoutSettings();
+        $previewUrl = route('user.kurikulum.cetak.prosem', [
+            'userId' => $userId,
+            'id' => $prosem->id,
+            'version' => $printVersion,
+            'v' => $prosem->updated_at?->timestamp,
+        ]);
+        $versionUrls = [
+            'pemerintah' => route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id, 'version' => 'pemerintah']),
+            'pondok' => route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id, 'version' => 'pondok']),
+        ];
+        $canManagePrint = $prosem->created_by === $request->user()->id
+            || $prosem->teacher_id === $request->user()->id
+            || $this->access->isKurikulumEditor($request->user());
+
         return view('kurikulum.prosem.show', compact(
             'userId',
             'prosem',
             'stale',
             'weeks',
-            'weekGroups',
-            'effectiveWeeks',
             'totalJp',
             'overflowJp',
-            'teachers',
-            'realisasiCounts',
             'itemStates',
             'manualInvalidCount',
             'headerStatus',
             'summary',
+            'weekGroups',
+            'minEffectiveDays',
             'canEdit',
-            'adjustUrlTemplate'
+            'teachers',
+            'adjustUrlTemplate',
+            'realisasiCounts',
+            'printVersion',
+            'layout',
+            'previewUrl',
+            'versionUrls',
+            'canManagePrint'
         ));
     }
 
@@ -369,36 +390,10 @@ class ProsemController extends Controller
 
     public function preview(Request $request, string $userId, string $id)
     {
-        $prosem = Prosem::with(['subject', 'gradeLevel', 'academicYear', 'teacher'])->findOrFail($id);
-        $this->authorizeView($request, $prosem);
-
-        $version = in_array($request->query('version'), ['resmi', 'alim'], true) ? $request->query('version') : 'alim';
-        $layout = $prosem->layoutSettings();
-        $versionUrls = [];
-        foreach (['resmi' => 'Resmi', 'alim' => 'ALIM'] as $key => $label) {
-            $versionUrls[$key] = route('user.kurikulum.prosem.preview', [
-                'userId' => $userId,
-                'id' => $prosem->id,
-                'version' => $key,
-            ]);
-        }
-        $previewUrl = route('user.kurikulum.cetak.prosem', [
+        return redirect()->route('user.kurikulum.prosem.show', [
             'userId' => $userId,
-            'id' => $prosem->id,
-            'version' => $version,
-            'v' => $prosem->updated_at?->timestamp,
-        ]);
-
-        return view('kurikulum.print-preview', [
-            'userId' => $userId,
-            'documentTitle' => 'Preview PROSEM',
-            'documentDescription' => ($prosem->subject?->name ?? '-').' · '.($prosem->gradeLevel?->name ?? 'Semua Jenjang').' · Semester '.ucfirst($prosem->semester),
-            'previewUrl' => $previewUrl,
-            'version' => $version,
-            'versionUrls' => $versionUrls,
-            'layout' => $layout,
-            'layoutRoute' => route('user.kurikulum.prosem.layout', ['userId' => $userId, 'id' => $prosem->id]),
-            'backUrl' => route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id]),
+            'id' => $id,
+            'version' => $this->normalizePrintVersion($request->query('version')),
         ]);
     }
 
@@ -435,10 +430,10 @@ class ProsemController extends Controller
         $prosem->update(['layout_settings' => $layout]);
 
         return redirect()
-            ->route('user.kurikulum.prosem.preview', [
+            ->route('user.kurikulum.prosem.show', [
                 'userId' => $userId,
                 'id' => $prosem->id,
-                'version' => $request->input('version', 'alim'),
+                'version' => $this->normalizePrintVersion($request->input('version')),
             ])
             ->with('success', 'Tata letak PROSEM berhasil disimpan.');
     }
@@ -461,6 +456,14 @@ class ProsemController extends Controller
     /**
      * @return array<int, string>
      */
+    private function normalizePrintVersion(?string $version): string
+    {
+        return match ($version) {
+            'resmi', 'pemerintah' => 'pemerintah',
+            default => 'pondok',
+        };
+    }
+
     private function taughtSubjectIds(User $user, string $academicYearId, ?string $schoolId): array
     {
         return TeachingAssignment::query()

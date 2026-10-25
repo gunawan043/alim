@@ -199,12 +199,6 @@
                                         <a href="{{ route('user.kurikulum.prosem.show', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
                                             <i class="ri-eye-line"></i>
                                         </a>
-                                        <a href="{{ route('user.kurikulum.prosem.preview', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-sm btn-soft-primary" title="Preview & Tata Letak">
-                                            <i class="ri-eye-line"></i>
-                                        </a>
-                                        <a href="{{ route('user.kurikulum.cetak.prosem', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-sm btn-soft-secondary" title="Cetak PDF" target="_blank">
-                                            <i class="ri-printer-line"></i>
-                                        </a>
                                         <form action="{{ route('user.kurikulum.prosem.destroy', ['userId' => $userId, 'id' => $prosem->id]) }}" method="POST" class="d-inline"
                                               onsubmit="return confirm('Hapus PROSEM ini?');">
                                             @csrf @method('DELETE')

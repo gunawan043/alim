@@ -130,7 +130,7 @@ class CetakDokumenKurikulumController extends Controller
         $curriculumProfile = $this->profiles->resolve($prota->school_id, $prota->academic_year_id);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
         $layout = $prota->layoutSettings();
-        $version = $request->query('version') === 'resmi' ? 'resmi' : 'alim';
+        $version = in_array($request->query('version'), ['pemerintah', 'resmi'], true) ? 'resmi' : 'alim';
         $view = $version === 'resmi' ? 'cetak.prota-resmi' : 'cetak.prota';
 
         $html = view($view, compact('school', 'prota', 'totalJp', 'curriculumProfile', 'curriculumLabels', 'layout'))->render();
@@ -160,7 +160,7 @@ class CetakDokumenKurikulumController extends Controller
         $curriculumProfile = $this->profiles->resolve($prosem->school_id, $prosem->academic_year_id);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
         $layout = $prosem->layoutSettings();
-        $version = $request->query('version') === 'resmi' ? 'resmi' : 'alim';
+        $version = in_array($request->query('version'), ['pemerintah', 'resmi'], true) ? 'resmi' : 'alim';
         $view = $version === 'resmi' ? 'cetak.prosem-resmi' : 'cetak.prosem';
 
         $html = view($view, compact('school', 'prosem', 'weeks', 'totalJp', 'curriculumProfile', 'curriculumLabels', 'layout'))->render();

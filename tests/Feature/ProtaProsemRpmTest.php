@@ -352,16 +352,18 @@ class ProtaProsemRpmTest extends TestCase
         $prosem = app(ProsemService::class)->createFromProta($prota, $this->guru1);
 
         $this->actingAs($this->guru1)
-            ->get("/{$this->guru1->id}/kurikulum/prota/{$prota->id}/preview")
+            ->get("/{$this->guru1->id}/kurikulum/prota/{$prota->id}?version=pondok")
             ->assertOk()
-            ->assertSee('Preview PROTA')
-            ->assertSee('Versi ALIM');
+            ->assertSee('Preview &amp; Cetak', false)
+            ->assertSee('Pemerintah')
+            ->assertSee('Pondok');
 
         $this->actingAs($this->guru1)
-            ->get("/{$this->guru1->id}/kurikulum/prosem/{$prosem->id}/preview")
+            ->get("/{$this->guru1->id}/kurikulum/prosem/{$prosem->id}?version=pondok")
             ->assertOk()
-            ->assertSee('Preview PROSEM')
-            ->assertSee('Versi ALIM');
+            ->assertSee('Preview &amp; Cetak', false)
+            ->assertSee('Pemerintah')
+            ->assertSee('Pondok');
 
         $this->actingAs($this->guru1)
             ->put("/{$this->guru1->id}/kurikulum/prota/{$prota->id}/layout", [

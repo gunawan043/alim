@@ -183,6 +183,21 @@ class ProtaController extends Controller
         $teachers = $this->teachersForSchool($prota->school_id);
 
         $itemsTotal = (int) $prota->items->sum('alokasi_jp');
+        $printVersion = $this->normalizePrintVersion($request->query('version'));
+        $layout = $prota->layoutSettings();
+        $previewUrl = route('user.kurikulum.cetak.prota', [
+            'userId' => $userId,
+            'id' => $prota->id,
+            'version' => $printVersion,
+            'v' => $prota->updated_at?->timestamp,
+        ]);
+        $versionUrls = [
+            'pemerintah' => route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id, 'version' => 'pemerintah']),
+            'pondok' => route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id, 'version' => 'pondok']),
+        ];
+        $canManagePrint = $prota->created_by === $request->user()->id
+            || $prota->teacher_id === $request->user()->id
+            || $this->access->isKurikulumEditor($request->user());
 
         return view('kurikulum.prota.show', compact(
             'userId',
@@ -190,7 +205,12 @@ class ProtaController extends Controller
             'stale',
             'prosem',
             'teachers',
-            'itemsTotal'
+            'itemsTotal',
+            'printVersion',
+            'layout',
+            'previewUrl',
+            'versionUrls',
+            'canManagePrint'
         ));
     }
 
@@ -289,36 +309,10 @@ class ProtaController extends Controller
 
     public function preview(Request $request, string $userId, string $id)
     {
-        $prota = Prota::with(['subject', 'gradeLevel', 'academicYear', 'teacher'])->findOrFail($id);
-        $this->authorizeView($request, $prota);
-
-        $version = in_array($request->query('version'), ['resmi', 'alim'], true) ? $request->query('version') : 'alim';
-        $layout = $prota->layoutSettings();
-        $versionUrls = [];
-        foreach (['resmi' => 'Resmi', 'alim' => 'ALIM'] as $key => $label) {
-            $versionUrls[$key] = route('user.kurikulum.prota.preview', [
-                'userId' => $userId,
-                'id' => $prota->id,
-                'version' => $key,
-            ]);
-        }
-        $previewUrl = route('user.kurikulum.cetak.prota', [
+        return redirect()->route('user.kurikulum.prota.show', [
             'userId' => $userId,
-            'id' => $prota->id,
-            'version' => $version,
-            'v' => $prota->updated_at?->timestamp,
-        ]);
-
-        return view('kurikulum.print-preview', [
-            'userId' => $userId,
-            'documentTitle' => 'Preview PROTA',
-            'documentDescription' => ($prota->subject?->name ?? '-').' · '.($prota->gradeLevel?->name ?? 'Semua Jenjang').' · '.($prota->academicYear?->name ?? '-'),
-            'previewUrl' => $previewUrl,
-            'version' => $version,
-            'versionUrls' => $versionUrls,
-            'layout' => $layout,
-            'layoutRoute' => route('user.kurikulum.prota.layout', ['userId' => $userId, 'id' => $prota->id]),
-            'backUrl' => route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id]),
+            'id' => $id,
+            'version' => $this->normalizePrintVersion($request->query('version')),
         ]);
     }
 
@@ -330,10 +324,10 @@ class ProtaController extends Controller
         $prota->update(['layout_settings' => $layout]);
 
         return redirect()
-            ->route('user.kurikulum.prota.preview', [
+            ->route('user.kurikulum.prota.show', [
                 'userId' => $userId,
                 'id' => $prota->id,
-                'version' => $request->input('version', 'alim'),
+                'version' => $this->normalizePrintVersion($request->input('version')),
             ])
             ->with('success', 'Tata letak PROTA berhasil disimpan.');
     }
@@ -382,6 +376,14 @@ class ProtaController extends Controller
     }
 
     // ── Helpers ──────────────────────────────────────────────────────
+
+    private function normalizePrintVersion(?string $version): string
+    {
+        return match ($version) {
+            'resmi', 'pemerintah' => 'pemerintah',
+            default => 'pondok',
+        };
+    }
 
     private function recalculateTotal(Prota $prota): void
     {

@@ -93,16 +93,22 @@
                             </button>
                         @endif
                     @endif
-                    <a href="{{ route('user.kurikulum.prosem.preview', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-soft-primary btn-sm">
-                        <i class="ri-eye-line align-bottom me-1"></i> Preview &amp; Tata Letak
-                    </a>
-                    <a href="{{ route('user.kurikulum.cetak.prosem', ['userId' => $userId, 'id' => $prosem->id]) }}" class="btn btn-soft-secondary btn-sm" target="_blank">
+                    <a href="{{ $previewUrl }}" class="btn btn-soft-secondary btn-sm" target="_blank">
                         <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
                     </a>
                 </div>
             </div>
         </div>
     </div>
+
+    @include('kurikulum.partials.print-preview-panel', [
+        'printVersion' => $printVersion,
+        'layout' => $layout,
+        'previewUrl' => $previewUrl,
+        'versionUrls' => $versionUrls,
+        'canManagePrint' => $canManagePrint,
+        'layoutRoute' => route('user.kurikulum.prosem.layout', ['userId' => $userId, 'id' => $prosem->id]),
+    ])
 
     {{-- ═══ Alert perubahan sumber ═══ --}}
     @if($stale['stale'] || $manualInvalidCount > 0)

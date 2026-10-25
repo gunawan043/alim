@@ -207,12 +207,6 @@
                                         <a href="{{ route('user.kurikulum.prota.show', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka">
                                             <i class="ri-eye-line"></i>
                                         </a>
-                                        <a href="{{ route('user.kurikulum.prota.preview', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-primary" title="Preview & Tata Letak">
-                                            <i class="ri-eye-line"></i>
-                                        </a>
-                                        <a href="{{ route('user.kurikulum.cetak.prota', ['userId' => $userId, 'id' => $prota->id]) }}" class="btn btn-sm btn-soft-secondary" title="Cetak PDF" target="_blank">
-                                            <i class="ri-printer-line"></i>
-                                        </a>
                                         <form action="{{ route('user.kurikulum.prota.destroy', ['userId' => $userId, 'id' => $prota->id]) }}" method="POST" class="d-inline"
                                               onsubmit="return confirm('Hapus PROTA ini? PROSEM turunannya ikut terhapus.');">
                                             @csrf @method('DELETE')
