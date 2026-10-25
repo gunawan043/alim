@@ -111,6 +111,18 @@
         @endforeach
 
         {{-- ASESMEN --}}
+        @if(! empty($legacyFilled))
+            <h6 class="fw-semibold border-bottom pb-1 mt-3">Fondasi Pembelajaran Mendalam</h6>
+            <table class="table table-sm table-borderless mb-2">
+                @foreach($legacyFilled as $key => $label)
+                    <tr>
+                        <td class="text-muted" style="width:38%">{{ $label }}</td>
+                        <td>{!! $render($nilai($key)) !!}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+
         <h6 class="text-uppercase fw-semibold text-muted small mb-2 mt-3">Asesmen Formatif dan Sumatif</h6>
         <div class="table-container mb-3">
             <table class="table table-hover align-middle table-freeze mb-0" style="font-size:13px;">

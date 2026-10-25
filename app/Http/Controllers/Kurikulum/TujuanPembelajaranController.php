@@ -44,6 +44,11 @@ class TujuanPembelajaranController extends Controller
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
 
+        // Guru biasa hanya boleh memilih mapel yang benar-benar diampu.
+        $filterSubjectIds = $this->access->isKurikulumTeam($request->user())
+            ? null
+            : ($this->access->taughtSubjectIds($request->user(), $schoolId, $academicYearId) ?? []);
+
         $query = TujuanPembelajaran::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'capaianPembelajaran:id,fase,elemen', 'curriculumProfile:id,code,name,authority'])
             ->bySchool($schoolId)
@@ -67,10 +72,7 @@ class TujuanPembelajaranController extends Controller
         $subjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
-                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
-                $q->whereIn('id', $viewable ?: ['-']);
-            })
+            ->when($filterSubjectIds !== null, fn ($q) => $q->whereIn('id', $filterSubjectIds ?: ['-']))
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 

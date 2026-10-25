@@ -24,26 +24,35 @@
         @slot('title') Edit Perangkat @endslot
     @endcomponent
 
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">Edit {{ $perangkat->judul }}</h4>
-            <p class="text-muted mb-0 small">Perubahan disimpan ke data perangkat yang sama dan langsung dipakai di semua format cetak.</p>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('user.kurikulum.ai.index', [
-                'userId' => $userId,
-                'type' => 'rpm',
-                'subject_id' => $perangkat->subject_id,
-                'grade_level_id' => $perangkat->grade_level_id,
-                'academic_year_id' => $perangkat->academic_year_id,
-                'semester' => $perangkat->semester,
-                'topik' => $perangkat->judul,
-            ]) }}" target="_blank" class="btn btn-soft-info btn-sm">
-                <i class="ri-sparkling-line me-1"></i>AI Assistant
-            </a>
-            <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-light btn-sm">
-                <i class="ri-eye-line me-1"></i>Kembali ke Preview
-            </a>
+    <div class="card mb-3">
+        <div class="card-header border-bottom-dashed">
+            <div class="row g-3 align-items-center">
+                {{-- Kiri: judul + subjudul --}}
+                <div class="col-sm">
+                    <h5 class="card-title mb-0">Edit {{ $perangkat->judul }}</h5>
+                    <p class="text-muted mb-0 small">Perubahan disimpan ke data perangkat yang sama dan langsung dipakai di semua format cetak.</p>
+                </div>
+
+                {{-- Kanan: tombol aksi --}}
+                <div class="col-sm-auto">
+                    <div class="toolbar-actions">
+                        <a href="{{ route('user.kurikulum.ai.index', [
+                            'userId' => $userId,
+                            'type' => 'rpm',
+                            'subject_id' => $perangkat->subject_id,
+                            'grade_level_id' => $perangkat->grade_level_id,
+                            'academic_year_id' => $perangkat->academic_year_id,
+                            'semester' => $perangkat->semester,
+                            'topik' => $perangkat->judul,
+                        ]) }}" target="_blank" class="btn btn-outline-info btn-sm">
+                            <i class="ri-sparkling-line me-1"></i> AI Assistant
+                        </a>
+                        <a href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-eye-line me-1"></i> Kembali ke Preview
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

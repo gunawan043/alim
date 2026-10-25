@@ -438,7 +438,8 @@ class KurikulumPembelajaranTest extends TestCase
 
         $perangkat = PerangkatPembelajaran::firstOrFail();
         $this->assertSame($atp->id, $perangkat->atp_id);
-        $this->assertSame($this->group->id, $perangkat->study_group_id);
+        $this->assertNull($perangkat->study_group_id);
+        $this->assertSame($this->grade->id, $perangkat->grade_level_id);
 
         // Semua bagian Pembelajaran Mendalam tersedia (bukan sekadar satu field).
         $desain = $perangkat->desain;
@@ -569,6 +570,25 @@ class KurikulumPembelajaranTest extends TestCase
         $this->actingAs($this->guru)
             ->post("/{$this->guru->id}/kurikulum/kktp", [])
             ->assertForbidden();
+    }
+
+    public function test_guru_hanya_mendapat_pilihan_mapel_diampu_pada_filter_cp_tp(): void
+    {
+        $cpPage = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum/cp")
+            ->assertOk();
+        $cpSelect = substr($cpPage->getContent(), (int) strpos($cpPage->getContent(), 'name="subject_id"'));
+        $cpSelect = substr($cpSelect, 0, (int) strpos($cpSelect, '</select>'));
+        $this->assertStringContainsString('Matematika', $cpSelect);
+        $this->assertStringNotContainsString('Fisika', $cpSelect);
+
+        $tpPage = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kurikulum/tp")
+            ->assertOk();
+        $tpSelect = substr($tpPage->getContent(), (int) strpos($tpPage->getContent(), 'name="subject_id"'));
+        $tpSelect = substr($tpSelect, 0, (int) strpos($tpSelect, '</select>'));
+        $this->assertStringContainsString('Matematika', $tpSelect);
+        $this->assertStringNotContainsString('Fisika', $tpSelect);
     }
 
     public function test_guru_melihat_cp_serumpun_dan_bukan_mapel_lain(): void

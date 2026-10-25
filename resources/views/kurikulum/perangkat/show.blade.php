@@ -24,56 +24,70 @@
         @slot('title') {{ $perangkat->judul }} @endslot
     @endcomponent
 
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <div>
-            <h4 class="mb-1">{{ $perangkat->judul }}</h4>
-            <p class="text-muted mb-0 small">
-                {{ $perangkat->subject?->name }}
-                · {{ $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}
-                · {{ $perangkat->academicYear?->name }}
-                · Semester {{ ucfirst($perangkat->semester) }}
-                · Guru: {{ $perangkat->teacher?->name ?? '—' }}
-            </p>
-        </div>
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="badge bg-primary-subtle text-primary p-2">
-                {{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? $perangkat->tipe }}
-            </span>
-            <span class="badge {{ ($perangkat->source ?? 'manual') === 'ai' ? 'bg-info-subtle text-info' : 'bg-secondary-subtle text-secondary' }} p-2">
-                {{ ($perangkat->source ?? 'manual') === 'ai' ? 'Sumber: AI — tinjau' : 'Sumber: Manual' }}
-            </span>
-            @if($curriculumProfile ?? null)
-                <span class="badge bg-success-subtle text-success p-2">{{ $curriculumProfile->name }}</span>
-            @endif
-            <span class="badge {{ $perangkat->status === 'final' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }} p-2">
-                {{ \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$perangkat->status] ?? $perangkat->status }}
-            </span>
-            @if(($formatType ?? 'umum') === 'tahfidz')
-                <a href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}" class="btn btn-soft-success btn-sm">
-                    <i class="ri-arrow-right-up-line align-bottom me-1"></i> RPP Tahfizh
-                </a>
-            @else
-                @if($canEdit ?? false)
-                    <a href="{{ route('user.kurikulum.perangkat.edit', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-soft-primary btn-sm">
-                        <i class="ri-edit-line align-bottom me-1"></i> Edit Perangkat
-                    </a>
-                @else
-                    <a href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}" class="btn btn-soft-primary btn-sm">
-                        <i class="ri-lock-unlock-line align-bottom me-1"></i> Ajukan Akses Edit / Copy
-                    </a>
-                @endif
-                <a href="{{ $previewUrl }}" class="btn btn-soft-secondary btn-sm" target="_blank">
-                    <i class="ri-printer-line align-bottom me-1"></i> Cetak PDF
-                </a>
-            @endif
-            @if($atp)
-                <a href="{{ route('user.kurikulum.atp.show', ['userId' => $userId, 'id' => $atp->id]) }}" class="btn btn-soft-primary btn-sm">
-                    <i class="ri-link align-bottom me-1"></i> ATP ({{ $atp->total_jp }} JP)
-                </a>
-            @endif
-            <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $perangkat->academic_year_id, 'semester' => $perangkat->semester]) }}" class="btn btn-light btn-sm">
-                <i class="ri-arrow-left-line align-bottom me-1"></i> Kembali
-            </a>
+    <div class="card mb-3">
+        <div class="card-header border-bottom-dashed">
+            <div class="row g-3 align-items-center">
+                {{-- Kiri: judul + subjudul --}}
+                <div class="col-sm">
+                    <h5 class="card-title mb-0">{{ $perangkat->judul }}</h5>
+                    <p class="text-muted mb-0 small">
+                        {{ $perangkat->subject?->name }}
+                        · {{ $perangkat->gradeLevel?->name ?? 'Semua Kelas' }}
+                        · {{ $perangkat->academicYear?->name }}
+                        · Semester {{ ucfirst($perangkat->semester) }}
+                        · Guru: {{ $perangkat->teacher?->name ?? '—' }}
+                    </p>
+                </div>
+
+                {{-- Kanan: badge + tombol aksi --}}
+                <div class="col-sm-auto">
+                    <div class="toolbar-actions">
+                        {{-- Badges --}}
+                        <span class="badge bg-primary-subtle text-primary px-3 py-2">
+                            {{ \App\Models\PerangkatPembelajaran::TIPE_OPTIONS[$perangkat->tipe] ?? $perangkat->tipe }}
+                        </span>
+                        <span class="badge {{ ($perangkat->source ?? 'manual') === 'ai' ? 'bg-info-subtle text-info' : 'bg-secondary-subtle text-secondary' }} px-3 py-2">
+                            {{ ($perangkat->source ?? 'manual') === 'ai' ? 'Sumber: AI — tinjau' : 'Sumber: Manual' }}
+                        </span>
+                        @if($curriculumProfile ?? null)
+                            <span class="badge bg-success-subtle text-success px-3 py-2">{{ $curriculumProfile->name }}</span>
+                        @endif
+                        <span class="badge {{ $perangkat->status === 'final' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning' }} px-3 py-2">
+                            {{ \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$perangkat->status] ?? $perangkat->status }}
+                        </span>
+
+                        {{-- Tombol Aksi --}}
+                        @if(($formatType ?? 'umum') === 'tahfidz')
+                            <a href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId]) }}" class="btn btn-outline-success btn-sm">
+                                <i class="ri-arrow-right-up-line me-1"></i> RPP Tahfizh
+                            </a>
+                        @else
+                            @if($canEdit ?? false)
+                                <a href="{{ route('user.kurikulum.perangkat.edit', ['userId' => $userId, 'id' => $perangkat->id]) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="ri-edit-line me-1"></i> Edit Perangkat
+                                </a>
+                            @else
+                                <a href="{{ route('user.kurikulum.akses-edit.index', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="ri-lock-unlock-line me-1"></i> Ajukan Akses Edit / Copy
+                                </a>
+                            @endif
+                            <a href="{{ $previewUrl }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                                <i class="ri-printer-line me-1"></i> Cetak PDF
+                            </a>
+                        @endif
+
+                        @if($atp)
+                            <a href="{{ route('user.kurikulum.atp.show', ['userId' => $userId, 'id' => $atp->id]) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="ri-link me-1"></i> ATP ({{ $atp->total_jp }} JP)
+                            </a>
+                        @endif
+
+                        <a href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'academic_year_id' => $perangkat->academic_year_id, 'semester' => $perangkat->semester]) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-arrow-left-line me-1"></i> Kembali
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

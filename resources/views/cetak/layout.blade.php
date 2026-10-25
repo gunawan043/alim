@@ -75,7 +75,7 @@
             margin-top: 10px;
             text-transform: uppercase;
         }
-        .section-body { border: 1px solid #444; padding: 6px 8px; margin-bottom: 0; }
+        .section-body { border: 0; padding: 2px 0; margin-bottom: 0; }
         .section-body table.inside { width: 100%; border-collapse: collapse; }
         .section-body table.inside td { border: none; padding: 2px 4px; vertical-align: top; font-size: 11pt; }
         .section-body table.inside td.label { width: 165px; font-weight: bold; }
