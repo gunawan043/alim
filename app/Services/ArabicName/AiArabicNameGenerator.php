@@ -76,6 +76,9 @@ class AiArabicNameGenerator implements ArabicNameGeneratorContract
             $clean = preg_replace('/[^\x{0600}-\x{06FF}\s\-]/u', ' ', $line) ?? '';
             $clean = trim((string) preg_replace('/\s+/u', ' ', $clean));
 
+            // Perbaiki kesalahan umum: dua alif di awal kata harus menjadi alif maddah.
+            $clean = preg_replace('/^اا+/u', 'آ', $clean) ?? $clean;
+
             if ($clean !== '') {
                 return $clean;
             }
@@ -88,9 +91,14 @@ class AiArabicNameGenerator implements ArabicNameGeneratorContract
     {
         return 'Anda ahli transliterasi nama orang Indonesia ke huruf Arab. '
             .'Tulis berdasarkan PELAFALAN nama, bukan mengganti huruf Latin satu per satu. '
-            .'Bedakan bunyi: س=s, ش=sy, ك=k, ق=q, ه=h ringan, ح=h tenggorokan, ذ=dz, ز=z. '
-            .'Perhatikan vokal panjang (ا/و/ي) dan vokal pendek; harakat opsional. '
-            .'Gunakan ejaan baku untuk nama Arab (mis. Muhammad=محمد, Abdullah=عبد الله, Fatimah=فاطمة). '
+            .'Bedakan bunyi: س=s, ش=sy, ك=k, ق=q, ه=h ringan, ح=h tenggorokan, ذ=dz, ز=z, ف=f, ب=p. '
+            .'Jangan menulis dua alif berturut-turut di awal kata (اا). Untuk bunyi /ā/ di awal gunakan آ; '
+            .'contoh Aamily = آميلي, bukan ااميلي. '
+            .'Bunyi /p/ Indonesia tidak ada padanan persis; gunakan ب, bukan ف; contoh Pradana = برادانا. '
+            .'Bunyi /f/ tetap menggunakan ف. '
+            .'Perhatikan vokal panjang (ا/و/ي) dan vokal pendek; jangan menduplikasi huruf vokal. '
+            .'Gunakan ejaan baku untuk nama Arab (mis. Muhammad=محمد, Abdullah=عبد الله, Fatimah=فاطمة, Sofia=صوفيا). '
+            .'Contoh lengkap: Aamily Sofia Qairina Pradana = آميلي صوفيا قايرينا برادانا. '
             .'Nama non-Arab ditulis fonetis dan tidak diterjemahkan maknanya. '
             .'Pisahkan setiap unsur nama (nama depan/tengah/keluarga) dengan spasi. '
             .'Balas HANYA teks Arab, tanpa penjelasan, tanpa tanda kutip, tanpa transliterasi Latin.';

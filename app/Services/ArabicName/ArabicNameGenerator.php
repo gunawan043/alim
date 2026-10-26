@@ -82,6 +82,10 @@ class ArabicNameGenerator implements ArabicNameGeneratorContract
         'rahmi' => 'رحمي', 'rahmat' => 'رحمة', 'rahmah' => 'رحمة',
         'amirah' => 'أميرة', 'amira' => 'أميرة', 'aula' => 'أولى', 'aulya' => 'أوليا',
         // Nama Indonesia umum
+        'aamily' => 'آميلي', 'amily' => 'آميلي',
+        'sofia' => 'صوفيا', 'sofya' => 'صوفيا', 'sophia' => 'صوفيا',
+        'qairina' => 'قايرينا', 'qayrina' => 'قايرينا', 'qarina' => 'قارينا',
+        'pradana' => 'برادانا', 'pradhana' => 'برادانا',
         'agus' => 'أغوس', 'budi' => 'بودي', 'dedi' => 'ديدي', 'eko' => 'إيكو',
         'putra' => 'بوترا', 'putri' => 'بوتري', 'dewi' => 'ديوي', 'sri' => 'سري',
         'wawan' => 'واوان', 'wawan setiawan' => 'واوان ستياوان', 'gunawan' => 'غونوان', 'darmawan' => 'دارماوان',
@@ -129,7 +133,7 @@ class ArabicNameGenerator implements ArabicNameGeneratorContract
     private const LETTERS = [
         'a' => 'ا', 'b' => 'ب', 'c' => 'تش', 'd' => 'د', 'e' => 'ي', 'f' => 'ف',
         'g' => 'غ', 'h' => 'ه', 'i' => 'ي', 'j' => 'ج', 'k' => 'ك', 'l' => 'ل',
-        'm' => 'م', 'n' => 'ن', 'o' => 'و', 'p' => 'ف', 'q' => 'ق', 'r' => 'ر',
+        'm' => 'م', 'n' => 'ن', 'o' => 'و', 'p' => 'ب', 'q' => 'ق', 'r' => 'ر',
         's' => 'س', 't' => 'ت', 'u' => 'و', 'v' => 'ف', 'w' => 'و', 'x' => 'كس',
         'y' => 'ي', 'z' => 'ز',
     ];
@@ -176,12 +180,39 @@ class ArabicNameGenerator implements ArabicNameGeneratorContract
     public function transliterate(string $word): string
     {
         $word = mb_strtolower($word);
+        $word = preg_replace('/[^a-z]/', '', $word) ?? '';
         $length = mb_strlen($word);
         $out = '';
         $i = 0;
 
         while ($i < $length) {
+            $rest = mb_substr($word, $i);
             $pair = mb_substr($word, $i, 2);
+
+            // Vokal panjang /ā/ di awal kata ditulis dengan alif maddah.
+            // Ini mencegah bentuk keliru seperti "ااميلي".
+            if ($i === 0 && str_starts_with($rest, 'aa')) {
+                $out .= 'آ';
+                $i += 2;
+
+                continue;
+            }
+
+            // Vokal panjang/rangkap: satu huruf Arab, bukan dua huruf berulang.
+            $longVowels = [
+                'aa' => 'ا',
+                'ii' => 'ي',
+                'uu' => 'و',
+                'ee' => 'ي',
+                'oo' => 'و',
+            ];
+
+            if (isset($longVowels[$pair])) {
+                $out .= $longVowels[$pair];
+                $i += 2;
+
+                continue;
+            }
 
             if (mb_strlen($pair) === 2 && isset(self::DIGRAPHS[$pair])) {
                 $out .= self::DIGRAPHS[$pair];

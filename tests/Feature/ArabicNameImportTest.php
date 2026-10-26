@@ -102,6 +102,13 @@ class ArabicNameImportTest extends TestCase
         $this->assertSame('أحمد', $generator->generate('Ahmad'));
         $this->assertSame('ذو الكفل', $generator->generate('Zulkifli'));
 
+        // Kaidah vokal panjang dan bunyi Indonesia: bukan transliterasi huruf per huruf.
+        $this->assertSame('آميلي صوفيا قايرينا برادانا', $generator->generate('Aamily Sofia Qairina Pradana'));
+        $this->assertStringNotContainsString('اا', $generator->generate('Aamily'));
+        $this->assertSame('آميلي', $generator->transliterate('aamily'));
+        $this->assertSame('برادانا', $generator->transliterate('pradana'));
+        $this->assertSame('قايرينا', $generator->transliterate('qairina'));
+
         $unknown = $generator->generate('Bambang');
         $this->assertNotSame('', $unknown);
         $this->assertMatchesRegularExpression('/[\x{0600}-\x{06FF}]/u', $unknown);

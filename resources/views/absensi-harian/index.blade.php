@@ -1,61 +1,72 @@
 @extends('layouts.master')
-@section('title') Absensi Harian Peserta Didik @endsection
+
+@section('title', 'Absensi Harian Peserta Didik')
+
+@php
+    $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null);
+    $totalSantri = collect($rombelStats)->sum(fn ($s) => $s['total'] ?? 0);
+    $totalHadir = collect($rombelStats)->sum(fn ($s) => $s['hadir'] ?? 0);
+    $totalTerlambat = collect($rombelStats)->sum(fn ($s) => $s['terlambat'] ?? 0);
+    $totalIzin = collect($rombelStats)->sum(fn ($s) => $s['izin'] ?? 0);
+    $totalSakit = collect($rombelStats)->sum(fn ($s) => $s['sakit'] ?? 0);
+    $totalAlpa = collect($rombelStats)->sum(fn ($s) => $s['alpa'] ?? 0);
+    $totalRecorded = collect($rombelStats)->sum(fn ($s) => $s['recorded'] ?? 0);
+    $izinSakit = $totalIzin + $totalSakit;
+    $pctHadir = $totalSantri > 0 ? round($totalHadir / $totalSantri * 100) : 0;
+    $pctRecorded = $totalSantri > 0 ? round($totalRecorded / $totalSantri * 100) : 0;
+
+    $recordedFilter = request('recorded');
+    $displayGroups = $studyGroups->filter(function ($sg) use ($rombelStats, $recordedFilter) {
+        if (! $recordedFilter) {
+            return true;
+        }
+        $s = $rombelStats[$sg->id] ?? null;
+        $total = $s['total'] ?? 0;
+        $recorded = $s['recorded'] ?? 0;
+
+        return match ($recordedFilter) {
+            'lengkap' => $total > 0 && $recorded >= $total,
+            'belum' => $total > 0 && $recorded < $total,
+            'tanpa' => $total === 0,
+            default => true,
+        };
+    });
+@endphp
 
 @section('css')
     @include('kurikulum._styles')
 @endsection
 
 @section('content')
-    @php
-        $userId = $userId ?? auth()->id();
-        $totalSantri = collect($rombelStats)->sum(fn ($s) => $s['total'] ?? 0);
-        $totalHadir = collect($rombelStats)->sum(fn ($s) => $s['hadir'] ?? 0);
-        $totalTerlambat = collect($rombelStats)->sum(fn ($s) => $s['terlambat'] ?? 0);
-        $totalIzin = collect($rombelStats)->sum(fn ($s) => $s['izin'] ?? 0);
-        $totalSakit = collect($rombelStats)->sum(fn ($s) => $s['sakit'] ?? 0);
-        $totalAlpa = collect($rombelStats)->sum(fn ($s) => $s['alpa'] ?? 0);
-        $totalRecorded = collect($rombelStats)->sum(fn ($s) => $s['recorded'] ?? 0);
-        $izinSakit = $totalIzin + $totalSakit;
-        $pctHadir = $totalSantri > 0 ? round($totalHadir / $totalSantri * 100) : 0;
-        $pctRecorded = $totalSantri > 0 ? round($totalRecorded / $totalSantri * 100) : 0;
-
-        $recordedFilter = request('recorded');
-        $displayGroups = $studyGroups->filter(function ($sg) use ($rombelStats, $recordedFilter) {
-            if (! $recordedFilter) {
-                return true;
-            }
-            $s = $rombelStats[$sg->id] ?? null;
-            $total = $s['total'] ?? 0;
-            $recorded = $s['recorded'] ?? 0;
-
-            return match ($recordedFilter) {
-                'lengkap' => $total > 0 && $recorded >= $total,
-                'belum' => $total > 0 && $recorded < $total,
-                'tanpa' => $total === 0,
-                default => true,
-            };
-        });
-    @endphp
-
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
         @slot('title') Absensi Peserta Didik @endslot
     @endcomponent
 
+    {{-- FLASH --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="ri-check-line me-2"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
-    {{-- STATISTIK --}}
+    {{-- STATS CARDS --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary-subtle rounded fs-2"><i class="ri-group-line text-primary"></i></span>
+                            <span class="avatar-title bg-primary-subtle rounded fs-2">
+                                <i class="ri-group-line text-primary"></i>
+                            </span>
                         </div>
                         <div class="flex-grow-1">
                             <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Total Santri</p>
@@ -65,16 +76,21 @@
                     <div class="progress mt-1" style="height:6px;">
                         <div class="progress-bar bg-primary" style="width:{{ $pctRecorded }}%"></div>
                     </div>
-                    <p class="text-muted mb-0 stat-label mt-1"><i class="ri-edit-2-line me-1"></i>Tercatat {{ number_format($totalRecorded) }} ({{ $pctRecorded }}%)</p>
+                    <p class="text-muted mb-0 stat-label small mt-1">
+                        <i class="ri-edit-2-line me-1"></i>Tercatat {{ number_format($totalRecorded) }} ({{ $pctRecorded }}%)
+                    </p>
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2"><i class="ri-checkbox-circle-line text-success"></i></span>
+                            <span class="avatar-title bg-success-subtle rounded fs-2">
+                                <i class="ri-checkbox-circle-line text-success"></i>
+                            </span>
                         </div>
                         <div class="flex-grow-1">
                             <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Hadir</p>
@@ -90,12 +106,15 @@
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-hospital-line text-info"></i></span>
+                            <span class="avatar-title bg-info-subtle rounded fs-2">
+                                <i class="ri-hospital-line text-info"></i>
+                            </span>
                         </div>
                         <div class="flex-grow-1">
                             <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Izin / Sakit</p>
@@ -109,24 +128,28 @@
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-danger-subtle rounded fs-2"><i class="ri-user-unfollow-line text-danger"></i></span>
+                            <span class="avatar-title bg-danger-subtle rounded fs-2">
+                                <i class="ri-user-unfollow-line text-danger"></i>
+                            </span>
                         </div>
                         <div class="flex-grow-1">
                             <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Alpa</p>
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalAlpa) }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Tidak hadir tanpa keterangan</p>
+                    <p class="text-muted mb-0 stat-label small"><i class="ri-information-line me-1"></i>Tidak hadir tanpa keterangan</p>
                 </div>
             </div>
         </div>
     </div>
 
+    {{-- CARD UTAMA --}}
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
@@ -134,24 +157,37 @@
                     <div class="row align-items-center g-3">
                         <div class="col-sm">
                             <h5 class="card-title mb-0">Absensi Harian Peserta Didik</h5>
-                            <p class="text-muted mb-0" style="font-size:0.8rem">
+                            <p class="text-muted mb-0 small">
                                 {{ $activeYear ? $activeYear->name . ' — Semester ' . ucfirst($activeYear->semester) : 'Tahun ajaran belum aktif' }}
                                 &nbsp;|&nbsp; {{ $selectedDate->locale('id')->translatedFormat('j F Y') }}
                             </p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.absensi.harian.recap.semester', ['userId' => $userId]) }}"
-                                class="btn btn-outline-secondary btn-sm">
-                                <i class="ri-file-chart-2-line me-1"></i> Rekap Semester
-                            </a>
-                            <a href="{{ route('user.absensi.harian.create', ['userId' => $userId]) }}"
-                                class="btn btn-primary btn-sm">
-                                <i class="ri-edit-2-line me-1"></i> Input Absensi
-                            </a>
+                            <div class="toolbar-actions">
+                                <a href="{{ route('user.absensi.harian.recap', [
+                                    'userId' => $userId,
+                                    'academic_year_id' => $activeYear?->id,
+                                    'semester' => $selectedSemester,
+                                    'month' => $selectedDate->month,
+                                    'year' => $selectedDate->year,
+                                ]) }}"
+                                   class="btn btn-outline-info btn-sm">
+                                    <i class="ri-line-chart-line me-1"></i> Rekap &amp; Grafik
+                                </a>
+                                <a href="{{ route('user.absensi.harian.recap.semester', ['userId' => $userId]) }}"
+                                   class="btn btn-outline-secondary btn-sm">
+                                    <i class="ri-file-chart-2-line me-1"></i> Rekap Semester
+                                </a>
+                                <a href="{{ route('user.absensi.harian.create', ['userId' => $userId]) }}"
+                                   class="btn btn-primary btn-sm">
+                                    <i class="ri-edit-2-line me-1"></i> Input Absensi
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                {{-- FILTER CEPAT (chip) --}}
                 <div class="card-header py-2 bg-light border-bottom">
                     <div class="d-flex flex-wrap align-items-center">
                         <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
@@ -179,46 +215,58 @@
                 </div>
 
                 <div class="card-body">
-                    <form method="GET" class="row g-3 mb-4">
+                    {{-- FILTER FORM --}}
+                    <form method="GET" class="mb-3">
                         <input type="hidden" name="recorded" value="{{ request('recorded') }}">
-                        <div class="col-md-3">
-                            <label class="form-label">Tanggal</label>
-                            <input type="date" name="date" class="form-control"
-                                value="{{ $selectedDate->toDateString() }}" max="{{ now()->toDateString() }}">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Semester</label>
-                            <select name="semester" class="form-control">
-                                <option value="ganjil" {{ $selectedSemester == 'ganjil' ? 'selected' : '' }}>Ganjil</option>
-                                <option value="genap" {{ $selectedSemester == 'genap' ? 'selected' : '' }}>Genap</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="ri-search-line me-1"></i> Tampilkan
-                            </button>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <a href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}"
-                                class="btn btn-light w-100">Reset</a>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small mb-1">Tanggal</label>
+                                <input type="date" name="date" class="form-control"
+                                       value="{{ $selectedDate->toDateString() }}" max="{{ now()->toDateString() }}">
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <label class="form-label small mb-1">Semester</label>
+                                <select name="semester" class="form-select">
+                                    <option value="ganjil" {{ $selectedSemester == 'ganjil' ? 'selected' : '' }}>Ganjil</option>
+                                    <option value="genap" {{ $selectedSemester == 'genap' ? 'selected' : '' }}>Genap</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-auto d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-shrink-0">
+                                    <i class="ri-search-line me-1"></i> Tampilkan
+                                </button>
+                                <a href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}"
+                                   class="btn btn-light flex-shrink-0" title="Reset filter">
+                                    <i class="ri-refresh-line"></i>
+                                </a>
+                            </div>
                         </div>
                     </form>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle table-freeze mb-0">
+                    {{-- COUNTER --}}
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <small class="text-muted">
+                            <i class="ri-file-list-line me-1"></i> Menampilkan
+                            <strong>{{ $displayGroups->count() }}</strong> rombel
+                        </small>
+                    </div>
+
+                    {{-- TABEL --}}
+                    <div class="table-container">
+                        <table class="table table-hover align-middle table-freeze mb-0" style="font-size:13px;">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="text-center" style="width:40px">#</th>
+                                    <th class="text-center" style="width:50px;">No</th>
                                     <th>Rombel</th>
                                     <th class="text-center">Wali Kelas</th>
                                     <th class="text-center">Siswa</th>
-                                    <th class="text-center text-success"><i class="ri-checkbox-circle-line me-1"></i>Hadir</th>
-                                    <th class="text-center text-warning"><i class="ri-timer-line me-1"></i>Terlambat</th>
-                                    <th class="text-center text-info"><i class="ri-information-line me-1"></i>Izin</th>
-                                    <th class="text-center text-secondary"><i class="ri-hospital-line me-1"></i>Sakit</th>
-                                    <th class="text-center text-danger"><i class="ri-close-circle-line me-1"></i>Alpa</th>
+                                    <th class="text-center"><i class="ri-checkbox-circle-line me-1 text-success"></i>Hadir</th>
+                                    <th class="text-center"><i class="ri-timer-line me-1 text-warning"></i>Terlambat</th>
+                                    <th class="text-center"><i class="ri-information-line me-1 text-info"></i>Izin</th>
+                                    <th class="text-center"><i class="ri-hospital-line me-1 text-secondary"></i>Sakit</th>
+                                    <th class="text-center"><i class="ri-close-circle-line me-1 text-danger"></i>Alpa</th>
                                     <th class="text-center">Tercatat</th>
-                                    <th class="text-center">Aksi</th>
+                                    <th class="text-center" style="width:80px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -251,46 +299,66 @@
                                         <td class="text-center">
                                             <span class="badge bg-dark rounded-circle" style="font-size:0.72rem">{{ $total ?: '—' }}</span>
                                         </td>
-                                        <td class="text-center bg-success-subtle fw-bold">{{ $stats['hadir'] ?? 0 }}</td>
-                                        <td class="text-center bg-warning-subtle">{{ $stats['terlambat'] ?? 0 }}</td>
-                                        <td class="text-center bg-info-subtle">{{ $stats['izin'] ?? 0 }}</td>
-                                        <td class="text-center bg-secondary-subtle">{{ $stats['sakit'] ?? 0 }}</td>
-                                        <td class="text-center bg-danger-subtle">{{ $stats['alpa'] ?? 0 }}</td>
+                                        <td class="text-center fw-semibold text-success">{{ $stats['hadir'] ?? 0 }}</td>
+                                        <td class="text-center text-warning">{{ $stats['terlambat'] ?? 0 }}</td>
+                                        <td class="text-center text-info">{{ $stats['izin'] ?? 0 }}</td>
+                                        <td class="text-center text-secondary">{{ $stats['sakit'] ?? 0 }}</td>
+                                        <td class="text-center text-danger">{{ $stats['alpa'] ?? 0 }}</td>
                                         <td class="text-center">
                                             @if($total == 0)
                                                 <span class="badge bg-light text-muted">Tanpa siswa</span>
                                             @elseif($pct == 100)
-                                                <span class="badge bg-success">Lengkap</span>
+                                                <span class="badge bg-success-subtle text-success">Lengkap</span>
                                             @elseif($pct > 0)
-                                                <span class="badge bg-warning text-dark">{{ $recorded }}/{{ $total }}</span>
+                                                <span class="badge bg-warning-subtle text-warning">{{ $recorded }}/{{ $total }}</span>
                                             @else
-                                                <span class="badge bg-secondary">Belum</span>
+                                                <span class="badge bg-secondary-subtle text-secondary">Belum</span>
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('user.absensi.harian.create', [
-                                                'userId' => $userId,
-                                                'study_group_id' => $sg->id,
-                                                'date' => $selectedDate->toDateString(),
-                                                'semester' => $selectedSemester,
-                                            ]) }}"
-                                                class="btn btn-sm {{ $pct == 100 ? 'btn-outline-success' : 'btn-primary' }}"
-                                                title="{{ $pct == 100 ? 'Lihat / Edit' : 'Input Absensi' }}">
-                                                <i class="ri-{{ $pct == 100 ? 'eye' : 'edit' }}-2-line"></i>
-                                            </a>
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <a href="{{ route('user.absensi.harian.create', [
+                                                    'userId' => $userId,
+                                                    'study_group_id' => $sg->id,
+                                                    'date' => $selectedDate->toDateString(),
+                                                    'semester' => $selectedSemester,
+                                                ]) }}"
+                                                   class="btn {{ $pct == 100 ? 'btn-outline-success' : 'btn-outline-primary' }}"
+                                                   title="{{ $pct == 100 ? 'Lihat / Edit' : 'Input Absensi' }}">
+                                                    <i class="ri-{{ $pct == 100 ? 'eye' : 'edit' }}-2-line"></i>
+                                                </a>
+                                                <a href="{{ route('user.absensi.harian.recap', [
+                                                    'userId' => $userId,
+                                                    'study_group_id' => $sg->id,
+                                                    'academic_year_id' => $activeYear?->id,
+                                                    'semester' => $selectedSemester,
+                                                    'month' => $selectedDate->month,
+                                                    'year' => $selectedDate->year,
+                                                ]) }}"
+                                                   class="btn btn-outline-info"
+                                                   title="Rekap & Grafik Kehadiran">
+                                                    <i class="ri-line-chart-line"></i>
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
                                         <td colspan="11" class="text-center py-5">
-                                            <div class="text-muted">
-                                                <i class="ri-inbox-archive-line fs-1 d-block mb-2"></i>
+                                            <lord-icon
+                                                src="https://cdn.lordicon.com/msoeawqm.json"
+                                                trigger="loop"
+                                                colors="primary:#121331,secondary:#08a88a"
+                                                style="width:75px;height:75px">
+                                            </lord-icon>
+                                            <h6 class="text-muted mb-1 mt-3">Tidak ada rombel</h6>
+                                            <p class="text-muted mb-0 small">
                                                 @if($recordedFilter)
                                                     Tidak ada rombel pada filter ini.
                                                 @else
                                                     Tidak ada rombel ditemukan.
                                                 @endif
-                                            </div>
+                                            </p>
                                         </td>
                                     </tr>
                                 @endforelse

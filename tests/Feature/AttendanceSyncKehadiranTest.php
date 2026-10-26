@@ -293,10 +293,11 @@ class AttendanceSyncKehadiranTest extends TestCase
             ->get("/{$this->guruMapel->id}/absensi/harian/recap")
             ->assertForbidden();
 
-        // Wali kelas → boleh
+        // Wali kelas → boleh, dan punya akses langsung ke rekap + grafik.
         $this->actingAs($this->wali)
             ->get("/{$this->wali->id}/absensi/harian")
-            ->assertOk();
+            ->assertOk()
+            ->assertSee('Rekap & Grafik');
 
         // TU → boleh (kewenangan)
         $this->actingAs($this->tu)

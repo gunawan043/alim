@@ -44,7 +44,9 @@ class ArabicNameAiGeneratorTest extends TestCase
             return $request->url() === 'https://api.openai.test/v1/chat/completions'
                 && $request['model'] === 'test-model'
                 && $request['messages'][1]['content'] === 'Muhammad Fauzan'
-                && str_contains($request['messages'][0]['content'], 'PELAFALAN');
+                && str_contains($request['messages'][0]['content'], 'PELAFALAN')
+                && str_contains($request['messages'][0]['content'], 'آميلي')
+                && str_contains($request['messages'][0]['content'], 'برادانا');
         });
     }
 
@@ -64,6 +66,22 @@ class ArabicNameAiGeneratorTest extends TestCase
 
         $this->assertSame('محمد فوزان', $result);
         $this->assertStringNotContainsString('Muhammad', $result);
+    }
+
+    public function test_ai_memperbaiki_dua_alif_di_awal_nama(): void
+    {
+        $this->configureAi();
+
+        Http::fake([
+            'api.openai.test/*' => Http::response([
+                'choices' => [['message' => ['content' => 'اااميلي صوفيا قايرينا برادانا']]],
+            ]),
+        ]);
+
+        $result = app(AiArabicNameGenerator::class)->generate('Aamily Sofia Qairina Pradana');
+
+        $this->assertSame('آميلي صوفيا قايرينا برادانا', $result);
+        $this->assertStringNotContainsString('اا', $result);
     }
 
     public function test_ai_gagal_http_fallback_ke_kaidah(): void
