@@ -258,6 +258,20 @@ class AcademicYearArchiveTest extends TestCase
     // DATA NILAI — PERIODE & ARSIP
     // ─────────────────────────────────────────────────────────────
 
+    public function test_data_rombel_default_hanya_tahun_ajaran_aktif(): void
+    {
+        $this->actingAs($this->tu);
+
+        $view = app(StudyGroupController::class)->index(
+            $this->makeRequest(),
+            $this->tu->id,
+        );
+        $groups = $view->getData()['studyGroups']->getCollection();
+
+        $this->assertTrue($groups->contains(fn ($group) => $group->id === $this->activeRombel->id));
+        $this->assertFalse($groups->contains(fn ($group) => $group->id === $this->oldRombel->id));
+    }
+
     public function test_data_nilai_dapat_memilih_tahun_ajaran_arsip(): void
     {
         $this->actingAs($this->tu);

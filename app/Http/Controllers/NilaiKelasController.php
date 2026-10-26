@@ -1809,6 +1809,16 @@ class NilaiKelasController extends Controller
             return 0;
         }
 
+        // Buku nilai hanya boleh dibuat untuk rombel pada TA yang sama.
+        $groupPeriodValid = \App\Models\StudyGroup::query()
+            ->whereKey($studyGroupId)
+            ->where('academic_year_id', $ayId)
+            ->exists();
+
+        if (! $groupPeriodValid) {
+            return 0;
+        }
+
         $base = TeacherAdminBook::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)

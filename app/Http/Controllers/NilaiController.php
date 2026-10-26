@@ -126,10 +126,17 @@ class NilaiController extends Controller
             : ($academicYears->firstWhere('id', $selectedAcademicYearId)?->semester === 'genap' ? 'genap' : 'ganjil');
 
         // Base query: TeacherAdminBook — filter semester juga
+        // Sumber periode = buku admin pada TA/semester terpilih DAN rombel
+        // yang memang berada pada TA tersebut. Ini mencegah rombel TA lama
+        // ikut tampil hanya karena memiliki buku untuk TA aktif.
         $baseQuery = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->when($selectedAcademicYearId, fn ($q) => $q->where('academic_year_id', $selectedAcademicYearId))
             ->when($selectedSemester, fn ($q) => $q->where('semester', $selectedSemester))
+            ->when($selectedAcademicYearId, fn ($q) => $q->whereHas(
+                'studyGroup',
+                fn ($sg) => $sg->where('academic_year_id', $selectedAcademicYearId)->where('is_active', true)
+            ))
             ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
             ->where('is_active', true);
 
@@ -172,16 +179,13 @@ class NilaiController extends Controller
                     'first_book' => $book,
                 ];
             })
-            // Hanya kelas yang benar-benar memiliki roster pada TA terpilih.
-            // Kelas duplikat tanpa santri tidak ditampilkan di halaman Data Nilai.
-            ->filter(fn ($k) => $k['total_siswa'] > 0)
             ->when($selectedGradeLevelId, fn ($col) => $col->filter(fn ($k) => $k['study_group']->gradeLevel?->id === $selectedGradeLevelId
             ))
             ->sortBy(fn ($k) => $k['study_group']->gradeLevel?->level ?? 99)
             ->sortBy(fn ($k) => $k['study_group']->name)
             ->values();
 
-        // Filter tingkat hanya menampilkan tingkat yang benar-benar punya kelas berisi santri.
+        // Filter tingkat mengikuti rombel yang tampil pada periode terpilih.
         $gradeLevelIds = $kelasList
             ->map(fn ($k) => $k['study_group']->gradeLevel)
             ->filter()

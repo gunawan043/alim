@@ -60,7 +60,7 @@
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['total']) }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Rombel aktif pada filter ini</p>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Rombel aktif pada tahun ajaran/filter ini</p>
                 </div>
             </div>
         </div>
@@ -144,7 +144,7 @@
                                     </select>
                                     @endif
                                     <select name="academic_year_id" class="form-select" style="width:170px" onchange="this.form.submit()">
-                                        <option value="">Semester Aktif</option>
+                                        <option value="">Tahun Ajaran Aktif</option>
                                         @foreach($academicYears as $ay)
                                             <option value="{{ $ay->id }}" {{ request('academic_year_id') == $ay->id ? 'selected' : '' }}>
                                                 {{ $ay->name }} ({{ $ay->semester_text }})
@@ -166,7 +166,7 @@
                 <div class="card-header py-2 bg-light border-bottom">
                     <div class="d-flex flex-wrap align-items-center">
                         <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
-                        <a href="{{ request()->fullUrlWithQuery(['semua_ta' => null, 'academic_year_id' => null]) }}" class="filter-badge {{ ! request('semua_ta') && ! request('academic_year_id') ? 'active' : '' }}"><i class="ri-calendar-check-line"></i>Semester Aktif</a>
+                        <a href="{{ request()->fullUrlWithQuery(['semua_ta' => null, 'academic_year_id' => null]) }}" class="filter-badge {{ ! request('semua_ta') && ! request('academic_year_id') ? 'active' : '' }}"><i class="ri-calendar-check-line"></i>Tahun Ajaran Aktif</a>
                         <a href="{{ request()->fullUrlWithQuery(['semua_ta' => '1', 'academic_year_id' => null]) }}" class="filter-badge {{ request('semua_ta') ? 'active' : '' }}"><i class="ri-calendar-2-line"></i>Semua Tahun Ajaran</a>
                         <span class="text-muted small ms-2 me-2">·</span>
                         <span class="text-muted small">{{ $stats['santri'] }} santri · {{ $stats['wali'] }} wali kelas</span>

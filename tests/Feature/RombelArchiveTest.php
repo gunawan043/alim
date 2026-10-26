@@ -206,7 +206,7 @@ class RombelArchiveTest extends TestCase
         $this->assertStringContainsString('value="88.00"', $html);
     }
 
-    public function test_data_nilai_default_ta_aktif_dan_hanya_kelas_berpenghuni(): void
+    public function test_data_nilai_default_ta_aktif_dan_menampilkan_kelas_aktif(): void
     {
         // Kelas aktif dengan buku + santri aktif.
         $activeBook = TeacherAdminBook::create([
@@ -247,7 +247,11 @@ class RombelArchiveTest extends TestCase
         $this->assertSame($this->ayActive->id, $data['selectedAcademicYearId']);
         $this->assertSame('ganjil', $data['selectedSemester']);
         $this->assertTrue($data['kelasList']->contains(fn ($row) => $row['study_group']->id === $this->rombelNew->id));
-        $this->assertFalse($data['kelasList']->contains(fn ($row) => $row['study_group']->id === $emptyGroup->id));
+
+        // Kelas aktif tetap tampil meskipun belum memiliki santri.
+        $emptyRow = $data['kelasList']->firstWhere(fn ($row) => $row['study_group']->id === $emptyGroup->id);
+        $this->assertNotNull($emptyRow);
+        $this->assertSame(0, $emptyRow['total_siswa']);
     }
 
     public function test_tab_mapel_ta_aktif_tanpa_riwayat_aktif_tetap_dapat_diisi(): void

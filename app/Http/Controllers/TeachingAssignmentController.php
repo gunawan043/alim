@@ -217,6 +217,21 @@ class TeachingAssignmentController extends Controller
     }
 
     /**
+     * Pastikan rombel memang milik tahun ajaran yang dipilih.
+     * Mencegah buku nilai dibuat untuk rombel periode lain.
+     */
+    private function assertStudyGroupPeriod(string $studyGroupId, string $academicYearId, ?string $schoolId = null): void
+    {
+        $valid = StudyGroup::query()
+            ->whereKey($studyGroupId)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('academic_year_id', $academicYearId)
+            ->exists();
+
+        abort_unless($valid, 422, 'Rombel yang dipilih tidak berada pada tahun ajaran yang sama.');
+    }
+
+    /**
      * Simpan penugasan massal — SK opsional (dibuat otomatis bila tidak dipilih).
      */
     public function bulkStore(Request $request, string $userId)
@@ -250,7 +265,10 @@ class TeachingAssignmentController extends Controller
 
         foreach ($data['rows'] as $row) {
             $subjectOk = Subject::where('id', $row['subject_id'])->where('school_id', $school)->exists();
-            $groupOk = StudyGroup::where('id', $row['study_group_id'])->where('school_id', $school)->exists();
+            $groupOk = StudyGroup::where('id', $row['study_group_id'])
+                ->where('school_id', $school)
+                ->where('academic_year_id', $data['academic_year_id'])
+                ->exists();
 
             $teacherLinks = $workUnitId
                 ? \App\Models\GtkWorkUnit::where('user_id', $row['teacher_id'])->pluck('work_unit_id')
@@ -373,6 +391,12 @@ class TeachingAssignmentController extends Controller
             $data['school_id'] = $schoolId;
         }
 
+        $this->assertStudyGroupPeriod(
+            (string) $data['study_group_id'],
+            (string) $data['academic_year_id'],
+            $data['school_id'] ?? null,
+        );
+
         // Cek duplikat
         $exists = TeachingAssignment::where('teacher_id', $data['teacher_id'])
             ->where('study_group_id', $data['study_group_id'])
@@ -485,6 +509,12 @@ class TeachingAssignmentController extends Controller
         if ($schoolId) {
             $data['school_id'] = $schoolId;
         }
+
+        $this->assertStudyGroupPeriod(
+            (string) $data['study_group_id'],
+            (string) $data['academic_year_id'],
+            $data['school_id'] ?? null,
+        );
 
         $exists = TeachingAssignment::where('teacher_id', $data['teacher_id'])
             ->where('study_group_id', $data['study_group_id'])
@@ -619,6 +649,15 @@ class TeachingAssignmentController extends Controller
         foreach ($assignments as $teacherId => $subjects) {
             foreach ($subjects as $subjectId => $groups) {
                 foreach ($groups as $studyGroupId => $hours) {
+                    // Jangan pernah menautkan penugasan/buku ke rombel periode lain.
+                    $groupValid = StudyGroup::whereKey($studyGroupId)
+                        ->where('academic_year_id', $decree->academic_year_id)
+                        ->when($decree->school_id, fn ($q) => $q->where('school_id', $decree->school_id))
+                        ->exists();
+                    if (! $groupValid) {
+                        continue;
+                    }
+
                     // Aturan: satu mapel hanya satu guru per rombel (kecuali Tahfidz & Hadits).
                     $subjectModel = $subjectModelCache[$subjectId] ??= Subject::find($subjectId);
                     if ($subjectModel && ! $subjectModel->allowsMultipleTeachers()) {

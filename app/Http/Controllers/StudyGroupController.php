@@ -17,15 +17,21 @@ class StudyGroupController extends Controller
 {
     public function index(Request $request, string $userId)
     {
-        $activeSemester = AcademicYear::where('is_active', true)->value('semester');
+        $activeAcademicYear = AcademicYear::where('is_active', true)->first();
+        $activeAcademicYearId = $activeAcademicYear?->id;
         $schoolId = $request->attributes->get('schoolContextId');
 
         $query = StudyGroup::with(['school', 'academicYear', 'gradeLevel', 'homeroomTeacher'])
             ->where('is_active', true);
 
-        // Filter cepat: semua tahun ajaran vs semester aktif (default).
+        // Default: hanya rombel pada TAHUN AJARAN aktif, bukan sekadar
+        // semua rombel yang kebetulan bersemester sama pada TA lama.
         if (! $request->boolean('semua_ta') && ! $request->filled('academic_year_id')) {
-            $query->whereHas('academicYear', fn ($q) => $q->where('semester', $activeSemester));
+            if ($activeAcademicYearId) {
+                $query->where('academic_year_id', $activeAcademicYearId);
+            } elseif ($activeAcademicYear) {
+                $query->whereHas('academicYear', fn ($q) => $q->where('semester', $activeAcademicYear->semester));
+            }
         }
 
         if ($request->filled('academic_year_id')) {
