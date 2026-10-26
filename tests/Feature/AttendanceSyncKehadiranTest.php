@@ -304,6 +304,18 @@ class AttendanceSyncKehadiranTest extends TestCase
             ->assertOk();
     }
 
+    public function test_rekap_absensi_wali_langsung_memilih_kelas_dan_menampilkan_tren(): void
+    {
+        $this->actingAs($this->wali);
+
+        $response = $this->get("/{$this->wali->id}/absensi/harian/recap")
+            ->assertOk()
+            ->assertSee('Tren Kehadiran Santri')
+            ->assertSee('Per Pekan')
+            ->assertSee($this->studyGroup->full_name)
+            ->assertSee("/{$this->wali->id}/absensi/harian/{$this->student->id}", false);
+    }
+
     public function test_sidebar_absensi_kelas_hanya_untuk_wali_dan_kewenangan(): void
     {
         // Guru mapel tanpa kewenangan: menu tidak tampil

@@ -501,6 +501,30 @@ class BankSoalTerpusatTest extends TestCase
         $this->get("/{$this->waka->id}/bank-soal-terpusat")->assertDontSee('TU — Cetak Paket Final');
     }
 
+    public function test_tu_dapat_mengedit_bank_internal_sekolah_sendiri(): void
+    {
+        $internal = BankSoal::create([
+            'school_id' => $this->schoolA->id,
+            'subject_id' => $this->mathA->id,
+            'fase' => 'D',
+            'jenjang' => 'smp',
+            'grade_level_id' => $this->gradeA->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'nama' => 'Bank Internal TU',
+            'jenis_soal' => 'pilihan_ganda',
+            'tingkat_kesulitan_target' => 'sedang',
+            'shared_scope' => 'internal_school',
+            'is_central' => false,
+            'owner_user_id' => $this->guruA->id,
+            'created_by' => $this->guruA->id,
+        ]);
+
+        $this->actingAs($this->tu)
+            ->get("/{$this->tu->id}/bank-soal/{$internal->id}/edit")
+            ->assertOk();
+    }
+
     // ─────────────────────────────────────────────────────────────
     // SIMILARITY: EXACT, NORMALISASI, FUZZY, TOKEN, HISTORIS
     // ─────────────────────────────────────────────────────────────

@@ -575,6 +575,13 @@
             {{-- TAB: MAPEL --}}
             {{-- ========================================== --}}
             @if($activeTab === 'mapel' && $activeBook)
+                @if($students->isNotEmpty() && $students->every(fn ($history) => ! $history->is_active))
+                    <div class="alert alert-warning border-0 rounded-0 mb-0 px-4 py-3" style="font-size:12px;">
+                        <i class="ri-information-line me-1"></i>
+                        Seluruh santri pada rombel ini berstatus <strong>nonaktif</strong> untuk tahun ajaran terpilih.
+                        Data nilai tetap ditampilkan, tetapi kolom input dikunci. Periksa status keanggotaan rombel bila nilai perlu diubah.
+                    </div>
+                @endif
                 <div class="px-4 py-3" style="background:var(--bs-tertiary-bg);border-bottom:1px solid var(--bs-border-color);">
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-2">
@@ -666,10 +673,9 @@
                             </thead>
                             <tbody>
                                 @forelse($students as $i => $history)
-                                    @continue(! $history->is_active)
                                     @php $student = $history->student; @endphp
                                     @php $existing = $nilaiMap[$student->id][$activeBook->id] ?? null; @endphp
-                                    <tr>
+                                    <tr data-inactive="{{ $history->is_active ? '0' : '1' }}">
                                         <td class="text-center text-muted fw-semibold" data-col="no">{{ $i + 1 }}</td>
                                         <td class="text-center" data-col="nis">{{ $student->nis ?? '-' }}</td>
                                         <td class="text-start" data-col="name">
@@ -680,6 +686,9 @@
                                                     </span>
                                                 </div>
                                                 <span class="fw-medium">{{ $student->name }}</span>
+                                                @if(! $history->is_active)
+                                                    <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:10px;">Nonaktif</span>
+                                                @endif
                                             </div>
                                         </td>
                                         @foreach($columns as $col)
@@ -1112,6 +1121,13 @@ document.addEventListener('DOMContentLoaded', function () {
     (function () {
         var table = document.getElementById('tab-mapel');
         if (!table) return;
+
+        // Santri nonaktif (mis. sudah pindah/riwayat rombel) tetap ditampilkan
+        // agar nilai yang ada di leger tidak terlihat kosong. Input dikunci.
+        table.querySelectorAll('tbody tr[data-inactive="1"] input').forEach(function (input) {
+            input.disabled = true;
+            input.readOnly = true;
+        });
 
         function allInputs() {
             return Array.prototype.slice.call(table.querySelectorAll('tbody input.sheet-input'));

@@ -438,6 +438,11 @@ return redirect()
             ->orderBy('name')
             ->get();
 
+        // Wali kelas langsung memakai kelasnya, tanpa harus memilih filter.
+        if (! $selectedStudyGroupId && ! $canFilterRombel && $studyGroups->isNotEmpty()) {
+            $selectedStudyGroupId = $studyGroups->first()->id;
+        }
+
         $startDate = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
         $endDate = $startDate->copy()->endOfMonth();
         $daysInMonth = $startDate->daysInMonth;
@@ -627,6 +632,11 @@ return redirect()
             ->orderBy('name')
             ->get();
 
+        // Wali kelas langsung memakai kelasnya, tanpa harus memilih filter.
+        if (! $selectedStudyGroupId && ! $canFilterRombel && $studyGroups->isNotEmpty()) {
+            $selectedStudyGroupId = $studyGroups->first()->id;
+        }
+
         // ── Build data rekap
         $rekapData = collect();
         if ($selectedStudyGroupId && $selectedAy) {
@@ -651,6 +661,7 @@ return redirect()
                     ->get();
 
                 $rekapData->push([
+                    'student_id' => $student->id,
                     'nis' => $student->nis,
                     'name' => $student->name,
                     'gender' => $student->gender,
@@ -660,6 +671,74 @@ return redirect()
                     'sakit' => $records->where('status', 'sakit')->count(),
                     'alpa' => $records->where('status', 'alpa')->count(),
                 ]);
+            }
+        }
+
+        // ── Tren kehadiran: mingguan pada bulan terpilih, bulanan pada semester.
+        $attendanceTrend = ['weekly' => [], 'monthly' => []];
+        if ($selectedStudyGroupId && $selectedAy) {
+            $trendRecords = AdminPresensiHarian::where('study_group_id', $selectedStudyGroupId)
+                ->where('academic_year_id', $selectedAy->id)
+                ->where('semester', $selectedSemester)
+                ->get();
+
+            $summarize = function ($rows): array {
+                $counts = [
+                    'hadir' => $rows->where('status', 'hadir')->count(),
+                    'terlambat' => $rows->where('status', 'terlambat')->count(),
+                    'izin' => $rows->where('status', 'izin')->count(),
+                    'sakit' => $rows->where('status', 'sakit')->count(),
+                    'alpa' => $rows->where('status', 'alpa')->count(),
+                ];
+                $total = array_sum($counts);
+                $counts['total'] = $total;
+                $counts['percent'] = $total > 0
+                    ? round((($counts['hadir'] + $counts['terlambat']) / $total) * 100, 1)
+                    : 0;
+
+                return $counts;
+            };
+
+            $monthStart = Carbon::create($selectedYear, $selectedMonth, 1)->startOfMonth();
+            $monthEnd = $monthStart->copy()->endOfMonth();
+            $cursor = $monthStart->copy()->startOfWeek(Carbon::MONDAY);
+            $weekNo = 1;
+
+            while ($cursor->lte($monthEnd)) {
+                $rangeStart = $cursor->copy()->lt($monthStart) ? $monthStart->copy() : $cursor->copy();
+                $rangeEnd = $cursor->copy()->endOfWeek(Carbon::SUNDAY);
+                if ($rangeEnd->gt($monthEnd)) {
+                    $rangeEnd = $monthEnd->copy();
+                }
+
+                $attendanceTrend['weekly'][] = array_merge([
+                    'label' => 'Pekan '.$weekNo,
+                    'range' => $rangeStart->format('j').'–'.$rangeEnd->format('j M'),
+                ], $summarize($trendRecords->filter(
+                    fn ($row) => $row->attendance_date->between($rangeStart, $rangeEnd)
+                )));
+
+                $cursor->addWeek();
+                $weekNo++;
+            }
+
+            $startYear = $selectedAy->start_date
+                ? Carbon::parse($selectedAy->start_date)->year
+                : (int) substr((string) $selectedAy->name, 0, 4);
+            $semesterMonths = $selectedSemester === 'genap' ? range(1, 6) : range(7, 12);
+
+            foreach ($semesterMonths as $month) {
+                $year = $selectedSemester === 'genap' ? $startYear + 1 : $startYear;
+                $monthStart = Carbon::create($year, $month, 1)->startOfMonth();
+                $monthEnd = $monthStart->copy()->endOfMonth();
+
+                $attendanceTrend['monthly'][] = array_merge([
+                    'label' => ucfirst($monthStart->locale('id')->monthName),
+                    'range' => $monthStart->format('M Y'),
+                ], $summarize($trendRecords->filter(
+                    fn ($row) => $row->attendance_date->year === $year
+                        && $row->attendance_date->month === $month
+                )));
             }
         }
 
@@ -682,7 +761,7 @@ return redirect()
         ]);
 
         return view('absensi-harian.recap', compact(
-            'userId', 'studyGroups', 'rekapData',
+            'userId', 'studyGroups', 'rekapData', 'attendanceTrend',
             'selectedStudyGroupId', 'selectedMonth', 'selectedYear',
             'selectedSemester', 'months', 'academicYears', 'selectedAyId', 'isArchiveAy',
         ));
@@ -736,6 +815,11 @@ return redirect()
             ->get();
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
+
+        // Wali kelas langsung memakai kelasnya, tanpa harus memilih filter.
+        if (! $selectedStudyGroupId && ! $canFilterRombel && $studyGroups->isNotEmpty()) {
+            $selectedStudyGroupId = $studyGroups->first()->id;
+        }
 
         $rekapData = collect();
         $studentRows = collect();

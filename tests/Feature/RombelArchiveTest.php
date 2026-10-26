@@ -184,6 +184,27 @@ class RombelArchiveTest extends TestCase
         );
     }
 
+    public function test_tab_mapel_menampilkan_santri_nonaktif_dan_nilai_arsip(): void
+    {
+        $this->actingAs($this->tu);
+
+        $request = $this->makeRequest([
+            'academic_year_id' => $this->ayOld->id,
+            'semester' => 'ganjil',
+            'tab' => 'mapel',
+            'admin_book_id' => $this->oldBook->id,
+        ]);
+        $this->app->instance('request', $request);
+
+        $view = app(NilaiKelasController::class)->sts($request, $this->tu->id, $this->rombelOld->id);
+        $html = $view->render();
+
+        $this->assertStringContainsString('Santri Arsip', $html);
+        $this->assertStringContainsString('Nonaktif', $html);
+        $this->assertStringContainsString('data-inactive="1"', $html);
+        $this->assertStringContainsString('value="88.00"', $html);
+    }
+
     public function test_kenaikan_kelas_tidak_menghapus_buku_dan_nilai_ta_lama(): void
     {
         // Data TA lama lengkap sebelum promosi.

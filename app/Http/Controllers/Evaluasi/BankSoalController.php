@@ -54,7 +54,18 @@ class BankSoalController extends Controller
             return;
         }
 
-        if (app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+        $access = app(\App\Services\KurikulumAccess::class);
+
+        if ($access->isKurikulumTeam($user)) {
+            return;
+        }
+
+        // TU/Kepala TU boleh mengelola bank internal pada satuan pendidikannya.
+        // Bank lintas sekolah/terpusat tetap tidak otomatis dapat diedit.
+        if ($access->isTataUsaha($user)
+            && $bank->shared_scope === 'internal_school'
+            && $bank->school_id
+            && (string) $bank->school_id === (string) $request->attributes->get('schoolContextId')) {
             return;
         }
 

@@ -60,7 +60,8 @@ class KurikulumAccess
     }
 
     /**
-     * Tata Usaha: menerima paket final & repositori soal (tanpa hak edit soal).
+     * Tata Usaha: menerima paket final & repositori soal; dapat mengelola
+     * bank soal internal pada satuan pendidikannya.
      */
     public function isTataUsaha(User $user): bool
     {

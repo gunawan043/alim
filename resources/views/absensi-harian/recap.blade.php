@@ -80,6 +80,30 @@
                         </div>
                     </form>
 
+                    {{-- Tren kehadiran --}}
+                    @if($selectedStudyGroupId)
+                        <div class="border rounded p-3 mb-4">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                                <div>
+                                    <h6 class="mb-1"><i class="ri-line-chart-line me-1"></i>Tren Kehadiran Santri</h6>
+                                    <p class="text-muted mb-0" style="font-size:0.8rem">
+                                        Persentase kehadiran (hadir + terlambat) per pekan pada bulan terpilih,
+                                        atau per bulan dalam semester.
+                                    </p>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Mode grafik kehadiran">
+                                    <button type="button" class="btn btn-primary active" data-trend-mode="weekly">
+                                        Per Pekan
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" data-trend-mode="monthly">
+                                        Per Bulan
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="attendanceTrendChart" style="min-height:300px"></div>
+                        </div>
+                    @endif
+
                     {{-- Table --}}
                     @if($selectedStudyGroupId)
                         <div class="table-responsive">
@@ -115,7 +139,7 @@
                                             <td>
                                                 <a href="{{ route('user.absensi.harian.show', [
                                                     'userId' => $userId,
-                                                    'studentUuid' => \App\Models\StudentClassHistory::where('student_id', $row['nis'] ?? '')->first()?->student_id ?? '',
+                                                    'studentUuid' => $row['student_id'] ?? '',
                                                 ]) }}">
                                                     {{ $row['name'] }}
                                                 </a>
@@ -156,4 +180,79 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('script')
+    <script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const chartEl = document.getElementById('attendanceTrendChart');
+            if (!chartEl || !window.ApexCharts) return;
+
+            const trend = @json($attendanceTrend ?? ['weekly' => [], 'monthly' => []]);
+            let currentRows = trend.weekly || [];
+
+            const chart = new ApexCharts(chartEl, {
+                chart: {
+                    type: 'line',
+                    height: 300,
+                    toolbar: { show: false },
+                    fontFamily: 'inherit',
+                },
+                series: [{
+                    name: 'Kehadiran (%)',
+                    data: currentRows.map(row => Number(row.percent) || 0),
+                }],
+                stroke: { curve: 'smooth', width: 3 },
+                colors: ['#0ab39c'],
+                markers: { size: 4, hover: { size: 6 } },
+                dataLabels: { enabled: true, formatter: value => value + '%' },
+                xaxis: { categories: currentRows.map(row => row.label) },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    labels: { formatter: value => Math.round(value) + '%' },
+                },
+                grid: { strokeDashArray: 4, borderColor: '#eef2f7' },
+                tooltip: {
+                    custom: function ({ dataPointIndex }) {
+                        const row = currentRows[dataPointIndex] || {};
+                        return '<div class="p-2" style="font-size:12px">'
+                            + '<div class="fw-semibold mb-1">' + (row.label || '') + (row.range ? ' (' + row.range + ')' : '') + '</div>'
+                            + '<div>Hadir: <strong>' + (row.hadir || 0) + '</strong> &middot; Terlambat: <strong>' + (row.terlambat || 0) + '</strong></div>'
+                            + '<div>Izin: <strong>' + (row.izin || 0) + '</strong> &middot; Sakit: <strong>' + (row.sakit || 0) + '</strong> &middot; Alpa: <strong>' + (row.alpa || 0) + '</strong></div>'
+                            + '<div class="mt-1">Total hari tercatat: <strong>' + (row.total || 0) + '</strong></div>'
+                            + '<div class="fw-semibold text-success">Kehadiran: ' + (row.percent || 0) + '%</div>'
+                            + '</div>';
+                    },
+                },
+                noData: { text: 'Belum ada data absensi pada periode ini.' },
+            });
+
+            function renderMode(mode) {
+                currentRows = trend[mode] || [];
+                chart.updateOptions({
+                    xaxis: { categories: currentRows.map(row => row.label) },
+                });
+                chart.updateSeries([{
+                    name: 'Kehadiran (%)',
+                    data: currentRows.map(row => Number(row.percent) || 0),
+                }]);
+            }
+
+            document.querySelectorAll('[data-trend-mode]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    document.querySelectorAll('[data-trend-mode]').forEach(function (item) {
+                        item.classList.remove('active', 'btn-primary');
+                        item.classList.add('btn-outline-primary');
+                    });
+                    this.classList.add('active', 'btn-primary');
+                    this.classList.remove('btn-outline-primary');
+                    renderMode(this.dataset.trendMode);
+                });
+            });
+
+            chart.render();
+        });
+    </script>
 @endsection
