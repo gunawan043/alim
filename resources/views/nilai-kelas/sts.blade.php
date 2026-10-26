@@ -13,6 +13,11 @@
             $l = strtolower($name);
             return preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan hadits|bahasa arab|b\. ?arab|qowaid|ta[\'"]?bir|sharaf)/i', $l);
         };
+        // Roster efektif: pada TA aktif, kelas yang seluruh riwayatnya sudah
+        // nonaktif tetap diperlakukan sebagai roster berjalan (kasus data migrasi).
+        $fallbackRoster = ! ($isArchiveAy ?? false)
+            && $students->isNotEmpty()
+            && ! $students->contains(fn ($history) => $history->is_active);
         $autosaveUrl = route('user.schools.nilai-kelas.sts.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]);
     @endphp
 
@@ -575,11 +580,11 @@
             {{-- TAB: MAPEL --}}
             {{-- ========================================== --}}
             @if($activeTab === 'mapel' && $activeBook)
-                @if($students->isNotEmpty() && $students->every(fn ($history) => ! $history->is_active))
+                @if($students->isNotEmpty() && $students->every(fn ($history) => ! $history->is_active) && ! $fallbackRoster)
                     <div class="alert alert-warning border-0 rounded-0 mb-0 px-4 py-3" style="font-size:12px;">
                         <i class="ri-information-line me-1"></i>
-                        Seluruh santri pada rombel ini berstatus <strong>nonaktif</strong> untuk tahun ajaran terpilih.
-                        Data nilai tetap ditampilkan, tetapi kolom input dikunci. Periksa status keanggotaan rombel bila nilai perlu diubah.
+                        Data ini berasal dari arsip tahun ajaran lama. Nilai tetap ditampilkan sebagai referensi
+                        dan kolom input dikunci.
                     </div>
                 @endif
                 <div class="px-4 py-3" style="background:var(--bs-tertiary-bg);border-bottom:1px solid var(--bs-border-color);">
@@ -675,7 +680,7 @@
                                 @forelse($students as $i => $history)
                                     @php $student = $history->student; @endphp
                                     @php $existing = $nilaiMap[$student->id][$activeBook->id] ?? null; @endphp
-                                    <tr data-inactive="{{ $history->is_active ? '0' : '1' }}">
+                                    <tr data-inactive="{{ (($isArchiveAy ?? false) || (! $history->is_active && ! $fallbackRoster)) ? '1' : '0' }}">
                                         <td class="text-center text-muted fw-semibold" data-col="no">{{ $i + 1 }}</td>
                                         <td class="text-center" data-col="nis">{{ $student->nis ?? '-' }}</td>
                                         <td class="text-start" data-col="name">
@@ -686,7 +691,7 @@
                                                     </span>
                                                 </div>
                                                 <span class="fw-medium">{{ $student->name }}</span>
-                                                @if(! $history->is_active)
+                                                @if(! $history->is_active && ! $fallbackRoster)
                                                     <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:10px;">Nonaktif</span>
                                                 @endif
                                             </div>

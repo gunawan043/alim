@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\BulkPromotionController;
+use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Http\Controllers\StudentController;
 use App\Models\AcademicYear;
@@ -203,6 +204,85 @@ class RombelArchiveTest extends TestCase
         $this->assertStringContainsString('Nonaktif', $html);
         $this->assertStringContainsString('data-inactive="1"', $html);
         $this->assertStringContainsString('value="88.00"', $html);
+    }
+
+    public function test_data_nilai_default_ta_aktif_dan_hanya_kelas_berpenghuni(): void
+    {
+        // Kelas aktif dengan buku + santri aktif.
+        $activeBook = TeacherAdminBook::create([
+            'teacher_id' => $this->oldBook->teacher_id,
+            'subject_id' => $this->oldBook->subject_id,
+            'study_group_id' => $this->rombelNew->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ayActive->id,
+            'semester' => 'ganjil',
+            'is_active' => true,
+        ]);
+
+        // Kelas duplikat tanpa penghuni: tidak boleh tampil di Data Nilai.
+        $emptyGroup = StudyGroup::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ayActive->id,
+            'grade_level_id' => $this->rombelNew->grade_level_id,
+            'name' => '6Z',
+            'code' => '6Z',
+            'capacity' => 30,
+            'is_active' => true,
+        ]);
+        TeacherAdminBook::create([
+            'teacher_id' => $this->oldBook->teacher_id,
+            'subject_id' => $this->oldBook->subject_id,
+            'study_group_id' => $emptyGroup->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ayActive->id,
+            'semester' => 'ganjil',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->tu);
+        $request = $this->makeRequest();
+        $view = app(NilaiController::class)->index($request, $this->tu->id);
+        $data = $view->getData();
+
+        $this->assertSame($this->ayActive->id, $data['selectedAcademicYearId']);
+        $this->assertSame('ganjil', $data['selectedSemester']);
+        $this->assertTrue($data['kelasList']->contains(fn ($row) => $row['study_group']->id === $this->rombelNew->id));
+        $this->assertFalse($data['kelasList']->contains(fn ($row) => $row['study_group']->id === $emptyGroup->id));
+    }
+
+    public function test_tab_mapel_ta_aktif_tanpa_riwayat_aktif_tetap_dapat_diisi(): void
+    {
+        // Simulasikan kelas yang seluruh riwayat TA aktifnya nonaktif (data migrasi),
+        // tetapi buku dan nilainya sudah ada.
+        $this->actingAs($this->tu);
+
+        StudentClassHistory::where('student_id', $this->student->id)
+            ->where('academic_year_id', $this->ayActive->id)
+            ->update(['is_active' => false, 'leave_date' => '2026-10-15']);
+
+        $activeBook = TeacherAdminBook::create([
+            'teacher_id' => $this->oldBook->teacher_id,
+            'subject_id' => $this->oldBook->subject_id,
+            'study_group_id' => $this->rombelNew->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ayActive->id,
+            'semester' => 'ganjil',
+            'is_active' => true,
+        ]);
+
+        $request = $this->makeRequest([
+            'academic_year_id' => $this->ayActive->id,
+            'semester' => 'ganjil',
+            'tab' => 'mapel',
+            'admin_book_id' => $activeBook->id,
+        ]);
+        $this->app->instance('request', $request);
+
+        $view = app(NilaiKelasController::class)->sts($request, $this->tu->id, $this->rombelNew->id);
+        $html = $view->render();
+
+        $this->assertStringContainsString('data-inactive="0"', $html);
+        $this->assertStringNotContainsString('Seluruh santri pada rombel ini berstatus', $html);
     }
 
     public function test_kenaikan_kelas_tidak_menghapus_buku_dan_nilai_ta_lama(): void

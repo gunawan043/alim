@@ -96,7 +96,7 @@
                             <h3 class="fw-bold ff-secondary mb-0">{{ number_format($totalSiswa) }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Santri aktif dari kelas terdaftar</p>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Santri pada kelas terdaftar (TA ini)</p>
                 </div>
             </div>
         </div>

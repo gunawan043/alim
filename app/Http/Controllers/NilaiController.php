@@ -149,23 +149,44 @@ class NilaiController extends Controller
 
         $kelasList = $rawBooks
             ->groupBy('study_group_id')
-            ->map(fn ($books, $key) => [
-                'study_group' => $books->first()->studyGroup,
-                'academic_year' => $books->first()->academicYear,
-                'semester' => $books->first()->semester,
-                'total_mapel' => $books->pluck('subject_id')->unique()->count(),
-                'total_siswa' => StudentClassHistory::where('study_group_id', $books->first()->study_group_id)
-                    ->where('academic_year_id', $selectedAcademicYearId)
-                    ->when(
-                        $selectedAcademicYearId && (string) $selectedAcademicYearId === (string) $activeAcademicYearId,
-                        fn ($q) => $q->where('is_active', true)
-                    )->count(),
-                'first_book' => $books->first(),
-            ])
+            ->map(function ($books, $key) use ($selectedAcademicYearId) {
+                $book = $books->first();
+                $historyQuery = StudentClassHistory::query()
+                    ->where('study_group_id', $book->study_group_id)
+                    ->where('academic_year_id', $selectedAcademicYearId);
+
+                // Roster normal = santri aktif. Bila satu kelas belum punya status
+                // aktif pada TA ini (data hasil migrasi/perpindahan), tampilkan
+                // riwayatnya sebagai roster efektif agar kelas tidak hilang.
+                $activeCount = (clone $historyQuery)->where('is_active', true)->count();
+                $totalSiswa = $activeCount > 0
+                    ? $activeCount
+                    : (clone $historyQuery)->count();
+
+                return [
+                    'study_group' => $book->studyGroup,
+                    'academic_year' => $book->academicYear,
+                    'semester' => $book->semester,
+                    'total_mapel' => $books->pluck('subject_id')->unique()->count(),
+                    'total_siswa' => $totalSiswa,
+                    'first_book' => $book,
+                ];
+            })
+            // Hanya kelas yang benar-benar memiliki roster pada TA terpilih.
+            // Kelas duplikat tanpa santri tidak ditampilkan di halaman Data Nilai.
+            ->filter(fn ($k) => $k['total_siswa'] > 0)
             ->when($selectedGradeLevelId, fn ($col) => $col->filter(fn ($k) => $k['study_group']->gradeLevel?->id === $selectedGradeLevelId
             ))
             ->sortBy(fn ($k) => $k['study_group']->gradeLevel?->level ?? 99)
             ->sortBy(fn ($k) => $k['study_group']->name)
+            ->values();
+
+        // Filter tingkat hanya menampilkan tingkat yang benar-benar punya kelas berisi santri.
+        $gradeLevelIds = $kelasList
+            ->map(fn ($k) => $k['study_group']->gradeLevel)
+            ->filter()
+            ->unique('id')
+            ->sortBy('level')
             ->values();
 
         return view('nilai.index', compact(
