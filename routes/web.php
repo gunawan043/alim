@@ -2013,6 +2013,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('mutations-out')->name('mutations-out.')->group(function () {
                 Route::get('/', [StudentMutationOutController::class, 'index'])->name('index');
                 Route::get('/create', [StudentMutationOutController::class, 'create'])->name('create');
+                Route::post('/preview-pdf', [StudentMutationOutController::class, 'previewPdf'])->name('preview-pdf');
                 Route::post('/', [StudentMutationOutController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationOutController::class, 'findStudent'])->name('find-student');
                 Route::get('/hijri-convert', [StudentMutationOutController::class, 'hijriConvert'])->name('hijri-convert');
@@ -2029,6 +2030,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('mutations-lulus')->name('mutations-lulus.')->group(function () {
                 Route::get('/', [StudentMutationOutController::class, 'index'])->name('index');
                 Route::get('/create', [StudentMutationOutController::class, 'create'])->name('create');
+                Route::post('/preview-pdf', [StudentMutationOutController::class, 'previewPdf'])->name('preview-pdf');
                 Route::post('/', [StudentMutationOutController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationOutController::class, 'findStudent'])->name('find-student');
                 Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
@@ -2044,6 +2046,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('mutations-do')->name('mutations-do.')->group(function () {
                 Route::get('/', [StudentMutationOutController::class, 'index'])->name('index');
                 Route::get('/create', [StudentMutationOutController::class, 'create'])->name('create');
+                Route::post('/preview-pdf', [StudentMutationOutController::class, 'previewPdf'])->name('preview-pdf');
                 Route::post('/', [StudentMutationOutController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationOutController::class, 'findStudent'])->name('find-student');
                 Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');

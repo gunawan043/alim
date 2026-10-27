@@ -351,6 +351,41 @@ class PesertaDidikP0Test extends TestCase
         }
     }
 
+    public function test_form_mutasi_keluar_menampilkan_santri_dan_preview_pdf(): void
+    {
+        // Data gender sekolah tidak konsisten dengan data santri; santri tetap harus tampil.
+        $this->schoolA->forceFill(['school_gender' => 'putri'])->save();
+
+        $this->actingAs($this->user)
+            ->get("/{$this->user->id}/mutations-out/create")
+            ->assertOk()
+            ->assertSee('Santri Uji P0')
+            ->assertSee('mutationPdfPreview');
+
+        $response = $this->actingAs($this->user)->post("/{$this->user->id}/mutations-out/preview-pdf", [
+            'school_id' => $this->schoolA->id,
+            'out_type' => 'mutation',
+            'student_name' => 'Santri Uji P0',
+            'student_nisn' => '888000111',
+            'student_gender' => 'L',
+            'student_current_class' => '7A',
+            'student_birth_place' => 'Mataram',
+            'student_birth_date' => '2012-01-01',
+            'letter_number' => '001/TEST/2026',
+            'established_city' => 'Mataram',
+            'established_date' => '2026-10-27',
+            'head_name' => 'Kepala Uji',
+            'head_title' => 'Kepala Sekolah',
+            'head_nupy' => 'NUPY-001',
+            'destination_school_name' => 'Sekolah Tujuan',
+            'destination_school_address' => 'Alamat Tujuan',
+            'reason' => 'Pindah domisili',
+        ]);
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
     public function test_halaman_pindah_santri_tampil_dengan_statistik(): void
     {
         $this->actingAs($this->user)

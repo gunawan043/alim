@@ -7,6 +7,7 @@ use App\Models\GtkEmployment;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMutationOut;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -116,17 +117,26 @@ class StudentMutationOutController extends Controller
         $defaultDate = now()->format('Y-m-d');
         $defaultDateHijri = $this->toHijri($defaultDate);
 
-        // Load all active students grouped by class — no AJAX needed
+        // Load all active students grouped by class — no AJAX needed.
+        // Filter gender sekolah bersifat lunak: bila data gender tidak konsisten
+        // (mis. sekolah putra tetapi santri tercatat P), santri tetap ditampilkan
+        // agar form mutasi tidak kosong.
         $studentQuery = Student::with(['currentClassHistory.studyGroup'])
             ->where('status', 'active');
         if ($schoolContextId) {
             $studentQuery->where('school_id', $schoolContextId);
         }
-        if ($schoolGender) {
-            $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
-        }
 
         $allStudents = $studentQuery->orderBy('name')->get();
+
+        if ($schoolGender) {
+            $preferredGender = $schoolGender === 'putra' ? 'L' : 'P';
+            $genderFiltered = $allStudents->where('gender', $preferredGender);
+
+            if ($genderFiltered->isNotEmpty()) {
+                $allStudents = $genderFiltered->values();
+            }
+        }
         $groupedStudents = [];
         foreach ($allStudents as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
@@ -381,6 +391,58 @@ class StudentMutationOutController extends Controller
 
         return redirect()->route($this->indexRouteName($outType), ['userId' => $userId])
             ->with('success', 'Data '.$this->typeLabel($outType).' berhasil dihapus.');
+    }
+
+    public function previewPdf(Request $request)
+    {
+        $schoolContextId = $request->attributes->get('schoolContextId');
+        $schoolId = $schoolContextId ?: $request->input('school_id');
+        $school = $schoolId ? School::find($schoolId) : null;
+        abort_unless($school, 422, 'Satuan pendidikan tidak ditemukan untuk preview.');
+
+        $mutation = new StudentMutationOut($request->except([
+            '_token', '_method', 'submit_now', 'student_id', 'school_id',
+        ]));
+
+        $mutation->school_id = $school->id;
+        $mutation->out_type = in_array($request->input('out_type'), ['mutation', 'graduation', 'dropout'], true)
+            ? $request->input('out_type')
+            : ($this->isLulusRoute($request) ? 'graduation' : ($this->isDoRoute($request) ? 'dropout' : 'mutation'));
+        $mutation->status = 'draft';
+        $mutation->requested_by = Auth::id();
+        $mutation->student_birth_date = $request->filled('student_birth_date')
+            ? Carbon::parse($request->input('student_birth_date'))
+            : null;
+        $mutation->established_date = $request->filled('established_date')
+            ? Carbon::parse($request->input('established_date'))
+            : now();
+        $mutation->setRelation('school', $school);
+
+        $html = view('mutations-out.print.pdf', [
+            'mutation' => $mutation,
+            'userId' => $request->route('userId'),
+            'school' => $school,
+        ])->render();
+
+        $dompdf = new Dompdf;
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4');
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Preview-Surat-Mutasi.pdf"',
+        ]);
+    }
+
+    private function isLulusRoute(Request $request): bool
+    {
+        return str_contains((string) $request->route()?->getName(), 'mutations-lulus');
+    }
+
+    private function isDoRoute(Request $request): bool
+    {
+        return str_contains((string) $request->route()?->getName(), 'mutations-do');
     }
 
     public function print(string $userId, string $mutationUuid)

@@ -86,7 +86,7 @@
             </div>
         </div>
         <div class="col-auto">
-            <a href="{{ route("user.{$routePrefix}.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
+            <a href="{{ route("user.{$routePrefix}.index", ['userId' => $userId]) }}" class="btn btn-light btn-sm">
                 <i class="ri-arrow-left-line me-1"></i>Kembali
             </a>
         </div>

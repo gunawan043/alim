@@ -94,7 +94,8 @@
     </div>
 @endif
 
-<form method="POST" action="{{ route("user.{$routePrefix}.store", ['userId' => $userId]) }}" id="form-out">
+<form method="POST" action="{{ route("user.{$routePrefix}.store", ['userId' => $userId]) }}"
+      id="form-out" data-preview-url="{{ route("user.{$routePrefix}.preview-pdf", ['userId' => $userId]) }}">
     @csrf
     <input type="hidden" name="submit_now" value="0" id="submit-flag">
 
@@ -288,8 +289,16 @@
                     <h5 class="mb-0"><i class="ri-file-text-line me-1"></i>Preview Surat</h5>
                     <span id="out-type-badge" class="out-type-badge mutation">Mutasi Keluar</span>
                 </div>
-                <div class="card-body p-0">
-                    <div class="letter-preview" id="letter-preview">
+                <div class="card-body p-2">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <small class="text-muted"><i class="ri-eye-line me-1"></i>Preview PDF surat</small>
+                        <span class="badge bg-info-subtle text-info">PDF</span>
+                    </div>
+                    <div class="border rounded overflow-hidden bg-light" style="height:720px;">
+                        <iframe id="mutationPdfPreview" title="Preview PDF surat mutasi"
+                                style="width:100%;height:100%;border:0;background:#fff;"></iframe>
+                    </div>
+                    <div class="letter-preview" id="letter-preview" style="display:none;">
 
                         {{-- Header --}}
                         <div class="">
@@ -464,6 +473,40 @@
         sqs('lp-parent-job').textContent = qs('f-parent-job').value || '-';
         sqs('lp-parent-addr').textContent = qs('f-parent-addr').value || '-';
         sqs('lp-parent-phone').textContent = qs('f-parent-phone').value || '-';
+
+        schedulePdfPreview();
+    }
+
+    var pdfPreviewTimer = null;
+    var pdfPreviewObjectUrl = null;
+    function schedulePdfPreview() {
+        clearTimeout(pdfPreviewTimer);
+        pdfPreviewTimer = setTimeout(refreshPdfPreview, 350);
+    }
+
+    function refreshPdfPreview() {
+        var form = document.getElementById('form-out');
+        var frame = document.getElementById('mutationPdfPreview');
+        if (!form || !frame || !form.dataset.previewUrl) return;
+
+        fetch(form.dataset.previewUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/pdf',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new FormData(form),
+        }).then(function(response) {
+            if (!response.ok) throw new Error('Preview PDF gagal dimuat.');
+            return response.blob();
+        }).then(function(blob) {
+            if (pdfPreviewObjectUrl) URL.revokeObjectURL(pdfPreviewObjectUrl);
+            pdfPreviewObjectUrl = URL.createObjectURL(blob);
+            frame.src = pdfPreviewObjectUrl;
+        }).catch(function(error) {
+            console.warn(error);
+        });
     }
 
     function formatDate(raw) {
@@ -549,6 +592,9 @@
         qs('s-address').value = s.address || '';
         qs('s-prev-school').value = s.previous_school || '';
         qs('s-class').value = s['class'] || '';
+
+        // PDF preview ikut berubah saat santri dipilih.
+        syncPreview();
     };
 
     function clearStudent() {
@@ -575,6 +621,8 @@
         qs('s-address').value = '';
         qs('s-prev-school').value = '';
         qs('s-class').value = '';
+
+        syncPreview();
     }
 
     // ── Toggle out type ─────────────────────────────────────────
