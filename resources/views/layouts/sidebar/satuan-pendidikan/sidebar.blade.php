@@ -61,7 +61,7 @@
             ->where('is_active', true)
             ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
             ->with(['gradeLevel', 'homeroomTeacher'])
-            ->orderBy('name')
+            ->orderedByGrade()
             ->get()
         : collect();
 
@@ -555,8 +555,14 @@
     @endif
 
     @if($showAll || $isAdminTU || $isStruktural || $isKoorKesiswa || $isTimKesiswaan)
+    @php
+        $rombelByGrade = $sidebarStudyGroups->groupBy(
+            fn ($sg) => $sg->gradeLevel?->name ?? 'Tanpa Tingkat'
+        );
+    @endphp
     <li class="nav-item">
-        <a class="nav-link" href="#tu_rombel_list" data-bs-toggle="collapse" role="button"
+        <a class="nav-link{{ $currentRoute === 'user.students.index' && ! request('study_group_id') ? ' active' : '' }}"
+           href="#tu_rombel_list" data-bs-toggle="collapse" role="button"
            aria-expanded="{{ $currentRoute === 'user.students.index' && request('study_group_id') ? 'true' : 'false' }}"
            aria-controls="tu_rombel_list">
             <i class="ri-list-check-2"></i><span>Santri per Rombel</span>
@@ -564,17 +570,30 @@
         <div class="collapse{{ $currentRoute === 'user.students.index' && request('study_group_id') ? ' show' : '' }}"
              id="tu_rombel_list">
             <ul class="nav nav-sm flex-column ps-2">
-                @forelse($sidebarStudyGroups as $sg)
-                    <li class="nav-item">
-                        <a class="nav-link{{ $currentRoute === 'user.students.index' && request('study_group_id') == $sg->id ? ' active' : '' }}"
-                           href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $sg->id]) }}"
-                           style="font-size:0.82rem">
-                            {{ $sg->full_name }}
-                            @if($sg->homeroomTeacher)
-                                <span class="text-muted ms-1" style="font-size:0.72rem">({{ $sg->homeroomTeacher->name }})</span>
-                            @endif
-                        </a>
+                <li class="nav-item">
+                    <a class="nav-link{{ $currentRoute === 'user.students.index' && ! request('study_group_id') ? ' active' : '' }}"
+                       href="{{ route('user.students.index', ['userId' => $userId]) }}"
+                       style="font-size:0.82rem">
+                        <i class="ri-team-line me-1"></i>Semua Santri
+                    </a>
+                </li>
+                @forelse($rombelByGrade as $gradeName => $gradeGroups)
+                    <li class="nav-item mt-1">
+                        <span class="nav-link text-uppercase text-muted fw-semibold"
+                              style="font-size:0.64rem;letter-spacing:.06em;padding:.25rem .75rem">
+                            {{ $gradeName }}
+                        </span>
                     </li>
+                    @foreach($gradeGroups as $sg)
+                        <li class="nav-item">
+                            <a class="nav-link{{ $currentRoute === 'user.students.index' && request('study_group_id') == $sg->id ? ' active' : '' }}"
+                               href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $sg->id]) }}"
+                               title="{{ $sg->full_name }}{{ $sg->homeroomTeacher ? ' — Wali: '.$sg->homeroomTeacher->name : '' }}"
+                               style="font-size:0.82rem">
+                                {{ $sg->full_name }}
+                            </a>
+                        </li>
+                    @endforeach
                 @empty
                     <li class="nav-item">
                         <span class="nav-link text-muted" style="font-size:0.8rem">Belum ada rombel</span>
@@ -1105,24 +1124,6 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($showAll || $isKepala || (($isKoorLab || $isKoorSarpras) && menu_allowed('sarpras')) || $isKepalaTU)
     <li class="menu-title"><span>Laboratorium &amp; Sarpras</span></li>
-
-    @if($showAll || $isKepala || $isKoorLab || $isKoorSarpras)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.dashboard']) ? ' active' : '' }}"
-           href="{{ $sarprasDashboardRoute }}">
-            <i class="ri-dashboard-2-line"></i><span>Dashboard Sarpras</span>
-        </a>
-    </li>
-    @endif
-
-    @if($showAll || $isKepala || $isKoorSarpras)
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.agenda']) ? ' active' : '' }}"
-           href="{{ route('sarpras.agenda.index') }}">
-            <i class="ri-calendar-task-line"></i><span>Agenda Kerja Sarpras</span>
-        </a>
-    </li>
-    @endif
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) ? ' active' : '' }}"
