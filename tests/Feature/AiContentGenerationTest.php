@@ -359,7 +359,7 @@ class AiContentGenerationTest extends TestCase
         }
     }
 
-    public function test_simpan_draft_soal_belum_approved_ditolak(): void
+    public function test_simpan_draft_soal_belum_approved_oleh_pengguna_lain_ditolak(): void
     {
         $record = AiGeneratedContent::create([
             'school_id' => $this->school->id,
@@ -374,13 +374,18 @@ class AiContentGenerationTest extends TestCase
             'created_by' => $this->admin->id,
         ]);
 
+        $other = User::create([
+            'name' => 'Guru Lain AI', 'email' => 'guru.lain.ai@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+
         $request = Request::create('/save-bank', 'POST');
         $request->attributes->set('schoolContextId', $this->school->id);
-        $request->setUserResolver(fn () => $this->admin);
+        $request->setUserResolver(fn () => $other);
 
         try {
-            app(AiContentController::class)->saveToBank($request, $this->admin->id, $record->id);
-            $this->fail('Draft belum approved seharusnya ditolak.');
+            app(AiContentController::class)->saveToBank($request, $other->id, $record->id);
+            $this->fail('Pengguna lain tidak boleh menyimpan draft yang belum disetujui.');
         } catch (HttpException $e) {
             $this->assertSame(403, $e->getStatusCode());
         }
@@ -456,7 +461,8 @@ class AiContentGenerationTest extends TestCase
         $this->actingAs($this->admin)
             ->get("/{$this->admin->id}/kurikulum/ai/{$record->id}")
             ->assertOk()
-            ->assertSee('Simpan Perubahan Butir');
+            ->assertSee('Simpan Perubahan Butir')
+            ->assertSee('Gunakan di Bank Soal');
     }
 
     public function test_simpan_rpm_ditolak_saat_periode_terkunci(): void
@@ -494,6 +500,54 @@ class AiContentGenerationTest extends TestCase
         }
 
         $this->assertSame(0, PerangkatPembelajaran::count());
+    }
+
+    public function test_pembuat_non_tim_kurikulum_mendapat_tombol_gunakan_soal(): void
+    {
+        $creator = User::create([
+            'name' => 'Guru Pembuat AI', 'email' => 'guru.pembuat.ai@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+
+        DB::table('gtk_employments')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $creator->id,
+            'school_id' => $this->school->id,
+            'status_kepegawaian' => 'GTY',
+            'jenis_gtk' => 'Pendidik / Guru',
+            'jabatan' => 'Guru Mapel',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $record = AiGeneratedContent::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester' => 'ganjil',
+            'type' => 'soal',
+            'subject_id' => $this->subject->id,
+            'grade_level_id' => $this->grade->id,
+            'title' => 'Draft Soal Guru',
+            'content' => ['items' => [[
+                'pertanyaan' => 'Soal guru?',
+                'bentuk' => 'pg',
+                'pilihan' => ['A' => 'A', 'B' => 'B', 'C' => 'C', 'D' => 'D'],
+                'jawaban' => 'A',
+            ]]],
+            'status' => 'draft',
+            'created_by' => $creator->id,
+        ]);
+
+        $request = Request::create('/kurikulum/ai/'.$record->id, 'GET');
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $creator);
+        $this->actingAs($creator);
+
+        $view = app(AiContentController::class)->show($request, $creator->id, $record->id);
+        $html = $view->render();
+
+        $this->assertStringContainsString('Gunakan di Bank Soal', $html);
+        $this->assertStringContainsString('Draft ini siap digunakan', $html);
     }
 
     public function test_draft_tidak_dapat_dilihat_oleh_guru_lain(): void

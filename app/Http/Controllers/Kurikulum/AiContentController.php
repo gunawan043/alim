@@ -228,13 +228,21 @@ class AiContentController extends Controller
             ? \App\Models\CurriculumProfile::find($record->curriculum_profile_id)
             : $this->profiles->resolve($record->school_id, $record->academic_year_id);
         $curriculumLabels = $this->profiles->labels($curriculumProfile);
+
+        // Pembuat draft dan tim kurikulum boleh langsung membawa draft ke
+        // modul tujuan. Hasilnya tetap dibuat sebagai dokumen draft.
+        $canUseDraft = $record->isApproved()
+            || $isTeam
+            || (string) $record->created_by === (string) $request->user()?->id;
         $canSaveProject = $record->type === 'projek'
-            && $record->isApproved()
+            && $canUseDraft
             && ! $record->saved_project_id
             && is_array($record->content)
             && ! empty($record->content);
 
-        return view('kurikulum.ai.show', compact('userId', 'record', 'isTeam', 'curriculumProfile', 'curriculumLabels', 'canSaveProject'));
+        return view('kurikulum.ai.show', compact(
+            'userId', 'record', 'isTeam', 'curriculumProfile', 'curriculumLabels', 'canUseDraft', 'canSaveProject'
+        ));
     }
 
     public function edit(Request $request, string $userId, string $id)
@@ -420,7 +428,6 @@ class AiContentController extends Controller
         $this->authorizeManage($request, $record);
 
         abort_unless($record->type === 'soal', 404, 'Draft ini bukan soal.');
-        abort_unless($record->isApproved(), 403, 'Setujui draft terlebih dahulu sebelum menyimpan ke Bank Soal.');
         abort_if($record->saved_bank_id, 409, 'Draft ini sudah disimpan ke Bank Soal.');
 
         $content = is_array($record->content) ? $record->content : [];
@@ -563,7 +570,6 @@ class AiContentController extends Controller
         $this->authorizeManage($request, $record);
 
         abort_unless($record->type === 'rpm', 404, 'Draft ini bukan RPM.');
-        abort_unless($record->isApproved(), 403, 'Setujui draft terlebih dahulu sebelum menyimpan sebagai RPM.');
         abort_if($record->saved_perangkat_id, 409, 'Draft ini sudah disimpan sebagai RPM.');
 
         $content = is_array($record->content) ? $record->content : [];
@@ -678,7 +684,6 @@ class AiContentController extends Controller
         $this->authorizeManage($request, $record);
 
         abort_unless($record->type === 'projek', 404, 'Draft ini bukan projek.');
-        abort_unless($record->isApproved(), 403, 'Setujui draft terlebih dahulu sebelum menyimpan sebagai projek.');
         abort_if($record->saved_project_id, 409, 'Draft ini sudah disimpan sebagai projek.');
         abort_unless($record->school_id && $record->academic_year_id, 422, 'Konteks draft projek tidak lengkap.');
 

@@ -22,8 +22,14 @@
             && ! $record->saved_at
             && $record->status === 'draft'
             && ($isTeam || (string) $record->created_by === (string) auth()->id());
-        $canSaveBank = $record->type === 'soal' && $record->isApproved() && ! $record->saved_bank_id && ! empty($items);
-        $canSaveRpm = $record->type === 'rpm' && $record->isApproved() && ! $record->saved_perangkat_id && is_array($content) && ! empty($content);
+        $canUseDraft = $canUseDraft ?? (
+            $record->isApproved()
+            || (string) $record->created_by === (string) auth()->id()
+            || $isTeam
+        );
+        $canSaveBank = $record->type === 'soal' && $canUseDraft && ! $record->saved_bank_id && ! empty($items);
+        $canSaveRpm = $record->type === 'rpm' && $canUseDraft && ! $record->saved_perangkat_id && is_array($content) && ! empty($content);
+        $canSaveProject = $record->type === 'projek' && $canUseDraft && ! $record->saved_project_id && is_array($content) && ! empty($content);
     @endphp
 
     @component('components.breadcrumb')
@@ -84,7 +90,7 @@
                         </a>
                     @elseif($canSaveBank)
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveBankModal">
-                            <i class="ri-save-3-line me-1"></i>Simpan ke Bank Soal
+                            <i class="ri-arrow-right-circle-line me-1"></i>Gunakan di Bank Soal
                         </button>
                     @endif
 
@@ -94,7 +100,7 @@
                         </a>
                     @elseif($canSaveRpm)
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveRpmModal">
-                            <i class="ri-save-3-line me-1"></i>Simpan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}
+                            <i class="ri-arrow-right-circle-line me-1"></i>Gunakan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}
                         </button>
                     @endif
 
@@ -104,7 +110,7 @@
                         </a>
                     @elseif($canSaveProject)
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveProjectModal">
-                            <i class="ri-save-3-line me-1"></i>Simpan sebagai Projek
+                            <i class="ri-arrow-right-circle-line me-1"></i>Gunakan sebagai Projek
                         </button>
                     @endif
 
@@ -115,6 +121,24 @@
         </div>
 
         <div class="card-body">
+            @if($canUseDraft && ! $record->saved_at)
+                <div class="alert alert-success small no-print">
+                    <i class="ri-arrow-right-circle-line me-1"></i>
+                    Draft ini siap digunakan. Gunakan tombol
+                    @if($record->type === 'soal')
+                        <strong>Gunakan di Bank Soal</strong>
+                        untuk menyalin butir soal ke Bank Soal sebagai soal draft.
+                    @elseif($record->type === 'rpm')
+                        <strong>Gunakan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}</strong>
+                        untuk membuat Perangkat Pembelajaran berstatus draft.
+                    @else
+                        <strong>Gunakan sebagai Projek</strong>
+                        untuk membuat projek kokurikuler berstatus draft.
+                    @endif
+                    Dokumen hasil salinan masih dapat ditinjau dan disunting di modul tujuan.
+                </div>
+            @endif
+
             @if($record->type === 'rpm' && ! $record->saved_perangkat_id)
                 <div class="alert alert-info small">
                     <i class="ri-information-line me-1"></i>
@@ -308,8 +332,8 @@
         </form>
         <x-modal-confirm id="saveBankModal"
             icon="https://cdn.lordicon.com/lupuorrc.json"
-            title="Simpan ke Bank Soal?"
-            message="Draft soal yang disetujui akan disalin ke <strong>Bank Soal</strong> sebagai soal berstatus draft ({{ count($items) }} butir). Anda dapat menyunting/mengajukan review dari modul Bank Soal."
+            title="Gunakan di Bank Soal?"
+            message="Draft soal akan disalin ke <strong>Bank Soal</strong> sebagai soal berstatus draft ({{ count($items) }} butir). Anda dapat menyunting dan mengajukan review dari modul Bank Soal."
             submit-label="Ya, Simpan"
             submit-icon="ri-save-3-line"
             submit-class="btn-primary"
@@ -322,8 +346,8 @@
         </form>
         <x-modal-confirm id="saveRpmModal"
             icon="https://cdn.lordicon.com/lupuorrc.json"
-            title="Simpan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}?"
-            message="Draft {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }} yang disetujui akan dibuat sebagai <strong>{{ $curriculumLabels['perangkat_label'] ?? 'Perangkat Pembelajaran' }}</strong> berstatus draft. Bila sudah ada dokumen current untuk konteks yang sama, sistem membuat versi baru."
+            title="Gunakan sebagai {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }}?"
+            message="Draft {{ $curriculumLabels['perangkat_short'] ?? 'RPM' }} akan dibuat sebagai <strong>{{ $curriculumLabels['perangkat_label'] ?? 'Perangkat Pembelajaran' }}</strong> berstatus draft. Bila sudah ada dokumen current untuk konteks yang sama, sistem membuat versi baru."
             submit-label="Ya, Simpan"
             submit-icon="ri-save-3-line"
             submit-class="btn-primary"
@@ -336,8 +360,8 @@
         </form>
         <x-modal-confirm id="saveProjectModal"
             icon="https://cdn.lordicon.com/lupuorrc.json"
-            title="Simpan sebagai Projek?"
-            message="Draft projek yang disetujui akan dibuat sebagai <strong>projek {{ $curriculumLabels['kokurikuler_label'] ?? 'P5/P5RA' }}</strong> berstatus draft. Projek manual yang sudah ada tidak akan diubah."
+            title="Gunakan sebagai Projek?"
+            message="Draft projek akan dibuat sebagai <strong>projek {{ $curriculumLabels['kokurikuler_label'] ?? 'P5/P5RA' }}</strong> berstatus draft. Projek manual yang sudah ada tidak akan diubah."
             submit-label="Ya, Simpan"
             submit-icon="ri-save-3-line"
             submit-class="btn-primary"
