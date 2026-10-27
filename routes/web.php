@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminTUDashboardController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\AiWorkspaceController;
 use App\Http\Controllers\AlumniController;
+use App\Http\Controllers\AppFeedbackController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Arsip\ArsipInventarisController;
@@ -534,6 +535,16 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── AI WORKSPACE (halaman penuh) ─────────────────────
             Route::get('ai', [AiWorkspaceController::class, 'index'])->name('ai.index')->middleware(DenyStudentOperatorAi::class);
             Route::post('ai/stream', [AiWorkspaceController::class, 'stream'])->name('ai.stream')->middleware(['throttle:20,1', DenyStudentOperatorAi::class]);
+
+            // ── PUSAT KRITIK, SARAN & LAPORAN BUG ────────────────
+            Route::prefix('feedback')->name('feedback.')->group(function () {
+                Route::get('/', [AppFeedbackController::class, 'index'])->name('index');
+                Route::get('/create', [AppFeedbackController::class, 'create'])->name('create');
+                Route::post('/', [AppFeedbackController::class, 'store'])->name('store');
+                Route::get('/{id}/attachment/{attachmentId}', [AppFeedbackController::class, 'attachment'])->name('attachment');
+                Route::post('/{id}/status', [AppFeedbackController::class, 'updateStatus'])->name('status');
+                Route::get('/{id}', [AppFeedbackController::class, 'show'])->name('show');
+            });
 
             // ── CHAT AI (widget pojok kanan) ─────────────────────
             Route::prefix('ai-chat')->name('ai-chat.')->middleware(DenyStudentOperatorAi::class)->group(function () {

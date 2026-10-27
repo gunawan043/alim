@@ -340,6 +340,14 @@
                     </a>
                 </li>
 
+                <li class="menu-title"><span>Bantuan &amp; Laporan</span></li>
+                <li class="nav-item">
+                    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.feedback.']) ? ' active' : '' }}"
+                       href="{{ route('user.feedback.index', ['userId' => $userId]) }}">
+                        <i class="ri-feedback-line"></i><span>Kritik &amp; Saran / Bug</span>
+                    </a>
+                </li>
+
                 {{-- ═══════════════════════════════════════════════════════════
                      MODE 1 — VIEW-AS (Super Admin / impersonate)
                      Hanya render role yang sedang di-View-As, tanpa tugas tambahan.
