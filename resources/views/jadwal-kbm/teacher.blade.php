@@ -22,8 +22,16 @@
 @endif
 
 <div class="card">
-    <div class="card-header border-bottom-dashed">
+    <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center justify-content-between gap-2">
         <h5 class="card-title mb-0"><i class="ri-user-star-line text-primary me-1"></i>Jadwal Mengajar — {{ $teacher->name ?? '-' }}</h5>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
+                <i class="ri-history-line me-1"></i>Riwayat Scan
+            </a>
+            <a href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}" class="btn btn-primary btn-sm">
+                <i class="ri-qr-scan-2-line me-1"></i>Scan Kehadiran
+            </a>
+        </div>
     </div>
     <div class="card-body p-0">
         @if($jadwals->isEmpty())
