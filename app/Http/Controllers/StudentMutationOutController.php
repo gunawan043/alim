@@ -122,7 +122,7 @@ class StudentMutationOutController extends Controller
         // Filter gender sekolah bersifat lunak: bila data gender tidak konsisten
         // (mis. sekolah putra tetapi santri tercatat P), santri tetap ditampilkan
         // agar form mutasi tidak kosong.
-        $studentQuery = Student::with(['currentClassHistory.studyGroup'])
+        $studentQuery = Student::with(['currentClassHistory.studyGroup', 'mahroms', 'primaryMahrom'])
             ->where('status', 'active');
         if ($schoolContextId) {
             $studentQuery->where('school_id', $schoolContextId);
@@ -139,6 +139,7 @@ class StudentMutationOutController extends Controller
             }
         }
         $groupedStudents = [];
+        $studentParentData = [];
         foreach ($allStudents as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
             $label = $sg ? $sg->full_name : 'Tanpa Kelas';
@@ -146,6 +147,7 @@ class StudentMutationOutController extends Controller
                 $groupedStudents[$label] = [];
             }
             $groupedStudents[$label][] = $s;
+            $studentParentData[$s->id] = $this->parentDataFor($s);
         }
 
         // Determine out_type from route
@@ -162,8 +164,31 @@ class StudentMutationOutController extends Controller
             'schools', 'student', 'userId', 'schoolContextId', 'school',
             'groupedStudents', 'defaultOutType',
             'defaultHeadName', 'defaultHeadNupy', 'defaultHeadTitle',
-            'defaultDate', 'defaultDateHijri', 'mutationLayout'
+            'defaultDate', 'defaultDateHijri', 'mutationLayout', 'studentParentData'
         ));
+    }
+
+    /**
+     * Data orang tua/wali untuk autofill surat mutasi.
+     *
+     * @return array{name: string, occupation: string, phone: string, address: string}
+     */
+    private function parentDataFor(Student $student): array
+    {
+        $mahroms = $student->mahroms ?? collect();
+        $parent = $student->primaryMahrom
+            ?: $mahroms->firstWhere('is_primary', true)
+            ?: $mahroms->firstWhere('relationship', 'ayah')
+            ?: $mahroms->firstWhere('relationship', 'ibu')
+            ?: $mahroms->firstWhere('relationship', 'wali')
+            ?: $mahroms->first();
+
+        return [
+            'name' => (string) ($parent?->name ?: ($student->father_name ?: ($student->mother_name ?: ($student->guardian_name ?: '')))),
+            'occupation' => (string) ($student->father_occupation ?: ($student->mother_occupation ?: ($student->guardian_occupation ?: ''))),
+            'phone' => (string) ($parent?->phone ?: ($student->phone ?: ($student->mobile_phone ?: ''))),
+            'address' => (string) ($parent?->address ?: ($student->address ?: '')),
+        ];
     }
 
     public function store(Request $request)

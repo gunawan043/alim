@@ -140,6 +140,10 @@
                                         data-address="{{ $s->address }}"
                                         data-class="{{ $sgName }}"
                                         data-prev-school="{{ $s->previous_school }}"
+                                        data-parent-name="{{ $studentParentData[$s->id]['name'] ?? '' }}"
+                                        data-parent-occupation="{{ $studentParentData[$s->id]['occupation'] ?? '' }}"
+                                        data-parent-phone="{{ $studentParentData[$s->id]['phone'] ?? '' }}"
+                                        data-parent-address="{{ $studentParentData[$s->id]['address'] ?? '' }}"
                                         {{ isset($student) && old('student_id', $student->id) == $s->id ? 'selected' : '' }}
                                     >{{ $s->name }} - {{ $sgName }}</option>
                                 @endforeach
@@ -616,6 +620,10 @@
             birth_date_raw: opt.dataset.birthDateRaw || '',
             address: opt.dataset.address || '',
             previous_school: opt.dataset.prevSchool || '',
+            parent_name: opt.dataset.parentName || '',
+            parent_occupation: opt.dataset.parentOccupation || '',
+            parent_phone: opt.dataset.parentPhone || '',
+            parent_address: opt.dataset.parentAddress || '',
             'class': opt.dataset.class || '',
         };
     }
@@ -666,6 +674,10 @@
         qs('s-address').value = s.address || '';
         qs('s-prev-school').value = s.previous_school || '';
         qs('s-class').value = s['class'] || '';
+        qs('f-parent-name').value = s.parent_name || '';
+        qs('f-parent-job').value = s.parent_occupation || '';
+        qs('f-parent-phone').value = s.parent_phone || '';
+        qs('f-parent-addr').value = s.parent_address || '';
 
         // PDF preview ikut berubah saat santri dipilih.
         syncPreview();
@@ -695,6 +707,10 @@
         qs('s-address').value = '';
         qs('s-prev-school').value = '';
         qs('s-class').value = '';
+        qs('f-parent-name').value = '';
+        qs('f-parent-job').value = '';
+        qs('f-parent-phone').value = '';
+        qs('f-parent-addr').value = '';
 
         syncPreview();
     }
@@ -749,6 +765,10 @@
         birth_date_raw: {{ json_encode($student->birth_date?->format('d F Y')) }},
         address: {{ json_encode($student->address) }},
         previous_school: {{ json_encode($student->previous_school) }},
+        parent_name: {{ json_encode($studentParentData[$student->id]['name'] ?? '') }},
+        parent_occupation: {{ json_encode($studentParentData[$student->id]['occupation'] ?? '') }},
+        parent_phone: {{ json_encode($studentParentData[$student->id]['phone'] ?? '') }},
+        parent_address: {{ json_encode($studentParentData[$student->id]['address'] ?? '') }},
         'class': {{ json_encode($student->studyGroup?->name ?? ($student->entry_grade_level ? 'Kelas ' . $student->entry_grade_level : '-')) }},
     });
     @endif
