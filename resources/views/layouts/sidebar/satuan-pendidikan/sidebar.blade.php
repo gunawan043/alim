@@ -971,6 +971,35 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION — INFORMASI & BROADCAST
+     Akses: KSP dan TU
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showAll || $isKepala || $isAdminTU)
+    <li class="menu-title"><span>Informasi &amp; Broadcast</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.announcements.']) ? ' active' : '' }}"
+           href="{{ route('user.announcements.index', ['userId' => $userId]) }}">
+            <i class="ri-newspaper-line"></i><span>Info Sekolah</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.announcements.']) ? ' active' : '' }}"
+           href="{{ route('user.humas.announcements.index', ['userId' => $userId]) }}">
+            <i class="ri-megaphone-line"></i><span>Kelola Pengumuman</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.broadcasts.']) ? ' active' : '' }}"
+           href="{{ route('user.broadcasts.index', ['userId' => $userId]) }}">
+            <i class="ri-send-plane-2-line"></i><span>Broadcast</span>
+        </a>
+    </li>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 6 — GTK & TUGAS
      Data GTK, Pengajuan, Tugas Tambahan, Kinerja, Koordinasi Mapel
      ═══════════════════════════════════════════════════════════════════════════ --}}
