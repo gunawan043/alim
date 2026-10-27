@@ -129,6 +129,44 @@ class LessonReminderNotificationTest extends TestCase
             ->where('action', 'lesson_reminder')->count());
     }
 
+    public function test_notifikasi_akhir_pelajaran_untuk_guru_yang_belum_checkout(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-19 07:45:00')); // Senin
+        $jadwal = $this->makeJadwal('07:00:00', '07:45:00');
+
+        TeacherClassAttendance::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'study_group_id' => $this->group->id,
+            'jadwal_kbm_id' => $jadwal->id,
+            'teacher_id' => $this->teacher->id,
+            'attendance_date' => now()->toDateString(),
+            'scheduled_start_time' => $jadwal->start_time,
+            'scheduled_end_time' => $jadwal->end_time,
+            'actual_time_in' => now()->copy()->subMinutes(45),
+            'actual_time_out' => null,
+            'late_minutes' => 0,
+            'early_leave_minutes' => 0,
+            'duration_minutes' => 45,
+            'status_masuk' => 'hadir',
+            'status_keluar' => 'belum_keluar',
+        ]);
+
+        $this->artisan('alim:notify-lesson-ended')->assertSuccessful();
+
+        $notification = NotificationUniversal::where('user_id', $this->teacher->id)
+            ->where('action', 'lesson_end')
+            ->first();
+
+        $this->assertNotNull($notification);
+        $this->assertStringContainsString('Jam Pelajaran Selesai', $notification->title);
+        $this->assertStringContainsString('scan keluar', $notification->message);
+
+        $this->artisan('alim:notify-lesson-ended')->assertSuccessful();
+        $this->assertSame(1, NotificationUniversal::where('user_id', $this->teacher->id)
+            ->where('action', 'lesson_end')->count());
+    }
+
     public function test_jadwal_yang_masih_lama_tidak_dinotifikasi(): void
     {
         $this->makeJadwal('07:10:00', '07:55:00');

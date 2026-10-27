@@ -194,6 +194,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('alim:notify-lesson-reminders --minutes=5')
             ->everyMinute()
             ->withoutOverlapping();
+
+        // Notifikasi saat jam pelajaran selesai, untuk guru yang belum scan keluar.
+        $schedule->command('alim:notify-lesson-ended')
+            ->everyMinute()
+            ->withoutOverlapping();
     }
 
     /**
