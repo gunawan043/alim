@@ -31,9 +31,14 @@
         Generator <strong>Jadwal Pelajaran</strong> memakai slot ini saat menyusun jadwal.
     </p>
     @if($canManage && $schoolId)
-        <button type="button" class="btn btn-primary btn-sm" onclick="openSlotModal()">
-            <i class="ri-add-line me-1"></i>Tambah Jam
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-warning btn-sm" onclick="openBreakModal()">
+                <i class="ri-cup-line me-1"></i>Tambah Istirahat
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openSlotModal()">
+                <i class="ri-add-line me-1"></i>Tambah Jam
+            </button>
+        </div>
     @endif
 </div>
 
@@ -187,6 +192,9 @@
                                     </form>
                                 @endif
                                 @if($canManage)
+                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="openBreakModal({{ $dayNumber }})">
+                                        <i class="ri-cup-line me-1"></i>Tambah Istirahat
+                                    </button>
                                     <button type="button" class="btn btn-sm btn-primary" onclick="openSlotModal(null, {{ $dayNumber }})">
                                         <i class="ri-add-line me-1"></i>Tambah Jam
                                     </button>
@@ -212,7 +220,7 @@
                                 <tbody>
                                     @forelse($daySlots as $slot)
                                         <tr class="{{ $slot->is_break ? 'table-warning' : '' }}">
-                                            <td class="text-center fw-semibold">{{ $slot->slot_number }}</td>
+                                            <td class="text-center fw-semibold">{{ $slot->is_break ? '—' : $slot->slot_number }}</td>
                                             <td>{{ $slot->label }}</td>
                                             <td class="slot-time">{{ substr($slot->time_start, 0, 5) }}</td>
                                             <td class="slot-time">{{ substr($slot->time_end, 0, 5) }}</td>
@@ -341,6 +349,16 @@
 const slotStoreUrl = @json(route('user.jam-pelajaran.store', ['userId' => $userId]));
 const slotUpdateUrlTemplate = @json(route('user.jam-pelajaran.update', ['userId' => $userId, 'slotId' => '__SLOT__']));
 const dayMaxSlots = @json($slotsByDay->map(fn ($slots) => (int) $slots->max('slot_number')));
+
+function openBreakModal(dayNumber = null) {
+    openSlotModal(null, dayNumber);
+    const title = document.getElementById('slotModalTitle');
+    if (title) title.textContent = 'Tambah Jam Istirahat';
+    document.getElementById('slotLabel').value = 'Istirahat';
+    document.getElementById('slotStart').value = '10:10';
+    document.getElementById('slotEnd').value = '10:40';
+    document.getElementById('slotIsBreak').checked = true;
+}
 
 function openSlotModal(slot = null, dayNumber = null) {
     const modalEl = document.getElementById('slotModal');

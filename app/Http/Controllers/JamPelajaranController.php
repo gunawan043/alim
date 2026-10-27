@@ -28,6 +28,7 @@ class JamPelajaranController extends Controller
         [7, 'Jam 7', '11:50', '12:25', 0],
         [8, 'Jam 8', '12:25', '13:00', 0],
         [9, 'Jam 9', '13:00', '13:30', 0],
+        [10, 'Istirahat', '10:10', '10:40', 1],
     ];
 
     /**
@@ -45,6 +46,7 @@ class JamPelajaranController extends Controller
             $slots = DB::table('class_schedule_slots')
                 ->where('school_id', $schoolId)
                 ->orderBy('day_of_week')
+                ->orderBy('time_start')
                 ->orderBy('slot_number')
                 ->get();
         }

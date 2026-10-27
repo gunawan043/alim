@@ -85,6 +85,7 @@ class ClassScheduleSlotSeeder extends Seeder
             ['number' => 7, 'label' => 'Jam 7', 'start' => '11:50:00', 'end' => '12:25:00', 'is_break' => false],
             ['number' => 8, 'label' => 'Jam 8', 'start' => '12:25:00', 'end' => '13:00:00', 'is_break' => false],
             ['number' => 9, 'label' => 'Jam 9', 'start' => '13:00:00', 'end' => '13:30:00', 'is_break' => false],
+            ['number' => 10, 'label' => 'Istirahat', 'start' => '10:10:00', 'end' => '10:40:00', 'is_break' => true],
         ];
     }
 }
