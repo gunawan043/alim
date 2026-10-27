@@ -345,7 +345,7 @@
 
     // ── "View all" links ────────────────────────────────────────
     document.querySelectorAll('.notif-all-link').forEach(link => {
-        link.setAttribute('href', '/notifications');
+        link.setAttribute('href', window.userId ? `/${window.userId}/notifications/page` : '/notifications/page');
     });
 
     // ── Tab badge update ─────────────────────────────────────────
