@@ -7,6 +7,7 @@ use App\Models\GtkEmployment;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMutationOut;
+use App\Models\StudentMutationSetting;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
@@ -155,11 +156,13 @@ class StudentMutationOutController extends Controller
             default => 'mutation',
         };
 
+        $mutationLayout = StudentMutationSetting::forSchool($schoolContextId)->layoutSettings();
+
         return view('mutations-out.create', compact(
             'schools', 'student', 'userId', 'schoolContextId', 'school',
             'groupedStudents', 'defaultOutType',
             'defaultHeadName', 'defaultHeadNupy', 'defaultHeadTitle',
-            'defaultDate', 'defaultDateHijri'
+            'defaultDate', 'defaultDateHijri', 'mutationLayout'
         ));
     }
 
@@ -393,6 +396,34 @@ class StudentMutationOutController extends Controller
             ->with('success', 'Data '.$this->typeLabel($outType).' berhasil dihapus.');
     }
 
+    public function saveLayout(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId') ?: $request->input('school_id');
+        abort_unless($schoolId && School::whereKey($schoolId)->exists(), 422, 'Satuan pendidikan tidak ditemukan.');
+
+        $validated = $request->validate([
+            'margin_top' => 'required|numeric|min:0|max:50',
+            'margin_right' => 'required|numeric|min:0|max:50',
+            'margin_bottom' => 'required|numeric|min:0|max:50',
+            'margin_left' => 'required|numeric|min:0|max:50',
+            'font_family' => 'required|in:Times New Roman,Arial,Georgia,Bookman Old Style,Tahoma',
+            'font_size' => 'required|numeric|min:6|max:24',
+            'line_height' => 'required|numeric|min:1|max:2.5',
+            'paper_size' => 'required|in:a4,folio,letter',
+            'show_kop' => 'nullable|boolean',
+        ]);
+
+        StudentMutationSetting::updateOrCreate(
+            ['school_id' => $schoolId],
+            $validated + [
+                'show_kop' => $request->boolean('show_kop'),
+                'updated_by' => $request->user()?->id,
+            ]
+        );
+
+        return back()->with('success', 'Pengaturan surat mutasi berhasil disimpan. Preview PDF sudah memakai pengaturan baru.');
+    }
+
     public function previewPdf(Request $request)
     {
         $schoolContextId = $request->attributes->get('schoolContextId');
@@ -417,22 +448,33 @@ class StudentMutationOutController extends Controller
             ? Carbon::parse($request->input('established_date'))
             : now();
         $mutation->setRelation('school', $school);
+        $layout = StudentMutationSetting::forSchool($school->id)->layoutSettings();
 
         $html = view('mutations-out.print.pdf', [
             'mutation' => $mutation,
             'userId' => $request->route('userId'),
             'school' => $school,
+            'layout' => $layout,
         ])->render();
 
         $dompdf = new Dompdf;
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4');
+        $dompdf->setPaper($this->dompdfPaper($layout['paper_size'] ?? 'a4'));
         $dompdf->render();
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="Preview-Surat-Mutasi.pdf"',
         ]);
+    }
+
+    private function dompdfPaper(string $paper): string
+    {
+        return match ($paper) {
+            'folio' => 'folio',
+            'letter' => 'letter',
+            default => 'A4',
+        };
     }
 
     private function isLulusRoute(Request $request): bool
@@ -449,10 +491,11 @@ class StudentMutationOutController extends Controller
     {
         $mutation = $this->findScopedMutation($mutationUuid)->load(['student', 'school']);
         $school = $mutation->school;
-        $html = view('mutations-out.print.pdf', compact('mutation', 'userId', 'school'))->render();
+        $layout = StudentMutationSetting::forSchool($school?->id)->layoutSettings();
+        $html = view('mutations-out.print.pdf', compact('mutation', 'userId', 'school', 'layout'))->render();
         $dompdf = new Dompdf;
         $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4');
+        $dompdf->setPaper($this->dompdfPaper($layout['paper_size'] ?? 'a4'));
         $dompdf->render();
 
         $prefix = match ($mutation->out_type) {

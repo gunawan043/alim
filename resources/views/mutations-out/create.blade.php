@@ -74,6 +74,7 @@
     $isDo = request()->routeIs('user.mutations-do.*');
     $routePrefix = $isLulus ? 'mutations-lulus' : ($isDo ? 'mutations-do' : 'mutations-out');
     $typeLabel = $isLulus ? 'Kelulusan' : ($isDo ? 'Drop Out' : 'Mutasi Keluar');
+    $mutationLayout = $mutationLayout ?? \App\Models\StudentMutationSetting::defaultLayout();
 @endphp
 
 @component('components.breadcrumb')
@@ -285,9 +286,21 @@
         {{-- =============================================== --}}
         <div class="col-lg-7">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="ri-file-text-line me-1"></i>Preview Surat</h5>
-                    <span id="out-type-badge" class="out-type-badge mutation">Mutasi Keluar</span>
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h5 class="mb-0"><i class="ri-file-text-line me-1"></i>Preview Surat</h5>
+                        <small class="text-muted">
+                            Margin {{ $mutationLayout['margin_top'] }}/{{ $mutationLayout['margin_right'] }}/{{ $mutationLayout['margin_bottom'] }}/{{ $mutationLayout['margin_left'] }} mm
+                            · {{ $mutationLayout['font_family'] }} {{ $mutationLayout['font_size'] }} pt
+                            · {{ strtoupper($mutationLayout['paper_size']) }}
+                        </small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#mutationLayoutModal">
+                            <i class="ri-settings-3-line me-1"></i>Pengaturan Layout
+                        </button>
+                        <span id="out-type-badge" class="out-type-badge mutation">Mutasi Keluar</span>
+                    </div>
                 </div>
                 <div class="card-body p-2">
                     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -380,6 +393,67 @@
         </div>
     </div>
 </form>
+
+<div class="modal fade" id="mutationLayoutModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ route("user.{$routePrefix}.layout", ['userId' => $userId]) }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-settings-3-line me-1"></i>Pengaturan Layout PDF</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        @foreach(['margin_top' => 'Margin Atas', 'margin_right' => 'Margin Kanan', 'margin_bottom' => 'Margin Bawah', 'margin_left' => 'Margin Kiri'] as $field => $label)
+                            <div class="col-6 col-md-3">
+                                <label class="form-label">{{ $label }} (mm)</label>
+                                <input type="number" name="{{ $field }}" class="form-control" min="0" max="50" step="0.5" required value="{{ old($field, $mutationLayout[$field]) }}">
+                            </div>
+                        @endforeach
+                        <div class="col-md-6">
+                            <label class="form-label">Jenis Font</label>
+                            <select name="font_family" class="form-select" required>
+                                @foreach(['Times New Roman', 'Arial', 'Georgia', 'Bookman Old Style', 'Tahoma'] as $font)
+                                    <option value="{{ $font }}" @selected(old('font_family', $mutationLayout['font_family']) === $font)>{{ $font }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ukuran Font (pt)</label>
+                            <input type="number" name="font_size" class="form-control" min="6" max="24" step="0.5" required value="{{ old('font_size', $mutationLayout['font_size']) }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Line Height</label>
+                            <input type="number" name="line_height" class="form-control" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $mutationLayout['line_height']) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Ukuran Kertas</label>
+                            <select name="paper_size" class="form-select" required>
+                                <option value="a4" @selected(old('paper_size', $mutationLayout['paper_size']) === 'a4')>A4</option>
+                                <option value="folio" @selected(old('paper_size', $mutationLayout['paper_size']) === 'folio')>F4 / Folio</option>
+                                <option value="letter" @selected(old('paper_size', $mutationLayout['paper_size']) === 'letter')>Letter</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="show_kop" value="1" id="mutationShowKop" @checked(old('show_kop', $mutationLayout['show_kop']))>
+                                <label class="form-check-label" for="mutationShowKop">Tampilkan kop surat</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info small mt-3 mb-0">
+                        Pengaturan berlaku untuk preview dan semua cetak surat mutasi pada satuan pendidikan ini.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Pengaturan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('script')

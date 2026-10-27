@@ -1,3 +1,16 @@
+@php
+    $layout = $layout ?? \App\Models\StudentMutationSetting::defaultLayout();
+    $paperCss = match ($layout['paper_size'] ?? 'a4') {
+        'folio' => '215mm 330mm',
+        'letter' => '216mm 279mm',
+        default => 'A4',
+    };
+    $paperWidth = match ($layout['paper_size'] ?? 'a4') {
+        'folio' => '215mm',
+        'letter' => '216mm',
+        default => '210mm',
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 
@@ -6,7 +19,7 @@
     <title>Surat Keterangan Pindah Sekolah</title>
     <style>
         @page {
-            size: A4;
+            size: {{ $paperCss }};
             margin: 0;
         }
 
@@ -17,16 +30,16 @@
         }
 
         body {
-            font-family: 'Times New Roman', Times, serif;
-            font-size: 12pt;
-            line-height: 1.2;
+            font-family: '{{ $layout['font_family'] }}', 'Times New Roman', Times, serif;
+            font-size: {{ $layout['font_size'] }}pt;
+            line-height: {{ $layout['line_height'] }};
             color: #000;
             background: #fff;
-            width: 210mm;
+            width: {{ $paperWidth }};
         }
 
         .page {
-            padding: 20mm 25mm 0mm 25mm;
+            padding: {{ $layout['margin_top'] }}mm {{ $layout['margin_right'] }}mm {{ $layout['margin_bottom'] }}mm {{ $layout['margin_left'] }}mm;
         }
 
         /* Header / Kop Surat */
@@ -182,6 +195,21 @@
             padding-top: 20px;
             margin-top: 20px;
         }
+
+        /* Pengaturan layout dinamis */
+        .school-table td,
+        .data-table td,
+        .body-text,
+        .letter-title,
+        .letter-number,
+        .opening,
+        .sig-city,
+        .sig-title,
+        .sig-name,
+        .footer-info {
+            font-size: {{ $layout['font_size'] }}pt;
+        }
+        .sig-nip, .sig-hijri, .note { font-size: {{ max(6, $layout['font_size'] - 2) }}pt; }
     </style>
 </head>
 
@@ -189,12 +217,14 @@
     <div class="page">
 
         {{-- Header / Kop Surat --}}
-        <div class="header">
-            @if ($school->kop_path && $school->kopsis_active)
-                <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $school->kop_path))) }}"
-                    alt="Kop Surat" style="max-width:100%;max-height:130px;object-fit:contain;">
-            @endif
-        </div>
+        @if($layout['show_kop'])
+            <div class="header">
+                @if ($school->kop_path && $school->kopsis_active)
+                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $school->kop_path))) }}"
+                        alt="Kop Surat" style="max-width:100%;max-height:130px;object-fit:contain;">
+                @endif
+            </div>
+        @endif
 
         {{-- Judul Surat --}}
         <div class="letter-title">SURAT KETERANGAN MUTASI KELUAR</div>
