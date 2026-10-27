@@ -289,6 +289,10 @@
                     return;
                 }
 
+                // Biarkan Ctrl/Cmd+klik membuka tab baru seperti link biasa.
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+
                 const id  = this.dataset.id;
                 const url = this.dataset.url || '#';
                 const isUnread = this.classList.contains('notif-unread');
@@ -345,7 +349,7 @@
 
     // ── "View all" links ────────────────────────────────────────
     document.querySelectorAll('.notif-all-link').forEach(link => {
-        link.setAttribute('href', window.userId ? `/${window.userId}/notifications/page` : '/notifications/page');
+        link.setAttribute('href', '/notifications');
     });
 
     // ── Tab badge update ─────────────────────────────────────────
@@ -422,6 +426,136 @@
         }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  WEB PUSH VAPID — notification saat tab/browser tertutup
+    // ─────────────────────────────────────────────────────────────
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+
+        return outputArray;
+    }
+
+    function webPushKeyMatches(subscription, publicKey) {
+        const existingKey = subscription?.options?.applicationServerKey;
+
+        if (!existingKey) return true;
+
+        const expected = urlBase64ToUint8Array(publicKey);
+        const actual = new Uint8Array(existingKey);
+
+        if (actual.length !== expected.length) return false;
+
+        for (let i = 0; i < actual.length; i += 1) {
+            if (actual[i] !== expected[i]) return false;
+        }
+
+        return true;
+    }
+
+    async function subscribeWebPush(interactive = false) {
+        const keyMeta = document.querySelector('meta[name="web-push-vapid-public-key"]');
+        const publicKey = keyMeta?.content?.trim();
+
+        if (!publicKey || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+            return false;
+        }
+
+        if (Notification.permission !== 'granted') {
+            if (!interactive) return false;
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') return false;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (subscription && !webPushKeyMatches(subscription, publicKey)) {
+            await subscription.unsubscribe();
+            subscription = null;
+        }
+
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey),
+            });
+        }
+
+        const serialized = subscription.toJSON();
+
+        await fetchJSON(window.alimWebPushSubscribeUrl || getApiUrl('notifications/web-push/subscribe'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                endpoint: serialized.endpoint,
+                keys: serialized.keys,
+                content_encoding: serialized.contentEncoding || 'aes128gcm',
+            }),
+        });
+
+        document.getElementById('web-push-enable')?.classList.add('d-none');
+
+        return true;
+    }
+
+    window.alimSubscribeWebPush = subscribeWebPush;
+
+    async function initWebPush() {
+        const button = document.getElementById('web-push-enable');
+        const publicKey = document.querySelector('meta[name="web-push-vapid-public-key"]')?.content?.trim();
+
+        if (!publicKey || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            subscribeWebPush(false).catch(function (err) {
+                console.error('[WebPush] Auto subscribe failed:', err);
+            });
+            return;
+        }
+
+        if (Notification.permission === 'default' && button) {
+            button.classList.remove('d-none');
+            button.addEventListener('click', async function () {
+                button.disabled = true;
+
+                try {
+                    const ok = await subscribeWebPush(true);
+                    if (ok) {
+                        Toastify({
+                            text: 'Notifikasi browser aktif. Notifikasi tetap muncul saat tab ditutup.',
+                            duration: 4000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: { background: '#198754' },
+                        }).showToast();
+                    } else {
+                        Toastify({
+                            text: 'Izin notifikasi browser belum diberikan.',
+                            duration: 3500,
+                            gravity: 'top',
+                            position: 'right',
+                            style: { background: '#f7b84b' },
+                        }).showToast();
+                    }
+                } catch (err) {
+                    console.error('[WebPush] Subscribe failed:', err);
+                } finally {
+                    button.disabled = false;
+                }
+            });
+        }
+    }
+
     // ── Init ───────────────────────────────────────────────────
     if (document.readyState === 'complete') {
         initEcho();
@@ -432,6 +566,8 @@
     if (notifDropdown) {
         notifDropdown.addEventListener('shown.bs.dropdown', loadNotifications);
     }
+
+    initWebPush();
 
     setInterval(loadNotifications, 30000);
 

@@ -60,7 +60,7 @@ class NotificationUniversalService
             'title' => $data['title'],
             'message' => $data['message'],
             'data' => $data['data'] ?? null,
-            'action_url' => $this->resolveActionUrl($data['action_url'] ?? null, $userId),
+            'action_url' => $data['action_url'] ?? null,
             'action_text' => $data['action_text'] ?? 'Lihat Detail',
             'priority' => $data['priority'] ?? 'medium',
             'expires_at' => $data['expires_at'] ?? null,
@@ -218,7 +218,7 @@ class NotificationUniversalService
                     'title' => $data['title'],
                     'message' => $data['message'],
                     'data' => json_encode($data['data'] ?? null),
-                    'action_url' => $data['action_url'] ?? null,
+                    'action_url' => $this->resolveActionUrl($data['action_url'] ?? null, $userId),
                     'action_text' => $data['action_text'] ?? 'Lihat Detail',
                     'priority' => $data['priority'] ?? 'medium',
                     'expires_at' => $data['expires_at'] ?? null,
@@ -244,9 +244,10 @@ class NotificationUniversalService
             $actionUrl = $actionUrl((string) $userId);
         }
 
-        return $actionUrl
-            ? NotificationUniversal::normalizeActionUrl((string) $actionUrl, (string) $userId)
-            : null;
+        // Simpan URL apa adanya agar email/push tetap memakai URL absolut.
+        // Normalisasi ke path relatif dilakukan saat data ditampilkan
+        // (aksesor NotificationUniversal / event real-time).
+        return $actionUrl ? (string) $actionUrl : null;
     }
 
     /**
@@ -416,13 +417,10 @@ class NotificationUniversalService
     protected function sendPushNotification($user, $notification)
     {
         try {
-            // Queue push notification job
+            // Status is_push_sent diisi oleh job setelah FCM/APNs/Web Push
+            // menerima request. Dengan queue async, status ini belum berubah
+            // saat notifikasi baru dibuat.
             SendUniversalPush::dispatch($user, $notification);
-
-            $notification->update([
-                'is_push_sent' => true,
-                'push_sent_at' => now(),
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to send push notification: '.$e->getMessage());
         }

@@ -265,12 +265,13 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             'action_url' => 'http://127.0.0.1:8000/'.$this->userA->id.'/notifications/page',
         ]);
 
-        $row = DB::table('notifications_universal')
-            ->where('user_id', $this->userA->id)
+        $notification = \App\Models\NotificationUniversal::where('user_id', $this->userA->id)
             ->where('title', 'URL Lokal')
-            ->first();
+            ->firstOrFail();
 
-        $this->assertSame('/'.$this->userA->id.'/notifications/page', $row->action_url);
+        // Penyimpanan tetap absolut untuk email/push; tampilan memakai path relatif.
+        $this->assertStringStartsWith('http://127.0.0.1:8000/', $notification->getRawOriginal('action_url'));
+        $this->assertSame('/'.$this->userA->id.'/notifications/page', $notification->action_url);
     }
 
     public function test_url_kaldik_lama_memakai_user_penerima(): void
@@ -325,14 +326,15 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             'action_url' => fn (string $recipientId) => '/'.$recipientId.'/kaldik',
         ]);
 
-        $this->assertSame(
-            '/'.$this->userA->id.'/kaldik',
-            DB::table('notifications_universal')->where('user_id', $this->userA->id)->where('title', 'Kaldik per Penerima')->value('action_url')
-        );
-        $this->assertSame(
-            '/'.$this->userB->id.'/kaldik',
-            DB::table('notifications_universal')->where('user_id', $this->userB->id)->where('title', 'Kaldik per Penerima')->value('action_url')
-        );
+        $notifA = \App\Models\NotificationUniversal::where('user_id', $this->userA->id)
+            ->where('title', 'Kaldik per Penerima')
+            ->firstOrFail();
+        $notifB = \App\Models\NotificationUniversal::where('user_id', $this->userB->id)
+            ->where('title', 'Kaldik per Penerima')
+            ->firstOrFail();
+
+        $this->assertSame('/'.$this->userA->id.'/kaldik', $notifA->action_url);
+        $this->assertSame('/'.$this->userB->id.'/kaldik', $notifB->action_url);
     }
 
     public function test_topbar_menampilkan_tautan_halaman_notifikasi_bukan_endpoint_json(): void
