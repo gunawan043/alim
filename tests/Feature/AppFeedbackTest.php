@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AppFeedbackReport;
 use App\Models\GtkEmployment;
+use App\Models\NotificationUniversal;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\User;
@@ -186,6 +187,16 @@ class AppFeedbackTest extends TestCase
             'status_from' => 'baru',
             'status_to' => 'diproses',
             'message' => 'Sedang diperiksa oleh tim teknis.',
+        ]);
+
+        $this->assertDatabaseHas('notifications_universal', [
+            'user_id' => $this->reporter->id,
+            'module' => 'gtk',
+            'action' => 'feedback_status',
+            'reference_type' => AppFeedbackReport::class,
+            'reference_id' => $report->id,
+            'title' => 'Laporan Anda sedang diproses',
+            'is_archived' => false,
         ]);
     }
 

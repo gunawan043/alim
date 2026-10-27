@@ -286,7 +286,8 @@ class AppFeedbackController extends Controller
             $service = app(NotificationBroadcastService::class);
             foreach ($managerIds as $managerId) {
                 $service->send((string) $managerId, [
-                    'module' => 'system',
+                    'module' => 'gtk',
+                    'action' => 'feedback_created',
                     'type' => 'warning',
                     'priority' => 'high',
                     'title' => 'Laporan aplikasi baru',
@@ -295,6 +296,8 @@ class AppFeedbackController extends Controller
                     'reference_type' => AppFeedbackReport::class,
                     'reference_id' => $report->id,
                     'action_text' => 'Lihat Laporan',
+                    'send_push' => true,
+                    'data' => ['screen' => 'feedback', 'feedback_id' => $report->id, 'category' => $report->category],
                 ]);
             }
         } catch (\Throwable $e) {
@@ -318,7 +321,8 @@ class AppFeedbackController extends Controller
 
         try {
             app(NotificationBroadcastService::class)->send((string) $recipientId, [
-                'module' => 'system',
+                'module' => 'gtk',
+                'action' => 'feedback_reply',
                 'type' => 'info',
                 'priority' => 'medium',
                 'title' => 'Pesan baru pada laporan aplikasi',
@@ -327,6 +331,8 @@ class AppFeedbackController extends Controller
                 'reference_type' => AppFeedbackReport::class,
                 'reference_id' => $report->id,
                 'action_text' => 'Buka Diskusi',
+                'send_push' => true,
+                'data' => ['screen' => 'feedback', 'feedback_id' => $report->id],
             ]);
         } catch (\Throwable $e) {
             Log::warning('Gagal mengirim notifikasi diskusi laporan: '.$e->getMessage());
@@ -341,15 +347,18 @@ class AppFeedbackController extends Controller
 
         try {
             app(NotificationBroadcastService::class)->send((string) $report->submitted_by, [
-                'module' => 'system',
+                'module' => 'gtk',
+                'action' => 'feedback_status',
                 'type' => 'info',
-                'priority' => 'medium',
-                'title' => 'Laporan aplikasi diperbarui',
-                'message' => $report->title.' — status: '.$report->statusLabel().'.',
+                'priority' => 'high',
+                'title' => 'Laporan Anda sedang diproses',
+                'message' => $report->title.' — status: '.$report->statusLabel().'. '.($report->updates()->latest()->value('message') ?? ''),
                 'action_url' => route('user.feedback.show', ['userId' => $report->submitted_by, 'id' => $report->id]),
                 'reference_type' => AppFeedbackReport::class,
                 'reference_id' => $report->id,
                 'action_text' => 'Lihat Laporan',
+                'send_push' => true,
+                'data' => ['screen' => 'feedback', 'feedback_id' => $report->id, 'status' => $report->status],
             ]);
         } catch (\Throwable $e) {
             Log::warning('Gagal mengirim notifikasi pembaruan laporan: '.$e->getMessage());
