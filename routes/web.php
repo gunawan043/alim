@@ -543,6 +543,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [AppFeedbackController::class, 'store'])->name('store');
                 Route::get('/{id}/attachment/{attachmentId}', [AppFeedbackController::class, 'attachment'])->name('attachment');
                 Route::post('/{id}/status', [AppFeedbackController::class, 'updateStatus'])->name('status');
+                Route::post('/{id}/reply', [AppFeedbackController::class, 'reply'])->name('reply');
                 Route::get('/{id}', [AppFeedbackController::class, 'show'])->name('show');
             });
 

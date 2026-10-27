@@ -120,6 +120,32 @@ class AppFeedbackTest extends TestCase
         $this->assertTrue($managerView->getData()['canManage']);
     }
 
+    public function test_diskusi_laporan_tampil_di_halaman_ai_dan_balasan_tersimpan(): void
+    {
+        $report = $this->makeReport($this->reporter, 'Laporan Diskusi AI');
+        $this->actingAs($this->manager);
+
+        $this->get(route('user.ai.index', ['userId' => $this->manager->id, 'feedback' => $report->id]))
+            ->assertOk()
+            ->assertSee('Diskusi Laporan')
+            ->assertSee('Laporan Diskusi AI')
+            ->assertSee('Tulis balasan untuk laporan ini');
+
+        $this->postJson(route('user.feedback.reply', [
+            'userId' => $this->manager->id,
+            'id' => $report->id,
+        ]), ['message' => 'Kami sedang memeriksa masalah ini.'])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseHas('app_feedback_updates', [
+            'app_feedback_report_id' => $report->id,
+            'user_id' => $this->manager->id,
+            'type' => 'comment',
+            'message' => 'Kami sedang memeriksa masalah ini.',
+        ]);
+    }
+
     public function test_halaman_laporan_dapat_dirender_untuk_pengelola(): void
     {
         $report = $this->makeReport($this->reporter, 'Laporan Halaman Pengelola');

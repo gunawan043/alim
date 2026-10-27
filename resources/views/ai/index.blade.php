@@ -349,6 +349,27 @@
 
         .ai-alert { max-width: 900px; margin: 12px auto 0; border: 1px solid rgba(255, 174, 1, .35); border-radius: 12px; background: rgba(255, 174, 1, .09); color: #7a5600; padding: 9px 12px; font-size: 12px; }
 
+        /* ── Mode diskusi laporan ─────────────────────────────── */
+        .ai-feedback-context {
+            max-width: 900px; margin: 0 auto 12px; padding: 10px 13px;
+            border: 1px solid var(--ai-line); border-radius: 12px;
+            background: rgba(255,255,255,.72); font-size: 12px;
+        }
+        .ai-feedback-context strong { color: var(--ai-ink); }
+        .ai-feedback-context .meta { color: var(--ai-muted); font-size: 10px; margin-top: 3px; }
+        .ai-feedback-system {
+            text-align: center; color: var(--ai-muted); font-size: 10.5px;
+            padding: 8px 0; line-height: 1.5;
+        }
+        .ai-feedback-system .badge { font-size: 9px; }
+        .ai-feedback-empty {
+            text-align: center; color: var(--ai-muted); font-size: 12px;
+            padding: 28px 12px;
+        }
+        [data-bs-theme="dark"] .ai-feedback-context {
+            background: #102631; border-color: var(--ai-line); color: var(--ai-ink);
+        }
+
         /* ── Mode gelap halaman AI ─────────────────────────────── */
         [data-bs-theme="dark"] .ai-shell {
             --ai-ink: #e8f0f5;
@@ -490,6 +511,7 @@
 @section('content')
     @php
         $userId = $userId ?? auth()->id();
+        $feedbackReport = $feedbackReport ?? null;
     @endphp
 
     <div class="ai-shell" id="aiApp"
@@ -499,6 +521,10 @@
          data-delete-url="{{ route('user.ai-chat.destroy', ['userId' => $userId, 'conversation' => '00000000-0000-0000-0000-000000000000']) }}"
          data-feedback-url="{{ route('user.ai-chat.feedback', ['userId' => $userId, 'conversation' => '00000000-0000-0000-0000-000000000000']) }}"
          data-conversations-url="{{ route('user.ai-chat.conversations', ['userId' => $userId]) }}"
+         data-feedback-id="{{ $feedbackReport?->id }}"
+         data-feedback-reply-url="{{ $feedbackReport ? route('user.feedback.reply', ['userId' => $userId, 'id' => $feedbackReport->id]) : '' }}"
+         data-feedback-user-id="{{ auth()->id() }}"
+         data-feedback-user-name="{{ auth()->user()?->name }}"
          data-provider-ready="{{ $providerReady ? '1' : '0' }}"
          data-models="{{ json_encode($models) }}">
 
@@ -512,8 +538,43 @@
                         <div class="ai-brand-sub">Analis data pesantren</div>
                     </div>
                 </div>
-                <button type="button" class="ai-new-chat" id="aiNewChat" title="Percakapan baru"><i class="ri-add-line"></i></button>
+                @if($feedbackReport)
+                    <a href="{{ route('user.ai.index', ['userId' => $userId]) }}" class="ai-new-chat" title="Buka ALIM AI" aria-label="Buka ALIM AI">
+                        <i class="ri-sparkling-2-line"></i>
+                    </a>
+                @else
+                    <button type="button" class="ai-new-chat" id="aiNewChat" title="Percakapan baru"><i class="ri-add-line"></i></button>
+                @endif
             </div>
+            @if($feedbackReport)
+                <div class="ai-history-search">
+                    <div class="ai-history-label mb-1">Konteks Laporan</div>
+                    <div class="fw-semibold" style="font-size:13px;line-height:1.35">{{ $feedbackReport->title }}</div>
+                    <div class="mt-2">
+                        <span class="badge bg-primary-subtle text-primary">{{ $feedbackReport->categoryLabel() }}</span>
+                        <span class="badge bg-secondary-subtle text-secondary">{{ $feedbackReport->statusLabel() }}</span>
+                    </div>
+                    <div class="text-muted small mt-2">
+                        Pelapor: {{ $feedbackReport->submitter?->name ?? '—' }}
+                    </div>
+                    <div class="text-muted small">
+                        Divisi: {{ $feedbackReport->division ?: '—' }}
+                    </div>
+                </div>
+                <div class="ai-history-list">
+                    <div class="ai-history-label">Aksi</div>
+                    <a href="{{ route('user.feedback.show', ['userId' => $userId, 'id' => $feedbackReport->id]) }}" class="ai-history-item text-decoration-none">
+                        <span class="title"><i class="ri-arrow-left-line me-1"></i>Kembali ke laporan</span>
+                    </a>
+                    <a href="{{ route('user.ai.index', ['userId' => $userId]) }}" class="ai-history-item text-decoration-none">
+                        <span class="title"><i class="ri-sparkling-2-line me-1"></i>Buka ALIM AI</span>
+                    </a>
+                </div>
+                <div class="ai-history-foot">
+                    <div><i class="ri-chat-3-line me-1"></i>Diskusi tersimpan pada laporan.</div>
+                    <div class="mt-1"><i class="ri-shield-check-line me-1 text-success"></i>Hanya pelapor dan pengelola.</div>
+                </div>
+            @else
             <div class="ai-history-search">
                 <input type="search" id="aiHistorySearch" placeholder="Cari riwayat..." autocomplete="off">
             </div>
@@ -541,6 +602,7 @@
                 <div><i class="ri-shield-check-line me-1 text-success"></i>Cakupan: <strong>{{ $scopeLabel }}</strong></div>
                 <div class="mt-1"><i class="ri-lock-line me-1"></i>NIK/KK, payroll, dan data sensitif dibatasi.</div>
             </div>
+            @endif
         </aside>
 
         {{-- AREA UTAMA --}}
@@ -548,27 +610,33 @@
             <header class="ai-topbar">
                 <button type="button" class="ai-new-chat ai-history-toggle" id="aiHistoryToggle" title="Riwayat"><i class="ri-menu-2-line"></i></button>
                 <div class="ai-topbar-title">
-                    <h1>ALIM AI</h1>
-                    <p>{{ $scopeLabel }} · jawaban otomatis dari data aplikasi</p>
+                    <h1>{{ $feedbackReport ? 'Diskusi Laporan' : 'ALIM AI' }}</h1>
+                    <p>{{ $feedbackReport ? 'Kritik & Saran / Bug · diskusi dua arah' : $scopeLabel.' · jawaban otomatis dari data aplikasi' }}</p>
                 </div>
                 <div class="ai-topbar-spacer"></div>
                 <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle light-dark-mode" title="Mode gelap / terang" aria-label="Mode gelap / terang">
                     <i class="bx bx-moon fs-18"></i>
                 </button>
-                <span class="ai-provider-pill {{ $providerReady ? '' : 'is-off' }}" id="aiProviderPill">
-                    <span class="dot"></span>
-                    {{ $providerReady ? ($providerLabel ?: 'Provider aktif') : 'Provider belum aktif' }}
-                    @if($providerReady && !empty($providerModel))
-                        <span class="text-muted">· {{ $providerModel }}</span>
-                    @endif
-                </span>
-                <select class="ai-quality-select" id="aiQuality" aria-label="Kualitas jawaban">
-                    <option value="flash">Cepat</option>
-                    <option value="pro">Analisis berat</option>
-                </select>
+                @if($feedbackReport)
+                    <a href="{{ route('user.feedback.show', ['userId' => $userId, 'id' => $feedbackReport->id]) }}" class="btn btn-sm btn-light">
+                        <i class="ri-arrow-left-line me-1"></i>Kembali ke Laporan
+                    </a>
+                @else
+                    <span class="ai-provider-pill {{ $providerReady ? '' : 'is-off' }}" id="aiProviderPill">
+                        <span class="dot"></span>
+                        {{ $providerReady ? ($providerLabel ?: 'Provider aktif') : 'Provider belum aktif' }}
+                        @if($providerReady && !empty($providerModel))
+                            <span class="text-muted">· {{ $providerModel }}</span>
+                        @endif
+                    </span>
+                    <select class="ai-quality-select" id="aiQuality" aria-label="Kualitas jawaban">
+                        <option value="flash">Cepat</option>
+                        <option value="pro">Analisis berat</option>
+                    </select>
+                @endif
             </header>
 
-            @if(! $providerReady)
+            @if(! $providerReady && ! $feedbackReport)
                 <div class="ai-alert mx-3">
                     <i class="ri-error-warning-line me-1"></i>
                     Provider AI belum aktif. Super Admin perlu mengisi API key DeepSeek dan mengaktifkan provider di Pengaturan AI.
@@ -576,6 +644,59 @@
             @endif
 
             <div class="ai-stage" id="aiStage">
+                @if($feedbackReport)
+                    <section class="ai-chat-view is-visible" id="aiFeedbackView">
+                        <div class="ai-messages" id="aiFeedbackMessages">
+                            <div class="ai-feedback-context">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <strong>{{ $feedbackReport->title }}</strong>
+                                    <span class="badge bg-primary-subtle text-primary">{{ $feedbackReport->categoryLabel() }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary">{{ $feedbackReport->statusLabel() }}</span>
+                                </div>
+                                <div class="meta">
+                                    {{ $feedbackReport->division ?: '—' }}
+                                    @if($feedbackReport->school) · {{ $feedbackReport->school->name }} @endif
+                                    · Pelapor: {{ $feedbackReport->submitter?->name ?? '—' }}
+                                </div>
+                            </div>
+
+                            @forelse($feedbackReport->updates as $update)
+                                @if($update->type === 'created')
+                                    <div class="ai-feedback-system" data-feedback-system>
+                                        <i class="ri-add-circle-line me-1"></i>Laporan dibuat
+                                        <span class="badge bg-warning-subtle text-warning">{{ $feedbackReport->statusLabelFor($update->status_to) }}</span>
+                                    </div>
+                                @elseif($update->type === 'status')
+                                    <div class="ai-feedback-system" data-feedback-system>
+                                        <i class="ri-refresh-line me-1"></i>{{ $update->user?->name ?? 'Sistem' }} memperbarui status
+                                        <span class="badge bg-secondary-subtle text-secondary">{{ $feedbackReport->statusLabelFor($update->status_from) }}</span>
+                                        <i class="ri-arrow-right-line mx-1"></i>
+                                        <span class="badge bg-primary-subtle text-primary">{{ $feedbackReport->statusLabelFor($update->status_to) }}</span>
+                                        @if($update->message)
+                                            <div class="mt-1">{{ $update->message }}</div>
+                                        @endif
+                                    </div>
+                                @else
+                                    @php
+                                        $own = (string) $update->user_id === (string) auth()->id();
+                                    @endphp
+                                    <article class="ai-message {{ $own ? 'user' : 'assistant' }}" data-feedback-message>
+                                        <span class="ai-message-avatar">{{ strtoupper(mb_substr($update->user?->name ?? 'S', 0, 1)) }}</span>
+                                        <div class="ai-message-body">
+                                            <div class="ai-message-role">
+                                                {{ $update->user?->name ?? 'Pengguna' }}
+                                                <small>{{ $update->created_at?->format('d M Y H:i') }}</small>
+                                            </div>
+                                            <div class="ai-text">{{ $update->message }}</div>
+                                        </div>
+                                    </article>
+                                @endif
+                            @empty
+                                <div class="ai-feedback-empty"><i class="ri-chat-3-line fs-2 d-block mb-2"></i>Belum ada pesan diskusi.</div>
+                            @endforelse
+                        </div>
+                    </section>
+                @else
                 {{-- LANDING --}}
                 <section class="ai-landing" id="aiLanding">
                     <div class="ai-hero">
@@ -613,9 +734,20 @@
                 <section class="ai-chat-view" id="aiChatView">
                     <div class="ai-messages" id="aiMessages"></div>
                 </section>
+                @endif
             </div>
 
             <div class="ai-composer-wrap">
+                @if($feedbackReport)
+                    <form class="ai-composer" id="feedbackComposer">
+                        <textarea id="feedbackInput" rows="1" placeholder="Tulis balasan untuk laporan ini..." autocomplete="off"></textarea>
+                        <div class="ai-composer-foot">
+                            <span class="ai-composer-hint" id="feedbackComposerHint"><i class="ri-enter-line me-1"></i>Enter untuk kirim · Shift+Enter baris baru</span>
+                            <button type="submit" class="ai-send" id="feedbackSend" title="Kirim balasan"><i class="ri-arrow-up-line"></i></button>
+                        </div>
+                    </form>
+                    <p class="ai-disclaimer">Diskusi ini tercatat pada laporan dan dapat dilihat pelapor serta pengelola.</p>
+                @else
                 <form class="ai-composer" id="aiComposer">
                     <textarea id="aiInput" rows="1" placeholder="Tanya data aplikasi atau cari informasi dari internet..." autocomplete="off"></textarea>
                     <div class="ai-composer-foot">
@@ -625,6 +757,7 @@
                     </div>
                 </form>
                 <p class="ai-disclaimer">ALIM AI dapat membuat kesalahan. Periksa kembali data penting dan sumber yang ditampilkan.</p>
+                @endif
             </div>
         </main>
     </div>
@@ -658,11 +791,117 @@
 @push('scripts')
 <script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
 <script>
+function initFeedbackChat(app) {
+    const form = document.getElementById('feedbackComposer');
+    const input = document.getElementById('feedbackInput');
+    const send = document.getElementById('feedbackSend');
+    const hint = document.getElementById('feedbackComposerHint');
+    const container = document.getElementById('aiFeedbackMessages');
+    if (!form || !input || !send || !container) return;
+
+    const historyToggle = document.getElementById('aiHistoryToggle');
+    const historyPanel = document.getElementById('aiHistory');
+    if (historyToggle && historyPanel) {
+        historyToggle.addEventListener('click', function () {
+            historyPanel.classList.toggle('is-open');
+        });
+    }
+
+    function scrollToEnd() {
+        const stage = document.getElementById('aiStage');
+        if (stage) stage.scrollTop = stage.scrollHeight;
+    }
+
+    function appendMessage(name, text, own) {
+        const article = document.createElement('article');
+        article.className = 'ai-message ' + (own ? 'user' : 'assistant');
+        article.setAttribute('data-feedback-message', '');
+
+        const avatar = document.createElement('span');
+        avatar.className = 'ai-message-avatar';
+        avatar.textContent = (name || 'S').trim().charAt(0).toUpperCase();
+
+        const body = document.createElement('div');
+        body.className = 'ai-message-body';
+
+        const role = document.createElement('div');
+        role.className = 'ai-message-role';
+        role.textContent = name || 'Pengguna';
+        const time = document.createElement('small');
+        time.textContent = new Date().toLocaleString('id-ID');
+        role.appendChild(document.createTextNode(' '));
+        role.appendChild(time);
+
+        const textNode = document.createElement('div');
+        textNode.className = 'ai-text';
+        textNode.textContent = text;
+
+        body.appendChild(role);
+        body.appendChild(textNode);
+        article.appendChild(avatar);
+        article.appendChild(body);
+        container.appendChild(article);
+        scrollToEnd();
+        return article;
+    }
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text || send.disabled) return;
+
+        const node = appendMessage(app.dataset.feedbackUserName || 'Anda', text, true);
+        input.value = '';
+        send.disabled = true;
+        if (hint) hint.textContent = 'Mengirim balasan...';
+
+        try {
+            const response = await fetch(app.dataset.feedbackReplyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify({ message: text }),
+            });
+            const data = await response.json().catch(function () { return {}; });
+            if (!response.ok) throw new Error(data.message || 'Gagal mengirim balasan.');
+
+            if (node && data.message) {
+                const content = node.querySelector('.ai-text');
+                if (content) content.textContent = data.message;
+            }
+            if (hint) hint.innerHTML = '<i class="ri-check-line me-1"></i>Terkirim';
+        } catch (error) {
+            if (node) node.remove();
+            if (hint) hint.textContent = 'Gagal mengirim. Coba lagi.';
+            console.error(error);
+        } finally {
+            send.disabled = false;
+            scrollToEnd();
+        }
+    });
+
+    input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    scrollToEnd();
+}
 document.addEventListener('DOMContentLoaded', function () {
     const app = document.getElementById('aiApp');
     if (!app) return;
 
     document.body.classList.add('ai-page');
+
+    if (app.dataset.feedbackId) {
+        initFeedbackChat(app);
+        return;
+    }
 
     const streamUrl = app.dataset.streamUrl;
     const fallbackUrl = app.dataset.fallbackUrl;

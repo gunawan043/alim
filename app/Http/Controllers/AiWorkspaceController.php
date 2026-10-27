@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AiChatConversation;
+use App\Models\AppFeedbackReport;
 use App\Models\AiProviderSetting;
 use App\Services\Ai\AiChatService;
 use App\Services\Ai\AiContextService;
@@ -35,8 +36,27 @@ class AiWorkspaceController extends Controller
 
         $flashProvider = $this->readyProvider($providers, 'flash');
 
+        // Mode diskusi laporan: tetap memakai halaman /ai yang sama, tanpa
+        // membuat halaman baru. Hanya pelapor dan pengelola yang dapat masuk.
+        $feedbackReport = null;
+        if ($request->filled('feedback')) {
+            $feedbackReport = AppFeedbackReport::with([
+                'submitter:id,name',
+                'assignee:id,name',
+                'updates.user:id,name',
+                'attachments',
+            ])->findOrFail($request->query('feedback'));
+
+            abort_unless(
+                $feedbackReport->canBeViewedBy($user),
+                403,
+                'Anda tidak berwenang membuka diskusi laporan ini.'
+            );
+        }
+
         return view('ai.index', [
             'userId' => $userId,
+            'feedbackReport' => $feedbackReport,
             'conversations' => $conversations,
             'suggestions' => (array) config('ai.suggestions', []),
             'scopeLabel' => $contextService->scopeLabel($context),

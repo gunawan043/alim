@@ -37,9 +37,14 @@
         <a href="{{ route('user.feedback.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm">
             <i class="ri-arrow-left-line me-1"></i>Kembali ke Daftar
         </a>
-        @if($canManage)
-            <span class="badge bg-primary-subtle text-primary"><i class="ri-shield-user-line me-1"></i>Mode Pengelola</span>
-        @endif
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            @if($canManage)
+                <span class="badge bg-primary-subtle text-primary"><i class="ri-shield-user-line me-1"></i>Mode Pengelola</span>
+            @endif
+            <a href="{{ route('user.ai.index', ['userId' => $userId, 'feedback' => $report->id]) }}" class="btn btn-primary btn-sm">
+                <i class="ri-chat-3-line me-1"></i>Diskusi di ALIM AI
+            </a>
+        </div>
     </div>
 
     <div class="row g-3">

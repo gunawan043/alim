@@ -111,4 +111,31 @@ class AppFeedbackReport extends Model
     {
         return $this->status === 'selesai';
     }
+
+    public function canBeManagedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin()) {
+            return true;
+        }
+
+        if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+            return true;
+        }
+
+        try {
+            return $user->hasRole('Pimpinan') || $user->hasRole('Teknologi Informasi');
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function canBeViewedBy(?User $user): bool
+    {
+        return $this->canBeManagedBy($user)
+            || (string) $this->submitted_by === (string) $user?->id;
+    }
 }

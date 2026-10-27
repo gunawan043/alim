@@ -188,6 +188,38 @@ class AppFeedbackController extends Controller
         return back()->with('success', 'Status dan keterangan proses berhasil diperbarui.');
     }
 
+    public function reply(Request $request, string $userId, string $id)
+    {
+        $report = AppFeedbackReport::findOrFail($id);
+        $this->authorizeView($request, $report);
+
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $user = $request->user();
+        $update = AppFeedbackUpdate::create([
+            'app_feedback_report_id' => $report->id,
+            'user_id' => $user?->id,
+            'type' => 'comment',
+            'message' => trim($validated['message']),
+        ]);
+
+        $this->notifyDiscussion($report, $user);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => $update->message,
+                'user' => $user?->name,
+                'user_id' => $user?->id,
+                'created_at' => $update->created_at?->toIso8601String(),
+            ]);
+        }
+
+        return back()->with('success', 'Pesan diskusi ditambahkan.');
+    }
+
     public function attachment(Request $request, string $userId, string $id, string $attachmentId)
     {
         $report = AppFeedbackReport::findOrFail($id);
@@ -267,6 +299,37 @@ class AppFeedbackController extends Controller
             }
         } catch (\Throwable $e) {
             Log::warning('Gagal mengirim notifikasi laporan aplikasi: '.$e->getMessage());
+        }
+    }
+
+    private function notifyDiscussion(AppFeedbackReport $report, ?User $sender): void
+    {
+        $recipientId = null;
+
+        if ((string) $report->submitted_by === (string) $sender?->id) {
+            $recipientId = $report->assigned_to;
+        } else {
+            $recipientId = $report->submitted_by;
+        }
+
+        if (! $recipientId) {
+            return;
+        }
+
+        try {
+            app(NotificationBroadcastService::class)->send((string) $recipientId, [
+                'module' => 'system',
+                'type' => 'info',
+                'priority' => 'medium',
+                'title' => 'Pesan baru pada laporan aplikasi',
+                'message' => ($sender?->name ?? 'Pengguna').' membalas laporan: '.$report->title,
+                'action_url' => route('user.ai.index', ['userId' => $recipientId, 'feedback' => $report->id]),
+                'reference_type' => AppFeedbackReport::class,
+                'reference_id' => $report->id,
+                'action_text' => 'Buka Diskusi',
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengirim notifikasi diskusi laporan: '.$e->getMessage());
         }
     }
 
