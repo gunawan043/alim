@@ -131,6 +131,9 @@
                                         <option value="{{ $principal->id }}"
                                             {{ old('principal_user_id', $school->principal_user_id) == $principal->id ? 'selected' : '' }}>
                                             {{ $principal->name }}
+                                            @if($principal->employment?->nupy)
+                                                — {{ $principal->employment->nupy }}
+                                            @endif
                                             @if($principal->gtkWorkUnits->first()?->workUnit)
                                                 ({{ $principal->gtkWorkUnits->first()->workUnit->name }})
                                             @endif
@@ -458,6 +461,19 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Dropdown kepala sekolah bisa dicari (nama / NUPY / satuan kerja).
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery('#principal_user_id').select2({
+                width: '100%',
+                placeholder: '— Cari nama GTK —',
+                allowClear: true,
+                language: {
+                    noResults: () => 'GTK tidak ditemukan',
+                    searching: () => 'Mencari…'
+                }
+            });
+        }
+
         const school = @json($school);
         const old = @json(old());
         const workUnitsData = @json($workUnits);

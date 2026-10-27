@@ -7,6 +7,7 @@ use App\Models\Province;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Services\GtkPositionAssignmentService;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -146,9 +147,9 @@ class SchoolController extends Controller
 
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
+        // Semua GTK (lintas divisi) bisa dipilih sebagai kepala sekolah.
         $principals = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->with(['employment', 'gtkWorkUnits.workUnit'])
             ->orderBy('name')
             ->get();
 
@@ -272,9 +273,9 @@ class SchoolController extends Controller
         $canEditSchool = $this->canEditSchool();
         $workUnits = WorkUnit::where('type', 'Unit Akademik')->orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
+        // Semua GTK (lintas divisi) bisa dipilih sebagai kepala sekolah.
         $principals = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->with(['employment', 'gtkWorkUnits.workUnit'])
             ->orderBy('name')
             ->get();
 
@@ -329,7 +330,7 @@ class SchoolController extends Controller
         );
     }
 
-    public function update(Request $request, string $userId, string $schoolId)
+    public function update(Request $request, string $userId, string $schoolId, GtkPositionAssignmentService $assignments)
     {
         abort_unless($this->canEditSchool(), 403, 'Hanya Super Admin, KSP, Waka, atau Tata Usaha yang dapat mengedit sekolah.');
 
@@ -401,6 +402,16 @@ class SchoolController extends Controller
         }
 
         $school->update($data);
+
+        // Kepala sekolah yang dipilih otomatis menjadi GTK berjabatan Kepala Satuan Pendidikan
+        // pada satuan kerja sekolah ini.
+        if ($school->principal_user_id) {
+            $principal = User::find($school->principal_user_id);
+
+            if ($principal) {
+                $assignments->assign($principal, $school->workUnit, 'Kepala Satuan Pendidikan', 'kepala_sekolah');
+            }
+        }
 
         return redirect()->route('user.schools.show', ['userId' => $userId, 'schoolId' => $school->id])
             ->with('success', 'Data sekolah berhasil diperbarui.');

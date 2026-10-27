@@ -119,13 +119,16 @@
                                     @foreach($principals as $principal)
                                         <option value="{{ $principal->id }}" {{ old('principal_user_id') == $principal->id ? 'selected' : '' }}>
                                             {{ $principal->name }}
+                                            @if($principal->employment?->nupy)
+                                                — {{ $principal->employment->nupy }}
+                                            @endif
                                             @if($principal->gtkWorkUnits->first()?->workUnit)
                                                 ({{ $principal->gtkWorkUnits->first()->workUnit->name }})
                                             @endif
                                         </option>
                                     @endforeach
                                 </select>
-                                <small class="text-muted">Pilih dari GTK yang bertugas di unit Unsur Pimpinan.</small>
+                                <small class="text-muted">Ketik untuk mencari nama GTK (semua satuan kerja).</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">NIP Kepala Sekolah</label>
@@ -402,6 +405,19 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        // Dropdown kepala sekolah bisa dicari (nama / NUPY / satuan kerja).
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery('#principal_user_id').select2({
+                width: '100%',
+                placeholder: '— Cari nama GTK —',
+                allowClear: true,
+                language: {
+                    noResults: () => 'GTK tidak ditemukan',
+                    searching: () => 'Mencari…'
+                }
+            });
+        }
+
         // ── WorkUnit auto-fill ───────────────────────────────────
         const workUnitsData = @json($workUnits);
         const schoolLevelEl = document.querySelector('select[name="school_level"]');

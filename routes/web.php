@@ -12,6 +12,7 @@ use App\Http\Controllers\AppFeedbackController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Arsip\ArsipInventarisController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\AsramaDashboardController;
 use App\Http\Controllers\AtsDashboardController;
 use App\Http\Controllers\Auth\AccessValidatorController;
@@ -3792,7 +3793,12 @@ Route::middleware(['auth'])->get('/sarpras/{path?}', function (Request $request,
     return redirect($target.($query ? '?'.$query : ''));
 })->where('path', '.*')->name('sarpras.legacy');
 
-Route::fallback([HomeController::class, 'index']);
+// ── SEO: robots & sitemap (halaman publik saja) ───────────────────────────────
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
+
+// URL tak dikenal → 404 asli (bukan redirect 302 ke /login yang dianggap soft 404).
+Route::fallback(fn () => abort(404));
 
 // ── AUTO-DEPLOY WEBHOOK ────────────────────────────────────────────────────────
 // Lihat: app/Http/Controllers/DeployController.php

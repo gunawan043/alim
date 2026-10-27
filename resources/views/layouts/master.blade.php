@@ -1,16 +1,15 @@
 <!doctype html >
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-layout="vertical" data-sidebar-size="lg" data-bs-theme="light"
+<html lang="id" data-layout="vertical" data-sidebar-size="lg" data-bs-theme="light"
     data-sidebar="light" data-topbar="light"
     data-theme="galaxy" data-theme-colors="default">
 <head>
     <meta charset="utf-8" />
-    <title>@yield('title') | {{ config('app.name', 'ALIM Alim') }}</title>
+    @include('layouts.partials.seo')
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta content="Alim - Academic Learning & Information Management" name="description" />
-    <meta content="gunawan_wawan43" name="author" />
     <!-- App favicon -->
     <link rel="shortcut icon" href="{{ URL::asset('build/images/alim-sm-light.png')}}">
+    <link rel="apple-touch-icon" href="{{ URL::asset('build/images/alim-sm-light.png') }}">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
     <link rel="preconnect" href="https://js.pusher.com" crossorigin>

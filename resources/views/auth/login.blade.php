@@ -3,7 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | ALIM</title>
+    <title>Masuk — ALIM | Academic Learning & Information Management</title>
+    <meta name="description" content="Masuk ke ALIM (Academic Learning & Information Management) — platform manajemen sekolah dan pesantren untuk data GTK, santri, akademik, keasramaan, dan administrasi.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ url('/login') }}">
+    <meta name="theme-color" content="#005981">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="{{ asset('build/images/alim-sm-light.png') }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ALIM">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:title" content="Masuk — ALIM | Academic Learning & Information Management">
+    <meta property="og:description" content="Platform manajemen sekolah dan pesantren: data GTK, santri, akademik, keasramaan, dan administrasi dalam satu sistem.">
+    <meta property="og:url" content="{{ url('/login') }}">
+    <meta property="og:image" content="{{ asset('build/images/og-alim.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <script type="application/ld+json">
+    {!! json_encode([
+        '@'.'context' => 'https://schema.org',
+        '@type' => 'WebApplication',
+        'name' => 'ALIM',
+        'alternateName' => 'Academic Learning & Information Management',
+        'applicationCategory' => 'BusinessApplication',
+        'operatingSystem' => 'Web',
+        'url' => url('/'),
+        'description' => 'Sistem informasi manajemen pendidikan untuk sekolah dan pesantren: data GTK, santri, akademik, keasramaan, dan administrasi.',
+        'offers' => ['@type' => 'Offer', 'price' => '0', 'priceCurrency' => 'IDR'],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet">

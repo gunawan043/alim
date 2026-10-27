@@ -54,6 +54,27 @@ class WorkUnitSeeder extends Seeder
             ['code' => 'DEP-HUMAS', 'name' => 'Humas & Personalia',           'divisi' => 'HUMAS'],
         ];
 
+        // ── 4. Unit tambahan (pimpinan, dakwah, prodi, PAUD, sekretariat) ─
+        $tambahan = [
+            ['code' => 'PIM-001', 'name' => 'Pimpinan (Top Management)',      'type' => 'Unsur Pimpinan'],
+            ['code' => 'DEP-DAK', 'name' => 'Bidang Dakwah dan Sosial',       'type' => 'Unit Pelayanan'],
+            ['code' => 'UAK-009', 'name' => 'PAUD Abu Hurairah Mataram',      'type' => 'Unit Akademik'],
+            ['code' => 'UAK-010', 'name' => 'Prodi PGMI',                     'type' => 'Unit Akademik'],
+            ['code' => 'SEC-001', 'name' => 'Kesekretariatan',                'type' => 'Unit Administrasi'],
+        ];
+
+        foreach ($tambahan as $item) {
+            WorkUnit::firstOrCreate(
+                ['code' => $item['code']],
+                [
+                    'name' => $item['name'],
+                    'type' => $item['type'],
+                    'is_active' => true,
+                ]
+            );
+            $this->command->info("  ✅ {$item['name']} [{$item['type']}]");
+        }
+
         // ── Insert semua satuan kerja ────────────────────────────────────
         $wus = [];
         foreach (array_merge($akademik, $pengasuhan, $divisiOnly) as $item) {

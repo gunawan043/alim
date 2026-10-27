@@ -101,7 +101,10 @@
                                 <select name="head_id" id="edit_head" class="form-control @error('head_id') is-invalid @enderror">
                                     <option value="">— Pilih Kepala Asrama —</option>
                                     @foreach($heads as $h)
-                                        <option value="{{ $h->id }}" {{ old('head_id', $dormitory->head_id) == $h->id ? 'selected' : '' }}>{{ $h->name }}</option>
+                                        <option value="{{ $h->id }}" {{ old('head_id', $dormitory->head_id) == $h->id ? 'selected' : '' }}>
+                                            {{ $h->name }}@if($h->employment?->nupy) — {{ $h->employment->nupy }}@endif
+                                            @if($h->gtkWorkUnits->first()?->workUnit) ({{ $h->gtkWorkUnits->first()->workUnit->name }})@endif
+                                        </option>
                                     @endforeach
                                 </select>
                                 @error('head_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -210,3 +213,22 @@
         </div>
     </form>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Dropdown kepala asrama bisa dicari (nama / NUPY / satuan kerja).
+        if (window.jQuery && jQuery.fn.select2) {
+            jQuery('#edit_head').select2({
+                width: '100%',
+                placeholder: '— Cari nama GTK —',
+                allowClear: true,
+                language: {
+                    noResults: () => 'GTK tidak ditemukan',
+                    searching: () => 'Mencari…'
+                }
+            });
+        }
+    });
+</script>
+@endpush

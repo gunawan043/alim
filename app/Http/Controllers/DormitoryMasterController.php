@@ -6,6 +6,8 @@ use App\Models\Dormitory;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Services\GtkPositionAssignmentService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -69,8 +71,7 @@ class DormitoryMasterController extends Controller
 
         $dormitories = $query->orderBy('name')->paginate(12)->withQueryString();
         // Work units yang berkaitan dengan Pengasuhan
-        $workUnits = WorkUnit::where('name', 'like', '%Pengasuhan%')
-            ->orderBy('name')->get();
+        $workUnits = $this->pengasuhanWorkUnits();
 
         $stats = [
             'total' => Dormitory::count(),
@@ -125,19 +126,17 @@ class DormitoryMasterController extends Controller
         $this->validateWriteAccess($userId);
 
         // Work units yang berkaitan dengan Pengasuhan
-        $workUnits = WorkUnit::where('name', 'like', '%Pengasuhan%')
-            ->orderBy('name')->get();
+        $workUnits = $this->pengasuhanWorkUnits();
 
         $schools = School::orderBy('name')->get();
         $heads = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->with(['employment', 'gtkWorkUnits.workUnit'])
             ->orderBy('name')->get();
 
         return view('dormitory.master.create', compact('workUnits', 'schools', 'heads', 'userId'));
     }
 
-    public function store(Request $request, string $userId)
+    public function store(Request $request, string $userId, GtkPositionAssignmentService $assignments)
     {
         $this->validateWriteAccess($userId);
 
@@ -174,6 +173,14 @@ class DormitoryMasterController extends Controller
 
         $dormitory = Dormitory::create($data);
 
+        if ($dormitory->head_id) {
+            $head = User::find($dormitory->head_id);
+
+            if ($head) {
+                $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+            }
+        }
+
         return redirect()->route('user.dormitory-master.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id])
             ->with('success', 'Data asrama berhasil disimpan.');
     }
@@ -204,18 +211,17 @@ class DormitoryMasterController extends Controller
         $this->validateWriteAccess($userId);
 
         $dormitory = Dormitory::findOrFail($asramaUuid);
-        $workUnits = WorkUnit::where('name', 'like', '%Pengasuhan%')
-            ->orderBy('name')->get();
+        $workUnits = $this->pengasuhanWorkUnits();
         $schools = School::orderBy('name')->get();
+        // Semua GTK (lintas divisi) bisa dipilih sebagai kepala asrama.
         $heads = User::whereHas('employment')
-            ->whereHas('gtkWorkUnits.workUnit', fn ($q) => $q->where('type', 'Unsur Pimpinan'))
-            ->with(['gtkWorkUnits.workUnit' => fn ($q) => $q->where('type', 'Unsur Pimpinan')])
+            ->with(['employment', 'gtkWorkUnits.workUnit'])
             ->orderBy('name')->get();
 
         return view('dormitory.master.edit', compact('dormitory', 'workUnits', 'schools', 'heads', 'userId'));
     }
 
-    public function update(Request $request, string $userId, string $asramaUuid)
+    public function update(Request $request, string $userId, string $asramaUuid, GtkPositionAssignmentService $assignments)
     {
         $this->validateWriteAccess($userId);
 
@@ -254,6 +260,16 @@ class DormitoryMasterController extends Controller
 
         $dormitory->update($data);
 
+        // Kepala asrama yang dipilih otomatis menjadi GTK berjabatan Kepala Asrama
+        // pada satuan kerja asrama ini.
+        if ($dormitory->head_id) {
+            $head = User::find($dormitory->head_id);
+
+            if ($head) {
+                $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+            }
+        }
+
         return redirect()->route('user.dormitory-master.show', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Data asrama berhasil diperbarui.');
     }
@@ -272,5 +288,15 @@ class DormitoryMasterController extends Controller
 
         return redirect()->route('user.dormitory-master.index', ['userId' => $userId])
             ->with('success', 'Asrama berhasil dihapus.');
+    }
+
+    /**
+     * Satuan kerja pengasuhan/keasramaan (tipe Unit Penunjang Akademik).
+     */
+    private function pengasuhanWorkUnits(): Collection
+    {
+        return WorkUnit::where('type', 'Unit Penunjang Akademik')
+            ->orderBy('name')
+            ->get();
     }
 }
