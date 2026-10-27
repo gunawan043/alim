@@ -39,8 +39,14 @@ class NotificationUniversalService
      */
     public function send($userId, array $data)
     {
+        // Penerima dapat dikirim sebagai User model (mis. observer wali).
+        if ($userId instanceof \Illuminate\Database\Eloquent\Model) {
+            $userId = $userId->getKey();
+        }
+
         $action = (string) ($data['action'] ?? 'system');
         $systemEnabled = $this->channelAllowed($action, 'system');
+        $data['action_url'] = $this->resolveActionUrl($data['action_url'] ?? null, $userId);
 
         $notification = NotificationUniversal::create([
             'user_id' => $userId,
@@ -54,7 +60,7 @@ class NotificationUniversalService
             'title' => $data['title'],
             'message' => $data['message'],
             'data' => $data['data'] ?? null,
-            'action_url' => $data['action_url'] ?? null,
+            'action_url' => $this->resolveActionUrl($data['action_url'] ?? null, $userId),
             'action_text' => $data['action_text'] ?? 'Lihat Detail',
             'priority' => $data['priority'] ?? 'medium',
             'expires_at' => $data['expires_at'] ?? null,
@@ -195,6 +201,10 @@ class NotificationUniversalService
         foreach ($chunks as $chunkUserIds) {
             $insertData = [];
             foreach ($chunkUserIds as $userId) {
+                if ($userId instanceof \Illuminate\Database\Eloquent\Model) {
+                    $userId = $userId->getKey();
+                }
+
                 $insertData[] = [
                     'id' => Str::uuid(),
                     'user_id' => $userId,
@@ -221,6 +231,22 @@ class NotificationUniversalService
         }
 
         return $notifications;
+    }
+
+    /**
+     * Action URL bisa berupa string atau callable yang menerima user id.
+     * Callable dipakai saat satu notifikasi dikirim ke banyak penerima yang
+     * halaman tujuannya mengandung userId masing-masing.
+     */
+    protected function resolveActionUrl($actionUrl, $userId): ?string
+    {
+        if (is_callable($actionUrl)) {
+            $actionUrl = $actionUrl((string) $userId);
+        }
+
+        return $actionUrl
+            ? NotificationUniversal::normalizeActionUrl((string) $actionUrl, (string) $userId)
+            : null;
     }
 
     /**

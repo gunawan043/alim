@@ -308,8 +308,8 @@
     }
 
     function markAsRead(notifId, $item) {
-        if (!notifId) return;
-        fetchJSON(getApiUrl(`notifications/${notifId}/mark-read`), { method: 'POST' })
+        if (!notifId) return Promise.resolve();
+        return fetchJSON(getApiUrl(`notifications/${notifId}/mark-read`), { method: 'POST', keepalive: true })
             .then(() => {
                 if ($item) $item.classList.remove('notif-unread');
                 const badge = document.getElementById('notif-badge-count');
@@ -349,14 +349,23 @@
 
                 const id  = this.dataset.id;
                 const url = this.dataset.url || '#';
+                const isUnread = this.classList.contains('notif-unread');
+                let navigated = false;
 
-                if (id && this.classList.contains('notif-unread')) {
-                    markAsRead(id, this);
+                const goToTarget = () => {
+                    if (navigated || !url || url === '#') return;
+                    navigated = true;
+                    window.location.assign(url);
+                };
+
+                if (id && isUnread) {
                     this.classList.remove('notif-unread');
-                }
-
-                if (url && url !== '#') {
-                    window.location.href = url;
+                    // Tunggu mark-read selesai agar status baca tidak hilang
+                    // saat browser langsung berpindah halaman.
+                    markAsRead(id, this).finally(goToTarget);
+                    setTimeout(goToTarget, 700);
+                } else {
+                    goToTarget();
                 }
             });
 
@@ -394,7 +403,7 @@
 
     // ── "View all" links ────────────────────────────────────────
     document.querySelectorAll('.notif-all-link').forEach(link => {
-        link.setAttribute('href', '/' + (window.userId || '') + '/notifications/page');
+        link.setAttribute('href', window.userId ? `/${window.userId}/notifications/page` : '/notifications/page');
     });
 
     // ── Tab badge update ─────────────────────────────────────────

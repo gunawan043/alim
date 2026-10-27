@@ -248,7 +248,7 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link{ isActiveMaster($currentRoute, 'user.notifications.') ? ' active' : '' }"
-                   href="{ route('user.notifications.index', ['userId' => auth()->id()]) }">
+                   href="{ route('user.notifications.page', ['userId' => auth()->id()]) }">
                     Notifications
                 </a>
             </li>

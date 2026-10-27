@@ -255,6 +255,94 @@ class TopbarNotificationAndWaToggleTest extends TestCase
     }
 
 
+    public function test_url_notifikasi_absolut_lokal_dinormalkan_ke_path_relatif(): void
+    {
+        app(NotificationUniversalService::class)->send($this->userA->id, [
+            'module' => 'system',
+            'type' => 'info',
+            'title' => 'URL Lokal',
+            'message' => 'Uji normalisasi URL.',
+            'action_url' => 'http://127.0.0.1:8000/'.$this->userA->id.'/notifications/page',
+        ]);
+
+        $row = DB::table('notifications_universal')
+            ->where('user_id', $this->userA->id)
+            ->where('title', 'URL Lokal')
+            ->first();
+
+        $this->assertSame('/'.$this->userA->id.'/notifications/page', $row->action_url);
+    }
+
+    public function test_url_kaldik_lama_memakai_user_penerima(): void
+    {
+        app(NotificationUniversalService::class)->send($this->userA->id, [
+            'module' => 'kaldik',
+            'type' => 'info',
+            'title' => 'Kaldik Lama',
+            'message' => 'Uji URL Kaldik.',
+            // Simulasikan data lama: userId pembuat, bukan penerima.
+            'action_url' => '/'.$this->userB->id.'/kaldik',
+        ]);
+
+        $notification = \App\Models\NotificationUniversal::where('user_id', $this->userA->id)
+            ->where('title', 'Kaldik Lama')
+            ->firstOrFail();
+
+        $this->assertSame('/'.$this->userA->id.'/kaldik', $notification->action_url);
+    }
+
+    public function test_notifikasi_tanpa_url_mendapat_fallback_halaman_terkait(): void
+    {
+        $service = app(NotificationUniversalService::class);
+        $service->send($this->userA->id, [
+            'module' => 'system',
+            'type' => 'info',
+            'title' => 'Login Tanpa URL',
+            'message' => 'Uji fallback.',
+            'action' => 'login',
+        ]);
+
+        $notification = \App\Models\NotificationUniversal::where('user_id', $this->userA->id)
+            ->where('title', 'Login Tanpa URL')
+            ->firstOrFail();
+
+        $this->assertSame('/'.$this->userA->id.'/profile/security', $notification->action_url);
+
+        $this->actingAs($this->userA)
+            ->getJson('/'.$this->userA->id.'/notifications')
+            ->assertOk()
+            ->assertJsonPath('notifications.0.action_url', '/'.$this->userA->id.'/profile/security');
+    }
+
+    public function test_action_url_callable_menggunakan_user_penerima(): void
+    {
+        $service = app(NotificationUniversalService::class);
+        $service->sendToMany([$this->userA->id, $this->userB->id], [
+            'module' => 'kaldik',
+            'type' => 'info',
+            'title' => 'Kaldik per Penerima',
+            'message' => 'Uji URL per penerima.',
+            'action_url' => fn (string $recipientId) => '/'.$recipientId.'/kaldik',
+        ]);
+
+        $this->assertSame(
+            '/'.$this->userA->id.'/kaldik',
+            DB::table('notifications_universal')->where('user_id', $this->userA->id)->where('title', 'Kaldik per Penerima')->value('action_url')
+        );
+        $this->assertSame(
+            '/'.$this->userB->id.'/kaldik',
+            DB::table('notifications_universal')->where('user_id', $this->userB->id)->where('title', 'Kaldik per Penerima')->value('action_url')
+        );
+    }
+
+    public function test_topbar_menampilkan_tautan_halaman_notifikasi_bukan_endpoint_json(): void
+    {
+        $this->actingAs($this->userA)
+            ->get('/'.$this->userA->id.'/notifications/page')
+            ->assertOk()
+            ->assertSee(route('user.notifications.page', ['userId' => $this->userA->id]), false);
+    }
+
     public function test_jadwal_dormitori_terdaftar(): void
     {
         $this->artisan('schedule:list')->assertSuccessful();

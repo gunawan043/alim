@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Authorization\Services\ApprovalRoleResolver;
 use App\Events\NotificationEvent;
 use App\Models\NotificationUniversal;
 use Illuminate\Support\Facades\Log;
@@ -45,9 +44,11 @@ class NotificationBroadcastService
         // Simpan ke DB
         $saved = $this->notificationService->sendToMany($userIds, $data);
 
-        // Broadcast ke semua user
-        foreach ($userIds as $userId) {
-            $this->broadcast($userId, $data);
+        // Broadcast baris yang tersimpan agar action_url per penerima ikut benar.
+        foreach ($saved as $notification) {
+            if (is_array($notification) && ! empty($notification['user_id'])) {
+                $this->broadcast((string) $notification['user_id'], $notification);
+            }
         }
 
         return $saved;
@@ -60,19 +61,11 @@ class NotificationBroadcastService
     {
         $saved = $this->notificationService->sendToRole($roleName, $data);
 
-        try {
-            $userIds = ApprovalRoleResolver::resolvePermission($roleName);
-            foreach ($userIds as $perm) {
-                $resolved = usersHavingPermission($perm);
-                foreach ($resolved as $userId) {
-                    $this->broadcast((string) $userId, $data);
-                }
+        // Broadcast baris tersimpan agar action_url per penerima sudah final.
+        foreach ($saved as $notification) {
+            if (is_array($notification) && ! empty($notification['user_id'])) {
+                $this->broadcast((string) $notification['user_id'], $notification);
             }
-        } catch (\Throwable $e) {
-            // Role/permission not found — skip broadcast, don't break approval flow
-            Log::debug("[NotificationBroadcast] Role resolution failed: {$roleName}", [
-                'exception' => $e->getMessage(),
-            ]);
         }
 
         return $saved;

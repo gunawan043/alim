@@ -55,7 +55,7 @@ class UpdateFilledQuotas extends Command
                         'action' => 'job_full',
                         'title' => 'Lowongan Ditutup (Kuota Penuh)',
                         'message' => "Lowongan {$job->judul} otomatis ditutup karena kuota telah terpenuhi.",
-                        'action_url' => "/recruitment/jobs/{$job->id}",
+                        'action_url' => fn (string $recipientId) => route('user.ats.jobs.show', ['userId' => $recipientId, 'job' => $job->id]),
                         'priority' => 'high',
                     ]);
                 }

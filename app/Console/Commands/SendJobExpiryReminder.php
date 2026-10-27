@@ -72,7 +72,7 @@ class SendJobExpiryReminder extends Command
                         'days_left' => $daysBefore,
                         'applicant_count' => $job->applications()->count(),
                     ],
-                    'action_url' => "/recruitment/jobs/{$job->id}",
+                    'action_url' => fn (string $recipientId) => route('user.ats.jobs.show', ['userId' => $recipientId, 'job' => $job->id]),
                     'action_text' => 'Kelola Lowongan',
                     'priority' => 'high',
                 ];
@@ -99,7 +99,7 @@ class SendJobExpiryReminder extends Command
                         'creator' => $job->creator->name,
                         'expiry_date' => $job->tanggal_selesai->format('Y-m-d'),
                     ],
-                    'action_url' => "/recruitment/jobs/{$job->id}",
+                    'action_url' => fn (string $recipientId) => route('user.ats.jobs.show', ['userId' => $recipientId, 'job' => $job->id]),
                     'priority' => 'medium',
                 ]);
 

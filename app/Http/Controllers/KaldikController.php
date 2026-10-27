@@ -399,7 +399,7 @@ class KaldikController extends Controller
                 'title' => 'Kaldik: '.$kaldik->name,
                 'message' => 'Agenda '.($kaldik->type ?? 'kegiatan').' tanggal '
                     .($kaldik->start_date?->format('d/m/Y') ?? '-').' telah ditambahkan ke kalender pendidikan.',
-                'action_url' => route('user.kaldik.index', ['userId' => $user->id]),
+                'action_url' => fn (string $recipientId) => route('user.kaldik.index', ['userId' => $recipientId]),
                 'action_text' => 'Lihat Kaldik',
                 'priority' => 'medium',
             ];
@@ -554,7 +554,7 @@ class KaldikController extends Controller
                     'title' => 'Kaldik diperbarui: '.$kaldik->name,
                     'message' => 'Agenda '.($kaldik->type ?? 'kegiatan').' tanggal '
                         .($kaldik->start_date?->format('d/m/Y') ?? '-').' telah diperbarui.',
-                    'action_url' => route('user.kaldik.index', ['userId' => $userId]),
+                    'action_url' => fn (string $recipientId) => route('user.kaldik.index', ['userId' => $recipientId]),
                     'action_text' => 'Lihat Kaldik',
                     'priority' => 'medium',
                 ]);

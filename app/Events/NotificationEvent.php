@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\NotificationUniversal;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -20,6 +21,10 @@ class NotificationEvent implements ShouldBroadcast
     {
         $this->userId = $userId;
         $this->notification = $notification;
+        $this->notification['action_url'] = NotificationUniversal::normalizeActionUrl(
+            $notification['action_url'] ?? null,
+            $userId
+        );
     }
 
     public function broadcastOn(): array

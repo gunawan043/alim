@@ -110,8 +110,8 @@
                                             data-bs-placement="bottom">
                                         <i class='bx bx-check-double fs-16'></i>
                                     </button>
-                                    <a href="#"
-                                       class="btn btn-sm btn-ghost-light rounded-circle p-1 notif-all-link"
+                                    <a href="{{ route('user.notifications.page', ['userId' => $userId ?? auth()->id()]) }}"
+                                    class="btn btn-sm btn-ghost-light rounded-circle p-1 notif-all-link"
                                        title="Lihat semua"
                                        data-bs-toggle="tooltip"
                                        data-bs-placement="bottom">
@@ -189,7 +189,8 @@
 
                         {{-- Footer --}}
                         <div class="dropdown-footer py-2 px-3 border-top">
-                            <a href="#" class="notif-all-link d-block text-center py-1">
+                            <a href="{{ route('user.notifications.page', ['userId' => $userId ?? auth()->id()]) }}"
+                            class="notif-all-link d-block text-center py-1">
                                 <small class="text-primary fw-medium">Lihat Semua Notifikasi</small>
                                 <i class='bx bx-right-arrow-alt ms-1 text-primary'></i>
                             </a>

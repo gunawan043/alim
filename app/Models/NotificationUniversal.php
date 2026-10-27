@@ -101,6 +101,180 @@ class NotificationUniversal extends Model
     }
 
     /**
+     * URL aksi notifikasi.
+     *
+     * Notifikasi lama dapat menyimpan URL absolut (mis. APP_URL lokal
+     * http://127.0.0.1:8000/...). Saat aplikasi diakses dari host lain,
+     * URL tersebut membuat browser pindah host dan sesi login hilang.
+     * Untuk URL internal, kembalikan path relatif agar tetap memakai host
+     * yang sedang dibuka pengguna. URL eksternal dibiarkan apa adanya.
+     */
+    public function getActionUrlAttribute($value): ?string
+    {
+        $url = $value
+            ? self::normalizeActionUrl($value, $this->user_id)
+            : self::normalizeActionUrl($this->fallbackActionUrl(), $this->user_id);
+
+        // Jika data lama masih berupa nama route / path yang tidak valid,
+        // jangan biarkan browser membuka URL yang salah.
+        if ($url && ! str_starts_with($url, '/') && ! str_starts_with($url, 'http')) {
+            return self::normalizeActionUrl($this->fallbackActionUrl(), $this->user_id);
+        }
+
+        return $url;
+    }
+
+    /**
+     * Tujuan cadangan untuk notifikasi lama yang belum menyimpan action_url.
+     * Dipilih berdasarkan modul/aksi agar klik tetap membuka halaman terkait.
+     */
+    protected function fallbackActionUrl(): ?string
+    {
+        $userId = $this->user_id ?: auth()->id();
+        if (! $userId) {
+            return null;
+        }
+
+        $action = (string) $this->action;
+        $module = (string) $this->module;
+
+        if (in_array($action, ['login', 'password_forgot', 'password_reset', 'password_changed'], true)) {
+            return route('user.profile.security', ['userId' => $userId]);
+        }
+
+        if ($module === 'kaldik') {
+            return route('user.kaldik.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'feedback' || str_starts_with($action, 'feedback_')) {
+            return route('user.feedback.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'announcement' || $action === 'announcement') {
+            if ($this->reference_id && \Illuminate\Support\Facades\Route::has('user.announcements.show')) {
+                return route('user.announcements.show', [
+                    'userId' => $userId,
+                    'id' => $this->reference_id,
+                ]);
+            }
+
+            return route('user.notifications.page', ['userId' => $userId]);
+        }
+
+        if ($module === 'recruitment') {
+            return route('user.ats.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'hrd.cuti') {
+            return route('user.cuti.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'hrd.kontrak') {
+            return route('user.kontrak.expiring', ['userId' => $userId]);
+        }
+
+        if ($module === 'hrd.pelatihan') {
+            return route('user.pelatihan.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'hrd.kinerja') {
+            return route('user.kinerja.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'hrd.kesejahteraan') {
+            return route('user.kesejahteraan.index', ['userId' => $userId]);
+        }
+
+        if ($module === 'todo') {
+            return route('user.todos.index', ['userId' => $userId]);
+        }
+
+        // Notifikasi tanpa referensi halaman: arahkan ke daftar notifikasi,
+        // bukan ke '#' yang membuat klik terasa tidak berfungsi.
+        return route('user.notifications.page', ['userId' => $userId]);
+    }
+
+    /**
+     * Ubah URL internal absolut menjadi path relatif agar tidak memindahkan
+     * pengguna ke host lama (mis. 127.0.0.1 dari data seed/lokal).
+     */
+    public static function normalizeActionUrl($value, ?string $userId = null): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $value = trim($value);
+        $parts = parse_url($value);
+
+        if (! empty($parts['host'])) {
+            $host = strtolower($parts['host']);
+            $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+            $requestHost = strtolower((string) request()?->getHost());
+            $internalHosts = array_filter([
+                'localhost',
+                '127.0.0.1',
+                '::1',
+                $appHost,
+                $requestHost,
+            ]);
+
+            // URL eksternal (mis. portal wali di domain lain) dibiarkan.
+            if (! in_array($host, $internalHosts, true)) {
+                return $value;
+            }
+
+            $value = ($parts['path'] ?? '/').(isset($parts['query']) ? '?'.$parts['query'] : '');
+        }
+
+        // Nama route lama yang tersimpan apa adanya (mis. cuti.index).
+        if (! str_starts_with($value, '/')) {
+            $candidates = str_starts_with($value, 'user.') ? [$value] : ['user.'.$value, $value];
+
+            foreach ($candidates as $routeName) {
+                if (! \Illuminate\Support\Facades\Route::has($routeName)) {
+                    continue;
+                }
+
+                try {
+                    return self::normalizeActionUrl(route($routeName, array_filter([
+                        'userId' => $userId,
+                    ])), $userId);
+                } catch (\Throwable) {
+                    // Coba kandidat berikutnya.
+                }
+            }
+
+            return $value;
+        }
+
+        // Path lama tanpa prefix userId.
+        if ($value === '/notifications') {
+            return $userId ? '/'.$userId.'/notifications/page' : $value;
+        }
+
+        if (preg_match('~^/recruitment/jobs/([^/?#]+)~', $value, $m)) {
+            return $userId ? '/'.$userId.'/ats/jobs/'.$m[1] : $value;
+        }
+
+        if (preg_match('~^/recruitment/applications/([^/?#]+)~', $value, $m)) {
+            return $userId ? '/'.$userId.'/ats/applications/'.$m[1] : $value;
+        }
+
+        // Notifikasi Kaldik lama bisa menyimpan userId pembuat, bukan penerima.
+        if ($userId) {
+            $value = preg_replace(
+                '#^/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(/kaldik(?:/|$))#i',
+                '/'.$userId.'$1',
+                $value,
+                1
+            );
+        }
+
+        return $value;
+    }
+
+    /**
      * Helper: label readable untuk module
      */
     public function getModuleLabelAttribute()

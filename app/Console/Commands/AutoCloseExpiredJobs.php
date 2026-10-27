@@ -116,7 +116,7 @@ class AutoCloseExpiredJobs extends Command
                             'expired_date' => $job->tanggal_selesai->format('Y-m-d'),
                             'total_applicants' => $job->applications()->count(),
                         ],
-                        'action_url' => "/recruitment/jobs/{$job->id}",
+                        'action_url' => fn (string $recipientId) => route('user.ats.jobs.show', ['userId' => $recipientId, 'job' => $job->id]),
                         'action_text' => 'Lihat Lowongan',
                         'priority' => 'medium',
                         'send_email' => true,
@@ -145,7 +145,7 @@ class AutoCloseExpiredJobs extends Command
                                 'job_title' => $job->judul,
                                 'application_status' => $application->status,
                             ],
-                            'action_url' => "/recruitment/applications/{$application->id}",
+                            'action_url' => fn (string $recipientId) => route('user.ats.applications.show', ['userId' => $recipientId, 'application' => $application->id]),
                             'action_text' => 'Lihat Lamaran',
                             'priority' => 'medium',
                         ]
@@ -164,7 +164,7 @@ class AutoCloseExpiredJobs extends Command
                         'job_code' => $job->kode_lowongan,
                         'closed_at' => now()->format('Y-m-d H:i:s'),
                     ],
-                    'action_url' => "/recruitment/jobs/{$job->id}",
+                    'action_url' => fn (string $recipientId) => route('user.ats.jobs.show', ['userId' => $recipientId, 'job' => $job->id]),
                     'priority' => 'low',
                 ]);
 

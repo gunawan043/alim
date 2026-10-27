@@ -164,13 +164,28 @@ class HRDNotificationService
                 'type' => $type,
                 'title' => $title,
                 'message' => $message,
-                'action_url' => $routeName,
+                'action_url' => $this->resolveUrl($routeName, $userId),
                 'action_text' => 'Lihat Detail',
                 'priority' => $priority,
                 'data' => ['route' => $routeName, 'by' => $createdBy],
             ]);
         } catch (\Throwable $e) {
             // swallow - notification should never break business flow
+        }
+    }
+
+    protected function resolveUrl(string $routeName, string $userId): string
+    {
+        $route = $routeName;
+
+        if (! str_starts_with($route, 'user.')) {
+            $route = 'user.'.$route;
+        }
+
+        try {
+            return route($route, ['userId' => $userId]);
+        } catch (\Throwable) {
+            return route('user.notifications.page', ['userId' => $userId]);
         }
     }
 

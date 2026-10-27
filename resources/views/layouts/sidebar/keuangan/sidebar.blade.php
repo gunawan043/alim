@@ -62,7 +62,7 @@
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}"
-       href="{{ $keuanganUrl('user.notifications.index') }}">
+       href="{{ $keuanganUrl('user.notifications.page') }}">
         <i class="ri-notification-3-line"></i><span>Notifikasi</span>
     </a>
 </li>

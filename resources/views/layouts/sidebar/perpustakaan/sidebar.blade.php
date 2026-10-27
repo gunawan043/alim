@@ -25,7 +25,7 @@
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}" href="{{ route('user.notifications.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}" href="{{ route('user.notifications.page', ['userId' => $userId]) }}">
         <i class="ri-notification-3-line"></i><span>Notifikasi</span>
     </a>
 </li>
