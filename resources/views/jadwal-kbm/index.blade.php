@@ -7,6 +7,51 @@
 <style>
     .sg-badge { font-size: .72rem; }
     .table-freeze th, .table-freeze td { vertical-align: middle; }
+    .schedule-matrix-table { font-size: .78rem; }
+    .schedule-matrix-table th, .schedule-matrix-table td { padding: .35rem .4rem; vertical-align: middle; }
+    .schedule-matrix-table td.small { font-size: .74rem; }
+    .subject-code { display: block; font-weight: 600; line-height: 1.15; }
+    .teacher-code { display: block; color: #64748b; font-size: .68rem; line-height: 1.2; }
+    .matrix-layout { display: flex; gap: 1rem; align-items: flex-start; }
+    .matrix-schedule { flex: 1 1 74%; min-width: 0; }
+    .matrix-teachers { flex: 0 0 25%; min-width: 275px; }
+    .matrix-teachers .table-responsive {
+        max-height: calc(100vh - 240px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+    .matrix-teachers thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .teacher-load { margin: 0; }
+    .teacher-load summary {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        cursor: pointer;
+        list-style: none;
+        line-height: 1.25;
+    }
+    .teacher-load summary::-webkit-details-marker { display: none; }
+    .teacher-load summary::after {
+        content: '+';
+        margin-left: auto;
+        color: #64748b;
+        font-weight: 700;
+        flex: 0 0 auto;
+    }
+    .teacher-load[open] summary::after { content: '−'; }
+    .teacher-load-summary { color: #64748b; font-size: .68rem; white-space: nowrap; }
+    .teacher-load-detail { margin-top: .25rem; }
+    .teacher-subject { display: flex; justify-content: space-between; gap: .5rem; border-top: 1px solid #e5e7eb; margin-top: .25rem; padding-top: .25rem; }
+    .teacher-hours { white-space: nowrap; font-weight: 600; }
+    .teacher-total { text-align: right; color: #64748b; margin-top: .25rem; }
+    @media (max-width: 1199.98px) {
+        .matrix-layout { flex-direction: column; }
+        .matrix-schedule, .matrix-teachers { width: 100%; min-width: 0; }
+    }
 </style>
 @endpush
 
@@ -107,6 +152,23 @@
     </div>
 </div>
 
+<div class="card mb-3" id="jadwalMatrix">
+    <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h5 class="card-title mb-0"><i class="ri-table-line text-primary me-1"></i>Matriks Jadwal Pelajaran</h5>
+            <p class="text-muted mb-0 small">Seluruh rombel dalam satu tampilan per hari dan jam.</p>
+        </div>
+        <span class="badge bg-primary-subtle text-primary">{{ $activeAy?->name ?? 'Tahun ajaran belum aktif' }}</span>
+    </div>
+    <div class="card-body">
+        @if($studyGroups->isEmpty())
+            <div class="text-muted text-center py-4">Belum ada rombel aktif.</div>
+        @else
+            @include('jadwal-kbm._matrix', ['studyGroups' => $studyGroups, 'matrixData' => $matrixData])
+        @endif
+    </div>
+</div>
+
 <div class="card" id="jadwalKbmList">
     <div class="card-header border-bottom-dashed">
         <div class="row g-3 align-items-center">
@@ -125,6 +187,12 @@
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <a href="{{ route('user.jam-pelajaran.index', ['userId' => $userId]) }}" class="btn btn-soft-primary">
                         <i class="ri-timer-line me-1"></i> Jam Pelajaran
+                    </a>
+                    <a href="{{ route('user.jadwal-kbm.availability', ['userId' => $userId]) }}" class="btn btn-soft-warning">
+                        <i class="ri-user-settings-line me-1"></i> Ketersediaan Guru
+                    </a>
+                    <a href="{{ route('user.jadwal-kbm.cetak-all', ['userId' => $userId]) }}" class="btn btn-soft-secondary" target="_blank" rel="noopener">
+                        <i class="ri-printer-line me-1"></i> Cetak Semua Rombel
                     </a>
                     <a href="{{ route('user.jadwal-kbm.generate', ['userId' => $userId]) }}" class="btn btn-primary">
                         <i class="ri-magic-line me-1"></i> Generate Jadwal Sekolah
@@ -196,6 +264,10 @@
                                     <i class="ri-printer-line"></i>
                                 </a>
                             @else
+                                <a href="{{ route('user.jadwal-kbm.edit', ['userId' => $userId, 'studyGroupId' => $sg->id]) }}"
+                                   class="btn btn-sm btn-outline-warning" title="Tambah jadwal manual">
+                                    <i class="ri-edit-line"></i>
+                                </a>
                                 <form method="POST"
                                       action="{{ route('user.jadwal-kbm.generate.execute', ['userId' => $userId, 'studyGroupId' => $sg->id]) }}"
                                       class="d-inline js-generate-single">
