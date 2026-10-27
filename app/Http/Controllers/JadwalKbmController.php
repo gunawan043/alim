@@ -9,6 +9,7 @@ use App\Models\JadwalKbm;
 use App\Models\OtherTeacherTask;
 use App\Models\StudyGroup;
 use App\Models\TahfidzSchedule;
+use App\Models\TeacherClassAttendance;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
@@ -475,7 +476,34 @@ class JadwalKbmController extends Controller
 
         $days = $this->days();
 
-        return view('jadwal-kbm.teacher', compact('teacher', 'jadwals', 'days', 'activeAy', 'tahfidzSchedules'));
+        // Status kehadiran guru pada jadwal hari ini.
+        $today = today();
+        $todayDay = (int) $today->format('w') === 0 ? 7 : (int) $today->format('w');
+        $todayJadwals = $jadwals->get($todayDay, collect());
+        $attendanceToday = $todayJadwals->isEmpty()
+            ? collect()
+            : TeacherClassAttendance::where('teacher_id', $teacherId)
+                ->whereDate('attendance_date', $today)
+                ->whereIn('jadwal_kbm_id', $todayJadwals->pluck('id'))
+                ->get()
+                ->keyBy('jadwal_kbm_id');
+
+        $todayCheckedIn = $attendanceToday->filter(fn ($att) => $att->actual_time_in !== null)->count();
+        $todayCheckedOut = $attendanceToday->filter(fn ($att) => $att->actual_time_out !== null)->count();
+        $todayLate = $attendanceToday->filter(fn ($att) => $att->status_masuk === 'terlambat')->count();
+
+        $attendanceSummary = [
+            'total' => $todayJadwals->count(),
+            'checked_in' => $todayCheckedIn,
+            'checked_out' => $todayCheckedOut,
+            'late' => $todayLate,
+            'pending' => max(0, $todayJadwals->count() - $todayCheckedIn),
+        ];
+
+        return view('jadwal-kbm.teacher', compact(
+            'teacher', 'jadwals', 'days', 'activeAy', 'tahfidzSchedules',
+            'todayDay', 'attendanceToday', 'attendanceSummary'
+        ));
     }
 
     /**
