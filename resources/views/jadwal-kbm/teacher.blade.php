@@ -81,6 +81,7 @@
                             <th style="width:120px">Waktu</th>
                             <th>Mata Pelajaran</th>
                             <th>Rombel</th>
+                            <th style="width:145px">Status Kehadiran</th>
                             <th style="width:100px">Ruang</th>
                         </tr>
                     </thead>
@@ -94,29 +95,29 @@
                                     @endif
                                     <td class="text-center">{{ $jadwal->slot_index }}</td>
                                     <td class="time-cell">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
+                                    <td class="fw-medium">{{ $jadwal->subject?->name ?? '-' }}</td>
+                                    <td>{{ $jadwal->studyGroup?->full_name ?? $jadwal->studyGroup?->name ?? '-' }}</td>
                                     <td>
-                                        <div class="fw-medium">{{ $jadwal->subject?->name ?? '-' }}</div>
                                         @if(($dayNumber ?? null) === ($todayDay ?? null))
                                             @php $attendance = ($attendanceToday ?? collect())->get($jadwal->id); @endphp
-                                            <div class="mt-1">
-                                                @if($attendance?->actual_time_out)
-                                                    <span class="badge bg-success-subtle text-success">
-                                                        <i class="ri-checkbox-circle-line me-1"></i>Selesai {{ $attendance->actual_time_out->format('H:i') }}
-                                                    </span>
-                                                @elseif($attendance?->actual_time_in)
-                                                    <span class="badge bg-info-subtle text-info">
-                                                        <i class="ri-login-box-line me-1"></i>Masuk {{ $attendance->actual_time_in->format('H:i') }}
-                                                        @if($attendance->status_masuk === 'terlambat') · Terlambat @endif
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-warning-subtle text-warning">
-                                                        <i class="ri-time-line me-1"></i>Belum absen
-                                                    </span>
-                                                @endif
-                                            </div>
+                                            @if($attendance?->actual_time_out)
+                                                <span class="badge bg-success-subtle text-success">
+                                                    <i class="ri-checkbox-circle-line me-1"></i>Selesai {{ $attendance->actual_time_out->format('H:i') }}
+                                                </span>
+                                            @elseif($attendance?->actual_time_in)
+                                                <span class="badge bg-info-subtle text-info">
+                                                    <i class="ri-login-box-line me-1"></i>Masuk {{ $attendance->actual_time_in->format('H:i') }}
+                                                    @if($attendance->status_masuk === 'terlambat') · Terlambat @endif
+                                                </span>
+                                            @else
+                                                <span class="badge bg-warning-subtle text-warning">
+                                                    <i class="ri-time-line me-1"></i>Belum absen
+                                                </span>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">—</span>
                                         @endif
                                     </td>
-                                    <td>{{ $jadwal->studyGroup?->full_name ?? $jadwal->studyGroup?->name ?? '-' }}</td>
                                     <td>{{ $jadwal->room ?? '-' }}</td>
                                 </tr>
                             @endforeach
