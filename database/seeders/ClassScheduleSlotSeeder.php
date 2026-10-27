@@ -8,11 +8,10 @@ use Illuminate\Support\Str;
 
 /**
  * Master Jam Pelajaran default per sekolah (idempoten, upsert per slot):
- *  - SD       : Senin–Jumat (8 jam/hari = 40 slot mengajar)
- *  - SMP/SMA  : Senin–Sabtu (8 jam/hari = 48 slot mengajar)
+ *  - SD       : Senin–Jumat (9 jam/hari = 45 slot mengajar)
+ *  - SMP/SMA  : Senin–Sabtu (9 jam/hari = 54 slot mengajar)
  *
- * Setiap hari: kegiatan pagi (Upacara/Literasi/Senam/…), jam 1–8, istirahat,
- * ishoma, dan Pulang — sesuai bentuk tabel jadwal yang diharapkan.
+ * Template: 9 jam pelajaran dengan jeda 10.10–10.40.
  */
 class ClassScheduleSlotSeeder extends Seeder
 {
@@ -70,35 +69,22 @@ class ClassScheduleSlotSeeder extends Seeder
     }
 
     /**
-     * Grid satu hari: kegiatan → jam 1–8 dengan istirahat/ishoma/pulang.
+     * Grid satu hari: 9 jam pelajaran dengan jeda 10.10–10.40.
      *
      * @return array<int, array{number:int,label:string,start:string,end:string,is_break:bool}>
      */
     private function gridForDay(int $day): array
     {
-        $kegiatan = match ($day) {
-            1 => 'Upacara Bendera',
-            2 => 'Literasi/Pembiasaan',
-            3 => 'Senam/Kebersihan',
-            4 => 'Agama/Pengajian',
-            5 => 'Yasinan/Imtaq',
-            default => 'Literasi',
-        };
-
         return [
-            ['number' => 1, 'label' => $kegiatan, 'start' => '07:00:00', 'end' => '07:30:00', 'is_break' => true],
-            ['number' => 2, 'label' => 'Jam 1', 'start' => '07:30:00', 'end' => '08:05:00', 'is_break' => false],
-            ['number' => 3, 'label' => 'Jam 2', 'start' => '08:05:00', 'end' => '08:40:00', 'is_break' => false],
-            ['number' => 4, 'label' => 'Jam 3', 'start' => '08:40:00', 'end' => '09:15:00', 'is_break' => false],
-            ['number' => 5, 'label' => 'Istirahat', 'start' => '09:15:00', 'end' => '09:45:00', 'is_break' => true],
-            ['number' => 6, 'label' => 'Jam 4', 'start' => '09:45:00', 'end' => '10:20:00', 'is_break' => false],
-            ['number' => 7, 'label' => 'Jam 5', 'start' => '10:20:00', 'end' => '10:55:00', 'is_break' => false],
-            ['number' => 8, 'label' => 'Jam 6', 'start' => '10:55:00', 'end' => '11:30:00', 'is_break' => false],
-            ['number' => 9, 'label' => 'Ishoma', 'start' => '11:30:00', 'end' => '13:00:00', 'is_break' => true],
-            ['number' => 10, 'label' => 'Jam 7', 'start' => '13:00:00', 'end' => '13:35:00', 'is_break' => false],
-            ['number' => 11, 'label' => 'Jam 8', 'start' => '13:35:00', 'end' => '14:10:00', 'is_break' => false],
-            ['number' => 12, 'label' => 'Jam 9', 'start' => '14:10:00', 'end' => '14:45:00', 'is_break' => false],
-            ['number' => 13, 'label' => 'Pulang', 'start' => '14:45:00', 'end' => '15:00:00', 'is_break' => true],
+            ['number' => 1, 'label' => 'Jam 1', 'start' => '07:30:00', 'end' => '08:10:00', 'is_break' => false],
+            ['number' => 2, 'label' => 'Jam 2', 'start' => '08:10:00', 'end' => '08:50:00', 'is_break' => false],
+            ['number' => 3, 'label' => 'Jam 3', 'start' => '08:50:00', 'end' => '09:30:00', 'is_break' => false],
+            ['number' => 4, 'label' => 'Jam 4', 'start' => '09:30:00', 'end' => '10:10:00', 'is_break' => false],
+            ['number' => 5, 'label' => 'Jam 5', 'start' => '10:40:00', 'end' => '11:15:00', 'is_break' => false],
+            ['number' => 6, 'label' => 'Jam 6', 'start' => '11:15:00', 'end' => '11:50:00', 'is_break' => false],
+            ['number' => 7, 'label' => 'Jam 7', 'start' => '11:50:00', 'end' => '12:25:00', 'is_break' => false],
+            ['number' => 8, 'label' => 'Jam 8', 'start' => '12:25:00', 'end' => '13:00:00', 'is_break' => false],
+            ['number' => 9, 'label' => 'Jam 9', 'start' => '13:00:00', 'end' => '13:30:00', 'is_break' => false],
         ];
     }
 }

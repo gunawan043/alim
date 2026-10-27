@@ -181,7 +181,7 @@
                                     <form method="POST" action="{{ route('user.jam-pelajaran.template', ['userId' => $userId]) }}" class="d-inline">
                                         @csrf
                                         <input type="hidden" name="day_of_week" value="{{ $dayNumber }}">
-                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Buat 6 slot default">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Buat 9 slot default">
                                             <i class="ri-magic-line me-1"></i>Terapkan Template
                                         </button>
                                     </form>
