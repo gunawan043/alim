@@ -36,6 +36,10 @@ return [
     'content_temperature' => 0.65,
     'rate_limit' => '20,1',
 
+    // Batas koneksi ke provider AI (detik). Timeout total permintaan diatur
+    // per pemanggilan; connect_timeout mencegah request menggantung lama.
+    'connect_timeout' => (int) env('AI_CONNECT_TIMEOUT', 10),
+
     /*
     |--------------------------------------------------------------------------
     | Pencarian web

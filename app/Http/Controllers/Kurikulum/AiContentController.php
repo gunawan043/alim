@@ -90,6 +90,10 @@ class AiContentController extends Controller
 
     public function generate(Request $request, string $userId, AiContentGenerator $generator)
     {
+        // Generate RPM/soal dapat membutuhkan waktu lebih lama daripada batas
+        // default PHP 30 detik. Batas HTTP AI sendiri tetap 90 detik.
+        @set_time_limit(120);
+
         $schoolId = $request->attributes->get('schoolContextId');
         $user = $request->user();
 

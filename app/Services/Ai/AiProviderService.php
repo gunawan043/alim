@@ -217,6 +217,7 @@ class AiProviderService
 
         try {
             $response = Http::withHeaders($headers)
+                ->connectTimeout((int) config('ai.connect_timeout', 10))
                 ->timeout((int) ($options['timeout'] ?? config('arabic_names.ai.timeout', 30)))
                 ->post($provider->endpoint, $payload);
 
