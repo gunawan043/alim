@@ -424,7 +424,7 @@
                             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}"
                                href="{{ route('user.notifications.page', ['userId' => $userId]) }}">
                                 <i class="ri-notification-3-line"></i><span>Notifikasi</span>
-                            </a>
+                            @include('layouts.sidebar.partials.indicator-badge', ['key' => 'notifications', 'title' => 'Notifikasi belum dibaca'])</a>
                         </li>
 
                         <li class="nav-item">
@@ -459,7 +459,7 @@
                     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.feedback.']) ? ' active' : '' }}"
                        href="{{ route('user.feedback.index', ['userId' => $userId]) }}">
                         <i class="ri-feedback-line"></i><span>Kritik &amp; Saran / Bug</span>
-                    </a>
+                    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'feedback_baru', 'title' => 'Laporan baru yang belum ditindaklanjuti'])</a>
                 </li>
 
             </ul>

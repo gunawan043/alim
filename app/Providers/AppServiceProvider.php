@@ -200,12 +200,18 @@ class AppServiceProvider extends ServiceProvider
         view()->composer(['layouts.sidebar'], SidebarAccessComposer::class);
 
         view()->composer([
+            'layouts.sidebar',
             'layouts.sidebar.satuan-pendidikan.sidebar',
-            'layouts.sidebar.tugas-tambahan.koordinator-kurikulum',
-            'layouts.sidebar.tugas-tambahan.wali-kelas',
+            'layouts.sidebar.super-admin.sidebar',
+            'layouts.sidebar.tugas-tambahan.*',
             'layouts.sidebar.master.sidebar',
         ], function ($view) {
-            $view->with('nilaiPendingCount', app(\App\Services\NilaiReminderService::class)->countForUser(auth()->user()));
+            $user = auth()->user();
+            $view->with('nilaiPendingCount', app(\App\Services\NilaiReminderService::class)->countForUser($user));
+            $view->with('sidebarIndicators', app(\App\Services\SidebarIndicatorService::class)->forUser(
+                $user,
+                request()->attributes->get('schoolContextId')
+            ));
         });
 
         // System Admin Menu (when current user is is_system_admin and not View-As)

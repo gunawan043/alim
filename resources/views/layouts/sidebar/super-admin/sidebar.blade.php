@@ -35,7 +35,7 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}"
        href="{{ route('user.notifications.page', ['userId' => $userId]) }}">
         <i class="ri-notification-3-line"></i><span>Notifikasi</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'notifications', 'title' => 'Notifikasi belum dibaca'])</a>
 </li>
 
 <li class="nav-item">
@@ -738,7 +738,7 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.approvals.']) ? ' active' : '' }}"
        href="{{ route('user.approvals.index', ['userId' => $userId]) }}">
         <i class="ri-check-double-line"></i><span>Approval Center</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'approvals', 'title' => 'Permintaan menunggu persetujuan'])</a>
 </li>
 
 <li class="nav-item">

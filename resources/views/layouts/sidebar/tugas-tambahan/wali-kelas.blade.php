@@ -54,15 +54,15 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
        href="{{ $waliUrl('user.schools.nilai-kelas.sts', ['studyGroupId' => $waliKelasGroups->first()->id]) }}">
         <i class="ri-table-line"></i><span>Konsolidasi Nilai</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap'])</a>
 </li>
 
 {{-- Rapor & Leger --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.rapor', 'user.schools.nilai-kelas.leger']) ? ' active' : '' }}"
        href="{{ $waliUrl('user.schools.nilai-kelas.sts', ['studyGroupId' => $waliKelasGroups->first()->id]) }}">
-        <i class="ri-file-text-line"></i><span>Rapor &amp; Leger</span>@include('layouts.sidebar.partials.nilai-badge')
-    </a>
+        <i class="ri-file-text-line"></i><span>Rapor &amp; Leger</span>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap atau belum dipublikasikan'])</a>
 </li>
 
 {{-- Rekap Absensi Kelas --}}
@@ -70,7 +70,7 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.recap']) ? ' active' : '' }}"
        href="{{ $waliUrl('user.absensi.harian.recap') }}">
         <i class="ri-bar-chart-2-line"></i><span>Rekap Absensi Kelas</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'absensi_wali', 'title' => 'Kelas Anda belum diabsen hari ini'])</a>
 </li>
 
 {{-- Pelanggaran Kelas --}}

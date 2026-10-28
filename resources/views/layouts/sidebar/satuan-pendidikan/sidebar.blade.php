@@ -198,7 +198,7 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.todos.']) ? ' active' : '' }}"
        href="{{ route('user.todos.index', ['userId' => $userId]) }}">
         <i class="ri-task-line"></i><span>Todo List</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'todo_overdue', 'title' => 'Tugas yang sudah lewat tenggat'])</a>
 </li>
 
 <li class="nav-item">
@@ -235,7 +235,7 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.notifications.']) ? ' active' : '' }}"
        href="{{ route('user.notifications.page', ['userId' => $userId]) }}">
         <i class="ri-notification-3-line"></i><span>Notifikasi</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'notifications', 'title' => 'Notifikasi belum dibaca'])</a>
 </li>
 
 @if($showAll || $isStruktural || $isAdminTU || $isKoordinator)
@@ -243,7 +243,7 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.approvals.']) ? ' active' : '' }}"
        href="{{ route('user.approvals.index', ['userId' => $userId]) }}">
         <i class="ri-check-double-line"></i><span>Approval Center</span>
-    </a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'approvals', 'title' => 'Permintaan menunggu persetujuan Anda'])</a>
 </li>
 @endif
 
@@ -351,7 +351,7 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
            href="{{ route('user.schools.guru-mapel.index', ['userId' => $userId]) }}">
             <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>
-        </a>
+        @include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
     </li>
 
     @if($showAll || ($isGuru && ! $isWaliKelas && $canAbsensiAuthority))
@@ -359,7 +359,7 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
            href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
             <i class="ri-calendar-check-line"></i><span>Absensi Kelas Saya</span>
-        </a>
+        @include('layouts.sidebar.partials.indicator-badge', ['key' => 'absensi_all', 'title' => 'Kelas yang belum diabsen hari ini'])</a>
     </li>
     @endif
 
@@ -440,7 +440,7 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
                         Perangkat Pembelajaran
-                    </a>
+                    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'perangkat_review', 'title' => 'Perangkat menunggu review Anda'])</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.ai.']) ? ' active' : '' }}"
@@ -550,7 +550,7 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.study-groups.']) ? ' active' : '' }}"
            href="{{ route('user.study-groups.index', ['userId' => $userId]) }}">
             <i class="ri-layout-grid-line"></i><span>Pengaturan Rombel</span>
-        </a>
+        @include('layouts.sidebar.partials.indicator-badge', ['key' => 'rombel_tanpa_wali', 'title' => 'Rombel belum memiliki wali kelas'])</a>
     </li>
     @endif
 
@@ -626,7 +626,7 @@
                         <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-out.']) ? ' active' : '' }}"
                            href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}">
                             Mutasi Keluar
-                        </a>
+                        @include('layouts.sidebar.partials.indicator-badge', ['key' => 'mutasi_pending', 'title' => 'Pengajuan mutasi menunggu persetujuan'])</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-do.']) ? ' active' : '' }}"
@@ -665,15 +665,15 @@
                href="{{ $waliKelasGroups->isNotEmpty()
                     ? route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $waliKelasGroups->first()->id])
                     : route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
-                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.nilai-badge')
-            </a>
+                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
+            @include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap atau belum dipublikasikan'])</a>
         </li>
 
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
                href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
                 <i class="ri-calendar-check-line"></i><span>Absensi Kelas Saya</span>
-            </a>
+            @include('layouts.sidebar.partials.indicator-badge', ['key' => 'absensi_wali', 'title' => 'Kelas Anda belum diabsen hari ini'])</a>
         </li>
 
         <li class="nav-item">
@@ -697,7 +697,7 @@
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
                href="{{ route('user.schools.nilai-kelas.index', ['userId' => $userId]) }}">
-                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.nilai-badge')
+                <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
             </a>
         </li>
     @endif
@@ -899,7 +899,7 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
                        href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId]) }}">
                         Perangkat Pembelajaran
-                    </a>
+                    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'perangkat_review', 'title' => 'Perangkat menunggu review Anda'])</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.kurikulum.akses-edit.']) ? ' active' : '' }}"
@@ -929,7 +929,7 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.', 'user.ljk.']) ? ' active' : '' }}"
            href="{{ route('user.asesmen.index', ['userId' => $userId]) }}">
             <i class="ri-file-edit-line"></i><span>Asesmen</span>
-        </a>
+        @include('layouts.sidebar.partials.indicator-badge', ['key' => 'review_pending', 'title' => 'Dokumen menunggu review Anda'])</a>
     </li>
 
     {{-- KKTP kini diatur langsung di Peta Kurikulum (kolom N-KKTP) & Struktur Kurikulum. --}}
@@ -939,7 +939,7 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai.']) ? ' active' : '' }}"
            href="{{ route('user.schools.nilai.index', ['userId' => $userId]) }}">
             <i class="ri-survey-line"></i><span>Data Nilai</span>
-        </a>
+        @include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap'])</a>
     </li>
     @endif
 
