@@ -4,77 +4,41 @@ namespace App\Observers;
 
 use App\Models\AssetRoom;
 use App\Models\StudyGroup;
+use App\Services\Academic\StudyGroupRoomService;
 
 class StudyGroupObserver
 {
+    public function __construct(private readonly StudyGroupRoomService $roomService)
+    {
+    }
+
     /**
-     * Auto-sync: setiap StudyGroup dibuat → buat AssetRoom dengan room_type='kelas'
+     * Setiap rombel baru langsung membuat ruang kelas di Sarpras.
+     * Tidak lagi bergantung pada kolom `room` karena nama ruang mengikuti
+     * nama rombel.
      */
     public function created(StudyGroup $studyGroup): void
     {
-        if (blank($studyGroup->room)) {
-            return;
-        }
-
-        $this->createOrUpdateAssetRoom($studyGroup);
+        $this->roomService->sync($studyGroup);
     }
 
-    /**
-     * Auto-sync: setiap StudyGroup diupdate → update AssetRoom terkait
-     */
     public function updated(StudyGroup $studyGroup): void
     {
-        $wasFilled = filled($studyGroup->getOriginal('room'));
-        $isFilled = filled($studyGroup->room);
-
-        // room di-nullify → hapus AssetRoom terkait
-        if ($wasFilled && ! $isFilled) {
-            AssetRoom::where('study_group_id', $studyGroup->id)->delete();
-
+        if (! $studyGroup->wasChanged([
+            'school_id',
+            'name',
+            'capacity',
+            'homeroom_teacher_id',
+            'is_active',
+        ])) {
             return;
         }
 
-        // room baru atau berubah → upsert AssetRoom
-        if ($isFilled) {
-            $this->createOrUpdateAssetRoom($studyGroup);
-        }
+        $this->roomService->sync($studyGroup);
     }
 
-    /**
-     * Auto-sync: setiap StudyGroup dihapus → hapus AssetRoom terkait
-     */
     public function deleted(StudyGroup $studyGroup): void
     {
         AssetRoom::where('study_group_id', $studyGroup->id)->delete();
-    }
-
-    // ─── Helpers ────────────────────────────────────────────────────────────
-
-    private function createOrUpdateAssetRoom(StudyGroup $studyGroup): void
-    {
-        if (! $studyGroup->school_id) {
-            return;
-        }
-
-        $school = $studyGroup->school;
-        $roomName = $studyGroup->full_name; // "X IPA 1" dst.
-
-        $data = [
-            'school_id' => $studyGroup->school_id,
-            'work_unit_id' => $school?->work_unit_id,
-            'study_group_id' => $studyGroup->id,
-            'room_name' => $roomName,
-            'room_type' => 'kelas',
-            'capacity' => $studyGroup->capacity,
-            'condition' => 'baik',
-            'is_bookable' => false,
-            'is_active' => $studyGroup->is_active,
-            'notes' => 'Ruang Kelas — Rombongan Belajar',
-        ];
-
-        AssetRoom::updateOrCreate(
-            ['study_group_id' => $studyGroup->id],
-            $data
-        );
     }
 }
