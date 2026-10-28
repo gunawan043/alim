@@ -14,7 +14,7 @@ Sistem manajemen pendidikan terpadu untuk Pondok pesantren, mendukung modul asra
 
 ## Persyaratan
 
-- **PHP** >= 8.1
+- **PHP** >= 8.3
 - **Composer** >= 2.x
 - **Node.js** >= 18.x
 - **MySQL** >= 8.0
