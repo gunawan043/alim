@@ -119,6 +119,7 @@
             || auth()->user()->hasRole('Super Admin')
             || auth()->user()->hasRole('Humas Personalia')
         );
+        $canMassUpdate = \App\Support\GtkAccess::canMassUpdate(auth()->user());
     @endphp
     @component('components.breadcrumb')
         @slot('li_1') Data GTK @endslot
@@ -599,9 +600,11 @@
                     <span class="badge bg-primary" id="bulkSelectedCount">0</span>
                     <span class="text-muted small">GTK terpilih</span>
                     <div class="vr"></div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#massUpdateModal">
-                        <i class="ri-edit-fill me-1"></i>Update Massal
-                    </button>
+                    @if($canMassUpdate)
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#massUpdateModal">
+                            <i class="ri-edit-fill me-1"></i>Update Massal
+                        </button>
+                    @endif
                     <button type="button" class="btn btn-sm btn-outline-danger" id="bulkClearBtn">
                         <i class="ri-close-circle-line me-1"></i>Hapus Pilihan
                     </button>
@@ -1151,6 +1154,7 @@
         </div>
     </div>
 
+    @if($canMassUpdate)
     <!-- MASS UPDATE MODAL -->
     <div class="modal fade" id="massUpdateModal" tabindex="-1" aria-labelledby="massUpdateModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1231,6 +1235,7 @@
             </div>
         </div>
     </div>
+    @endif
 @endsection
 
 @section('script')
@@ -1649,6 +1654,7 @@
             });
         }
 
+        @if($canMassUpdate)
         document.getElementById('confirmMassUpdate').addEventListener('click', async function () {
             const checked = document.querySelectorAll('.bulk-gtk-select:checked');
             if (!checked.length) {
@@ -1709,6 +1715,7 @@
                 this.innerHTML = '<i class="ri-save-fill me-1"></i> Terapkan';
             }
         });
+        @endif
     }
     </script>
     <script src="{{ URL::asset('build/js/app.js') }}"></script>

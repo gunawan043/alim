@@ -336,10 +336,12 @@
                                     {{ $pension?->pension_letter_date ? \Carbon\Carbon::parse($pension->pension_letter_date)->format('d/m/Y') : '–' }}
                                 </td>
                                 <td data-column="action">
-                                    <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
-                                       class="btn btn-sm btn-soft-primary">
-                                        <i class="ri-edit-2-line"></i>
-                                    </a>
+                                    @if(\App\Support\PensionAccess::canManage(auth()->user()))
+                                        <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
+                                           class="btn btn-sm btn-soft-primary">
+                                            <i class="ri-edit-2-line"></i>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('user.profile.cv', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
                                        target="_blank"
                                        class="btn btn-sm btn-soft-secondary">

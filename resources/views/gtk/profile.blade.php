@@ -4,7 +4,6 @@
 @endsection
 @php $userId = $userId ?? request()->route('userId') ?? Auth::id(); @endphp
 @section('css')
-    <link rel="stylesheet" href="{{ URL::asset('build/libs/swiper/swiper-bundle.min.css') }}">
     <style>
         .info-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
         .profile-stat { background: rgba(var(--bs-body-bg-rgb), 0.1); border-radius: 8px; padding: 1rem; transition: all 0.3s ease; }
@@ -714,10 +713,12 @@
                         <div class="card mt-3"><div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h5 class="mb-0"><i class="ri-time-line text-primary me-2"></i>Informasi Pensiun <span class="text-muted fs-12">(bagian kepegawaian)</span></h5>
-                                <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
-                                   class="btn btn-sm btn-primary">
-                                    <i class="ri-edit-2-line me-1"></i> Edit
-                                </a>
+                                @if(\App\Support\PensionAccess::canManage(auth()->user()))
+                                    <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="ri-edit-2-line me-1"></i> Edit
+                                    </a>
+                                @endif
                             </div>
                             <div class="row g-3">
                                 <div class="col-xl-2 col-md-4 col-6">
@@ -1145,8 +1146,6 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('build/libs/swiper/swiper-bundle.min.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/profile.init.js') }}"></script>
     <script src="{{ URL::asset('build/js/app.js') }}"></script>
     <script>
     /* ==========================================================================

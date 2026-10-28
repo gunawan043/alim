@@ -168,10 +168,12 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2">
-                        <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
-                           class="btn btn-primary btn-sm">
-                            <i class="ri-pencil-line align-middle me-1"></i> Edit
-                        </a>
+                        @if(\App\Support\PensionAccess::canManage(auth()->user()))
+                            <a href="{{ route('user.pension.edit', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
+                               class="btn btn-primary btn-sm">
+                                <i class="ri-pencil-line align-middle me-1"></i> Edit
+                            </a>
+                        @endif
                         <a href="{{ route('user.profile.cv', ['userId' => $userId, 'uuid' => $gtk->id]) }}"
                            target="_blank"
                            class="btn btn-soft-primary btn-sm">

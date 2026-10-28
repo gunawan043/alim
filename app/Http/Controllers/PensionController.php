@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\GtkPension;
 use App\Models\PensionSetting;
 use App\Models\User;
+use App\Support\PensionAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +68,8 @@ class PensionController extends Controller
 
     public function settings(string $userId)
     {
+        $this->authorizeManage();
+
         $settings = PensionSetting::allSettings();
 
         return view('pension.settings', compact('userId', 'settings'));
@@ -74,6 +77,8 @@ class PensionController extends Controller
 
     public function updateSettings(Request $request, string $userId)
     {
+        $this->authorizeManage();
+
         $rules = [
             'bup_age' => 'required|integer|min:40|max:70',
             'notification_months' => 'required|integer|min:1|max:24',
@@ -118,8 +123,22 @@ class PensionController extends Controller
         return view('pension.show', compact('userId', 'gtk', 'settings'));
     }
 
+    /**
+     * Hanya Personalia & Super Admin yang boleh mengubah data pensiun.
+     */
+    private function authorizeManage(): void
+    {
+        abort_unless(
+            PensionAccess::canManage(auth()->user()),
+            403,
+            'Hanya Personalia dan Super Admin yang dapat mengubah data pensiun.'
+        );
+    }
+
     public function edit(string $userId, string $uuid)
     {
+        $this->authorizeManage();
+
         $gtk = User::with(['gtkProfile', 'gtkEmployment', 'pension'])->where('id', $uuid)->firstOrFail();
         $settings = PensionSetting::allSettings();
 
@@ -128,6 +147,8 @@ class PensionController extends Controller
 
     public function update(Request $request, string $userId, string $uuid)
     {
+        $this->authorizeManage();
+
         $validator = Validator::make($request->all(), [
             'pension_type' => 'nullable|in:normal,dini,cacat,janda',
             'planned_pension_date' => 'nullable|date|after_or_equal:today',

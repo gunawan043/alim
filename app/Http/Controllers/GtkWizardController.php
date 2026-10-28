@@ -2503,6 +2503,13 @@ class GtkWizardController extends Controller
 
     public function massUpdate(Request $request): JsonResponse
     {
+        if (! GtkAccess::canMassUpdate(auth()->user())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya Personalia dan Super Admin yang dapat melakukan Update Massal GTK.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'exists:users,id',
@@ -2629,15 +2636,9 @@ class GtkWizardController extends Controller
     public function massal(Request $request)
     {
         abort_unless(
-            auth()->check() && (
-                auth()->user()->hasRole('Satuan Pendidikan')
-                || auth()->user()->hasRole('Unit Rumah Tangga')
-                || auth()->user()->hasRole('Humas Personalia')
-                || (method_exists(auth()->user(), 'isSystemAdmin') && auth()->user()->isSystemAdmin())
-                || (method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin())
-            ),
+            GtkAccess::canMassUpdate(auth()->user()),
             403,
-            'Hanya Kepala Satuan Kerja dan Tata Usaha yang dapat mengakses manajemen massal GTK.'
+            'Hanya Personalia dan Super Admin yang dapat mengakses Update Massal GTK.'
         );
 
         $query = User::with(['gtkProfile', 'employment', 'gtkContact', 'gtkWorkUnits.workUnit', 'gtkProfile.addresses', 'educations'])
