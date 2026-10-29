@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Edit Matriks — {{ $decree->decree_number }} @endsection
+@section('title') Edit Matriks Pembagian Tugas — {{ $decree->decree_number }} @endsection
 
 @section('css')
 @include('kurikulum._styles')
@@ -40,17 +40,135 @@
             {{ session('error') }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    @if(session('matrix_warnings') && count(session('matrix_warnings')))
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <strong>Catatan penyimpanan:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach(session('matrix_warnings') as $warning)
+                    <li>{{ $warning }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <ul class="mb-0">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
     {{-- Header SK info --}}
     <div class="alert alert-light border mb-3">
-        <div class="mb-1" style="font-size:11px; color:#adb5bd; text-transform:uppercase; font-weight:600;">
-            Lampiran I. Surat Keputusan Kepala {{ $decree->school?->name ?? 'SEKOLAH' }}
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div>
+                <div class="mb-1" style="font-size:11px; color:#adb5bd; text-transform:uppercase; font-weight:600;">
+                    Lampiran I. Surat Keputusan Kepala {{ $decree->school?->name ?? 'SEKOLAH' }}
+                </div>
+                <div style="font-size:12px;">
+                    <strong>NOMOR&nbsp;&nbsp;&nbsp;:</strong> {{ $decree->decree_number }}<br>
+                    <strong>TANGGAL :</strong> {{ $decree->issued_date?->translatedFormat('d F Y') ?? '-' }}<br>
+                    <strong>TENTANG&nbsp;:</strong> {{ strtoupper($decree->title) }}
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('user.institution-decrees.show', ['userId' => $userId, 'id' => $decree->id]) }}" class="btn btn-light btn-sm">
+                    <i class="ri-eye-line me-1"></i> Lihat SK
+                </a>
+                <a href="{{ route('user.institution-decrees.print', ['userId' => $userId, 'id' => $decree->id]) }}" target="_blank" class="btn btn-soft-secondary btn-sm">
+                    <i class="ri-printer-line me-1"></i> Cetak
+                </a>
+            </div>
         </div>
-        <div style="font-size:12px;">
-            <strong>NOMOR&nbsp;&nbsp;&nbsp;:</strong> {{ $decree->decree_number }}<br>
-            <strong>TANGGAL :</strong> {{ $decree->issued_date?->translatedFormat('d F Y') ?? '-' }}<br>
-            <strong>TENTANG&nbsp;:</strong> {{ strtoupper($decree->title) }}
+    </div>
+
+    {{-- Informasi SK (metadata) --}}
+    <div class="card mb-3">
+        <div class="card-header border-bottom-dashed">
+            <h6 class="card-title mb-0"><i class="ri-file-text-line text-primary me-1"></i>Informasi Surat Keputusan</h6>
         </div>
+        <form method="POST" action="{{ route('user.institution-decrees.update', ['userId' => $userId, 'id' => $decree->id]) }}">
+            @csrf
+            @method('PUT')
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Nomor SK <span class="text-danger">*</span></label>
+                        <input type="text" name="decree_number" class="form-control" value="{{ old('decree_number', $decree->decree_number) }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Jenis SK <span class="text-danger">*</span></label>
+                        <select name="decree_type" class="form-select" required>
+                            @foreach(['SK Pembagian Tugas', 'SK Kepsek', 'SK Mutasi', 'SK promosi', 'SK Lainnya'] as $type)
+                                <option value="{{ $type }}" {{ old('decree_type', $decree->decree_type) === $type ? 'selected' : '' }}>{{ $type }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status <span class="text-danger">*</span></label>
+                        <select name="status" class="form-select" required>
+                            @foreach(['draft' => 'Draft', 'active' => 'Aktif', 'archived' => 'Arsip'] as $value => $label)
+                                <option value="{{ $value }}" {{ old('status', $decree->status) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Judul SK <span class="text-danger">*</span></label>
+                        <input type="text" name="title" class="form-control" value="{{ old('title', $decree->title) }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tahun Ajaran <span class="text-danger">*</span></label>
+                        <select name="academic_year_id" class="form-select" required>
+                            @foreach($academicYears as $ay)
+                                <option value="{{ $ay->id }}" {{ old('academic_year_id', $decree->academic_year_id) === $ay->id ? 'selected' : '' }}>
+                                    {{ $ay->name }} ({{ $ay->semester_text }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tanggal Dikeluarkan <span class="text-danger">*</span></label>
+                        <input type="date" name="issued_date" class="form-control" value="{{ old('issued_date', $decree->issued_date?->format('Y-m-d')) }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tanggal Efektif <span class="text-danger">*</span></label>
+                        <input type="date" name="effective_date" class="form-control" value="{{ old('effective_date', $decree->effective_date?->format('Y-m-d')) }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tanggal Berakhir</label>
+                        <input type="date" name="end_date" class="form-control" value="{{ old('end_date', $decree->end_date?->format('Y-m-d')) }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Penandatangan</label>
+                        <select name="signed_by" class="form-select">
+                            <option value="">— Pilih —</option>
+                            @foreach($signers as $signer)
+                                <option value="{{ $signer->id }}" {{ old('signed_by', $decree->signed_by) === $signer->id ? 'selected' : '' }}>
+                                    {{ $signer->name }} ({{ $signer->getRoleNames()->first() ?? '-' }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Jabatan Penandatangan</label>
+                        <input type="text" name="signed_position" class="form-control" value="{{ old('signed_position', $decree->signed_position) }}">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Deskripsi</label>
+                        <textarea name="description" class="form-control" rows="2">{{ old('description', $decree->description) }}</textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-end gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="ri-save-line me-1"></i> Simpan Informasi SK
+                </button>
+            </div>
+        </form>
     </div>
 
     <form method="POST" id="matrixForm"
@@ -164,12 +282,13 @@
 
         {{-- Hidden inputs for form submission --}}
         <input type="hidden" name="assignments_json" id="assignmentsJson" value="">
+        <input type="hidden" name="other_tasks_json" id="otherTasksJson" value="">
     </form>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Build JS objects from PHP
-        const teachers = {!! json_encode($teachers->values()->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'role' => $t->getRoleNames()->first()])->toArray()) !!};
+        const teachers = {!! json_encode($teacherMeta ?? $teachers->values()->map(fn($t) => ['id' => $t->id, 'name' => $t->name, 'role' => $t->getRoleNames()->first(), 'position' => 'GTK'])->toArray()) !!};
         const subjects = {!! json_encode($subjects->values()->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->toArray()) !!};
         const studyGroups = {!! json_encode($studyGroups->map(fn($sg) => ['id' => $sg->id, 'name' => $sg->name, 'level' => $sg->gradeLevel->level ?? 0])->toArray()) !!};
         const existing = {!! json_encode($existing->map(fn($e, $k) => [$k => ['id' => $e->id, 'hours' => $e->weekly_hours]])->collapse()->toArray()) !!};
@@ -204,8 +323,11 @@
         const otherTasks = {!! json_encode($otherTasks ?? []) !!};
         otherTasks.forEach(function(ott) {
             if (!teacherData[ott.teacher_id]) teacherData[ott.teacher_id] = { subjects: [], tasks: [] };
+            const group = studyGroups.find(g => String(g.id) === String(ott.study_group_id || ''));
             teacherData[ott.teacher_id].tasks.push({
-                id: ott.id, name: ott.task_name, hours: ott.weekly_hours
+                id: ott.id, name: ott.task_name, code: ott.task_code,
+                hours: ott.weekly_hours, study_group_id: ott.study_group_id || null,
+                groupName: group ? group.name : ''
             });
         });
 
@@ -237,7 +359,8 @@
                 // Task rows
                 t.tasks.forEach(function(task) {
                     rowEntries.push({
-                        type: 'task', teacherId: tid, taskId: task.id, taskName: task.name, taskHours: task.hours
+                        type: 'task', teacherId: tid, taskId: task.id, taskName: task.name, taskHours: task.hours,
+                        taskCode: task.code, studyGroupId: task.study_group_id, groupName: task.groupName
                     });
                 });
             });
@@ -323,6 +446,7 @@
                         <td style="width:30px;"></td>
                         <td style="padding-left:16px;">
                             <span style="font-size:11px; color:#fd7e14; font-style:italic;">${entry.taskName}</span>
+                            ${entry.groupName ? `<span style="font-size:10px; color:#adb5bd;"> · ${entry.groupName}</span>` : ''}
                         </td>
                         ${studyGroups.map(() => `<td style="background:#fff8ee;"></td>`).join('')}
                         <td class="text-center bg-success-subtle" style="width:55px;"></td>
@@ -403,7 +527,11 @@
             const taskHours = parseInt(prompt('Jam per minggu:', '3') || '3');
             if (!teacherData[tid]) teacherData[tid] = { subjects: [], tasks: [] };
             const newId = 'new-task-' + Date.now();
-            teacherData[tid].tasks.push({ id: newId, name: taskName, hours: taskHours });
+            teacherData[tid].tasks.push({
+                id: newId, name: taskName,
+                code: 'custom-' + taskName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                hours: taskHours, study_group_id: null, groupName: ''
+            });
             rebuildRows();
         });
 
@@ -448,6 +576,22 @@
                 });
             });
             document.getElementById('assignmentsJson').value = JSON.stringify(assignments);
+
+            // Tugas tambahan ikut disimpan (termasuk penghapusan).
+            const tasks = [];
+            Object.keys(teacherData).forEach(tid => {
+                (teacherData[tid].tasks || []).forEach(task => {
+                    tasks.push({
+                        id: String(task.id || '').startsWith('new-task-') ? null : task.id,
+                        teacher_id: tid,
+                        task_name: task.name,
+                        task_code: task.code || null,
+                        weekly_hours: task.hours || 0,
+                        study_group_id: task.study_group_id || null,
+                    });
+                });
+            });
+            document.getElementById('otherTasksJson').value = JSON.stringify(tasks);
         });
 
         // Init

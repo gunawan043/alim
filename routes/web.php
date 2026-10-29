@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbsensiHarianController;
 use App\Http\Controllers\AcademicIntegrationController;
+use App\Http\Controllers\AcademicReportController;
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AdminAsramaDashboardController;
 use App\Http\Controllers\AdminTUDashboardController;
@@ -17,19 +18,19 @@ use App\Http\Controllers\AsramaDashboardController;
 use App\Http\Controllers\AtsDashboardController;
 use App\Http\Controllers\Auth\AccessValidatorController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\ForcePasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Bahasa\BahasaAcademicController;
 use App\Http\Controllers\Bahasa\BahasaDashboardController;
 use App\Http\Controllers\Bahasa\BahasaReferenceController;
 use App\Http\Controllers\Bahasa\LanguageActivityController;
 use App\Http\Controllers\Bahasa\LanguageCertificationController;
 use App\Http\Controllers\Bahasa\LanguageDailyLogController;
-use App\Http\Controllers\Bahasa\LanguageViolationController;
-use App\Http\Controllers\Bahasa\MufradatController;
-use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
 // use App\Http\Controllers\Dashboard\BendaharaDashboardController;
 // use App\Http\Controllers\Dashboard\GuruDashboardController;
 // use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
@@ -43,15 +44,20 @@ use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
 // use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
 // use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
 // use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
+use App\Http\Controllers\Bahasa\LanguageViolationController;
+use App\Http\Controllers\Bahasa\MufradatController;
+use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
 use App\Http\Controllers\Boarding\BoardingHeadDashboardController;
 use App\Http\Controllers\Boarding\BoardingHealthDashboardController;
 use App\Http\Controllers\BoardingApprovalCenterController;
 use App\Http\Controllers\BoardingPolicyController;
 use App\Http\Controllers\BoardingRegulationController;
+use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ClassQrController;
+use App\Http\Controllers\Dashboard\DashboardActionController;
 use App\Http\Controllers\Dashboard\AsramaDashboardController as RoleAsramaDashboardController;
 use App\Http\Controllers\Dashboard\KeuanganDashboardController;
 use App\Http\Controllers\Dashboard\PersonaliaDashboardController as RolePersonaliaDashboardController;
@@ -65,24 +71,28 @@ use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenIsoController;
 use App\Http\Controllers\DormitoryActivityController;
 use App\Http\Controllers\DormitoryAttendanceController;
+use App\Http\Controllers\DormitoryImportController;
 use App\Http\Controllers\DormitoryInventoryController;
 use App\Http\Controllers\DormitoryLeavePolicyController;
 use App\Http\Controllers\DormitoryMasterController;
 use App\Http\Controllers\DormitoryPermitController;
+use App\Http\Controllers\DormitoryPointCatalogController;
 use App\Http\Controllers\DormitoryPostController;
 use App\Http\Controllers\DormitoryReportController;
 use App\Http\Controllers\DormitoryResidentController;
 use App\Http\Controllers\DormitoryReturnCalendarController;
 use App\Http\Controllers\DormitoryReturnController;
+use App\Http\Controllers\DormitoryRewardApprovalController;
 use App\Http\Controllers\DormitoryRewardController;
 use App\Http\Controllers\DormitoryRoomApiController;
 use App\Http\Controllers\DormitoryRoomController;
 use App\Http\Controllers\DormitoryRoomMoveController;
 use App\Http\Controllers\DormitoryStaffAssignmentController;
+use App\Http\Controllers\DormitoryStudentOperatorController;
 use App\Http\Controllers\DormitoryViolationController;
 use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
-use App\Http\Controllers\DormitoryStudentOperatorController;
+use App\Http\Controllers\DormitoryVisitorRestrictionController;
 use App\Http\Controllers\DormitoryWingController;
 use App\Http\Controllers\Evaluasi\AsesmenController;
 use App\Http\Controllers\Evaluasi\BankSoalController;
@@ -106,11 +116,11 @@ use App\Http\Controllers\GtkRequestController;
 use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HumasAnnouncementController;
 use App\Http\Controllers\HumasComplaintController;
 use App\Http\Controllers\HumasGuestVisitController;
 use App\Http\Controllers\HumasMediaContactController;
 use App\Http\Controllers\HumasSatisfactionController;
-use App\Http\Controllers\HumasAnnouncementController;
 use App\Http\Controllers\ImpersonateController;
 use App\Http\Controllers\InstitutionDecreeController;
 use App\Http\Controllers\InterviewController;
@@ -140,6 +150,7 @@ use App\Http\Controllers\Ljk\LjkResultController;
 use App\Http\Controllers\Ljk\LjkScanController;
 use App\Http\Controllers\MasterData\MataPelajaranController;
 use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\MumtazMurtafiCandidateController;
 use App\Http\Controllers\NilaiController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
@@ -147,6 +158,7 @@ use App\Http\Controllers\NotificationPageController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\OtherTeacherTaskController;
 use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
+use App\Http\Controllers\PekanEfektifPrintController;
 use App\Http\Controllers\PengasuhDashboardController;
 use App\Http\Controllers\PensionController;
 use App\Http\Controllers\PermitTypeController;
@@ -164,14 +176,14 @@ use App\Http\Controllers\Perpustakaan\LibraryStockOpnameController;
 use App\Http\Controllers\Perpustakaan\LibraryStudentOperatorController;
 use App\Http\Controllers\Perpustakaan\LibraryUnitController;
 use App\Http\Controllers\Perpustakaan\LibraryVisitController;
+// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Personalia\AbsensiGtkController;
-use App\Http\Controllers\Personalia\CrossUnitAssignmentController;
 use App\Http\Controllers\Personalia\AnalisisGtkController;
+use App\Http\Controllers\Personalia\CrossUnitAssignmentController;
 use App\Http\Controllers\Personalia\CutiController;
 use App\Http\Controllers\Personalia\JamKerjaController;
 use App\Http\Controllers\Personalia\KalenderKegiatanController;
 use App\Http\Controllers\Personalia\KehadiranController;
-// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Personalia\KesejahteraanController;
 use App\Http\Controllers\Personalia\KinerjaController;
 use App\Http\Controllers\Personalia\KontrakController;
@@ -205,18 +217,20 @@ use App\Http\Controllers\Sarpras\SarprasDisposalController;
 use App\Http\Controllers\Sarpras\SarprasDivisionPortalController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
+// REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
+use App\Http\Controllers\Sarpras\SarprasItemManagerController;
 use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
 use App\Http\Controllers\Sarpras\SarprasLoanController;
 use App\Http\Controllers\Sarpras\SarprasMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasMovementController;
 use App\Http\Controllers\Sarpras\SarprasOccupancyController;
 use App\Http\Controllers\Sarpras\SarprasOfficerController;
-// REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasPertamananController;
 use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
 use App\Http\Controllers\Sarpras\SarprasPredictiveMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasProcurementController;
+use App\Http\Controllers\Sarpras\SarprasVehicleController;
 use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
@@ -239,6 +253,9 @@ use App\Http\Controllers\SecureAccessController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\StudentAchievementController;
 use App\Http\Controllers\StudentArabicNameController;
+use App\Http\Controllers\DocumentSignatureSettingController;
+use App\Http\Controllers\StudentDataReconciliationController;
+use App\Http\Controllers\GraduationCertificateController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentCounselingRecordController;
 use App\Http\Controllers\StudentHealthCheckupController;
@@ -249,6 +266,7 @@ use App\Http\Controllers\StudentMahromController;
 use App\Http\Controllers\StudentMedicineInventoryController;
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
+use App\Http\Controllers\StudentPopulationReportController;
 use App\Http\Controllers\StudentMutationInController;
 use App\Http\Controllers\StudentMutationOutController;
 use App\Http\Controllers\StudentPhotoController;
@@ -274,6 +292,7 @@ use App\Http\Controllers\SuperAdmin\SidebarAccessController;
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
 use App\Http\Controllers\SuperAdmin\TokenSesiController;
 use App\Http\Controllers\SuperAdmin\UserController;
+use App\Http\Controllers\DocumentVerificationController;
 use App\Http\Controllers\SuratVerificationController;
 use App\Http\Controllers\System\SystemDashboardController;
 use App\Http\Controllers\System\ViewAsController;
@@ -284,11 +303,15 @@ use App\Http\Controllers\Tahfidz\TahfidzAttendanceController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
 use App\Http\Controllers\Tahfidz\TahfidzConsistencyController;
 use App\Http\Controllers\Tahfidz\TahfidzExecutiveController;
+use App\Http\Controllers\Tahfidz\TahfidzGradebookController;
 use App\Http\Controllers\Tahfidz\TahfidzInputController;
 use App\Http\Controllers\Tahfidz\TahfidzInterventionController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\Tahfidz\TahfidzMonitoringController;
+use App\Http\Controllers\Tahfidz\TahfidzMonitoringSheetController;
+use App\Http\Controllers\Tahfidz\TahfidzQuranPositionController;
 use App\Http\Controllers\Tahfidz\TahfidzProgressController;
+use App\Http\Controllers\Tahfidz\TahfidzReportController;
 use App\Http\Controllers\Tahfidz\TahfidzSantriController;
 use App\Http\Controllers\Tahfidz\TahfidzTargetController;
 use App\Http\Controllers\Tahfidz\TahfidzWorkspaceController;
@@ -301,6 +324,7 @@ use App\Http\Controllers\Uks\BedManagementController;
 use App\Http\Controllers\Uks\CareLocationController;
 use App\Http\Controllers\Uks\ClinicController;
 use App\Http\Controllers\Uks\GtkHealthController;
+use App\Http\Controllers\Uks\ImportController;
 use App\Http\Controllers\Uks\MedicationAdministrationController;
 use App\Http\Controllers\Uks\PatientController;
 use App\Http\Controllers\Uks\PharmacyController;
@@ -325,12 +349,14 @@ use App\Http\Controllers\Waka\SuratMasukController;
 use App\Http\Controllers\Waka\SuratTemplateController;
 use App\Http\Controllers\WakaController;
 use App\Http\Controllers\WaliAsramaDashboardController;
+use App\Http\Controllers\WaliLinkController;
 use App\Http\Controllers\WaliSantriController;
 use App\Http\Controllers\WaliSantriPortalController;
+use App\Http\Controllers\WebPushSubscriptionController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\WorkUnitController;
-use App\Http\Middleware\EnsureBoardingSchool;
 use App\Http\Middleware\DenyStudentOperatorAi;
+use App\Http\Middleware\EnsureBoardingSchool;
 use App\Http\Middleware\EnsureLibraryUnit;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
@@ -400,14 +426,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware('auth')->group(function () {
-    Route::get('verify-email', [\App\Http\Controllers\Auth\EmailVerificationPromptController::class, '__invoke'])->name('verification.notice');
-    Route::get('verify-email/{id}/{hash}', [\App\Http\Controllers\Auth\VerifyEmailController::class, '__invoke'])
-        ->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
-    Route::post('email/verification-notification', [\App\Http\Controllers\Auth\EmailVerificationNotificationController::class, 'store'])
-        ->middleware(['throttle:6,1'])->name('verification.send');
-});
-
 Route::get('/login', [LoginController::class, 'showLogin'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:login')->name('login.process');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
@@ -426,6 +444,11 @@ Route::prefix('portal')->name('portal.')->group(function () {
     Route::get('/{token}/announcements', [GuardianPortalController::class, 'announcements'])->name('announcements');
     Route::get('/{token}/announcements/{id}', [GuardianPortalController::class, 'announcementShow'])->name('announcements.show');
     Route::get('/{token}/notifications', [GuardianPortalController::class, 'notifications'])->name('notifications');
+    Route::get('/{token}/web-push/public-key', [WebPushSubscriptionController::class, 'publicKey'])->name('web-push.public-key');
+    Route::post('/{token}/web-push/subscribe', [WebPushSubscriptionController::class, 'subscribe'])
+        ->middleware('auth')->name('web-push.subscribe');
+    Route::post('/{token}/web-push/unsubscribe', [WebPushSubscriptionController::class, 'unsubscribe'])
+        ->middleware('auth')->name('web-push.unsubscribe');
     Route::post('/{token}/notifications/{id}/read', [GuardianPortalController::class, 'markRead'])->name('notifications.read');
     Route::post('/{token}/notifications/read-all', [GuardianPortalController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('/{token}/leave', [GuardianPortalController::class, 'submitLeave'])->name('leave');
@@ -457,6 +480,15 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('verify-email', [EmailVerificationPromptController::class, '__invoke'])
+        ->name('verification.notice');
+    Route::get('verify-email/{id}/{hash}', [VerifyEmailController::class, '__invoke'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+
     Route::get('force-password', [ForcePasswordController::class, 'show'])->name('password.force');
     Route::post('force-password', [ForcePasswordController::class, 'update'])->name('password.force.update');
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
@@ -524,6 +556,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── USER NOTIFICATIONS API ───────────────────────────────
             Route::prefix('notifications')->name('notifications.')->group(function () {
                 Route::get('/', [NotificationUniversalController::class, 'index'])->name('index');
+                Route::get('/web-push/public-key', [WebPushSubscriptionController::class, 'publicKey'])->name('web-push.public-key');
+                Route::post('/web-push/subscribe', [WebPushSubscriptionController::class, 'subscribe'])->name('web-push.subscribe');
+                Route::post('/web-push/unsubscribe', [WebPushSubscriptionController::class, 'unsubscribe'])->name('web-push.unsubscribe');
                 Route::post('/{id}/mark-read', [NotificationUniversalController::class, 'markAsRead'])->name('mark-read');
                 Route::post('/mark-all-read', [NotificationUniversalController::class, 'markAllRead'])->name('mark-all-read');
                 Route::delete('/{id}', [NotificationUniversalController::class, 'destroy'])->name('destroy');
@@ -681,6 +716,14 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('interventions/{interventionId}/complete', [TahfidzInterventionController::class, 'complete'])->name('interventions.complete');
                 Route::get('monitoring', [TahfidzMonitoringController::class, 'index'])->name('monitoring.index');
                 Route::post('monitoring/notify', [TahfidzMonitoringController::class, 'notify'])->name('monitoring.notify');
+                Route::get('monitoring/sheet', [TahfidzMonitoringSheetController::class, 'index'])->name('monitoring.sheet');
+                Route::post('monitoring/sheet', [TahfidzMonitoringSheetController::class, 'store'])->name('monitoring.sheet.store');
+                Route::get('monitoring/sheet/print', [TahfidzMonitoringSheetController::class, 'print'])->name('monitoring.sheet.print');
+                Route::put('monitoring/sheet/{id}', [TahfidzMonitoringSheetController::class, 'update'])->name('monitoring.sheet.update');
+                Route::get('quran-position', TahfidzQuranPositionController::class)->name('quran-position');
+                Route::get('buku-nilai', [TahfidzGradebookController::class, 'index'])->name('gradebook.index');
+                Route::get('buku-nilai/print', [TahfidzGradebookController::class, 'print'])->name('gradebook.print');
+                Route::get('laporan-grafik', [TahfidzReportController::class, 'index'])->name('reports.index');
 
                 Route::prefix('tasmi')->name('tasmi.')->group(function () {
                     Route::get('/', [TasmiController::class, 'index'])->name('index');
@@ -718,6 +761,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::delete('/{id}', [HalaqahController::class, 'destroy'])->name('destroy');
                     Route::post('/{id}/members', [HalaqahController::class, 'addMembers'])->name('members.store');
                     Route::post('/{id}/targets', [HalaqahController::class, 'storeTarget'])->name('targets.store');
+                    Route::post('/{id}/targets/apply', [HalaqahController::class, 'applyTargets'])->name('targets.apply');
                     Route::put('/{id}/targets/{targetId}', [HalaqahController::class, 'updateTarget'])->name('targets.update');
                     Route::delete('/{id}/targets/{targetId}', [HalaqahController::class, 'destroyTarget'])->name('targets.destroy');
                     Route::post('/{id}/schedules', [HalaqahController::class, 'storeSchedule'])->name('schedules.store');
@@ -915,7 +959,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/schools-global/index', [SchoolsGlobalController::class, 'index'])->name('schools-global-show.index');
 
             // ── GTK ────────────────────────────────────────────────
-            Route::prefix('gtk')->name('gtk.')->group(function () {
+            Route::prefix('gtk')->name('gtk.')->middleware('gtk.access')->group(function () {
                 Route::get('/', [GtkWizardController::class, 'index'])->name('index');
                 Route::get('/guru', [GtkWizardController::class, 'indexguru'])->name('indexguru');
                 Route::get('/tendik', [GtkWizardController::class, 'indextendik'])->name('indextendik');
@@ -1014,6 +1058,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::delete('/jabatan/{id}', [MasterDataController::class, 'jabatanDestroy'])->name('jabatan.destroy');
                 Route::get('/jabatan-by-jenis', [MasterDataController::class, 'getJabatanByJenis'])->name('jabatan.by-jenis');
 
+                Route::get('/tugas-tambahan', [MasterDataController::class, 'tugasTambahanIndex'])->name('tugas-tambahan.index');
+                Route::post('/tugas-tambahan', [MasterDataController::class, 'tugasTambahanStore'])->name('tugas-tambahan.store');
+                Route::put('/tugas-tambahan/{id}', [MasterDataController::class, 'tugasTambahanUpdate'])->name('tugas-tambahan.update');
+                Route::delete('/tugas-tambahan/{id}', [MasterDataController::class, 'tugasTambahanDestroy'])->name('tugas-tambahan.destroy');
+
                 Route::get('/satuan-kerja', [MasterDataController::class, 'satuanKerjaIndex'])->name('satuan-kerja.index');
                 Route::get('/satuan-kerja/{id}', [MasterDataController::class, 'satuanKerjaShow'])->name('satuan-kerja.show');
                 Route::post('/satuan-kerja', [MasterDataController::class, 'satuanKerjaStore'])->name('satuan-kerja.store');
@@ -1043,6 +1092,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── PEKAN EFEKTIF (turunan Kalender Pendidikan) ───────
             Route::prefix('pekan-efektif')->name('pekan-efektif.')->group(function () {
                 Route::get('/', [PekanEfektifOverviewController::class, 'index'])->name('index');
+                Route::post('/settings', [PekanEfektifOverviewController::class, 'updateSettings'])->name('settings');
+                Route::post('/print-settings', [PekanEfektifPrintController::class, 'updateSettings'])->name('print-settings');
+                Route::get('/pdf', [PekanEfektifPrintController::class, 'pdf'])->name('pdf');
             });
 
             // ── KURIKULUM & PERANGKAT PEMBELAJARAN ────────────────
@@ -1677,8 +1729,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [InstitutionDecreeController::class, 'index'])->name('index');
                 Route::get('/create', [InstitutionDecreeController::class, 'create'])->name('create');
                 Route::post('/', [InstitutionDecreeController::class, 'store'])->name('store');
+                // Import (literal, harus sebelum /{id})
+                Route::get('/import', [InstitutionDecreeController::class, 'importForm'])->name('import-form');
+                Route::post('/import', [InstitutionDecreeController::class, 'importStore'])->name('import-process');
+                Route::get('/import/template', [InstitutionDecreeController::class, 'importTemplate'])->name('import-template');
                 Route::get('/{id}', [InstitutionDecreeController::class, 'show'])->name('show');
                 Route::get('/{id}/print', [InstitutionDecreeController::class, 'print'])->name('print');
+                Route::post('/{id}/print-settings', [InstitutionDecreeController::class, 'updatePrintSettings'])->name('print-settings');
                 Route::get('/{id}/edit', [InstitutionDecreeController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [InstitutionDecreeController::class, 'update'])->name('update');
                 Route::delete('/{id}', [InstitutionDecreeController::class, 'destroy'])->name('destroy');
@@ -1802,9 +1859,17 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/generate', [JadwalKbmController::class, 'generateIndex'])->name('generate');
                 Route::post('/generate', [JadwalKbmController::class, 'generate'])->name('generate.store');
                 Route::post('/generate/{studyGroupId}', [JadwalKbmController::class, 'generateSingle'])->name('generate.execute');
+                Route::get('/ketersediaan', [JadwalKbmController::class, 'availability'])->name('availability');
+                Route::post('/ketersediaan', [JadwalKbmController::class, 'availabilityStore'])->name('availability.store');
                 Route::get('/teacher/{teacherId}', [JadwalKbmController::class, 'forTeacher'])->name('for-teacher');
+                Route::get('/cetak-semua', [JadwalKbmController::class, 'cetakAll'])->name('cetak-all');
+                Route::get('/export-excel', [JadwalKbmController::class, 'exportExcel'])->name('export-excel');
+                Route::get('/edit-semua', [JadwalKbmController::class, 'editAll'])->name('edit-all');
                 Route::get('/{studyGroupId}', [JadwalKbmController::class, 'show'])->name('show');
                 Route::get('/{studyGroupId}/edit', [JadwalKbmController::class, 'edit'])->name('edit');
+                Route::post('/{studyGroupId}/entries', [JadwalKbmController::class, 'storeEntry'])->name('entries.store');
+                Route::put('/entries/{entryId}', [JadwalKbmController::class, 'updateEntry'])->whereUuid('entryId')->name('entries.update');
+                Route::delete('/{studyGroupId}/entries/{entryId}', [JadwalKbmController::class, 'destroyEntry'])->name('entries.destroy');
                 Route::put('/{studyGroupId}', [JadwalKbmController::class, 'update'])->name('update');
                 Route::get('/{studyGroupId}/cetak', [JadwalKbmController::class, 'cetak'])->name('cetak');
             });
@@ -1853,6 +1918,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── EVALUASI: SOAL (nested under bank-soal) ──────────────
             Route::prefix('bank-soal/{bankId}/soal')->name('soal.')->group(function () {
                 Route::get('/create', [SoalController::class, 'create'])->name('create');
+                Route::get('/edit', [SoalController::class, 'manage'])->name('manage');
+                Route::post('/edit', [SoalController::class, 'updateAll'])->name('update-all');
                 Route::post('/wacana', [SoalController::class, 'storeWacana'])->name('wacana.store');
                 Route::post('/wacana/upload', [SoalController::class, 'uploadWacanaImage'])->name('wacana.upload');
                 Route::delete('/wacana/{wacanaId}', [SoalController::class, 'destroyWacana'])->name('wacana.destroy');
@@ -1968,6 +2035,27 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/import', [StudentController::class, 'importProcess'])->name('import-process')->middleware('dormitory.restrict:students');
                 Route::get('/template', [StudentController::class, 'downloadTemplate'])->name('template');
 
+                // Rekonsiliasi data santri (data tidak valid / tidak konsisten).
+                Route::get('/reconciliation', [StudentDataReconciliationController::class, 'index'])
+                    ->name('reconciliation')->middleware('dormitory.restrict:students');
+
+                // ── SURAT KETERANGAN LULUS (SKL) ──
+                // Format dokumen & daftar mapel diatur per sekolah.
+                Route::get('/graduation-certificate/settings', [GraduationCertificateController::class, 'settings'])
+                    ->name('graduation-certificate.settings')->middleware('dormitory.restrict:students');
+                Route::post('/graduation-certificate/settings', [GraduationCertificateController::class, 'saveSettings'])
+                    ->name('graduation-certificate.settings.save')->middleware('dormitory.restrict:students');
+                Route::post('/graduation-certificate/settings/import-subjects', [GraduationCertificateController::class, 'importSubjects'])
+                    ->name('graduation-certificate.settings.import')->middleware('dormitory.restrict:students');
+                Route::post('/graduation-certificate/bulk-print', [GraduationCertificateController::class, 'bulkPrint'])
+                    ->name('graduation-certificate.bulk');
+
+                // Tanda tangan digital (TTD KSP, stempel) & mode validasi surat.
+                Route::post('/documents/signature-settings', [DocumentSignatureSettingController::class, 'update'])
+                    ->name('documents.signature-settings')->middleware('dormitory.restrict:students');
+                Route::get('/{santriUuid}/graduation-certificate', [GraduationCertificateController::class, 'print'])
+                    ->name('graduation-certificate.print');
+
                 // ── IMPORT NAMA ARAB SANTRI (menu terpisah; match NIS/NISN) ──
                 Route::get('/import-nama-arab', [StudentArabicNameController::class, 'form'])->name('import-nama-arab-form')->middleware('dormitory.restrict:students');
                 Route::post('/import-nama-arab', [StudentArabicNameController::class, 'import'])->name('import-nama-arab-process')->middleware('dormitory.restrict:students');
@@ -1998,6 +2086,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{santriUuid}/edit', [StudentController::class, 'edit'])->name('edit')->middleware('dormitory.restrict:students');
                 Route::put('/{santriUuid}', [StudentController::class, 'update'])->name('update')->middleware('dormitory.restrict:students');
                 Route::delete('/{santriUuid}', [StudentController::class, 'destroy'])->name('destroy')->middleware('dormitory.restrict:students');
+                Route::post('/{santriUuid}/restore', [StudentController::class, 'restore'])->name('restore')->middleware('dormitory.restrict:students');
 
                 // Student Mahroms (per-studenti)
                 Route::get('/{santriUuid}/mahrom', [StudentMahromController::class, 'index'])->name('mahroms.index');
@@ -2022,6 +2111,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationOutController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationOutController::class, 'submit'])->name('submit');
+                Route::patch('/{mutationUuid}/letter', [StudentMutationOutController::class, 'updateLetter'])->name('letter.update');
                 Route::post('/{mutationUuid}/approve', [StudentMutationOutController::class, 'approve'])->name('approve');
                 Route::post('/{mutationUuid}/reject', [StudentMutationOutController::class, 'reject'])->name('reject');
                 Route::delete('/{mutationUuid}', [StudentMutationOutController::class, 'destroy'])->name('destroy');
@@ -2039,6 +2129,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationOutController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationOutController::class, 'submit'])->name('submit');
+                Route::patch('/{mutationUuid}/letter', [StudentMutationOutController::class, 'updateLetter'])->name('letter.update');
                 Route::post('/{mutationUuid}/approve', [StudentMutationOutController::class, 'approve'])->name('approve');
                 Route::post('/{mutationUuid}/reject', [StudentMutationOutController::class, 'reject'])->name('reject');
                 Route::delete('/{mutationUuid}', [StudentMutationOutController::class, 'destroy'])->name('destroy');
@@ -2056,6 +2147,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/bulk', [StudentMutationOutController::class, 'bulk'])->name('bulk');
                 Route::get('/{mutationUuid}', [StudentMutationOutController::class, 'show'])->name('show');
                 Route::post('/{mutationUuid}/submit', [StudentMutationOutController::class, 'submit'])->name('submit');
+                Route::patch('/{mutationUuid}/letter', [StudentMutationOutController::class, 'updateLetter'])->name('letter.update');
                 Route::post('/{mutationUuid}/approve', [StudentMutationOutController::class, 'approve'])->name('approve');
                 Route::post('/{mutationUuid}/reject', [StudentMutationOutController::class, 'reject'])->name('reject');
                 Route::delete('/{mutationUuid}', [StudentMutationOutController::class, 'destroy'])->name('destroy');
@@ -2066,6 +2158,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('mutations-in')->name('mutations-in.')->group(function () {
                 Route::get('/', [StudentMutationInController::class, 'index'])->name('index');
                 Route::get('/create', [StudentMutationInController::class, 'create'])->name('create');
+                Route::post('/preview-pdf', [StudentMutationInController::class, 'previewPdf'])->name('preview-pdf');
+                Route::post('/layout', [StudentMutationInController::class, 'saveLayout'])->name('layout');
                 Route::post('/', [StudentMutationInController::class, 'store'])->name('store');
                 Route::get('/find-student', [StudentMutationInController::class, 'findStudent'])->name('find-student');
                 Route::get('/hijri-convert', [StudentMutationInController::class, 'hijriConvert'])->name('hijri-convert');
@@ -2093,6 +2187,20 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{violationUuid}/edit', [ViolationPointController::class, 'edit'])->name('edit');
                 Route::put('/{violationUuid}', [ViolationPointController::class, 'update'])->name('update');
                 Route::delete('/{violationUuid}', [ViolationPointController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── KONSELING SANTRI (KESISWAAN / BK) ──────────────────
+            // Konseling adalah layanan Kesiswaan/BK, bukan layanan UKS.
+            Route::prefix('kesiswaan')->name('kesiswaan.')->group(function () {
+                Route::prefix('counseling-records')->name('counseling-records.')->group(function () {
+                    Route::get('/', [StudentCounselingRecordController::class, 'index'])->name('index');
+                    Route::get('/create', [StudentCounselingRecordController::class, 'create'])->name('create');
+                    Route::post('/', [StudentCounselingRecordController::class, 'store'])->name('store');
+                    Route::get('/{uuid}', [StudentCounselingRecordController::class, 'show'])->name('show');
+                    Route::get('/{uuid}/edit', [StudentCounselingRecordController::class, 'edit'])->name('edit');
+                    Route::put('/{uuid}', [StudentCounselingRecordController::class, 'update'])->name('update');
+                    Route::delete('/{uuid}', [StudentCounselingRecordController::class, 'destroy'])->name('destroy');
+                });
             });
 
             // ── ABSENSI HARIAN PESERTA DIDIK ───────────────────────
@@ -2252,6 +2360,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── DASHBOARD ASRAMA (1 role = 1 dashboard, ber-scope) ───
             Route::get('/dashboard/asrama', [RoleAsramaDashboardController::class, 'index'])->name('dashboard.asrama');
 
+            // ── AKSI LINTAS DASHBOARD JABATAN ───────────────────────
+            Route::get('/dashboard/export/{role}', [DashboardActionController::class, 'export'])->name('dashboard.export');
+            Route::get('/dashboard/export/{role}/pdf', [DashboardActionController::class, 'exportPdf'])->name('dashboard.export.pdf');
+            Route::post('/dashboard/broadcasts/{announcementId}/acknowledge', [DashboardActionController::class, 'acknowledgeBroadcast'])->name('dashboard.broadcasts.acknowledge');
+            Route::get('/dashboard/broadcasts/active', [DashboardActionController::class, 'broadcasts'])->name('dashboard.broadcasts.active');
+
             // Academic Integration
             Route::get('/academic', [AcademicIntegrationController::class, 'index'])->name('academic.index');
             Route::post('/academic/sync', [AcademicIntegrationController::class, 'sync'])->name('academic.sync');
@@ -2269,6 +2383,15 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/operator-santri/students', [DormitoryStudentOperatorController::class, 'searchStudents'])->name('operators.students');
                 Route::post('/operator-santri/{id}/toggle', [DormitoryStudentOperatorController::class, 'toggle'])->name('operators.toggle');
                 Route::post('/operator-santri/{id}/reset-password', [DormitoryStudentOperatorController::class, 'resetPassword'])->name('operators.reset-password');
+
+                // Waraqah Mutaba'ah — modul asrama
+                Route::prefix('mutabaah')->name('mutabaah.')->group(function () {
+                    Route::get('/', [MutabaahController::class, 'index'])->name('index');
+                    Route::post('/', [MutabaahController::class, 'store'])->name('store');
+                    Route::put('/{id}', [MutabaahController::class, 'update'])->name('update');
+                    Route::delete('/{id}', [MutabaahController::class, 'destroy'])->name('destroy');
+                    Route::get('/{studentId}/print', [MutabaahController::class, 'print'])->name('print');
+                });
 
                 // ── ASRAMA UTAMA ─────────────────────────────────────
                 Route::get('/', [DormitoryMasterController::class, 'index'])->name('index');
@@ -2297,9 +2420,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/penempatan', [DormitoryRoomController::class, 'placement'])->name('rooms.placement');
 
                 // ── IMPORT DATA ASRAMA (kamar/gedung) ────────────────
-                Route::get('/{asramaUuid}/import', [\App\Http\Controllers\DormitoryImportController::class, 'index'])->name('imports.index');
-                Route::get('/{asramaUuid}/import/kamar/template', [\App\Http\Controllers\DormitoryImportController::class, 'roomsTemplate'])->name('imports.rooms.template');
-                Route::post('/{asramaUuid}/import/kamar', [\App\Http\Controllers\DormitoryImportController::class, 'roomsStore'])->name('imports.rooms.store');
+                Route::get('/{asramaUuid}/import', [DormitoryImportController::class, 'index'])->name('imports.index');
+                Route::get('/{asramaUuid}/import/kamar/template', [DormitoryImportController::class, 'roomsTemplate'])->name('imports.rooms.template');
+                Route::post('/{asramaUuid}/import/kamar', [DormitoryImportController::class, 'roomsStore'])->name('imports.rooms.store');
                 Route::get('/{asramaUuid}/kamar/{roomUuid}/edit', [DormitoryRoomController::class, 'edit'])->name('rooms.edit');
                 Route::put('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'update'])->name('rooms.update');
                 Route::delete('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'destroy'])->name('rooms.destroy');
@@ -2369,6 +2492,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/{permitUuid}/approve', [DormitoryPermitController::class, 'approve'])->name('permits.approve');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/reject', [DormitoryPermitController::class, 'reject'])->name('permits.reject');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/return', [DormitoryPermitController::class, 'returnRecord'])->name('permits.return');
+                Route::post('/{asramaUuid}/izin/{permitUuid}/issue-card', [DormitoryPermitController::class, 'issueCard'])->name('permits.issue-card');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/pickup', [DormitoryPermitController::class, 'pickup'])->name('permits.pickup');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/pickup-authorization', [DormitoryPermitController::class, 'authorizePickup'])->name('permits.pickup-authorization');
                 Route::post('/{asramaUuid}/izin/{permitUuid}/revoke-card', [DormitoryPermitController::class, 'revokeCard'])->name('permits.revoke-card');
@@ -2392,11 +2516,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/pengaturan', [DormitoryLeavePolicyController::class, 'storeOrUpdate'])->name('leave-policies.store');
                 Route::post('/{asramaUuid}/izin/pengaturan/apply-defaults', [DormitoryLeavePolicyController::class, 'applyDefaults'])->name('leave-policies.apply-defaults');
                 Route::post('/{asramaUuid}/izin/pengaturan/kunjungan', [DormitoryLeavePolicyController::class, 'updateVisitPolicy'])->name('leave-policies.visit');
-                Route::get('/{asramaUuid}/poin/katalog', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'index'])->name('point-catalog.index');
-                Route::post('/{asramaUuid}/poin/katalog', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'store'])->name('point-catalog.store');
-                Route::put('/{asramaUuid}/poin/katalog/{catalogUuid}', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'update'])->name('point-catalog.update');
-                Route::delete('/{asramaUuid}/poin/katalog/{catalogUuid}', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'destroy'])->name('point-catalog.destroy');
-                Route::post('/{asramaUuid}/poin/katalog/{catalogUuid}/toggle', [\App\Http\Controllers\DormitoryPointCatalogController::class, 'toggle'])->name('point-catalog.toggle');
+
+                // ── KATALOG POIN PELANGGARAN & REWARD ───────────────
+                Route::get('/{asramaUuid}/poin/katalog', [DormitoryPointCatalogController::class, 'index'])->name('point-catalog.index');
+                Route::post('/{asramaUuid}/poin/katalog', [DormitoryPointCatalogController::class, 'store'])->name('point-catalog.store');
+                Route::put('/{asramaUuid}/poin/katalog/{catalogUuid}', [DormitoryPointCatalogController::class, 'update'])->name('point-catalog.update');
+                Route::delete('/{asramaUuid}/poin/katalog/{catalogUuid}', [DormitoryPointCatalogController::class, 'destroy'])->name('point-catalog.destroy');
+                Route::post('/{asramaUuid}/poin/katalog/{catalogUuid}/toggle', [DormitoryPointCatalogController::class, 'toggle'])->name('point-catalog.toggle');
 
                 // ── JENIS IZIN (PERMIT TYPES) CRUD ───────────────────────
                 Route::get('/{asramaUuid}/izin/pengaturan/permit-types', [PermitTypeController::class, 'index'])->name('permit-types.index');
@@ -2431,6 +2557,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/penghargaan', [DormitoryRewardController::class, 'index'])->name('rewards.index');
                 Route::get('/{asramaUuid}/penghargaan/tambah', [DormitoryRewardController::class, 'create'])->name('rewards.create');
                 Route::post('/{asramaUuid}/penghargaan', [DormitoryRewardController::class, 'store'])->name('rewards.store');
+
+                // Pengajuan penghargaan dari prestasi sekolah — harus sebelum wildcard rewardUuid.
+                Route::get('/{asramaUuid}/penghargaan/persetujuan', [DormitoryRewardApprovalController::class, 'index'])->name('rewards.approvals.index');
+                Route::get('/{asramaUuid}/penghargaan/persetujuan/{requestUuid}', [DormitoryRewardApprovalController::class, 'show'])->name('rewards.approvals.show');
+                Route::post('/{asramaUuid}/penghargaan/persetujuan/{requestUuid}/approve', [DormitoryRewardApprovalController::class, 'approve'])->name('rewards.approvals.approve');
+                Route::post('/{asramaUuid}/penghargaan/persetujuan/{requestUuid}/reject', [DormitoryRewardApprovalController::class, 'reject'])->name('rewards.approvals.reject');
+
                 Route::get('/{asramaUuid}/penghargaan/{rewardUuid}', [DormitoryRewardController::class, 'show'])->name('rewards.show');
                 Route::get('/{asramaUuid}/penghargaan/{rewardUuid}/edit', [DormitoryRewardController::class, 'edit'])->name('rewards.edit');
                 Route::put('/{asramaUuid}/penghargaan/{rewardUuid}', [DormitoryRewardController::class, 'update'])->name('rewards.update');
@@ -2443,6 +2576,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/informasi/{postUuid}', [DormitoryPostController::class, 'show'])->name('posts.show');
                 Route::get('/{asramaUuid}/informasi/{postUuid}/edit', [DormitoryPostController::class, 'edit'])->name('posts.edit');
                 Route::put('/{asramaUuid}/informasi/{postUuid}', [DormitoryPostController::class, 'update'])->name('posts.update');
+                Route::post('/{asramaUuid}/informasi/{postUuid}/publish', [DormitoryPostController::class, 'publish'])->name('posts.publish');
                 Route::delete('/{asramaUuid}/informasi/{postUuid}', [DormitoryPostController::class, 'destroy'])->name('posts.destroy');
 
                 // Activity Templates
@@ -2496,10 +2630,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-in', [DormitoryVisitLogController::class, 'checkIn'])->name('visits.check-in');
                 Route::post('/{asramaUuid}/kunjungan/{visitUuid}/check-out', [DormitoryVisitLogController::class, 'checkOut'])->name('visits.check-out');
                 // ── BLACKLIST TAMU ───────────────────────────────────
-                Route::get('/{asramaUuid}/blacklist-tamu', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'index'])->name('visitor-restrictions.index');
-                Route::post('/{asramaUuid}/blacklist-tamu', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'store'])->name('visitor-restrictions.store');
-                Route::post('/{asramaUuid}/blacklist-tamu/{restrictionUuid}/toggle', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'toggle'])->name('visitor-restrictions.toggle');
-                Route::delete('/{asramaUuid}/blacklist-tamu/{restrictionUuid}', [\App\Http\Controllers\DormitoryVisitorRestrictionController::class, 'destroy'])->name('visitor-restrictions.destroy');
+                Route::get('/{asramaUuid}/blacklist-tamu', [DormitoryVisitorRestrictionController::class, 'index'])->name('visitor-restrictions.index');
+                Route::post('/{asramaUuid}/blacklist-tamu', [DormitoryVisitorRestrictionController::class, 'store'])->name('visitor-restrictions.store');
+                Route::post('/{asramaUuid}/blacklist-tamu/{restrictionUuid}/toggle', [DormitoryVisitorRestrictionController::class, 'toggle'])->name('visitor-restrictions.toggle');
+                Route::delete('/{asramaUuid}/blacklist-tamu/{restrictionUuid}', [DormitoryVisitorRestrictionController::class, 'destroy'])->name('visitor-restrictions.destroy');
 
                 Route::get('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scan'])->name('visits.scan')->withoutMiddleware([EnsurePermission::class]);
                 Route::post('/{asramaUuid}/kunjungan/scan', [DormitoryVisitLogController::class, 'scanStore'])->name('visits.scan.store')->middleware('throttle:30,1');
@@ -2537,6 +2671,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             //  UKS — UKS MODULES
             // ═══════════════════════════════════════════════════════════════
             Route::prefix('uks')->name('uks.')->group(function () {
+
+                // Import data UKS
+                Route::prefix('import')->name('imports.')->group(function () {
+                    Route::get('/{dataset}', [ImportController::class, 'form'])->name('form');
+                    Route::post('/{dataset}', [ImportController::class, 'store'])->name('store');
+                    Route::get('/{dataset}/template', [ImportController::class, 'template'])->name('template');
+                });
 
                 // Imunisasi
                 Route::get('/immunizations', [StudentImmunizationController::class, 'index'])->name('immunizations.index');
@@ -2596,7 +2737,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/health-metrics/{uuid}', [StudentHealthMetricController::class, 'update'])->name('health-metrics.update');
                 Route::delete('/health-metrics/{uuid}', [StudentHealthMetricController::class, 'destroy'])->name('health-metrics.destroy');
 
-                // Konseling
+                // Legacy alias — URL lama konseling dipertahankan untuk bookmark.
+                // Menu & URL utama kini berada di Kesiswaan (/kesiswaan/counseling-records).
                 Route::get('/counseling-records', [StudentCounselingRecordController::class, 'index'])->name('counseling-records.index');
                 Route::get('/counseling-records/create', [StudentCounselingRecordController::class, 'create'])->name('counseling-records.create');
                 Route::post('/counseling-records', [StudentCounselingRecordController::class, 'store'])->name('counseling-records.store');
@@ -2604,12 +2746,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/counseling-records/{uuid}/edit', [StudentCounselingRecordController::class, 'edit'])->name('counseling-records.edit');
                 Route::put('/counseling-records/{uuid}', [StudentCounselingRecordController::class, 'update'])->name('counseling-records.update');
                 Route::delete('/counseling-records/{uuid}', [StudentCounselingRecordController::class, 'destroy'])->name('counseling-records.destroy');
-
-                // Student Counseling (alias for unified GTK sidebar)
-                Route::get('/student-counseling', [StudentCounselingRecordController::class, 'index'])->name('student-counseling.index');
-                Route::get('/student-counseling/create', [StudentCounselingRecordController::class, 'create'])->name('student-counseling.create');
-                Route::post('/student-counseling', [StudentCounselingRecordController::class, 'store'])->name('student-counseling.store');
-                Route::get('/student-counseling/{uuid}', [StudentCounselingRecordController::class, 'show'])->name('student-counseling.show');
 
                 // Faskes Rujukan
                 Route::get('/facility-referrals', [FacilityReferralController::class, 'index'])->name('facility-referrals.index');
@@ -2635,17 +2771,17 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/visits/find-mahrom/{studentId}', [DormitoryVisitLogController::class, 'findMahrom'])->name('visits.find-mahrom');
 
                 // ── LAPORAN UKS ─────────────────────────────────────────
-                Route::get('/laporan', [\App\Http\Controllers\Uks\ReportController::class, 'index'])->name('reports.index');
-                Route::get('/laporan/presensi', [\App\Http\Controllers\Uks\ReportController::class, 'attendance'])->name('reports.attendance');
-                Route::get('/laporan/perizinan', [\App\Http\Controllers\Uks\ReportController::class, 'permits'])->name('reports.permits');
-                Route::get('/laporan/pelanggaran', [\App\Http\Controllers\Uks\ReportController::class, 'violations'])->name('reports.violations');
-                Route::get('/laporan/penghargaan', [\App\Http\Controllers\Uks\ReportController::class, 'rewards'])->name('reports.rewards');
-                Route::get('/laporan/inventaris', [\App\Http\Controllers\Uks\ReportController::class, 'inventories'])->name('reports.inventories');
-                Route::get('/laporan/kebersihan', [\App\Http\Controllers\Uks\ReportController::class, 'sanitation'])->name('reports.sanitation');
-                Route::get('/laporan/penghuni', [\App\Http\Controllers\Uks\ReportController::class, 'occupancy'])->name('reports.occupancy');
-                Route::get('/laporan/santri/{studentId}', [\App\Http\Controllers\Uks\ReportController::class, 'studentDetail'])->name('reports.student-detail');
-                Route::get('/laporan/export/{report}', [\App\Http\Controllers\Uks\ReportController::class, 'exportCsv'])->name('reports.export');
-                Route::get('/laporan/pdf/{report}', [\App\Http\Controllers\Uks\ReportController::class, 'exportPdf'])->name('reports.pdf');
+                Route::get('/laporan', [App\Http\Controllers\Uks\ReportController::class, 'index'])->name('reports.index');
+                Route::get('/laporan/presensi', [App\Http\Controllers\Uks\ReportController::class, 'attendance'])->name('reports.attendance');
+                Route::get('/laporan/perizinan', [App\Http\Controllers\Uks\ReportController::class, 'permits'])->name('reports.permits');
+                Route::get('/laporan/pelanggaran', [App\Http\Controllers\Uks\ReportController::class, 'violations'])->name('reports.violations');
+                Route::get('/laporan/penghargaan', [App\Http\Controllers\Uks\ReportController::class, 'rewards'])->name('reports.rewards');
+                Route::get('/laporan/inventaris', [App\Http\Controllers\Uks\ReportController::class, 'inventories'])->name('reports.inventories');
+                Route::get('/laporan/kebersihan', [App\Http\Controllers\Uks\ReportController::class, 'sanitation'])->name('reports.sanitation');
+                Route::get('/laporan/penghuni', [App\Http\Controllers\Uks\ReportController::class, 'occupancy'])->name('reports.occupancy');
+                Route::get('/laporan/santri/{studentId}', [App\Http\Controllers\Uks\ReportController::class, 'studentDetail'])->name('reports.student-detail');
+                Route::get('/laporan/export/{report}', [App\Http\Controllers\Uks\ReportController::class, 'exportCsv'])->name('reports.export');
+                Route::get('/laporan/pdf/{report}', [App\Http\Controllers\Uks\ReportController::class, 'exportPdf'])->name('reports.pdf');
 
                 // ── DASHBOARD UKS ─────────────────────────────────────────────
                 Route::get('/', [RoleUksDashboardController::class, 'index'])->name('dashboard');
@@ -2856,10 +2992,29 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             /*
             |--------------------------------------------------------------------------
+            | PENGHUBUNGAN WALI–SANTRI (Super Admin + Tata Usaha)
+            |--------------------------------------------------------------------------
+            */
+            Route::prefix('wali-links')->name('wali-links.')->group(function () {
+                Route::get('/', [WaliLinkController::class, 'index'])->name('index');
+                Route::post('{id}/approve', [WaliLinkController::class, 'approve'])->name('approve');
+                Route::post('{id}/reject', [WaliLinkController::class, 'reject'])->name('reject');
+                Route::post('{id}/suspend', [WaliLinkController::class, 'suspend'])->name('suspend');
+                Route::post('{id}/revoke', [WaliLinkController::class, 'revoke'])->name('revoke');
+            });
+
+            Route::prefix('broadcasts')->name('broadcasts.')->group(function () {
+                Route::get('/', [BroadcastController::class, 'index'])->name('index');
+                Route::post('/', [BroadcastController::class, 'store'])->name('store');
+                Route::get('{id}', [BroadcastController::class, 'show'])->name('show');
+            });
+
+            /*
+            |--------------------------------------------------------------------------
             | SUPER ADMIN: /{userId}/sa
             |--------------------------------------------------------------------------
             */
-            Route::prefix('sa')->name('sa.')->group(function () {
+            Route::prefix('sa')->name('sa.')->middleware('super.or.system')->group(function () {
 
                 Route::prefix('users')->name('users.')->group(function () {
                     Route::get('/', [UserController::class, 'index'])->name('index');
@@ -3071,6 +3226,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [StudentAchievementController::class, 'index'])->name('index');
                 Route::get('/create', [StudentAchievementController::class, 'create'])->name('create');
                 Route::post('/', [StudentAchievementController::class, 'store'])->name('store');
+                Route::get('/candidates', [MumtazMurtafiCandidateController::class, 'index'])->name('candidates.index');
+                Route::post('/candidates/sync', [MumtazMurtafiCandidateController::class, 'sync'])->name('candidates.sync');
+                Route::get('/candidates/{uuid}', [MumtazMurtafiCandidateController::class, 'show'])->name('candidates.show');
+                Route::post('/candidates/{uuid}/post', [MumtazMurtafiCandidateController::class, 'post'])->name('candidates.post');
+                Route::get('/{id}/certificate', [StudentAchievementController::class, 'downloadCertificate'])->name('certificate');
                 Route::get('/{id}', [StudentAchievementController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [StudentAchievementController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [StudentAchievementController::class, 'update'])->name('update');
@@ -3088,6 +3248,37 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/laporan/gtk', [UserLaporanController::class, 'gtk'])->name('laporan.gtk');
             Route::get('/laporan/keuangan', [UserLaporanController::class, 'keuangan'])->name('laporan.keuangan');
             Route::get('/laporan/asrama', [UserLaporanController::class, 'asrama'])->name('laporan.asrama');
+            Route::get('/laporan/akademik', [AcademicReportController::class, 'index'])->name('laporan.akademik');
+            Route::get('/laporan/akademik/export', [AcademicReportController::class, 'exportExcel'])->name('laporan.akademik.export');
+            Route::get('/laporan/akademik/pdf', [AcademicReportController::class, 'pdf'])->name('laporan.akademik.pdf');
+            Route::get('/laporan/akademik/ketuntasan', [AcademicReportController::class, 'completion'])->name('laporan.akademik.ketuntasan');
+            Route::get('/laporan/akademik/kehadiran', [AcademicReportController::class, 'attendance'])->name('laporan.akademik.kehadiran');
+            Route::get('/laporan/akademik/keterlaksanaan', [AcademicReportController::class, 'implementation'])->name('laporan.akademik.keterlaksanaan');
+            Route::get('/laporan/akademik/administrasi', [AcademicReportController::class, 'administration'])->name('laporan.akademik.administrasi');
+            Route::get('/laporan/akademik/ketuntasan/export', [AcademicReportController::class, 'completionExport'])->name('laporan.akademik.ketuntasan.export');
+            Route::get('/laporan/akademik/ketuntasan/pdf', [AcademicReportController::class, 'completionPdf'])->name('laporan.akademik.ketuntasan.pdf');
+            Route::get('/laporan/akademik/kehadiran/export', [AcademicReportController::class, 'attendanceExport'])->name('laporan.akademik.kehadiran.export');
+            Route::get('/laporan/akademik/kehadiran/pdf', [AcademicReportController::class, 'attendancePdf'])->name('laporan.akademik.kehadiran.pdf');
+            Route::get('/laporan/akademik/keterlaksanaan/export', [AcademicReportController::class, 'implementationExport'])->name('laporan.akademik.keterlaksanaan.export');
+            Route::get('/laporan/akademik/keterlaksanaan/pdf', [AcademicReportController::class, 'implementationPdf'])->name('laporan.akademik.keterlaksanaan.pdf');
+            Route::get('/laporan/akademik/administrasi/export', [AcademicReportController::class, 'administrationExport'])->name('laporan.akademik.administrasi.export');
+            Route::get('/laporan/akademik/administrasi/pdf', [AcademicReportController::class, 'administrationPdf'])->name('laporan.akademik.administrasi.pdf');
+            Route::get('/laporan/akademik/riwayat/{studentId}', [AcademicReportController::class, 'history'])->name('laporan.akademik.riwayat');
+            Route::get('/laporan/populasi/mutasi', [StudentPopulationReportController::class, 'mutations'])->name('laporan.populasi.mutasi');
+            Route::get('/laporan/populasi/pertumbuhan', [StudentPopulationReportController::class, 'growth'])->name('laporan.populasi.pertumbuhan');
+            Route::get('/laporan/populasi/profil', [StudentPopulationReportController::class, 'profile'])->name('laporan.populasi.profil');
+            Route::get('/laporan/populasi/keberlanjutan', [StudentPopulationReportController::class, 'continuity'])->name('laporan.populasi.keberlanjutan');
+            Route::get('/laporan/populasi/kenaikan-kelulusan', [StudentPopulationReportController::class, 'promotions'])->name('laporan.populasi.kenaikan-kelulusan');
+            Route::get('/laporan/populasi/mutasi/export', [StudentPopulationReportController::class, 'mutationsExport'])->name('laporan.populasi.mutasi.export');
+            Route::get('/laporan/populasi/mutasi/pdf', [StudentPopulationReportController::class, 'mutationsPdf'])->name('laporan.populasi.mutasi.pdf');
+            Route::get('/laporan/populasi/pertumbuhan/export', [StudentPopulationReportController::class, 'growthExport'])->name('laporan.populasi.pertumbuhan.export');
+            Route::get('/laporan/populasi/pertumbuhan/pdf', [StudentPopulationReportController::class, 'growthPdf'])->name('laporan.populasi.pertumbuhan.pdf');
+            Route::get('/laporan/populasi/profil/export', [StudentPopulationReportController::class, 'profileExport'])->name('laporan.populasi.profil.export');
+            Route::get('/laporan/populasi/profil/pdf', [StudentPopulationReportController::class, 'profilePdf'])->name('laporan.populasi.profil.pdf');
+            Route::get('/laporan/populasi/keberlanjutan/export', [StudentPopulationReportController::class, 'continuityExport'])->name('laporan.populasi.keberlanjutan.export');
+            Route::get('/laporan/populasi/keberlanjutan/pdf', [StudentPopulationReportController::class, 'continuityPdf'])->name('laporan.populasi.keberlanjutan.pdf');
+            Route::get('/laporan/populasi/kenaikan-kelulusan/export', [StudentPopulationReportController::class, 'promotionsExport'])->name('laporan.populasi.kenaikan-kelulusan.export');
+            Route::get('/laporan/populasi/kenaikan-kelulusan/pdf', [StudentPopulationReportController::class, 'promotionsPdf'])->name('laporan.populasi.kenaikan-kelulusan.pdf');
             Route::get('/laporan/pdf/{type}', [UserLaporanController::class, 'pdf'])->name('laporan.pdf');
             Route::get('/laporan/export/{type}', [UserLaporanController::class, 'export'])->name('laporan.export');
         });
@@ -3113,6 +3304,22 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 | Dikelola oleh akun Sarpras / Unit Rumah Tangga (PAH-ADM-003)
 | Akses langsung di /sarpras/* — TIDAK menggunakan prefix {userId}
 */
+Route::middleware(['auth'])->prefix('{userId}/bump-orders')->name('user.bump-orders.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\BumpOrderController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\BumpOrderController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\BumpOrderController::class, 'store'])->name('store');
+    Route::get('/{number}', [\App\Http\Controllers\BumpOrderController::class, 'show'])->name('show');
+    Route::post('/{number}/cancel', [\App\Http\Controllers\BumpOrderController::class, 'cancel'])->name('cancel');
+});
+
+Route::middleware(['auth'])->prefix('{userId}/siplah')->name('user.siplah.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\SiplahController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\SiplahController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\SiplahController::class, 'store'])->name('store');
+    Route::get('/{number}', [\App\Http\Controllers\SiplahController::class, 'show'])->name('show');
+    Route::post('/{number}/{action}', [\App\Http\Controllers\SiplahController::class, 'action'])->name('action');
+});
+
 Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name('sarpras.')->group(function () {
 
     // Dashboard
@@ -3120,6 +3327,11 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // Dashboard user satuan kerja (info aset saja)
     Route::get('/user/dashboard', [SarprasUserController::class, 'dashboard'])->name('user.dashboard');
+
+    // Halaman pengadaan mandiri lama tidak dipakai; arahkan ke Pengajuan SIPLah.
+    Route::get('/user/pengadaan', fn (string $userId) => redirect()->route('user.siplah.index', ['userId' => $userId]))->name('user.pengadaan.index');
+    Route::get('/user/pengadaan/create', fn (string $userId) => redirect()->route('user.siplah.create', ['userId' => $userId]))->name('user.pengadaan.create');
+    Route::post('/user/pengadaan', fn (string $userId) => redirect()->route('user.siplah.index', ['userId' => $userId]))->name('user.pengadaan.store');
 
     // ── ASET ───────────────────────────────────────────
     Route::get('/user/aset', [SarprasUserController::class, 'indexAsset'])->name('user.aset.index');
@@ -3154,9 +3366,6 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/user/tindakan', [SarprasUserController::class, 'storeActionRequest'])->name('user.action.store');
 
     // ── PENGADAAN ──────────────────────────────────────
-    Route::get('/user/pengadaan', [SarprasUserController::class, 'indexPengadaan'])->name('user.pengadaan.index');
-    Route::get('/user/pengadaan/create', [SarprasUserController::class, 'createPengadaan'])->name('user.pengadaan.create');
-    Route::post('/user/pengadaan', [SarprasUserController::class, 'storeProcurementRequest'])->name('user.pengadaan.store');
 
     // Gedung
     Route::get('/gedung', [SarprasGedungController::class, 'index'])->name('gedung.index');
@@ -3321,6 +3530,38 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/checklist/instances/{instanceId}/save', [SarprasChecklistController::class, 'save'])->name('checklist.save');
     Route::post('/checklist/instances/{instanceId}/autosave', [SarprasChecklistController::class, 'autosave'])->name('checklist.autosave');
     Route::post('/checklist/instances/{instanceId}/complete', [SarprasChecklistController::class, 'complete'])->name('checklist.complete');
+
+    // Pengaturan item kebersihan, pertamanan, checklist, program, dan sampah.
+    Route::get('/pengaturan-item', [SarprasItemManagerController::class, 'index'])->name('item-manager.index');
+    Route::post('/pengaturan-item/sumber-sampah/{sourceId}', [SarprasItemManagerController::class, 'updateSource'])->name('item-manager.source.update');
+    Route::post('/pengaturan-item/sumber-sampah/{sourceId}/toggle', [SarprasItemManagerController::class, 'toggleSource'])->name('item-manager.source.toggle');
+    Route::delete('/pengaturan-item/sumber-sampah/{sourceId}', [SarprasItemManagerController::class, 'destroySource'])->name('item-manager.source.destroy');
+    Route::post('/pengaturan-item/checklist-template/{templateId}/items', [SarprasItemManagerController::class, 'storeChecklistItem'])->name('item-manager.checklist.item.store');
+    Route::put('/pengaturan-item/checklist-items/{itemId}', [SarprasItemManagerController::class, 'updateChecklistItem'])->name('item-manager.checklist.item.update');
+    Route::delete('/pengaturan-item/checklist-items/{itemId}', [SarprasItemManagerController::class, 'destroyChecklistItem'])->name('item-manager.checklist.item.destroy');
+    Route::post('/pengaturan-item/checklist-template/{templateId}/toggle', [SarprasItemManagerController::class, 'toggleChecklistTemplate'])->name('item-manager.checklist.template.toggle');
+    Route::delete('/pengaturan-item/checklist-template/{templateId}', [SarprasItemManagerController::class, 'destroyChecklistTemplate'])->name('item-manager.checklist.template.destroy');
+    Route::post('/pengaturan-item/kebersihan-tasks/regroup', [SarprasItemManagerController::class, 'regroupCleaningTasks'])->name('item-manager.tasks.regroup');
+    Route::post('/pengaturan-item/agenda-items/regroup', [SarprasItemManagerController::class, 'regroupAgendaItems'])->name('item-manager.agenda.regroup');
+    Route::post('/pengaturan-item/agenda-items', [SarprasItemManagerController::class, 'storeAgendaItem'])->name('item-manager.agenda-item.store');
+    Route::put('/pengaturan-item/agenda-items/{itemId}', [SarprasItemManagerController::class, 'updateAgendaItem'])->name('item-manager.agenda-item.update');
+
+    // Modul Transportasi / Armada (mengganti menu "Soon")
+    Route::get('/armada', [SarprasVehicleController::class, 'index'])->name('armada.index');
+    Route::post('/armada', [SarprasVehicleController::class, 'store'])->name('armada.store');
+    Route::put('/armada/{vehicleId}', [SarprasVehicleController::class, 'update'])->name('armada.update');
+    Route::post('/armada/{vehicleId}/toggle', [SarprasVehicleController::class, 'toggle'])->name('armada.toggle');
+    Route::delete('/armada/{vehicleId}', [SarprasVehicleController::class, 'destroy'])->name('armada.destroy');
+    Route::get('/armada/perjalanan', [SarprasVehicleController::class, 'trips'])->name('armada.trips');
+    Route::post('/armada/perjalanan', [SarprasVehicleController::class, 'storeTrip'])->name('armada.trip.store');
+    Route::put('/armada/perjalanan/{tripId}', [SarprasVehicleController::class, 'updateTrip'])->name('armada.trip.update');
+    Route::delete('/armada/perjalanan/{tripId}', [SarprasVehicleController::class, 'destroyTrip'])->name('armada.trip.destroy');
+    Route::get('/armada/bbm', [SarprasVehicleController::class, 'fuel'])->name('armada.fuel');
+    Route::post('/armada/bbm', [SarprasVehicleController::class, 'storeFuel'])->name('armada.fuel.store');
+    Route::delete('/armada/bbm/{fuelId}', [SarprasVehicleController::class, 'destroyFuel'])->name('armada.fuel.destroy');
+    Route::get('/armada/servis', [SarprasVehicleController::class, 'service'])->name('armada.service');
+    Route::post('/armada/servis', [SarprasVehicleController::class, 'storeService'])->name('armada.service.store');
+    Route::delete('/armada/servis/{serviceId}', [SarprasVehicleController::class, 'destroyService'])->name('armada.service.destroy');
 
     // Antrean perbaikan (laporan kerusakan -> repair request -> work order)
     Route::get('/perbaikan', [SarprasRepairController::class, 'index'])->name('repair.index');
@@ -3567,8 +3808,10 @@ Route::domain('wadir1.'.env('APP_DOMAIN', 'localhost'))
 | WAKA / ADMIN TU SUBDOMAIN
 |--------------------------------------------------------------------------
 */
-Route::prefix('waka')
-    ->middleware(['auth', 'role:Satuan Pendidikan|Super Admin', 'school.context'])
+// Semua URL modul waka memakai prefix {userId} agar konsisten dengan modul lain
+// (/\{userId\}/gtk, /\{userId\}/sarpras, ...). Link lama /waka/* dialihkan di bawah.
+Route::prefix('{userId}/waka')
+    ->middleware(['auth', 'role:Satuan Pendidikan|Super Admin', 'role.access', 'school.context'])
     ->name('waka.')
     ->group(function () {
         Route::get('/', [WakaController::class, 'dashboard'])->name('dashboard');
@@ -3657,7 +3900,7 @@ Route::prefix('waka')
 
         // ── PENGATURAN SUPERVISOR ───────────────────────────────
         Route::prefix('supervisi-pengaturan')->middleware('satuan.feature:supervisi-admin')->name('supervisi-pengaturan.')->group(function () {
-            Route::get('/', fn () => redirect()->route('waka.supervisi.index'))->name('index');
+            Route::get('/', fn () => redirect()->route('waka.supervisi.index', ['userId' => request()->route('userId')]))->name('index');
             Route::post('/', [SupervisiPengaturanController::class, 'store'])->name('store');
             Route::post('/{id}/toggle', [SupervisiPengaturanController::class, 'toggle'])->name('toggle');
             Route::delete('/{id}', [SupervisiPengaturanController::class, 'destroy'])->name('destroy');
@@ -3710,7 +3953,7 @@ Route::prefix('waka')
         Route::get('/dokumen-iso', fn () => redirect()->route('user.dokumen-iso.index', ['userId' => auth()->user()->id]))->name('dokumen-iso');
         Route::get('/kaldik', fn () => redirect()->route('user.kaldik.index', ['userId' => auth()->user()->id]))->name('kaldik');
         // Sidebar alias for `route('waka.pekan-efektif')`
-        Route::get('/pekan-efektif-redirect', fn () => redirect()->route('waka.pekan-efektif.index'))->name('pekan-efektif-alias');
+        Route::get('/pekan-efektif-redirect', fn () => redirect()->route('waka.pekan-efektif.index', ['userId' => request()->route('userId')]))->name('pekan-efektif-alias');
         Route::get('/sarana-prasarana', fn () => redirect()->route('sarpras.dashboard', ['userId' => auth()->user()->id]))->name('sarana-prasarana');
 
         // ── ALUMNI ───────────────────────────────────────────────
@@ -3793,6 +4036,14 @@ Route::middleware(['auth'])->get('/sarpras/{path?}', function (Request $request,
     return redirect($target.($query ? '?'.$query : ''));
 })->where('path', '.*')->name('sarpras.legacy');
 
+// Redirect tautan waka lama tanpa userId ke format wajib /{userId}/waka.
+Route::middleware(['auth'])->get('/waka/{path?}', function (Request $request, ?string $path = null) {
+    $target = '/'.auth()->id().'/waka'.($path ? '/'.$path : '');
+    $query = $request->getQueryString();
+
+    return redirect($target.($query ? '?'.$query : ''));
+})->where('path', '.*')->name('waka.legacy');
+
 // ── SEO: robots & sitemap (halaman publik saja) ───────────────────────────────
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
@@ -3810,3 +4061,6 @@ Route::view('/offline', 'offline')->name('offline');
 // ── VERIFIKASI PUBLIK SURAT (QR) ─────────────────────────────────────────────
 Route::get('/verifikasi-surat/{token}', [SuratVerificationController::class, 'show'])
     ->name('surat.verify');
+Route::get('/verifikasi-dokumen/{token}', [DocumentVerificationController::class, 'show'])
+    ->middleware('throttle:'.config('documents.public.rate_limit_per_minute', 30).',1')
+    ->name('documents.verify');

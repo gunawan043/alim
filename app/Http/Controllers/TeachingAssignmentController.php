@@ -4,12 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
 use App\Models\InstitutionDecree;
-use App\Models\OtherTeacherTask;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\Subject;
-use App\Models\SubjectKktp;
-use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -568,206 +565,96 @@ class TeachingAssignmentController extends Controller
     /**
      * Matriks inline editing — prepare data
      */
+    /**
+     * Halaman Edit SK & Matriks. Dipakai juga oleh InstitutionDecreeController::edit.
+     */
     public function editMatrix(Request $request, string $userId, string $decreeId)
     {
         $decree = InstitutionDecree::with(['academicYear', 'school'])->findOrFail($decreeId);
+        $this->assertMatrixAccess($request, $decree);
 
-        $schoolId = $request->attributes->get('schoolContextId');
-        $currentUser = auth()->user();
-        $isGlobal = canPermission('teaching-assignment-all-access');
+        $data = app(\App\Services\InstitutionDecreeMatrixService::class)->editorData($decree);
 
-        if (! $isGlobal && $schoolId && $decree->school_id && $decree->school_id !== $schoolId) {
-            abort(403, 'Akses ditolak.');
-        }
-
-        // Teachers — hanya guru yang terassign di sekolah decree ini
-        // Roster: permission snapshot → data kepegawaian (jenis/jabatan guru) sebagai fallback.
-        $teacherIds = app(\App\Services\TeacherRosterService::class)->idsForSchool($decree->school_id);
-        $teacherQuery = User::whereIn('id', $teacherIds)
-            ->whereHas('employments', fn ($q) => $q->where('school_id', $decree->school_id));
-
-        // Global user bisa lihat semua guru di sekolah decree
-        $teachers = $teacherQuery->orderBy('name')->get();
-
-        // Subjects
-        $subjects = Subject::orderBy('name')->get();
-
-        // Study groups — berdasarkan school & academic year SK
-        $studyGroups = collect();
-        if ($decree->school_id && $decree->academic_year_id) {
-            $studyGroups = StudyGroup::with('gradeLevel')
-                ->where('school_id', $decree->school_id)
-                ->where('academic_year_id', $decree->academic_year_id)
-                ->where('is_active', true)
-                ->get()
-                ->sortBy(fn ($sg) => [$sg->gradeLevel->level ?? 0, $sg->name])
-                ->values();
-        }
-
-        // Existing assignments keyed by teacher_subject_group
-        $existing = $decree->teachingAssignments
-            ->keyBy(fn ($a) => "{$a->teacher_id}|{$a->subject_id}|{$a->study_group_id}");
-
-        // Other teacher tasks (tugas tambahan)
-        $otherTasks = OtherTeacherTask::where('academic_year_id', $decree->academic_year_id)
-            ->when($decree->school_id, fn ($q) => $q->where('school_id', $decree->school_id))
-            ->get()
-            ->toArray();
-
-        return view('teaching-assignments.edit-matrix', compact(
-            'decree', 'userId', 'teachers', 'subjects', 'studyGroups', 'existing', 'otherTasks'
-        ));
+        return view('teaching-assignments.edit-matrix', array_merge($data, [
+            'userId' => $userId,
+            'canSelectSchool' => canPermission('institution-decree-all-access'),
+            'activeYear' => AcademicYear::active()->first(),
+        ]));
     }
 
     /**
-     * Matriks inline editing — save all
+     * Simpan matriks secara menyeluruh: penugasan yang dihapus ikut dihapus,
+     * tugas tambahan ikut disimpan, buku admin disiapkan, dan snapshot diperbarui.
      */
     public function updateMatrix(Request $request, string $userId, string $decreeId)
     {
         $decree = InstitutionDecree::with('school')->findOrFail($decreeId);
+        $this->assertMatrixAccess($request, $decree);
 
-        $schoolId = $request->attributes->get('schoolContextId');
-        $currentUser = auth()->user();
-        $isGlobal = canPermission('teaching-assignment-all-access');
+        $assignments = $request->has('assignments_json')
+            ? (json_decode((string) $request->input('assignments_json'), true) ?: [])
+            : null;
+        $tasks = $request->has('other_tasks_json')
+            ? (json_decode((string) $request->input('other_tasks_json'), true) ?: [])
+            : null;
 
-        if (! $isGlobal && $schoolId && $decree->school_id && $decree->school_id !== $schoolId) {
-            abort(403, 'Akses ditolak.');
+        if ($assignments === null && $tasks === null) {
+            return back()->with('error', 'Tidak ada data matriks yang dikirim.');
         }
 
-        // Parse JSON assignments (new format) or fallback to old format
-        $jsonInput = $request->input('assignments_json');
-        if ($jsonInput) {
-            $assignments = json_decode($jsonInput, true) ?? [];
-        } else {
-            $assignments = $request->input('assignments', []);
-        }
+        try {
+            $result = app(\App\Services\InstitutionDecreeMatrixService::class)->sync(
+                $decree,
+                $assignments,
+                $tasks,
+                $decree->school_id,
+                true
+            );
 
-        $totalBookCreated = 0;
-        $claimedPairs = []; // mapel|rombel → guru pertama (aturan satu mapel satu guru)
-        $subjectModelCache = [];
+            app(\App\Services\InstitutionDecreeMatrixService::class)->refreshSnapshot($decree->fresh());
 
-        foreach ($assignments as $teacherId => $subjects) {
-            foreach ($subjects as $subjectId => $groups) {
-                foreach ($groups as $studyGroupId => $hours) {
-                    // Jangan pernah menautkan penugasan/buku ke rombel periode lain.
-                    $groupValid = StudyGroup::whereKey($studyGroupId)
-                        ->where('academic_year_id', $decree->academic_year_id)
-                        ->when($decree->school_id, fn ($q) => $q->where('school_id', $decree->school_id))
-                        ->exists();
-                    if (! $groupValid) {
-                        continue;
-                    }
+            $msg = sprintf(
+                'Matriks berhasil disimpan: %d penugasan baru, %d diperbarui, %d dihapus; %d tugas tambahan baru, %d diperbarui, %d dihapus.',
+                $result['assignments_created'],
+                $result['assignments_updated'],
+                $result['assignments_deleted'],
+                $result['tasks_created'],
+                $result['tasks_updated'],
+                $result['tasks_deleted']
+            );
 
-                    // Aturan: satu mapel hanya satu guru per rombel (kecuali Tahfidz & Hadits).
-                    $subjectModel = $subjectModelCache[$subjectId] ??= Subject::find($subjectId);
-                    if ($subjectModel && ! $subjectModel->allowsMultipleTeachers()) {
-                        $pairKey = $subjectId.'|'.$studyGroupId;
-                        if (isset($claimedPairs[$pairKey]) && (string) $claimedPairs[$pairKey] !== (string) $teacherId) {
-                            continue;
-                        }
-                        $claimedPairs[$pairKey] = $teacherId;
-                    }
-
-                    $key = "{$teacherId}|{$subjectId}|{$studyGroupId}";
-                    $h = is_numeric($hours) ? (int) $hours : null;
-
-                    if ($existing = $decree->teachingAssignments->keyBy(fn ($a) => "{$a->teacher_id}|{$a->subject_id}|{$a->study_group_id}")->get($key)) {
-                        // Update or delete
-                        if ($h && $h > 0) {
-                            $existing->update(['weekly_hours' => $h, 'status' => 'active']);
-
-                            // Sync TeacherAdminBook (jika teacher berubah)
-                            $sg = StudyGroup::with('gradeLevel')->find($studyGroupId);
-                            $gradeLevel = $sg?->gradeLevel;
-                            $activeAy = AcademicYear::find($decree->academic_year_id);
-                            $semester = $activeAy?->semester ?? 'ganjil';
-
-                            $kktp = null;
-                            if ($gradeLevel) {
-                                $kktp = SubjectKktp::where('subject_id', $subjectId)
-                                    ->where('grade_level_id', $gradeLevel->id)
-                                    ->where('academic_year_id', $decree->academic_year_id)
-                                    ->where('semester', $semester)
-                                    ->first();
-                            }
-
-                            $created = TeacherAdminBook::updateOrCreate(
-                                [
-                                    'teacher_id' => $teacherId,
-                                    'subject_id' => $subjectId,
-                                    'study_group_id' => $studyGroupId,
-                                    'academic_year_id' => $decree->academic_year_id,
-                                    'semester' => $semester,
-                                ],
-                                [
-                                    'school_id' => $decree->school_id ?? $schoolId,
-                                    'kktp_id' => $kktp?->id,
-                                    'is_active' => true,
-                                ]
-                            );
-                        } else {
-                            $existing->delete();
-                        }
-                    } elseif ($h && $h > 0) {
-                        // Create new teaching assignment
-                        $ta = TeachingAssignment::create([
-                            'decree_id' => $decreeId,
-                            'teacher_id' => $teacherId,
-                            'subject_id' => $subjectId,
-                            'study_group_id' => $studyGroupId,
-                            'school_id' => $decree->school_id ?? $schoolId,
-                            'academic_year_id' => $decree->academic_year_id,
-                            'weekly_hours' => $h,
-                            'role' => 'guru_mapel',
-                            'status' => 'active',
-                        ]);
-
-                        // Auto-create TeacherAdminBook untuk setiap rombel
-                        $sg = StudyGroup::with('gradeLevel')->find($studyGroupId);
-                        $gradeLevel = $sg?->gradeLevel;
-                        $activeAy = AcademicYear::find($decree->academic_year_id);
-                        $semester = $activeAy?->semester ?? 'ganjil';
-
-                        $kktp = null;
-                        if ($gradeLevel) {
-                            $kktp = SubjectKktp::where('subject_id', $subjectId)
-                                ->where('grade_level_id', $gradeLevel->id)
-                                ->where('academic_year_id', $decree->academic_year_id)
-                                ->where('semester', $semester)
-                                ->first();
-                        }
-
-                        $alreadyHasBook = TeacherAdminBook::where('teacher_id', $teacherId)
-                            ->where('subject_id', $subjectId)
-                            ->where('study_group_id', $studyGroupId)
-                            ->where('academic_year_id', $decree->academic_year_id)
-                            ->where('semester', $semester)
-                            ->exists();
-
-                        if (! $alreadyHasBook) {
-                            TeacherAdminBook::create([
-                                'teacher_id' => $teacherId,
-                                'subject_id' => $subjectId,
-                                'study_group_id' => $studyGroupId,
-                                'school_id' => $decree->school_id ?? $schoolId,
-                                'academic_year_id' => $decree->academic_year_id,
-                                'semester' => $semester,
-                                'kktp_id' => $kktp?->id,
-                                'is_active' => true,
-                            ]);
-                            $totalBookCreated++;
-                        }
-                    }
-                }
+            if (($result['books_created'] ?? 0) > 0) {
+                $msg .= " {$result['books_created']} Buku Admin otomatis terbuat.";
             }
+
+            return redirect()
+                ->route('user.institution-decrees.show', ['userId' => $userId, 'id' => $decreeId])
+                ->with('success', $msg)
+                ->with('matrix_warnings', $result['messages'] ?? []);
+        } catch (\Throwable $e) {
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan matriks: '.$e->getMessage());
+        }
+    }
+
+    private function assertMatrixAccess(Request $request, InstitutionDecree $decree): void
+    {
+        $isGlobal = canPermission('teaching-assignment-all-access')
+            || canPermission('institution-decree-all-access');
+
+        if ($isGlobal) {
+            return;
         }
 
-        $msg = 'Pembagian tugas mengajar berhasil disimpan.';
-        if ($totalBookCreated > 0) {
-            $msg .= " {$totalBookCreated} Buku Admin otomatis terbuat.";
+        $contextId = $request->attributes->get('schoolContextId');
+
+        if ($contextId === null) {
+            abort_if($decree->school_id !== null, 403, 'Akses ditolak.');
+
+            return;
         }
 
-        return redirect()->route('user.institution-decrees.show', ['userId' => $userId, 'id' => $decreeId])
-            ->with('success', $msg);
+        abort_if((string) $decree->school_id !== (string) $contextId, 403, 'Akses ditolak.');
     }
 }

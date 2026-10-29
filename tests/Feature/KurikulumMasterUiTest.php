@@ -703,6 +703,64 @@ class KurikulumMasterUiTest extends TestCase
             ->assertSee('Edit Matriks Pembagian Tugas');
     }
 
+    public function test_halaman_buat_sk_dan_matriks_tampil(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/institution-decrees/create")
+            ->assertOk()
+            ->assertSee('Buat SK & Matriks Pembagian Tugas')
+            ->assertSee('Nama')
+            ->assertSee('Mapel')
+            ->assertSee('Tugas Tambahan');
+    }
+
+    public function test_halaman_edit_sk_memakai_format_buat_sk(): void
+    {
+        $decreeId = DB::table('institution_decrees')->value('id');
+
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/institution-decrees/{$decreeId}/edit")
+            ->assertOk()
+            ->assertSee('Edit SK & Matriks Pembagian Tugas')
+            ->assertSee('Informasi Surat Keputusan')
+            ->assertSee('Simpan Perubahan');
+    }
+
+    public function test_pengaturan_cetak_sk_dapat_disimpan(): void
+    {
+        $decreeId = DB::table('institution_decrees')->value('id');
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/institution-decrees/{$decreeId}/print-settings", [
+                'paper_size' => 'folio',
+                'orientation' => 'landscape',
+                'margin_top' => 12,
+                'margin_right' => 10,
+                'margin_bottom' => 12,
+                'margin_left' => 15,
+                'title_font_size' => 14,
+                'info_font_size' => 10,
+                'table_font_size' => 9,
+                'line_height' => 1.2,
+                'show_kop' => 1,
+                'show_ttd_ksp' => 1,
+                'show_stamp' => 1,
+                'ttd_width' => 30,
+                'ttd_height' => 15,
+                'ttd_margin' => 2,
+                'stamp_width' => 30,
+                'stamp_height' => 30,
+                'stamp_margin' => 2,
+                'city' => 'Mataram',
+            ])
+            ->assertRedirect();
+
+        $decree = InstitutionDecree::findOrFail($decreeId);
+        $this->assertSame('folio', $decree->print_settings['paper_size']);
+        $this->assertSame(12.0, (float) $decree->print_settings['margin_top']);
+        $this->assertTrue((bool) $decree->print_settings['show_kop']);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // FIXTURE
     // ─────────────────────────────────────────────────────────────

@@ -2968,6 +2968,18 @@ Test: `RombelArchive + AttendanceSync + SumatifHarianDinamis` = **44 test / 304 
 - Diuji dengan data nyata pada 14 endpoint: semuanya `200`, `application/pdf`,
   magic bytes `%PDF`, dan orientasi MediaBox sesuai.
 
+## 24. Import SK & Matriks Pembagian Tugas + Perbaikan Alur SK
+
+- **Import baru** (`/{userId}/institution-decrees/import`): workbook 3 sheet (`SK`, `MATRIKS`, `TUGAS`), template XLSX berisi referensi GTK/mapel/rombel, opsi **Perbarui SK yang sudah ada**, laporan error per baris, dukungan banyak SK dalam satu file. Reader `App\Imports\InstitutionDecreeImport`, template `App\Exports\InstitutionDecreeTemplateExport`. Dokumentasi: `docs/features/SK-IMPORT-MATRIKS.md`.
+- **Satu jalur penyimpanan matriks** `App\Services\InstitutionDecreeMatrixService` dipakai oleh Buat SK, Edit SK, Edit Matriks, dan import: sinkron penuh (baris yang dihapus ikut terhapus), tugas tambahan tersimpan, buku admin otomatis, dan validasi mapel/rombel.
+- **Edit SK memuat editor matriks**: halaman `/{userId}/institution-decrees/{id}/edit` kini menampilkan form informasi SK + editor matriks; `update()` juga menerima payload matriks.
+- **Tugas tambahan pada Edit Matriks tersimpan**: payload `other_tasks_json` diserialisasi dan disinkronkan. Tugas kini memiliki `decree_id` sehingga mengedit satu SK tidak menghapus tugas SK lain.
+- **Snapshot matriks**: kolom `institution_decrees.matrix_snapshot` + `matrix_snapshot_at`; detail & cetak memakai snapshot yang dibekukan saat SK disimpan/dicetak. Data live tetap bisa dilihat dengan `?live=1`.
+- **Buku Admin konsisten**: dibuat saat SK pertama kali dibuat (bukan hanya saat Edit Matriks), dan dinonaktifkan bila penugasan dihapus dan tidak dipakai SK lain.
+- **Keamanan satuan pendidikan**: `show`, `print`, `edit`, `update`, `destroy` memeriksa `school_id` SK terhadap konteks sekolah (bukan hanya index).
+- **Transaksi & bentrok**: penyimpanan matriks berjalan dalam transaksi dengan row lock; kegagalan unique constraint dikembalikan sebagai pesan, bukan 500.
+- Tes: `tests/Feature/InstitutionDecreeImportTest.php` (import, duplikat, replace/hapus, template, IDOR lintas sekolah); regresi `KurikulumMasterUiTest` 26 tes dan `BukuNilaiKonsolidasiTest`/`DocumentSigningTest`/`AcademicServerSideAuthorizationTest` lulus.
+
 ## Testing
 - `tests/Feature/JadwalPergantianJamTest.php` — generator, konflik, QR end-to-end, jam pelajaran, rekap.
 - `tests/Feature/SumatifHarianDinamisTest.php` — SH dinamis, unifikasi kalkulasi, Leger/Rapor STS & SAS, **sheet Leger SAS & kolom lengkap per-mapel, Pembiasaan/Tahfidz/Agama/Umum, index wali → leger**, KKTP, catatan wali.

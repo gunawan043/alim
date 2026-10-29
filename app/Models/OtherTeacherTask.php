@@ -22,6 +22,8 @@ class OtherTeacherTask extends Model
         'teacher_id',
         'school_id',
         'academic_year_id',
+        'decree_id',
+        'additional_task_type_id',
         'study_group_id',
         'work_unit_id',
         'task_name',
@@ -51,6 +53,11 @@ class OtherTeacherTask extends Model
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
     }
 
+    public function decree(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionDecree::class, 'decree_id');
+    }
+
     public function studyGroup(): BelongsTo
     {
         return $this->belongsTo(StudyGroup::class);
@@ -59,5 +66,13 @@ class OtherTeacherTask extends Model
     public function workUnit(): BelongsTo
     {
         return $this->belongsTo(WorkUnit::class);
+    }
+
+    /**
+     * Master jenis tugas tambahan. Sumber kebenaran nama tugas.
+     */
+    public function additionalTaskType(): BelongsTo
+    {
+        return $this->belongsTo(AdditionalTaskType::class, 'additional_task_type_id');
     }
 }

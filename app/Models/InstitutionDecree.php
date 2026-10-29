@@ -51,6 +51,8 @@ class InstitutionDecree extends Model
         'end_date' => 'date',
         'submitted_at' => 'datetime',
         'approved_at' => 'datetime',
+        'matrix_snapshot_at' => 'datetime',
+        'print_settings' => 'array',
     ];
 
     protected static function boot()
@@ -73,6 +75,9 @@ class InstitutionDecree extends Model
         'signed_position',
         'document_path',
         'document_filename',
+        'matrix_snapshot',
+        'matrix_snapshot_at',
+        'print_settings',
         'status',
         'submitted_at',
         'submitted_by',

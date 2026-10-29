@@ -24,6 +24,30 @@
         </div>
     @endif
 
+    @if(session('import_errors') && count(session('import_errors')))
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <strong>{{ count(session('import_errors')) }} baris tidak dapat diimport:</strong>
+            <ul class="mb-0 mt-2" style="max-height:240px; overflow:auto;">
+                @foreach(session('import_errors') as $importError)
+                    <li>{{ $importError }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('import_warnings') && count(session('import_warnings')))
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <strong>{{ count(session('import_warnings')) }} catatan import:</strong>
+            <ul class="mb-0 mt-2" style="max-height:200px; overflow:auto;">
+                @foreach(session('import_warnings') as $importWarning)
+                    <li>{{ $importWarning }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     @php
         $currentUser = auth()->user();
         $canViewAllSchools = $currentUser && $currentUser->hasPermissionTo('institution-decree-all-access');
@@ -39,9 +63,14 @@
                             <p class="text-muted mb-0">Kelola SK Pembagian Tugas Mengajar.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.institution-decrees.create', ['userId' => $userId]) }}" class="btn btn-success">
-                                <i class="ri-add-line align-bottom me-1"></i> Buat SK
-                            </a>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('user.institution-decrees.import-form', ['userId' => $userId]) }}" class="btn btn-soft-primary">
+                                    <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Import
+                                </a>
+                                <a href="{{ route('user.institution-decrees.create', ['userId' => $userId]) }}" class="btn btn-success">
+                                    <i class="ri-add-line align-bottom me-1"></i> Buat SK
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
