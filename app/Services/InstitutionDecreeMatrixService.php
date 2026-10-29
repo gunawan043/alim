@@ -360,7 +360,6 @@ class InstitutionDecreeMatrixService
             ->keyBy('user_id');
 
         $desired = [];
-        $claimedPairs = [];
 
         foreach ($assignments as $teacherId => $subjects) {
             if (! $validTeachers->has((string) $teacherId)) {
@@ -394,15 +393,6 @@ class InstitutionDecreeMatrixService
 
                         continue;
                     }
-
-                    $pairKey = $subjectId.'|'.$groupId;
-                    if (isset($claimedPairs[$pairKey]) && ! $subject->allowsMultipleTeachers()) {
-                        $skipped++;
-                        $messages[] = 'Mapel '.$subject->name.' pada rombel '.$validGroups->get((string) $groupId)->name.' sudah dipegang GTK lain.';
-
-                        continue;
-                    }
-                    $claimedPairs[$pairKey] = $teacherId;
 
                     $desired["{$teacherId}|{$subjectId}|{$groupId}"] = [
                         'teacher_id' => $teacherId,
