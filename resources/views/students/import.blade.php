@@ -251,10 +251,10 @@
                             <div class="d-flex align-items-start gap-3">
                                 <div class="step-number">3</div>
                                 <div>
-                                    <div class="fw-semibold mb-1">Pilih Rombel</div>
+                                    <div class="fw-semibold mb-1">Rombel Tujuan</div>
                                     <p class="text-muted small mb-0">
-                                        Tentukan rombel tujuan, maka setiap<br>
-                                        Santri yang diimport langsung masuk rombel itu.
+                                        Biarkan <strong>Otomatis dari file</strong> agar setiap santri mengikuti kolom Rombel Saat Ini.<br>
+                                        Pilih rombel tertentu jika semua baris harus dipaksa masuk ke rombel itu.
                                     </p>
                                 </div>
                             </div>
@@ -346,7 +346,7 @@
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Rombel Tujuan <span class="text-muted">(opsional)</span></label>
                                 <select name="study_group_id" class="form-select @error('study_group_id') is-invalid @enderror">
-                                    <option value="">Tanpa rombel — simpan dulu saja</option>
+                                    <option value="">Otomatis — cocokkan dari kolom Rombel Saat Ini</option>
                                     @foreach($studyGroups as $sg)
                                         <option value="{{ $sg->id }}"
                                             {{ $studyGroupId == $sg->id ? 'selected' : '' }}>
@@ -355,7 +355,10 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="form-text">Jika dipilih, semua santri masuk ke rombel ini dan kolom <strong>Rombel Saat Ini</strong> di file diabaikan. Berguna saat file memakai nama lama seperti 9A tetapi target saat ini XI A.</div>
+                                <div class="form-text">
+                                    <strong>Otomatis:</strong> rombel dibaca dari kolom <em>Rombel Saat Ini</em> di file.<br>
+                                    <strong>Pilih rombel:</strong> semua santri masuk ke rombel tersebut dan kolom rombel di file diabaikan — berguna saat file memakai nama lama seperti 9A tetapi target saat ini XI A.
+                                </div>
 
                                 {{-- Warning: kapasitas rombel --}}
                                 <div class="alert alert-warning py-2 px-3 small mt-2 mb-0" id="rombelCapacityWarning" style="display:none">
