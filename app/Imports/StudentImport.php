@@ -599,12 +599,19 @@ class StudentImport implements ToCollection
             'bus' => 'angkutan_umum',
             'transportasi umum' => 'angkutan_umum',
             'andong/bendi/sado/dokar/delman/becak' => 'angkutan_umum',
+            'sepeda motor' => 'motor',
+            'ojek' => 'motor',
+            'mobil pribadi' => 'mobil',
+            'kendaraan pribadi' => 'mobil',
+            'bentor' => 'angkutan_umum',
         ];
 
+        // Kolom transportation tidak memiliki nilai 'lainnya'. Jangan kirim
+        // nilai di luar enum karena MySQL akan menolak seluruh baris.
         return $map[$v] ?? match ($v) {
             'jalan_kaki', 'sepeda', 'motor', 'mobil',
             'angkutan_umum', 'antar_jemput' => $v,
-            default => 'lainnya',
+            default => 'jalan_kaki',
         };
     }
 

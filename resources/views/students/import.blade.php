@@ -70,11 +70,11 @@
     {{-- ══════════════════════════════════════════════════════
          FEEDBACK AREA — Hasil Import Session
     ══════════════════════════════════════════════════════ --}}
-    @if(session('import_result'))
+    @if($importResult ?? session('import_result'))
         @php
-            $result    = session('import_result');
-            $totalDup  = count($result['duplicates'] ?? []);
-            $totalErr  = count($result['errors']    ?? []);
+            $result    = $importResult ?? session('import_result');
+            $totalDup  = $result['duplicate_count'] ?? count($result['duplicates'] ?? []);
+            $totalErr  = $result['error_count'] ?? count($result['errors'] ?? []);
             $created   = $result['created'] ?? 0;
             $mahrom    = $result['mahrom_created'] ?? 0;
             $totalRows = $result['total'] ?? ($created + $totalErr + $totalDup);
@@ -143,6 +143,9 @@
                         </tbody>
                     </table>
                 </div>
+                @if($totalErr > count($allErrors))
+                    <div class="card-footer small text-muted">Menampilkan {{ count($allErrors) }} dari {{ $totalErr }} error.</div>
+                @endif
             </div>
         @endif
 
@@ -560,7 +563,7 @@ dropZone.addEventListener('drop', function(e) {
 });
 </script>
 
-@if(session('import_result'))
+@if($importResult ?? session('import_result'))
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var el = document.getElementById('importResultModal');

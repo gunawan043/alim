@@ -153,6 +153,48 @@ class StudentImportRombelTest extends TestCase
         ]);
     }
 
+
+    public function test_import_ulang_tidak_menggandakan_santri(): void
+    {
+        $this->makeGroup('XI C');
+        $rows = $this->dapodikRows([
+            'name' => 'Duplikat Uji',
+            'nisn' => '9900112266',
+            'rombel' => 'XI C',
+        ]);
+
+        $first = new StudentImport($this->school->id);
+        $first->collection(collect($rows));
+        $this->assertSame(1, $first->getSuccessCount(), json_encode($first->getErrors()));
+
+        $second = new StudentImport($this->school->id);
+        $second->collection(collect($rows));
+
+        $this->assertSame(0, $second->getSuccessCount(), 'Import kedua tidak boleh membuat santri baru.');
+        $this->assertCount(1, $second->getDuplicates());
+        $this->assertSame(1, \App\Models\Student::where('nisn', '9900112266')->count());
+    }
+
+    public function test_transportasi_lainnya_tidak_menggagalkan_baris(): void
+    {
+        $this->makeGroup('XI D');
+        $rows = $this->dapodikRows([
+            'name' => 'Transport Uji',
+            'nisn' => '9900112277',
+            'rombel' => 'XI D',
+            'transport' => 'Lainnya',
+        ]);
+
+        $import = new StudentImport($this->school->id);
+        $import->collection(collect($rows));
+
+        $this->assertSame(1, $import->getSuccessCount(), json_encode($import->getErrors()));
+        $this->assertDatabaseHas('students', [
+            'nisn' => '9900112277',
+            'transportation' => 'jalan_kaki',
+        ]);
+    }
+
     private function makeGroup(string $name): StudyGroup
     {
         return StudyGroup::create([
@@ -201,6 +243,7 @@ class StudentImportRombelTest extends TestCase
         $rows[$dataRow][4] = $data['nisn'];
         $rows[$dataRow][5] = 'Mataram';
         $rows[$dataRow][6] = '2010-01-01';
+        $rows[$dataRow][17] = $data['transport'] ?? 'Jalan Kaki';
         $rows[$dataRow][24] = 'Ayah '.$data['name'];
         $rows[$dataRow][30] = 'Ibu '.$data['name'];
         $rows[$dataRow][$rombelAt] = $data['rombel'];

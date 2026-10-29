@@ -16,6 +16,7 @@ use App\Models\StudentMutationOut;
 use App\Models\StudyGroup;
 use App\Services\Uks\StudentHealthSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -650,7 +651,12 @@ class StudentController extends Controller
 
         $studyGroupId = $request->get('study_group_id');
 
-        return view('students.import', compact('userId', 'schools', 'studyGroups', 'studyGroupId'));
+        $importResult = null;
+        if ($request->filled('import_token')) {
+            $importResult = Cache::pull('student-import-result:'.$userId.':'.$request->input('import_token'));
+        }
+
+        return view('students.import', compact('userId', 'schools', 'studyGroups', 'studyGroupId', 'importResult'));
     }
 
     public function importProcess(Request $request, string $userId)
@@ -724,15 +730,25 @@ class StudentController extends Controller
 
             \Log::info("[IMPORT-PROCESS] Results: created={$created}, errors=".count($errors).', duplicates='.count($duplicates));
 
+            $result = [
+                'created' => $created,
+                'errors' => array_slice($errors, 0, 50),
+                'duplicates' => array_slice($duplicates, 0, 50),
+                'error_count' => count($errors),
+                'duplicate_count' => count($duplicates),
+                'mahrom_created' => $mahromCreated,
+                'total' => $created + count($errors) + count($duplicates),
+            ];
+
+            $token = (string) Str::uuid();
+            Cache::put('student-import-result:'.$userId.':'.$token, $result, now()->addMinutes(30));
+
             return redirect()
-                ->route('user.students.import-form', ['userId' => $userId])
-                ->with('import_result', [
-                    'created' => $created,
-                    'errors' => $errors,
-                    'duplicates' => $duplicates,
-                    'mahrom_created' => $mahromCreated,
-                    'total' => $created + count($errors) + count($duplicates),
-                ]);
+                ->route('user.students.import-form', [
+                    'userId' => $userId,
+                    'import_token' => $token,
+                ])
+                ->with('import_result', $result);
         } catch (\Throwable $e) {
             \Log::error('[IMPORT-PROCESS] OUTER EXCEPTION: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
 
