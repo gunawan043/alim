@@ -76,11 +76,13 @@
             $totalDup  = count($result['duplicates'] ?? []);
             $totalErr  = count($result['errors']    ?? []);
             $created   = $result['created'] ?? 0;
+            $mahrom    = $result['mahrom_created'] ?? 0;
+            $totalRows = $result['total'] ?? ($created + $totalErr + $totalDup);
             $allErrors = $result['errors']    ?? [];
         @endphp
 
         {{-- Ringkasan dalam cards --}}
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-4" id="importResultDetails">
             <div class="col-md-4">
                 <div class="card border-success shadow-sm">
                     <div class="card-body py-2 text-center">
@@ -176,6 +178,75 @@
                 </div>
             </div>
         @endif
+
+        <div class="modal fade zoomIn" id="importResultModal" tabindex="-1" aria-labelledby="importResultModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="importResultModalLabel">
+                                <i class="ri-file-check-line me-1 text-primary"></i>Hasil Import Santri
+                            </h5>
+                            <small class="text-muted">{{ $totalRows }} baris diproses</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3 text-center mb-3">
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="fs-2 fw-bold text-success">{{ $created }}</div>
+                                    <div class="small text-muted">Berhasil disimpan</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="fs-2 fw-bold text-danger">{{ $totalErr }}</div>
+                                    <div class="small text-muted">Gagal</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="fs-2 fw-bold text-warning">{{ $totalDup }}</div>
+                                    <div class="small text-muted">Duplikat / dilewati</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded-3 p-3 h-100">
+                                    <div class="fs-2 fw-bold text-info">{{ $mahrom }}</div>
+                                    <div class="small text-muted">Data mahrom</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($totalErr > 0)
+                            <div class="alert alert-danger mb-2">
+                                <div class="fw-semibold mb-1">Sebagian baris gagal diproses:</div>
+                                <ul class="mb-0 ps-3 small">
+                                    @foreach(array_slice($allErrors, 0, 5) as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                                @if($totalErr > 5)
+                                    <div class="small mt-1">Dan {{ $totalErr - 5 }} error lainnya — lihat daftar lengkap di bawah.</div>
+                                @endif
+                            </div>
+                        @else
+                            <div class="alert alert-success mb-0">
+                                <i class="ri-checkbox-circle-line me-1"></i>
+                                Import selesai tanpa error. Semua baris valid berhasil disimpan.
+                            </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#importResultDetails" class="btn btn-outline-primary" data-bs-dismiss="modal">
+                            <i class="ri-list-check me-1"></i>Lihat Detail
+                        </a>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endif
 
     {{-- Dev Error Banner — dari exception catch --}}
@@ -488,4 +559,15 @@ dropZone.addEventListener('drop', function(e) {
     }
 });
 </script>
+
+@if(session('import_result'))
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('importResultModal');
+    if (el && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    }
+});
+</script>
+@endif
 @endsection

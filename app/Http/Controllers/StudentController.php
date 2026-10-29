@@ -724,13 +724,6 @@ class StudentController extends Controller
 
             \Log::info("[IMPORT-PROCESS] Results: created={$created}, errors=".count($errors).', duplicates='.count($duplicates));
 
-            if ($created > 0 && empty($errors) && empty($duplicates)) {
-                return redirect()
-                    ->route('user.students.import-form', ['userId' => $userId])
-                    ->with('success', "Berhasil mengimport {$created} data santri"
-                        .($mahromCreated > 0 ? " dan {$mahromCreated} data mahrom." : '.'));
-            }
-
             return redirect()
                 ->route('user.students.import-form', ['userId' => $userId])
                 ->with('import_result', [
@@ -738,6 +731,7 @@ class StudentController extends Controller
                     'errors' => $errors,
                     'duplicates' => $duplicates,
                     'mahrom_created' => $mahromCreated,
+                    'total' => $created + count($errors) + count($duplicates),
                 ]);
         } catch (\Throwable $e) {
             \Log::error('[IMPORT-PROCESS] OUTER EXCEPTION: '.$e->getMessage().' | '.$e->getFile().':'.$e->getLine());
