@@ -67,8 +67,13 @@ class StudentImportRombelTest extends TestCase
     public function test_template_export_kompatibel_dengan_maatwebsite_excel_v4(): void
     {
         $export = new StudentTemplateExport($this->school->id);
+        $headings = $export->headings()[0];
 
         $this->assertInstanceOf(Export::class, $export);
+        $this->assertCount(66, $headings);
+        $this->assertSame('Rombel Saat Ini', $headings[42]);
+        $this->assertSame('No Peserta Ujian Nasional', $headings[43]);
+        $this->assertSame('Jarak Rumah ke Sekolah (KM)', $headings[65]);
         $this->assertStringStartsWith('PK', Excel::raw($export, \Maatwebsite\Excel\Excel::XLSX));
     }
 

@@ -2,8 +2,8 @@
 
 namespace App\Exports;
 
-use App\Models\School;
 use Maatwebsite\Excel\Concerns\Export;
+use App\Models\School;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -29,7 +29,7 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
             if ($school) {
                 $this->schoolName = $school->name;
                 $this->schoolAddress = 'Kec. '.($school->district?->name ?? '-').', '
-                    .'Kabupaten '.($school->city?->name ?? '-').', '
+                    .'Kabupaten '.($school->city?->display_name ?? '-').', '
                     .'Provinsi '.($school->province?->name ?? '-');
             }
         }
@@ -61,11 +61,12 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
                 'Nama Ayah', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
                 'Nama Ibu', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
                 'Nama Wali', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK',
+                'Rombel Saat Ini',
                 'No Peserta Ujian Nasional', 'No Seri Ijazah', 'Penerima KIP', 'Nomor KIP',
                 'Nama di KIP', 'Nomor KKS', 'No Registrasi Akta Lahir', 'Bank', 'Nomor Rekening Bank',
                 'Rekening Atas Nama', 'Layak PIP', 'Alasan Layak PIP', 'Kebutuhan Khusus', 'Sekolah Asal',
                 'Anak ke-berapa', 'Lintang', 'Bujur', 'No KK', 'Berat Badan', 'Tinggi Badan',
-                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)', 'Rombel Saat Ini'],
+                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)'],
         ];
     }
 
@@ -92,30 +93,56 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
     {
         $totalCols = 66;
         $lastCol = Coordinate::stringFromColumnIndex($totalCols);
-        $highest = $sheet->getHighestRow();
-        $highestCol = $sheet->getHighestColumn();
 
-        // Info rows di baris 1, 2, 3
+        // Empat baris info, lalu dua baris header, data mulai baris 7.
         $sheet
-            ->insertNewRowBefore(1, 3)
-            ->setCellValue('A1', $this->schoolName)
-            ->setCellValue('A2', $this->schoolAddress)
-            ->setCellValue('A3', $this->downloadInfo);
+            ->insertNewRowBefore(1, 4)
+            ->setCellValue('A1', 'Daftar Peserta Didik')
+            ->setCellValue('A2', $this->schoolName)
+            ->setCellValue('A3', $this->schoolAddress)
+            ->setCellValue('A4', $this->downloadInfo);
 
         $sheet->mergeCells("A1:{$lastCol}1");
         $sheet->mergeCells("A2:{$lastCol}2");
         $sheet->mergeCells("A3:{$lastCol}3");
+        $sheet->mergeCells("A4:{$lastCol}4");
 
         $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
             'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP',
             'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN'];
 
-        foreach ($cols as $c) {
-            $sheet->mergeCells("{$c}4:{$c}5");
+        // Header normal: satu sel merge vertikal baris 5-6.
+        // Kolom orang tua memakai header grup + subheader seperti file Dapodik.
+        $parentGroups = [
+            ['start' => 24, 'label' => 'Data Ayah', 'children' => ['Nama', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK']],
+            ['start' => 30, 'label' => 'Data Ibu', 'children' => ['Nama', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK']],
+            ['start' => 36, 'label' => 'Data Wali', 'children' => ['Nama', 'Tahun Lahir', 'Jenjang Pendidikan', 'Pekerjaan', 'Penghasilan', 'NIK']],
+        ];
+
+        $parentColumns = [];
+        foreach ($parentGroups as $group) {
+            $startLetter = Coordinate::stringFromColumnIndex($group['start'] + 1);
+            $endLetter = Coordinate::stringFromColumnIndex($group['start'] + 6);
+
+            $sheet->setCellValue($startLetter.'5', $group['label']);
+            $sheet->mergeCells("{$startLetter}5:{$endLetter}5");
+
+            foreach ($group['children'] as $offset => $label) {
+                $column = Coordinate::stringFromColumnIndex($group['start'] + $offset + 1);
+                $parentColumns[] = $column;
+                $sheet->setCellValue($column.'6', $label);
+            }
+        }
+
+        foreach ($cols as $column) {
+            if (in_array($column, $parentColumns, true)) {
+                continue;
+            }
+
+            $sheet->mergeCells("{$column}5:{$column}6");
         }
 
         return [
-            // Info rows
             1 => [
                 'font' => ['bold' => true, 'size' => 14],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -128,8 +155,16 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
                 'font' => ['bold' => true, 'size' => 9],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
             ],
-            // Heading row (merged with row 5)
             4 => [
+                'font' => ['bold' => true, 'size' => 9],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ],
+            5 => [
+                'font' => ['bold' => true, 'size' => 9],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
+            ],
+            6 => [
                 'font' => ['bold' => true, 'size' => 9],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF000000']]],
