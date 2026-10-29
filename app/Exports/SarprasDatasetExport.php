@@ -2,12 +2,13 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
-class SarprasDatasetExport implements FromArray, ShouldAutoSize, WithHeadings, WithTitle
+class SarprasDatasetExport implements Export, FromArray, ShouldAutoSize, WithHeadings, WithTitle
 {
     public function __construct(
         private readonly array $headings,

@@ -69,14 +69,12 @@ class StudentImport implements ToCollection
      */
     private function findRombelColumnIndex(Collection $rows): int
     {
-        foreach ([3, 4, 5] as $idx) {
-            if ($idx >= $rows->count()) {
-                continue;
-            }
+        for ($idx = 0; $idx < min(8, $rows->count()); $idx++) {
             $row = $rows->get($idx);
             if (! $row) {
                 continue;
             }
+            $row = $row instanceof Collection ? $row : collect($row);
 
             foreach ($row as $colIdx => $cell) {
                 if ($cell === null) {
@@ -84,7 +82,7 @@ class StudentImport implements ToCollection
                 }
                 $header = strtolower(trim((string) $cell));
 
-                if (in_array($header, ['rombel saat ini', 'rombel', 'rombongan belajar', 'kelas'])) {
+                if (in_array($header, ['rombel saat ini', 'rombel sekarang', 'rombel', 'rombongan belajar', 'kelas', 'kelas saat ini'])) {
                     Log::info('[StudentImport] Rombel column found at col '.$colIdx.' ("'.$cell.'")');
 
                     return (int) $colIdx;
@@ -109,19 +107,22 @@ class StudentImport implements ToCollection
         $s = preg_replace('/\s+/', '', $s);
         $s = strtoupper($s);
 
-        // Map "6C" style to roman numeral "VI-C"
-        static $romanMap = [
-            '1' => 'I',  '2' => 'II',  '3' => 'III',
-            '4' => 'IV', '5' => 'V',   '6' => 'VI',
-            '7' => 'VII', '8' => 'VIII', '9' => 'IX',
-            '10' => 'X', '11' => 'XI', '12' => 'XII',
-        ];
+        // Buang semua pemisah agar "XI A", "XI-A", dan "XIA" setara.
+        $s = preg_replace('/[^A-Z0-9]/', '', $s);
 
-        // Try to match e.g. "6C" → extract "6" and "C"
-        if (preg_match('/^(\d+)([A-Z])$/', $s, $m)) {
-            $roman = $romanMap[$m[1]] ?? $m[1];
+        // Format angka: "9A", "11 B", "12C" → grade + sisa kelas.
+        if (preg_match('/^(\d{1,2})(.*)$/', $s, $m)) {
+            $grade = (int) $m[1];
+            $rest = $m[2];
 
-            return $roman.'-'.$m[2];
+            return ($grade >= 1 && $grade <= 12) ? $grade.'-'.$rest : $s;
+        }
+
+        // Format Romawi: "IXA", "XI-B", "XII IPA 1" → angka + sisa kelas.
+        foreach (['XII' => 12, 'XI' => 11, 'X' => 10, 'IX' => 9, 'VIII' => 8, 'VII' => 7, 'VI' => 6, 'V' => 5, 'IV' => 4, 'III' => 3, 'II' => 2, 'I' => 1] as $roman => $grade) {
+            if (str_starts_with($s, $roman)) {
+                return $grade.'-'.substr($s, strlen($roman));
+            }
         }
 
         return $s;
@@ -152,6 +153,12 @@ class StudentImport implements ToCollection
      */
     private function resolveStudyGroupId(Collection $row, int $rombelColIdx): ?string
     {
+        // Pilihan eksplisit di form adalah target final. Ini memungkinkan file
+        // lama (mis. 9A) dimasukkan ke rombel tujuan saat ini (mis. XI A).
+        if ($this->overrideStudyGroupId) {
+            return $this->overrideStudyGroupId;
+        }
+
         if ($rombelColIdx >= 0) {
             $raw = $this->cell($row, $rombelColIdx);
             if ($raw !== '') {
@@ -186,6 +193,7 @@ class StudentImport implements ToCollection
 
         // ── Pre-scan: detect rombel column + build lookup cache ─────────────
         $rombelColIdx = $this->findRombelColumnIndex($rows);
+        $shiftFrom = $rombelColIdx >= 0 ? $rombelColIdx : null;
         $this->buildRombelCache();
 
         $activeYearId = $this->academicYearId;
@@ -195,6 +203,7 @@ class StudentImport implements ToCollection
                 continue;
             }
 
+            $row = $row instanceof Collection ? $row : collect($row);
             $rowNumber = $idx + 1;
             $nama = $this->cell($row, 1);
             if ($nama === '') {
@@ -234,9 +243,9 @@ class StudentImport implements ToCollection
             if ($existing) {
                 // Sinkronkan orang tua/wali yang belum tercatat sebagai mahrom.
                 // Tidak menimpa mahrom yang sudah ada (per peran).
-                $synced = $this->createMahroms($existing, $row);
+                $synced = $this->createMahroms($existing, $row, $shiftFrom);
                 $this->mahromCount += $synced;
-                $healthSynced = $this->syncHealth($existing, $row);
+                $healthSynced = $this->syncHealth($existing, $row, $shiftFrom);
 
                 $this->duplicates[] = [
                     'nisn' => $nisn ?: '-',
@@ -271,15 +280,24 @@ class StudentImport implements ToCollection
             try {
                 // Atomik per baris: siswa + riwayat rombel dibuat bersama,
                 // jika salah satu gagal tidak meninggalkan data parsial.
-                [$student, $history, $mahromCreated] = DB::transaction(function () use ($row, $sgId, $activeYearId) {
-                    $student = Student::create($this->parseRow($row));
+                [$student, $history, $mahromCreated] = DB::transaction(function () use ($row, $sgId, $activeYearId, $rowNumber, $shiftFrom) {
+                    $student = Student::create($this->parseRow($row, $shiftFrom));
+
+                    // Import Excel = jalur masuk non-mutasi; catat sumbernya.
+                    app(\App\Services\StudentEnrollmentService::class)->recordEntry(
+                        $student,
+                        \App\Services\StudentEnrollmentService::SOURCE_IMPORT,
+                        $student->entry_date?->toDateString(),
+                        auth()->id(),
+                        ['row' => $rowNumber],
+                    );
 
                     // Tinggi/berat/lingkar kepala dari file juga masuk ke
                     // data kesehatan UKS (record + riwayat antropometri).
-                    $this->syncHealth($student, $row);
+                    $this->syncHealth($student, $row, $shiftFrom);
 
                     // Data Ayah/Ibu/Wali pada file ikut tersimpan sebagai mahrom.
-                    $mahromCreated = $this->createMahroms($student, $row);
+                    $mahromCreated = $this->createMahroms($student, $row, $shiftFrom);
 
                     $history = null;
                     if ($sgId && $activeYearId) {
@@ -330,18 +348,18 @@ class StudentImport implements ToCollection
     /**
      * @return array{height: ?float, weight: ?float, head_circumference: ?float}
      */
-    private function healthData(Collection $row): array
+    private function healthData(Collection $row, ?int $shiftFrom = null): array
     {
         return [
-            'height' => $this->parseDecimal($this->cell($row, 61)),
-            'weight' => $this->parseDecimal($this->cell($row, 60)),
-            'head_circumference' => $this->parseDecimal($this->cell($row, 62)),
+            'height' => $this->parseDecimal($this->logicalCell($row, 61, $shiftFrom)),
+            'weight' => $this->parseDecimal($this->logicalCell($row, 60, $shiftFrom)),
+            'head_circumference' => $this->parseDecimal($this->logicalCell($row, 62, $shiftFrom)),
         ];
     }
 
-    private function syncHealth(Student $student, Collection $row): bool
+    private function syncHealth(Student $student, Collection $row, ?int $shiftFrom = null): bool
     {
-        $data = $this->healthData($row);
+        $data = $this->healthData($row, $shiftFrom);
 
         if (array_filter($data, fn ($value) => $value !== null) === []) {
             return false;
@@ -361,6 +379,17 @@ class StudentImport implements ToCollection
         }
     }
 
+    /**
+     * Baca kolom logis. File Dapodik menambahkan kolom "Rombel Saat Ini"
+     * sehingga kolom setelahnya bergeser satu. Template lama tidak bergeser.
+     */
+    private function logicalCell(Collection $row, int $index, ?int $shiftFrom = null): string
+    {
+        $actual = ($shiftFrom !== null && $index >= $shiftFrom) ? $index + 1 : $index;
+
+        return $this->cell($row, $actual);
+    }
+
     private function cell(Collection $row, int $index): string
     {
         $val = $row->get($index);
@@ -368,9 +397,9 @@ class StudentImport implements ToCollection
         return is_null($val) ? '' : trim((string) $val);
     }
 
-    private function parseRow(Collection $row): array
+    private function parseRow(Collection $row, ?int $shiftFrom = null): array
     {
-        $v = fn (int $i) => $this->cell($row, $i);
+        $v = fn (int $i) => $this->logicalCell($row, $i, $shiftFrom);
 
         return array_filter([
             'school_id' => $this->schoolId,
@@ -650,32 +679,32 @@ class StudentImport implements ToCollection
      *
      * @return array<int, array<string, string>>
      */
-    private function parentRows(Collection $row): array
+    private function parentRows(Collection $row, ?int $shiftFrom = null): array
     {
         return [
             [
                 'relationship' => 'ayah',
-                'name' => $this->cell($row, 24),
-                'birth_year' => $this->cell($row, 25),
-                'education' => $this->cell($row, 26),
-                'occupation' => $this->cell($row, 27),
-                'nik' => $this->cell($row, 29),
+                'name' => $this->logicalCell($row, 24, $shiftFrom),
+                'birth_year' => $this->logicalCell($row, 25, $shiftFrom),
+                'education' => $this->logicalCell($row, 26, $shiftFrom),
+                'occupation' => $this->logicalCell($row, 27, $shiftFrom),
+                'nik' => $this->logicalCell($row, 29, $shiftFrom),
             ],
             [
                 'relationship' => 'ibu',
-                'name' => $this->cell($row, 30),
-                'birth_year' => $this->cell($row, 31),
-                'education' => $this->cell($row, 32),
-                'occupation' => $this->cell($row, 33),
-                'nik' => $this->cell($row, 35),
+                'name' => $this->logicalCell($row, 30, $shiftFrom),
+                'birth_year' => $this->logicalCell($row, 31, $shiftFrom),
+                'education' => $this->logicalCell($row, 32, $shiftFrom),
+                'occupation' => $this->logicalCell($row, 33, $shiftFrom),
+                'nik' => $this->logicalCell($row, 35, $shiftFrom),
             ],
             [
                 'relationship' => 'wali',
-                'name' => $this->cell($row, 36),
-                'birth_year' => $this->cell($row, 37),
-                'education' => $this->cell($row, 38),
-                'occupation' => $this->cell($row, 39),
-                'nik' => $this->cell($row, 41),
+                'name' => $this->logicalCell($row, 36, $shiftFrom),
+                'birth_year' => $this->logicalCell($row, 37, $shiftFrom),
+                'education' => $this->logicalCell($row, 38, $shiftFrom),
+                'occupation' => $this->logicalCell($row, 39, $shiftFrom),
+                'nik' => $this->logicalCell($row, 41, $shiftFrom),
             ],
         ];
     }

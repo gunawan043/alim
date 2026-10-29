@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use App\Models\AssetCategory;
 use App\Models\AssetRoom;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -12,7 +13,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AssetTemplateExport
+class AssetTemplateExport implements Export
 {
     private ?string $forcedRoomName;
 

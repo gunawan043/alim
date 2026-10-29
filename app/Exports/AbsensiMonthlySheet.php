@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -13,7 +14,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AbsensiMonthlySheet implements FromCollection, ShouldAutoSize, WithStyles, WithTitle
+class AbsensiMonthlySheet implements Export, FromCollection, ShouldAutoSize, WithStyles, WithTitle
 {
     protected Collection $studentRows;
 

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use App\Models\GtkEmployment;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -11,7 +12,7 @@ use Illuminate\Support\Collection;
  * Template import nama Arab GTK — sudah terisi NUPY/nama Latin;
  * operator cukup mengisi kolom `nama_arab`. Pencocokan memakai NUPY.
  */
-class GtkArabicNameTemplateExport implements FromCollection, WithHeadings
+class GtkArabicNameTemplateExport implements Export, FromCollection, WithHeadings
 {
     public function __construct(private readonly ?string $schoolId) {}
 

@@ -42,7 +42,7 @@ class GtkImportTemplateExport implements Export, WithMultipleSheets
     }
 }
 
-class DataSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     public function collection(): Collection
     {
@@ -125,7 +125,7 @@ class DataSheet implements FromCollection, WithColumnWidths, WithHeadings, WithS
     }
 }
 
-class JenisGtkSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class JenisGtkSheet implements Export, FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     public function collection(): Collection
     {
@@ -165,7 +165,7 @@ class JenisGtkSheet implements FromCollection, WithColumnWidths, WithHeadings, W
     }
 }
 
-class JabatanSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class JabatanSheet implements Export, FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     public function collection(): Collection
     {
@@ -207,7 +207,7 @@ class JabatanSheet implements FromCollection, WithColumnWidths, WithHeadings, Wi
     }
 }
 
-class StatusKepegawaianSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class StatusKepegawaianSheet implements Export, FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     public function collection(): Collection
     {
@@ -255,7 +255,7 @@ class StatusKepegawaianSheet implements FromCollection, WithColumnWidths, WithHe
     }
 }
 
-class SatuanKerjaSheet implements FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class SatuanKerjaSheet implements Export, FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     use Exportable;
 

@@ -355,7 +355,7 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="form-text">Santri yang diimport langsung masuk rombel yang dipilih.</div>
+                                <div class="form-text">Jika dipilih, semua santri masuk ke rombel ini dan kolom <strong>Rombel Saat Ini</strong> di file diabaikan. Berguna saat file memakai nama lama seperti 9A tetapi target saat ini XI A.</div>
 
                                 {{-- Warning: kapasitas rombel --}}
                                 <div class="alert alert-warning py-2 px-3 small mt-2 mb-0" id="rombelCapacityWarning" style="display:none">

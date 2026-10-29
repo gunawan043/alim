@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -9,7 +10,7 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
-class TahfidzMonitoringExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping
+class TahfidzMonitoringExport implements Export, FromCollection, ShouldAutoSize, WithHeadings, WithMapping
 {
     private int $index = 0;
 

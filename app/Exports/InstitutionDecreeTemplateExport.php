@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use App\Models\AcademicYear;
 use App\Models\GtkCrossUnitAssignment;
 use App\Models\GtkEmployment;
@@ -22,7 +23,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * Template import SK & Matriks Pembagian Tugas.
  */
-class InstitutionDecreeTemplateExport
+class InstitutionDecreeTemplateExport implements Export
 {
     private const NAVY = '1E3A5F';
 

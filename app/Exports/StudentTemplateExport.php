@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\School;
+use Maatwebsite\Excel\Concerns\Export;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -13,7 +14,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class StudentTemplateExport implements WithColumnWidths, WithHeadings, WithStyles, WithTitle
+class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
     private string $schoolName = '';
 
@@ -64,7 +65,7 @@ class StudentTemplateExport implements WithColumnWidths, WithHeadings, WithStyle
                 'Nama di KIP', 'Nomor KKS', 'No Registrasi Akta Lahir', 'Bank', 'Nomor Rekening Bank',
                 'Rekening Atas Nama', 'Layak PIP', 'Alasan Layak PIP', 'Kebutuhan Khusus', 'Sekolah Asal',
                 'Anak ke-berapa', 'Lintang', 'Bujur', 'No KK', 'Berat Badan', 'Tinggi Badan',
-                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)'],
+                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)', 'Rombel Saat Ini'],
         ];
     }
 
@@ -83,13 +84,13 @@ class StudentTemplateExport implements WithColumnWidths, WithHeadings, WithStyle
             'AU' => 16, 'AV' => 22, 'AW' => 14, 'AX' => 22, 'AY' => 14, 'AZ' => 18,
             'BA' => 22, 'BB' => 12, 'BC' => 20, 'BD' => 14, 'BE' => 22,
             'BF' => 14, 'BG' => 14, 'BH' => 14, 'BI' => 20, 'BJ' => 10,
-            'BK' => 10,
+            'BK' => 10, 'BL' => 20, 'BM' => 10, 'BN' => 18,
         ];
     }
 
     public function styles(Worksheet $sheet): array
     {
-        $totalCols = 64;
+        $totalCols = 66;
         $lastCol = Coordinate::stringFromColumnIndex($totalCols);
         $highest = $sheet->getHighestRow();
         $highestCol = $sheet->getHighestColumn();
@@ -107,7 +108,7 @@ class StudentTemplateExport implements WithColumnWidths, WithHeadings, WithStyle
 
         $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
             'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP',
-            'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK'];
+            'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN'];
 
         foreach ($cols as $c) {
             $sheet->mergeCells("{$c}4:{$c}5");

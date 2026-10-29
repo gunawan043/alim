@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use Maatwebsite\Excel\Concerns\Export;
 use App\Support\AcademicNilai;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
+class LegerExport implements Export, FromCollection, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected array $data;
 
@@ -101,7 +102,7 @@ class LegerExport implements FromCollection, ShouldAutoSize, WithHeadings, WithM
         return $row['data']->toArray();
     }
 
-    public function styles(Worksheet $sheet)
+    public function styles(Worksheet $sheet): ?array
     {
         $totalCols = 3 + $this->data['subjectMap']->count() + 8; // No + NIS + Nama + mapel + juz + agg + pres
         $colLetter = $sheet->getHighestColumn();
