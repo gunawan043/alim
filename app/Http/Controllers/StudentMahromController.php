@@ -461,6 +461,12 @@ class StudentMahromController extends Controller
             ])
             ->orderBy('name');
 
+        // Context sekolah selalu menjadi batas utama.
+        $schoolId = request()->attributes->get('schoolContextId');
+        if ($schoolId && request()->attributes->get('isGlobalView') !== true) {
+            $query->where('school_id', $schoolId);
+        }
+
         // Filter by user_id if column populated, else fall back to school_id.
         if (Student::query()->whereNotNull('user_id')->exists()) {
             if ($auth) {

@@ -414,6 +414,16 @@ class StudentController extends Controller
             'photo_path' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
+        // Satuan pendidikan aktif selalu menjadi pemilik data.
+        if ($schoolId) {
+            $data['school_id'] = $schoolId;
+        }
+
+        // Jangan izinkan form memindahkan santri ke sekolah lain.
+        if ($schoolId) {
+            $data['school_id'] = $schoolId;
+        }
+
         $this->markArabicNameReviewed($data, $request);
 
         // Handle photo upload
@@ -469,7 +479,10 @@ class StudentController extends Controller
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
         $this->authorizeStudentAccess($request, $student);
-        $schools = School::orderBy('name')->get();
+        $schoolId = $request->attributes->get('schoolContextId');
+        $schools = $schoolId
+            ? School::where('id', $schoolId)->get()
+            : School::orderBy('name')->get();
 
         return view('students.edit', compact('student', 'schools', 'userId'));
     }
@@ -477,6 +490,7 @@ class StudentController extends Controller
     public function update(Request $request, string $userId, string $santriUuid)
     {
         $this->abortIfDormitoryUser($request);
+        $schoolId = $request->attributes->get('schoolContextId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
         $this->authorizeStudentAccess($request, $student);
 
@@ -782,7 +796,12 @@ class StudentController extends Controller
             return response()->json([]);
         }
 
-        $students = Student::withoutGlobalScope('school_context')->where('status', 'active')
+        $schoolId = $request->attributes->get('schoolContextId');
+        $isGlobalView = $request->attributes->get('isGlobalView') === true;
+
+        $students = Student::withoutGlobalScope('school_context')
+            ->where('status', 'active')
+            ->when($schoolId && ! $isGlobalView, fn ($query) => $query->where('school_id', $schoolId))
             ->where(fn ($sq) => $sq
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('nisn', 'like', "%{$q}%")
