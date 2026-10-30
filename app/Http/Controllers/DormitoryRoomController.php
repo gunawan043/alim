@@ -123,7 +123,10 @@ class DormitoryRoomController extends Controller
                 $payload = $data;
                 $payload['dormitory_id'] = $asramaUuid;
                 $payload['is_active'] = $request->boolean('is_active', true);
-                $payload['gender'] = $dormitory->gender;
+                // Kolom gender kamar hanya menerima putra/putri.
+                $payload['gender'] = in_array($dormitory->gender, ['putra', 'putri'], true) ? $dormitory->gender : 'putra';
+                // floor NOT NULL: ikuti lantai blok bila tidak diisi.
+                $payload['floor'] = $this->resolveFloor($payload['floor'] ?? null, $payload['wing_id'] ?? null);
 
                 $waliKamarUserId = $payload['wali_kamar_user_id'];
                 unset($payload['wali_kamar_user_id']);
@@ -150,6 +153,21 @@ class DormitoryRoomController extends Controller
             'asramaUuid' => $asramaUuid,
             'roomUuid' => $room->id,
         ])->with('success', 'Kamar berhasil disimpan.');
+    }
+
+    /**
+     * Lantai kamar wajib terisi (kolom NOT NULL). Bila pengguna mengosongkan,
+     * pakai lantai blok tempat kamar berada, lalu fallback ke 1.
+     */
+    private function resolveFloor($floor, ?string $wingId): int
+    {
+        if ($floor !== null && $floor !== '') {
+            return (int) $floor;
+        }
+
+        $wingFloor = $wingId ? DormitoryWing::whereKey($wingId)->value('floor') : null;
+
+        return $wingFloor !== null ? (int) $wingFloor : 1;
     }
 
     public function show(string $userId, string $asramaUuid, string $roomUuid)
@@ -216,6 +234,8 @@ class DormitoryRoomController extends Controller
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
+        // floor NOT NULL: ikuti lantai blok bila tidak diisi.
+        $data['floor'] = $this->resolveFloor($data['floor'] ?? null, $data['wing_id'] ?? $room->wing_id);
         $room->update($data);
 
         return redirect()->route('user.asrama.rooms.show', [

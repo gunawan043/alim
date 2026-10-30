@@ -19,7 +19,7 @@ class StoreRoomRequest extends FormRequest
             'name' => 'nullable|string|max:100',
             'floor' => 'nullable|integer|min:0',
             'capacity' => 'required|integer|min:1',
-            'room_type' => 'required|in:reguler,khusus,isolasi,musyrif',
+            'room_type' => 'required|in:reguler,musyrif',
             'facility_notes' => 'nullable|string',
             'is_active' => 'boolean',
             'wali_kamar_user_id' => 'required|exists:users,id',

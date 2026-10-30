@@ -45,10 +45,11 @@
                             </div>
                             <div class="col-md-4">
                                 <label for="room_wing" class="form-label">Blok</label>
-                                <select name="wing_id" id="room_wing" class="form-control @error('wing_id') is-invalid @enderror">
+                                <select name="wing_id" id="room_wing" class="form-control @error('wing_id') is-invalid @enderror"
+                                        onchange="document.getElementById('room_floor').value = this.selectedOptions[0]?.dataset.floor || ''">
                                     <option value="">— Pilih Blok —</option>
                                     @foreach($wings as $w)
-                                        <option value="{{ $w->id }}" {{ old('wing_id') == $w->id || request('wing_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                                        <option value="{{ $w->id }}" data-floor="{{ $w->floor ?? 1 }}" {{ old('wing_id') == $w->id || request('wing_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('wing_id')<div class="invalid-feedback">{{ $message }}</div>@enderror

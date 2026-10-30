@@ -367,10 +367,11 @@
                             <div class="col-md-6">
                                 <label for="kamar_wing" class="form-label">Blok <span class="text-danger">*</span></label>
                                 <select name="wing_id" id="kamar_wing" required
-                                        class="form-select @error('wing_id') is-invalid @enderror">
+                                        class="form-select @error('wing_id') is-invalid @enderror"
+                                        onchange="var f = document.getElementById('kamar_floor'); if (f && !f.dataset.touched) { f.value = this.selectedOptions[0]?.dataset.floor || ''; }">
                                     <option value="">— Pilih Blok —</option>
                                     @foreach($wings as $w)
-                                        <option value="{{ $w->id }}" {{ old('wing_id', request('wing_id')) == $w->id ? 'selected' : '' }}>
+                                        <option value="{{ $w->id }}" data-floor="{{ $w->floor ?? 1 }}" {{ old('wing_id', request('wing_id')) == $w->id ? 'selected' : '' }}>
                                             {{ $w->name }}
                                         </option>
                                     @endforeach
@@ -395,9 +396,11 @@
 
                             <div class="col-md-4">
                                 <label for="kamar_floor" class="form-label">Lantai</label>
-                                <input type="number" name="floor" id="kamar_floor" min="0"
+                                <input type="number" name="floor" id="kamar_floor" min="1"
                                        class="form-control @error('floor') is-invalid @enderror"
-                                       value="{{ old('floor') }}" placeholder="1">
+                                       value="{{ old('floor') }}" placeholder="1"
+                                       oninput="this.dataset.touched = '1'">
+                                <small class="text-muted">Otomatis dari lantai blok.</small>
                                 @error('floor')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
