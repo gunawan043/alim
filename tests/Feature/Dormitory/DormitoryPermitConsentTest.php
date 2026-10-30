@@ -162,4 +162,73 @@ class DormitoryPermitConsentTest extends TestCase
 
         $response->assertSessionDoesntHaveErrors('consent');
     }
+
+    public function test_gerbang_consent_dapat_dinonaktifkan_dari_pengaturan(): void
+    {
+        \App\Support\AsramaConfig::setConsentRequired(false);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('user.asrama.permits.store', [
+                'userId' => $this->admin->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]), $this->permitPayload());
+
+        $response->assertSessionDoesntHaveErrors('consent');
+        $this->assertDatabaseCount('dormitory_permits', 1);
+    }
+
+    public function test_form_tidak_menampilkan_banner_consent_saat_dinonaktifkan(): void
+    {
+        \App\Support\AsramaConfig::setConsentRequired(false);
+
+        $this->actingAs($this->admin)
+            ->get(route('user.asrama.permits.create', [
+                'userId' => $this->admin->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]))
+            ->assertOk()
+            ->assertDontSee('id="consentMissingBanner"', false)
+            ->assertSee('"has_consent":true', false);
+    }
+
+    public function test_override_asrama_tetap_bisa_mewajibkan_consent_saat_global_nonaktif(): void
+    {
+        \App\Support\AsramaConfig::setConsentRequired(false);
+
+        app(\App\Services\Boarding\VisitWorkflowService::class)
+            ->saveDormitoryConsentRequirement($this->dormitory->id, true);
+
+        $this->actingAs($this->admin)
+            ->post(route('user.asrama.permits.store', [
+                'userId' => $this->admin->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]), $this->permitPayload())
+            ->assertSessionHasErrors('consent');
+
+        $this->assertDatabaseCount('dormitory_permits', 0);
+    }
+
+    public function test_pengaturan_consent_per_asrama_dapat_disimpan_dari_halaman_kebijakan(): void
+    {
+        $this->dormitory->update(['head_id' => $this->admin->id]);
+        \App\Support\AsramaConfig::setConsentRequired(true);
+
+        $this->actingAs($this->admin)
+            ->post(route('user.asrama.leave-policies.consent', [
+                'userId' => $this->admin->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]), ['guardian_consent_required' => '0'])
+            ->assertRedirect();
+
+        $this->assertFalse(
+            \App\Support\AsramaConfig::consentRequiredForDormitory($this->dormitory->id)
+        );
+
+        $this->actingAs($this->admin)
+            ->post(route('user.asrama.permits.store', [
+                'userId' => $this->admin->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]), $this->permitPayload())
+            ->assertSessionDoesntHaveErrors('consent');
+    }
 }

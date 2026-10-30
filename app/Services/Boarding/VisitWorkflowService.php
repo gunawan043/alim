@@ -140,37 +140,68 @@ class VisitWorkflowService
      */
     public function saveDormitoryPolicy(string $dormitoryId, array $data): BoardingPolicy
     {
-        $policy = $this->resolvePolicyForDormitory($dormitoryId);
+        $policy = $this->ensureDormitoryPolicy($dormitoryId);
 
-        if (! $policy) {
-            $policy = BoardingPolicy::create([
-                'id' => (string) Str::uuid(),
-                'code' => 'VISIT-'.strtoupper(substr($dormitoryId, 0, 8)),
-                'name' => 'Kebijakan Kunjungan Asrama',
-                'is_active' => true,
-            ]);
-
-            DB::table('dormitory_policy_assignments')->insert([
-                'id' => (string) Str::uuid(),
-                'boarding_policy_id' => $policy->id,
-                'target_id' => $dormitoryId,
-                'policy_assignment_type' => 'dormitory',
-                'priority' => 1,
-                'effective_from' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        $policy->forceFill([
+        $attributes = [
             'visit_strategy' => $data['visit_strategy'],
             'visit_quota' => $data['visit_quota'] ?? null,
             'visit_quota_period' => $data['visit_quota_period'] ?? 'monthly',
             'max_visitors_per_visit' => $data['max_visitors_per_visit'] ?? null,
             'is_active' => true,
+        ];
+
+        if (array_key_exists('guardian_consent_required', $data)) {
+            $attributes['guardian_consent_required'] = $data['guardian_consent_required'];
+        }
+
+        $policy->forceFill($attributes)->save();
+
+        return $policy->fresh();
+    }
+
+    /**
+     * Simpan override consent PDP untuk satu asrama.
+     * NULL = ikuti pengaturan global.
+     */
+    public function saveDormitoryConsentRequirement(string $dormitoryId, ?bool $required): BoardingPolicy
+    {
+        $policy = $this->ensureDormitoryPolicy($dormitoryId);
+
+        $policy->forceFill([
+            'guardian_consent_required' => $required,
+            'is_active' => true,
         ])->save();
 
         return $policy->fresh();
+    }
+
+    private function ensureDormitoryPolicy(string $dormitoryId): BoardingPolicy
+    {
+        $policy = $this->resolvePolicyForDormitory($dormitoryId);
+
+        if ($policy) {
+            return $policy;
+        }
+
+        $policy = BoardingPolicy::create([
+            'id' => (string) Str::uuid(),
+            'code' => 'VISIT-'.strtoupper(substr($dormitoryId, 0, 8)),
+            'name' => 'Kebijakan Kunjungan Asrama',
+            'is_active' => true,
+        ]);
+
+        DB::table('dormitory_policy_assignments')->insert([
+            'id' => (string) Str::uuid(),
+            'boarding_policy_id' => $policy->id,
+            'target_id' => $dormitoryId,
+            'policy_assignment_type' => 'dormitory',
+            'priority' => 1,
+            'effective_from' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $policy;
     }
 
     /**

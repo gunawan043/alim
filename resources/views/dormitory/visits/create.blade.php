@@ -51,11 +51,14 @@
                             <select name="student_id" id="studentSelect" class="form-control @error('student_id') is-invalid @enderror" required aria-describedby="studentSelectHelp">
                                 <option value="">— Pilih Santri —</option>
                                 @foreach($students ?? [] as $s)
-                                    @php $hasConsent = in_array((string) $s->id, $consentedStudentIds ?? [], true); @endphp
+                                    @php
+                                        $hasConsent = in_array((string) $s->id, $consentedStudentIds ?? [], true);
+                                        $consentAllowed = ($consentRequired ?? true) === false || $hasConsent;
+                                    @endphp
                                     <option value="{{ $s->id }}" {{ old('student_id') == $s->id ? 'selected' : '' }}
                                             data-name="{{ $s->name }}" data-nisn="{{ $s->nisn }}" data-gender="{{ $s->gender }}"
-                                            data-has-consent="{{ $hasConsent ? '1' : '0' }}">
-                                        {{ $s->name }} — {{ $s->nisn ?? 'N/A' }}{{ $hasConsent ? '' : ' (belum consent PDP)' }}
+                                            data-has-consent="{{ $consentAllowed ? '1' : '0' }}">
+                                        {{ $s->name }} — {{ $s->nisn ?? 'N/A' }}{{ $consentAllowed ? '' : ' (belum consent PDP)' }}
                                     </option>
                                 @endforeach
                             </select>

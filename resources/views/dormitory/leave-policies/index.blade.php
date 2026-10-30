@@ -379,6 +379,47 @@
         </div>
     </div>
 
+    {{-- Consent PDP wali per asrama --}}
+    <div class="card mt-3">
+        <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h6 class="mb-0"><i class="ri-shield-user-line me-2 text-primary"></i>Persetujuan Data Wali (PDP)</h6>
+                <small class="text-muted">Atur apakah consent wali wajib dicatat sebelum kunjungan/izin diajukan.</small>
+            </div>
+            <span class="badge bg-{{ $effectiveConsentRequired ? 'warning' : 'success' }}-subtle text-{{ $effectiveConsentRequired ? 'warning' : 'success' }}">
+                {{ $effectiveConsentRequired ? 'Wajib consent' : 'Tanpa gate consent' }}
+            </span>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ route('user.asrama.leave-policies.consent', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
+                @csrf
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label">Kebijakan consent untuk asrama ini</label>
+                        <select name="guardian_consent_required" class="form-select" {{ $canManageQuota ? '' : 'disabled' }}>
+                            <option value="" {{ old('guardian_consent_required', $consentOverride === null ? '' : (string) (int) $consentOverride) === '' ? 'selected' : '' }}>
+                                Ikuti pengaturan sistem ({{ \App\Support\AsramaConfig::consentRequired() ? 'Wajib' : 'Tidak wajib' }})
+                            </option>
+                            <option value="1" {{ old('guardian_consent_required', $consentOverride === null ? '' : (string) (int) $consentOverride) === '1' ? 'selected' : '' }}>Wajibkan consent</option>
+                            <option value="0" {{ old('guardian_consent_required', $consentOverride === null ? '' : (string) (int) $consentOverride) === '0' ? 'selected' : '' }}>Tidak wajibkan consent</option>
+                        </select>
+                        <div class="form-text">
+                            Pilih <strong>Tidak wajibkan consent</strong> untuk sementara bila pencatatan consent
+                            belum siap. Data consent yang sudah ada tetap tersimpan.
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        @if ($canManageQuota)
+                            <button class="btn btn-primary w-100"><i class="ri-save-line me-1"></i>Simpan Pengaturan</button>
+                        @else
+                            <span class="text-muted small">Hanya Kepala/Wakil Asrama yang dapat mengubah.</span>
+                        @endif
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
 {{-- Filter modal ala GTK --}}
 <div class="modal fade" id="policyFilterModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">

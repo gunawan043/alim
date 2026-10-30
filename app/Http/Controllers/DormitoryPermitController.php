@@ -27,6 +27,7 @@ use App\Services\Dormitory\DormitoryQrAudit;
 use App\Services\DormitoryService;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\NotificationUniversalService;
+use App\Support\AsramaConfig;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -201,9 +202,11 @@ class DormitoryPermitController extends Controller
             ->when($disabledCodes !== [], fn ($query) => $query->whereNotIn('code', $disabledCodes))
             ->get();
 
+        $consentRequired = AsramaConfig::consentRequiredForDormitory($asramaUuid);
+
         return view('dormitory.permits.create', compact(
             'dormitory', 'residents', 'userId', 'activeYear',
-            'activePermits', 'specialPermitTypes', 'permitTypes'
+            'activePermits', 'specialPermitTypes', 'permitTypes', 'consentRequired'
         ));
     }
 
@@ -222,7 +225,7 @@ class DormitoryPermitController extends Controller
         // Pastikan santri benar-benar penghuni asrama ini.
         $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
 
-        if (config('asrama.consent_required', true)
+        if (AsramaConfig::consentRequiredForDormitory($asramaUuid)
             && ! $request->boolean('is_emergency')
             && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
             $studentName = \App\Models\Student::whereKey($data['student_id'])->value('name') ?? 'Santri';

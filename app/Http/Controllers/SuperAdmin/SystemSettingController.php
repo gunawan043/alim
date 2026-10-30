@@ -12,6 +12,7 @@ use App\Services\Recruitment\RecruitmentApiClient;
 use App\Services\Sarpras\GoogleDriveService;
 use App\Services\SystemMailSettingsService;
 use App\Support\ApnsConfig;
+use App\Support\AsramaConfig;
 use App\Support\FcmConfig;
 use App\Support\PosApiConfig;
 use App\Support\PosProcurementConfig;
@@ -118,6 +119,8 @@ class SystemSettingController extends Controller
             'security_settings' => 'boolean',
             'notification_settings' => 'boolean',
             'mail_settings' => 'boolean',
+            'asrama_settings' => 'boolean',
+            'asrama_consent_required' => 'boolean',
             'mail_mailer' => 'nullable|in:smtp,log,sendmail,array,failover',
             'mail_host' => 'nullable|string|max:255',
             'mail_port' => 'nullable|integer|min:1|max:65535',
@@ -283,6 +286,13 @@ class SystemSettingController extends Controller
         foreach (['mail_mailer', 'mail_host', 'mail_port', 'mail_username', 'mail_encryption', 'mail_from_address', 'mail_from_name', 'mail_logo_url'] as $mailKey) {
             unset($validated[$mailKey]);
         }
+
+        // Tab Asrama: toggle consent PDP wali.
+        if ($request->boolean('asrama_settings')) {
+            AsramaConfig::setConsentRequired($request->boolean('asrama_consent_required'));
+            $this->writeSettingsAudit($request, 'ASRAMA_SETTINGS_UPDATED');
+        }
+        unset($validated['asrama_settings'], $validated['asrama_consent_required']);
 
         if (array_key_exists('wa_central_number', $validated)) {
             $validated['wa_central_number'] = preg_replace('/\D+/', '', (string) $validated['wa_central_number']);

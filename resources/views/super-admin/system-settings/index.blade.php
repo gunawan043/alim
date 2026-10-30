@@ -38,6 +38,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'asrama' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'asrama']) }}">
+                                <i class="ri-home-heart-line me-1"></i> Asrama
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'notifications' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'notifications']) }}">
                                 <i class="ri-notification-3-line me-1"></i> Notifikasi
@@ -293,6 +299,43 @@
                                                 <i class="ri-shield-lock-line me-1"></i>
                                                 Nilai kosong akan memakai konfigurasi <code>.env</code>.
                                                 Gunakan <code>MAIL_MAILER=log</code> untuk development tanpa SMTP.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- TAB: Asrama --}}
+                        @if($tab === 'asrama')
+                            <input type="hidden" name="asrama_settings" value="1">
+                            @php $consentRequired = old('asrama_consent_required', \App\Support\AsramaConfig::consentRequired() ? '1' : '0'); @endphp
+                            <div class="row g-4">
+                                <div class="col-lg-8">
+                                    <div class="card border h-100">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-shield-user-line me-1"></i>Persetujuan Data Wali (PDP)</h6>
+                                            <small class="text-muted">Pengaturan ini berlaku untuk pengajuan kunjungan dan izin asrama baru.</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="asrama_consent_required" value="1"
+                                                       id="asrama-consent-required"
+                                                       {{ $consentRequired === '1' ? 'checked' : '' }}>
+                                                <label class="form-check-label fw-semibold" for="asrama-consent-required">
+                                                    Wajibkan consent data wali sebelum kunjungan/izin diajukan
+                                                </label>
+                                            </div>
+                                            <div class="form-text mt-2">
+                                                Jika dimatikan, pengajuan kunjungan dan izin tetap dapat dilakukan
+                                                meskipun consent PDP belum dicatat. Data consent yang sudah ada tidak dihapus
+                                                dan dapat dicatat kapan saja di Detail Santri.
+                                            </div>
+                                            <div class="alert alert-info small mt-3 mb-0">
+                                                <i class="ri-information-line me-1"></i>
+                                                Nonaktifkan sementara bila proses pencatatan consent wali belum siap.
+                                                Aktifkan kembali setelah data consent seluruh santri lengkap.
                                             </div>
                                         </div>
                                     </div>

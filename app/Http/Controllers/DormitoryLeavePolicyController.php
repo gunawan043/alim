@@ -36,11 +36,16 @@ class DormitoryLeavePolicyController extends Controller
         $visitPolicy = app(\App\Services\Boarding\VisitWorkflowService::class)
             ->resolvePolicyForDormitory($asramaUuid);
 
+        $consentOverride = $visitPolicy?->guardian_consent_required;
+        $effectiveConsentRequired = \App\Support\AsramaConfig::consentRequiredForDormitory($asramaUuid);
+
         return view('dormitory.leave-policies.index', [
             'dormitory' => $dormitory,
             'userId' => $userId,
             'policies' => $policies,
             'visitPolicy' => $visitPolicy,
+            'consentOverride' => $consentOverride,
+            'effectiveConsentRequired' => $effectiveConsentRequired,
             'canManageQuota' => app(\App\Services\Boarding\DormitoryPolicyAccess::class)
                 ->canManageQuota(auth()->user(), $asramaUuid),
         ]);
@@ -66,6 +71,29 @@ class DormitoryLeavePolicyController extends Controller
         return redirect()
             ->route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
             ->with('success', 'Kebijakan kunjungan asrama berhasil disimpan.');
+    }
+
+    /**
+     * Simpan override consent PDP wali untuk satu asrama.
+     * NULL = ikuti pengaturan global.
+     */
+    public function updateConsentPolicy(Request $request, string $userId, string $asramaUuid): RedirectResponse
+    {
+        $this->authorizeQuotaManager($asramaUuid);
+
+        $request->validate([
+            'guardian_consent_required' => 'nullable|in:0,1',
+        ]);
+
+        $value = $request->input('guardian_consent_required');
+        $required = ($value === null || $value === '') ? null : (bool) (int) $value;
+
+        app(\App\Services\Boarding\VisitWorkflowService::class)
+            ->saveDormitoryConsentRequirement($asramaUuid, $required);
+
+        return redirect()
+            ->route('user.asrama.leave-policies.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with('success', 'Pengaturan consent data wali berhasil disimpan.');
     }
 
     /**

@@ -62,6 +62,8 @@
 
 @section('content')
     @php
+        $consentRequired = $consentRequired ?? true;
+
         // Peta izin aktif per-student (student_id => info) untuk banner warning.
         $activePermitsIndex = $activePermits->map(function ($p) {
             return [
@@ -91,7 +93,7 @@
         ]).'#consent';
 
         // Bangun struktur untuk JS: array berisi semua resident dengan mahrom-nya.
-        $residentIndex = $residents->map(function ($r) use ($consentedStudentIds, $consentUrlTemplate) {
+        $residentIndex = $residents->map(function ($r) use ($consentedStudentIds, $consentUrlTemplate, $consentRequired) {
             $studyGroup = $r->student->currentClassHistory?->studyGroup;
             return [
                 'id'        => (string) $r->student->id,
@@ -101,7 +103,7 @@
                 'name'      => $r->student->name ?? '(Tanpa Nama)',
                 'nisn'      => $r->student->nisn ?? '',
                 'classroom' => $studyGroup?->full_name,
-                'has_consent' => in_array((string) $r->student_id, $consentedStudentIds, true),
+                'has_consent' => ! $consentRequired || in_array((string) $r->student_id, $consentedStudentIds, true),
                 'consent_url' => str_replace('RESIDENT_ID', (string) $r->id, $consentUrlTemplate),
                 'mahroms'   => $r->student->mahroms->map(function ($m) {
                     return [
@@ -203,18 +205,20 @@
                             </div>
 
                             {{-- Banner: consent PDP wali belum dicatat --}}
-                            <div id="consentMissingBanner" class="mt-2 d-none">
-                                <div class="alert alert-danger py-2 d-flex align-items-start gap-2 mb-0">
-                                    <i class="ri-shield-cross-line fs-5 mt-1"></i>
-                                    <div>
-                                        <strong>Persetujuan data wali (PDP) belum dicatat untuk santri ini.</strong>
-                                        <div class="small mt-1">
-                                            Izin &amp; kunjungan tidak bisa diajukan sebelum consent dicatat.
-                                            <a href="#" id="consentMissingLink" class="alert-link">Catat consent di Detail Santri</a>
+                            @if($consentRequired)
+                                <div id="consentMissingBanner" class="mt-2 d-none">
+                                    <div class="alert alert-danger py-2 d-flex align-items-start gap-2 mb-0">
+                                        <i class="ri-shield-cross-line fs-5 mt-1"></i>
+                                        <div>
+                                            <strong>Persetujuan data wali (PDP) belum dicatat untuk santri ini.</strong>
+                                            <div class="small mt-1">
+                                                Izin &amp; kunjungan tidak bisa diajukan sebelum consent dicatat.
+                                                <a href="#" id="consentMissingLink" class="alert-link">Catat consent di Detail Santri</a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            @endif
 
                             {{-- Banner peringatan: santri masih memiliki izin aktif --}}
                             <div id="activePermitBanner" class="mt-2 d-none">

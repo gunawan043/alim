@@ -2516,6 +2516,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/izin/pengaturan', [DormitoryLeavePolicyController::class, 'storeOrUpdate'])->name('leave-policies.store');
                 Route::post('/{asramaUuid}/izin/pengaturan/apply-defaults', [DormitoryLeavePolicyController::class, 'applyDefaults'])->name('leave-policies.apply-defaults');
                 Route::post('/{asramaUuid}/izin/pengaturan/kunjungan', [DormitoryLeavePolicyController::class, 'updateVisitPolicy'])->name('leave-policies.visit');
+                Route::post('/{asramaUuid}/izin/pengaturan/consent', [DormitoryLeavePolicyController::class, 'updateConsentPolicy'])->name('leave-policies.consent');
 
                 // ── KATALOG POIN PELANGGARAN & REWARD ───────────────
                 Route::get('/{asramaUuid}/poin/katalog', [DormitoryPointCatalogController::class, 'index'])->name('point-catalog.index');

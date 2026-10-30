@@ -20,6 +20,7 @@ use App\Services\Boarding\VisitScheduleService;
 use App\Services\Boarding\VisitWorkflowService;
 use App\Services\Dormitory\CardPdfRenderer;
 use App\Services\Dormitory\DormitoryQrAudit;
+use App\Support\AsramaConfig;
 use App\Support\UserJabatan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -131,8 +132,10 @@ class DormitoryVisitLogController extends Controller
                 ? array_merge($scheduleService->defaultSlots('putra'), $scheduleService->defaultSlots('putri'))
                 : $scheduleService->defaultSlots('putra'));
 
+        $consentRequired = AsramaConfig::consentRequiredForDormitory($asramaUuid);
+
         return view('dormitory.visits.create', compact(
-            'dormitory', 'students', 'userId', 'visitPolicy', 'visitScheduleSlots', 'consentedStudentIds'
+            'dormitory', 'students', 'userId', 'visitPolicy', 'visitScheduleSlots', 'consentedStudentIds', 'consentRequired'
         ));
     }
 
@@ -161,7 +164,7 @@ class DormitoryVisitLogController extends Controller
 
         $this->assertDormitoryResident($asramaUuid, $data['student_id']);
 
-        if (config('asrama.consent_required', true)
+        if (AsramaConfig::consentRequiredForDormitory($asramaUuid)
             && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
             $studentName = \App\Models\Student::whereKey($data['student_id'])->value('name') ?? 'Santri';
 
