@@ -36,15 +36,23 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="edit_building_select" class="form-label">Blok (Sarpras) <span class="text-danger">*</span></label>
-                                <select name="sarpras_building_id" id="edit_building_select" class="form-select @error('sarpras_building_id') is-invalid @enderror" onchange="updatePreview()">
-                                    <option value="">— Pilih Blok —</option>
-                                    @foreach($buildings as $b)
-                                        <option value="{{ $b->id }}" {{ old('sarpras_building_id', $wing->sarpras_building_id) == $b->id ? 'selected' : '' }}>
-                                            {{ $b->name }} ({{ $b->gender ?? '-' }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="input-group">
+                                    <select name="sarpras_building_id" id="edit_building_select" class="form-select @error('sarpras_building_id') is-invalid @enderror" onchange="updatePreview()">
+                                        <option value="">— Pilih Blok —</option>
+                                        @foreach($buildings as $b)
+                                            <option value="{{ $b->id }}" {{ old('sarpras_building_id', $wing->sarpras_building_id) == $b->id ? 'selected' : '' }}>
+                                                {{ $b->name }} ({{ $b->gender ?? '-' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newBuildingModal_edit_building_select" aria-label="Tambah gedung baru">
+                                        <i class="ri-add-line" aria-hidden="true"></i> Gedung
+                                    </button>
+                                </div>
                                 @error('sarpras_building_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @if($buildings->isEmpty())
+                                    <small class="text-muted">Belum ada gedung. Klik tombol <strong>Gedung</strong> untuk menambah gedung baru terlebih dahulu.</small>
+                                @endif
                             </div>
                             <div class="col-md-6">
                                 <label for="edit_wing_code" class="form-label">Kode Blok</label>
@@ -67,16 +75,6 @@
                                 <label for="edit_wing_capacity" class="form-label">Kapasitas</label>
                                 <input type="number" name="capacity" id="edit_wing_capacity" class="form-control @error('capacity') is-invalid @enderror" value="{{ old('capacity', $wing->capacity) }}" min="0">
                                 @error('capacity')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label for="edit_wing_supervisor" class="form-label">Supervisor</label>
-                                <select name="supervisor_id" id="edit_wing_supervisor" class="form-control @error('supervisor_id') is-invalid @enderror">
-                                    <option value="">— Pilih Supervisor —</option>
-                                    @foreach($supervisors as $s)
-                                        <option value="{{ $s->id }}" {{ old('supervisor_id', $wing->supervisor_id) == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('supervisor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12">
                                 <label for="edit_wing_notes" class="form-label">Catatan</label>
@@ -123,4 +121,11 @@
         // Initialize preview on load
         document.addEventListener('DOMContentLoaded', updatePreview);
     </script>
+
+    @include('dormitory.partials.building-quick-create', [
+        'userId' => $userId,
+        'dormitory' => $dormitory,
+        'selectId' => 'edit_building_select',
+        'previewFn' => 'updatePreview',
+    ])
 @endsection

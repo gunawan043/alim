@@ -47,7 +47,13 @@ class DormitoryRoomController extends Controller
 
         $totalCapacity = DormitoryRoom::where('dormitory_id', $asramaUuid)->sum('capacity');
 
-        return view('dormitory.rooms.index', compact('dormitory', 'rooms', 'wings', 'userId', 'occupied', 'totalCapacity'));
+        // Data untuk modal "Tambah Kamar" pada halaman daftar.
+        $waliKamarCandidates = User::query()
+            ->when($dormitory->work_unit_id, fn ($q) => $q->whereHas('workUnits', fn ($qq) => $qq->where('gtk_work_unit.work_unit_id', $dormitory->work_unit_id)))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return view('dormitory.rooms.index', compact('dormitory', 'rooms', 'wings', 'userId', 'occupied', 'totalCapacity', 'waliKamarCandidates'));
     }
 
     /**

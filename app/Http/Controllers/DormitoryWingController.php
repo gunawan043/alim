@@ -6,8 +6,8 @@ use App\Http\Requests\Dormitory\StoreWingRequest;
 use App\Models\Dormitory;
 use App\Models\DormitoryWing;
 use App\Models\SarprasBuilding;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class DormitoryWingController extends Controller
 {
@@ -15,7 +15,7 @@ class DormitoryWingController extends Controller
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $query = DormitoryWing::with(['supervisor', 'sarprasBuilding', 'rooms.residents'])
+        $query = DormitoryWing::with(['sarprasBuilding', 'rooms.residents'])
             ->where('dormitory_id', $asramaUuid);
 
         if ($request->filled('search')) {
@@ -31,23 +31,25 @@ class DormitoryWingController extends Controller
 
         $wings = $query->orderBy('name')->paginate(15)->withQueryString();
 
-        return view('dormitory.wings.index', compact('dormitory', 'wings', 'userId'));
+        // Data untuk modal "Tambah Blok" pada halaman daftar.
+        $buildings = SarprasBuilding::where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $dormitory->school_id))
+            ->orderBy('name')
+            ->get();
+
+        return view('dormitory.wings.index', compact('dormitory', 'wings', 'buildings', 'userId'));
     }
 
     public function create(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $supervisors = User::whereHas('employment')
-            ->whereHas('employment', fn ($q) => $q->where('school_id', $dormitory->school_id))
-            ->orderBy('name')->get();
-
         $buildings = SarprasBuilding::where('is_active', true)
             ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $dormitory->school_id))
             ->orderBy('name')
             ->get();
 
-        return view('dormitory.wings.create', compact('dormitory', 'supervisors', 'buildings', 'userId'));
+        return view('dormitory.wings.create', compact('dormitory', 'buildings', 'userId'));
     }
 
     public function store(StoreWingRequest $request, string $userId, string $asramaUuid)
@@ -73,6 +75,49 @@ class DormitoryWingController extends Controller
         ])->with('success', 'Lantai blok berhasil disimpan.');
     }
 
+    /**
+     * Buat gedung Sarpras langsung dari form Asrama (quick-create).
+     * Diperlukan karena tabel sarpras_buildings hanya bisa diisi dari sini;
+     * tanpa ini dropdown Gedung pada form Lantai Blok tidak pernah terisi.
+     */
+    public function storeBuilding(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'code' => 'nullable|string|max:50',
+            'gender' => 'nullable|in:putra,putri,campur',
+            'notes' => 'nullable|string|max:191',
+        ], [
+            'name.required' => 'Nama gedung wajib diisi.',
+            'gender.in' => 'Jenis gedung harus putra, putri, atau campur.',
+        ]);
+
+        $building = SarprasBuilding::create([
+            'school_id' => $dormitory->school_id,
+            'code' => $validated['code'] ?? strtoupper(Str::slug($validated['name'], '')) ?: 'GDG-'.strtoupper(Str::random(4)),
+            'name' => $validated['name'],
+            'gender' => $validated['gender'] ?? 'campur',
+            'notes' => $validated['notes'] ?? null,
+            'is_active' => true,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'id' => $building->id,
+                'name' => $building->name,
+                'code' => $building->code,
+                'gender' => $building->gender,
+            ], 201);
+        }
+
+        return redirect()
+            ->route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with('success', 'Gedung berhasil ditambahkan.');
+    }
+
     public function show(string $userId, string $asramaUuid, string $wingUuid)
     {
         $wing = DormitoryWing::with(['dormitory', 'supervisor', 'sarprasBuilding', 'rooms.residents.student'])
@@ -95,16 +140,12 @@ class DormitoryWingController extends Controller
         $wing = DormitoryWing::with('sarprasBuilding')->where('dormitory_id', $asramaUuid)->findOrFail($wingUuid);
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $supervisors = User::whereHas('employment')
-            ->whereHas('employment', fn ($q) => $q->where('school_id', $dormitory->school_id))
-            ->orderBy('name')->get();
-
         $buildings = SarprasBuilding::where('is_active', true)
             ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $dormitory->school_id))
             ->orderBy('name')
             ->get();
 
-        return view('dormitory.wings.edit', compact('wing', 'dormitory', 'supervisors', 'buildings', 'userId'));
+        return view('dormitory.wings.edit', compact('wing', 'dormitory', 'buildings', 'userId'));
     }
 
     public function update(StoreWingRequest $request, string $userId, string $asramaUuid, string $wingUuid)

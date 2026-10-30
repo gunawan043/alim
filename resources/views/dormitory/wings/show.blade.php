@@ -39,10 +39,6 @@
                             <td>{{ number_format($wing->capacity) }} orang</td>
                         </tr>
                         <tr>
-                            <th class="text-muted">Supervisor</th>
-                            <td>{{ $wing->supervisor?->name ?? '-' }}</td>
-                        </tr>
-                        <tr>
                             <th class="text-muted">Status</th>
                             <td>
                                 @if($wing->is_active)

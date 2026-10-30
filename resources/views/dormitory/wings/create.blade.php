@@ -35,15 +35,23 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="building_select" class="form-label">Gedung <span class="text-danger">*</span></label>
-                                <select name="sarpras_building_id" id="building_select" class="form-select @error('sarpras_building_id') is-invalid @enderror" onchange="updatePreview()">
-                                    <option value="">— Pilih Gedung —</option>
-                                    @foreach($buildings as $b)
-                                        <option value="{{ $b->id }}" {{ old('sarpras_building_id') == $b->id ? 'selected' : '' }}>
-                                            {{ $b->name }} ({{ $b->gender ?? '-' }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="input-group">
+                                    <select name="sarpras_building_id" id="building_select" class="form-select @error('sarpras_building_id') is-invalid @enderror" onchange="updatePreview()">
+                                        <option value="">— Pilih Gedung —</option>
+                                        @foreach($buildings as $b)
+                                            <option value="{{ $b->id }}" {{ old('sarpras_building_id') == $b->id ? 'selected' : '' }}>
+                                                {{ $b->name }} ({{ $b->gender ?? '-' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newBuildingModal_building_select" aria-label="Tambah gedung baru">
+                                        <i class="ri-add-line" aria-hidden="true"></i> Gedung
+                                    </button>
+                                </div>
                                 @error('sarpras_building_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @if($buildings->isEmpty())
+                                    <small class="text-muted">Belum ada gedung. Klik tombol <strong>Gedung</strong> untuk menambah gedung baru terlebih dahulu.</small>
+                                @endif
                             </div>
                             <div class="col-md-6">
                                 <label for="wing_code" class="form-label">Kode Blok</label>
@@ -65,16 +73,6 @@
                                 <label for="wing_capacity" class="form-label">Kapasitas</label>
                                 <input type="number" name="capacity" id="wing_capacity" class="form-control @error('capacity') is-invalid @enderror" value="{{ old('capacity') }}" min="0" placeholder="0">
                                 @error('capacity')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label for="wing_supervisor" class="form-label">Supervisor</label>
-                                <select name="supervisor_id" id="wing_supervisor" class="form-control @error('supervisor_id') is-invalid @enderror">
-                                    <option value="">— Pilih Supervisor —</option>
-                                    @foreach($supervisors as $s)
-                                        <option value="{{ $s->id }}" {{ old('supervisor_id') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('supervisor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12">
                                 <label for="wing_notes" class="form-label">Catatan</label>
@@ -122,4 +120,11 @@
             }
         }
     </script>
+
+    @include('dormitory.partials.building-quick-create', [
+        'userId' => $userId,
+        'dormitory' => $dormitory,
+        'selectId' => 'building_select',
+        'previewFn' => 'updatePreview',
+    ])
 @endsection
