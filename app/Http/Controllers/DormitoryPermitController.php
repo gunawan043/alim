@@ -225,8 +225,10 @@ class DormitoryPermitController extends Controller
         if (config('asrama.consent_required', true)
             && ! $request->boolean('is_emergency')
             && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
+            $studentName = \App\Models\Student::whereKey($data['student_id'])->value('name') ?? 'Santri';
+
             return back()->withInput()->withErrors([
-                'consent' => 'Persetujuan data wali belum dicatat. Catat consent di halaman Detail Santri terlebih dahulu.',
+                'consent' => "Persetujuan data wali (PDP) belum dicatat untuk {$studentName}.",
             ]);
         }
 

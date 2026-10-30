@@ -51,14 +51,26 @@
                             <select name="student_id" id="studentSelect" class="form-control @error('student_id') is-invalid @enderror" required aria-describedby="studentSelectHelp">
                                 <option value="">— Pilih Santri —</option>
                                 @foreach($students ?? [] as $s)
+                                    @php $hasConsent = in_array((string) $s->id, $consentedStudentIds ?? [], true); @endphp
                                     <option value="{{ $s->id }}" {{ old('student_id') == $s->id ? 'selected' : '' }}
-                                            data-name="{{ $s->name }}" data-nisn="{{ $s->nisn }}" data-gender="{{ $s->gender }}">
-                                        {{ $s->name }} — {{ $s->nisn ?? 'N/A' }}
+                                            data-name="{{ $s->name }}" data-nisn="{{ $s->nisn }}" data-gender="{{ $s->gender }}"
+                                            data-has-consent="{{ $hasConsent ? '1' : '0' }}">
+                                        {{ $s->name }} — {{ $s->nisn ?? 'N/A' }}{{ $hasConsent ? '' : ' (belum consent PDP)' }}
                                     </option>
                                 @endforeach
                             </select>
                             <small id="studentSelectHelp" class="text-muted">Pilih santri yang dikunjungi.</small>
+                            <div id="consentHint" class="alert alert-danger py-2 mt-2 d-none mb-0">
+                                <i class="ri-shield-cross-line me-1"></i>
+                                Santri ini belum punya <strong>persetujuan data wali (PDP)</strong>. Catat dulu di
+                                <strong>Detail Santri</strong> → kartu <strong>Persetujuan Data Wali</strong>, baru kunjungan bisa disimpan.
+                            </div>
                             @error('student_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            @error('consent')
+                                <div class="alert alert-danger py-2 mt-2 mb-0">
+                                    <i class="ri-shield-cross-line me-1"></i>{{ $message }}
+                                </div>
+                            @enderror
                         </div>
 
                         <hr class="my-4">
@@ -297,6 +309,23 @@ document.addEventListener('DOMContentLoaded', function () {
             width: '100%',
             language: 'id'
         });
+    }
+
+    // Peringatan consent PDP: tampilkan bila santri terpilih belum punya consent.
+    function syncConsentHint() {
+        var hint = document.getElementById('consentHint');
+        if (!hint || !select2El) return;
+        var opt = select2El.options[select2El.selectedIndex];
+        var noConsent = !!opt && opt.value !== '' && opt.dataset.hasConsent === '0';
+        hint.classList.toggle('d-none', !noConsent);
+    }
+
+    if (select2El) {
+        select2El.addEventListener('change', syncConsentHint);
+        if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+            $(select2El).on('select2:select select2:clear', syncConsentHint);
+        }
+        syncConsentHint();
     }
 
     var form = document.getElementById('visitForm');

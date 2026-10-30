@@ -125,7 +125,7 @@
     </div>
 
     {{-- Persetujuan Data Wali (PDP) --}}
-    <div class="card mb-4">
+    <div class="card mb-4" id="consent">
         <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="card-title mb-0"><i class="ri-shield-check-line me-2 text-primary"></i>Persetujuan Data Wali</h5>

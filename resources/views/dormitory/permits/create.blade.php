@@ -74,8 +74,24 @@
             ];
         });
 
+        // Santri yang sudah punya consent PDP aktif di asrama ini.
+        $consentedStudentIds = \App\Models\DormitoryDataConsent::query()
+            ->where('dormitory_id', $dormitory->id)
+            ->whereNull('revoked_at')
+            ->whereIn('student_id', $residents->pluck('student_id')->filter()->all())
+            ->pluck('student_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        // URL Detail Santri (tab consent) — placeholder diisi resident id di bawah.
+        $consentUrlTemplate = route('user.asrama.residents.show', [
+            'userId' => $userId,
+            'asramaUuid' => $dormitory->id,
+            'residentUuid' => 'RESIDENT_ID',
+        ]).'#consent';
+
         // Bangun struktur untuk JS: array berisi semua resident dengan mahrom-nya.
-        $residentIndex = $residents->map(function ($r) {
+        $residentIndex = $residents->map(function ($r) use ($consentedStudentIds, $consentUrlTemplate) {
             $studyGroup = $r->student->currentClassHistory?->studyGroup;
             return [
                 'id'        => (string) $r->student->id,
@@ -85,6 +101,8 @@
                 'name'      => $r->student->name ?? '(Tanpa Nama)',
                 'nisn'      => $r->student->nisn ?? '',
                 'classroom' => $studyGroup?->full_name,
+                'has_consent' => in_array((string) $r->student_id, $consentedStudentIds, true),
+                'consent_url' => str_replace('RESIDENT_ID', (string) $r->id, $consentUrlTemplate),
                 'mahroms'   => $r->student->mahroms->map(function ($m) {
                     return [
                         'id'       => (string) $m->id,
@@ -116,7 +134,22 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
-    @if($errors->any())
+    @if($errors->has('consent'))
+        <div class="alert alert-danger" role="alert">
+            <div class="d-flex align-items-start gap-2">
+                <i class="ri-shield-cross-line fs-5 mt-1"></i>
+                <div>
+                    <strong>{{ $errors->first('consent') }}</strong>
+                    <div class="small mt-1">
+                        Buka <strong>Detail Santri</strong> santri tersebut, lalu isi kartu
+                        <strong>Persetujuan Data Wali</strong> (nama wali + centang persetujuan) dan simpan.
+                        Setelah consent tercatat, ajukan izin kembali.
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+    @if($errors->any() && ! $errors->has('consent'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
@@ -166,6 +199,20 @@
                                     <span id="selectedStudentName"></span>
                                     <span class="text-muted">—</span>
                                     <span id="selectedStudentRoom" class="text-muted"></span>
+                                </div>
+                            </div>
+
+                            {{-- Banner: consent PDP wali belum dicatat --}}
+                            <div id="consentMissingBanner" class="mt-2 d-none">
+                                <div class="alert alert-danger py-2 d-flex align-items-start gap-2 mb-0">
+                                    <i class="ri-shield-cross-line fs-5 mt-1"></i>
+                                    <div>
+                                        <strong>Persetujuan data wali (PDP) belum dicatat untuk santri ini.</strong>
+                                        <div class="small mt-1">
+                                            Izin &amp; kunjungan tidak bisa diajukan sebelum consent dicatat.
+                                            <a href="#" id="consentMissingLink" class="alert-link">Catat consent di Detail Santri</a>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -497,6 +544,16 @@
         selectedName.textContent = r.name;
         selectedRoom.textContent = 'Kamar: ' + r.room_name;
         selectedInfo.classList.remove('d-none');
+
+        // Banner consent PDP
+        const consentBanner = document.getElementById('consentMissingBanner');
+        const consentLink = document.getElementById('consentMissingLink');
+        if (r.has_consent === false) {
+            if (consentLink) consentLink.href = r.consent_url;
+            if (consentBanner) consentBanner.classList.remove('d-none');
+        } else if (consentBanner) {
+            consentBanner.classList.add('d-none');
+        }
 
         // Banner izin aktif
         updateActivePermitBanner(r.id);

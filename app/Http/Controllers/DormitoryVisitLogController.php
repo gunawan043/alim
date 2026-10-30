@@ -114,6 +114,15 @@ class DormitoryVisitLogController extends Controller
         // flatten to students collection for the select dropdown
         $students = $residents->pluck('student')->filter()->values();
 
+        // Santri yang sudah punya consent PDP aktif (untuk penanda di dropdown).
+        $consentedStudentIds = DormitoryDataConsent::query()
+            ->where('dormitory_id', $asramaUuid)
+            ->whereNull('revoked_at')
+            ->whereIn('student_id', $students->pluck('id')->all())
+            ->pluck('student_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
         $visitPolicy = $this->visit->resolvePolicyForDormitory($asramaUuid);
         $scheduleService = app(VisitScheduleService::class);
         $visitScheduleSlots = $dormitory->gender === 'putri'
@@ -123,7 +132,7 @@ class DormitoryVisitLogController extends Controller
                 : $scheduleService->defaultSlots('putra'));
 
         return view('dormitory.visits.create', compact(
-            'dormitory', 'students', 'userId', 'visitPolicy', 'visitScheduleSlots'
+            'dormitory', 'students', 'userId', 'visitPolicy', 'visitScheduleSlots', 'consentedStudentIds'
         ));
     }
 
@@ -154,8 +163,10 @@ class DormitoryVisitLogController extends Controller
 
         if (config('asrama.consent_required', true)
             && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
+            $studentName = \App\Models\Student::whereKey($data['student_id'])->value('name') ?? 'Santri';
+
             return back()->withInput()->withErrors([
-                'consent' => 'Persetujuan data wali belum dicatat. Catat consent di halaman Detail Santri terlebih dahulu.',
+                'consent' => "Persetujuan data wali (PDP) belum dicatat untuk {$studentName}. Catat di halaman Detail Santri → kartu Persetujuan Data Wali.",
             ]);
         }
 
