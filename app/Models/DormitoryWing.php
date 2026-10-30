@@ -22,6 +22,7 @@ class DormitoryWing extends Model
     }
 
     protected $fillable = [
+        'asset_building_id',
         'sarpras_building_id',
         'dormitory_id',
         'code',
@@ -47,9 +48,30 @@ class DormitoryWing extends Model
         return $this->belongsTo(Dormitory::class);
     }
 
+    /**
+     * Gedung Sarpras (asset_buildings) yang ditetapkan URT.
+     */
+    public function assetBuilding(): BelongsTo
+    {
+        return $this->belongsTo(AssetBuilding::class, 'asset_building_id');
+    }
+
+    /**
+     * Relasi lama — dipertahankan untuk data blok yang belum dimigrasikan.
+     */
     public function sarprasBuilding(): BelongsTo
     {
         return $this->belongsTo(SarprasBuilding::class, 'sarpras_building_id');
+    }
+
+    /**
+     * Nama gedung: utamakan Gedung Sarpras (URT), lalu relasi lama, lalu nama blok.
+     */
+    public function getBuildingNameAttribute(): string
+    {
+        return $this->assetBuilding?->building_name
+            ?? $this->sarprasBuilding?->name
+            ?? (explode(' — ', (string) $this->name)[0] ?: (string) $this->name);
     }
 
     public function supervisor(): BelongsTo
@@ -68,7 +90,7 @@ class DormitoryWing extends Model
      */
     public function getDisplayNameAttribute(): string
     {
-        $buildingName = $this->sarprasBuilding?->name ?? $this->name;
+        $buildingName = $this->building_name;
         $floor = $this->floor ?? '';
         if (is_numeric($floor) && $floor > 0) {
             return "{$buildingName} Lantai {$floor}";

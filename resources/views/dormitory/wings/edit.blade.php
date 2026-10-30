@@ -35,23 +35,20 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="edit_building_select" class="form-label">Blok (Sarpras) <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <select name="sarpras_building_id" id="edit_building_select" class="form-select @error('sarpras_building_id') is-invalid @enderror" onchange="updatePreview()">
-                                        <option value="">— Pilih Blok —</option>
-                                        @foreach($buildings as $b)
-                                            <option value="{{ $b->id }}" {{ old('sarpras_building_id', $wing->sarpras_building_id) == $b->id ? 'selected' : '' }}>
-                                                {{ $b->name }} ({{ $b->gender ?? '-' }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newBuildingModal_edit_building_select" aria-label="Tambah gedung baru">
-                                        <i class="ri-add-line" aria-hidden="true"></i> Gedung
-                                    </button>
-                                </div>
-                                @error('sarpras_building_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <label for="edit_building_select" class="form-label">Gedung <span class="text-danger">*</span></label>
+                                <select name="asset_building_id" id="edit_building_select" class="form-select @error('asset_building_id') is-invalid @enderror" onchange="updatePreview()">
+                                    <option value="">— Pilih Gedung —</option>
+                                    @foreach($buildings as $b)
+                                        <option value="{{ $b->id }}" {{ old('asset_building_id', $wing->asset_building_id) == $b->id ? 'selected' : '' }}>
+                                            {{ $b->building_name }} ({{ $b->building_code }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('asset_building_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 @if($buildings->isEmpty())
-                                    <small class="text-muted">Belum ada gedung. Klik tombol <strong>Gedung</strong> untuk menambah gedung baru terlebih dahulu.</small>
+                                    <small class="text-muted">Belum ada gedung asrama pada data Sarpras. Gedung ditetapkan oleh bagian URT.</small>
+                                @else
+                                    <small class="text-muted">Daftar gedung berasal dari data Sarpras (URT).</small>
                                 @endif
                             </div>
                             <div class="col-md-6">
@@ -111,7 +108,7 @@
             var preview = document.getElementById('edit_wing_display_name');
             var nameInput = document.getElementById('edit_wing_name_input');
             if (sel.value) {
-                var buildingName = sel.options[sel.selectedIndex].text.split(' (')[0];
+                var buildingName = sel.options[sel.selectedIndex].text.replace(/\s*\([^)]*\)\s*$/, '');
                 var floorVal = floor.value || '1';
                 var displayName = buildingName + ' — Lantai ' + floorVal;
                 preview.value = displayName;
@@ -121,11 +118,4 @@
         // Initialize preview on load
         document.addEventListener('DOMContentLoaded', updatePreview);
     </script>
-
-    @include('dormitory.partials.building-quick-create', [
-        'userId' => $userId,
-        'dormitory' => $dormitory,
-        'selectId' => 'edit_building_select',
-        'previewFn' => 'updatePreview',
-    ])
 @endsection

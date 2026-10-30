@@ -189,7 +189,7 @@
                                         <td>
                                             <a href="{{ route('user.asrama.wings.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'wingUuid' => $w->id]) }}"
                                                class="text-decoration-none fw-semibold text-body">
-                                                {{ $w->sarprasBuilding?->name ?? '—' }}
+                                                {{ $w->building_name ?: '—' }}
                                             </a>
                                         </td>
                                         <td class="text-center">Lantai {{ $w->floor ?? '—' }}</td>
@@ -282,25 +282,26 @@
 
                         @if($buildings->isEmpty())
                             <div class="alert alert-warning py-2">
-                                Belum ada gedung Sarpras. Tambahkan gedung terlebih dahulu di
-                                <a href="{{ route('user.asrama.wings.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                   class="alert-link">halaman Tambah Blok</a>.
+                                <i class="ri-information-line me-1"></i>
+                                Belum ada gedung asrama pada data Sarpras. Gedung ditetapkan oleh bagian URT,
+                                hubungi URT untuk menambahkan gedung terlebih dahulu.
                             </div>
                         @endif
 
                         <div class="row g-3">
                             <div class="col-12">
                                 <label for="blok_building" class="form-label">Gedung <span class="text-danger">*</span></label>
-                                <select name="sarpras_building_id" id="blok_building"
-                                        class="form-select @error('sarpras_building_id') is-invalid @enderror" required>
+                                <select name="asset_building_id" id="blok_building"
+                                        class="form-select @error('asset_building_id') is-invalid @enderror" required>
                                     <option value="">— Pilih Gedung —</option>
                                     @foreach($buildings as $b)
-                                        <option value="{{ $b->id }}" {{ old('sarpras_building_id') == $b->id ? 'selected' : '' }}>
-                                            {{ $b->name }} ({{ $b->gender ?? '-' }})
+                                        <option value="{{ $b->id }}" {{ old('asset_building_id') == $b->id ? 'selected' : '' }}>
+                                            {{ $b->building_name }} ({{ $b->building_code }})
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('sarpras_building_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('asset_building_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <small class="text-muted">Daftar gedung berasal dari data Sarpras (URT).</small>
                             </div>
                             <div class="col-md-6">
                                 <label for="blok_floor" class="form-label">Lantai <span class="text-danger">*</span></label>

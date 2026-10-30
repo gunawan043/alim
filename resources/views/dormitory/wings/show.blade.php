@@ -27,6 +27,15 @@
                             <td>{{ $dormitory->name }}</td>
                         </tr>
                         <tr>
+                            <th class="text-muted">Gedung</th>
+                            <td>
+                                {{ $wing->building_name ?: '—' }}
+                                @if($wing->assetBuilding?->building_code)
+                                    <span class="badge bg-dark-subtle text-dark ms-1">{{ $wing->assetBuilding->building_code }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
                             <th class="text-muted">Kode</th>
                             <td><span class="badge bg-dark">{{ $wing->code }}</span></td>
                         </tr>

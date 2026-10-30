@@ -2407,8 +2407,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{asramaUuid}/gedung', [DormitoryWingController::class, 'index'])->name('wings.index');
                 Route::get('/{asramaUuid}/gedung/buat', [DormitoryWingController::class, 'create'])->name('wings.create');
                 Route::post('/{asramaUuid}/gedung', [DormitoryWingController::class, 'store'])->name('wings.store');
-                // Quick-create gedung Sarpras dari form Asrama (dropdown Gedung)
-                Route::post('/{asramaUuid}/gedung-sarpras', [DormitoryWingController::class, 'storeBuilding'])->name('wings.buildings.store');
                 Route::get('/{asramaUuid}/gedung/{wingUuid}', [DormitoryWingController::class, 'show'])->name('wings.show');
                 Route::get('/{asramaUuid}/gedung/{wingUuid}/edit', [DormitoryWingController::class, 'edit'])->name('wings.edit');
                 Route::put('/{asramaUuid}/gedung/{wingUuid}', [DormitoryWingController::class, 'update'])->name('wings.update');
