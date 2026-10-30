@@ -8,9 +8,9 @@
                 Anda sedang login sebagai
                 <strong>{{ auth()->user()->name }}</strong>
                 ({{ implode(', ', auth()->user()->effectiveRoles() ?: ['(tanpa role)']) }}).<br>
-                Super Admin asli:
+                Akun asal:
                 <strong>{{ session('impersonate.actor_name', 'Unknown') }}</strong>
-                — klik 'Stop Impersonate' untuk kembali tanpa perlu login ulang.
+                — klik 'Kembali ke Akun Saya' untuk kembali tanpa perlu login ulang.
             </span>
         </div>
         <form method="POST"
@@ -18,7 +18,7 @@
               class="m-0">
             @csrf
             <button type="submit" class="btn btn-sm btn-dark">
-                <i class="ri-logout-box-r-line align-bottom"></i> Stop Impersonate
+                <i class="ri-logout-box-r-line align-bottom"></i> Kembali ke Akun Saya
             </button>
         </form>
     </div>

@@ -16,6 +16,13 @@ class EnsureStudentPasswordChanged
             return $next($request);
         }
 
+        // Saat KSP/Waka/SA sedang masuk sementara ke akun GTK, jangan paksa
+        // mengganti password akun target. Aturan wajib ganti tetap berlaku
+        // saat GTK login dengan akunnya sendiri.
+        if ($request->session()->has('impersonate.actor_id')) {
+            return $next($request);
+        }
+
         if ($request->routeIs('password.force', 'password.force.update', 'logout', 'login', 'login.process', 'password.*', 'two-factor.*')) {
             return $next($request);
         }

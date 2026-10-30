@@ -6,6 +6,7 @@ use App\Exports\GtkExport;
 use App\Exports\GtkImportTemplateExport;
 use App\Helpers\JabatanRoleMapper;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\City;
 use App\Models\District;
 use App\Models\GtkAddress;
@@ -404,7 +405,7 @@ class GtkWizardController extends Controller
         }
     }
 
-    public function show(string $userId, string $uuid)
+    public function show(Request $request, string $userId, string $uuid)
     {
         $gtk = User::with([
             'gtkProfile.addresses.province',
@@ -419,10 +420,16 @@ class GtkWizardController extends Controller
             'gtkHealthData',
         ])->findOrFail($uuid);
 
+        abort_unless(
+            GtkAccess::canAccess($request->user(), $gtk, $request->attributes->get('schoolContextId')),
+            403,
+            'Anda tidak berwenang melihat GTK dari satuan pendidikan lain.'
+        );
+
         return view('gtk.profile', compact('gtk', 'userId'));
     }
 
-    public function edit(string $userId, string $uuid)
+    public function edit(Request $request, string $userId, string $uuid)
     {
         $gtk = User::with([
             'gtkProfile.addresses',
@@ -432,6 +439,12 @@ class GtkWizardController extends Controller
             'gtkContact',
             'gtkWorkUnits',
         ])->findOrFail($uuid);
+
+        abort_unless(
+            GtkAccess::canAccess($request->user(), $gtk, $request->attributes->get('schoolContextId')),
+            403,
+            'Anda tidak berwenang mengedit GTK dari satuan pendidikan lain.'
+        );
 
         $provinces = Province::orderBy('name')->get();
         $workUnits = WorkUnit::where('is_active', true)->orderBy('name')->get();
@@ -447,6 +460,11 @@ class GtkWizardController extends Controller
             DB::beginTransaction();
 
             $user = User::findOrFail($uuid);
+            abort_unless(
+                GtkAccess::canAccess($request->user(), $user, $request->attributes->get('schoolContextId')),
+                403,
+                'Anda tidak berwenang mengubah GTK dari satuan pendidikan lain.'
+            );
             $data = $this->validateAndStructure($request, $user->id);
 
             if (! GtkAccess::isManager($request->user())) {
@@ -515,10 +533,16 @@ class GtkWizardController extends Controller
         }
     }
 
-    public function destroy(string $userId, string $uuid): JsonResponse
+    public function destroy(Request $request, string $userId, string $uuid): JsonResponse
     {
         try {
-            User::findOrFail($uuid)->delete();
+            $user = User::findOrFail($uuid);
+            abort_unless(
+                GtkAccess::canAccess($request->user(), $user, $request->attributes->get('schoolContextId')),
+                403,
+                'Anda tidak berwenang menghapus GTK dari satuan pendidikan lain.'
+            );
+            $user->delete();
 
             return response()->json([
                 'success' => true,
@@ -702,7 +726,15 @@ class GtkWizardController extends Controller
     public function resetPassword(Request $request, string $userId, string $uuid): JsonResponse
     {
         try {
+            $actor = $request->user();
             $user = User::findOrFail($uuid);
+
+            abort_unless(
+                GtkAccess::canResetPassword($actor, $user, $request->attributes->get('schoolContextId')),
+                403,
+                'Anda tidak berwenang mereset password GTK ini.'
+            );
+
             $nupy = $user->employment?->nupy;
 
             if (! $nupy) {
@@ -713,13 +745,49 @@ class GtkWizardController extends Controller
             }
 
             $password = $this->defaultPassword($nupy);
-            $user->update(['password' => Hash::make($password)]);
+
+            DB::transaction(function () use ($user, $password, $actor) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'must_change_password' => true,
+                    'remember_token' => Str::random(60),
+                    'failed_login_attempts' => 0,
+                    'locked_until' => null,
+                    'locked_at' => null,
+                ])->save();
+
+                if (DB::getSchemaBuilder()->hasTable('sessions')) {
+                    DB::table('sessions')->where('user_id', $user->id)->delete();
+                }
+
+                if (method_exists($user, 'tokens')) {
+                    $user->tokens()->delete();
+                }
+
+                AuditLog::create([
+                    'user_id' => $actor->id,
+                    'action' => 'GTK_PASSWORD_RESET',
+                    'table_name' => 'users',
+                    'record_id' => $user->id,
+                    'record_type' => 'user',
+                    'ip_address' => request()->ip(),
+                    'user_agent' => substr((string) request()->userAgent(), 0, 255),
+                ]);
+            });
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password berhasil direset ke default ('.$password.')',
+                'password' => $password,
+                'message' => 'Password berhasil direset ke default ('.$password.'). Pengguna wajib mengganti password saat login berikutnya.',
             ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            throw $e;
         } catch (\Exception $e) {
+            \Log::error('GtkWizardController@resetPassword failed', [
+                'message' => $e->getMessage(),
+                'target' => $uuid ?? null,
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem.',

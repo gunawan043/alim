@@ -24,11 +24,26 @@
                     {{ $gtk->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
                 </button>
             </li>
-            <li>
-                <button class="dropdown-item reset-password" data-id="{{ $gtk->id }}" data-email="{{ $gtk->email }}">
-                    <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
-                </button>
-            </li>
+            @if(\App\Support\GtkAccess::canResetPassword(auth()->user(), $gtk, request()->attributes->get('schoolContextId')))
+                <li>
+                    <button class="dropdown-item reset-password"
+                            data-id="{{ $gtk->id }}"
+                            data-email="{{ $gtk->email }}"
+                            data-url="{{ route('user.gtk.reset-password', ['userId' => $userId, 'uuid' => $gtk->id]) }}">
+                        <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
+                    </button>
+                </li>
+            @endif
+            @if(\App\Support\GtkAccess::canImpersonate(auth()->user(), $gtk, request()->attributes->get('schoolContextId')))
+                <li>
+                    <form method="POST" action="{{ route('impersonate.start', ['targetUser' => $gtk->id]) }}" class="m-0">
+                        @csrf
+                        <button type="submit" class="dropdown-item">
+                            <i class="ri-login-box-line text-success me-2"></i> Masuk sebagai GTK
+                        </button>
+                    </form>
+                </li>
+            @endif
             <li><hr class="dropdown-divider"></li>
             <li>
                 <button class="dropdown-item text-danger delete-btn" data-id="{{ $gtk->id }}" data-name="{{ $gtk->name }}">

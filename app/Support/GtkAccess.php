@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Services\SchoolGroupService;
+use App\Support\UserJabatan;
 
 /**
  * Aturan akses data GTK (pegawai) yang dipakai lintas middleware/controller.
@@ -65,5 +67,102 @@ class GtkAccess
         }
 
         return canPermission('gtk-view-all') || canPermission('gtk-view-school');
+    }
+
+    /**
+     * Akses baca/detail GTK dengan isolasi satuan pendidikan.
+     * Role Personalia/Humas Personalia tetap dapat melihat lintas unit;
+     * role Satuan Pendidikan/KSP/Waka hanya sekolahnya sendiri.
+     */
+    public static function canAccess(User $actor, User $target, ?string $schoolId = null): bool
+    {
+        if ((string) $actor->id === (string) $target->id) {
+            return true;
+        }
+
+        if ($actor->isSystemAdmin() || $actor->isSuperAdmin() || canPermission('gtk-view-all')) {
+            return true;
+        }
+
+        if ($actor->hasAnyRole(['Humas Personalia', 'Personalia', 'Unit Rumah Tangga'])) {
+            return true;
+        }
+
+        $actorSchoolId = self::schoolId($actor, $schoolId);
+        $targetSchoolId = self::schoolId($target);
+
+        return $actorSchoolId !== null
+            && $actorSchoolId === $targetSchoolId
+            && (self::isSchoolLeader($actor)
+                || $actor->hasRole('Satuan Pendidikan')
+                || canPermission('gtk-view-school'));
+    }
+
+    /**
+     * KSP/Wakil KSP boleh mengelola akun GTK dalam satuan pendidikannya.
+     * Akun pimpinan (KSP/Waka), System Admin, dan Super Admin dikecualikan
+     * agar tidak terjadi eskalasi atau saling mengambil alih akun.
+     */
+    public static function canManageAccount(User $actor, User $target, ?string $schoolId = null): bool
+    {
+        if ((string) $actor->id === (string) $target->id || ! $target->is_active) {
+            return false;
+        }
+
+        if ($target->isSystemAdmin() || $target->isSuperAdmin()) {
+            return false;
+        }
+
+        if ($actor->isSystemAdmin() || $actor->isSuperAdmin()) {
+            return true;
+        }
+
+        if (! self::isSchoolLeader($actor)) {
+            return false;
+        }
+
+        if (UserJabatan::hasAny($target, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala sekolah',
+            'wakil kepala sekolah',
+        ])) {
+            return false;
+        }
+
+        $actorSchoolId = self::schoolId($actor, $schoolId);
+        $targetSchoolId = self::schoolId($target);
+
+        return $actorSchoolId !== null && $actorSchoolId === $targetSchoolId;
+    }
+
+    public static function canImpersonate(User $actor, User $target, ?string $schoolId = null): bool
+    {
+        return self::canManageAccount($actor, $target, $schoolId);
+    }
+
+    public static function canResetPassword(User $actor, User $target, ?string $schoolId = null): bool
+    {
+        return self::canManageAccount($actor, $target, $schoolId);
+    }
+
+    public static function isSchoolLeader(User $user): bool
+    {
+        return UserJabatan::hasAny($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala sekolah',
+            'wakil kepala sekolah',
+        ]);
+    }
+
+    private static function schoolId(User $user, ?string $contextSchoolId = null): ?string
+    {
+        if ($contextSchoolId) {
+            return $contextSchoolId;
+        }
+
+        return $user->employment?->school_id
+            ?: SchoolGroupService::getUserSchool($user)?->id;
     }
 }

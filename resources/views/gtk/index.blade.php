@@ -863,11 +863,26 @@
                                                             <i class="ri-pencil-fill text-primary me-2"></i> Edit
                                                         </a>
                                                     </li>
-                                                    <li>
-                                                        <button class="dropdown-item reset-password" data-id="{{ $gtk->id }}" data-email="{{ $gtk->email }}">
-                                                            <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
-                                                        </button>
-                                                    </li>
+                                                    @if(\App\Support\GtkAccess::canResetPassword(auth()->user(), $gtk, request()->attributes->get('schoolContextId')))
+                                                        <li>
+                                                            <button class="dropdown-item reset-password"
+                                                                    data-id="{{ $gtk->id }}"
+                                                                    data-email="{{ $gtk->email }}"
+                                                                    data-url="{{ route('user.gtk.reset-password', ['userId' => $userId, 'uuid' => $gtk->id]) }}">
+                                                                <i class="ri-lock-password-line text-secondary me-2"></i> Reset Password
+                                                            </button>
+                                                        </li>
+                                                    @endif
+                                                    @if(\App\Support\GtkAccess::canImpersonate(auth()->user(), $gtk, request()->attributes->get('schoolContextId')))
+                                                        <li>
+                                                            <form method="POST" action="{{ route('impersonate.start', ['targetUser' => $gtk->id]) }}" class="m-0">
+                                                                @csrf
+                                                                <button type="submit" class="dropdown-item">
+                                                                    <i class="ri-login-box-line text-success me-2"></i> Masuk sebagai GTK
+                                                                </button>
+                                                            </form>
+                                                        </li>
+                                                    @endif
                                                     @if (canPermission('super-admin-only') || canPermission('gtk-update'))
                                                         <li>
                                                             <button class="dropdown-item toggle-status" data-id="{{ $gtk->id }}" data-status="{{ $gtk->is_active }}">
@@ -1255,6 +1270,7 @@
 
     let currentDeleteUuid  = null;
     let currentResetUserId = null;
+    let currentResetUrl = null;
     let activeFilters      = {};
 
     // Kolom default yang selalu tampil (tidak ada di dropdown, atau sudah checked)
@@ -1498,13 +1514,14 @@
                 document.getElementById('resetGtkName').innerText  = userName;
                 document.getElementById('resetGtkEmail').innerText = email;
                 currentResetUserId = userId;
+                currentResetUrl = this.dataset.url;
                 new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
             });
         });
         document.getElementById('confirmResetPasswordBtn').addEventListener('click', async function () {
             if (!currentResetUserId) return;
             try {
-                const response = await fetch(`/personalia/gtk/${currentResetUserId}/reset-password`, {
+                const response = await fetch(currentResetUrl, {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json' }
                 });
@@ -1528,6 +1545,7 @@
             } finally {
                 bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
                 currentResetUserId = null;
+                currentResetUrl = null;
             }
         });
     }

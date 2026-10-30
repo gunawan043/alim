@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\GtkAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,8 +21,15 @@ final class ImpersonateController extends Controller
             abort(401);
         }
 
-        if (! canPermission('impersonate_role')) {
-            abort(403, 'Anda tidak memiliki hak impersonate.');
+        $canSupportImpersonate = canPermission('impersonate_role');
+        $canSchoolImpersonate = GtkAccess::canImpersonate(
+            $actor,
+            $targetUser,
+            $request->attributes->get('schoolContextId')
+        );
+
+        if (! $canSupportImpersonate && ! $canSchoolImpersonate) {
+            abort(403, 'Anda tidak memiliki hak masuk ke akun GTK ini.');
         }
 
         if ($actor->id === $targetUser->id) {
@@ -69,7 +77,7 @@ final class ImpersonateController extends Controller
         $request->session()->flash('impersonate.active', true);
 
         return redirect()->route('root')
-            ->with('warning', "Anda sekarang login sebagai {$targetUser->name}. Klik 'Stop Impersonate' untuk kembali ke akun Super Admin.");
+            ->with('warning', "Anda sekarang masuk sebagai {$targetUser->name}. Klik 'Kembali ke Akun Saya' untuk kembali ke akun asal.");
     }
 
     public function stop(Request $request): RedirectResponse
@@ -94,7 +102,7 @@ final class ImpersonateController extends Controller
             $request->session()->regenerateToken();
 
             return redirect()->route('login')
-                ->with('error', 'Akun Super Admin asal tidak aktif. Silakan login ulang.');
+                ->with('error', 'Akun asal tidak aktif. Silakan login ulang.');
         }
 
         AuditLog::create([
