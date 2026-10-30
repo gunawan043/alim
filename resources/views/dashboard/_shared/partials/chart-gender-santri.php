@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 $schoolId = $this->getUserSchoolId($user);
 
 $gender = DB::table('students')
+    ->whereNull('deleted_at')
     ->where('status', 'active')
     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
     ->selectRaw('gender, COUNT(*) as total')

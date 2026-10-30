@@ -7,8 +7,8 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') UKS @endslot
-        @slot('li_2') <a href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}">Konseling</a> @endslot
+        @slot('li_1') Kesiswaan @endslot
+        @slot('li_2') <a href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}">Konseling</a> @endslot
         @slot('title') Tambah Catatan Konseling @endslot
     @endcomponent
 
@@ -19,7 +19,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('user.uks.counseling-records.store', ['userId' => $userId]) }}">
+    <form method="POST" action="{{ route('user.kesiswaan.counseling-records.store', ['userId' => $userId]) }}">
         @csrf
         <div class="row">
             <div class="col-lg-9">
@@ -120,7 +120,7 @@
                     <div class="card-footer">
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-success"><i class="ri-save-line me-1"></i> Simpan</button>
-                            <a href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}" class="btn btn-secondary"><i class="ri-arrow-left-line me-1"></i> Kembali</a>
+                            <a href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}" class="btn btn-secondary"><i class="ri-arrow-left-line me-1"></i> Kembali</a>
                         </div>
                     </div>
                 </div>

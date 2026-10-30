@@ -12,6 +12,23 @@ use App\Models\User;
  */
 class DormitoryPolicyAccess
 {
+    /**
+     * Kepala Asrama, Wakil Kepala Asrama, dan pejabat asrama terkait boleh
+     * menyetujui pengajuan penghargaan dari prestasi sekolah.
+     */
+    public function canApproveReward(User $user, string $dormitoryId): bool
+    {
+        return $this->canManageQuota($user, $dormitoryId);
+    }
+
+    /**
+     * Persetujuan izin khusus wajib oleh Kepala/Wakil Asrama.
+     */
+    public function canApprovePermit(User $user, string $dormitoryId): bool
+    {
+        return $this->canManageQuota($user, $dormitoryId);
+    }
+
     public function canManageQuota(User $user, string $dormitoryId): bool
     {
         if ($user->isSystemAdmin()) {

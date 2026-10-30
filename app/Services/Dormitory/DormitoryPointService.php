@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 class DormitoryPointService
 {
-    public function __construct(private readonly NotificationUniversalService $notifications)
-    {
-    }
+    public function __construct(private readonly NotificationUniversalService $notifications) {}
 
     /**
      * Catat pelanggaran ke ledger (poin negatif), lalu terapkan aturan ambang.
@@ -96,7 +94,11 @@ class DormitoryPointService
         $semester = $reward->semester ?: $this->currentSemester();
         $recordedAt = now();
 
-        $maxPerSemester = config('asrama_points.max_behavior_reward_per_semester');
+        // Prestasi sekolah menggunakan poin penuh dari katalog. Batas reward
+        // perilaku per semester hanya berlaku untuk penghargaan non-prestasi.
+        $maxPerSemester = $reward->source_achievement_id
+            ? null
+            : config('asrama_points.max_behavior_reward_per_semester');
 
         if ($maxPerSemester !== null && is_numeric($maxPerSemester)) {
             $earned = (int) DormitoryPointLedger::query()

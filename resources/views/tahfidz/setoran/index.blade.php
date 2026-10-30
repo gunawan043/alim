@@ -92,17 +92,19 @@
                                 <div class="col-md-5"><label class="form-label">Halaqah <span class="text-danger">*</span></label><select name="tahfidz_group_id" id="setoranGroup" class="form-select" required onchange="fillSetoranStudents(this.value)">@foreach($groups as $g)<option value="{{ $g->id }}" @selected((string)old('tahfidz_group_id')===(string)$g->id)>{{ $g->name }} — {{ $g->school?->name }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="setoranStudent" class="form-select" required onchange="applySetoranLastPosition(this.value)"><option value="">—</option></select></div>
                                 <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
-                                <div class="col-md-2"><label class="form-label">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
-                                <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
+                                <div class="col-md-2"><label class="form-label">Pekan</label><input type="number" name="week_number" min="1" max="6" class="form-control" value="{{ old('week_number') }}"></div>
+                                <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option><option value="robet" @selected(old('setoran_type')==='robet')>Robet</option></select></div>
                                 <div class="col-md-3"><label class="form-label">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
                                 <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" id="setoranJuz" min="1" max="30" class="form-control" value="{{ old('juz') }}"></div>
                                 <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected(old('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected(old('status')==='ulang')>Ulang</option><option value="ditunda" @selected(old('status')==='ditunda')>Ditunda</option></select></div>
-                                <div class="col-md-3"><label class="form-label">Surah Awal</label><select name="surah_start_name" id="setoranSurahStart" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_start_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach</select></div>
+                                <div class="col-md-3"><label class="form-label">Surah Awal</label><select name="surah_start_name" id="setoranSurahStart" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_start_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach</select></div>
                                 <div class="col-md-2"><label class="form-label">Ayat Awal</label><input type="number" name="ayat_start" id="setoranAyatStart" class="form-control" value="{{ old('ayat_start') }}"></div>
-                                <div class="col-md-3"><label class="form-label">Surah Akhir</label><select name="surah_end_name" id="setoranSurahEnd" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach</select></div>
-                                <div class="col-md-2"><label class="form-label">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
+                                <div class="col-md-3"><label class="form-label">Surah Akhir</label><select name="surah_end_name" id="setoranSurahEnd" class="form-select select2-surah"><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach</select></div>
+                                <div class="col-md-2"><label class="form-label">Ayat Akhir</label><input type="number" name="ayat_end" id="setoranAyatEnd" class="form-control" value="{{ old('ayat_end') }}"></div>
                                 <div class="col-md-2"><label class="form-label">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="setoranHalamanStart" class="form-control" value="{{ old('halaman_start') }}"></div>
+                                <div class="col-md-1"><label class="form-label">Baris</label><input type="number" min="1" max="20" name="baris_start" id="setoranLineStart" class="form-control" value="{{ old('baris_start') }}"></div>
                                 <div class="col-md-2"><label class="form-label">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" id="setoranHalamanEnd" class="form-control" value="{{ old('halaman_end') }}"></div>
+                                <div class="col-md-1"><label class="form-label">Baris</label><input type="number" min="1" max="20" name="baris_end" id="setoranLineEnd" class="form-control" value="{{ old('baris_end') }}"></div>
                                 <div class="col-md-2"><label class="form-label">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" id="setoranHalamanCount" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis"></div>
                                 <div class="col-md-2"><label class="form-label">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
                                 <div class="col-md-2"><label class="form-label">Hasil Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" id="setoranHasil" class="form-control" value="{{ old('hasil_hafalan') }}"></div>
@@ -127,6 +129,7 @@
 @push('scripts')
 <script>
     const setoranMembers = @json($membersByGroup);
+    const setoranQuranPositionUrl = @json(route('user.tahfidz.quran-position', ['userId' => $userId]));
     function fillSetoranStudents(groupId, selected) {
         const select = document.getElementById('setoranStudent');
         if (! select) return;
@@ -165,6 +168,33 @@
         if (ayat && last.ayat_start) ayat.value = last.ayat_start;
         if (page && last.halaman_start) page.value = last.halaman_start;
     }
+    async function fillSetoranQuranPosition() {
+        const startSurah = document.getElementById('setoranSurahStart');
+        const endSurah = document.getElementById('setoranSurahEnd');
+        const startAyah = document.getElementById('setoranAyatStart');
+        const endAyah = document.getElementById('setoranAyatEnd');
+        const s = startSurah?.selectedOptions?.[0]?.dataset?.number;
+        const a = startAyah?.value;
+        if (! s || ! a) return;
+        const es = endSurah?.selectedOptions?.[0]?.dataset?.number || s;
+        const ea = endAyah?.value || a;
+        const url = new URL(setoranQuranPositionUrl, window.location.origin);
+        url.searchParams.set('surah_start', s);
+        url.searchParams.set('ayah_start', a);
+        url.searchParams.set('surah_end', es);
+        url.searchParams.set('ayah_end', ea);
+        try {
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
+            const data = await response.json();
+            if (! data.found || ! data.position) return;
+            document.getElementById('setoranHalamanStart').value = data.position.page_start;
+            document.getElementById('setoranLineStart').value = data.position.line_start;
+            document.getElementById('setoranHalamanEnd').value = data.position.page_end;
+            document.getElementById('setoranLineEnd').value = data.position.line_end;
+            calculateSetoranPages();
+        } catch (e) {}
+    }
+
     function calculateSetoranPages() {
         const start = parseFloat(document.getElementById('setoranHalamanStart')?.value);
         const end = parseFloat(document.getElementById('setoranHalamanEnd')?.value);
@@ -197,6 +227,12 @@
         document.getElementById('setoranStudent')?.addEventListener('change', function () { applySetoranLastPosition(this.value); });
         document.getElementById('setoranHalamanStart')?.addEventListener('input', calculateSetoranPages);
         document.getElementById('setoranHalamanEnd')?.addEventListener('input', calculateSetoranPages);
+        ['setoranSurahStart', 'setoranSurahEnd', 'setoranAyatStart', 'setoranAyatEnd'].forEach(function (id) {
+            const field = document.getElementById(id);
+            if (! field) return;
+            field.addEventListener('change', fillSetoranQuranPosition);
+            if (window.jQuery) jQuery(field).on('change', fillSetoranQuranPosition);
+        });
         ['setoranHasil', 'setoranKhofi', 'setoranJali'].forEach(id => document.getElementById(id)?.addEventListener('input', calculateSetoranScore));
         calculateSetoranPages();
         calculateSetoranScore();

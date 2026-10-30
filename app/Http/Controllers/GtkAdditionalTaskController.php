@@ -196,8 +196,29 @@ class GtkAdditionalTaskController extends Controller
     {
         $user = auth()->user();
 
-        return $user->hasRole('Personalia')
-            || $user->hasRole('Administrator')
-            || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin());
+        if (! $user) {
+            return false;
+        }
+
+        if ((method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())
+            || (method_exists($user, 'isSystemAdmin') && $user->isSystemAdmin())) {
+            return true;
+        }
+
+        $roles = method_exists($user, 'getRoleNames')
+            ? $user->getRoleNames()->map(fn ($role) => mb_strtolower((string) $role))->all()
+            : [];
+
+        foreach ($roles as $role) {
+            if (in_array($role, ['personalia', 'administrator', 'super admin', 'humas personalia'], true)
+                || str_contains($role, 'personalia')) {
+                return true;
+            }
+        }
+
+        $jabatan = mb_strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+
+        return str_contains($jabatan, 'personalia')
+            || (function_exists('canPermission') && canPermission('gtk-additional-task-all-access'));
     }
 }

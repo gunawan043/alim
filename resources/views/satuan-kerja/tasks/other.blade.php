@@ -46,7 +46,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.satuan-kerja.other-tasks', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}"
+                            <a href="{{ route('user.schools.satuan-kerja.other-tasks', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}"
                                class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
@@ -68,14 +68,19 @@
                                 <tr>
                                     <td>{{ $loop->iteration + ($tasks->currentPage() - 1) * $tasks->perPage() }}</td>
                                     <td class="fw-medium">{{ $task->teacher?->name ?? '-' }}</td>
-                                    <td>{{ $task->task_name }}</td>
+                                    <td>
+                                        {{ $task->additionalTaskType?->nama ?? $task->task_name }}
+                                        @if($task->studyGroup)
+                                            <span class="badge bg-primary-subtle text-primary ms-1">{{ $task->studyGroup->name }}</span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">{{ $task->weekly_hours }} JP</td>
                                     <td class="text-muted small">{{ $task->notes ?? '-' }}</td>
                                     <td>
                                         <button type="button" class="btn btn-soft-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalEdit{{ $task->id }}">
                                             <i class="ri-pencil-line"></i>
                                         </button>
-                                        <form method="POST" action="{{ route('user.satuan-kerja.other-tasks.destroy', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $task->id]) }}"
+                                        <form method="POST" action="{{ route('user.schools.satuan-kerja.other-tasks.destroy', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $task->id]) }}"
                                               class="d-inline" onsubmit="return confirm('Hapus tugas ini?')">
                                             @csrf @method('DELETE')
                                             <button type="button" class="btn btn-soft-danger btn-sm delete-btn">
@@ -93,12 +98,26 @@
                                                 <h5 class="modal-title">Edit Tugas</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
-                                            <form method="POST" action="{{ route('user.satuan-kerja.other-tasks.update', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $task->id]) }}">
+                                            <form method="POST" action="{{ route('user.schools.satuan-kerja.other-tasks.update', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $task->id]) }}">
                                                 @csrf @method('PUT')
                                                 <div class="modal-body">
                                                     <div class="mb-3">
                                                         <label class="form-label">Nama Tugas</label>
-                                                        <input type="text" name="task_name" class="form-control" value="{{ $task->task_name }}" required>
+                                                        <select name="additional_task_type_id" class="form-select" required>
+                                                            <option value="">-- Pilih Tugas Tambahan --</option>
+                                                            @foreach($taskTypes as $type)
+                                                                <option value="{{ $type->id }}" {{ $task->additional_task_type_id === $type->id ? 'selected' : '' }}>{{ $type->nama }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Rombel / Kelas (untuk Wali Kelas)</label>
+                                                        <select name="study_group_id" class="form-select">
+                                                            <option value="">-- Tidak terkait rombel --</option>
+                                                            @foreach(($studyGroups ?? collect()) as $sg)
+                                                                <option value="{{ $sg->id }}" {{ $task->study_group_id === $sg->id ? 'selected' : '' }}>{{ $sg->name }}</option>
+                                                            @endforeach
+                                                        </select>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label">Jam/Minggu</label>
@@ -142,7 +161,7 @@
                     <h5 class="modal-title">Tambah Tugas Tambahan</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="{{ route('user.satuan-kerja.other-tasks.store', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}">
+                <form method="POST" action="{{ route('user.schools.satuan-kerja.other-tasks.store', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
@@ -156,7 +175,21 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Nama Tugas <span class="text-danger">*</span></label>
-                            <input type="text" name="task_name" class="form-control" required maxlength="100">
+                            <select name="additional_task_type_id" class="form-select" required>
+                                <option value="">-- Pilih Tugas Tambahan --</option>
+                                @foreach($taskTypes as $type)
+                                    <option value="{{ $type->id }}">{{ $type->nama }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rombel / Kelas (untuk Wali Kelas)</label>
+                            <select name="study_group_id" class="form-select">
+                                <option value="">-- Tidak terkait rombel --</option>
+                                @foreach(($studyGroups ?? collect()) as $sg)
+                                    <option value="{{ $sg->id }}">{{ $sg->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Jam/Minggu <span class="text-danger">*</span></label>

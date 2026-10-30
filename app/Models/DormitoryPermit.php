@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -79,6 +80,11 @@ class DormitoryPermit extends Model
         'permit_type',
         'destination',
         'purpose',
+        'guardian_approval_status',
+        'guardian_approved_at',
+        'guardian_approval_channel',
+        'guardian_approval_note',
+        'guardian_approval_evidence_path',
         'departure_datetime',
         'expected_return_datetime',
         'actual_return_datetime',
@@ -117,6 +123,16 @@ class DormitoryPermit extends Model
         'pickup_scanned_by',
         'return_scanned_at',
         'return_scanned_by',
+        'card_issued_at',
+        'card_issued_by',
+        'card_returned_at',
+        'card_returned_by',
+        'card_status',
+        'exit_checklist',
+        'return_checklist',
+        'late_return_reason',
+        'late_return_confirmed_by',
+        'late_return_confirmed_at',
     ];
 
     protected $casts = [
@@ -138,6 +154,12 @@ class DormitoryPermit extends Model
         'companion_is_mahrom' => 'boolean',
         'pickup_details' => 'array',
         'return_details' => 'array',
+        'guardian_approved_at' => 'datetime',
+        'card_issued_at' => 'datetime',
+        'card_returned_at' => 'datetime',
+        'late_return_confirmed_at' => 'datetime',
+        'exit_checklist' => 'array',
+        'return_checklist' => 'array',
     ];
 
     // ── Relationships ────────────────────────────────────────────
@@ -187,6 +209,11 @@ class DormitoryPermit extends Model
             'berobat' => 'Berobat',
             'sakit' => 'Sakit',
             'keperluan_keluarga' => 'Keperluan Keluarga',
+            'musibah' => 'Musibah',
+            'walimah_keluarga' => 'Walimah Orang Tua/Saudara Kandung',
+            'haji_umrah' => 'Haji/Umrah',
+            'wisuda_keluarga' => 'Wisuda Orang Tua/Saudara Kandung',
+            'keperluan_penting' => 'Keperluan Penting Lainnya',
             'lainnya' => 'Lainnya',
             default => ucfirst($this->permit_type ?? ''),
         };
@@ -287,7 +314,7 @@ class DormitoryPermit extends Model
             && $this->scan_token_expires_at->isPast();
     }
 
-    public function defaultScanTokenExpiry(): \Carbon\CarbonInterface
+    public function defaultScanTokenExpiry(): CarbonInterface
     {
         return $this->expected_return_datetime
             ? $this->expected_return_datetime->copy()->addDays(2)

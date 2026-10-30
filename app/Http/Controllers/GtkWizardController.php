@@ -1543,6 +1543,7 @@ class GtkWizardController extends Controller
             'user_id' => $userId,
             'work_unit_id' => $workUnitId,
             'jabatan' => $jabatan,
+            'position_id' => $this->positionIdForName($jabatan),
             'is_primary' => true,
         ]);
 
@@ -1747,11 +1748,16 @@ class GtkWizardController extends Controller
         $workUnit = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
 
         $workUnit
-            ? $workUnit->update(['work_unit_id' => $workUnitId, 'jabatan' => $jabatan])
+            ? $workUnit->update([
+                'work_unit_id' => $workUnitId,
+                'jabatan' => $jabatan,
+                'position_id' => $this->positionIdForName($jabatan),
+            ])
             : GtkWorkUnit::create([
                 'user_id' => $userId,
                 'work_unit_id' => $workUnitId,
                 'jabatan' => $jabatan,
+                'position_id' => $this->positionIdForName($jabatan),
                 'is_primary' => true,
             ]);
 
@@ -1951,7 +1957,24 @@ class GtkWizardController extends Controller
             return StructuralPosition::find($value)?->name;
         }
 
-        return $value;
+        // Teks bebas dinormalkan ke nama jabatan master agar tidak menyimpang.
+        return StructuralPosition::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($value))])
+            ->value('name') ?? $value;
+    }
+
+    /**
+     * Id jabatan master untuk sebuah nama jabatan.
+     */
+    private function positionIdForName(?string $name): ?string
+    {
+        if (! $name) {
+            return null;
+        }
+
+        return StructuralPosition::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($name))])
+            ->value('id');
     }
 
     /**
@@ -2648,17 +2671,20 @@ class GtkWizardController extends Controller
                     if ($validated['work_unit_id'] !== null) {
                         $wu = WorkUnit::find($validated['work_unit_id']);
                         $existing = GtkWorkUnit::where('user_id', $user->id)->first();
+                        $position = $validated['jabatan_id'] ? StructuralPosition::find($validated['jabatan_id']) : null;
                         if ($existing) {
                             $existing->update([
                                 'work_unit_id' => $validated['work_unit_id'],
-                                'jabatan' => $validated['jabatan_id'] ? StructuralPosition::find($validated['jabatan_id'])?->name : $existing->jabatan,
+                                'jabatan' => $position?->name ?? $existing->jabatan,
+                                'position_id' => $position?->id ?? $existing->position_id,
                             ]);
                         } else {
                             GtkWorkUnit::create([
                                 'user_id' => $user->id,
                                 'work_unit_id' => $validated['work_unit_id'],
                                 'is_primary' => true,
-                                'jabatan' => $validated['jabatan_id'] ? StructuralPosition::find($validated['jabatan_id'])?->name : null,
+                                'jabatan' => $position?->name,
+                                'position_id' => $position?->id,
                             ]);
                         }
                     }

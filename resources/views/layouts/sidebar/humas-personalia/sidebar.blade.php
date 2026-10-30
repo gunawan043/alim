@@ -69,9 +69,17 @@
     $isStruktural      = $isKepalaHumasPers || $isKepalaHumas || $isKepalaPersonal;
     $isStaf            = $isStafHumas || $isStafPersonal;
 
+    /* Role Humas Personalia tetap boleh mengakses menu personalia walau
+       nama jabatan hasil import tidak sama dengan daftar jabatan baku. */
+    $hasHumasPersonaliaRole = $hasRole('Humas Personalia');
+    $hasPersonalRole = str_contains($jabatanNorm ?? '', 'personalia')
+        || $hasHumasPersonaliaRole;
+
     /* ── Pilar access ────────────────────────────────────────────────── */
-    $canHumas         = $isKepalaHumasPers || $isKepalaHumas || $isStafHumas;
-    $canPersonal      = $isKepalaHumasPers || $isKepalaPersonal || $isStafPersonal;
+    $canHumas         = $showAll || $hasHumasPersonaliaRole
+        || $isKepalaHumasPers || $isKepalaHumas || $isStafHumas;
+    $canPersonal      = $showAll || $hasPersonalRole
+        || $isKepalaHumasPers || $isKepalaPersonal || $isStafPersonal;
 
     /* ── Dashboard (pribadi personalia — sudah ada di php.txt) ───────── */
     $dashboardRoute = 'user.dashboard'; // PersonaliaDashboardController@dashboard
@@ -195,15 +203,16 @@
     <li class="menu-title"><span>Struktur & Jabatan</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.additional-tasks', 'user.gtk-additional-tasks.']) ? ' active' : '' }}"
-           href="{{ $primaryWorkUnitId ? $workUnitUrl('user.schools.satuan-kerja.additional-tasks') : $humasUrl('user.gtk-additional-tasks.index') }}">
-            <i class="ri-task-line"></i><span>Tugas Tambahan GTK</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.master-data.tugas-tambahan']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.master-data.tugas-tambahan.index') }}">
+            <i class="ri-task-line"></i><span>Jenis Tugas Tambahan</span>
         </a>
     </li>
 
+
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.satuan-kerja.other-tasks', 'user.other-teacher-tasks.']) ? ' active' : '' }}"
-           href="{{ $primaryWorkUnitId ? $workUnitUrl('user.schools.satuan-kerja.other-tasks') : $humasUrl('user.other-teacher-tasks.index') }}">
+           href="{{ $humasUrl('user.other-teacher-tasks.index') }}">
             <i class="ri-user-settings-line"></i><span>Tugas Tambahan Guru</span>
         </a>
     </li>
@@ -652,6 +661,13 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.announcements.']) ? ' active' : '' }}"
            href="{{ $humasUrl('user.humas.announcements.index') }}">
             <i class="ri-megaphone-line"></i><span>Pengumuman &amp; Publikasi</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.broadcasts.']) ? ' active' : '' }}"
+           href="{{ route('user.broadcasts.index', ['userId' => $userId]) }}">
+            <i class="ri-send-plane-2-line"></i><span>Broadcast</span>
         </a>
     </li>
 

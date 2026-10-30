@@ -43,7 +43,7 @@ return new class extends Migration
                 $table->timestamps();
 
                 $table->unique(['school_id', 'academic_year_id'], 'school_curriculum_unique');
-                $table->index(['curriculum_profile_id', 'academic_year_id']);
+                $table->index(['curriculum_profile_id', 'academic_year_id'], 'school_curriculum_profile_year_idx');
                 $table->foreign('updated_by')->references('id')->on('users')->nullOnDelete();
             });
         }

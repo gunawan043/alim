@@ -13,17 +13,17 @@
 
 <style>
     .alim-workflow-track { display:flex; gap:8px; overflow-x:auto; padding:4px 0 2px; }
-    .alim-workflow-step { flex:1 0 155px; display:flex; align-items:flex-start; gap:9px; padding:10px 11px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; color:#475569; text-decoration:none; min-width:155px; }
-    .alim-workflow-step:hover { border-color:#93c5fd; color:#1d4ed8; }
-    .alim-workflow-step.is-current { border-color:#0d6efd; box-shadow:0 0 0 2px rgba(13,110,253,.12); }
-    .alim-workflow-step.is-done { background:#f0fdf4; border-color:#bbf7d0; }
+    .alim-workflow-step { flex:1 0 155px; display:flex; align-items:flex-start; gap:9px; padding:10px 11px; border:1px solid var(--bs-border-color); border-radius:12px; background:var(--bs-body-bg); color:var(--bs-body-color); text-decoration:none; min-width:155px; }
+    .alim-workflow-step:hover { border-color:var(--bs-primary); color:var(--bs-primary); }
+    .alim-workflow-step.is-current { border-color:var(--bs-primary); box-shadow:0 0 0 2px rgba(var(--bs-primary-rgb),.18); }
+    .alim-workflow-step.is-done { background:rgba(25,135,84,.12); border-color:rgba(25,135,84,.45); }
     .alim-workflow-step.is-disabled { opacity:.62; cursor:not-allowed; }
-    .alim-workflow-dot { width:25px; height:25px; flex:0 0 25px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#e2e8f0; color:#475569; font-size:11px; font-weight:800; }
-    .alim-workflow-step.is-current .alim-workflow-dot { background:#0d6efd; color:#fff; }
+    .alim-workflow-dot { width:25px; height:25px; flex:0 0 25px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:var(--bs-secondary-bg); color:var(--bs-body-color); font-size:11px; font-weight:800; }
+    .alim-workflow-step.is-current .alim-workflow-dot { background:var(--bs-primary); color:#fff; }
     .alim-workflow-step.is-done .alim-workflow-dot { background:#198754; color:#fff; }
     .alim-workflow-copy { min-width:0; }
     .alim-workflow-label { display:block; font-size:12px; font-weight:700; line-height:1.25; }
-    .alim-workflow-detail { display:block; font-size:10px; color:#64748b; margin-top:2px; white-space:normal; line-height:1.25; }
+    .alim-workflow-detail { display:block; font-size:10px; color:var(--bs-secondary-color); margin-top:2px; white-space:normal; line-height:1.25; }
     @media (max-width: 767.98px) { .alim-workflow-track { flex-wrap:nowrap; } .alim-workflow-step { flex-basis:145px; } }
 </style>
 

@@ -33,6 +33,7 @@ class GtkAdditionalTask extends Model
         'user_id',
         'decree_id',
         'work_unit_id',
+        'additional_task_type_id',
         'nama_tugas',
         'hours_per_week',
         'nomor_sk',
@@ -65,6 +66,14 @@ class GtkAdditionalTask extends Model
     public function workUnit()
     {
         return $this->belongsTo(WorkUnit::class, 'work_unit_id');
+    }
+
+    /**
+     * Master jenis tugas tambahan. Sumber kebenaran nama tugas.
+     */
+    public function additionalTaskType()
+    {
+        return $this->belongsTo(AdditionalTaskType::class, 'additional_task_type_id');
     }
 
     protected function nomorSk(): Attribute

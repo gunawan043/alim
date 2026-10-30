@@ -57,7 +57,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->uuid('created_by')->nullable();
             $table->timestamps();
-            $table->index(['student_id', 'academic_year_id', 'semester']);
+            $table->index(['student_id', 'academic_year_id', 'semester'], 'dorm_point_ledger_student_year_sem_idx');
         });
         }
     }

@@ -36,7 +36,7 @@ class DivisionPortalService
         $totalValue = $assets->sum('acquisition_value');
 
         $openOrders = WorkOrder::whereHas('asset', fn ($q) => $q->where('work_unit_id', $divisionId))
-            ->whereIn('status', ['assigned', 'in_progress', 'paused'])
+            ->whereIn('status', ['draft', 'dispatched', 'in_progress', 'paused', 'waiting_parts'])
             ->count();
 
         $inventory = DivisionInventory::where('division_id', $divisionId)
@@ -170,7 +170,7 @@ class DivisionPortalService
         $broken = $assets->filter(fn ($a) => in_array($a->condition, ['poor', 'broken', 'rusak'], true))->count();
 
         $pendingWOs = WorkOrder::whereHas('asset', fn ($q) => $q->where('work_unit_id', $divisionId))
-            ->whereIn('status', ['assigned', 'in_progress', 'paused', 'pending'])
+            ->whereIn('status', ['draft', 'dispatched', 'in_progress', 'paused', 'waiting_parts'])
             ->with(['asset', 'technician.profile'])
             ->latest()
             ->limit(10)

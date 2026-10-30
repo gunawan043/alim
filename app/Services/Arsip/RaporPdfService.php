@@ -4,6 +4,7 @@ namespace App\Services\Arsip;
 
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
+use App\Models\DocumentSignature;
 use App\Models\NilaiSumatif;
 use App\Models\RaporDistributionSetting;
 use App\Models\RaportRegistration;
@@ -12,11 +13,16 @@ use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Services\ArabicName\ArabicNameResolver;
+use App\Services\Documents\DocumentSigningService;
+use App\Services\Documents\DocumentVisualService;
+use App\Services\Documents\SchoolLeaderService;
 use App\Services\Ljk\LjkPdfFonts;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Renderer dokumen Rapor (PDF) — SATU sumber untuk:
@@ -97,7 +103,7 @@ class RaporPdfService
             'orang_tua' => 'Orang Tua / Wali',
             'wali_kelas' => 'Wali Kelas',
             'mengetahui_kepala' => 'Mengetahui, Kepala Sekolah',
-            'nip' => 'NIP.',
+            'nip' => 'NUPY.',
             'halaman' => 'Halaman',
             'dari' => 'dari',
             'tanggal' => '',
@@ -109,7 +115,7 @@ class RaporPdfService
      * berdasarkan pengaturan mapel rapor.
      *
      * @param  array<int, string>|null  $reportSubjectIds
-     * @return array{0: \Illuminate\Support\Collection, 1: \Illuminate\Support\Collection}
+     * @return array{0: Collection, 1: Collection}
      */
     private function subjectBooks(
         ?string $schoolId,
@@ -157,7 +163,7 @@ class RaporPdfService
     /**
      * Semua mapel yang tersedia untuk rombel/TA/semester ini.
      *
-     * @return \Illuminate\Support\Collection
+     * @return Collection
      */
     public function availableSubjects(
         ?string $schoolId,
@@ -392,6 +398,7 @@ class RaporPdfService
         Student $student,
         string $bahasa = self::BAHASA_ID,
         ?array $layout = null,
+        array $verificationByStudent = [],
     ): string {
         $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
 
@@ -415,6 +422,9 @@ class RaporPdfService
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($studyGroup->school),
+            'verificationByStudent' => $verificationByStudent,
+            'principal' => app(SchoolLeaderService::class)->forSchool($studyGroup->school),
+            'hideTtdStamp' => in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
         ])->render();
     }
 
@@ -433,10 +443,18 @@ class RaporPdfService
     ): string {
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $layout = $setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout();
+        $verification = $this->issueVerification($studyGroup, $selectedAyId, $selectedSem, $jenis, $student);
 
-        return $this->renderPdf($this->renderHtml(
-            $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $bahasa, $layout
+        $pdf = $this->renderPdf($this->renderHtml(
+            $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $bahasa, $layout,
+            $verification ? [$student->id => $verification] : []
         ), (string) $layout['paper_size']);
+
+        if ($verification) {
+            app(DocumentSigningService::class)->finalize($verification['document'], $pdf);
+        }
+
+        return $pdf;
     }
 
     /**
@@ -457,6 +475,7 @@ class RaporPdfService
         $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
+        $students = collect($students)->filter(fn ($student) => $student instanceof Student)->values();
         $santri = [];
 
         foreach ($students as $student) {
@@ -468,6 +487,17 @@ class RaporPdfService
         }
 
         $layout = $setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout();
+
+        $verificationByStudent = [];
+        foreach ($students as $student) {
+            if (! $student instanceof Student) {
+                continue;
+            }
+            $verification = $this->issueVerification($studyGroup, $selectedAyId, $selectedSem, $jenis, $student);
+            if ($verification) {
+                $verificationByStudent[$student->id] = $verification;
+            }
+        }
 
         $resolver = app(ArabicNameResolver::class);
 
@@ -485,9 +515,77 @@ class RaporPdfService
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($studyGroup->school),
+            'verificationByStudent' => $verificationByStudent,
+            'principal' => app(SchoolLeaderService::class)->forSchool($studyGroup->school),
+            'hideTtdStamp' => in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
         ])->render();
 
-        return $this->renderPdf($html, (string) $layout['paper_size']);
+        $pdf = $this->renderPdf($html, (string) $layout['paper_size']);
+
+        foreach ($verificationByStudent as $verification) {
+            app(DocumentSigningService::class)->finalize($verification['document'], $pdf);
+        }
+
+        return $pdf;
+    }
+
+    /**
+     * @return array{document: DocumentSignature, token: string, url: string, qr_data_uri: string}|null
+     */
+    private function issueVerification(
+        StudyGroup $studyGroup,
+        string $selectedAyId,
+        string $selectedSem,
+        string $jenis,
+        Student $student,
+    ): ?array {
+        try {
+            $mode = app(DocumentVisualService::class)->modeForPrinting($studyGroup->school, 'rapor');
+
+            if ($mode === 'visual') {
+                return null;
+            }
+
+            $signers = [];
+
+            if ($studyGroup->school?->principal_name) {
+                $signers[] = [
+                    'name' => $studyGroup->school->principal_name,
+                    'role' => 'Kepala Satuan Pendidikan',
+                    'signer_order' => 1,
+                ];
+            }
+
+            if ($studyGroup->homeroomTeacher?->name) {
+                $signers[] = [
+                    'user_id' => $studyGroup->homeroomTeacher->id,
+                    'name' => $studyGroup->homeroomTeacher->name,
+                    'role' => 'Wali Kelas',
+                    'signer_order' => 2,
+                ];
+            }
+
+            return app(DocumentSigningService::class)->issue([
+                'document_type' => 'rapor',
+                'document_number' => 'RAPOR-'.strtoupper(substr(hash('sha256', $student->id.$selectedAyId.$selectedSem.$jenis), 0, 12)),
+                'title' => 'Laporan Hasil Belajar Santri',
+                'school_id' => $studyGroup->school_id,
+                'academic_year_id' => $selectedAyId,
+                'semester' => $selectedSem,
+                'subject_type' => 'student',
+                'subject_id' => $student->id,
+                'issued_by' => auth()->id(),
+                'validation_mode' => $mode,
+                'metadata' => [
+                    'jenis' => $jenis,
+                    'study_group_id' => $studyGroup->id,
+                ],
+            ], $signers);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal menerbitkan registry rapor: '.$e->getMessage());
+
+            return null;
+        }
     }
 
     public function renderPdf(string $html, string $paperSize = 'a4'): string

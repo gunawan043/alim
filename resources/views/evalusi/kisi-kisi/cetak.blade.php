@@ -144,7 +144,7 @@
             <td>
                 Mengetahui,<br>Kepala Sekolah
                 <div class="space"></div>
-                <div class="name">{{ $school->principal_name ?? '................................' }}</div>
+                <div class="name">{{ $school->principal_full_name ?? '................................' }}</div>
             </td>
             <td>
                 {{ now()->translatedFormat('d F Y') }}<br>Penyusun

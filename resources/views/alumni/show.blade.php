@@ -145,7 +145,7 @@
                                     </td>
                                 </tr>
                                 <tr><th class="text-muted">Provinsi</th><td>{{ $alumni->student->province?->name ?? '-' }}</td></tr>
-                                <tr><th class="text-muted">Kota/Kab</th><td>{{ $alumni->student->city?->name ?? '-' }}</td></tr>
+                                <tr><th class="text-muted">Kota/Kab</th><td>{{ $alumni->student->city?->display_name ?? '-' }}</td></tr>
                                 <tr><th class="text-muted">Kecamatan</th><td>{{ $alumni->student->district?->name ?? '-' }}</td></tr>
                                 <tr><th class="text-muted">Desa/Kel</th><td>{{ $alumni->student->village?->name ?? '-' }}</td></tr>
                                 <tr><th class="text-muted">Kode Pos</th><td>{{ $alumni->student->postal_code ?: '-' }}</td></tr>

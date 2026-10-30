@@ -78,9 +78,9 @@
             <td style="width:50%">
                 Mengetahui,<br>Kepala Satuan Pendidikan
                 <div class="space"></div>
-                <div class="name">{{ $school?->principal_name ?? '................................' }}</div>
-                @if(($curriculumProfile ?? null)?->isKemenag() && $school?->principal_nupy)<div class="nip">NUPY. {{ $school->principal_nupy }}</div>
-                @elseif($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
+                <div class="name">{{ $school?->principal_full_name ?? '................................' }}</div>
+                @if(($curriculumProfile ?? null)?->isKemenag() && $school?->principal_nupy_display)<div class="nip">NUPY. {{ $school->principal_nupy_display }}</div>
+                @elseif($school?->principal_nupy_display)<div class="nip">NUPY. {{ $school->principal_nupy_display }}</div>@endif
             </td>
             <td style="width:50%">
                 {{ now()->locale('id')->translatedFormat('d F Y') }}<br>Guru Mata Pelajaran

@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class JadwalGeneratorService
 {
+    public function __construct(private TeacherAvailabilityService $availability) {}
+
     /** Jumlah slot maksimum pada grid fallback (jika sekolah belum punya master slot). */
     public const MAX_PERIODS_PER_DAY = 12;
 
@@ -135,6 +137,7 @@ class JadwalGeneratorService
                 ->where('school_id', $schoolId)
                 ->where('is_active', 1)
                 ->orderBy('day_of_week')
+                ->orderBy('time_start')
                 ->orderBy('slot_number')
                 ->get(['day_of_week', 'slot_number', 'time_start', 'time_end', 'is_break']);
 
@@ -154,7 +157,9 @@ class JadwalGeneratorService
             }
         }
 
-        return $this->fallbackSlotsByDay();
+        // Tanpa master slot, jadwal tidak boleh dibuat dari grid "kira-kira".
+        // Generate akan melaporkan kekurangan JP sampai Jam Pelajaran diatur.
+        return [];
     }
 
     /**
@@ -346,6 +351,7 @@ class JadwalGeneratorService
 
                 $slot = $this->findFreeSlotOnDay(
                     $studyGroup->id,
+                    $studyGroup->school_id,
                     $plan['teacher_id'],
                     $academicYearId,
                     $day,
@@ -374,6 +380,7 @@ class JadwalGeneratorService
 
                     $slot = $this->findFreeSlotOnDay(
                         $studyGroup->id,
+                        $studyGroup->school_id,
                         $plan['teacher_id'],
                         $academicYearId,
                         $day,
@@ -412,6 +419,7 @@ class JadwalGeneratorService
      */
     protected function findFreeSlotOnDay(
         string $studyGroupId,
+        ?string $schoolId,
         ?string $teacherId,
         string $academicYearId,
         int $day,
@@ -432,6 +440,10 @@ class JadwalGeneratorService
         });
 
         foreach ($teaching as $slot) {
+            if (! $this->availability->isAllowed($teacherId, $schoolId, $day, $slot['slot'])) {
+                continue;
+            }
+
             if ($this->isTeacherBusy($teacherId, $day, $slot['slot'], $academicYearId)) {
                 continue;
             }

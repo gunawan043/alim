@@ -10,9 +10,11 @@ use App\Mail\LoginOtpMail;
 use App\Models\AuditLog;
 use App\Models\FailedLoginAttempt;
 use App\Models\LoginOtp;
+use App\Models\OtherTeacherTask;
 use App\Models\StudentOperatorAssignment;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
+use App\Models\WebPushSubscription;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use Illuminate\Http\RedirectResponse;
@@ -198,6 +200,15 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
+        $user = Auth::user();
+
+        if ($user) {
+            WebPushSubscription::query()
+                ->where('user_id', $user->id)
+                ->whereNull('revoked_at')
+                ->update(['revoked_at' => now()]);
+        }
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -313,6 +324,19 @@ class LoginController extends Controller
         $jabatanLower = strtolower(trim((string) ($user->employment?->jabatan ?? '')));
         $roleName = strtolower(trim((string) $roles->first()));
 
+        // Bendahara Sekolah adalah tugas tambahan Satuan Pendidikan.
+        $hasBendaharaTask = \App\Models\GtkAdditionalTask::query()
+            ->where('user_id', $user->id)
+            ->where('nama_tugas', 'Bendahara Sekolah')
+            ->where(function ($query) {
+                $query->whereNull('tst')->orWhere('tst', '>=', now()->toDateString());
+            })
+            ->exists();
+
+        if ($hasBendaharaTask) {
+            return redirect()->route('user.dashboard.bendahara', ['userId' => $user->id]);
+        }
+
         $jabatanMap = [
             'kepala satuan pendidikan' => 'user.dashboard.kepala-satuan-pendidikan',
             'wakil kepala satuan' => 'user.dashboard.wakil-kepala',
@@ -365,6 +389,7 @@ class LoginController extends Controller
             'anggota satuan keamanan' => 'user.dashboard',
             'petugas keamanan' => 'user.dashboard',
             'kepala humas & personalia' => 'user.dashboard.personalia',
+            'wakil kepala humas & personalia' => 'user.dashboard.personalia',
             'kepala humas' => 'user.dashboard.personalia',
             'kepala personalia' => 'user.dashboard.personalia',
             'staf humas' => 'user.dashboard.personalia',
@@ -430,8 +455,8 @@ class LoginController extends Controller
             ? $user->tugasTambahan->pluck('nama')->all()
             : [];
 
-        if (class_exists(\App\Models\OtherTeacherTask::class)) {
-            $userTugas = array_merge($userTugas, \App\Models\OtherTeacherTask::query()
+        if (class_exists(OtherTeacherTask::class)) {
+            $userTugas = array_merge($userTugas, OtherTeacherTask::query()
                 ->where('teacher_id', $user->id)
                 ->where('is_active', true)
                 ->pluck('task_name')

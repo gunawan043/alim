@@ -14,6 +14,7 @@ use App\Models\StudentClassHistory;
 use App\Models\StudentMutationIn;
 use App\Models\StudentMutationOut;
 use App\Models\StudyGroup;
+use App\Services\StudentEnrollmentService;
 use App\Services\Uks\StudentHealthSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -28,7 +29,11 @@ class StudentController extends Controller
     {
         $userId = request()->route('userId');
         $user = $request->user();
-        $query = Student::with(['school', 'classHistories.studyGroup']);
+        // ARSIP: ?arsip=1 menampilkan data santri yang diarsipkan (soft delete).
+        $showArchived = $request->boolean('arsip');
+        $query = $showArchived
+            ? Student::onlyTrashed()->with(['school', 'classHistories.studyGroup'])
+            : Student::with(['school', 'classHistories.studyGroup']);
 
         // User asrama hanya boleh melihat Santri yang mondok (active DormitoryResident).
         if ($user && $user->isDormitoryUser()) {
@@ -113,6 +118,12 @@ class StudentController extends Controller
         if ($request->filled('is_pip_eligible')) {
             $query->where('is_pip_eligible', $request->boolean('is_pip_eligible'));
         }
+        if ($request->filled('profile_incomplete')) {
+            $query->profileIncomplete();
+        }
+        if ($request->filled('entry_source')) {
+            $query->where('entry_source', $request->entry_source);
+        }
         if ($request->filled('grade_level_id')) {
             $query->whereHas('classHistories', fn ($q) => $q
                 ->when($effectiveAyId, fn ($qq) => $qq->where('academic_year_id', $effectiveAyId), fn ($qq) => $qq->where('is_active', true))
@@ -146,7 +157,7 @@ class StudentController extends Controller
             ? $academicYears->firstWhere('id', $activeAcademicYearId)
             : null;
 
-        $statsQuery = Student::query();
+        $statsQuery = $showArchived ? Student::onlyTrashed() : Student::query();
         if ($schoolId) {
             $statsQuery->where('school_id', $schoolId);
         } elseif ($request->filled('school_id')) {
@@ -303,6 +314,7 @@ class StudentController extends Controller
             'provinces', 'overCapacityRombels', 'isCurrentRombelOverCapacity',
             'gradeLevels', 'mutationInCount', 'mutationOutCount',
             'academicYears', 'selectedAcademicYearId', 'rombelDisplayAyId', 'activeAcademicYearId', 'isArchiveAy',
+            'showArchived',
         ))->with('isDormitoryUser', optional($request->user())->isDormitoryUser() ?? false);
     }
 
@@ -329,7 +341,8 @@ class StudentController extends Controller
 
         $data = $request->validate([
             'school_id' => $schoolId ? 'sometimes|exists:schools,id' : 'required|exists:schools,id',
-            'nisn' => 'required|string|max:20|unique:students,nisn',
+            // NISN boleh kosong (santri pindahan) dan dilengkapi kemudian.
+            'nisn' => 'nullable|string|max:20|unique:students,nisn',
             'nis' => ['nullable', 'string', 'max:20', Rule::unique('students', 'nis')->where('school_id', $schoolId ?? $request->input('school_id'))],
             'nik' => 'nullable|string|max:30|unique:students,nik',
             'no_kk' => 'nullable|string|max:30',
@@ -419,11 +432,6 @@ class StudentController extends Controller
             $data['school_id'] = $schoolId;
         }
 
-        // Jangan izinkan form memindahkan santri ke sekolah lain.
-        if ($schoolId) {
-            $data['school_id'] = $schoolId;
-        }
-
         $this->markArabicNameReviewed($data, $request);
 
         // Handle photo upload
@@ -433,6 +441,15 @@ class StudentController extends Controller
         }
 
         $student = Student::create($data);
+
+        // Jalur masuk non-mutasi tetap harus tercatat asal-usulnya.
+        app(StudentEnrollmentService::class)->recordEntry(
+            $student,
+            StudentEnrollmentService::SOURCE_MANUAL,
+            $student->entry_date?->toDateString(),
+            $request->user()?->id,
+            ['status' => $student->status],
+        );
 
         if ($request->hasAny(['height', 'weight', 'head_circumference'])) {
             app(StudentHealthSyncService::class)->sync($student);
@@ -496,7 +513,7 @@ class StudentController extends Controller
 
         $data = $request->validate([
             'school_id' => 'required|exists:schools,id',
-            'nisn' => 'required|string|max:20|unique:students,nisn,'.$santriUuid,
+            'nisn' => 'nullable|string|max:20|unique:students,nisn,'.$santriUuid,
             'nis' => ['nullable', 'string', 'max:20', Rule::unique('students', 'nis')->where('school_id', $request->input('school_id', $student->school_id))->ignore($santriUuid)],
             'nik' => 'nullable|string|max:30|unique:students,nik,'.$santriUuid,
             'no_kk' => 'nullable|string|max:30',
@@ -571,6 +588,11 @@ class StudentController extends Controller
             'remove_photo' => 'nullable|boolean',
         ]);
 
+        // Jangan izinkan form memindahkan santri ke sekolah lain.
+        if ($schoolId) {
+            $data['school_id'] = $schoolId;
+        }
+
         $this->markArabicNameReviewed($data, $request);
 
         // Handle photo upload
@@ -613,19 +635,45 @@ class StudentController extends Controller
             ->with('success', 'Data siswa berhasil diperbarui.');
     }
 
+    /**
+     * Arsipkan data santri (soft delete).
+     *
+     * Data santri tidak pernah dihapus permanen: riwayat rombel, mutasi, nilai,
+     * kehadiran, dan audit tetap tersimpan, dan data dapat dipulihkan kembali.
+     * Foto juga tidak dihapus agar ikut pulih bersama datanya.
+     */
     public function destroy(Request $request, string $santriUuid)
     {
         $this->abortIfDormitoryUser($request);
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
         $this->authorizeStudentAccess($request, $student);
-        if ($student->photo_path) {
-            Storage::disk('public')->delete($student->photo_path);
-        }
+
         $student->delete();
 
-        return redirect()->route('user.students.index', ['userId' => $userId])
-            ->with('success', 'Siswa berhasil dihapus.');
+        return redirect()->route('user.students.index', ['userId' => $userId, 'arsip' => 1])
+            ->with('success', 'Data santri diarsipkan. Riwayatnya tetap tersimpan dan dapat dipulihkan.');
+    }
+
+    /**
+     * Pulihkan data santri dari arsip.
+     */
+    public function restore(Request $request, string $santriUuid)
+    {
+        $this->abortIfDormitoryUser($request);
+        $userId = $request->route('userId');
+        $student = Student::withoutGlobalScope('school_context')->withTrashed()->findOrFail($santriUuid);
+        $this->authorizeStudentAccess($request, $student);
+
+        if (! $student->trashed()) {
+            return redirect()->route('user.students.show', ['userId' => $userId, 'santriUuid' => $student->id])
+                ->with('info', 'Data santri ini tidak berada di arsip.');
+        }
+
+        $student->restore();
+
+        return redirect()->route('user.students.show', ['userId' => $userId, 'santriUuid' => $student->id])
+            ->with('success', 'Data santri berhasil dipulihkan dari arsip.');
     }
 
     // ─── Import via Excel ───────────────────────────────────────────────

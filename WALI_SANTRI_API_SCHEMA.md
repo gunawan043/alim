@@ -1055,8 +1055,7 @@ Sama dengan poin 13 — ambil dari `student_class_histories`:
 | notes | text | Catatan |
 | created_at | timestamp | |
 
----
-
+--
 ## Fitur yang BELUM Ada di API (Perlu Dibuat Baru)
 
 | Menu | Endpoint Baru | Tabel |

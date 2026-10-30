@@ -113,7 +113,7 @@
                                         </div>
                                         <div class="d-flex align-items-center gap-2 mb-2">
                                             <i class="ri-map-pin-line text-muted"></i>
-                                            <small class="text-muted text-truncate d-block" style="max-width:220px">{{ $school->city?->name ?? ($school->address ?? '-') }}</small>
+                                            <small class="text-muted text-truncate d-block" style="max-width:220px">{{ $school->city?->display_name ?? ($school->address ?? '-') }}</small>
                                         </div>
                                         <div class="d-flex align-items-center gap-2 mb-2">
                                             <i class="ri-medal-line text-muted"></i>

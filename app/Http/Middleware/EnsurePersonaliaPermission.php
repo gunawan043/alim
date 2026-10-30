@@ -55,6 +55,20 @@ class EnsurePersonaliaPermission
         }
 
         $route = $request->route()?->getName() ?? '';
+
+        // TU (Tata Usaha) berwenang atas pengaturan absensi GTK (toleransi waktu &
+        // geolokasi QR). Aksi tulisnya tetap dibatasi AbsensiGtkController::canManageQrSettings().
+        if ($module === 'absensi' && $this->isTataUsaha($user)) {
+            // Pengaturan (termasuk simpan) → TU berwenang penuh.
+            if (str_starts_with($route, 'user.absensi-gtk.settings')) {
+                return $next($request);
+            }
+            // Halaman lain modul absensi → TU boleh melihat (baca-saja).
+            if ($request->isMethod('GET')) {
+                return $next($request);
+            }
+        }
+
         if ($module === 'cuti' && str_contains($route, 'approve') || ($module === 'cuti' && str_contains($route, 'reject'))) {
             if ($user->hasRole('Pimpinan')) {
                 return $next($request);
@@ -87,9 +101,31 @@ class EnsurePersonaliaPermission
         }
 
         $allowed = function_exists('canPermission') ? canPermission($permission) : false;
+
+        // Pemilik modul absensi GTK: permission absensi_* belum tentu ter-assign
+        // pada role lama, sehingga modul tidak boleh mengunci pemiliknya sendiri.
+        if (! $allowed && $module === 'absensi'
+            && $user->hasAnyRole(['Humas Personalia', 'Personalia'])) {
+            $allowed = true;
+        }
+
         abort_unless($allowed, 403, 'Anda tidak memiliki izin untuk modul Personalia ini.');
 
         return $next($request);
+    }
+
+    /**
+     * Apakah user memegang jabatan Tata Usaha (termasuk varian "Staf Tata Usaha ...").
+     */
+    private function isTataUsaha($user): bool
+    {
+        foreach (\App\Support\UserJabatan::candidates($user) as $jabatan) {
+            if (str_contains($jabatan, 'tata usaha')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function requiresHead(string $route): bool

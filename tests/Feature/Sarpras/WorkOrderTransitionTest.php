@@ -3,24 +3,14 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Services\Sarpras\StateMachineRegistry;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class WorkOrderTransitionTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use RefreshDatabase;
 
     /** @test */
     public function asset_can_move_from_active_to_borrowed()

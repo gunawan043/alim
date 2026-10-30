@@ -20,8 +20,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['work_unit_id', 'additional_task_type_id'], 'task_type_work_unit_unique');
-            $table->foreign('work_unit_id')->references('id')->on('work_units')->cascadeOnDelete();
-            $table->foreign('additional_task_type_id')->references('id')->on('additional_task_types')->cascadeOnDelete();
+            $table->foreign('work_unit_id', 'task_type_wu_hours_work_unit_fk')->references('id')->on('work_units')->cascadeOnDelete();
+            $table->foreign('additional_task_type_id', 'task_type_wu_hours_type_fk')->references('id')->on('additional_task_types')->cascadeOnDelete();
         });
     }
 

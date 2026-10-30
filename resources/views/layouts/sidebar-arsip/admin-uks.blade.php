@@ -53,8 +53,8 @@ function isActiveUks($routeName, $pattern) {
     </a>
 </li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveUks($currentRoute, 'user.uks.counseling-records') ? ' active' : '' }}"
-       href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}">
+    <a class="nav-link menu-link{{ isActiveUks($currentRoute, 'user.kesiswaan.counseling-records') ? ' active' : '' }}"
+       href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}">
         <i class="ri-chat-1-line"></i>
         <span>Konseling</span>
     </a>

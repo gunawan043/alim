@@ -34,6 +34,7 @@ class AssetMaintenanceLog extends Model
         'maintenance_type',
         'log_type',
         'maintenance_date',
+        'reported_by',
         'performed_by',
         'handled_by',
         'vendor_name',
@@ -46,8 +47,13 @@ class AssetMaintenanceLog extends Model
         'parts_replaced',
         'next_action_needed',
         'next_due_date',
-        'photo_path',
+        'next_maintenance_date',
+        'before_photo_path',
+        'after_photo_path',
         'document_path',
+        'status',
+        'started_at',
+        'completed_at',
         'notes',
         'created_by',
     ];
@@ -55,6 +61,9 @@ class AssetMaintenanceLog extends Model
     protected $casts = [
         'maintenance_date' => 'date',
         'next_due_date' => 'date',
+        'next_maintenance_date' => 'date',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
         'actual_cost' => 'decimal:2',
     ];
 

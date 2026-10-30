@@ -200,6 +200,39 @@ $typeParam = $achievementType;
                 </div>
             </div>
 
+            <div class="card mb-3">
+                <div class="card-body py-3">
+                    <div class="form-check form-switch">
+                        <input type="hidden" name="notify_wali" value="0">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               id="notify_wali" name="notify_wali" value="1"
+                               {{ old('notify_wali', '1') == '1' ? 'checked' : '' }}>
+                        <label class="form-check-label fw-semibold" for="notify_wali">
+                            Kirim WhatsApp prestasi ke wali santri
+                        </label>
+                    </div>
+                    <div class="form-text mb-3">
+                        WhatsApp dikirim setelah setiap baris prestasi disimpan, sebelum approval asrama.
+                        Untuk import besar, nonaktifkan jika notifikasi tidak diperlukan agar tidak membanjir.
+                    </div>
+
+                    <div class="form-check form-switch">
+                        <input type="hidden" name="notify_dormitory" value="0">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               id="notify_dormitory" name="notify_dormitory" value="1"
+                               {{ old('notify_dormitory', '0') == '1' ? 'checked' : '' }}>
+                        <label class="form-check-label fw-semibold" for="notify_dormitory">
+                            Kirim notifikasi in-app ke asrama
+                        </label>
+                    </div>
+                    <div class="form-text">
+                        Pengajuan penghargaan asrama tetap dibuat untuk setiap prestasi santri yang tinggal di asrama.
+                        Aktifkan opsi ini jika Kepala/Wakil Asrama juga perlu menerima notifikasi in-app.
+                        Tidak ada WhatsApp ke asrama.
+                    </div>
+                </div>
+            </div>
+
             <div class="d-flex justify-content-end gap-2 mb-4">
                 <a href="{{ route('user.student-achievement.index', ['userId' => $userId, 'type' => $typeParam]) }}"
                    class="btn btn-light">

@@ -7,10 +7,13 @@
  * armada/transport (tabel `vehicles`), kebersihan lingkungan.
  *
  * Jabatan: Kepala/Koordinator/TU URT, Teknisi Maintenance, Petugas Kebersihan,
- * Driver/Pengemudi. Tugas: Petugas Gudang URT, Petugas Armada Kendaraan,
- * Petugas Ticketing Work Order.
+ * Petugas Pertamanan, Janitor, Driver/Pengemudi. Tugas: Petugas Gudang URT,
+ * Petugas Armada Kendaraan, Petugas Ticketing Work Order.
  *
- * Catatan: modul Armada (kendaraan/BBM/servis) belum punya tabel → tanpa widget.
+ * Catatan: modul Armada (kendaraan/BBM/servis) telah aktif — lihat controller
+ * SarprasVehicleController dan tabel vehicles/vehicle_trips/vehicle_fuel_logs/
+ * vehicle_service_logs. Modul Pertamanan & Kebersihan dikelola lewat
+ * SarprasItemManagerController (menu "Pengaturan Item").
  */
 
 $welcome = ['welcome-banner'];
@@ -50,6 +53,10 @@ $blokKebersihan = [
     'stat-inspeksi-lulus',
     'chart-skor-kebersihan',
     'table-inspeksi-terbaru',
+];
+$blokPertamanan = [
+    'stat-agenda-hari-ini',
+    'chart-skor-kebersihan',
 ];
 
 $blokPemeliharaan = [
@@ -150,6 +157,16 @@ return [
             'label'   => 'Janitor',
             'widgets' => [
                 ...$welcome, ...$blokKebersihan,
+                'stat-wo-open', 'table-wo-terbaru',
+                'quick-action-urt',
+            ],
+        ],
+
+        // ── Petugas Pertamanan ───────────────────────────────────
+        'tenaga_rumah_tangga_sarpras_petugas_pertamanan' => [
+            'label'   => 'Petugas Pertamanan',
+            'widgets' => [
+                ...$welcome, ...$blokPertamanan, ...$blokKebersihan,
                 'stat-wo-open', 'table-wo-terbaru',
                 'quick-action-urt',
             ],

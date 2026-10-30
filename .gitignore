@@ -15,6 +15,8 @@ true,
 /storage/framework/sessions/
 /storage/framework/views/
 /storage/logs/
+/database/*.sqlite
+/database/database.sqlite
 /public/hot
 /public/storage
 /bootstrap/cache/
@@ -28,6 +30,11 @@ Homestead.json
 .env.testing
 SECURITY_AUDIT_*.md
 phpbrew
+
+# Konfigurasi lokal OpenCode — JANGAN di-push
+opencode.json
+opencode.jsonc
+.opencode/
 
 # Artefak lokal/debug
 /public/tmp-*.html

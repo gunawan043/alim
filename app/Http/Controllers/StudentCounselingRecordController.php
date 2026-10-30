@@ -141,7 +141,7 @@ class StudentCounselingRecordController extends Controller
         StudentCounselingRecord::create($validated);
 
         return redirect()
-            ->route('user.uks.counseling-records.index', ['userId' => $userId])
+            ->route('user.kesiswaan.counseling-records.index', ['userId' => $userId])
             ->with('success', 'Catatan konseling berhasil disimpan.');
     }
 
@@ -215,7 +215,7 @@ class StudentCounselingRecordController extends Controller
         $record->update($validated);
 
         return redirect()
-            ->route('user.uks.counseling-records.show', ['userId' => $userId, 'uuid' => $uuid])
+            ->route('user.kesiswaan.counseling-records.show', ['userId' => $userId, 'uuid' => $uuid])
             ->with('success', 'Catatan konseling berhasil diperbarui.');
     }
 
@@ -225,7 +225,7 @@ class StudentCounselingRecordController extends Controller
         $record->delete();
 
         return redirect()
-            ->route('user.uks.counseling-records.index', ['userId' => $userId])
+            ->route('user.kesiswaan.counseling-records.index', ['userId' => $userId])
             ->with('success', 'Catatan konseling berhasil dihapus.');
     }
 }

@@ -11,7 +11,6 @@ use App\Models\DormitoryResident;
 use App\Models\DormitoryViolation;
 use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
-use App\Services\GuardianGradeColumnService;
 use App\Models\StudentAchievement;
 use App\Models\StudentAttendance;
 use App\Models\StudentClassHistory;
@@ -23,6 +22,8 @@ use App\Models\TahfidzSetoran;
 use App\Models\TahfidzStudentTarget;
 use App\Models\ViolationPoint;
 use App\Models\WaliSantri;
+use App\Services\GuardianGradeColumnService;
+use App\Services\SumatifHarianService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -155,7 +156,7 @@ class SantriDataController extends Controller
                     's5' => $n->s5,
                     's6' => $n->s6,
                     'sumatif_harian' => $n->sumatif_harian,
-                    'kolom_sumatif' => app(\App\Services\SumatifHarianService::class)->columnsFor($n->adminBook),
+                    'kolom_sumatif' => app(SumatifHarianService::class)->columnsFor($n->adminBook),
                     'rs' => $n->rs,
                     'sts_murni' => $n->sts_murni,
                     'sts' => $n->sts,
@@ -586,7 +587,10 @@ class SantriDataController extends Controller
                 'event_date' => $a->event_date?->format('Y-m-d'),
                 'event_location' => $a->event_location,
                 'is_verified' => $a->is_verified,
-                'certificate_url' => $a->certificate_url,
+                'certificate_available' => (bool) $a->certificate_path,
+                'certificate_download_url' => $a->certificate_path
+                    ? url('/api/mobile/v1/'.$user->id.'/wali/achievements/'.$a->id.'/certificate')
+                    : null,
                 'photo_url' => $a->photo_url,
             ]);
 

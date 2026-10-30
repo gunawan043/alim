@@ -637,6 +637,18 @@
                        target="_blank" class="btn btn-outline-primary w-100 btn-sm">
                         <i class="ri-printer-line me-1"></i> Cetak Kartu Izin
                     </a>
+                    @if($canAuthorizePickup && in_array($permit->status, ['approved', 'overdue']) && ! $permit->card_issued_at)
+                        <form method="POST" action="{{ route('user.asrama.permits.issue-card', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'permitUuid' => $permit->id]) }}" class="mt-2">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-success w-100 btn-sm">
+                                <i class="ri-hand-coin-line me-1"></i> Tandai Kartu Diserahkan
+                            </button>
+                        </form>
+                    @elseif($permit->card_issued_at)
+                        <div class="small text-success mt-2">
+                            <i class="ri-checkbox-circle-line me-1"></i>Kartu diserahkan {{ $permit->card_issued_at->format('d/m/Y H:i') }}
+                        </div>
+                    @endif
                 </div>
             </div>
             @endif
@@ -648,7 +660,7 @@
                     <h6 class="card-title mb-0 fw-bold text-warning"><i class="ri-settings-3-line me-2"></i>Aksi Admin</h6>
                 </div>
                 <div class="card-body p-3 d-flex flex-column gap-2">
-                    @if($permit->status === 'pending')
+                    @if($permit->status === 'pending' && $canApprovePermit)
                         <button type="button" class="btn btn-success w-100 btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
                             <i class="ri-check-line me-1"></i> Setujui Izin
                         </button>
@@ -699,7 +711,7 @@
         </div>
     </div>
 
-    @if($permit->status === 'pending')
+    @if($permit->status === 'pending' && $canApprovePermit)
     {{-- Modal Setujui Izin dengan Check Kuota --}}
     <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel">
         <div class="modal-dialog modal-lg">
@@ -867,6 +879,25 @@
             <label class="form-label fw-semibold">Waktu Kembali <span class="text-danger">*</span></label>
             <input type="datetime-local" name="actual_return_datetime" class="form-control"
                    value="{{ now()->format('Y-m-d\TH:i') }}" required>
+
+            <div class="form-check mt-3">
+                <input type="checkbox" name="card_returned" id="card_returned" class="form-check-input" value="1" required>
+                <label class="form-check-label" for="card_returned">Kartu izin sudah dikembalikan</label>
+            </div>
+            <div class="form-check mt-2">
+                <input type="checkbox" name="inspection_done" id="inspection_done" class="form-check-input" value="1" required>
+                <label class="form-check-label" for="inspection_done">Pemeriksaan barang bawaan sudah dilakukan</label>
+            </div>
+            <div class="mt-3">
+                <label class="form-label fw-semibold">Alasan jika terlambat</label>
+                <textarea name="late_return_reason" class="form-control" rows="2" maxlength="1000"
+                          placeholder="Wajib diisi jika melewati waktu izin">{{ old('late_return_reason') }}</textarea>
+            </div>
+            <div class="mt-2">
+                <label class="form-label small text-muted">Catatan pemeriksaan (opsional)</label>
+                <input type="text" name="return_notes" class="form-control form-control-sm" maxlength="1000"
+                       value="{{ old('return_notes') }}">
+            </div>
         </form>
     </x-modal-confirm>
     @endif

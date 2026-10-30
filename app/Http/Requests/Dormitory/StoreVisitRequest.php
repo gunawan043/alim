@@ -18,13 +18,28 @@ class StoreVisitRequest extends FormRequest
             'student_id' => 'required|exists:students,id',
             'room_id' => 'nullable|exists:dormitory_rooms,id',
             'visitor_name' => 'required|string|max:191',
-            'visitor_id_number' => 'nullable|string|max:30',
+            'visitor_id_number' => [
+                'nullable',
+                'string',
+                'max:30',
+                Rule::requiredIf(fn () => ! in_array(
+                    $this->input('visitor_relationship'),
+                    ['pihak_pondok', 'Pihak pondok'],
+                    true
+                )),
+            ],
             'visitor_phone' => 'nullable|string|max:20',
+            'visitor_gender' => 'required|in:putra,putri',
             'visitor_relationship' => ['required', Rule::in(['mahrom', 'wali', 'keluarga', 'pihak_pondok', 'lainnya', 'Pihak pondok', ' Lainnya'])],
             'purpose' => ['required', Rule::in(['menjenguk', 'bawa_bantuan', 'pertemuan_wali', 'antar_jemput', 'lainnya', 'Lainnya'])],
             'expected_arrival_datetime' => 'required|date',
             'expected_meet_duration_minutes' => 'nullable|integer|min:5|max:480',
-            'visitor_count' => 'nullable|integer|min:1|max:100',
+            'visitor_count' => 'required|integer|min:1|max:100',
+            'rules_acknowledged' => 'required|accepted',
+            'schedule_exception' => 'nullable|boolean',
+            'is_special_permission' => 'nullable|boolean',
+            'schedule_exception_reason' => 'nullable|required_if:schedule_exception,1|string|max:500',
+            'linked_permit_id' => 'nullable|uuid|exists:dormitory_permits,id',
             'notes' => 'nullable|string',
         ];
     }
@@ -57,6 +72,10 @@ class StoreVisitRequest extends FormRequest
             'expected_meet_duration_minutes.min' => 'Durasi minimal 5 menit.',
             'expected_meet_duration_minutes.max' => 'Durasi maksimal 8 jam.',
             'visitor_count.min' => 'Jumlah pengunjung minimal 1 orang.',
+            'visitor_id_number.required' => 'Nomor identitas (KTP/kartu kunjungan) wajib diisi untuk tamu eksternal.',
+            'visitor_gender.required' => 'Gender tamu wajib dipilih untuk menjaga pemisahan putra/putri.',
+            'rules_acknowledged.accepted' => 'Tamu wajib menyetujui aturan kunjungan.',
+            'schedule_exception_reason.required_if' => 'Alasan pengecualian jadwal wajib diisi.',
         ];
     }
 }

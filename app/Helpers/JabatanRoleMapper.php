@@ -140,12 +140,14 @@ class JabatanRoleMapper
         // ── Keuangan — check specific before generic "tata usaha" ─────────
         if (str_starts_with($normalized, 'kepala tata usaha')
             || str_starts_with($normalized, 'staf tata usaha')
-            || str_starts_with($normalized, 'bendahara sekolah')
             || str_starts_with($normalized, 'kepala keuangan')
             || str_starts_with($normalized, 'staf keuangan')
             || $normalized === 'bendahara') {
             return 'Keuangan';
         }
+
+        // "Bendahara Sekolah" bukan jabatan/role divisi Keuangan. Jabatan ini
+        // berada di Satuan Pendidikan dan juga dapat dipakai sebagai tugas tambahan.
 
         // ── Teknologi Informasi ───────────────────────────────────────────
         if (str_starts_with($normalized, 'kepala unit teknologi informasi')

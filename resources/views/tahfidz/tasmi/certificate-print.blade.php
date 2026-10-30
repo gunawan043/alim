@@ -38,10 +38,16 @@
         <div class="lead">Diberikan kepada / Granted to:</div>
         <div class="name">{{ $certificate->student?->name }}</div>
         <div class="name-ar" dir="rtl">(A) {{ $certificate->student_name_arabic }}</div>
+        @if($certificate->class_name)
+            <div class="lead">Kelas: {{ $certificate->class_name }}</div>
+        @endif
 
         <div class="lead">Telah menyelesaikan Tasmi’ Al-Qur’an</div>
         <div class="juz">{{ $certificate->golongan ?? $certificate->certificate_type_label }}</div>
         <div class="lead">Juz: {{ implode(', ', $certificate->juz_detail ?? []) ?: $certificate->total_juz_completed }}</div>
+        @if($certificate->materi)
+            <div class="lead">Materi: {{ $certificate->materi }}</div>
+        @endif
 
         <div class="score-box">
             <div class="small">Nilai Akhir</div>

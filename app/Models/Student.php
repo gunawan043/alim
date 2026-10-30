@@ -4,14 +4,16 @@ namespace App\Models;
 
 use App\Models\Traits\LogsDeletion;
 use App\Services\UnifiedStudentTimelineService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Student extends Model
 {
-    use LogsDeletion;
+    use LogsDeletion, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -47,7 +49,8 @@ class Student extends Model
         'guardian_name', 'guardian_birth_year', 'guardian_education', 'guardian_occupation',
         'guardian_income', 'guardian_nik',
         // Pendaftaran
-        'child_number', 'previous_school', 'entry_date', 'entry_grade_level',
+        'child_number', 'previous_school', 'entry_date', 'entry_grade_level', 'entry_source',
+        'exit_reason', 'exit_date',
         'skhun', 'ujian_national_number', 'certificate_number', 'birth_certificate_number',
         // PIP/KIP/KPS
         'is_kps_receiver', 'kps_number',
@@ -65,6 +68,7 @@ class Student extends Model
         'birth_date' => 'date',
         'name_ar_reviewed_at' => 'datetime',
         'entry_date' => 'date',
+        'exit_date' => 'date',
         'origin_graduation_year' => 'integer',
         'graduation_date' => 'date',
         'father_birth_year' => 'integer',
@@ -82,6 +86,33 @@ class Student extends Model
     ];
 
     protected $appends = ['gender_text', 'status_text', 'special_needs_text'];
+
+    /**
+     * Label jalur masuk untuk tampilan.
+     */
+    public function getEntrySourceTextAttribute(): string
+    {
+        return match ($this->entry_source) {
+            'manual' => 'Tambah manual',
+            'import' => 'Import Excel',
+            'mutation' => 'Mutasi masuk',
+            'guardian_mobile' => 'Registrasi wali (aplikasi)',
+            default => '-',
+        };
+    }
+
+    /**
+     * Label alasan keluar untuk tampilan.
+     */
+    public function getExitReasonTextAttribute(): string
+    {
+        return match ($this->exit_reason) {
+            'mutation' => 'Mutasi keluar',
+            'graduation' => 'Lulus',
+            'dropout' => 'Drop out',
+            default => '-',
+        };
+    }
 
     // ── Relationships ────────────────────────────────────────────
 
@@ -168,6 +199,53 @@ class Student extends Model
         return $this->hasOne(StudentHealthRecord::class);
     }
 
+    // ── Kelengkapan Data ─────────────────────────────────────────
+    // Satu daftar acuan dipakai bersama oleh badge Data Santri, halaman
+    // detail santri, dan widget dashboard agar definisinya konsisten.
+
+    public const PROFILE_FIELDS = [
+        'nis' => 'NIS',
+        'nik' => 'NIK',
+        'birth_date' => 'Tanggal lahir',
+        'father_name' => 'Nama ayah',
+        'mother_name' => 'Nama ibu',
+    ];
+
+    /**
+     * Label field penting yang masih kosong.
+     *
+     * @return array<int, string>
+     */
+    public function missingProfileFields(): array
+    {
+        $missing = [];
+
+        foreach (self::PROFILE_FIELDS as $column => $label) {
+            if (blank($this->getAttribute($column))) {
+                $missing[] = $label;
+            }
+        }
+
+        return $missing;
+    }
+
+    public function isProfileComplete(): bool
+    {
+        return $this->missingProfileFields() === [];
+    }
+
+    /**
+     * Filter santri yang datanya belum lengkap (dipakai daftar Data Santri).
+     */
+    public function scopeProfileIncomplete(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            foreach (array_keys(self::PROFILE_FIELDS) as $column) {
+                $q->orWhereNull($column)->orWhere($column, '');
+            }
+        });
+    }
+
     // ── Accessors ────────────────────────────────────────────────
 
     public function getGenderTextAttribute(): string
@@ -208,7 +286,7 @@ class Student extends Model
             $this->hamlet,
             $this->village?->name,
             $this->district?->name,
-            $this->city?->name,
+            $this->city?->display_name,
             $this->province?->name,
             $this->postal_code ? "{$this->postal_code}" : null,
         ]);

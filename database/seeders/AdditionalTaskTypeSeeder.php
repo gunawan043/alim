@@ -11,9 +11,8 @@ class AdditionalTaskTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        // Clear existing data
-        AdditionalTaskType::query()->delete();
-
+        // Jangan menghapus tipe buatan pengguna. Seeder hanya memastikan
+        // tipe bawaan tersedia dan tetap idempoten.
         $data = [
             [
                 'jenis_gtk' => 'Satuan Pendidikan',
@@ -33,6 +32,7 @@ class AdditionalTaskTypeSeeder extends Seeder
                     'Pembina Ekstrakurikuler',
                     'Tim Kurikulum',
                     'Tim Kesiswaan',
+                    'Bendahara Sekolah',
                 ],
             ],
             [
@@ -72,15 +72,16 @@ class AdditionalTaskTypeSeeder extends Seeder
             }
 
             foreach ($section['tasks'] as $order => $taskName) {
-                AdditionalTaskType::create([
-                    'id' => Str::uuid(),
-                    'jenis_gtk_id' => $jenisGtk->id,
-                    'nama' => $taskName,
-                    'kode' => Str::slug($taskName),
-                    'deskripsi' => null,
-                    'urutan' => $order + 1,
-                    'is_active' => true,
-                ]);
+                AdditionalTaskType::updateOrCreate(
+                    ['kode' => Str::slug($taskName)],
+                    [
+                        'jenis_gtk_id' => $jenisGtk->id,
+                        'nama' => $taskName,
+                        'deskripsi' => null,
+                        'urutan' => $order + 1,
+                        'is_active' => true,
+                    ]
+                );
             }
 
             $this->command->info("✅ {$section['jenis_gtk']}: ".count($section['tasks']).' tugas tambahan');

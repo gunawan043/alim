@@ -390,6 +390,14 @@
                                         class="btn btn-outline-success">
                                         <i class="ri-check-double-line align-bottom me-1"></i> Review Nama Arab
                                     </a>
+                                    <a href="{{ route('user.students.graduation-certificate.settings', ['userId' => $userId]) }}"
+                                        class="btn btn-outline-primary" title="Atur format dan mata pelajaran Surat Keterangan Lulus">
+                                        <i class="ri-file-paper-2-line align-bottom me-1"></i> Format SKL
+                                    </a>
+                                    <a href="{{ route('user.students.reconciliation', ['userId' => $userId]) }}"
+                                        class="btn btn-outline-warning" title="Periksa data santri yang tidak konsisten">
+                                        <i class="ri-error-warning-line align-bottom me-1"></i> Rekonsiliasi
+                                    </a>
                                 @else
                                     <span class="badge bg-info-subtle text-info">
                                         <i class="ri-information-line me-1"></i>
@@ -543,6 +551,17 @@
                                                 </select>
                                             </div>
                                             <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Jalur Masuk</label>
+                                                <select name="entry_source" class="form-select">
+                                                    <option value="">Semua Jalur</option>
+                                                    @foreach (['manual' => 'Tambah manual', 'import' => 'Import Excel', 'mutation' => 'Mutasi masuk', 'guardian_mobile' => 'Registrasi wali'] as $value => $label)
+                                                        <option value="{{ $value }}"
+                                                            {{ request('entry_source') === $value ? 'selected' : '' }}>
+                                                            {{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
                                                 <label class="form-label fw-semibold small">Agama</label>
                                                 <select name="religion" class="form-select">
                                                     <option value="">Semua Agama</option>
@@ -606,8 +625,8 @@
                 <div class="card-header py-2 bg-light border-bottom">
                     <div class="d-flex flex-wrap align-items-center">
                         <span class="text-muted small fw-semibold me-2"><i class="ri-filter-3-line me-1"></i>Filter Cepat:</span>
-                        <a href="{{ request()->fullUrlWithQuery(['status' => null, 'gender' => null, 'is_pip_eligible' => null, 'alumni_filter' => null, 'page' => null]) }}"
-                           class="filter-badge {{ !request('status') && !request('is_pip_eligible') && !request('alumni_filter') ? 'active' : '' }}">Semua</a>
+                        <a href="{{ request()->fullUrlWithQuery(['status' => null, 'gender' => null, 'is_pip_eligible' => null, 'alumni_filter' => null, 'profile_incomplete' => null, 'arsip' => null, 'page' => null]) }}"
+                           class="filter-badge {{ !request('status') && !request('is_pip_eligible') && !request('alumni_filter') && !request('profile_incomplete') && !request('arsip') ? 'active' : '' }}">Semua</a>
                         <a href="{{ request()->fullUrlWithQuery(['status' => 'active', 'page' => null]) }}"
                            class="filter-badge {{ request('status') === 'active' ? 'active' : '' }}"><i class="ri-checkbox-circle-line"></i>Aktif</a>
                         <a href="{{ request()->fullUrlWithQuery(['status' => 'transfer_in', 'page' => null]) }}"
@@ -618,6 +637,10 @@
                            class="filter-badge {{ request('status') === 'graduate' ? 'active' : '' }}"><i class="ri-graduation-cap-line"></i>Lulus</a>
                         <a href="{{ request()->fullUrlWithQuery(['is_pip_eligible' => '1', 'page' => null]) }}"
                            class="filter-badge {{ request('is_pip_eligible') ? 'active' : '' }}"><i class="ri-hand-coin-line"></i>Penerima PIP</a>
+                        <a href="{{ request()->fullUrlWithQuery(['profile_incomplete' => 1, 'page' => null]) }}"
+                           class="filter-badge {{ request('profile_incomplete') ? 'active' : '' }}"><i class="ri-error-warning-line"></i>Data Belum Lengkap</a>
+                        <a href="{{ request()->fullUrlWithQuery(['arsip' => 1, 'status' => null, 'alumni_filter' => null, 'profile_incomplete' => null, 'page' => null]) }}"
+                           class="filter-badge {{ request('arsip') ? 'active' : '' }}"><i class="ri-archive-line"></i>Diarsipkan</a>
                     </div>
                 </div>
 
@@ -669,10 +692,18 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $s->id]) }}"
-                                            class="fw-medium link-primary">
-                                            {{ $s->name }}
-                                        </a>
+                                        @if($s->trashed())
+                                            <span class="fw-medium text-muted">{{ $s->name }}</span>
+                                            <span class="badge bg-secondary-subtle text-secondary ms-1"
+                                                  title="Data diarsipkan — riwayat tetap tersimpan dan dapat dipulihkan">
+                                                <i class="ri-archive-line"></i> Diarsipkan
+                                            </span>
+                                        @else
+                                            <a href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $s->id]) }}"
+                                                class="fw-medium link-primary">
+                                                {{ $s->name }}
+                                            </a>
+                                        @endif
                                         @php
                                             $selectedRombelHistory = request('study_group_id')
                                                 ? $s->classHistories->firstWhere('study_group_id', request('study_group_id'))
@@ -681,6 +712,19 @@
                                         @if($selectedRombelHistory && ! $selectedRombelHistory->is_active)
                                             <span class="badge bg-secondary-subtle text-secondary ms-1"
                                                   title="Sudah pindah/naik dari rombel ini — data tetap tersimpan sebagai arsip">Pindah</span>
+                                        @endif
+                                        @php $missingProfile = $s->missingProfileFields(); @endphp
+                                        @if($missingProfile)
+                                            @unless(($isDormitoryUser ?? false) || $s->trashed())
+                                                <a href="{{ route('user.students.edit', ['userId' => $userId, 'santriUuid' => $s->id]) }}"
+                                                   class="badge bg-warning-subtle text-warning ms-1 text-decoration-none"
+                                                   title="Belum lengkap: {{ implode(', ', $missingProfile) }} — klik untuk melengkapi">
+                                                    <i class="ri-error-warning-line"></i> Belum lengkap
+                                                </a>
+                                            @else
+                                                <span class="badge bg-warning-subtle text-warning ms-1"
+                                                      title="Belum lengkap: {{ implode(', ', $missingProfile) }}">Belum lengkap</span>
+                                            @endunless
                                         @endif
                                     </td>
                                     <td dir="rtl" class="text-end">
@@ -746,6 +790,17 @@
                                                 <i class="ri-more-fill"></i>
                                             </button>
                                             <ul class="dropdown-menu">
+                                                @if($s->trashed())
+                                                    <li>
+                                                        <form method="POST"
+                                                            action="{{ route('user.students.restore', ['userId' => $userId, 'santriUuid' => $s->id]) }}">
+                                                            @csrf
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="ri-arrow-go-back-line me-2 text-success"></i>Pulihkan dari Arsip
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                @else
                                                 <li>
                                                     <a class="dropdown-item"
                                                         href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $s->id]) }}">
@@ -784,15 +839,27 @@
                                                         <i class="ri-login-box-line me-2 text-success"></i>Mutasi Masuk
                                                     </a>
                                                 </li>
+                                                @if ($s->status === 'graduate')
+                                                    <li>
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" target="_blank"
+                                                            href="{{ route('user.students.graduation-certificate.print', ['userId' => $userId, 'santriUuid' => $s->id]) }}">
+                                                            <i class="ri-file-paper-2-line me-2 text-primary"></i>Cetak SKL
+                                                        </a>
+                                                    </li>
+                                                @endif
+                                                @endif
                                             </ul>
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <x-empty-state colspan="{{ 10 + (($showSchoolColumn ?? false) ? 1 : 0) }}"
-                                    title="Belum ada data santri"
-                                    message="Data santri yang ditambahkan akan tampil di sini.">
-                                    @unless($isDormitoryUser ?? false)
+                                    title="{{ request('arsip') ? 'Tidak ada data di arsip' : 'Belum ada data santri' }}"
+                                    message="{{ request('arsip') ? 'Data santri yang diarsipkan akan tampil di sini dan dapat dipulihkan.' : 'Data santri yang ditambahkan akan tampil di sini.' }}">
+                                    @unless(($isDormitoryUser ?? false) || request('arsip'))
                                         <a href="{{ route('user.students.create', ['userId' => $userId]) }}" class="btn btn-success mt-3">
                                             <i class="ri-add-line me-1"></i>Tambah Santri
                                         </a>

@@ -84,6 +84,9 @@
                             <p class="text-muted mb-0 small">Pengukuran tinggi &amp; berat badan berkala</p>
                         </div>
                         <div class="col-sm-auto">
+                            <a href="{{ route('user.uks.imports.form', ['userId' => $userId, 'dataset' => 'metrics']) }}" class="btn btn-soft-success me-2">
+                                <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Import Antropometri
+                            </a>
                             <a href="{{ route('user.uks.health-metrics.dashboard', ['userId' => $userId]) }}" class="btn btn-info me-2">
                                 <i class="ri-bar-chart-line me-1"></i> Dashboard
                             </a>

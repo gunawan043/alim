@@ -53,7 +53,7 @@ class DivisionPortalController extends Controller
 
         // Pending work orders for division assets
         $woQuery = WorkOrder::whereIn('asset_id', $assets->pluck('id'));
-        $pendingWOs = $woQuery->whereIn('status', ['assigned', 'accepted', 'in_progress'])
+        $pendingWOs = $woQuery->whereIn('status', ['draft', 'dispatched', 'in_progress', 'paused', 'waiting_parts'])
             ->with(['asset' => function ($q) {
                 $q->select('id', 'asset_name', 'asset_code', 'asset_category_id');
             }, 'technician.profile'])
@@ -63,7 +63,13 @@ class DivisionPortalController extends Controller
 
         // Open repair requests
         $openRepairs = RepairRequest::whereIn('asset_id', $assets->pluck('id'))
-            ->whereIn('status', ['pending', 'approved', 'in_progress'])
+            ->whereIn('status', [
+                RepairRequest::STATUS_VERIFICATION_PENDING,
+                RepairRequest::STATUS_VERIFICATION_IN_PROGRESS,
+                RepairRequest::STATUS_APPROVAL_PENDING,
+                RepairRequest::STATUS_EXECUTION_PENDING,
+                RepairRequest::STATUS_STARTED,
+            ])
             ->with(['asset.category'])
             ->orderByDesc('created_at')
             ->take(20)

@@ -188,11 +188,11 @@ class SupervisiController extends Controller
 
         if ($redirectTo === 'penilaian') {
             return redirect()
-                ->route('waka.supervisi.penilaian', $supervisi->id)
+                ->route('waka.supervisi.penilaian', ['userId' => $request->user()?->id, $supervisi->id])
                 ->with('success', 'Jadwal supervisi dibuat. Pilih instrumen lalu isi penilaian.');
         }
 
-        return redirect()->route('waka.supervisi.index')
+        return redirect()->route('waka.supervisi.index', ['userId' => $request->user()?->id])
             ->with('success', 'Data supervisi berhasil ditambahkan.');
     }
 
@@ -393,7 +393,7 @@ class SupervisiController extends Controller
         $fresh = $supervisi->fresh();
 
         return redirect()
-            ->route('waka.supervisi.show', $supervisi->id)
+            ->route('waka.supervisi.show', ['userId' => $request->user()?->id, $supervisi->id])
             ->with('success', 'Penilaian supervisi tersimpan. Nilai: '.number_format((float) $fresh->nilai_akhir, 2).' ('.($fresh->ketercapaian ?? '-').').');
     }
 
@@ -807,7 +807,7 @@ class SupervisiController extends Controller
 
         $supervisi->update($validated);
 
-        return redirect()->route('waka.supervisi.show', $supervisi->id)
+        return redirect()->route('waka.supervisi.show', ['userId' => $request->user()?->id, $supervisi->id])
             ->with('success', 'Data supervisi berhasil diperbarui.');
     }
 
@@ -852,7 +852,7 @@ class SupervisiController extends Controller
         $supervisi = Supervisi::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
         $supervisi->delete();
 
-        return redirect()->route('waka.supervisi.index')
+        return redirect()->route('waka.supervisi.index', ['userId' => $request->user()?->id])
             ->with('success', 'Data supervisi berhasil dihapus.');
     }
 }

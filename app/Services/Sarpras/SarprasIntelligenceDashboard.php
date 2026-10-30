@@ -120,11 +120,17 @@ class SarprasIntelligenceDashboard
 
     public function spendTrend(string $schoolId, int $months): array
     {
+        // Ekspresi bulan mengikuti driver: DATE_FORMAT hanya ada di MySQL/MariaDB,
+        // sedangkan SQLite (test & instalasi kecil) memakai strftime.
+        $monthExpr = DB::getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', r.incurred_date)"
+            : "DATE_FORMAT(r.incurred_date, '%Y-%m')";
+
         $rows = DB::table('repair_cost_histories as r')
             ->join('assets as a', 'a.id', '=', 'r.asset_id')
             ->where('a.school_id', $schoolId)
             ->where('r.incurred_date', '>=', now()->subMonths($months))
-            ->selectRaw("DATE_FORMAT(r.incurred_date, '%Y-%m') as month, COALESCE(SUM(r.amount),0) as total")
+            ->selectRaw("{$monthExpr} as month, COALESCE(SUM(r.amount),0) as total")
             ->groupBy('month')
             ->orderBy('month')
             ->get();

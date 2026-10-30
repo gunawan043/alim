@@ -86,7 +86,7 @@ class SoalController extends Controller
 
     public function create(string $userId, string $bankId)
     {
-        $bank = BankSoal::findOrFail($bankId);
+        $bank = BankSoal::with('subject:id,name')->findOrFail($bankId);
 
         $this->authorizeManage(request(), $bank);
 
@@ -111,6 +111,220 @@ class SoalController extends Controller
             ->get(['id', 'judul', 'teks']);
 
         return view('evalusi.soal.create', compact('bank', 'tps', 'tipeSoal', 'wacanas', 'userId'));
+    }
+
+    /**
+     * Halaman edit soal: form builder yang sama dengan halaman input,
+     * tetapi seluruh soal bank dimuat sekaligus.
+     */
+    public function manage(Request $request, string $userId, string $bankId)
+    {
+        $bank = BankSoal::with([
+            'subject:id,name',
+            'soal' => fn ($q) => $q->with('options')->orderBy('created_at'),
+        ])->findOrFail($bankId);
+
+        $this->authorizeManage($request, $bank);
+
+        $tps = TujuanPembelajaran::where('subject_id', $bank->subject_id)->get();
+        $wacanas = WacanaSoal::query()
+            ->where('bank_soal_id', $bank->id)
+            ->orderByDesc('created_at')
+            ->get(['id', 'judul', 'teks', 'rentang_nomor', 'posisi_setelah_soal']);
+
+        $tipeSoal = [
+            'pg' => 'Pilihan Ganda',
+            'bs' => 'Benar / Salah',
+            'jodoh' => 'Menjodohkan',
+            'isian' => 'Isian Singkat',
+            'uraian' => 'Uraian',
+        ];
+
+        $builderQuestions = $bank->soal->map(fn (Soal $soal) => [
+            'id' => $soal->id,
+            'tipe_soal' => $soal->tipe_soal,
+            'pertanyaan' => $soal->pertanyaan,
+            'materi' => $soal->materi,
+            'pembahasan' => $soal->pembahasan,
+            'tp_id' => $soal->tp_id,
+            'wacana_id' => $soal->wacana_id,
+            'level_kognitif' => $soal->level_kognitif,
+            'level_kognitif_label' => $soal->level_kognitif_label,
+            'level_kognitif_rumpun' => $soal->level_kognitif_rumpun,
+            'tags' => is_array($soal->tags) ? implode(', ', $soal->tags) : ($soal->tags ?? ''),
+            'gambar_keterangan' => $soal->gambar_keterangan,
+            'options' => $soal->options->map(fn (SoalOption $option) => [
+                'id' => $option->id,
+                'label' => $option->label,
+                'teks_opsi' => $option->teks_opsi,
+                'is_correct' => (bool) $option->is_correct,
+            ])->values()->all(),
+        ])->values()->all();
+
+        $isEditMode = true;
+        $formAction = route('user.soal.update-all', ['userId' => $userId, 'bankId' => $bank->id]);
+
+        return view('evalusi.soal.create', compact(
+            'bank', 'userId', 'tps', 'wacanas', 'tipeSoal',
+            'builderQuestions', 'isEditMode', 'formAction'
+        ));
+    }
+
+    /**
+     * Simpan perubahan banyak soal sekaligus dari halaman edit.
+     */
+    public function updateAll(Request $request, string $userId, string $bankId)
+    {
+        $bank = BankSoal::findOrFail($bankId);
+        $this->authorizeManage($request, $bank);
+
+        $validated = $request->validate([
+            'questions' => 'required|array|min:1',
+            'questions.*.id' => 'nullable|uuid',
+            'questions.*.pertanyaan' => 'required|string',
+            'questions.*.tipe_soal' => 'nullable|in:pg,bs,jodoh,isian,uraian',
+            'questions.*.tp_id' => 'nullable|exists:tujuan_pembelajaran,id',
+            'questions.*.level_kognitif' => 'nullable|in:auto,C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta,C6_mencita',
+            'questions.*.materi' => 'nullable|string|max:150',
+            'questions.*.wacana_id' => 'nullable|uuid|exists:wacana_soal,id',
+            'questions.*.pembahasan' => 'nullable|string|max:5000',
+            'questions.*.tags' => 'nullable|string|max:255',
+            'questions.*.gambar' => 'nullable|image|max:4096',
+            'questions.*.gambar_keterangan' => 'nullable|string|max:255',
+            'questions.*.options' => 'nullable|array',
+            'questions.*.options.*.teks_opsi' => 'nullable|string|max:1000',
+            'questions.*.options.*.is_correct' => 'nullable|boolean',
+        ]);
+
+        $typeMap = [
+            'pilihan_ganda' => 'pg',
+            'multiple_choice_complex' => 'pg',
+            'benar_salah' => 'bs',
+            'menjodohkan' => 'jodoh',
+            'isian_singkat' => 'isian',
+            'uraian' => 'uraian',
+        ];
+        $bankType = $typeMap[$bank->jenis_soal] ?? 'pg';
+        $engine = app(ContentHashEngine::class);
+        $updated = 0;
+        $created = 0;
+
+        DB::transaction(function () use ($validated, $request, $bank, $userId, $bankType, $engine, &$updated, &$created) {
+            foreach ($validated['questions'] as $index => $question) {
+                $soal = null;
+
+                if (! empty($question['id'])) {
+                    $soal = Soal::where('bank_soal_id', $bank->id)->find($question['id']);
+
+                    if (! $soal) {
+                        throw ValidationException::withMessages([
+                            "questions.$index.id" => 'Soal tidak ditemukan pada bank ini.',
+                        ]);
+                    }
+
+                    $this->authorizeEdit($request, $bank, $soal);
+                }
+
+                $type = $bank->jenis_soal === 'campuran'
+                    ? ($question['tipe_soal'] ?? 'pg')
+                    : $bankType;
+
+                $options = collect($question['options'] ?? [])
+                    ->filter(fn ($option) => trim((string) ($option['teks_opsi'] ?? '')) !== '')
+                    ->values();
+
+                $hasCorrect = $options->contains(fn ($option) => filter_var($option['is_correct'] ?? false, FILTER_VALIDATE_BOOLEAN));
+                if (in_array($type, ['pg', 'bs', 'jodoh'], true) && $options->count() >= 2 && ! $hasCorrect) {
+                    throw ValidationException::withMessages([
+                        "questions.$index.options" => 'Pilih satu jawaban benar pada soal ini.',
+                    ]);
+                }
+
+                $wacanaId = $question['wacana_id'] ?? null;
+                if ($wacanaId) {
+                    $validWacana = WacanaSoal::whereKey($wacanaId)
+                        ->where(fn ($q) => $q->where('bank_soal_id', $bank->id)->orWhereNull('bank_soal_id'))
+                        ->exists();
+                    $wacanaId = $validWacana ? $wacanaId : null;
+                }
+
+                $imagePath = $soal?->gambar_path;
+                if ($request->hasFile("questions.$index.gambar")) {
+                    $imagePath = $request->file("questions.$index.gambar")->store('soal/'.$bank->id, 'public');
+                }
+
+                if (! $soal) {
+                    $soal = new Soal;
+                    $soal->fill([
+                        'bank_soal_id' => $bank->id,
+                        'bahasa' => $bank->bahasa ?? 'latin',
+                        'bobot_default' => 1,
+                        'tingkat_kesulitan_estimasi' => 'sedang',
+                        'waktu_estimasi_menit' => 2,
+                        'status' => 'draft',
+                        'workflow_status' => Soal::WORKFLOW_DRAFT,
+                        'dibuat_oleh' => $userId,
+                    ]);
+                }
+
+                $soal->fill([
+                    'tp_id' => $question['tp_id'] ?? null,
+                    'wacana_id' => $wacanaId,
+                    'materi' => $question['materi'] ?? null,
+                    'level_kognitif' => ($question['level_kognitif'] ?? null) !== 'auto' ? ($question['level_kognitif'] ?? null) : null,
+                    'tipe_soal' => $type,
+                    'pertanyaan' => $question['pertanyaan'],
+                    'pembahasan' => $question['pembahasan'] ?? null,
+                    'gambar_path' => $imagePath,
+                    'gambar_keterangan' => $question['gambar_keterangan'] ?? null,
+                    'tags' => ! empty($question['tags']) ? array_map('trim', explode(',', $question['tags'])) : null,
+                ]);
+
+                $soal->content_hash = $engine->hashFromSoal($soal->pertanyaan, $options->pluck('teks_opsi')->all());
+                $soal->shingles_hash = $engine->shinglesFromSoal($soal->pertanyaan);
+                $soal->save();
+
+                // Ganti opsi agar perubahan opsi lama tidak tertinggal.
+                $soal->options()->delete();
+                if (in_array($type, ['pg', 'bs', 'jodoh'], true)) {
+                    foreach ($options as $optionIndex => $option) {
+                        SoalOption::create([
+                            'soal_id' => $soal->id,
+                            'label' => chr(65 + $optionIndex),
+                            'teks_opsi' => $option['teks_opsi'],
+                            'is_correct' => filter_var($option['is_correct'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                            'urutan' => $optionIndex + 1,
+                        ]);
+                    }
+                }
+
+                if (! $soal->wasRecentlyCreated) {
+                    if ($soal->reviewAssignments()->exists() || $soal->workflow_status !== Soal::WORKFLOW_DRAFT) {
+                        $soal->reviewAssignments()->delete();
+                        $soal->syncWorkflowStatus(Soal::WORKFLOW_DRAFT);
+                    }
+
+                    $soal->similarities()->delete();
+                    $soal->forceFill([
+                        'similarity_checked_at' => null,
+                        'similarity_summary' => null,
+                        'similarity_ack_note' => null,
+                        'similarity_ack_by' => null,
+                        'similarity_ack_at' => null,
+                    ])->save();
+                }
+
+                if ($soal->wasRecentlyCreated) {
+                    $created++;
+                } else {
+                    $updated++;
+                }
+            }
+        });
+
+        return redirect()
+            ->route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id])
+            ->with('success', "Perubahan soal disimpan. {$updated} soal diperbarui, {$created} soal baru ditambahkan.");
     }
 
     /**
@@ -311,8 +525,10 @@ class SoalController extends Controller
             'questions.*.pertanyaan' => 'required|string',
             'questions.*.tipe_soal' => 'nullable|in:pg,bs,jodoh,isian,uraian',
             'questions.*.tingkat_kesulitan_estimasi' => 'nullable|in:mudah,sedang,sulit',
+            'questions.*.level_kognitif' => 'nullable|in:auto,C1_mengingat,C2_memahami,C3_menerapkan,C4_menganalisis,C5_mengevaluasi,C6_mencipta,C6_mencita',
             'questions.*.bobot_default' => 'nullable|numeric|min:0|max:100',
             'questions.*.tp_id' => 'nullable|exists:tujuan_pembelajaran,id',
+            'questions.*.materi' => 'nullable|string|max:150',
             'questions.*.wacana_id' => 'nullable|uuid|exists:wacana_soal,id',
             'questions.*.pembahasan' => 'nullable|string|max:5000',
             'questions.*.tags' => 'nullable|string|max:255',
@@ -369,6 +585,8 @@ class SoalController extends Controller
                     'bank_soal_id' => $bank->id,
                     'tp_id' => $question['tp_id'] ?? null,
                     'wacana_id' => $wacanaId,
+                    'materi' => $question['materi'] ?? null,
+                    'level_kognitif' => ($question['level_kognitif'] ?? null) !== 'auto' ? ($question['level_kognitif'] ?? null) : null,
                     'tipe_soal' => $type,
                     'bahasa' => $bank->bahasa ?? 'latin',
                     'pertanyaan' => $question['pertanyaan'],

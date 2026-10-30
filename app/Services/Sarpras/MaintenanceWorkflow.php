@@ -159,8 +159,9 @@ class MaintenanceWorkflow
                 'condition_before' => $conditionBefore,
                 'condition_after' => $conditionAfter,
                 'work_description' => $workDescription,
+                'description' => $workDescription,
                 'parts_replaced' => $partsReplaced,
-                'photo_path' => $photoPath,
+                'after_photo_path' => $photoPath,
                 'notes' => $checklistJson, // checklist serialised as JSON
                 'created_by' => $technician->id,
             ]);
@@ -215,7 +216,7 @@ class MaintenanceWorkflow
         };
     }
 
-    protected function moveAssetStatus(Asset $asset, string $target, ?int $actorId, string $reason): Asset
+    protected function moveAssetStatus(Asset $asset, string $target, ?string $actorId, string $reason): Asset
     {
         $from = $asset->status ?: 'active';
         if ($from === $target) {

@@ -1,10 +1,10 @@
 @extends('layouts.master')
-@section('title') Pengadaan Barang @endsection
+@section('title') Usulan Barang Non-BUMP @endsection
 
 @section('content')
 @component('components.breadcrumb')
     @slot('li_1') Sarana Prasarana @endslot
-    @slot('title') Pengadaan Barang @endslot
+    @slot('title') Usulan Barang Non-BUMP @endslot
 @endcomponent
 
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -22,9 +22,9 @@
         <div class="card">
             <div class="card-header border-bottom-dashed">
                 <div class="row g-4">
-                    <div class="col-sm"><h5 class="card-title mb-0">Daftar Pengadaan</h5></div>
+                    <div class="col-sm"><h5 class="card-title mb-0">Daftar Usulan Barang Non-BUMP</h5></div>
                     <div class="col-sm-auto">
-                        <a href="{{ route('sarpras.pengadaan.create') }}" class="btn btn-success"><i class="ri-add-line me-1"></i> Request Pengadaan</a>
+                        <a href="{{ route('sarpras.pengadaan.create') }}" class="btn btn-success"><i class="ri-add-line me-1"></i> Usulan Barang</a>
                     </div>
                 </div>
             </div>

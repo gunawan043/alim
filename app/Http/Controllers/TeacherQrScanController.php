@@ -671,71 +671,263 @@ class TeacherQrScanController extends Controller
     }
 
     /**
-     * Waka dashboard — live view of teacher QR attendance.
-     * Requires teacher-attendance_view permission.
+     * Waka dashboard — ringkasan, grafik, dan monitoring absensi guru QR.
+     *
+     * Mendukung filter tanggal, guru, kelas, dan pencarian. Data hari ini
+     * dapat diperbarui otomatis; tanggal historis ditampilkan sebagai arsip.
      */
     public function wakaDashboard(Request $request)
     {
         $user = $request->user();
-        $today = today();
-        $dayOfWeek = (int) $today->format('w') === 0 ? 7 : (int) $today->format('w');
-        $academicYear = AcademicYear::where('is_active', true)->first();
+        $rawDate = $request->input('date');
 
+        try {
+            $date = $rawDate ? Carbon::parse($rawDate)->startOfDay() : today();
+        } catch (\Throwable $e) {
+            $date = today();
+        }
+
+        // Dashboard realtime tidak perlu membuka masa depan.
+        if ($date->gt(today())) {
+            $date = today();
+        }
+
+        $isToday = $date->isToday();
+        $dayOfWeek = (int) $date->format('w') === 0 ? 7 : (int) $date->format('w');
+        $academicYear = AcademicYear::where('is_active', true)->first();
         $schoolId = $request->attributes->get('schoolContextId');
         $search = trim((string) $request->input('q'));
         $teacherId = $request->input('teacher_id');
+        $studyGroupId = $request->input('study_group_id');
 
-        // All active jadwal for today (scoped ke satuan kerja)
-        $schedules = JadwalKbm::where('is_active', true)
+        $baseSchedules = JadwalKbm::query()
+            ->where('is_active', true)
             ->where('day_of_week', $dayOfWeek)
             ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
             ->when($schoolId, fn ($q) => $q->whereHas('studyGroup', fn ($g) => $g->where('school_id', $schoolId)))
+            ->with(['teacher:id,name', 'studyGroup:id,name,code,school_id', 'subject:id,name'])
+            ->orderBy('slot_index')
+            ->orderBy('start_time');
+
+        // Opsi filter harus tetap lengkap walaupun sedang memfilter guru/kelas.
+        $teacherOptions = (clone $baseSchedules)->get()
+            ->pluck('teacher')->filter()->unique('id')->sortBy('name')->values();
+        $studyGroupOptions = (clone $baseSchedules)->get()
+            ->pluck('studyGroup')->filter()->unique('id')->sortBy('name')->values();
+
+        $schedules = (clone $baseSchedules)
             ->when($teacherId, fn ($q) => $q->where('teacher_id', $teacherId))
+            ->when($studyGroupId, fn ($q) => $q->where('study_group_id', $studyGroupId))
             ->when($search !== '', fn ($q) => $q->where(function ($w) use ($search) {
                 $w->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('studyGroup', fn ($g) => $g->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('subject', fn ($s) => $s->where('name', 'like', "%{$search}%"));
             }))
-            ->with(['teacher:id,name', 'studyGroup:name,code', 'subject:name'])
-            ->orderBy('slot_index')
             ->get();
 
-        // Today's attendances
-        $attendances = TeacherClassAttendance::where('attendance_date', $today)
+        $scheduleIds = $schedules->pluck('id')->all();
+
+        $attendanceQuery = TeacherClassAttendance::whereDate('attendance_date', $date->toDateString())
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->with(['teacher:id,name', 'jadwalKbm.studyGroup:name,code'])
-            ->get()
+            ->when($teacherId, fn ($q) => $q->where('teacher_id', $teacherId))
+            ->when($studyGroupId, fn ($q) => $q->where('study_group_id', $studyGroupId))
+            ->when($scheduleIds !== [], fn ($q) => $q->whereIn('jadwal_kbm_id', $scheduleIds))
+            ->with(['teacher:id,name', 'jadwalKbm.studyGroup:id,name,code', 'jadwalKbm.subject:id,name']);
+
+        $attendances = $attendanceQuery->get()
             ->keyBy(fn ($a) => $a->teacher_id.'|'.$a->jadwal_kbm_id);
 
-        // Teachers who haven't checked out yet
-        $notCheckedOut = TeacherClassAttendance::where('attendance_date', $today)
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->where('status_keluar', 'belum_keluar')
-            ->whereNull('actual_time_out')
-            ->with(['teacher:name', 'jadwalKbm.studyGroup:name,code', 'jadwalKbm:end_time'])
-            ->get();
+        $expected = $schedules->count();
+        $checked = $onTime = $late = $absent = $checkedOut = $notCheckedOutCount = 0;
+        $classStats = [];
+        $teacherStats = [];
+        $hourStats = [];
 
-        $teacherOptions = $schedules->pluck('teacher')->filter()->unique('id')->sortBy('name')->values();
+        foreach ($schedules as $schedule) {
+            $key = $schedule->teacher_id.'|'.$schedule->id;
+            $attendance = $attendances->get($key);
+            $hasCheckedIn = $attendance && $attendance->actual_time_in;
+            $isLate = $hasCheckedIn && $attendance->status_masuk === 'terlambat';
 
-        // Not present today
-        $notPresent = $schedules->filter(function ($jadwal) use ($attendances) {
-            $key = $jadwal->teacher_id.'|'.$jadwal->id;
+            if ($hasCheckedIn) {
+                $checked++;
+                $isLate ? $late++ : $onTime++;
+                if ($attendance->actual_time_out) {
+                    $checkedOut++;
+                } else {
+                    $notCheckedOutCount++;
+                }
+            } else {
+                $absent++;
+            }
 
-            return ! isset($attendances[$key]);
-        });
+            $classId = $schedule->study_group_id ?: 'none';
+            if (! isset($classStats[$classId])) {
+                $classStats[$classId] = [
+                    'name' => $schedule->studyGroup?->name ?? 'Tanpa kelas',
+                    'total' => 0,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                ];
+            }
+            $classStats[$classId]['total']++;
+            if ($hasCheckedIn) {
+                $classStats[$classId]['present']++;
+            } else {
+                $classStats[$classId]['absent']++;
+            }
+            if ($isLate) {
+                $classStats[$classId]['late']++;
+            }
 
-        // School ID for broadcast channel — use first schedule's study group if available
-        $schoolId = $schedules->first()?->studyGroup?->school_id ?? (string) $request->user()->school_id;
+            $teacherKey = $schedule->teacher_id ?: 'unknown';
+            if (! isset($teacherStats[$teacherKey])) {
+                $teacherStats[$teacherKey] = [
+                    'name' => $schedule->teacher?->name ?? 'Guru tidak dikenal',
+                    'total' => 0,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                ];
+            }
+            $teacherStats[$teacherKey]['total']++;
+            if ($hasCheckedIn) {
+                $teacherStats[$teacherKey]['present']++;
+            } else {
+                $teacherStats[$teacherKey]['absent']++;
+            }
+            if ($isLate) {
+                $teacherStats[$teacherKey]['late']++;
+            }
+
+            $hour = Carbon::parse($schedule->start_time)->format('H:00');
+            if (! isset($hourStats[$hour])) {
+                $hourStats[$hour] = ['label' => $hour, 'present' => 0, 'late' => 0, 'absent' => 0, 'total' => 0];
+            }
+            $hourStats[$hour]['total']++;
+            if ($hasCheckedIn) {
+                $hourStats[$hour][$isLate ? 'late' : 'present']++;
+            } else {
+                $hourStats[$hour]['absent']++;
+            }
+        }
+
+        // Hitung persentase per kelas/guru untuk visualisasi dan tabel.
+        foreach ($classStats as &$class) {
+            $class['rate'] = $class['total'] > 0 ? round(($class['present'] / $class['total']) * 100) : 0;
+        }
+        unset($class);
+        foreach ($teacherStats as &$teacher) {
+            $teacher['rate'] = $teacher['total'] > 0 ? round(($teacher['present'] / $teacher['total']) * 100) : 0;
+        }
+        unset($teacher);
+
+        $classStats = collect($classStats)->sortBy('name')->values();
+        $teacherStats = collect($teacherStats)->sortBy('rate')->values();
+        $hourlyStats = collect($hourStats)->sortKeys()->values();
+
+        $rate = $expected > 0 ? round(($checked / $expected) * 100) : 0;
+        $statusDistribution = [
+            ['label' => 'Tepat waktu', 'value' => $onTime, 'color' => '#0ab39c'],
+            ['label' => 'Terlambat', 'value' => $late, 'color' => '#f7b84b'],
+            ['label' => 'Belum absen', 'value' => $absent, 'color' => '#f06548'],
+        ];
+
+        // Tren 7 hari terakhir; ikut filter guru/kelas agar konsisten dengan chart lain.
+        $weeklyTrend = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = $date->copy()->subDays($i);
+            $dayOfWeekForTrend = (int) $day->format('w') === 0 ? 7 : (int) $day->format('w');
+            $daySchedules = JadwalKbm::query()
+                ->where('is_active', true)
+                ->where('day_of_week', $dayOfWeekForTrend)
+                ->whereHas('academicYear', fn ($q) => $q->where('id', $academicYear?->id))
+                ->when($schoolId, fn ($q) => $q->whereHas('studyGroup', fn ($g) => $g->where('school_id', $schoolId)))
+                ->when($teacherId, fn ($q) => $q->where('teacher_id', $teacherId))
+                ->when($studyGroupId, fn ($q) => $q->where('study_group_id', $studyGroupId))
+                ->when($search !== '', fn ($q) => $q->where(function ($w) use ($search) {
+                    $w->whereHas('teacher', fn ($t) => $t->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('studyGroup', fn ($g) => $g->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('subject', fn ($s) => $s->where('name', 'like', "%{$search}%"));
+                }))
+                ->get();
+
+            $dayIds = $daySchedules->pluck('id')->all();
+            $dayAttendances = $dayIds === []
+                ? collect()
+                : TeacherClassAttendance::whereDate('attendance_date', $day->toDateString())
+                    ->whereIn('jadwal_kbm_id', $dayIds)
+                    ->get();
+
+            $dayChecked = $dayAttendances->filter(fn ($a) => (bool) $a->actual_time_in)->count();
+            $dayTotal = $daySchedules->count();
+
+            $weeklyTrend[] = [
+                'label' => $day->format('d M'),
+                'date' => $day->toDateString(),
+                'rate' => $dayTotal > 0 ? round(($dayChecked / $dayTotal) * 100) : 0,
+                'present' => $dayChecked,
+                'total' => $dayTotal,
+            ];
+        }
+
+        $relevantAttendances = $attendances
+            ->filter(fn ($a) => in_array($a->jadwal_kbm_id, $scheduleIds, true))
+            ->values();
+
+        $recentChecks = $relevantAttendances
+            ->filter(fn ($a) => (bool) $a->actual_time_in)
+            ->sortByDesc(fn ($a) => $a->actual_time_in)
+            ->take(12)
+            ->values();
+
+        $notCheckedOut = $relevantAttendances
+            ->filter(fn ($a) => (bool) $a->actual_time_in && ! $a->actual_time_out)
+            ->sortBy(fn ($a) => $a->jadwalKbm?->end_time)
+            ->values();
+
+        $notPresent = $schedules
+            ->filter(function ($s) use ($attendances) {
+                $attendance = $attendances->get($s->teacher_id.'|'.$s->id);
+
+                return ! $attendance || ! $attendance->actual_time_in;
+            })
+            ->values();
+
+        $lowestClass = $classStats->filter(fn ($c) => $c['total'] > 0)->sortBy('rate')->first();
+        $broadcastSchoolId = $schoolId
+            ?: $schedules->first()?->studyGroup?->school_id
+            ?: (string) $user->school_id;
 
         return view('teacher.qr.scan.waka-dashboard', compact(
             'schedules',
             'attendances',
             'notCheckedOut',
             'notPresent',
-            'schoolId',
+            'broadcastSchoolId',
             'teacherOptions',
+            'studyGroupOptions',
+            'classStats',
+            'teacherStats',
+            'hourlyStats',
+            'weeklyTrend',
+            'statusDistribution',
+            'recentChecks',
+            'lowestClass',
             'search',
             'teacherId',
+            'studyGroupId',
+            'date',
+            'isToday',
+            'expected',
+            'checked',
+            'onTime',
+            'late',
+            'absent',
+            'checkedOut',
+            'notCheckedOutCount',
+            'rate',
         ));
     }
 

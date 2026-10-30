@@ -9,6 +9,7 @@ use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzStudentTarget;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
+use App\Services\TahfidzTargetService;
 use Illuminate\Http\Request;
 
 class TahfidzTargetController extends Controller
@@ -16,6 +17,7 @@ class TahfidzTargetController extends Controller
     public function __construct(
         private readonly TahfidzAccess $access,
         private readonly TahfidzProgressService $progress,
+        private readonly TahfidzTargetService $targets,
     ) {}
 
     public function index(Request $request, string $userId)
@@ -55,6 +57,18 @@ class TahfidzTargetController extends Controller
             ->where('status', 'aktif')
             ->get()->pluck('student')->filter()->unique('id')->sortBy('name')->values();
 
+        $directions = $students->mapWithKeys(function ($student) use ($groups) {
+            $group = $groups->first();
+            $schoolId = $group?->school_id;
+            $isAlumni = $this->targets->isAlumni($student, $schoolId);
+
+            return [(string) $student->id => [
+                'is_alumni' => $isAlumni,
+                'direction' => $isAlumni ? 'asc' : 'desc',
+                'label' => $isAlumni ? 'Alumni · Juz 1 → 30' : 'Non-alumni · Juz 30 → 1',
+            ]];
+        });
+
         $stats = [
             'total' => $targets->count(),
             'students' => $targets->pluck('student_id')->unique()->count(),
@@ -62,7 +76,7 @@ class TahfidzTargetController extends Controller
             'average_pages' => $targets->whereNotNull('target_halaman')->avg('target_halaman'),
         ];
 
-        return view('tahfidz.targets.index', compact('userId', 'groups', 'inputGroups', 'targets', 'students', 'members', 'stats', 'academicYear'));
+        return view('tahfidz.targets.index', compact('userId', 'groups', 'inputGroups', 'targets', 'students', 'members', 'stats', 'academicYear', 'directions'));
     }
 
     public function store(Request $request, string $userId)
@@ -70,6 +84,7 @@ class TahfidzTargetController extends Controller
         $group = $this->groupFromRequest($request);
         $this->authorizeInput($request, $group);
         $validated = $this->validateTarget($request, $group);
+        $validated = $this->applyDirectionDefaults($validated, $group);
 
         TahfidzStudentTarget::updateOrCreate(
             [
@@ -100,6 +115,7 @@ class TahfidzTargetController extends Controller
         $group = $target->group;
         $this->authorizeInput($request, $group);
         $validated = $this->validateTarget($request, $group);
+        $validated = $this->applyDirectionDefaults($validated, $group);
 
         $target->update([
             'student_id' => $validated['student_id'],
@@ -149,6 +165,24 @@ class TahfidzTargetController extends Controller
             422,
             'Santri bukan anggota aktif halaqah ini.'
         );
+
+        return $validated;
+    }
+
+    private function applyDirectionDefaults(array $validated, TahfidzGroup $group): array
+    {
+        if (! empty($validated['juz_start'])) {
+            return $validated;
+        }
+
+        $student = \App\Models\Student::find($validated['student_id']);
+        if (! $student) {
+            return $validated;
+        }
+
+        $nextJuz = $this->targets->nextJuzFor($student, $group);
+        $validated['juz_start'] = $nextJuz;
+        $validated['juz_end'] = $validated['juz_end'] ?? $nextJuz;
 
         return $validated;
     }

@@ -11,6 +11,7 @@ use App\Models\PembiasaanPagi;
 use App\Models\PenghargaanAkademik;
 use App\Models\RaporDistributionSetting;
 use App\Models\RaportRegistration;
+use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
@@ -18,18 +19,23 @@ use App\Models\SubjectKktp;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Services\Academic\MumtazMurtafiCandidateService;
 use App\Services\AcademicPeriodService;
 use App\Services\Arsip\LegerPdfService;
 use App\Services\Arsip\RaporPdfService;
+use App\Services\Documents\SchoolLeaderService;
 use App\Services\KurikulumAccess;
+use App\Services\NilaiPublishNotificationService;
 use App\Services\NotificationUniversalService;
 use App\Services\Pdf\DocumentPdfService;
 use App\Services\SumatifHarianService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use App\Support\UserJabatan;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1053,6 +1059,19 @@ class NilaiKelasController extends Controller
             );
         }
 
+        if ($jenis === 'sas') {
+            try {
+                app(MumtazMurtafiCandidateService::class)->syncForPublishedRapor(
+                    $studyGroup,
+                    (string) $validated['academic_year_id'],
+                    (string) $validated['semester'],
+                    $request->user()?->id,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Gagal menyiapkan kandidat Mumtaz Murtafi: '.$e->getMessage());
+            }
+        }
+
         $academicYear = AcademicYear::find($validated['academic_year_id']);
 
         app(NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
@@ -1064,6 +1083,14 @@ class NilaiKelasController extends Controller
             'title' => 'Rapor dipublikasikan',
             'message' => 'Rapor '.$studyGroup->name.' '.($academicYear?->name ?? '').' semester '.$validated['semester'].' sudah dapat dilihat.',
             'priority' => 'high',
+            'send_push' => true,
+            'data' => [
+                'screen' => 'report',
+                'study_group_id' => $studyGroup->id,
+                'semester' => $validated['semester'],
+                'academic_year_id' => $validated['academic_year_id'],
+                'jenis' => $jenis,
+            ],
         ]);
 
         $response = back()->with('success', 'Rapor '.strtoupper($jenis).' dipublikasikan untuk '.$studentIds->count().' santri. Wali santri kini dapat melihat rapor.');
@@ -1098,6 +1125,16 @@ class NilaiKelasController extends Controller
                 'published_at' => null,
                 'published_by' => null,
             ]);
+
+        try {
+            app(MumtazMurtafiCandidateService::class)->dismissForUnpublishedRapor(
+                $studyGroup,
+                (string) $validated['academic_year_id'],
+                (string) $validated['semester'],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Gagal membatalkan kandidat Mumtaz Murtafi: '.$e->getMessage());
+        }
 
         return back()->with('success', 'Publikasi rapor dibatalkan. Wali santri tidak dapat melihat rapor ini.');
     }
@@ -1135,16 +1172,7 @@ class NilaiKelasController extends Controller
             ->where('is_active', true)
             ->pluck('student_id');
 
-        app(NotificationUniversalService::class)->notifyGuardiansForStudents($studentIds, [
-            'module' => 'academic',
-            'reference_type' => 'teacher_admin_book',
-            'reference_id' => $book->id,
-            'type' => 'info',
-            'action' => 'nilai_published',
-            'title' => 'Nilai '.($book->subject?->name ?? 'mapel').' dipublikasikan',
-            'message' => 'Nilai '.($book->subject?->name ?? 'mapel').' untuk '.($book->studyGroup?->name ?? 'kelas').' sudah dapat dilihat.',
-            'priority' => 'medium',
-        ]);
+        app(NilaiPublishNotificationService::class)->notifyBookPublished($book, $jenis);
 
         $response = back()->with('success', 'Nilai '.($book->subject?->name ?? 'mapel').' '.strtoupper($jenis).' dipublikasikan ke wali santri.');
 
@@ -1166,7 +1194,7 @@ class NilaiKelasController extends Controller
     /**
      * Buku nilai aktif yang relevan untuk leger/rapor.
      *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
     private function activeLegerBooks(
         StudyGroup $studyGroup,
@@ -1406,10 +1434,15 @@ class NilaiKelasController extends Controller
             'kop_height' => 'nullable|numeric|min:5|max:80',
             'ttd_ksp_width' => 'nullable|numeric|min:5|max:100',
             'ttd_ksp_height' => 'nullable|numeric|min:5|max:60',
+            'ttd_ksp_margin' => 'nullable|numeric|min:0|max:30',
             'ttd_wali_width' => 'nullable|numeric|min:5|max:100',
             'ttd_wali_height' => 'nullable|numeric|min:5|max:60',
+            'ttd_wali_margin' => 'nullable|numeric|min:0|max:30',
             'stamp_width' => 'nullable|numeric|min:5|max:100',
             'stamp_height' => 'nullable|numeric|min:5|max:100',
+            'stamp_margin' => 'nullable|numeric|min:0|max:30',
+            'document_leader_name' => 'nullable|string|max:255',
+            'document_leader_nupy' => 'nullable|string|max:50',
         ]);
 
         $context = [
@@ -1434,8 +1467,9 @@ class NilaiKelasController extends Controller
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
             'footer_font_size', 'line_height', 'paper_size',
-            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
+            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height', 'ttd_ksp_margin',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
+            'ttd_ksp_margin', 'ttd_wali_margin', 'stamp_margin',
         ] as $key) {
             if (array_key_exists($key, $validated)) {
                 $values[$key] = $validated[$key];
@@ -1469,6 +1503,7 @@ class NilaiKelasController extends Controller
         }
 
         RaporDistributionSetting::updateOrCreate($context, $update);
+        $this->saveDocumentLeaderOverride($studyGroup->school, $request);
 
         return redirect()->route('user.schools.nilai-kelas.rapor', [
             'userId' => $userId,
@@ -1505,10 +1540,15 @@ class NilaiKelasController extends Controller
             'kop_height' => 'required|numeric|min:5|max:80',
             'ttd_ksp_width' => 'required|numeric|min:5|max:100',
             'ttd_ksp_height' => 'required|numeric|min:5|max:60',
+            'ttd_ksp_margin' => 'nullable|numeric|min:0|max:30',
             'ttd_wali_width' => 'required|numeric|min:5|max:100',
             'ttd_wali_height' => 'required|numeric|min:5|max:60',
+            'ttd_wali_margin' => 'nullable|numeric|min:0|max:30',
             'stamp_width' => 'required|numeric|min:5|max:100',
             'stamp_height' => 'required|numeric|min:5|max:100',
+            'stamp_margin' => 'nullable|numeric|min:0|max:30',
+            'document_leader_name' => 'nullable|string|max:255',
+            'document_leader_nupy' => 'nullable|string|max:50',
         ]);
 
         $context = [
@@ -1530,10 +1570,13 @@ class NilaiKelasController extends Controller
         ) ?? RaporDistributionSetting::defaultLayout();
 
         foreach ([
-            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
+            'kop_height', 'ttd_ksp_width', 'ttd_ksp_height', 'ttd_ksp_margin',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
+            'ttd_wali_margin', 'stamp_margin',
         ] as $key) {
-            $values[$key] = $validated[$key];
+            if (array_key_exists($key, $validated)) {
+                $values[$key] = $validated[$key];
+            }
         }
         foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp'] as $key) {
             $values[$key] = $request->boolean($key);
@@ -1556,6 +1599,7 @@ class NilaiKelasController extends Controller
         }
 
         RaporDistributionSetting::updateOrCreate($context, $update);
+        $this->saveDocumentLeaderOverride($studyGroup->school, $request);
 
         return redirect()->route('user.schools.nilai-kelas.rapor', [
             'userId' => $userId,
@@ -1810,7 +1854,7 @@ class NilaiKelasController extends Controller
         }
 
         // Buku nilai hanya boleh dibuat untuk rombel pada TA yang sama.
-        $groupPeriodValid = \App\Models\StudyGroup::query()
+        $groupPeriodValid = StudyGroup::query()
             ->whereKey($studyGroupId)
             ->where('academic_year_id', $ayId)
             ->exists();
@@ -2035,5 +2079,22 @@ class NilaiKelasController extends Controller
     private function subjectSortOrder(string $name, string $category): array
     {
         return [$this->subjectGroup($name), strtolower($name)];
+    }
+
+    private function saveDocumentLeaderOverride(?School $school, Request $request): void
+    {
+        if (! $school) {
+            return;
+        }
+
+        $visual = is_array($school->document_visual_settings) ? $school->document_visual_settings : [];
+        $leaderName = trim((string) $request->input('document_leader_name', ''));
+        $leaderNupy = trim((string) $request->input('document_leader_nupy', ''));
+        $auto = app(SchoolLeaderService::class)->autoForSchool($school);
+        $visual['leader'] = ($leaderName === $auto['display_name'] && $leaderNupy === $auto['nupy'])
+            ? ['name' => '', 'nupy' => '']
+            : ['name' => $leaderName, 'nupy' => $leaderNupy];
+        $school->document_visual_settings = $visual;
+        $school->save();
     }
 }

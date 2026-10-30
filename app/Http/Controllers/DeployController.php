@@ -95,13 +95,39 @@ class DeployController extends Controller
         fwrite($logHandle, str_repeat('=', 60)."\n");
         fclose($logHandle);
 
-        // exec dengan nohup agar tidak tergantung request lifecycle
-        $cmd = sprintf(
-            'nohup bash %s >> %s 2>&1 &',
+        // Jalankan deploy script di background tanpa bergantung pada exec().
+        // Sebagian shared hosting menonaktifkan exec(), tetapi masih
+        // mengizinkan proc_open(). Gunakan proc_open + nohup agar proses
+        // tetap hidup setelah request webhook selesai.
+        if (! function_exists('proc_open')) {
+            Log::error('[DEPLOY] proc_open tidak tersedia di server ini');
+
+            return response()->json(['error' => 'proc_open tidak tersedia di server.'], 500);
+        }
+
+        $command = sprintf(
+            'nohup bash %s >> %s 2>&1 < /dev/null &',
             escapeshellarg($scriptPath),
             escapeshellarg($logFile)
         );
-        exec($cmd);
+
+        $descriptorSpec = [
+            0 => ['file', '/dev/null', 'r'],
+            1 => ['file', $logFile, 'a'],
+            2 => ['file', $logFile, 'a'],
+        ];
+
+        $process = proc_open($command, $descriptorSpec, $pipes);
+
+        if (! is_resource($process)) {
+            Log::error('[DEPLOY] Gagal menjalankan deploy script', [
+                'script' => $scriptPath,
+            ]);
+
+            return response()->json(['error' => 'Gagal menjalankan deploy script.'], 500);
+        }
+
+        proc_close($process);
 
         Log::info('[DEPLOY] Deploy script dijalankan', [
             'commit' => substr($commitId, 0, 7),

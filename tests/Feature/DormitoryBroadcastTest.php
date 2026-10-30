@@ -8,6 +8,7 @@ use App\Models\Dormitory;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryRoom;
 use App\Models\DormitoryWing;
+use App\Models\Permission;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
@@ -24,7 +25,7 @@ class DormitoryBroadcastTest extends TestCase
 
     public function test_broadcast_darurat_terkirim_ke_wali(): void
     {
-        \App\Models\Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
 
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -85,20 +86,21 @@ class DormitoryBroadcastTest extends TestCase
             'title' => 'Siaga Banjir',
             'content' => 'Seluruh santri tetap di asrama.',
             'severity' => 'emergency',
-            'broadcast_via' => 'all',
+            'channels' => ['inapp', 'wa'],
             'ack_required' => 1,
         ]);
         $request->setUserResolver(fn () => $admin);
 
         app(DormitoryPostController::class)->broadcastStore($request, $admin->id, $dorm->id);
 
-        $this->assertDatabaseHas('dormitory_emergency_broadcasts', [
+        $this->assertDatabaseHas('humas_announcements', [
             'dormitory_id' => $dorm->id,
+            'category' => 'broadcast',
             'title' => 'Siaga Banjir',
         ]);
         $this->assertDatabaseHas('notifications_universal', [
             'user_id' => $wali->id,
-            'action' => 'emergency_broadcast',
+            'action' => 'system',
         ]);
     }
 }

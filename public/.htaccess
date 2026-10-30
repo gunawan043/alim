@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Domain utama diarahkan ke subdomain aplikasi ALIM.
+    RewriteCond %{HTTP_HOST} ^(www\.)?abuhurairah\.id$ [NC]
+    RewriteRule ^ https://alim.abuhurairah.id%{REQUEST_URI} [R=301,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -19,3 +23,4 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+

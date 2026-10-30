@@ -31,7 +31,7 @@ class HumasSatisfactionController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:200',
             'description' => 'nullable|string|max:2000',
-            'audience' => 'required|in:all,wali,gtk',
+            'audience' => 'required|in:all,wali,gtk,santri',
             'starts_at' => 'nullable|date',
             'ends_at' => 'nullable|date|after:starts_at',
         ]);
@@ -95,23 +95,85 @@ class HumasSatisfactionController extends Controller
 
     private function notifyAudience(HumasSatisfactionSurvey $survey, User $publisher): void
     {
-        $ids = collect();
-        if (in_array($survey->audience, ['all', 'gtk'], true)) {
-            $ids = $ids->merge(User::where('is_active', true)->whereHas('employment')->pluck('id'));
-        }
-        if (in_array($survey->audience, ['all', 'wali'], true)) {
-            $ids = $ids->merge(WaliSantri::where('is_active', true)->pluck('user_id'));
-        }
         $service = app(NotificationBroadcastService::class);
-        foreach ($ids->unique()->reject(fn ($id) => (string) $id === (string) $publisher->id) as $recipientId) {
-            $token = WaliSantri::where('user_id', $recipientId)->where('is_active', true)->value('access_token');
-            $service->send((string) $recipientId, [
-                'module' => 'system', 'type' => 'info', 'priority' => 'medium',
+
+        if (in_array($survey->audience, ['all', 'gtk'], true)) {
+            $gtkIds = User::where('is_active', true)->whereHas('employment')->pluck('id');
+
+            foreach ($gtkIds->reject(fn ($id) => (string) $id === (string) $publisher->id) as $recipientId) {
+                $service->send((string) $recipientId, [
+                    'module' => 'system',
+                    'type' => 'info',
+                    'priority' => 'medium',
+                    'title' => 'Survei kepuasan baru',
+                    'message' => $survey->title.'. Mohon luangkan waktu untuk menilai layanan kami.',
+                    'action_url' => route('user.satisfaction.index', ['userId' => $recipientId]),
+                    'reference_type' => HumasSatisfactionSurvey::class,
+                    'reference_id' => $survey->id,
+                    'action_text' => 'Isi Survei',
+                ]);
+            }
+        }
+
+        if (in_array($survey->audience, ['all', 'santri'], true)) {
+            $studentUserIds = User::where('is_active', true)
+                ->whereHas('studentProfile')
+                ->pluck('id');
+
+            foreach ($studentUserIds as $recipientId) {
+                if ((string) $recipientId === (string) $publisher->id) {
+                    continue;
+                }
+
+                $service->send((string) $recipientId, [
+                    'module' => 'system',
+                    'type' => 'info',
+                    'priority' => 'medium',
+                    'title' => 'Survei kepuasan baru',
+                    'message' => $survey->title.'. Mohon luangkan waktu untuk menilai layanan kami.',
+                    'reference_type' => HumasSatisfactionSurvey::class,
+                    'reference_id' => $survey->id,
+                    'action_text' => 'Isi Survei',
+                    'data' => [
+                        'survey_id' => $survey->id,
+                        'school_id' => $survey->school_id,
+                        'audience' => 'santri',
+                        'scope' => $survey->school_id ? 'school' : 'global',
+                    ],
+                ]);
+            }
+        }
+
+        if (! in_array($survey->audience, ['all', 'wali'], true)) {
+            return;
+        }
+
+        $links = WaliSantri::query()
+            ->where('status', WaliSantri::STATUS_ACTIVE)
+            ->whereNotNull('user_id')
+            ->when($survey->school_id, fn ($query) => $query->where('school_id', $survey->school_id))
+            ->get()
+            ->unique('user_id');
+
+        foreach ($links as $link) {
+            $token = $link->access_token;
+            $service->send((string) $link->user_id, [
+                'module' => 'system',
+                'type' => 'info',
+                'priority' => 'medium',
                 'title' => 'Survei kepuasan baru',
                 'message' => $survey->title.'. Mohon luangkan waktu untuk menilai layanan kami.',
-                'action_url' => $token ? route('portal.satisfaction.index', ['token' => $token]) : route('user.satisfaction.index', ['userId' => $recipientId]),
-                'reference_type' => HumasSatisfactionSurvey::class, 'reference_id' => $survey->id,
+                'action_url' => $token
+                    ? route('portal.satisfaction.index', ['token' => $token])
+                    : route('user.satisfaction.index', ['userId' => $link->user_id]),
+                'reference_type' => HumasSatisfactionSurvey::class,
+                'reference_id' => $survey->id,
                 'action_text' => 'Isi Survei',
+                'data' => [
+                    'survey_id' => $survey->id,
+                    'school_id' => $survey->school_id,
+                    'scope' => $survey->school_id ? 'school' : 'global',
+                ],
             ]);
         }
     }

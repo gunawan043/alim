@@ -4,9 +4,17 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\Api\Mobile\V1\RaportController;
 use App\Http\Controllers\Api\Mobile\V1\SantriDataController;
+use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Models\AcademicYear;
+use App\Models\AdminJurnalPembelajaran;
+use App\Models\AdminPresensiHarian;
+use App\Models\AdminPresensiMapel;
+use App\Models\AdminPresensiSiswa;
 use App\Models\NilaiSumatif;
+use App\Models\NotificationUniversal;
+use App\Models\PerangkatPembelajaran;
+use App\Models\Permission;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
@@ -16,9 +24,12 @@ use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Models\WaliSantri;
+use App\Services\Academic\AcademicAnalysisService;
+use App\Services\Academic\AcademicOperationsService;
 use App\Services\GuardianGradeColumnService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -48,7 +59,7 @@ class RaporPublishTest extends TestCase
     {
         parent::setUp();
 
-        \App\Models\Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
 
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -174,7 +185,6 @@ class RaporPublishTest extends TestCase
             'action' => 'rapor_published',
         ]);
 
-
         $after = $raportController->status($waliRequest)->getData(true);
         $this->assertCount(1, $after['data']['registrations']);
         $this->assertTrue($after['data']['is_published']);
@@ -279,7 +289,7 @@ class RaporPublishTest extends TestCase
         $liqo = Subject::create([
             'school_id' => $this->school->id,
             'code' => 'LIQO',
-            'name' => "Liqo Maftuh (Upacara)",
+            'name' => 'Liqo Maftuh (Upacara)',
             'credit_hours' => 1,
             'is_active' => true,
         ]);
@@ -343,6 +353,277 @@ class RaporPublishTest extends TestCase
         $this->assertNull($this->book->fresh()->published_at);
         $this->assertTrue(session()->has('error'));
         $this->assertStringContainsString('belum ada santri aktif', (string) session('error'));
+    }
+
+    public function test_analisis_akademik_menghitung_perubahan_sts_sas(): void
+    {
+        NilaiSumatif::query()
+            ->where('admin_book_id', $this->book->id)
+            ->update(['sts_murni' => 70, 'sas_murni' => 80]);
+
+        $analysis = app(AcademicAnalysisService::class)->analyze($this->school->id, [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'grade_level_id' => null,
+            'study_group_id' => null,
+            'subject_id' => null,
+            'q' => null,
+            'compare_mode' => 'previous_period',
+        ]);
+
+        $this->assertSame(1, $analysis['row_count']);
+        $this->assertSame(70.0, $analysis['rows']->first()['sts']);
+        $this->assertSame(80.0, $analysis['rows']->first()['sas']);
+        $this->assertSame(10.0, $analysis['rows']->first()['delta']);
+        $this->assertSame('increased', $analysis['rows']->first()['trend']);
+        $this->assertSame(1, $analysis['summary']['increased']);
+    }
+
+    public function test_halaman_analisis_akademik_dapat_dibuka_dan_diekspor(): void
+    {
+        NilaiSumatif::query()
+            ->where('admin_book_id', $this->book->id)
+            ->update(['sts_murni' => 70, 'sas_murni' => 80]);
+
+        $this->actingAs($this->admin);
+
+        $this->get(route('user.laporan.akademik', [
+            'userId' => $this->admin->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]))->assertOk()
+            ->assertSee('Analisis Nilai Murni STS/SAS')
+            ->assertSee($this->student->name);
+
+        $export = $this->get(route('user.laporan.akademik.export', [
+            'userId' => $this->admin->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]));
+
+        $export->assertOk();
+        $this->assertSame('PK', substr($export->streamedContent(), 0, 2));
+
+        $pdf = $this->get(route('user.laporan.akademik.pdf', [
+            'userId' => $this->admin->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ]));
+
+        $pdf->assertOk();
+        $this->assertStringStartsWith('%PDF', (string) $pdf->getContent());
+    }
+
+    public function test_laporan_akademik_operasional_dapat_dibuka(): void
+    {
+        $this->actingAs($this->admin);
+
+        $params = [
+            'userId' => $this->admin->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ];
+
+        $this->get(route('user.laporan.akademik.ketuntasan', $params))->assertOk()->assertSee('Ketuntasan Akademik');
+        $this->get(route('user.laporan.akademik.kehadiran', $params))->assertOk()->assertSee('Kehadiran Santri');
+        $this->get(route('user.laporan.akademik.keterlaksanaan', $params))->assertOk()->assertSee('Keterlaksanaan Pembelajaran');
+        $this->get(route('user.laporan.akademik.administrasi', $params))->assertOk()->assertSee('Kelengkapan Administrasi');
+    }
+
+    public function test_laporan_akademik_operasional_dapat_diekspor_dan_dicetak(): void
+    {
+        $this->actingAs($this->admin);
+
+        $params = [
+            'userId' => $this->admin->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ];
+
+        $exports = [
+            'user.laporan.akademik.ketuntasan.export',
+            'user.laporan.akademik.kehadiran.export',
+            'user.laporan.akademik.keterlaksanaan.export',
+            'user.laporan.akademik.administrasi.export',
+        ];
+
+        foreach ($exports as $route) {
+            $response = $this->get(route($route, $params));
+            $response->assertOk();
+            $this->assertSame('PK', substr($response->streamedContent(), 0, 2), $route);
+        }
+
+        $pdfs = [
+            'user.laporan.akademik.ketuntasan.pdf',
+            'user.laporan.akademik.kehadiran.pdf',
+            'user.laporan.akademik.keterlaksanaan.pdf',
+            'user.laporan.akademik.administrasi.pdf',
+        ];
+
+        foreach ($pdfs as $route) {
+            $response = $this->get(route($route, $params));
+            $response->assertOk();
+            $this->assertStringStartsWith('%PDF', (string) $response->getContent(), $route);
+        }
+    }
+
+    public function test_laporan_operasional_menghitung_kehadiran_dan_administrasi(): void
+    {
+        AdminPresensiHarian::create([
+            'study_group_id' => $this->group->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'attendance_date' => '2025-10-15',
+            'student_id' => $this->student->id,
+            'status' => 'hadir',
+        ]);
+
+        $meeting = AdminPresensiMapel::create([
+            'admin_book_id' => $this->book->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'attendance_date' => '2025-10-15',
+            'status' => 'hadir',
+        ]);
+
+        AdminPresensiSiswa::create([
+            'presensi_mapel_id' => $meeting->id,
+            'student_id' => $this->student->id,
+            'status' => 'hadir',
+        ]);
+
+        AdminJurnalPembelajaran::create([
+            'admin_book_id' => $this->book->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'meeting_number' => 1,
+            'meeting_date' => '2025-10-15',
+            'material' => 'Materi uji laporan',
+        ]);
+
+        PerangkatPembelajaran::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'subject_id' => $this->subject->id,
+            'study_group_id' => $this->group->id,
+            'teacher_id' => $this->admin->id,
+            'judul' => 'Perangkat Uji',
+            'tipe' => 'umum',
+            'status' => 'final',
+            'workflow_status' => 'approved',
+        ]);
+
+        NilaiSumatif::query()
+            ->where('admin_book_id', $this->book->id)
+            ->update(['sts_murni' => 70, 'sas_murni' => 80]);
+
+        $filters = [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'grade_level_id' => null,
+            'study_group_id' => null,
+            'subject_id' => null,
+            'teacher_id' => null,
+            'q' => null,
+            'compare_mode' => 'previous_period',
+        ];
+
+        $operations = app(AcademicOperationsService::class);
+        $attendance = $operations->attendance($this->school->id, array_merge($filters, [
+            'source' => 'harian',
+            'dari' => '2025-10-01',
+            'sampai' => '2025-10-31',
+        ]));
+
+        $this->assertSame(1, $attendance['summary']['total']);
+        $this->assertSame(100.0, $attendance['summary']['attendance_rate']);
+
+        $implementation = $operations->implementation($this->school->id, $filters);
+        $book = $implementation['books']->first();
+
+        $this->assertNotNull($book);
+        $this->assertTrue($book['has_plan']);
+        $this->assertTrue($book['has_journal']);
+        $this->assertTrue($book['has_presensi']);
+        $this->assertSame('terlaksana', $book['implementation_status']);
+
+        $administration = $operations->administration($this->school->id, $filters);
+        $this->assertSame(100.0, $administration['summary']['percentage']);
+        $this->assertSame(1, $administration['summary']['complete_books']);
+
+        $params = [
+            'userId' => $this->admin->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+        ];
+
+        $this->get(route('user.laporan.akademik.ketuntasan', $params))->assertOk()->assertSee($this->student->name);
+        $this->get(route('user.laporan.akademik.kehadiran', array_merge($params, [
+            'dari' => '2025-10-01',
+            'sampai' => '2025-10-31',
+        ])))->assertOk()->assertSee($this->student->name);
+        $this->get(route('user.laporan.akademik.keterlaksanaan', $params))->assertOk()->assertSee($this->subject->name);
+        $this->get(route('user.laporan.akademik.administrasi', $params))->assertOk()->assertSee('Lengkap');
+        $this->get(route('user.laporan.akademik.riwayat', array_merge($params, [
+            'studentId' => $this->student->id,
+            'subject_id' => $this->subject->id,
+        ])))->assertOk()->assertSee($this->student->name)->assertSee($this->subject->name);
+    }
+
+    public function test_auto_publish_mengirim_notifikasi_publish_dan_update(): void
+    {
+        $wali = User::create([
+            'name' => 'Wali Auto Publish', 'email' => 'wali.auto.publish@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+        WaliSantri::create([
+            'user_id' => $wali->id, 'student_id' => $this->student->id,
+            'school_id' => $this->school->id, 'role' => 'wali',
+            'is_primary' => true, 'status' => 'active',
+        ]);
+
+        $this->book->update(['auto_publish' => true, 'published_at' => null]);
+
+        $request = $this->request('POST', [
+            'type' => 'sumatif',
+            'sumatif' => [
+                $this->student->id => [
+                    'sts_murni' => 80,
+                    'sts' => 80,
+                    'sas_murni' => 85,
+                    'sas' => 85,
+                ],
+            ],
+        ]);
+
+        app()->instance('request', $request);
+        $controller = app(NilaiGuruController::class);
+
+        $controller->autoSave($request, $this->admin->id, $this->book->id);
+
+        $this->assertNotNull($this->book->fresh()->published_at);
+        $this->assertSame(1, NotificationUniversal::where('user_id', $wali->id)
+            ->where('action', 'nilai_published')
+            ->count());
+
+        // Autosave berikutnya dalam 60 detik tidak mengirim duplikat.
+        $controller->autoSave($request, $this->admin->id, $this->book->id);
+
+        $this->assertSame(1, NotificationUniversal::where('user_id', $wali->id)
+            ->where('action', 'nilai_published')
+            ->count());
+        $this->assertSame(0, NotificationUniversal::where('user_id', $wali->id)
+            ->where('action', 'nilai_updated')
+            ->count());
+
+        // Setelah cooldown, perubahan nilai berikutnya mengirim event update.
+        Cache::forget('nilai-update-notified:'.$this->book->id);
+        $controller->autoSave($request, $this->admin->id, $this->book->id);
+
+        $this->assertSame(1, NotificationUniversal::where('user_id', $wali->id)
+            ->where('action', 'nilai_updated')
+            ->count());
     }
 
     public function test_mode_publish_buku_bisa_otomatis_atau_manual(): void

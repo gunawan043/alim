@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Str;
+
 /*
 |--------------------------------------------------------------------------
 | WordPress-Style Escape Helpers (Blade Compatibility)
@@ -59,5 +61,18 @@ if (! function_exists('esc_url')) {
         }
 
         return e((string) $url);
+    }
+}
+
+if (! function_exists('format_city_name')) {
+    /**
+     * Nama kota untuk dokumen: "KOTA MATARAM" -> "Mataram".
+     */
+    function format_city_name($name): string
+    {
+        $name = trim((string) $name);
+        $name = preg_replace('/^(KOTA|KABUPATEN|KAB\.)\s+/i', '', $name) ?? $name;
+
+        return Str::title(Str::lower($name));
     }
 }

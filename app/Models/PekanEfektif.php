@@ -54,12 +54,15 @@ class PekanEfektif extends Model
 
     const JENIS_LAINNYA = 'lainnya';
 
+    const JENIS_TIDAK_EFEKTIF = 'tidak_efektif';
+
     const JENIS_OPTIONS = [
         self::JENIS_EFEKTIF => 'Minggu Efektif',
         self::JENIS_LIBUR => 'Libur',
         self::JENIS_UJIAN => 'Ujian',
         self::JENIS_KEGIATAN_SEKOLAH => 'Kegiatan Sekolah',
         self::JENIS_LAINNYA => 'Lainnya',
+        self::JENIS_TIDAK_EFEKTIF => 'Tidak Efektif',
     ];
 
     const SEMESTER_GANJIL = 1;

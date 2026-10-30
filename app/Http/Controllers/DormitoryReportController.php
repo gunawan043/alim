@@ -4,27 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use Maatwebsite\Excel\Facades\Excel;
-
+use App\Exports\DormitoryPermitsExport;
 use App\Models\AcademicYear;
-use App\Models\Dormitory;
 use App\Models\AuditLog;
+use App\Models\Dormitory;
 use App\Models\DormitoryActivity;
 use App\Models\DormitoryAttendance;
 use App\Models\DormitoryInventory;
-use App\Exports\DormitoryPermitsExport;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryQrScanLog;
-use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryResident;
-use App\Models\DormitoryRoomMove;
 use App\Models\DormitoryReward;
 use App\Models\DormitoryRoom;
+use App\Models\DormitoryRoomMove;
 use App\Models\DormitoryViolation;
 use App\Models\DormitoryVisitLog;
+use App\Models\HumasAnnouncement;
 use App\Models\SanitationInspection;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DormitoryReportController extends Controller
@@ -416,14 +415,14 @@ class DormitoryReportController extends Controller
         $permitIds = DormitoryPermit::where('dormitory_id', $asramaUuid)->pluck('id');
         $moveIds = DormitoryRoomMove::where('dormitory_id', $asramaUuid)->pluck('id');
         $activityIds = DormitoryActivity::where('dormitory_id', $asramaUuid)->pluck('id');
-        $broadcastIds = DormitoryEmergencyBroadcast::where('dormitory_id', $asramaUuid)->pluck('id');
+        $broadcastIds = HumasAnnouncement::where('category', 'broadcast')->where('dormitory_id', $asramaUuid)->pluck('id');
 
         $query = AuditLog::with('user')
             ->where(function ($q) use ($permitIds, $moveIds, $activityIds, $broadcastIds) {
                 $q->where(fn ($x) => $x->where('table_name', 'dormitory_permits')->whereIn('record_id', $permitIds))
                     ->orWhere(fn ($x) => $x->where('table_name', 'dormitory_room_moves')->whereIn('record_id', $moveIds))
                     ->orWhere(fn ($x) => $x->where('table_name', 'dormitory_activities')->whereIn('record_id', $activityIds))
-                    ->orWhere(fn ($x) => $x->where('table_name', 'dormitory_emergency_broadcasts')->whereIn('record_id', $broadcastIds));
+                    ->orWhere(fn ($x) => $x->whereIn('table_name', ['humas_announcements', 'dormitory_emergency_broadcasts'])->whereIn('record_id', $broadcastIds));
             })
             ->when($request->filled('action'), fn ($q) => $q->where('action', $request->action))
             ->when($request->filled('date'), fn ($q) => $q->whereDate('created_at', $request->date))

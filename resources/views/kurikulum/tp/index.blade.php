@@ -324,7 +324,7 @@
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label">Diturunkan dari CP</label>
-                                <select name="capaian_pembelajaran_id" id="tp-cp" class="form-select" onchange="applyCpDefaults()">
+                                <select name="capaian_pembelajaran_id" id="tp-cp" class="form-select" data-searchable onchange="applyCpDefaults()">
                                     <option value="">— Tanpa CP —</option>
                                 </select>
                                 <small class="text-muted">TP sebaiknya diturunkan dari CP mapel &amp; fase yang sesuai.</small>

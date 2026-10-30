@@ -21,8 +21,8 @@ class TahfidzCertificate extends Model
     }
 
     protected $fillable = [
-        'student_id', 'school_id', 'academic_year_id', 'tasmian_participant_id',
-        'certificate_type', 'certificate_number', 'issued_date', 'total_juz_completed',
+        'student_id', 'class_name', 'school_id', 'academic_year_id', 'tasmian_participant_id',
+        'certificate_type', 'certificate_number', 'issued_date', 'total_juz_completed', 'materi',
         'juz_detail', 'nilai_akhir', 'predikat', 'golongan', 'nama_lembaga',
         'kode_lembaga', 'kode_bulan_tahun_cetak', 'issued_by', 'ceremony_date',
         'file_path', 'is_printed', 'printed_at', 'notes',

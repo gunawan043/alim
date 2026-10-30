@@ -79,7 +79,7 @@
                             <button type="submit" class="btn btn-primary w-100">Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.satuan-kerja.positions', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}"
+                            <a href="{{ route('user.schools.satuan-kerja.positions', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}"
                                class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
@@ -247,7 +247,7 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
 
             try {
-                const res = await fetch(`{{ route('user.satuan-kerja.positions.update', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}/${userId}`, {
+                const res = await fetch(`{{ route('user.schools.satuan-kerja.positions.update', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}/${userId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -301,7 +301,7 @@
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
 
             try {
-                const res = await fetch(`{{ route('user.satuan-kerja.positions.mass-update', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}`, {
+                const res = await fetch(`{{ route('user.schools.satuan-kerja.positions.mass-update', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

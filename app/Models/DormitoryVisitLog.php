@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\LogsDeletion;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -30,6 +31,8 @@ class DormitoryVisitLog extends Model
         'visitor_name',
         'visitor_id_number',
         'visitor_phone',
+        'visitor_count',
+        'visitor_gender',
         'visitor_relationship',
         'purpose',
         'expected_arrival_datetime',
@@ -48,6 +51,15 @@ class DormitoryVisitLog extends Model
         'visitor_access_rights',
         'is_special_permission',
         'special_reason',
+        'identity_verified_at',
+        'identity_verified_by',
+        'card_verified_at',
+        'card_verified_by',
+        'rules_acknowledged_at',
+        'schedule_exception_reason',
+        'schedule_exception_approved_by',
+        'schedule_exception_approved_at',
+        'linked_permit_id',
     ];
 
     protected $casts = [
@@ -58,8 +70,13 @@ class DormitoryVisitLog extends Model
         'check_in_at' => 'datetime',
         'check_out_at' => 'datetime',
         'expected_meet_duration_minutes' => 'integer',
+        'visitor_count' => 'integer',
         'visitor_access_rights' => 'array',
         'is_special_permission' => 'boolean',
+        'identity_verified_at' => 'datetime',
+        'card_verified_at' => 'datetime',
+        'rules_acknowledged_at' => 'datetime',
+        'schedule_exception_approved_at' => 'datetime',
     ];
 
     // ── Relationships ────────────────────────────────────────────
@@ -226,7 +243,7 @@ class DormitoryVisitLog extends Model
      * Masa berlaku kartu QR kunjungan. Kartu harus tetap bisa dipakai
      * sampai santri kembali, dengan toleransi 1 hari.
      */
-    public function cardExpiresAt(): \Carbon\CarbonInterface
+    public function cardExpiresAt(): CarbonInterface
     {
         if ($this->check_out_at) {
             return $this->check_out_at->copy()->addDay();

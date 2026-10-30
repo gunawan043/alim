@@ -149,7 +149,6 @@ return [
 
         // Akademik
         'chart-tren-kehadiran-santri'      => 'akademik',
-        'chart-gender-santri'              => 'akademik',
         'chart-top-rombel'                 => 'akademik',
         'chart-statistik-santri-per-rombel' => 'akademik',
         'chart-santri-per-tingkat'         => 'akademik',

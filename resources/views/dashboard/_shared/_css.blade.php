@@ -140,6 +140,29 @@
         white-space: nowrap;
     }
 
+    /* ---------- AKSES HARIAN (shortcut GTK Satuan Pendidikan) ---------- */
+    .quick-access-card {
+        background: var(--vz-card-bg, #fff);
+        border: 1px solid var(--dash-border) !important;
+        border-radius: .65rem;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+    .quick-access-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(var(--vz-primary-rgb), .25) !important;
+        box-shadow: 0 8px 18px rgba(56, 65, 74, .10) !important;
+    }
+    .quick-access-icon {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
     /* ---------- HERO (informasi utama, emphasis tertinggi) ---------- */
     .welcome-banner {
         position: relative;
@@ -326,4 +349,104 @@
         .dash-section-count { display: none; }
         .welcome-banner { padding: 1.1rem; }
     }
+</style>
+<style>
+    /* ---------- HEADER & FILTER DASHBOARD ---------- */
+    .dash-header .badge { font-weight: 500; letter-spacing: 0; }
+    .dash-kpi { color: inherit; transition: transform .15s ease, box-shadow .15s ease; }
+    .dash-kpi:hover { transform: translateY(-2px); box-shadow: 0 .25rem .75rem rgba(56,65,74,.12); }
+    .dash-kpi h4 { font-variant-numeric: tabular-nums; }
+
+    /* ---------- CAROUSEL INFO ---------- */
+    .info-carousel-card .carousel-inner { border-radius: 0 0 .75rem .75rem; overflow: hidden; }
+    .info-slide { position: relative; display: block; color: #fff; }
+    .info-slide-image { height: 300px; object-fit: cover; filter: brightness(.72); }
+    .info-slide-caption {
+        position: absolute; inset: auto 0 0 0;
+        padding: 1.25rem 1.5rem;
+        background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,.82) 65%);
+    }
+    .info-slide-caption h4 { text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+    @media (max-width: 575.98px) {
+        .info-slide-image { height: 220px; }
+        .info-slide-caption { padding: .9rem 1rem; }
+        .info-slide-caption h4 { font-size: 1rem; }
+    }
+
+    /* ---------- MODAL BROADCAST ---------- */
+    [data-alim-broadcast-modal] .modal-content { border-radius: .85rem; }
+    [data-alim-broadcast-modal] .modal-body p { line-height: 1.7; }
+</style>
+<style>
+    /* ---------- ANIMASI DASHBOARD ---------- */
+    @keyframes dashFadeUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes dashPulseRing {
+        0%   { box-shadow: 0 0 0 0 rgba(64, 81, 137, .35); }
+        70%  { box-shadow: 0 0 0 10px rgba(64, 81, 137, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(64, 81, 137, 0); }
+    }
+    @keyframes dashSheen {
+        0%   { transform: translateX(-120%); }
+        100% { transform: translateX(220%); }
+    }
+
+    .dash-animate {
+        opacity: 0;
+        animation: dashFadeUp .55s cubic-bezier(.22, .61, .36, 1) forwards;
+    }
+    .dash-animate:nth-child(2) { animation-delay: .08s; }
+    .dash-animate:nth-child(3) { animation-delay: .16s; }
+    .dash-animate:nth-child(4) { animation-delay: .24s; }
+
+    .dash-kpi { position: relative; overflow: hidden; }
+    .dash-kpi::after {
+        content: '';
+        position: absolute; inset: 0;
+        background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.45) 50%, transparent 80%);
+        transform: translateX(-120%);
+        pointer-events: none;
+    }
+    .dash-kpi:hover::after { animation: dashSheen .9s ease; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .dash-animate, .dash-kpi::after { animation: none !important; opacity: 1 !important; }
+    }
+
+    /* ---------- KALDIK ---------- */
+    .kaldik-row:last-child { border-bottom: 0 !important; }
+    .kaldik-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        margin-top: 6px; flex-shrink: 0;
+        box-shadow: 0 0 0 3px rgba(64,81,137,.12);
+    }
+
+    /* ---------- JADWAL SHALAT ---------- */
+    .prayer-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+        gap: .5rem;
+    }
+    .prayer-item {
+        border: 1px solid var(--dash-border, rgba(56,65,74,.12));
+        border-radius: .65rem;
+        padding: .65rem .5rem;
+        text-align: center;
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        background: var(--vz-card-bg, #fff);
+    }
+    .prayer-item:hover { transform: translateY(-2px); box-shadow: 0 .2rem .6rem rgba(56,65,74,.12); }
+    .prayer-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--vz-secondary-color); }
+    .prayer-time { font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .prayer-item.is-past { opacity: .55; }
+    .prayer-item.is-next {
+        border-color: #405189;
+        background: rgba(64,81,137,.06);
+        animation: dashPulseRing 2.2s ease-out infinite;
+    }
+
+    /* ---------- BANNER SALAM ---------- */
+    .banner-name { font-weight: 700; }
 </style>

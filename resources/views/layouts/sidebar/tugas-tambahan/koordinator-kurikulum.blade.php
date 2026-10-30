@@ -166,8 +166,8 @@
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
        href="{{ $koorKurUrl('user.schools.nilai-kelas.index') }}">
-        <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>
-    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap'])</a>
+        <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap'])
+    </a>
 </li>
 
 {{-- Bank Soal & Kisi-Kisi --}}
@@ -175,7 +175,8 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.', 'user.ljk.']) ? ' active' : '' }}"
        href="{{ $koorKurUrl('user.asesmen.index') }}">
         <i class="ri-file-list-3-line"></i><span>Asesmen</span>
-    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'review_pending', 'title' => 'Dokumen menunggu review Anda'])</a>
+    @include('layouts.sidebar.partials.indicator-badge', ['key' => 'review_pending', 'title' => 'Dokumen menunggu review Anda'])
+    </a>
 </li>
 
 {{-- Validasi Perangkat Ajar --}}
@@ -234,6 +235,12 @@
 </li>
 
 {{-- Laporan Kurikulum --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.akademik']) ? ' active' : '' }}"
+       href="{{ $koorKurUrl('user.laporan.akademik') }}">
+        <i class="ri-line-chart-line"></i><span>Analisis Akademik</span>
+    </a>
+</li>
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.gtk']) ? ' active' : '' }}"
        href="{{ $koorKurUrl('user.laporan.gtk') }}">

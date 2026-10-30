@@ -10,10 +10,16 @@ $schoolName = $schoolId
     : null;
 
 $hour = (int) now()->format('H');
-$greeting = $hour < 11 ? 'Selamat pagi' : ($hour < 15 ? 'Selamat siang' : ($hour < 18 ? 'Selamat sore' : 'Selamat malam'));
+// Salam Islami menyesuaikan waktu, bukan "Selamat pagi/siang".
+$greeting = $hour < 11
+    ? 'Selamat pagi'
+    : ($hour < 15 ? 'Selamat siang' : ($hour < 18 ? 'Selamat sore' : 'Selamat malam'));
+
+$salam = 'Assalamu\'alaikum warahmatullahi wabarakatuh';
 
 return [
     '_col'     => 'col-12',
+    'salam'    => $salam,
     'greeting' => $greeting,
     'name'     => $user->name ?? 'Pengguna',
     'jabatan'  => $jabatan ?: 'Dashboard',

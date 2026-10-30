@@ -3,25 +3,20 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Models\Asset;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class AssetModelTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
 
         $this->artisan('cache:clear');
     }
@@ -32,7 +27,10 @@ class AssetModelTest extends TestCase
         $data = $this->assetData();
         $asset = Asset::create($data);
         $this->assertNotNull($asset->id);
-        $this->assertNotFalse(filter_var($asset->id, FILTER_VALIDATE_UUID));
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            (string) $asset->id
+        );
     }
 
     /** @test */
@@ -63,15 +61,13 @@ class AssetModelTest extends TestCase
     {
         $validConditions = ['baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat', 'hilang', 'dihapus'];
         foreach ($validConditions as $cond) {
-            $code = 'TEST-'.strtoupper(Str::random(5));
-            Asset::firstOrCreate(['asset_code' => $code], [
-                'school_id' => $this->createSchool()->id,
-                'asset_name' => 'Test',
+            Asset::create($this->assetData([
+                'asset_code' => 'TEST-'.strtoupper(Str::random(5)),
                 'condition' => $cond,
-                'status' => 'tersedia',
-                'year' => date('Y'),
-            ]);
+            ]));
         }
+
+        $this->assertDatabaseCount('assets', count($validConditions));
     }
 
     /** @test */
@@ -107,6 +103,9 @@ class AssetModelTest extends TestCase
 
         return array_merge([
             'school_id' => $school->id,
+            'work_unit_id' => $school->work_unit_id,
+            'asset_category_id' => $this->createAssetCategory()->id,
+            'created_by' => $this->fixtureUser()->id,
             'asset_code' => 'TEST-'.strtoupper(Str::random(6)),
             'asset_name' => 'Test Asset '.strtoupper(Str::random(4)),
             'brand' => 'TestBrand',

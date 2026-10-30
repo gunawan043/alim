@@ -754,6 +754,27 @@
                             @endforeach
                         </div>
 
+                        @php
+                            $leaderOverride = is_array($studyGroup->school?->document_visual_settings['leader'] ?? null)
+                                ? $studyGroup->school->document_visual_settings['leader']
+                                : [];
+                            $autoLeader = app(\App\Services\Documents\SchoolLeaderService::class)->forSchool($studyGroup->school);
+                        @endphp
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-7">
+                                <label class="form-label small mb-1">Nama &amp; gelar kepala sekolah (khusus dokumen)</label>
+                                <input type="text" name="document_leader_name" class="form-control form-control-sm"
+                                       value="{{ old('document_leader_name', $leaderOverride['name'] ?? $autoLeader['display_name']) }}"
+                                       placeholder="Kosongkan untuk otomatis dari data GTK">
+                                <div class="form-text">Terisi otomatis dari data GTK. Hapus isi untuk kembali otomatis.</div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small mb-1">NUPY (khusus dokumen)</label>
+                                <input type="text" name="document_leader_nupy" class="form-control form-control-sm"
+                                       value="{{ old('document_leader_nupy', $leaderOverride['nupy'] ?? $autoLeader['nupy']) }}"
+                                       placeholder="Kosongkan untuk otomatis">
+                            </div>
+                        </div>
                         <div class="row g-2">
                             <div class="col-6 col-md-3">
                                 <label class="form-label small mb-1">Tinggi Kop (mm)</label>
@@ -768,6 +789,10 @@
                                 <input type="number" name="ttd_ksp_height" class="form-control form-control-sm" min="5" max="60" step="0.5" required value="{{ old('ttd_ksp_height', $layout['ttd_ksp_height']) }}">
                             </div>
                             <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD KSP — Margin (mm)</label>
+                                <input type="number" name="ttd_ksp_margin" class="form-control form-control-sm" min="0" max="30" step="0.5" required value="{{ old('ttd_ksp_margin', $layout['ttd_ksp_margin']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
                                 <label class="form-label small mb-1">TTD Wali — Lebar</label>
                                 <input type="number" name="ttd_wali_width" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('ttd_wali_width', $layout['ttd_wali_width']) }}">
                             </div>
@@ -776,12 +801,20 @@
                                 <input type="number" name="ttd_wali_height" class="form-control form-control-sm" min="5" max="60" step="0.5" required value="{{ old('ttd_wali_height', $layout['ttd_wali_height']) }}">
                             </div>
                             <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">TTD Wali — Margin (mm)</label>
+                                <input type="number" name="ttd_wali_margin" class="form-control form-control-sm" min="0" max="30" step="0.5" required value="{{ old('ttd_wali_margin', $layout['ttd_wali_margin']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
                                 <label class="form-label small mb-1">Stempel — Lebar</label>
                                 <input type="number" name="stamp_width" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('stamp_width', $layout['stamp_width']) }}">
                             </div>
                             <div class="col-6 col-md-3">
                                 <label class="form-label small mb-1">Stempel — Tinggi</label>
                                 <input type="number" name="stamp_height" class="form-control form-control-sm" min="5" max="100" step="0.5" required value="{{ old('stamp_height', $layout['stamp_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Stempel — Margin (mm)</label>
+                                <input type="number" name="stamp_margin" class="form-control form-control-sm" min="0" max="30" step="0.5" required value="{{ old('stamp_margin', $layout['stamp_margin']) }}">
                             </div>
                         </div>
                     </form>
@@ -942,6 +975,7 @@ renumberSubjectRows();
             'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
+            'ttd_ksp_margin', 'ttd_wali_margin', 'stamp_margin',
         ].forEach(function (key) {
             if (layoutForm && layoutForm.querySelector('[name="' + key + '"]')) {
                 setFormValue(layoutForm, key, layout[key]);

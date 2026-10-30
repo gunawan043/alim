@@ -121,7 +121,7 @@
             <td style="width:50%">Mengetahui,<br>Kepala Satuan Pendidikan
                 <div class="space"></div><div class="name">__________________________</div>
             </td>
-            <td style="width:50%">{{ $school?->city?->name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>Guru Mata Pelajaran
+            <td style="width:50%">{{ $school?->city?->display_name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>Guru Mata Pelajaran
                 <div class="space"></div><div class="name">__________________________</div>
             </td>
         </tr>

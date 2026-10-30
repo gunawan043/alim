@@ -17,8 +17,7 @@ class JenisGtkController extends PosApiController
     {
         $query = JenisGtk::query();
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->toString();
+        if (($search = $this->searchTerm($request)) !== null) {
             $query->where('nama', 'like', "%{$search}%");
         }
 

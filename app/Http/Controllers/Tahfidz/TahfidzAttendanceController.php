@@ -9,6 +9,7 @@ use App\Models\TahfidzGroupAttendance;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzSchedule;
 use App\Services\TahfidzAccess;
+use App\Services\TahfidzPresenceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -49,14 +50,15 @@ class TahfidzAttendanceController extends Controller
 
         $members = collect();
         $attendance = collect();
+        $presence = collect();
         $schedule = null;
         $holiday = null;
-        $stats = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpa' => 0, 'belum' => 0];
+        $stats = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpa' => 0, 'belum_setor' => 0, 'belum_siap' => 0];
         $history = collect();
         $monthOptions = collect([$month]);
         $meetingDates = collect();
         $recapRows = collect();
-        $recapTotals = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpa' => 0, 'meetings' => 0];
+        $recapTotals = ['hadir' => 0, 'izin' => 0, 'sakit' => 0, 'alpa' => 0, 'belum_setor' => 0, 'belum_siap' => 0, 'meetings' => 0];
         $canInput = false;
 
         if ($group) {
@@ -72,6 +74,9 @@ class TahfidzAttendanceController extends Controller
                 ->where('session_type', $sessionType)
                 ->get()
                 ->keyBy('student_id');
+
+            $presence = app(TahfidzPresenceService::class)
+                ->forStudents($members->pluck('student_id'), $date);
 
             $schedule = TahfidzSchedule::where('tahfidz_group_id', $group->id)
                 ->where('day_of_week', $date->dayOfWeekIso)
@@ -95,11 +100,13 @@ class TahfidzAttendanceController extends Controller
                 ->first();
 
             foreach ($members as $member) {
-                $status = $attendance->get($member->student_id)?->status;
-                if ($status && array_key_exists($status, $stats)) {
+                $presenceRow = $presence->get((string) $member->student_id);
+                $status = $attendance->get($member->student_id)?->status
+                    ?? ($presenceRow['attendance_status'] ?? null)
+                    ?? 'belum_setor';
+
+                if (array_key_exists($status, $stats)) {
                     $stats[$status]++;
-                } else {
-                    $stats['belum']++;
                 }
             }
 
@@ -127,6 +134,8 @@ class TahfidzAttendanceController extends Controller
                     'izin' => $rows->where('status', 'izin')->count(),
                     'sakit' => $rows->where('status', 'sakit')->count(),
                     'alpa' => $rows->where('status', 'alpa')->count(),
+                    'belum_setor' => $rows->where('status', 'belum_setor')->count(),
+                    'belum_siap' => $rows->where('status', 'belum_siap')->count(),
                     'total' => $rows->count(),
                 ])
                 ->sortByDesc(fn ($row) => $row->date)
@@ -160,6 +169,8 @@ class TahfidzAttendanceController extends Controller
                             'izin' => 'I',
                             'sakit' => 'S',
                             'alpa' => 'A',
+                            'belum_setor' => 'B',
+                            'belum_siap' => 'N',
                             default => '–',
                         },
                     ];
@@ -175,6 +186,8 @@ class TahfidzAttendanceController extends Controller
                     'izin' => $studentRecords->where('status', 'izin')->count(),
                     'sakit' => $studentRecords->where('status', 'sakit')->count(),
                     'alpa' => $studentRecords->where('status', 'alpa')->count(),
+                    'belum_setor' => $studentRecords->where('status', 'belum_setor')->count(),
+                    'belum_siap' => $studentRecords->where('status', 'belum_siap')->count(),
                     'total_meetings' => $totalMeetings,
                     'percentage' => $totalMeetings > 0 ? round(($hadir / $totalMeetings) * 100, 1) : 0,
                 ];
@@ -185,13 +198,15 @@ class TahfidzAttendanceController extends Controller
                 'izin' => $recapRows->sum('izin'),
                 'sakit' => $recapRows->sum('sakit'),
                 'alpa' => $recapRows->sum('alpa'),
+                'belum_setor' => $recapRows->sum('belum_setor'),
+                'belum_siap' => $recapRows->sum('belum_siap'),
                 'meetings' => $meetingDates->count(),
             ];
         }
 
         return view('tahfidz.attendance.index', compact(
             'userId', 'groups', 'group', 'date', 'dateString', 'sessionType', 'month',
-            'tab', 'members', 'attendance', 'schedule', 'holiday', 'stats', 'history',
+            'tab', 'members', 'attendance', 'presence', 'schedule', 'holiday', 'stats', 'history',
             'monthOptions', 'meetingDates', 'recapRows', 'recapTotals', 'canInput', 'academicYear'
         ));
     }
@@ -203,7 +218,7 @@ class TahfidzAttendanceController extends Controller
             'attendance_date' => 'required|date',
             'session_type' => 'required|in:setoran,murajaah,tasmi,evaluasi,tikror',
             'statuses' => 'required|array',
-            'statuses.*' => 'required|in:hadir,izin,sakit,alpa',
+            'statuses.*' => 'required|in:hadir,izin,sakit,alpa,belum_setor,belum_siap',
             'notes' => 'nullable|array',
             'notes.*' => 'nullable|string|max:1000',
         ]);

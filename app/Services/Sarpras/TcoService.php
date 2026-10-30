@@ -111,7 +111,7 @@ class TcoService
     /**
      * Cost grouped by category across the org.
      */
-    public function summarizeByCategory(int $schoolId): array
+    public function summarizeByCategory(string $schoolId): array
     {
         $rows = DB::table('assets as a')
             ->leftJoin('asset_cost_snapshots as c', 'c.asset_id', '=', 'a.id')
@@ -147,7 +147,7 @@ class TcoService
     /**
      * Cost grouped by building → room hierarchy.
      */
-    public function summarizeByLocation(int $schoolId): array
+    public function summarizeByLocation(string $schoolId): array
     {
         $rows = DB::table('assets as a')
             ->leftJoin('asset_cost_snapshots as c', 'c.asset_id', '=', 'a.id')
@@ -178,7 +178,7 @@ class TcoService
     /**
      * Top N most expensive assets by total cost.
      */
-    public function topExpensive(int $schoolId, int $limit = 10): array
+    public function topExpensive(string $schoolId, int $limit = 10): array
     {
         return AssetCostSnapshot::query()
             ->select('asset_cost_snapshots.*')

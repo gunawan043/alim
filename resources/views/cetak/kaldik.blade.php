@@ -54,8 +54,8 @@
             <td style="width:50%">
                 Mengetahui,<br>Kepala Satuan Pendidikan
                 <div class="space"></div>
-                <div class="name">{{ $school?->principal_name ?? '................................' }}</div>
-                @if($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
+                <div class="name">{{ $school?->principal_full_name ?? '................................' }}</div>
+                @if($school?->principal_nupy_display)<div class="nip">NUPY. {{ $school->principal_nupy_display }}</div>@endif
             </td>
             <td style="width:50%">
                 {{ $school?->address ? $school->address : '' }}<br>

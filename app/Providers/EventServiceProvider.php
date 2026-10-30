@@ -99,6 +99,8 @@ use App\Listeners\Sarpras\PersistVendorEvaluationSnapshot;
 use App\Listeners\Sarpras\RecordAssetScanAnalytics;
 use App\Listeners\SyncStudentRombelAfterLifecycle;
 use App\Listeners\TriggerGtkWorkloadRecalculation;
+use App\Listeners\TriggerMaintenanceAutomation;
+use App\Listeners\NotifyOnCriticalAssetEvents;
 use App\Listeners\UpdateAssetCondition;
 use App\Listeners\UpdateStudentStatusOnLifecycle;
 use Illuminate\Auth\Events\Registered;

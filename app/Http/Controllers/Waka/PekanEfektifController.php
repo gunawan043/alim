@@ -51,10 +51,14 @@ class PekanEfektifController extends Controller
         $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
         $selectedSemester = (int) ($request->input('semester')
             ?: ($selectedAy?->semester === 'genap' ? 2 : 1));
+        $selectedAy = $this->pekanService->academicYearForSemester($selectedAy, $selectedSemester);
+        $selectedAyId = $selectedAy?->id ?? $selectedAyId;
 
         $ringkasan = ($schoolId && $selectedAyId)
             ? $this->pekanService->summary($schoolId, $selectedAyId, $selectedSemester)
             : null;
+
+        $minEffectiveDays = $this->pekanService->minEffectiveDays($schoolId);
 
         return view('waka.pekan-efektif.index', compact(
             'pekanList',
@@ -62,7 +66,8 @@ class PekanEfektifController extends Controller
             'summary',
             'ringkasan',
             'selectedAyId',
-            'selectedSemester'
+            'selectedSemester',
+            'minEffectiveDays'
         ));
     }
 
@@ -81,6 +86,10 @@ class PekanEfektifController extends Controller
             return back()->with('error', 'Konteks satuan pendidikan tidak ditemukan. Pilih sekolah terlebih dahulu.');
         }
 
+        $selectedAy = AcademicYear::find($validated['academic_year_id']);
+        $selectedAy = $this->pekanService->academicYearForSemester($selectedAy, (int) $validated['semester']);
+        $validated['academic_year_id'] = $selectedAy?->id ?? $validated['academic_year_id'];
+
         $result = $this->pekanService->generate(
             $schoolId,
             $validated['academic_year_id'],
@@ -92,12 +101,13 @@ class PekanEfektifController extends Controller
 
         return redirect()
             ->route('waka.pekan-efektif.index', [
+                'userId' => $request->user()?->id,
                 'academic_year_id' => $validated['academic_year_id'],
                 'semester' => $validated['semester'],
             ])
             ->with(
                 'success',
-                "Pekan efektif berhasil digenerate dari Kalender Pendidikan: "
+                'Pekan efektif berhasil digenerate dari Kalender Pendidikan: '
                 ."{$summary['minggu_efektif']} minggu efektif, "
                 ."{$summary['total_hari_efektif']} hari efektif, "
                 ."{$summary['minggu_libur']} minggu libur."
@@ -119,7 +129,7 @@ class PekanEfektifController extends Controller
             'minggu_ke' => 'required|integer|min:1|max:52',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'jenis' => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya',
+            'jenis' => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya,tidak_efektif',
             'keterangan' => 'nullable|string|max:255',
         ]);
 
@@ -139,7 +149,7 @@ class PekanEfektifController extends Controller
 
         PekanEfektif::create($validated);
 
-        return redirect()->route('waka.pekan-efektif.index')
+        return redirect()->route('waka.pekan-efektif.index', ['userId' => $request->user()?->id])
             ->with('success', 'Pekan efektif berhasil ditambahkan.');
     }
 
@@ -149,8 +159,9 @@ class PekanEfektifController extends Controller
         $query = PekanEfektif::with(['academicYear:id,name'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
         $pekan = $query->findOrFail($id);
+        $minEffectiveDays = $this->pekanService->minEffectiveDays($pekan->school_id);
 
-        return view('waka.pekan-efektif.show', compact('pekan'));
+        return view('waka.pekan-efektif.show', compact('pekan', 'minEffectiveDays'));
     }
 
     public function edit(Request $request, string $id)
@@ -174,13 +185,13 @@ class PekanEfektifController extends Controller
             'minggu_ke' => 'required|integer|min:1|max:52',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'jenis' => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya',
+            'jenis' => 'required|in:efektif,libur,ujian,kegiatan_sekolah,lainnya,tidak_efektif',
             'keterangan' => 'nullable|string|max:255',
         ]);
 
         $pekan->update($validated);
 
-        return redirect()->route('waka.pekan-efektif.show', $pekan->id)
+        return redirect()->route('waka.pekan-efektif.show', ['userId' => $request->user()?->id, $pekan->id])
             ->with('success', 'Pekan efektif berhasil diperbarui.');
     }
 
@@ -190,7 +201,7 @@ class PekanEfektifController extends Controller
         $pekan = PekanEfektif::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
         $pekan->delete();
 
-        return redirect()->route('waka.pekan-efektif.index')
+        return redirect()->route('waka.pekan-efektif.index', ['userId' => $request->user()?->id])
             ->with('success', 'Pekan efektif berhasil dihapus.');
     }
 }

@@ -37,12 +37,13 @@
         </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 tahfidz-table">
-                <thead class="table-light"><tr><th>Santri</th><th>Jenis</th><th>Nomor</th><th>Tanggal</th><th>Nilai</th><th>Predikat</th><th class="text-center">Status</th><th class="text-end">Aksi</th></tr></thead>
+                <thead class="table-light"><tr><th>Santri</th><th>Kelas</th><th>Jenis</th><th>Nomor</th><th>Tanggal</th><th>Nilai</th><th>Predikat</th><th class="text-center">Status</th><th class="text-end">Aksi</th></tr></thead>
                 <tbody>
                     @forelse($certificates as $certificate)
                         <tr>
                             <td><div class="fw-medium">{{ $certificate->student?->name }}</div><div class="text-muted small">{{ $certificate->student?->nis }}</div><div class="text-muted" style="font-size:11px;direction:rtl;">{{ $certificate->student_name_arabic }}</div></td>
-                            <td><span class="badge bg-primary-subtle text-primary">{{ $certificate->certificate_type_label }}</span><div class="text-muted small">{{ $certificate->golongan }}</div></td>
+                            <td>{{ $certificate->class_name ?: '—' }}</td>
+                            <td><span class="badge bg-primary-subtle text-primary">{{ $certificate->certificate_type_label }}</span><div class="text-muted small">{{ $certificate->golongan }}</div>@if($certificate->materi)<div class="text-muted small">{{ \Illuminate\Support\Str::limit($certificate->materi, 45) }}</div>@endif</td>
                             <td class="small">{{ $certificate->certificate_number }}</td>
                             <td>{{ $certificate->issued_date?->format('d M Y') }}</td>
                             <td>{{ $certificate->nilai_akhir !== null ? number_format((float) $certificate->nilai_akhir, 2) : '—' }}</td>
@@ -51,7 +52,7 @@
                             <td class="text-end"><a href="{{ route('user.tahfidz.tasmi.certificate.print', ['userId'=>$userId,'certificateId'=>$certificate->id]) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Cetak"><i class="ri-printer-line"></i></a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="8" class="text-center text-muted py-5"><i class="ri-certificate-line fs-3 d-block mb-2"></i>Belum ada syahadah. Terbitkan dari peserta tasmi’ yang sudah dinilai.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-5"><i class="ri-certificate-line fs-3 d-block mb-2"></i>Belum ada syahadah. Terbitkan dari peserta tasmi’ yang sudah dinilai.</td></tr>
                     @endforelse
                 </tbody>
             </table>

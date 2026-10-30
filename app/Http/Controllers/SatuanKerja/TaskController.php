@@ -30,7 +30,7 @@ class TaskController
 
         abort_unless($userWorkUnits, 403, 'Anda tidak memiliki akses ke satuan kerja ini.');
 
-        $query = GtkAdditionalTask::with(['user', 'decree', 'workUnit'])
+        $query = GtkAdditionalTask::with(['user', 'decree', 'workUnit', 'additionalTaskType:id,nama,kode'])
             ->where('work_unit_id', $workUnitId);
 
         if ($request->filled('teacher_id')) {
@@ -48,11 +48,13 @@ class TaskController
             ->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
-            ->whereHas('workUnit', fn($q) => $q->where('id', $workUnitId))
+            ->whereHas('school', fn ($q) => $q->where('work_unit_id', $workUnitId))
             ->orderByDesc('issued_date')
             ->get();
 
-        return view('satuan-kerja.tasks.additional', compact('tasks', 'teachers', 'decrees', 'workUnit', 'userId'));
+        $taskTypes = $this->taskTypesForWorkUnit($workUnitId);
+
+        return view('satuan-kerja.tasks.additional', compact('tasks', 'teachers', 'decrees', 'workUnit', 'workUnitId', 'userId', 'taskTypes'));
     }
 
     public function taskHours(string $userId, string $workUnitId)
@@ -107,6 +109,32 @@ class TaskController
         return back()->with('success', 'Pengaturan JP tugas tambahan berhasil disimpan.');
     }
 
+    /**
+     * Master jenis tugas yang relevan untuk sebuah satuan kerja, berdasarkan
+     * jenis GTK para anggotanya. Fallback ke seluruh master aktif.
+     */
+    private function taskTypesForWorkUnit(string $workUnitId)
+    {
+        $userIds = GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id');
+
+        $jenisIds = GtkEmployment::whereIn('user_id', $userIds)
+            ->pluck('jenis_gtk_id')
+            ->filter()
+            ->unique();
+
+        $taskTypes = AdditionalTaskType::active()
+            ->when($jenisIds->isNotEmpty(), fn ($q) => $q->whereIn('jenis_gtk_id', $jenisIds))
+            ->orderBy('urutan')
+            ->orderBy('nama')
+            ->get();
+
+        if ($taskTypes->isEmpty()) {
+            $taskTypes = AdditionalTaskType::active()->orderBy('urutan')->orderBy('nama')->get();
+        }
+
+        return $taskTypes;
+    }
+
     private function authorizeWorkUnit(string $workUnitId): void
     {
         $user = auth()->user();
@@ -122,12 +150,25 @@ class TaskController
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
             'decree_id' => 'nullable|exists:institution_decrees,id',
-            'nama_tugas' => 'required|string|max:150',
+            'additional_task_type_id' => 'nullable|exists:additional_task_types,id',
+            'nama_tugas' => 'nullable|string|max:150',
             'hours_per_week' => 'nullable|integer|min:0|max:40',
             'nomor_sk' => 'nullable|string|max:100',
             'tmt' => 'nullable|date',
             'tst' => 'nullable|date|after_or_equal:tmt',
         ]);
+
+        $type = AdditionalTaskType::resolve(
+            $data['additional_task_type_id'] ?? null,
+            $data['nama_tugas'] ?? null
+        );
+
+        if (! $type) {
+            return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
+        }
+
+        $data['additional_task_type_id'] = $type->id;
+        $data['nama_tugas'] = $type->nama;
 
         GtkAdditionalTask::create(array_merge($data, ['work_unit_id' => $workUnitId]));
 
@@ -144,12 +185,25 @@ class TaskController
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
             'decree_id' => 'nullable|exists:institution_decrees,id',
-            'nama_tugas' => 'required|string|max:150',
+            'additional_task_type_id' => 'nullable|exists:additional_task_types,id',
+            'nama_tugas' => 'nullable|string|max:150',
             'hours_per_week' => 'nullable|integer|min:0|max:40',
             'nomor_sk' => 'nullable|string|max:100',
             'tmt' => 'nullable|date',
             'tst' => 'nullable|date|after_or_equal:tmt',
         ]);
+
+        $type = AdditionalTaskType::resolve(
+            $data['additional_task_type_id'] ?? null,
+            $data['nama_tugas'] ?? null
+        );
+
+        if (! $type) {
+            return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
+        }
+
+        $data['additional_task_type_id'] = $type->id;
+        $data['nama_tugas'] = $type->nama;
 
         $task->update($data);
 
@@ -184,7 +238,7 @@ class TaskController
 
         abort_unless($userWorkUnits, 403, 'Anda tidak memiliki akses ke satuan kerja ini.');
 
-        $query = OtherTeacherTask::with(['teacher', 'studyGroup', 'academicYear', 'workUnit'])
+        $query = OtherTeacherTask::with(['teacher', 'studyGroup', 'academicYear', 'workUnit', 'additionalTaskType:id,nama,kode'])
             ->where('work_unit_id', $workUnitId)
             ->where('academic_year_id', function ($q) {
                 $q->select('id')->from('academic_years')->where('is_active', true)->limit(1);
@@ -200,11 +254,15 @@ class TaskController
             ->orderBy('name')
             ->get();
 
-        $taskTypes = AdditionalTaskType::active()
-            ->whereHas('jenisGtk', fn($q) => $q->whereIn('nama', ['Guru', 'Tenaga Pendidik Pondok']))
-            ->get();
+        $taskTypes = $this->taskTypesForWorkUnit($workUnitId);
 
-        return view('satuan-kerja.tasks.other', compact('tasks', 'teachers', 'taskTypes', 'workUnit', 'userId'));
+        $studyGroups = \App\Models\StudyGroup::query()
+            ->where('school_id', $workUnit->school?->id ?? $request->attributes->get('schoolContextId'))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view('satuan-kerja.tasks.other', compact('tasks', 'teachers', 'taskTypes', 'workUnit', 'workUnitId', 'userId', 'studyGroups'));
     }
 
     public function storeOtherTask(Request $request, string $userId, string $workUnitId)
@@ -214,12 +272,31 @@ class TaskController
         $data = $request->validate([
             'teacher_id' => 'required|exists:users,id',
             'academic_year_id' => 'required|exists:academic_years,id',
-            'task_name' => 'required|string|max:100',
+            'additional_task_type_id' => 'nullable|exists:additional_task_types,id',
+            'task_name' => 'nullable|string|max:100',
             'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
             'weekly_hours' => 'required|integer|min:0|max:40',
             'notes' => 'nullable|string|max:255',
         ]);
+
+        $type = AdditionalTaskType::resolve(
+            $data['additional_task_type_id'] ?? null,
+            $data['task_name'] ?? null,
+            $data['task_code'] ?? null
+        );
+
+        if (! $type) {
+            return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
+        }
+
+        if ($type->kode === 'wali-kelas' && empty($data['study_group_id'])) {
+            return back()->withInput()->with('error', 'Untuk tugas "Wali Kelas", pilih rombel/kelas terlebih dahulu.');
+        }
+
+        $data['additional_task_type_id'] = $type->id;
+        $data['task_name'] = $type->nama;
+        $data['task_code'] = $type->kode;
 
         if ($schoolId) {
             $data['school_id'] = $schoolId;
@@ -240,12 +317,32 @@ class TaskController
             ->firstOrFail();
 
         $data = $request->validate([
-            'task_name' => 'required|string|max:100',
+            'additional_task_type_id' => 'nullable|exists:additional_task_types,id',
+            'task_name' => 'nullable|string|max:100',
             'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
             'weekly_hours' => 'required|integer|min:0|max:40',
             'notes' => 'nullable|string|max:255',
         ]);
+
+        $type = AdditionalTaskType::resolve(
+            $data['additional_task_type_id'] ?? null,
+            $data['task_name'] ?? null,
+            $data['task_code'] ?? null
+        );
+
+        if (! $type) {
+            return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
+        }
+
+        $studyGroupId = $data['study_group_id'] ?? $task->study_group_id;
+        if ($type->kode === 'wali-kelas' && empty($studyGroupId)) {
+            return back()->withInput()->with('error', 'Untuk tugas "Wali Kelas", pilih rombel/kelas terlebih dahulu.');
+        }
+
+        $data['additional_task_type_id'] = $type->id;
+        $data['task_name'] = $type->nama;
+        $data['task_code'] = $type->kode;
 
         $task->update($data);
 

@@ -3,24 +3,14 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Services\Sarpras\PredictiveMaintenanceService;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class PredictiveMaintenanceServiceTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use RefreshDatabase;
 
     public function test_predict_for_asset_returns_required_keys(): void
     {

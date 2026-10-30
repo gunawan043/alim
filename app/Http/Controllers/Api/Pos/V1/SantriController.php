@@ -73,8 +73,7 @@ class SantriController extends PosApiController
             $query->where('gender', $request->string('jenis_kelamin')->toString());
         }
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->toString();
+        if (($search = $this->searchTerm($request)) !== null) {
             $query->where(function (Builder $q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('nis', 'like', "%{$search}%")

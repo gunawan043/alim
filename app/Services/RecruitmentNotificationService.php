@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\RecruitmentApplication;
 use App\Models\User;
+use App\Support\RecruitmentOutboundConfig;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -23,7 +24,7 @@ class RecruitmentNotificationService
      */
     protected static function getBaseUrl()
     {
-        return config('services.recruitment_api.url', env('RECRUITMENT_API_URL', 'http://localhost:8000'));
+        return RecruitmentOutboundConfig::baseUrl();
     }
 
     /**
@@ -31,7 +32,7 @@ class RecruitmentNotificationService
      */
     protected static function getApiToken()
     {
-        return config('services.recruitment_api.token', env('RECRUITMENT_API_TOKEN'));
+        return RecruitmentOutboundConfig::token();
     }
 
     /**

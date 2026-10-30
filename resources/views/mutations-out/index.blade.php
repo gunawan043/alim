@@ -14,7 +14,7 @@
 
     {{-- STATISTIK (mengikuti filter jenis & pencarian aktif) --}}
     <div class="row">
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -30,7 +30,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -46,7 +46,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -62,7 +62,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -78,7 +78,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card card-animate h-90">
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">

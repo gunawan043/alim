@@ -145,11 +145,11 @@
     #event-modal .modal-header { background: linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%); border-bottom: 0; padding: 1rem 1.25rem; }
     #event-modal .modal-title { font-weight: 700; color: #1e293b; font-size: 1.05rem; }
     #event-modal .modal-body { padding: 1.25rem; }
-    #event-modal .event-details { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.1rem; }
-    #event-modal .event-details .d-flex { padding: .35rem 0; border-bottom: 1px dashed #e2e8f0; }
+    #event-modal .event-details { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: 14px; padding: 1rem 1.1rem; }
+    #event-modal .event-details .d-flex { padding: .35rem 0; border-bottom: 1px dashed var(--bs-border-color); }
     #event-modal .event-details .d-flex:last-child { border-bottom: 0; }
     #event-modal .event-details i { color: #4f46e5; }
-    #event-modal .event-details h6 { font-size: .85rem; color: #334155; }
+    #event-modal .event-details h6 { font-size: .85rem; color: var(--bs-body-color); }
     #event-modal #event-category-tag { font-size: .68rem; padding: .35rem .6rem; }
     #event-modal #edit-event-btn { border-radius: 8px; font-weight: 600; }
     #event-modal .modal-header .btn-close { opacity: .55; }
@@ -185,7 +185,7 @@
                     <div class="card mb-3">
                         <div class="card-body">
                             <div class="mb-3">
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:#64748b">Filter Kategori</label>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:var(--bs-secondary-color)">Filter Kategori</label>
                                 <select class="form-control form-control-sm" id="filter-category" name="category">
                                     <option value="">Semua</option>
                                     <option value="kaldik" {{ request('category') === 'kaldik' ? 'selected' : '' }}>Kaldik</option>
@@ -193,7 +193,7 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:#64748b">Tahun Ajaran</label>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:var(--bs-secondary-color)">Tahun Ajaran</label>
                                 <select class="form-control form-control-sm" id="filter-academic-year">
                                     <option value="">Semua</option>
                                     @foreach($academicYears as $ay)
@@ -204,7 +204,7 @@
                                 </select>
                             </div>
                             <div class="mt-3">
-                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:#64748b">Semester</label>
+                                <label class="form-label small fw-semibold text-uppercase" style="letter-spacing:0.5px;font-size:0.7rem;color:var(--bs-secondary-color)">Semester</label>
                                 <select class="form-control form-control-sm" id="filter-semester">
                                     <option value="">Semua</option>
                                     <option value="ganjil" {{ request('semester') === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
@@ -217,7 +217,7 @@
                     {{-- Color Legend ─────────────────────────────── --}}
                     <div class="card mb-3">
                         <div class="card-body py-2 px-3">
-                            <div class="small fw-semibold text-uppercase mb-2" style="font-size:0.7rem;color:#64748b;letter-spacing:0.5px">Legenda</div>
+                            <div class="small fw-semibold text-uppercase mb-2" style="font-size:0.7rem;color:var(--bs-secondary-color);letter-spacing:0.5px">Legenda</div>
                             <div class="d-flex flex-column gap-1">
                                 <div class="small text-muted" style="font-size:0.7rem">
                                     Warna mengikuti <strong>jenis</strong> kegiatan secara otomatis:
@@ -245,13 +245,13 @@
                                 @endphp
                                 @if($wu)
                                 <div class="d-flex align-items-center gap-2">
-                                    <i data-feather="briefcase" style="width:14px;height:14px;color:#64748b"></i>
+                                    <i data-feather="briefcase" style="width:14px;height:14px;color:var(--bs-secondary-color)"></i>
                                     <span class="small fw-semibold">{{ $wu->name }}</span>
                                 </div>
                                 @endif
                             @elseif($isGlobal)
                                 <div class="d-flex align-items-center gap-2">
-                                    <i data-feather="globe" style="width:14px;height:14px;color:#64748b"></i>
+                                    <i data-feather="globe" style="width:14px;height:14px;color:var(--bs-secondary-color)"></i>
                                     <span class="small fw-semibold text-primary">Semua Satuan Kerja</span>
                                 </div>
                             @endif

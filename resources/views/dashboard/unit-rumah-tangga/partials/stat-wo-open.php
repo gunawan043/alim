@@ -6,7 +6,7 @@ $schoolId = $this->getUserSchoolId($user);
 
 $count = DB::table('work_orders as w')
     ->leftJoin('assets as a', 'a.id', '=', 'w.asset_id')
-    ->whereIn('w.status', ['pending', 'assigned', 'in_progress'])
+    ->whereIn('w.status', ['draft', 'dispatched', 'in_progress', 'paused', 'waiting_parts'])
     ->when($schoolId, fn ($q) => $q->where('a.school_id', $schoolId))
     ->count();
 

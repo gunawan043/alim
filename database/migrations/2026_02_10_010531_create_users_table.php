@@ -2,9 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -31,19 +29,6 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
-
-        // Insert default admin user
-        DB::table('users')->insert([
-            'id' => Str::uuid(),
-            'name' => 'Administrator',
-            'email' => 'admin@friday.com',
-            'password' => bcrypt('12345678'),
-            'email_verified_at' => '2022-01-02 17:04:58',
-            'avatar' => 'avatar-1.jpg',
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
 
         // PASSWORD RESET TOKENS
         Schema::create('password_reset_tokens', function (Blueprint $table) {

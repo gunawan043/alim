@@ -18,7 +18,14 @@ return new class extends Migration
                 'pulang',
                 'keluar_kota',
                 'berobat',
+                'sakit',
                 'keperluan_keluarga',
+                'musibah',
+                'walimah_keluarga',
+                'haji_umrah',
+                'wisuda_keluarga',
+                'keperluan_penting',
+                'darurat',
                 'lainnya',
             ]);
             $table->string('destination', 191)->nullable()->comment('Tujuan kepergian');

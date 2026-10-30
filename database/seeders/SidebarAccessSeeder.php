@@ -44,6 +44,8 @@ class SidebarAccessSeeder extends Seeder
         'ats' => 'ATS',
         'humas-personalia' => 'Humas Personalia',
         'unit-rumah-tangga' => 'Unit Rumah Tangga',
+        'rumah-tangga' => 'Menu Unit Rumah Tangga',
+        'rumah-tangga-pelengkap' => 'Menu Unit Rumah Tangga (Pelengkap)',
         'teknologi-informasi' => 'Teknologi Informasi',
         'perpustakaan' => 'Perpustakaan',
         'unit-pelayanan-gizi' => 'Unit Pelayanan Gizi',
@@ -102,6 +104,11 @@ class SidebarAccessSeeder extends Seeder
         'humas-personalia' => ['Humas Personalia'],
         // Unit Rumah Tangga
         'unit-rumah-tangga' => ['Unit Rumah Tangga'],
+        // Menu URT yang benar-benar dipakai sidebar URT
+        // (fail-open sebelumnya: tanpa record → semua role boleh. Dibuat eksplisit
+        // agar dapat dikelola lewat Super Admin → Sidebar Access.)
+        'rumah-tangga' => [],
+        'rumah-tangga-pelengkap' => [],
         // Teknologi Informasi
         'teknologi-informasi' => ['Teknologi Informasi'],
         // Perpustakaan

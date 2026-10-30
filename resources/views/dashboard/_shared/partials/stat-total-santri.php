@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 $schoolId = $this->getUserSchoolId($user);
 
 $total = DB::table('students')
+    ->whereNull('deleted_at')
     ->where('status', 'active')
     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
     ->count();

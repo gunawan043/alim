@@ -109,8 +109,8 @@
             <td style="width:45%" class="signature-right">
                 <div class="signature-city">{{ $mutation->established_city ?: 'Mataram' }}, {{ $mutation->established_date ? $mutation->established_date->format('d F Y') : now()->format('d F Y') }}</div>
                 <div class="signature-title">{{ $mutation->head_title ?: 'Kepala Sekolah' }}</div>
-                <div class="signature-name">{{ $mutation->head_name ?: '-' }}</div>
-                <div class="signature-nip">NUPY. {{ $mutation->head_nupy ?: '-' }}</div>
+                <div class="signature-name">{{ $mutation->head_name ?: ($principal['display_name'] ?? '-') }}</div>
+                <div class="signature-nip">NUPY. {{ $mutation->head_nupy ?: ($principal['nupy'] ?? '-') }}</div>
                 @if($mutation->hijri_date)
                     <div style="font-size:10pt;margin-top:4px">{{ $mutation->hijri_date }}</div>
                 @endif

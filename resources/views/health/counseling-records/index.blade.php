@@ -7,7 +7,7 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') UKS @endslot
+        @slot('li_1') Kesiswaan @endslot
         @slot('title') Konseling @endslot
     @endcomponent
 
@@ -78,7 +78,7 @@
                             <p class="text-muted mb-0 small">Dokumentasi sesi konseling &amp; kesehatan jiwa</p>
                         </div>
                         <div class="col-sm-auto">
-                            <a href="{{ route('user.uks.counseling-records.create', ['userId' => $userId]) }}" class="btn btn-success">
+                            <a href="{{ route('user.kesiswaan.counseling-records.create', ['userId' => $userId]) }}" class="btn btn-success">
                                 <i class="ri-add-line align-bottom me-1"></i> Catat Sesi
                             </a>
                         </div>
@@ -112,7 +112,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}" class="btn btn-light w-100">Reset</a>
+                            <a href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}" class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
 
@@ -170,11 +170,11 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ route('user.uks.counseling-records.show', ['userId' => $userId, 'uuid' => $row->id]) }}"
+                                        <a href="{{ route('user.kesiswaan.counseling-records.show', ['userId' => $userId, 'uuid' => $row->id]) }}"
                                            class="btn btn-sm btn-outline-primary me-1"><i class="ri-eye-line"></i></a>
-                                        <a href="{{ route('user.uks.counseling-records.edit', ['userId' => $userId, 'uuid' => $row->id]) }}"
+                                        <a href="{{ route('user.kesiswaan.counseling-records.edit', ['userId' => $userId, 'uuid' => $row->id]) }}"
                                            class="btn btn-sm btn-outline-secondary me-1"><i class="ri-edit-line"></i></a>
-                                        <form method="POST" action="{{ route('user.uks.counseling-records.destroy', ['userId' => $userId, 'uuid' => $row->id]) }}"
+                                        <form method="POST" action="{{ route('user.kesiswaan.counseling-records.destroy', ['userId' => $userId, 'uuid' => $row->id]) }}"
                                               class="d-inline">
                                             @csrf @method('DELETE')
                                             <button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button>

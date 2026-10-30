@@ -7,6 +7,7 @@ use App\Jobs\RecordLifecycleAuditJob;
 use App\Jobs\SendLifecycleNotificationJob;
 use App\Models\Alumni;
 use App\Models\StudentClassHistory;
+use App\Services\StudentEnrollmentService;
 use App\Support\LifecycleMessage;
 use Illuminate\Support\Facades\DB;
 
@@ -31,11 +32,15 @@ final class HandleManualStudentStatusUpdate
             });
         }
 
-        DB::transaction(function () use ($student, $newStatus, $previousStatus, $payload) {
-            // Manual graduation: close the active rombel, ensure alumni row.
-            if (in_array($newStatus, ['graduate'], true)
-                && $previousStatus !== 'graduate'
-            ) {
+        $exitReasons = [
+            'graduate' => StudentEnrollmentService::EXIT_GRADUATION,
+            'transfer_out' => StudentEnrollmentService::EXIT_MUTATION,
+            'dropped' => StudentEnrollmentService::EXIT_DROPOUT,
+        ];
+
+        DB::transaction(function () use ($student, $newStatus, $previousStatus, $payload, $exitReasons) {
+            // Semua status keluar menutup rombel aktif — bukan hanya lulus.
+            if (isset($exitReasons[$newStatus]) && $previousStatus !== $newStatus) {
                 StudentClassHistory::where('student_id', $student->id)
                     ->where('is_active', true)
                     ->update([
@@ -44,7 +49,10 @@ final class HandleManualStudentStatusUpdate
                             ?? $student->graduation_date
                             ?? now()->toDateString(),
                     ]);
+            }
 
+            // Alumni hanya untuk kelulusan.
+            if ($newStatus === 'graduate' && $previousStatus !== 'graduate') {
                 Alumni::firstOrCreate(
                     ['student_id' => $student->id],
                     [
@@ -58,6 +66,17 @@ final class HandleManualStudentStatusUpdate
                 );
             }
         });
+
+        // Jejak keluar: alasan + tanggal efektif.
+        if (isset($exitReasons[$newStatus])) {
+            app(StudentEnrollmentService::class)->markExit(
+                $student,
+                $exitReasons[$newStatus],
+                $payload['graduation_date'] ?? $student->graduation_date?->toDateString(),
+            );
+        } elseif ($newStatus === 'active') {
+            app(StudentEnrollmentService::class)->clearExit($student);
+        }
 
         // Parity with lifecycle events: write an audit row + notification
         // for manual changes too, so the trail is complete.

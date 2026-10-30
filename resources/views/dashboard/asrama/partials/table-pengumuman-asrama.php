@@ -3,9 +3,10 @@
 use Illuminate\Support\Facades\DB;
 
 $items = $this->scopeAsramaQuery(
-    DB::table('dormitory_posts')
-        ->where('is_active', 1)
-        ->whereNull('deleted_at'),
+    DB::table('humas_announcements')
+        ->where('target_type', 'dormitory')
+        ->where('category', '!=', 'broadcast')
+        ->where('status', 'published'),
     $user,
     'dormitory_id',
     'dormitory_id'

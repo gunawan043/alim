@@ -296,6 +296,18 @@ class PosApiTest extends TestCase
             ->assertJsonPath('success', true);
     }
 
+    public function test_empty_allowlist_in_system_settings_overrides_env_whitelist(): void
+    {
+        config(['services.pos.allowed_ips' => ['203.0.113.9']]);
+
+        SystemSetting::set('pos_api_allowed_ips', '', 'pos_api');
+        Cache::forget('system_settings_map');
+
+        $this->getJson('/api/pos/v1/divisi', $this->authHeaders())
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    }
+
     // ── Tes Koneksi (Ping) ────────────────────────────────────────────────
 
     public function test_ping_endpoint_returns_connection_summary(): void
@@ -321,6 +333,50 @@ class PosApiTest extends TestCase
         $this->getJson('/api/pos/v1/ping')
             ->assertStatus(401)
             ->assertJsonPath('success', false);
+    }
+
+    // ── Security hardening ─────────────────────────────────────────────────
+
+    public function test_repeated_failed_authentication_is_rate_limited(): void
+    {
+        config(['services.pos.auth_fail_limit' => 3]);
+        Cache::flush();
+
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $this->getJson('/api/pos/v1/divisi', [self::API_HEADER => 'wrong-key'])
+                ->assertStatus(401);
+        }
+
+        $this->getJson('/api/pos/v1/divisi', [self::API_HEADER => 'wrong-key'])
+            ->assertStatus(429)
+            ->assertHeader('Retry-After');
+    }
+
+    public function test_requires_https_in_production(): void
+    {
+        $this->app['env'] = 'production';
+        config(['services.pos.require_https' => true]);
+
+        $this->getJson('/api/pos/v1/divisi', $this->authHeaders())
+            ->assertStatus(403)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_api_responses_are_not_cacheable(): void
+    {
+        $this->getJson('/api/pos/v1/ping', $this->authHeaders())
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    public function test_show_endpoint_rejects_non_uuid_id(): void
+    {
+        $response = $this->getJson('/api/pos/v1/kepegawaian/not-a-uuid', $this->authHeaders());
+
+        // Constraint UUID membuat request tidak pernah masuk ke controller POS;
+        // aplikasi jatuh ke fallback web (401) atau 404. Yang penting bukan 200.
+        $this->assertContains($response->status(), [401, 404]);
+        $this->assertNotSame(200, $response->status());
     }
 
     // ── Satuan Kerja ───────────────────────────────────────────────────────

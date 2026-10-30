@@ -2,7 +2,6 @@
 @section('title') Detail Santri - {{ $student->name }} @endsection
 @php $userId = $userId ?? request()->route('userId') ?? Auth::id(); @endphp
 @section('css')
-    <link rel="stylesheet" href="{{ URL::asset('build/libs/swiper/swiper-bundle.min.css') }}">
     <style>
         .info-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
         .profile-stat { background: rgba(var(--bs-body-bg-rgb), 0.1); border-radius: 8px; padding: 1rem; transition: all 0.3s ease; }
@@ -22,6 +21,21 @@
 @endsection
 
 @section('content')
+    @php $missingProfile = $student->missingProfileFields(); @endphp
+    @if($missingProfile && !($isDormitoryUser ?? false))
+        <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+                <i class="ri-error-warning-line me-1"></i>
+                <strong>Data santri belum lengkap.</strong>
+                Yang masih kosong: {{ implode(', ', $missingProfile) }}.
+            </div>
+            <a href="{{ route('user.students.edit', ['userId' => $userId, 'santriUuid' => $student->id]) }}"
+               class="btn btn-warning btn-sm">
+                <i class="ri-edit-box-line me-1"></i>Lengkapi Data
+            </a>
+        </div>
+    @endif
+
     <!-- MODAL DATA IDENTITAS TERBUKA -->
     <div class="modal fade" id="identityModal" tabindex="-1" aria-labelledby="identityModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -459,6 +473,25 @@
                                                         <div class="detail-value">{{ $student->entry_date ? \Carbon\Carbon::parse($student->entry_date)->format('d/m/Y') : '-' }}</div>
                                                     </div>
                                                 </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label detail-label">Jalur Masuk</label>
+                                                        <div class="detail-value">{{ $student->entry_source_text }}</div>
+                                                    </div>
+                                                </div>
+                                                @if ($student->exit_reason || $student->exit_date)
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label class="form-label detail-label">Keluar</label>
+                                                            <div class="detail-value">
+                                                                {{ $student->exit_reason_text }}
+                                                                @if ($student->exit_date)
+                                                                    <span class="text-muted">· {{ $student->exit_date->format('d/m/Y') }}</span>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>
@@ -546,7 +579,7 @@
                                                         <div class="col-6"><div class="text-muted small">Kecamatan:</div><div>{{ $student->district->name }}</div></div>
                                                     @endif
                                                     @if($student->city)
-                                                        <div class="col-6"><div class="text-muted small">Kabupaten/Kota:</div><div>{{ $student->city->name }}</div></div>
+                                                        <div class="col-6"><div class="text-muted small">Kabupaten/Kota:</div><div>{{ $student->city->display_name }}</div></div>
                                                     @endif
                                                     @if($student->province)
                                                         <div class="col-6"><div class="text-muted small">Provinsi:</div><div>{{ $student->province->name }}</div></div>
@@ -1203,8 +1236,6 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('build/libs/swiper/swiper-bundle.min.js') }}"></script>
-    <script src="{{ URL::asset('build/js/pages/profile.init.js') }}"></script>
     <script src="{{ URL::asset('build/js/app.js') }}"></script>
     <script>
     /* ==========================================================================

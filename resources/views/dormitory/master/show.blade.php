@@ -65,7 +65,7 @@
                     </div>
                 </div>
                 <div class="col-auto d-flex gap-2">
-                    @if(auth()->user()->role()->hasPermission('dormitory-master-update'))
+                    @if(canPermission('dormitory-master-admin-access'))
                     <a href="{{ route('user.dormitory-master.edit', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-soft-secondary">
                         <i class="ri-pencil-line me-1"></i> Edit
                     </a>
@@ -233,7 +233,7 @@
         <a href="{{ route('user.dormitory-master.index', ['userId' => $userId]) }}" class="btn btn-light">
             <i class="ri-arrow-left-line me-1"></i> Kembali ke Daftar
         </a>
-        @if(auth()->user()->role()->hasPermission('dormitory-master-delete'))
+        @if(canPermission('dormitory-master-admin-access'))
         <button class="btn btn-light text-danger float-end delete-asrama" data-id="{{ $dormitory->id }}" data-name="{{ $dormitory->name }}">
             <i class="ri-delete-bin-line me-1"></i> Hapus Asrama
         </button>

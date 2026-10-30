@@ -1,18 +1,23 @@
 @extends('layouts.master')
-@section('title') Request Pengadaan @endsection
+@section('title') Usulan Barang Non-BUMP @endsection
 
 @section('content')
 @component('components.breadcrumb')
     @slot('li_1') Sarana Prasarana @endslot
     @slot('li_2') <a href="{{ route('sarpras.pengadaan.index') }}">Pengadaan</a> @endslot
-    @slot('title') Request @endslot
+    @slot('title') Usulan Barang Non-BUMP @endslot
 @endcomponent
 
 <div class="row">
     <div class="col-lg-12">
         <div class="card">
-            <div class="card-header"><h5 class="card-title mb-0">Request Pengadaan Barang</h5></div>
+            <div class="card-header"><h5 class="card-title mb-0">Usulan Barang Non-BUMP</h5></div>
             <div class="card-body">
+                <div class="alert alert-info small">
+                    <i class="ri-information-line me-1"></i>
+                    Gunakan halaman ini untuk <strong>barang yang tidak tersedia di katalog BUMP</strong> dan bukan pembelian SIPLah.
+                    Untuk barang BUMP gunakan <strong>Pemesanan Barang BUMP</strong>, untuk SIPLah gunakan <strong>Pemesanan SIPLah</strong>.
+                </div>
                 <form method="POST" action="{{ route('sarpras.pengadaan.store') }}">
                     @csrf
                     <div class="row g-3">

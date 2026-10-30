@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -37,12 +38,16 @@ class DormitoryReward extends Model
         'proof_path',
         'given_by',
         'awarded_date',
+        'source_achievement_id',
+        'source_label',
+        'source_deleted_at',
     ];
 
     protected $casts = [
         'awarded_date' => 'date',
         'points' => 'integer',
         'ledger_recorded_at' => 'datetime',
+        'source_deleted_at' => 'datetime',
     ];
 
     // ── Category constants ─────────────────────────────────────────
@@ -111,6 +116,16 @@ class DormitoryReward extends Model
     public function pointCatalog(): BelongsTo
     {
         return $this->belongsTo(DormitoryPointCatalog::class, 'point_catalog_id');
+    }
+
+    public function sourceAchievement(): BelongsTo
+    {
+        return $this->belongsTo(StudentAchievement::class, 'source_achievement_id');
+    }
+
+    public function approvalRequest(): HasOne
+    {
+        return $this->hasOne(DormitoryRewardRequest::class, 'dormitory_reward_id');
     }
 
     // ── Accessors ──────────────────────────────────────────────────

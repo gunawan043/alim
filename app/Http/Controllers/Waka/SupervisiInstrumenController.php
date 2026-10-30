@@ -68,7 +68,7 @@ class SupervisiInstrumenController extends Controller
         ]);
 
         return redirect()
-            ->route('waka.supervisi-instrumen.edit', $instrumen->id)
+            ->route('waka.supervisi-instrumen.edit', ['userId' => $request->user()?->id, $instrumen->id])
             ->with('success', 'Instrumen dibuat. Tambahkan bagian dan item yang dinilai.');
     }
 
@@ -132,7 +132,7 @@ class SupervisiInstrumenController extends Controller
         }
 
         return redirect()
-            ->route('waka.supervisi-instrumen.edit', $copy->id)
+            ->route('waka.supervisi-instrumen.edit', ['userId' => $request->user()?->id, $copy->id])
             ->with('success', 'Instrumen berhasil diduplikasi ke satuan. Silakan atur item & poinnya.');
     }
 

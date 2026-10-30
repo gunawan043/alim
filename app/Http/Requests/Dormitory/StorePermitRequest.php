@@ -3,8 +3,10 @@
 namespace App\Http\Requests\Dormitory;
 
 use App\Models\PermitType;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StorePermitRequest extends FormRequest
 {
@@ -28,6 +30,10 @@ class StorePermitRequest extends FormRequest
             'purpose' => 'nullable|string',
             'departure_datetime' => 'required|date',
             'expected_return_datetime' => 'required|date|after:departure_datetime',
+            'guardian_consent_confirmed' => 'required|accepted',
+            'guardian_approval_channel' => 'nullable|in:manual,whatsapp,portal,surat',
+            'guardian_approval_note' => 'nullable|string|max:500',
+            'document' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             'mahrom_id' => 'nullable|exists:student_mahroms,id',
             'companion_name' => 'nullable|string|max:191',
             'companion_relation' => 'nullable|string|max:100',
@@ -60,6 +66,8 @@ class StorePermitRequest extends FormRequest
         return [
             'student_id.required' => 'Santri wajib dipilih.',
             'permit_type.required' => 'Jenis izin wajib dipilih.',
+            'guardian_consent_confirmed.accepted' => 'Persetujuan orang tua/wali wajib dicatat sebelum izin diajukan.',
+            'guardian_consent_confirmed.required' => 'Persetujuan orang tua/wali wajib dicatat sebelum izin diajukan.',
             'departure_datetime.required' => 'Waktu berangkat wajib diisi.',
             'departure_datetime.date' => 'Format waktu berangkat tidak valid.',
             'expected_return_datetime.required' => 'Waktu kembali wajib diisi.',
@@ -76,9 +84,21 @@ class StorePermitRequest extends FormRequest
     protected function passedValidation(): void
     {
         $data = $this->all();
-        foreach (['is_emergency', 'is_special_permission', 'companion_is_mahrom'] as $key) {
+        foreach (['is_emergency', 'is_special_permission', 'companion_is_mahrom', 'guardian_consent_confirmed'] as $key) {
             if (! isset($data[$key])) {
                 $this->merge([$key => false]);
+            }
+        }
+
+        if ($this->filled('departure_datetime') && $this->filled('expected_return_datetime')) {
+            $departure = CarbonImmutable::parse($this->input('departure_datetime'));
+            $return = CarbonImmutable::parse($this->input('expected_return_datetime'));
+            $maxDays = (int) config('asrama.max_learning_leave_days', 3);
+
+            if ($return->greaterThan($departure->addDays($maxDays))) {
+                throw ValidationException::withMessages([
+                    'expected_return_datetime' => "Izin meninggalkan pembelajaran maksimal {$maxDays} hari. Ajukan izin khusus jika memerlukan waktu lebih lama.",
+                ]);
             }
         }
     }

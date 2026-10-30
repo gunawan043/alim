@@ -10,6 +10,7 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Services\StudentExitLetterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -372,11 +373,15 @@ class BulkPromotionController extends Controller
 
                 $student = Student::find($studentId);
 
-                // Mutasi keluar — jalur lifecycle resmi (status transfer_out + audit + notifikasi)
+                // Mutasi keluar — keluar karena pindah WAJIB punya surat mutasi,
+                // jadi suratnya dibuat otomatis (status transfer_out + audit + notifikasi).
                 if ($action === 'mutate_out') {
+                    $letter = app(StudentExitLetterService::class)
+                        ->createForPromotion($student, $promotionDate, auth()->id(), 'Promosi Massal');
+
                     StudentMutatedOut::dispatch(
                         $student,
-                        null,
+                        $letter,
                         StudentMutatedOut::TYPE_MUTATION,
                         $promotionDate,
                         auth()->id(),

@@ -6,6 +6,7 @@ use App\Events\StudentGraduated;
 use App\Events\StudentMutatedIn;
 use App\Events\StudentMutatedOut;
 use App\Events\StudentPromoted;
+use App\Services\StudentEnrollmentService;
 
 class UpdateStudentStatusOnLifecycle
 {
@@ -28,6 +29,9 @@ class UpdateStudentStatusOnLifecycle
                 'graduation_date' => null,
             ])->save();
         }
+
+        // Naik kelas = kembali aktif, jejak keluar sebelumnya tidak berlaku.
+        app(StudentEnrollmentService::class)->clearExit($e->student);
     }
 
     private function onGraduated(StudentGraduated $e): void
@@ -36,6 +40,8 @@ class UpdateStudentStatusOnLifecycle
             'status' => 'graduate',
             'graduation_year' => $e->graduationYear ?? $e->student->graduation_year,
             'graduation_date' => $e->graduationDate,
+            'exit_reason' => StudentEnrollmentService::EXIT_GRADUATION,
+            'exit_date' => $e->graduationDate ?: now()->toDateString(),
         ])->save();
     }
 
@@ -53,6 +59,12 @@ class UpdateStudentStatusOnLifecycle
             'graduation_year' => $e->outType === StudentMutatedOut::TYPE_GRADUATION
                 ? ($e->leaveDate ? substr($e->leaveDate, 0, 4) : $e->student->graduation_year)
                 : $e->student->graduation_year,
+            'exit_reason' => match ($e->outType) {
+                StudentMutatedOut::TYPE_GRADUATION => StudentEnrollmentService::EXIT_GRADUATION,
+                StudentMutatedOut::TYPE_DROPOUT => StudentEnrollmentService::EXIT_DROPOUT,
+                default => StudentEnrollmentService::EXIT_MUTATION,
+            },
+            'exit_date' => $e->leaveDate ?: now()->toDateString(),
         ])->save();
     }
 
@@ -63,5 +75,12 @@ class UpdateStudentStatusOnLifecycle
             'graduation_year' => null,
             'graduation_date' => null,
         ])->save();
+
+        // Audit mutasi masuk sudah ditulis AuditLifecycleChange; di sini cukup
+        // menandai sumber masuk + membersihkan jejak keluar lama.
+        app(StudentEnrollmentService::class)->markEntry(
+            $e->student,
+            StudentEnrollmentService::SOURCE_MUTATION,
+        );
     }
 }

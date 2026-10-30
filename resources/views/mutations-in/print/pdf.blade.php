@@ -1,3 +1,16 @@
+@php
+    $layout = $layout ?? \App\Models\StudentMutationSetting::defaultLayout();
+    $paperCss = match ($layout['paper_size'] ?? 'a4') {
+        'folio' => '215mm 330mm',
+        'letter' => '216mm 279mm',
+        default => 'A4',
+    };
+    $paperWidth = match ($layout['paper_size'] ?? 'a4') {
+        'folio' => '215mm',
+        'letter' => '216mm',
+        default => '210mm',
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 
@@ -6,7 +19,7 @@
     <title>Surat Rekomendasi — {{ $mutation->student_name }}</title>
     <style>
         @page {
-            size: A4;
+            size: {{ $paperCss }};
             margin: 0;
         }
 
@@ -17,16 +30,16 @@
         }
 
         body {
-            font-family: 'Times New Roman', Times, serif;
-            font-size: 11pt;
-            line-height: 1.3;
+            font-family: '{{ $layout['font_family'] }}', 'Times New Roman', Times, serif;
+            font-size: {{ $layout['font_size'] }}pt;
+            line-height: {{ $layout['line_height'] }};
             color: #000;
             background: #fff;
-            width: 210mm;
+            width: {{ $paperWidth }};
         }
 
         .page {
-            padding: 18mm 25mm 0mm 25mm;
+            padding: {{ $layout['margin_top'] }}mm {{ $layout['margin_right'] }}mm {{ $layout['margin_bottom'] }}mm {{ $layout['margin_left'] }}mm;
         }
 
         .header {
@@ -143,7 +156,7 @@
 
         {{-- Header / Kop Surat --}}
         <div class="header">
-            @if ($school->kop_path && $school->kopsis_active)
+            @if (($layout['show_kop'] ?? true) && $school->kop_path && $school->kopsis_active)
                 <img src="data:image/png;base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $school->kop_path))) }}"
                     alt="Kop Surat" style="max-width:100%;max-height:130px;object-fit:contain;">
             @endif
@@ -244,7 +257,7 @@
                     <table style="width:100%;">
                         <tr>
                             <td style="width:65px" class="sig-city">
-                                {{ $mutation->established_city ?: $school->city ?? 'Kota' }},</td>
+                                {{ $mutation->established_city ? format_city_name($mutation->established_city) : ($school->city?->display_name ?? 'Mataram') }},</td>
                             <td class="sig-city" style="text-decoration: underline;">
                                 {{ $mutation->established_date ? $mutation->established_date->format('d F Y') : now()->format('d F Y') }}
                                 M</td>
@@ -257,11 +270,31 @@
                         @endif
                     </table>
                     <div class="sig-title">{{ $mutation->head_title ?: 'Kepala Sekolah' }}</div>
-                    <div class="sig-name" style="padding-top: 40px">{{ $mutation->head_name ?: '-' }}</div>
-                    <div class="sig-nip">NUPY. {{ $mutation->head_nupy ?: '-' }}</div>
+                    @if(($documentMedia['show_ttd_ksp'] ?? true) || ($documentMedia['show_stamp'] ?? true))
+                        @php
+                            $sigW = max((float) ($documentMedia['ttd_width'] ?? 30), (float) ($documentMedia['stamp_width'] ?? 30));
+                            $sigH = max(
+                                (float) ($documentMedia['ttd_margin'] ?? 2) + (float) ($documentMedia['ttd_height'] ?? 15),
+                                (float) ($documentMedia['stamp_margin'] ?? 2) + (float) ($documentMedia['stamp_height'] ?? 30)
+                            );
+                        @endphp
+                        <div style="position:relative;width:{{ $sigW }}mm;height:{{ $sigH }}mm;margin:2mm auto 0;">
+                            @if(($documentMedia['show_stamp'] ?? true) && ! empty($documentMedia['stamp']))
+                                <img src="{{ $documentMedia['stamp'] }}" alt="Stempel" style="position:absolute;left:0;top:{{ (float) ($documentMedia['stamp_margin'] ?? 2) }}mm;width:{{ (float) ($documentMedia['stamp_width'] ?? 30) }}mm;height:{{ (float) ($documentMedia['stamp_height'] ?? 30) }}mm;object-fit:contain;opacity:.9;">
+                            @endif
+                            @if(($documentMedia['show_ttd_ksp'] ?? true) && ! empty($documentMedia['ttd_ksp']))
+                                <img src="{{ $documentMedia['ttd_ksp'] }}" alt="TTD KSP" style="position:absolute;left:0;top:{{ (float) ($documentMedia['ttd_margin'] ?? 2) }}mm;width:{{ (float) ($documentMedia['ttd_width'] ?? 30) }}mm;height:{{ (float) ($documentMedia['ttd_height'] ?? 15) }}mm;object-fit:contain;">
+                            @endif
+                        </div>
+                    @endif
+                    <div class="sig-name" style="padding-top: 2mm">{{ $mutation->head_name ?: ($principal['display_name'] ?? '-') }}</div>
+                    <div class="sig-nip">NUPY. {{ $mutation->head_nupy ?: ($principal['nupy'] ?? '-') }}</div>
                 </td>
             </tr>
         </table>
+
+        {{-- QR verifikasi (dekat blok TTD) --}}
+    @include('documents._qr-footer', ['verification' => $verification ?? null])
 
         {{-- Tembusan --}}
         <div class="note">

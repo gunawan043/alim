@@ -17,8 +17,7 @@ class DivisiController extends PosApiController
     {
         $query = Divisi::query();
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->toString();
+        if (($search = $this->searchTerm($request)) !== null) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
                     ->orWhere('kode', 'like', "%{$search}%");

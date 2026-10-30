@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Authorization\ValueObjects\ScopeKey;
+use App\Http\Controllers\JamPelajaranController;
 use App\Models\AcademicYear;
 use App\Models\JadwalKbm;
+use App\Models\Permission;
+use App\Models\QrClassToken;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
@@ -13,10 +17,11 @@ use App\Models\TeachingAssignment;
 use App\Models\User;
 use App\Services\JadwalGeneratorService;
 use App\Services\QrTokenService;
-use App\Authorization\ValueObjects\ScopeKey;
+use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -56,8 +61,8 @@ class JadwalPergantianJamTest extends TestCase
 
         // SQLite menyimpan definisi FK lama gtk_employments → positions (tabel sudah di-drop
         // oleh migrasi merge). Buat stub agar insert fixture tidak gagal.
-        if (! \Illuminate\Support\Facades\Schema::hasTable('positions')) {
-            \Illuminate\Support\Facades\Schema::create('positions', function ($table) {
+        if (! Schema::hasTable('positions')) {
+            Schema::create('positions', function ($table) {
                 $table->uuid('id')->primary();
                 $table->string('name')->nullable();
                 $table->timestamps();
@@ -68,7 +73,7 @@ class JadwalPergantianJamTest extends TestCase
 
         // Jangan hubungi Pusher saat test event QR broadcast.
         config(['broadcasting.default' => 'null']);
-        app(\Illuminate\Broadcasting\BroadcastManager::class)->forgetDrivers();
+        app(BroadcastManager::class)->forgetDrivers();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -106,11 +111,11 @@ class JadwalPergantianJamTest extends TestCase
         $this->post("/{$this->admin->id}/qr/{$this->sgA->id}/regenerate")
             ->assertRedirect();
 
-        $activeCount = \App\Models\QrClassToken::where('study_group_id', $this->sgA->id)
+        $activeCount = QrClassToken::where('study_group_id', $this->sgA->id)
             ->where(fn ($q) => $q->whereNull('qr_url_expires_at')->orWhere('qr_url_expires_at', '>', now()))
             ->count();
         $this->assertSame(1, $activeCount, 'Harus ada tepat satu token aktif setelah regenerate');
-        $this->assertSame(1, \App\Models\QrClassToken::where('study_group_id', $this->sgA->id)->count());
+        $this->assertSame(1, QrClassToken::where('study_group_id', $this->sgA->id)->count());
 
         // Halaman scan guru — tampilkan tab wizard + tombol scan
         $this->makeJadwal($this->teacher1, $this->sgA, $this->math, (int) today()->dayOfWeekIso, 1, '07:00:00', '07:45:00');
@@ -210,8 +215,12 @@ class JadwalPergantianJamTest extends TestCase
         DB::table('class_schedule_slots')->where('school_id', $this->school->id)->where('day_of_week', 2)->delete();
         $this->post("/{$this->admin->id}/jam-pelajaran/template", ['day_of_week' => 2])
             ->assertRedirect();
-        $this->assertSame(6, DB::table('class_schedule_slots')->where('school_id', $this->school->id)->where('day_of_week', 2)->count());
-        $this->assertSame(1, DB::table('class_schedule_slots')->where('school_id', $this->school->id)->where('day_of_week', 2)->where('is_break', 1)->count());
+
+        $template = (new \ReflectionClass(JamPelajaranController::class))->getReflectionConstant('TEMPLATE')->getValue();
+        $templateBreakCount = collect($template)->filter(fn (array $row) => (int) $row[4] === 1)->count();
+
+        $this->assertSame(count($template), DB::table('class_schedule_slots')->where('school_id', $this->school->id)->where('day_of_week', 2)->count());
+        $this->assertSame($templateBreakCount, DB::table('class_schedule_slots')->where('school_id', $this->school->id)->where('day_of_week', 2)->where('is_break', 1)->count());
 
         // Template ditolak bila hari sudah terisi
         $this->post("/{$this->admin->id}/jam-pelajaran/template", ['day_of_week' => 2])
@@ -278,6 +287,103 @@ class JadwalPergantianJamTest extends TestCase
         }
     }
 
+    public function test_teacher_availability_limits_generator_and_manual_update(): void
+    {
+        $this->actingAs($this->admin);
+
+        // Atur guru1 hanya tersedia Senin jam 1, 2, dan 4.
+        $this->post("/{$this->admin->id}/jadwal-kbm/ketersediaan", [
+            'teacher_id' => $this->teacher1->id,
+            'available' => [
+                1 => [1, 2, 4],
+            ],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('teacher_schedule_availabilities', [
+            'school_id' => $this->school->id,
+            'teacher_id' => $this->teacher1->id,
+        ]);
+
+        $this->get("/{$this->admin->id}/jadwal-kbm/ketersediaan?teacher_id={$this->teacher1->id}")
+            ->assertOk()
+            ->assertSee('Ketersediaan Guru')
+            ->assertSee($this->teacher1->name)
+            ->assertSee($this->teacher2->name)
+            ->assertSee('data-searchable', false);
+
+        $service = app(JadwalGeneratorService::class);
+        $result = $service->generateForStudyGroup($this->sgA->id, $this->ay->id, 'ganjil');
+
+        $mathRows = JadwalKbm::where('study_group_id', $this->sgA->id)
+            ->where('teacher_id', $this->teacher1->id)
+            ->get();
+
+        $this->assertTrue($mathRows->isNotEmpty());
+        $this->assertSame(3, $mathRows->count(), 'Guru hanya boleh mendapat 3 slot sesuai ketersediaan.');
+        $this->assertTrue($mathRows->every(fn (JadwalKbm $row) => (int) $row->day_of_week === 1 && in_array((int) $row->slot_index, [1, 2, 4], true)));
+        $this->assertNotEmpty($result['shortages']);
+
+        // Edit manual ke hari Selasa (guru tidak tersedia) tetap disimpan
+        // dengan warning, lalu ditandai merah pada matriks.
+        $row = $mathRows->firstOrFail();
+
+        $this->put("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}", [
+            'entries' => [[
+                'id' => $row->id,
+                'day_of_week' => 2,
+                'slot_index' => 1,
+                'subject_id' => $row->subject_id,
+                'teacher_id' => $this->teacher1->id,
+            ]],
+        ])->assertSessionHas('warning');
+
+        $this->assertSame(2, (int) $row->fresh()->day_of_week);
+        $this->assertSame(1, (int) $row->fresh()->slot_index);
+    }
+
+    public function test_master_slots_are_ordered_by_time_not_slot_number(): void
+    {
+        DB::table('class_schedule_slots')->where('school_id', $this->school->id)->where('day_of_week', 1)->delete();
+
+        foreach ([
+            [10, 'Jam 1', '07:30:00', '08:05:00', 0],
+            [20, 'Istirahat', '09:45:00', '10:15:00', 1],
+            [30, 'Jam 2', '08:05:00', '08:40:00', 0],
+        ] as [$slot, $label, $start, $end, $isBreak]) {
+            DB::table('class_schedule_slots')->insert([
+                'id' => (string) Str::uuid(),
+                'school_id' => $this->school->id,
+                'day_of_week' => 1,
+                'slot_number' => $slot,
+                'label' => $label,
+                'time_start' => $start,
+                'time_end' => $end,
+                'is_break' => $isBreak,
+                'is_active' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $slots = app(JadwalGeneratorService::class)->masterSlotsByDay($this->school->id)[1];
+
+        $this->assertSame(
+            ['07:30:00', '08:05:00', '09:45:00'],
+            array_column($slots, 'start'),
+        );
+    }
+
+    public function test_generator_does_not_create_schedule_without_master_slots(): void
+    {
+        DB::table('class_schedule_slots')->where('school_id', $this->school->id)->delete();
+
+        $result = app(JadwalGeneratorService::class)->generateForStudyGroup($this->sgA->id, $this->ay->id, 'ganjil');
+
+        $this->assertSame(0, $result['generated']);
+        $this->assertNotEmpty($result['shortages']);
+        $this->assertSame(0, JadwalKbm::where('study_group_id', $this->sgA->id)->count());
+    }
+
     public function test_generator_reports_shortage_instead_of_silently_dropping(): void
     {
         // Kapasitas guru1: 5 hari × 5 slot mengajar = 25 slot; minta 40 JP utk Matematika.
@@ -324,7 +430,22 @@ class JadwalPergantianJamTest extends TestCase
         // Laporan generate tampil di index
         $this->get("/{$this->admin->id}/jadwal-kbm")
             ->assertOk()
-            ->assertSee('Laporan Generate Jadwal');
+            ->assertSee('Laporan Generate Jadwal')
+            ->assertSee('Matriks Jadwal Pelajaran')
+            ->assertDontSee('JML JAM')
+            ->assertSee($this->sgA->name)
+            ->assertSee($this->teacher1->name);
+
+        // Cetak semua rombel dalam satu PDF
+        $cetakSemua = $this->get("/{$this->admin->id}/jadwal-kbm/cetak-semua");
+        $cetakSemua->assertOk();
+        $this->assertStringStartsWith('%PDF', (string) $cetakSemua->getContent());
+
+        // Export matriks semua rombel ke Excel
+        $excel = $this->get("/{$this->admin->id}/jadwal-kbm/export-excel");
+        $excel->assertOk();
+        $excel->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->assertSame('PK', substr($excel->streamedContent(), 0, 2), 'File export bukan XLSX valid');
     }
 
     public function test_per_rombel_generate_and_manual_update_conflict_validation(): void
@@ -352,19 +473,22 @@ class JadwalPergantianJamTest extends TestCase
             ->where('id', '!=', $rowA->id)
             ->firstOrFail();
 
-        $before = $rowB->only(['day_of_week', 'slot_index']);
-
+        // Konflik guru tetap disimpan; gunakan mapel berbeda agar unique
+        // exact-duplicate (kelas+mapel+jam) tidak memblokir uji.
         $this->put("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}", [
             'entries' => [[
                 'id' => $rowB->id,
                 'day_of_week' => $rowA->day_of_week,
                 'slot_index' => $rowA->slot_index,
-                'subject_id' => $rowB->subject_id,
+                'subject_id' => $this->arabic->id,
                 'teacher_id' => $rowB->teacher_id,
             ]],
         ])->assertSessionHas('conflict_warnings');
 
-        $this->assertSame($before, $rowB->fresh()->only(['day_of_week', 'slot_index']));
+        $rowB->refresh();
+        $this->assertSame((int) $rowA->day_of_week, (int) $rowB->day_of_week);
+        $this->assertSame((int) $rowA->slot_index, (int) $rowB->slot_index);
+        $before = $rowB->only(['day_of_week', 'slot_index']);
 
         // Pindah ke slot istirahat (slot 3) ditolak
         $this->put("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}", [
@@ -422,9 +546,72 @@ class JadwalPergantianJamTest extends TestCase
         $this->assertSame(substr($master->time_start, 0, 5), substr($updated->start_time, 0, 5));
     }
 
+    public function test_manual_schedule_entries_can_be_added_and_deleted(): void
+    {
+        $this->actingAs($this->admin);
+
+        $this->get("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}/edit")
+            ->assertOk()
+            ->assertSee('Tambah Entri Jadwal Manual')
+            ->assertSee($this->teacher2->name)
+            ->assertSee('data-searchable', false);
+
+        $this->post("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}/entries", [
+            'day_of_week' => 5,
+            'slot_index' => 1,
+            'subject_id' => $this->math->id,
+            'teacher_id' => $this->teacher1->id,
+            'room' => '701',
+        ])->assertRedirect(route('user.jadwal-kbm.edit', [
+            'userId' => $this->admin->id,
+            'studyGroupId' => $this->sgA->id,
+        ]));
+
+        $entry = JadwalKbm::where('study_group_id', $this->sgA->id)
+            ->where('day_of_week', 5)
+            ->where('slot_index', 1)
+            ->firstOrFail();
+
+        $this->delete("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}/entries/{$entry->id}")
+            ->assertRedirect(route('user.jadwal-kbm.edit', [
+                'userId' => $this->admin->id,
+                'studyGroupId' => $this->sgA->id,
+            ]));
+
+        $this->assertDatabaseMissing('jadwal_kbms', ['id' => $entry->id]);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // QR SCAN END-TO-END
     // ─────────────────────────────────────────────────────────────
+
+    public function test_global_matrix_edit_page_and_entry_update(): void
+    {
+        $this->actingAs($this->admin);
+
+        $service = app(JadwalGeneratorService::class);
+        $service->generateForStudyGroup($this->sgA->id, $this->ay->id, 'ganjil');
+
+        $this->get("/{$this->admin->id}/jadwal-kbm/edit-semua")
+            ->assertOk()
+            ->assertSee('Edit Jadwal Semua Rombel')
+            ->assertSee('matrix-cell-button', false)
+            ->assertSee('Kuning')
+            ->assertSee('Merah');
+
+        $entry = JadwalKbm::where('study_group_id', $this->sgA->id)->firstOrFail();
+
+        $this->put("/{$this->admin->id}/jadwal-kbm/entries/{$entry->id}", [
+            'matrix' => 1,
+            'day_of_week' => $entry->day_of_week,
+            'slot_index' => $entry->slot_index,
+            'subject_id' => $entry->subject_id,
+            'teacher_id' => $entry->teacher_id,
+            'room' => 'RUANG-UJI',
+        ])->assertRedirect(route('user.jadwal-kbm.edit-all', ['userId' => $this->admin->id]));
+
+        $this->assertSame('RUANG-UJI', $entry->fresh()->room);
+    }
 
     public function test_qr_scan_checkin_checkout_end_to_end(): void
     {
@@ -648,9 +835,9 @@ class JadwalPergantianJamTest extends TestCase
         $teacherRole = Role::create(['name' => 'Guru', 'guard_name' => 'web', 'level' => 12]);
 
         // Permission yang dicek langsung oleh layout (tidak harus dimiliki).
-        \App\Models\Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
-        \App\Models\Permission::firstOrCreate(['name' => 'teacher-attendance_manual', 'guard_name' => 'web']);
-        \App\Models\Permission::firstOrCreate(['name' => 'teacher-attendance_view', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'teacher-attendance_manual', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'teacher-attendance_view', 'guard_name' => 'web']);
 
         $this->admin = User::create([
             'name' => 'Admin Jadwal',
@@ -688,7 +875,7 @@ class JadwalPergantianJamTest extends TestCase
         // Employment: school context + roster fallback (jenis_gtk guru)
         // Catatan: SQLite masih memegang FK lama gtk_employments → positions (sudah di-drop),
         // jadi FK check dimatikan sementara untuk insert fixture.
-        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
+        Schema::disableForeignKeyConstraints();
 
         try {
             foreach ([[$this->teacher1, 'Pendidik / Guru'], [$this->teacher2, 'Pendidik / Guru'], [$this->admin, 'Pimpinan & Struktural Pendidikan']] as [$user, $jenis]) {
@@ -704,7 +891,7 @@ class JadwalPergantianJamTest extends TestCase
                 ]);
             }
         } finally {
-            \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
+            Schema::enableForeignKeyConstraints();
         }
 
         // SK + assignment (sumber JP generator)

@@ -3,61 +3,66 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Models\AssetLoan;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use Tests\Traits\CreatesSarprasFixtures;
 
 class AssetLoanModelTest extends TestCase
 {
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use CreatesSarprasFixtures;
+    use RefreshDatabase;
 
     /** @test */
     public function loan_uuid_is_generated_on_create()
     {
-        $loan = AssetLoan::create([
-            'loan_code' => 'LOAN-'.strtoupper(Str::random(6)),
-            'loan_date' => now(),
-            'expected_return_date' => now()->addDays(7),
-            'status' => 'menunggu',
-            'borrower_type' => 'internal',
-            'borrower_name' => 'Test Borrower',
-            'purpose' => 'Testing',
-        ]);
+        $loan = $this->makeLoan();
+
         $this->assertNotNull($loan->id);
-        $this->assertNotFalse(filter_var($loan->id, FILTER_VALIDATE_UUID));
+        $this->assertTrue(Str::isUuid((string) $loan->id));
     }
 
     /** @test */
     public function status_transitions()
     {
-        $data = [
-            'loan_code' => 'LOAN-'.strtoupper(Str::random(6)),
-            'loan_date' => now(),
-            'expected_return_date' => now()->addDays(7),
-            'status' => 'menunggu',
-            'borrower_type' => 'internal',
-            'borrower_name' => 'Test Borrower',
+        $loan = $this->makeLoan();
+
+        $this->assertEquals('pending', $loan->status);
+
+        $loan->update(['status' => 'approved']);
+        $this->assertEquals('approved', $loan->fresh()->status);
+
+        $loan->update(['status' => 'dipinjam']);
+        $this->assertEquals('dipinjam', $loan->fresh()->status);
+
+        $loan->update(['status' => 'dikembalikan']);
+        $this->assertEquals('dikembalikan', $loan->fresh()->status);
+    }
+
+    /** @test */
+    public function status_options_cover_whole_lifecycle()
+    {
+        $this->assertEquals([
+            'pending', 'approved', 'dipinjam', 'dikembalikan',
+            'terlambat', 'hilang', 'dibatalkan',
+        ], AssetLoan::STATUS_OPTIONS);
+    }
+
+    protected function makeLoan(array $overrides = []): AssetLoan
+    {
+        $asset = $this->createAsset();
+        $borrower = $this->createUser();
+
+        return AssetLoan::create(array_merge([
+            'asset_id' => $asset->id,
+            'work_unit_id' => $asset->work_unit_id,
+            'school_id' => $asset->school_id,
+            'borrower_id' => $borrower->id,
             'purpose' => 'Testing',
-        ];
-
-        $loan = AssetLoan::create($data);
-        $loan->update(['status' => 'disetujui']);
-        $this->assertEquals('disetujui', $loan->status);
-
-        $loan->update(['status' => 'aktif']);
-        $this->assertEquals('aktif', $loan->status);
-
-        $loan->update(['status' => 'selesai']);
-        $this->assertEquals('selesai', $loan->status);
+            'loan_date' => now()->toDateString(),
+            'expected_return_date' => now()->addDays(7)->toDateString(),
+            'condition_on_loan' => 'baik',
+            'status' => 'pending',
+        ], $overrides));
     }
 }

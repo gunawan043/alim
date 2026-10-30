@@ -189,6 +189,43 @@
                             <textarea name="notes" class="form-control" rows="2"
                                       placeholder="Tambahkan keterangan tambahan...">{{ old('notes') }}</textarea>
                         </div>
+
+                        <div class="col-12">
+                            <div class="alert alert-success mb-0">
+                                <div class="form-check form-switch">
+                                    <input type="hidden" name="notify_wali" value="0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="notify_wali" name="notify_wali" value="1"
+                                           {{ old('notify_wali', '1') == '1' ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="notify_wali">
+                                        Kirim WhatsApp prestasi ke wali santri
+                                    </label>
+                                </div>
+                                <div class="small mt-1">
+                                    WhatsApp langsung dikirim setelah prestasi disimpan, sebelum approval asrama.
+                                    Gunakan kalimat satuan pendidikan dan doa islami.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <div class="form-check form-switch">
+                                    <input type="hidden" name="notify_dormitory" value="0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="notify_dormitory" name="notify_dormitory" value="1"
+                                           {{ old('notify_dormitory', '1') == '1' ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="notify_dormitory">
+                                        Kirim notifikasi in-app ke asrama
+                                    </label>
+                                </div>
+                                <div class="small mt-1">
+                                    Jika santri tinggal di asrama, prestasi ini otomatis masuk sebagai
+                                    <strong>pengajuan penghargaan asrama</strong> dan menunggu persetujuan
+                                    Kepala/Wakil Asrama. Notifikasi asrama hanya in-app; tidak ada WhatsApp ke asrama.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

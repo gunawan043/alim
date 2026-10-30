@@ -53,7 +53,7 @@ return new class extends Migration
         if (! Schema::hasTable('gtk_request_items')) {
             Schema::create('gtk_request_items', function (Blueprint $table) {
                 $table->id();
-                $table->char('gtk_request_id', 36);
+                $table->uuid('gtk_request_id');
                 $table->string('item_type', 50)->comment('procurement|trial|status_increase');
                 // Procurement fields
                 $table->string('jabatan', 150)->nullable();

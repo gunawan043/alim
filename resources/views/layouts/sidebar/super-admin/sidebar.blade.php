@@ -98,13 +98,13 @@
 
 {{-- ─── Step 2: Struktur Organisasi ────────────────────────────────────── --}}
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.master-data.jenis-gtk', 'user.master-data.jabatan', 'user.master-data.satuan-kerja', 'user.work-units.', 'user.sa.divisi.', 'user.divisi.']) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.master-data.jenis-gtk', 'user.master-data.jabatan', 'user.master-data.tugas-tambahan', 'user.master-data.satuan-kerja', 'user.work-units.', 'user.sa.divisi.', 'user.divisi.']) ? ' active' : '' }}"
        href="#boot_struktur" data-bs-toggle="collapse" role="button"
-       aria-expanded="{{ isActiveAny($currentRoute, ['user.master-data.jenis-gtk', 'user.master-data.jabatan', 'user.master-data.satuan-kerja', 'user.work-units.', 'user.sa.divisi.', 'user.divisi.']) ? 'true' : 'false' }}"
+       aria-expanded="{{ isActiveAny($currentRoute, ['user.master-data.jenis-gtk', 'user.master-data.jabatan', 'user.master-data.tugas-tambahan', 'user.master-data.satuan-kerja', 'user.work-units.', 'user.sa.divisi.', 'user.divisi.']) ? 'true' : 'false' }}"
        aria-controls="boot_struktur">
         <i class="ri-node-tree"></i><span>2. Struktur Organisasi</span><span class="menu-arrow"></span>
     </a>
-    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.master-data.jenis-gtk', 'user.master-data.jabatan', 'user.master-data.satuan-kerja', 'user.work-units.', 'user.sa.divisi.', 'user.divisi.']) ? ' show' : '' }}"
+    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.master-data.jenis-gtk', 'user.master-data.jabatan', 'user.master-data.tugas-tambahan', 'user.master-data.satuan-kerja', 'user.work-units.', 'user.sa.divisi.', 'user.divisi.']) ? ' show' : '' }}"
          id="boot_struktur">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
@@ -117,6 +117,12 @@
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.master-data.jabatan']) ? ' active' : '' }}"
                    href="{{ route('user.master-data.jabatan.index', ['userId' => $userId]) }}">
                     <i class="ri-briefcase-line me-1"></i> Jabatan
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.master-data.tugas-tambahan']) ? ' active' : '' }}"
+                   href="{{ route('user.master-data.tugas-tambahan.index', ['userId' => $userId]) }}">
+                    <i class="ri-task-line me-1"></i> Jenis Tugas Tambahan
                 </a>
             </li>
             <li class="nav-item">
@@ -205,19 +211,19 @@
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.gedung.']) ? ' active' : '' }}"
-                   href="{{ route('sarpras.gedung.index') }}">
+                   href="{{ route('sarpras.gedung.index', ['userId' => $userId]) }}">
                     <i class="ri-building-line me-1"></i> Gedung
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.ruang.']) ? ' active' : '' }}"
-                   href="{{ route('sarpras.ruang.index') }}">
+                   href="{{ route('sarpras.ruang.index', ['userId' => $userId]) }}">
                     <i class="ri-door-open-line me-1"></i> Ruang
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.aset.']) ? ' active' : '' }}"
-                   href="{{ route('sarpras.aset.index') }}">
+                   href="{{ route('sarpras.aset.index', ['userId' => $userId]) }}">
                     <i class="ri-archive-line me-1"></i> Aset
                 </a>
             </li>
@@ -300,6 +306,27 @@
 <li class="menu-title"><span>Data Operasional</span></li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.broadcasts.']) ? ' active' : '' }}"
+       href="{{ route('user.broadcasts.index', ['userId' => $userId]) }}">
+        <i class="ri-send-plane-2-line"></i><span>Broadcast</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.announcements.']) ? ' active' : '' }}"
+       href="{{ route('user.humas.announcements.index', ['userId' => $userId]) }}">
+        <i class="ri-megaphone-line"></i><span>Pengumuman</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.wali-links.']) ? ' active' : '' }}"
+       href="{{ route('user.wali-links.index', ['userId' => $userId]) }}">
+        <i class="ri-parent-line"></i><span>Penghubungan Wali</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.', 'user.mutations-', 'user.student-move.', 'user.alumni.']) ? ' active' : '' }}"
        href="#op_santri" data-bs-toggle="collapse" role="button"
        aria-expanded="{{ isActiveAny($currentRoute, ['user.students.', 'user.mutations-', 'user.student-move.', 'user.alumni.']) ? 'true' : 'false' }}"
@@ -362,13 +389,13 @@
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.study-groups.', 'user.teaching-assignments.', 'user.other-teacher-tasks.', 'user.institution-decrees.']) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.study-groups.', 'user.teaching-assignments.', 'user.institution-decrees.']) ? ' active' : '' }}"
        href="#op_akademik" data-bs-toggle="collapse" role="button"
-       aria-expanded="{{ isActiveAny($currentRoute, ['user.study-groups.', 'user.teaching-assignments.', 'user.other-teacher-tasks.', 'user.institution-decrees.']) ? 'true' : 'false' }}"
+       aria-expanded="{{ isActiveAny($currentRoute, ['user.study-groups.', 'user.teaching-assignments.', 'user.institution-decrees.']) ? 'true' : 'false' }}"
        aria-controls="op_akademik">
         <i class="ri-school-line"></i><span>Akademik Lanjutan</span><span class="menu-arrow"></span>
     </a>
-    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.study-groups.', 'user.teaching-assignments.', 'user.other-teacher-tasks.', 'user.institution-decrees.']) ? ' show' : '' }}"
+    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.study-groups.', 'user.teaching-assignments.', 'user.institution-decrees.']) ? ' show' : '' }}"
          id="op_akademik">
         <ul class="nav nav-sm flex-column">
             <li class="nav-item">
@@ -384,12 +411,6 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link{{ isActiveAny($currentRoute, ['user.other-teacher-tasks.']) ? ' active' : '' }}"
-                   href="{{ route('user.other-teacher-tasks.index', ['userId' => $userId]) }}">
-                    <i class="ri-user-settings-line me-1"></i> Tugas Tambahan Guru
-                </a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.institution-decrees.']) ? ' active' : '' }}"
                    href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">
                     <i class="ri-file-paper-line me-1"></i> SK Lembaga
@@ -397,6 +418,14 @@
             </li>
         </ul>
     </div>
+</li>
+
+<li class="menu-title"><span>Tugas Tambahan</span></li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.other-teacher-tasks.']) ? ' active' : '' }}"
+       href="{{ route('user.other-teacher-tasks.index', ['userId' => $userId]) }}">
+        <i class="ri-user-settings-line"></i><span>Tugas Tambahan Guru</span>
+    </a>
 </li>
 
 <li class="nav-item">
@@ -454,7 +483,7 @@
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.']) ? ' active' : '' }}"
-       href="{{ route('sarpras.dashboard') }}">
+       href="{{ route('sarpras.dashboard', ['userId' => $userId]) }}">
         <i class="ri-tools-line"></i><span>Modul Sarpras</span>
     </a>
 </li>
@@ -525,6 +554,11 @@
     <a class="nav-link menu-link{{ $currentRoute === 'user.sa.system-settings.index' && request('tab') === 'pos-api' ? ' active' : '' }}"
        href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'pos-api']) }}">
         <i class="ri-plug-line"></i> <span>Integrasi POS</span>
+    </a>
+
+    <a class="nav-link menu-link{{ $currentRoute === 'user.sa.system-settings.index' && request('tab') === 'recruitment-api' ? ' active' : '' }}"
+       href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'recruitment-api']) }}">
+        <i class="ri-user-search-line"></i> <span>Integrasi Recruitment</span>
     </a>
 </li>
 
@@ -639,13 +673,6 @@
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
-       href="{{ route('user.tahfidz.mutabaah.index', ['userId' => $userId]) }}">
-        <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
-    </a>
-</li>
-
-<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.tasmi.']) ? ' active' : '' }}"
        href="{{ route('user.tahfidz.tasmi.index', ['userId' => $userId]) }}">
         <i class="ri-award-line"></i><span>Tasmi’ & Syahadah</span>
@@ -653,9 +680,30 @@
 </li>
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.index', 'user.tahfidz.monitoring.notify']) ? ' active' : '' }}"
        href="{{ route('user.tahfidz.monitoring.index', ['userId' => $userId]) }}">
         <i class="ri-line-chart-line"></i><span>Monitoring Tahfidz</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.sheet']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.monitoring.sheet', ['userId' => $userId]) }}">
+        <i class="ri-file-chart-line"></i><span>Lembar Monitoring</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.gradebook.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.gradebook.index', ['userId' => $userId]) }}">
+        <i class="ri-book-3-line"></i><span>Buku Nilai</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.reports.']) ? ' active' : '' }}"
+       href="{{ route('user.tahfidz.reports.index', ['userId' => $userId]) }}">
+        <i class="ri-bar-chart-box-line"></i><span>Laporan &amp; Grafik</span>
     </a>
 </li>
 

@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
             SchoolSeeder::class,       // master jenis izin (pulang, sakit, dll.)
             DormitorySeeder::class,       // master jenis izin (pulang, sakit, dll.)
             AcademicYearSeeder::class,
+            KaldikSeeder::class,           // WAJIB: Kalender Pendidikan Pondok 2026/2027 & 2027/2028
             LibraryUnitSeeder::class,           // WAJIB: unit Putra, Putri, dan SD
             PersonaliaMasterSeeder::class,     // WAJIB: master cuti, kinerja, pelatihan, peraturan, kontrak
             CurriculumProfileSeeder::class,    // profil KBC Kemenag & Merdeka Dinas
@@ -57,6 +58,7 @@ class DatabaseSeeder extends Seeder
 
             // Fondasi Tahfidz (work unit DEP-TAH, paket, rubrik, surah, juz).
             TahfidzFoundationSeeder::class,
+            TahfidzAyatPositionSeeder::class, // posisi halaman/baris Mushaf Madinah per ayat
             TahfidzBaselineCurriculumSeeder::class, // Muqorror & RPP standar SD/SMP/SMA
         ]);
     }

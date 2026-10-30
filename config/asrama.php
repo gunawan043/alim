@@ -6,6 +6,9 @@ return [
     // Wajibkan consent wali sebelum pengajuan izin/kunjungan baru.
     'consent_required' => env('ASRAMA_CONSENT_REQUIRED', true),
 
+    // Maksimal hari izin meninggalkan pembelajaran (Pasal 14).
+    'max_learning_leave_days' => (int) env('ASRAMA_MAX_LEARNING_LEAVE_DAYS', 3),
+
     'retention' => [
         // Data kunjungan yang lebih lama akan dianonimkan.
         'visit_months' => (int) env('ASRAMA_VISIT_RETENTION_MONTHS', 24),

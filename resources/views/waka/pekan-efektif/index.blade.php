@@ -49,7 +49,7 @@
                             <label class="form-label">Tahun Ajaran</label>
                             <select name="academic_year_id" class="form-select form-select-sm" required>
                                 @foreach($academicYears as $ay)
-                                    <option value="{{ $ay->id }}" {{ $selectedAyId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
+                                    <option value="{{ $ay->id }}" {{ $selectedAyId == $ay->id ? 'selected' : '' }}>{{ $ay->name }} — {{ ucfirst($ay->semester) }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -70,6 +70,7 @@
             </div>
         </div>
     </div>
+
 
     @if($ringkasan)
         @if(! ($ringkasan['is_persisted'] ?? false))
@@ -111,9 +112,9 @@
             <div class="col-xxl-3 col-md-6">
                 <div class="card card-animate">
                     <div class="card-body">
-                        <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Minggu Libur</p>
+                        <p class="text-uppercase fw-medium text-muted mb-0 fs-13">Minggu Libur / Tidak Efektif</p>
                         <div class="d-flex align-items-end justify-content-between mt-3">
-                            <h4 class="fs-22 fw-semibold ff-secondary mb-0 text-danger">{{ $ringkasan['minggu_libur'] }}</h4>
+                            <h4 class="fs-22 fw-semibold ff-secondary mb-0 text-danger">{{ $ringkasan['minggu_libur'] }} <span class="fs-13 text-muted">/ {{ $ringkasan['minggu_tidak_efektif'] ?? 0 }}</span></h4>
                             <div class="avatar-sm flex-shrink-0">
                                 <span class="avatar-title bg-danger-subtle rounded fs-3"><i class="ri-calendar-close-line text-danger"></i></span>
                             </div>
@@ -196,7 +197,7 @@
                 <tbody>
                     @forelse($pekanList as $p)
                         @php
-                            $map = ['efektif' => 'success', 'libur' => 'danger', 'ujian' => 'warning', 'kegiatan_sekolah' => 'info', 'lainnya' => 'secondary'];
+                            $map = ['efektif' => 'success', 'libur' => 'danger', 'ujian' => 'warning', 'kegiatan_sekolah' => 'info', 'lainnya' => 'secondary', 'tidak_efektif' => 'secondary'];
                             $cls = $map[$p->jenis] ?? 'secondary';
                         @endphp
                         <tr>
@@ -208,9 +209,9 @@
                                     <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.6rem">Kaldik</span>
                                 @endif
                             </td>
-                            <td class="small">{{ $p->tanggal_mulai?->format('d/m/Y') }} – {{ $p->tanggal_selesai?->format('d/m/Y') }}</td>
+                            <td class="small">{{ $p->tanggal_mulai?->locale('id')->translatedFormat('l, d F Y') }} – {{ $p->tanggal_selesai?->locale('id')->translatedFormat('l, d F Y') }}</td>
                             <td class="text-center">
-                                <span class="badge {{ $p->hari_efektif > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">
+                                <span class="badge {{ $p->hari_efektif >= $minEffectiveDays && ! in_array($p->jenis, ['libur', 'tidak_efektif'], true) ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">
                                     {{ $p->hari_efektif }} hari
                                 </span>
                             </td>

@@ -56,7 +56,7 @@
                             <button type="submit" class="btn btn-primary w-100"><i class="ri-search-line me-1"></i> Filter</button>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ route('user.satuan-kerja.additional-tasks', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}"
+                            <a href="{{ route('user.schools.satuan-kerja.additional-tasks', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}"
                                class="btn btn-light w-100">Reset</a>
                         </div>
                     </form>
@@ -82,7 +82,7 @@
                                     <td>
                                         <span class="fw-medium">{{ $t->user?->name ?? '-' }}</span>
                                     </td>
-                                    <td>{{ $t->nama_tugas }}</td>
+                                    <td>{{ $t->additionalTaskType?->nama ?? $t->nama_tugas }}</td>
                                     <td class="text-center">{{ $t->hours_per_week ?? '-' }}</td>
                                     <td>
                                         @if($t->decree)
@@ -97,7 +97,7 @@
                                         <button type="button" class="btn btn-soft-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalEdit{{ $t->id }}">
                                             <i class="ri-pencil-line"></i>
                                         </button>
-                                        <form method="POST" action="{{ route('user.satuan-kerja.additional-tasks.destroy', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $t->id]) }}"
+                                        <form method="POST" action="{{ route('user.schools.satuan-kerja.additional-tasks.destroy', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $t->id]) }}"
                                               class="d-inline" onsubmit="return confirm('Hapus tugas tambahan ini?')">
                                             @csrf @method('DELETE')
                                             <button type="button" class="btn btn-soft-danger btn-sm delete-btn">
@@ -115,7 +115,7 @@
                                                 <h5 class="modal-title">Edit Tugas Tambahan</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
-                                            <form method="POST" action="{{ route('user.satuan-kerja.additional-tasks.update', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $t->id]) }}">
+                                            <form method="POST" action="{{ route('user.schools.satuan-kerja.additional-tasks.update', ['workUnitId' => $workUnitId, 'userId' => $userId, 'id' => $t->id]) }}">
                                                 @csrf @method('PUT')
                                                 <div class="modal-body">
                                                     <div class="mb-3">
@@ -128,7 +128,12 @@
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label">Nama Tugas</label>
-                                                        <input type="text" name="nama_tugas" class="form-control" value="{{ $t->nama_tugas }}" required>
+                                                        <select name="additional_task_type_id" class="form-select" required>
+                                                            <option value="">-- Pilih Tugas Tambahan --</option>
+                                                            @foreach(($taskTypes ?? collect()) as $type)
+                                                                <option value="{{ $type->id }}" {{ $t->additional_task_type_id === $type->id ? 'selected' : '' }}>{{ $type->nama }}</option>
+                                                            @endforeach
+                                                        </select>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label">SK Referensi</label>
@@ -187,7 +192,7 @@
                     <h5 class="modal-title">Tambah Tugas Tambahan</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST" action="{{ route('user.satuan-kerja.additional-tasks.store', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}">
+                <form method="POST" action="{{ route('user.schools.satuan-kerja.additional-tasks.store', ['workUnitId' => $workUnitId, 'userId' => $userId]) }}">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
@@ -201,7 +206,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Nama Tugas <span class="text-danger">*</span></label>
-                            <input type="text" name="nama_tugas" class="form-control" required maxlength="150">
+                            <select name="additional_task_type_id" class="form-select" required>
+                                <option value="">-- Pilih Tugas Tambahan --</option>
+                                @foreach(($taskTypes ?? collect()) as $type)
+                                    <option value="{{ $type->id }}">{{ $type->nama }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">SK Referensi</label>

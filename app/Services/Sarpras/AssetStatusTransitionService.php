@@ -25,7 +25,7 @@ class AssetStatusTransitionService
     public function transition(
         Asset $asset,
         string $target,
-        ?int $actorId = null,
+        ?string $actorId = null,
         string $reason = ''
     ): Asset {
         $from = $asset->status ?: 'active';
@@ -66,7 +66,7 @@ class AssetStatusTransitionService
     /**
      * Bypass validation — only use for creation or imports.
      */
-    public function set(Asset $asset, string $status, ?int $actorId = null): Asset
+    public function set(Asset $asset, string $status, ?string $actorId = null): Asset
     {
         $asset->update(['status' => $status]);
         $this->cacheInvalidator->invalidateAsset($asset);

@@ -26,8 +26,7 @@ class SekolahController extends PosApiController
     {
         $query = School::query()->with(self::WITH_RELATIONS);
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->toString();
+        if (($search = $this->searchTerm($request)) !== null) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('npsn', 'like', "%{$search}%");
@@ -82,7 +81,7 @@ class SekolahController extends PosApiController
             'status_text' => $school->status_text,
             'alamat' => $school->full_address,
             'provinsi' => $school->province?->name,
-            'kota' => $school->city?->name,
+            'kota' => $school->city?->display_name,
             'kecamatan' => $school->district?->name,
             'desa' => $school->village?->name,
             'kode_pos' => $school->postal_code,

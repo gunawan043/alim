@@ -5,6 +5,22 @@
 
 <div class="dashboard-role" data-role="{{ $roleSlug ?? '' }}" data-jabatan="{{ $jabatanCode }}">
 
+    @include('dashboard._shared.partials.header', ['dashboard' => $dashboard])
+
+    {{-- Akses harian khusus GTK Satuan Pendidikan --}}
+    @if (($roleSlug ?? '') === 'satuan-pendidikan' || ($roleSlug ?? '') === 'guru' || ($roleSlug ?? '') === 'wali-kelas')
+        @php
+            $quickActionsView = \Illuminate\Support\Facades\View::exists('dashboard.'.$roleSlug.'.quick-actions')
+                ? 'dashboard.'.$roleSlug.'.quick-actions'
+                : 'dashboard.satuan-pendidikan.quick-actions';
+        @endphp
+        @include($quickActionsView, [
+            'user' => $user,
+            'jabatanCode' => $jabatanCode ?? 'default',
+            'tugasTambahan' => $tugasTambahan ?? [],
+        ])
+    @endif
+
     {{-- HERO — informasi utama --}}
     @php
         $bannerData = $data['welcome-banner'] ?? null;
@@ -18,10 +34,42 @@
         @include($bannerView, ['data' => $bannerData, 'user' => $user])
     @endif
 
+
+    {{-- OVERVIEW — indikator utama jabatan --}}
+    @if(! empty($dashboard['kpis']))
+        @include('dashboard._shared.partials.kpi-cards', ['kpis' => $dashboard['kpis']])
+    @endif
+
+    {{-- ANALYSIS — tren utama lintas jabatan --}}
+    @include('dashboard._shared.partials.analytics-charts', ['charts' => $dashboard['charts'] ?? [], 'user' => $user])
+
+    {{-- DRILL-DOWN — distribusi & keterisian rombel --}}
+    @include('dashboard._shared.partials.distribution', ['dashboard' => $dashboard, 'user' => $user])
+
+    {{-- KALDIK BULAN INI + JADWAL SHALAT --}}
+    @include('dashboard._shared.partials.calendar', ['dashboard' => $dashboard])
+
+    {{-- INTERPRETATION — temuan berbasis aturan --}}
+    @include('dashboard._shared.partials.findings', ['findings' => $dashboard['findings'] ?? []])
+
+    {{-- ACTION — tindak lanjut sesuai jabatan --}}
+    @include('dashboard._shared.partials.actions', ['dashboard' => $dashboard, 'roleSlug' => $roleSlug, 'user' => $user])
+
     {{-- SECTION + WIDGET (flex auto-fill: setiap baris selalu penuh) --}}
     @foreach ($sections as $section)
         @php
-            $sectionWidgets = array_values(array_diff($section['widgets'], ['welcome-banner']));
+            // Widget lama yang datanya sudah diwakili KPI/grafik baru tidak dirender ulang.
+            // Tujuannya supaya satu indikator hanya muncul sekali di halaman.
+            $replacedWidgets = [
+                'welcome-banner',
+                'stat-total-santri', 'stat-total-gtk', 'stat-total-rombel',
+                'stat-santri-baru', 'stat-santri-masuk', 'stat-santri-keluar',
+                'stat-absensi-santri-hari-ini',
+                'chart-tren-kehadiran-santri', 'chart-top-rombel',
+                'chart-santri-per-tingkat', 'chart-statistik-santri-per-rombel',
+                'chart-gender-santri', 'table-rekap-siswa-tingkat',
+            ];
+            $sectionWidgets = array_values(array_diff($section['widgets'], $replacedWidgets));
         @endphp
 
         @continue (empty($sectionWidgets))

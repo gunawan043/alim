@@ -5,6 +5,7 @@ namespace Tests\Traits;
 use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\AssetRoom;
+use App\Models\Role;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,9 @@ use Illuminate\Support\Str;
 
 trait CreatesSarprasFixtures
 {
+    /** Pengguna bersama untuk kolom `created_by` (dibuat sekali per test). */
+    protected ?User $sarprasFixtureUser = null;
+
     protected function createSchool(): School
     {
         $workUnitId = (string) Str::uuid();
@@ -41,6 +45,7 @@ trait CreatesSarprasFixtures
         return AssetCategory::create([
             'name' => 'Test Category '.Str::random(4),
             'code' => 'TC-'.Str::random(4),
+            'asset_type' => 'tidak_bergerak',
             'is_active' => true,
         ]);
     }
@@ -50,8 +55,9 @@ trait CreatesSarprasFixtures
         return AssetRoom::create([
             'school_id' => $schoolId,
             'work_unit_id' => null,
-            'nama_ruang' => 'Test Room',
-            'kode_ruang' => 'TR-'.Str::random(4),
+            'room_name' => 'Test Room',
+            'room_code' => 'TR-'.Str::random(4),
+            'room_type' => 'lainnya',
             'is_active' => true,
         ]);
     }
@@ -62,6 +68,7 @@ trait CreatesSarprasFixtures
         $category = $this->createAssetCategory();
 
         return Asset::create(array_merge([
+            'work_unit_id' => $school->work_unit_id,
             'school_id' => $school->id,
             'asset_code' => 'AST-'.strtoupper(Str::random(6)),
             'asset_name' => 'Test Asset '.strtoupper(Str::random(4)),
@@ -70,14 +77,35 @@ trait CreatesSarprasFixtures
             'condition' => 'baik',
             'status' => 'tersedia',
             'acquisition_price' => 1000000,
-            'year' => date('Y'),
+            'acquisition_source' => 'hibah',
             'asset_category_id' => $category->id,
+            'created_by' => $this->fixtureUser()->id,
             'is_active' => true,
         ], $overrides));
     }
 
-    protected function createUser(string $role = 'Admin Sarpras'): User
+    /**
+     * Pengguna netral (tanpa role istimewa) yang dipakai sebagai `created_by`
+     * pada fixture aset. Dibuat sekali per test agar tidak membengkakkan query.
+     */
+    protected function fixtureUser(): User
     {
-        return User::factory()->create(['role' => $role]);
+        $this->sarprasFixtureUser ??= $this->createUser('');
+
+        return $this->sarprasFixtureUser;
+    }
+
+    protected function createUser(string $role = 'Unit Rumah Tangga'): User
+    {
+        $user = User::factory()->create();
+        if ($role !== '') {
+            $roleModel = Role::firstOrCreate([
+                'name' => $role,
+                'guard_name' => 'web',
+            ]);
+            $user->assignRole($roleModel);
+        }
+
+        return $user;
     }
 }

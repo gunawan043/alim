@@ -18,8 +18,12 @@ class SarprasDisposalController extends SarprasBaseController
 
     public function pending()
     {
-        $candidates = Asset::where('condition', 'dihapus')
-            ->orWhere(fn ($q) => $q->whereNotNull('disposal_date')->whereNull('disposal_reason'))
+        // Bungkus orWhere agar filter unit/scope tidak bocor ke cabang or.
+        $candidates = Asset::query()
+            ->where(function ($q) {
+                $q->where('condition', 'dihapus')
+                    ->orWhere(fn ($qq) => $qq->whereNotNull('disposal_date')->whereNull('disposal_reason'));
+            })
             ->orderBy('updated_at', 'desc')
             ->limit(50)
             ->get();
@@ -76,11 +80,22 @@ class SarprasDisposalController extends SarprasBaseController
         ]);
 
         $previousCondition = $asset->condition;
-        $asset->update([
+
+        $payload = [
             'disposal_reason' => null,
             'disposal_method' => null,
             'disposal_date' => null,
-        ]);
+            'disposal_value' => null,
+        ];
+
+        // Penghapusan dibatalkan: aset tidak boleh tetap berstatus 'dihapus'
+        // (kalau tidak, ia akan terus muncul di antrean penghapusan).
+        if ($previousCondition === 'dihapus') {
+            $payload['condition'] = 'rusak_berat';
+            $payload['is_active'] = true;
+        }
+
+        $asset->update($payload);
 
         $logger = app(AssetEventLogger::class);
         $logger->logAssetStatusChanged(

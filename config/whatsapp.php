@@ -82,7 +82,9 @@ return [
 
         'overdue' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nKami informasikan santri *{santri}* *belum kembali ke asrama* melewati batas waktu izin.\n• Estimasi kembali: {estimasi}\n\nMohon konfirmasi kepada pengasuh. Terima kasih.",
 
-        'achievement' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nSelamat! Santri *{santri}* meraih *{prestasi}*.\n• Catatan: {catatan}\n\nSemoga menjadi motivasi. Terima kasih.",
+        'achievement_submitted' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nAlhamdulillahilladzi bini'matihi tatimmush sholihaat. Prestasi ananda *{santri}* telah dicatat oleh satuan pendidikan:\n• Prestasi: {prestasi}\n• Tingkat: {tingkat}\n• Peringkat: {peringkat}\n• Tanggal: {tanggal}\n\nSemoga menjadi motivasi dan keberkahan. Terima kasih.",
+
+        'achievement' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nAlhamdulillahilladzi bini'matihi tatimmush sholihaat. Penghargaan asrama untuk santri *{santri}* telah disetujui: *{prestasi}*.\n• Catatan: {catatan}\n\nSemoga menjadi motivasi. Terima kasih.",
 
         'announcement' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\n*{judul}*\n{pesan}\n\nTerima kasih.",
 

@@ -31,8 +31,8 @@
     /* ── Jabatan ─────────────────────────────────────────────────────── */
     $isKepalaKeuangan = $hasJabatan('Kepala Departemen Keuangan')
                      || $hasJabatan('Kepala Keuangan');
+    // Bendahara Sekolah bukan jabatan divisi Keuangan; ia jabatan/tugas di Satuan Pendidikan.
     $isBendahara      = $hasJabatan('Bendahara Penerimaan')
-                     || $hasJabatan('Bendahara Sekolah')
                      || $hasJabatan('Bendahara');
     $isAkuntan        = $hasJabatan('Akuntan')
                      || $hasJabatan('Staf Pembukuan')

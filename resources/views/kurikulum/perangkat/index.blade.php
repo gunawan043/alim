@@ -275,7 +275,7 @@
                             <div class="row g-3">
                                 <div class="col-md-12">
                                     <label class="form-label">ATP <span class="text-danger">*</span></label>
-                                    <select name="atp_id" id="perangkat-atp" class="form-select" required onchange="applyAtpDefaults()">
+                                    <select name="atp_id" id="perangkat-atp" class="form-select" data-searchable required onchange="applyAtpDefaults()">
                                         <option value="">-- Pilih ATP --</option>
                                         @foreach($atpOptions as $atp)
                                             <option value="{{ $atp->id }}"
@@ -301,6 +301,7 @@
                                     </select>
                                     <small class="text-muted">Guru Agama &amp; Guru Umum memiliki struktur RPM yang berbeda — pilih sesuai kebutuhan.</small>
                                 </div>
+
                                 <div class="col-md-12">
                                     <label class="form-label">Catatan</label>
                                     <textarea name="catatan" rows="2" class="form-control" placeholder="Opsional"></textarea>

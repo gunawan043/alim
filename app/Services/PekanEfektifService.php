@@ -115,14 +115,17 @@ class PekanEfektifService
     }
 
     /**
-     * Event kalender yang berlaku untuk sekolah: kaldik pondok (work_unit null)
-     * + agenda satuan kerja sekolah tersebut.
+     * Event kalender resmi untuk sekolah: hanya kategori Kaldik Pondok.
+     *
+     * Agenda kegiatan (termasuk yang otomatis dibuat dari Info/Broadcast)
+     * sengaja tidak diambil karena bukan dasar perhitungan pekan efektif.
      */
     public function calendarEvents(string $schoolId, string $academicYearId): Collection
     {
         $workUnitId = School::find($schoolId)?->work_unit_id;
 
         return Kaldik::query()
+            ->where('category', Kaldik::CATEGORY_KALDIK)
             ->active()
             ->byAcademicYear($academicYearId)
             ->where(function ($q) use ($workUnitId) {
@@ -145,6 +148,7 @@ class PekanEfektifService
         $ay = AcademicYear::findOrFail($academicYearId);
         [$rangeStart, $rangeEnd] = $this->semesterRange($ay, $semester);
         $events = $this->calendarEvents($schoolId, $academicYearId);
+        $minEffectiveDays = $this->minEffectiveDays($schoolId);
 
         $liburEvents = $events->filter(fn (Kaldik $e) => in_array($e->type, Kaldik::NON_EFFECTIVE_TYPES, true));
         $ujianEvents = $events->where('type', Kaldik::TYPE_UJIAN);
@@ -191,6 +195,8 @@ class PekanEfektifService
 
             if ($effectiveDays === 0) {
                 $jenis = PekanEfektif::JENIS_LIBUR;
+            } elseif ($effectiveDays < $minEffectiveDays) {
+                $jenis = PekanEfektif::JENIS_TIDAK_EFEKTIF;
             } elseif ($weekUjian) {
                 $jenis = PekanEfektif::JENIS_UJIAN;
             } elseif ($weekKegiatan) {
@@ -227,29 +233,36 @@ class PekanEfektifService
      * @param  array<int, array<string, mixed>>  $rows
      * @return array<string, int>
      */
-    public function summarize(array $rows): array
+    public function summarize(array $rows, int $minEffectiveDays = 3): array
     {
         $totalHariEfektif = 0;
         $totalHariLibur = 0;
         $mingguEfektif = 0;
         $mingguLibur = 0;
         $mingguUjian = 0;
+        $mingguTidakEfektif = 0;
 
         foreach ($rows as $row) {
             $hari = (int) ($row['jumlah_hari'] ?? 0);
             $totalHariEfektif += $hari;
 
-            if ($hari > 0) {
+            $jenis = $row['jenis'] ?? null;
+            $isEffective = $hari >= $minEffectiveDays
+                && ! in_array($jenis, [PekanEfektif::JENIS_LIBUR, PekanEfektif::JENIS_TIDAK_EFEKTIF], true);
+
+            if ($isEffective) {
                 $mingguEfektif++;
-            } else {
+            } elseif ($hari === 0) {
                 $mingguLibur++;
+            } else {
+                $mingguTidakEfektif++;
             }
 
-            if (($row['jenis'] ?? null) === PekanEfektif::JENIS_UJIAN) {
+            if ($jenis === PekanEfektif::JENIS_UJIAN) {
                 $mingguUjian++;
             }
 
-            if (($row['jenis'] ?? null) === PekanEfektif::JENIS_LIBUR) {
+            if ($jenis === PekanEfektif::JENIS_LIBUR) {
                 $mulai = Carbon::parse($row['tanggal_mulai']);
                 $selesai = Carbon::parse($row['tanggal_selesai']);
                 $totalHariLibur += (int) $mulai->diffInDays($selesai) + 1;
@@ -261,9 +274,48 @@ class PekanEfektifService
             'minggu_efektif' => $mingguEfektif,
             'minggu_libur' => $mingguLibur,
             'minggu_ujian' => $mingguUjian,
+            'minggu_tidak_efektif' => $mingguTidakEfektif,
             'total_hari_efektif' => $totalHariEfektif,
             'total_hari_libur' => $totalHariLibur,
         ];
+    }
+
+    /**
+     * Tahun ajaran yang sesuai untuk semester 1/2.
+     *
+     * Satu tahun ajaran dapat tersimpan sebagai dua baris (ganjil & genap);
+     * saat halaman/PDF menampilkan semester genap, gunakan baris genapnya.
+     */
+    public function academicYearForSemester(?AcademicYear $selected, int $semester): ?AcademicYear
+    {
+        if (! $selected) {
+            return null;
+        }
+
+        $target = $semester === PekanEfektif::SEMESTER_GANJIL ? 'ganjil' : 'genap';
+        if ($selected->semester === $target) {
+            return $selected;
+        }
+
+        return AcademicYear::where('name', $selected->name)
+            ->where('semester', $target)
+            ->first() ?? $selected;
+    }
+
+    /**
+     * Minimal hari belajar efektif agar satu pekan dianggap efektif.
+     */
+    public function minEffectiveDays(?string $schoolId): int
+    {
+        // Pengaturan global dari halaman Super Admin lebih diutamakan.
+        $global = function_exists('setting') ? setting('pekan_efektif_min_hari') : null;
+        $value = ($global !== null && $global !== '')
+            ? (int) $global
+            : (int) ($schoolId ? School::find($schoolId)?->min_effective_days_per_week : 3);
+
+        $value = $value ?: 3;
+
+        return max(1, min(6, $value));
     }
 
     /**
@@ -285,7 +337,7 @@ class PekanEfektifService
         if ($rows->isEmpty()) {
             $computed = $this->computeWeeks($schoolId, $academicYearId, $semester);
 
-            return $this->summarize($computed['rows']) + [
+            return $this->summarize($computed['rows'], $this->minEffectiveDays($schoolId)) + [
                 'is_persisted' => false,
                 'sumber' => 'Kalender Pendidikan (perhitungan langsung)',
             ];
@@ -297,7 +349,8 @@ class PekanEfektifService
                 'jumlah_hari' => $p->hari_efektif,
                 'tanggal_mulai' => $p->tanggal_mulai?->toDateString(),
                 'tanggal_selesai' => $p->tanggal_selesai?->toDateString(),
-            ])->all()
+            ])->all(),
+            $this->minEffectiveDays($schoolId)
         );
 
         return $summary + [
@@ -343,7 +396,7 @@ class PekanEfektifService
 
         return [
             'rows' => $rows,
-            'summary' => $this->summarize($rows),
+            'summary' => $this->summarize($rows, $this->minEffectiveDays($schoolId)),
             'generated_by' => $generatedBy,
         ];
     }

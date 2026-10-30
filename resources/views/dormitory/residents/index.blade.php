@@ -1,5 +1,6 @@
 @extends('layouts.master')
 @section('title') Daftar Santri Asrama @endsection
+@php $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null); @endphp
 
 @section('content')
     @component('components.breadcrumb')
@@ -11,85 +12,101 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="ri-check-line me-2"></i>{{ session('success') }}
+            <i class="ri-check-line me-1"></i> {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="ri-error-warning-line me-2"></i>{{ session('error') }}
+            <i class="ri-error-warning-line me-1"></i> {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="ri-error-warning-line me-2"></i>Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
+            <i class="ri-error-warning-line me-1"></i> Terjadi kesalahan pada formulir. Silakan perbaiki input Anda.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
     {{-- ============================================================
-         STATS CARDS
+         STATS CARDS (mengikuti template visits)
     ============================================================ --}}
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-animate stat-card h-90">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary-subtle rounded">
+                                <i class="ri-user-follow-line text-primary"></i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Total Santri di Asrama</p>
+                            <h3 class="stat-value">{{ number_format($stats['total'] ?? 0) }}</h3>
+                        </div>
+                    </div>
+                    <p class="stat-note mb-0"><i class="ri-information-line me-1"></i>Santri terdaftar pada asrama ini</p>
+                </div>
+            </div>
+        </div>
 
-    <div class="row g-3 mb-2">
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-primary">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary rounded fs-2"><i class="ri-user-follow-line fs-4 text-white"></i></span>
+                            <span class="avatar-title bg-success-subtle rounded">
+                                <i class="ri-home-line text-success"></i>
+                            </span>
                         </div>
-                        <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Total Santri di Asrama</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['total'] ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Kamar Terisi</p>
+                            <h3 class="stat-value">
+                                {{ number_format($stats['occupied_rooms'] ?? 0) }}<span class="fs-5 text-muted">/{{ number_format($stats['total_rooms'] ?? 0) }}</span>
+                            </h3>
                         </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-door-open-line me-1"></i>Kamar yang telah dihuni santri</p>
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-success">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success rounded fs-2"><i class="ri-home-line fs-4 text-white"></i></span>
+                            <span class="avatar-title bg-warning-subtle rounded">
+                                <i class="ri-user-location-line text-warning"></i>
+                            </span>
                         </div>
-                        <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Kamar Terisi</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['occupied_rooms'] ?? 0 }}<span class="fs-5 text-muted">/{{ $stats['total_rooms'] ?? 0 }}</span></h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Di Asrama</p>
+                            <h3 class="stat-value">{{ number_format($stats['in_dormitory'] ?? 0) }}</h3>
                         </div>
                     </div>
+                    <p class="stat-note mb-0"><i class="ri-home-heart-line me-1"></i>Santri sedang berada di asrama</p>
                 </div>
             </div>
         </div>
+
         <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-warning">
+            <div class="card card-animate stat-card h-90">
                 <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning rounded fs-2"><i class="ri-user-location-line text-white"></i></span>
+                            <span class="avatar-title bg-danger-subtle rounded">
+                                <i class="ri-route-line text-danger"></i>
+                            </span>
                         </div>
-                        <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Di Asrama</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['in_dormitory'] ?? 0 }}</h3>
+                        <div class="flex-grow-1">
+                            <p class="stat-label mb-0">Sedang Izin Pulang</p>
+                            <h3 class="stat-value">{{ number_format($stats['on_permit'] ?? 0) }}</h3>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-animate h-90 border-start border-danger">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-danger rounded fs-2"><i class="ri-route-line fs-4 text-white"></i></span>
-                        </div>
-                        <div>
-                            <p class="text-muted text-uppercase fs-12 mb-1">Sedang Izin Pulang</p>
-                            <h3 class="mb-0 fw-bold">{{ $stats['on_permit'] ?? 0 }}</h3>
-                        </div>
-                    </div>
+                    <p class="stat-note mb-0"><i class="ri-notification-3-line me-1"></i>Santri dengan izin pulang aktif</p>
                 </div>
             </div>
         </div>
@@ -99,22 +116,22 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-header border-bottom-dashed">
-                    <div class="row g-4 align-items-center">
+                    <div class="row g-3 align-items-center">
                         <div class="col-sm">
                             <h5 class="card-title mb-0">Daftar Santri Asrama</h5>
-                            <p class="text-muted mb-0">
-                                {{ $dormitory->name ?? 'Asrama' }} &mdash; {{ $stats['total'] ?? 0 }} santri terdaftar
+                            <p class="text-muted mb-0 small">
+                                {{ $dormitory->name ?? 'Asrama' }} &mdash; {{ number_format($stats['total'] ?? 0) }} santri terdaftar.
                             </p>
                         </div>
                         <div class="col-sm-auto">
-                            <div class="d-flex flex-wrap gap-2">
+                            <div class="toolbar-actions">
                                 <a href="{{ route('user.asrama.attendance.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                   class="btn btn-info btn-sm">
-                                    <i class="ri-calendar-check-line align-bottom me-1"></i> Absensi
+                                   class="btn btn-outline-info btn-sm" title="Lihat Absensi Asrama">
+                                    <i class="ri-calendar-check-line me-1"></i> Absensi
                                 </a>
                                 <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
                                    class="btn btn-primary btn-sm">
-                                    <i class="ri-add-line align-bottom me-1"></i> Tempatkan Santri
+                                    <i class="ri-add-line me-1"></i> Tempatkan Santri
                                 </a>
                             </div>
                         </div>
@@ -123,81 +140,85 @@
 
                 <div class="card-body">
                     {{-- ============================================================
-                         FILTER FORM
+                         TOOLBAR PENCARIAN + FILTER (pola template)
                     ============================================================ --}}
-                    <form method="GET" class="row g-3 align-items-end mb-4 pb-3 border-bottom border-light">
-                        <div class="col-md-4">
-                            <label class="form-label fs-12 text-muted mb-1">Cari Santri</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white">
-                                    <i class="ri-search-line text-muted"></i>
-                                </span>
-                                <input type="text" name="search" class="form-control"
-                                       placeholder="Nama / NISN Santri..."
-                                       value="{{ request('search') }}">
-                            </div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                        <form method="GET" class="d-flex gap-2 flex-grow-1" style="max-width:520px;">
+                            <input type="text" name="search" class="form-control form-control-sm"
+                                   placeholder="Cari nama / NISN santri..." value="{{ request('search') }}">
+                            @foreach(['room_id', 'status'] as $filterKey)
+                                @if(request($filterKey))
+                                    <input type="hidden" name="{{ $filterKey }}" value="{{ request($filterKey) }}">
+                                @endif
+                            @endforeach
+                            <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                <i class="ri-search-line"></i> Cari
+                            </button>
+                        </form>
+
+                        <div class="toolbar-actions">
+                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#residentFilterModal">
+                                <i class="ri-filter-3-line me-1"></i> Filter Lanjutan
+                                @if(request()->hasAny(['room_id', 'status']))
+                                    <span class="badge bg-light text-dark ms-1">Aktif</span>
+                                @endif
+                            </button>
+                            <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                               class="btn btn-light btn-sm" title="Reset filter">
+                                <i class="ri-refresh-line"></i>
+                            </a>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fs-12 text-muted mb-1">Kamar</label>
-                            <select name="room_id" class="form-select">
-                                <option value="">Semua Kamar</option>
-                                @foreach($rooms as $room)
-                                    <option value="{{ $room->id }}" {{ request('room_id') == $room->id ? 'selected' : '' }}>
-                                        {{ $room->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                    </div>
+
+                    @if(request()->hasAny(['search','room_id','status']))
+                        <div class="mb-3">
+                            <span class="text-muted small">Filter aktif:</span>
+                            @if(request('search'))
+                                <span class="filter-badge active"><i class="ri-search-line"></i> "{{ request('search') }}"</span>
+                            @endif
+                            @if(request('room_id'))
+                                <span class="filter-badge active"><i class="ri-home-4-line"></i> {{ $rooms->firstWhere('id', request('room_id'))?->name ?? 'Kamar #'.request('room_id') }}</span>
+                            @endif
+                            @if(request('status'))
+                                <span class="filter-badge active"><i class="ri-flag-line"></i> {{ ucfirst(request('status')) }}</span>
+                            @endif
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fs-12 text-muted mb-1">Status Penghuni</label>
-                            <select name="status" class="form-select">
-                                <option value="aktif" {{ ($status ?? 'aktif') === 'aktif' ? 'selected' : '' }}>Aktif</option>
-                                <option value="keluar" {{ ($status ?? '') === 'keluar' ? 'selected' : '' }}>Keluar</option>
-                                <option value="semua" {{ ($status ?? '') === 'semua' ? 'selected' : '' }}>Semua</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary flex-grow-1">
-                                    <i class="ri-search-line me-1"></i> Terapkan Filter
-                                </button>
-                                <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
-                                   class="btn btn-outline-secondary"
-                                   data-bs-toggle="tooltip" data-bs-placement="top" title="Reset Filter">
-                                    <i class="ri-refresh-line"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </form>
+                    @endif
+
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <small class="text-muted">
+                            <i class="ri-file-list-line me-1"></i> Menampilkan
+                            <strong>{{ $residents->count() }}</strong> dari
+                            <strong>{{ $residents->total() }}</strong> santri
+                        </small>
+                    </div>
 
                     {{-- ============================================================
-                         RESIDENTS TABLE
+                         TABEL
                     ============================================================ --}}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                    <div class="table-container">
+                        <table class="table table-hover align-middle table-freeze">
                             <thead>
                                 <tr>
-                                    <th class="text-center" style="width: 5%">No</th>
+                                    <th class="text-center" style="width:50px;">No</th>
                                     <th>Nama Santri</th>
-                                    <th style="width: 12%">NISN</th>
-                                    <th style="width: 12%">Ruang / Kamar</th>
-                                    <th class="text-center" style="width: 7%">Tempat Tidur</th>
-                                    <th class="text-center" style="width: 10%">Status</th>
-                                    <th style="width: 14%">Keluar</th>
-                                    <th class="text-center" style="width: 10%">Aksi</th>
+                                    <th style="width:12%">NISN</th>
+                                    <th style="width:12%">Ruang / Kamar</th>
+                                    <th class="text-center" style="width:7%">Tempat Tidur</th>
+                                    <th class="text-center" style="width:10%">Status</th>
+                                    <th style="width:14%">Keluar</th>
+                                    <th class="text-center" style="width:110px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($residents as $i => $resident)
+                                @forelse($residents ?? [] as $i => $resident)
                                     @php
                                         $permit = $activePermits->get($resident->student_id);
                                         $isOverdue = $permit && $permit->status === 'overdue';
                                         $expectedReturn = $permit?->expected_return_datetime;
                                     @endphp
                                     <tr class="{{ $isOverdue ? 'table-warning' : '' }}">
-                                        <td class="text-center text-muted">
-                                            {{ $residents->firstItem() + $i }}
-                                        </td>
+                                        <td class="text-center text-muted">{{ $residents->firstItem() + $i }}</td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="avatar-xs me-3">
@@ -206,19 +227,17 @@
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <span class="fw-semibold">{{ $resident->student?->name ?? '-' }}</span>
+                                                    <span class="fw-semibold">{{ $resident->student?->name ?? '—' }}</span>
                                                     @if($resident->student?->nisn)
                                                         <br><small class="text-muted">{{ $resident->student->nisn }}</small>
                                                     @endif
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <code class="text-dark">{{ $resident->student?->nisn ?? '-' }}</code>
-                                        </td>
+                                        <td><code class="text-dark">{{ $resident->student?->nisn ?? '—' }}</code></td>
                                         <td>
                                             <span class="badge bg-primary text-light">
-                                                <i class="ri-home-4-line me-1"></i>{{ $resident->room?->name ?? '-' }}
+                                                <i class="ri-home-4-line me-1"></i>{{ $resident->room?->name ?? '—' }}
                                             </span>
                                         </td>
                                         <td class="text-center">
@@ -232,9 +251,7 @@
                                                     {{ $isOverdue ? 'Terlambat' : 'Izin Pulang' }}
                                                 </span>
                                                 @if($expectedReturn)
-                                                    <div class="small text-muted mt-1">
-                                                        {{ $expectedReturn->format('d M H:i') }}
-                                                    </div>
+                                                    <div class="small text-muted mt-1">{{ $expectedReturn->format('d M H:i') }}</div>
                                                 @endif
                                             @elseif($resident->is_active)
                                                 <span class="badge bg-success-subtle text-success">
@@ -255,23 +272,18 @@
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <div class="d-flex justify-content-center gap-1">
+                                            <div class="d-flex gap-1 justify-content-center">
                                                 <a href="{{ route('user.asrama.residents.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentUuid' => $resident->id]) }}"
-                                                   class="btn btn-sm btn-outline-primary"
-                                                   title="Detail Santri">
+                                                   class="btn btn-sm btn-outline-primary" title="Detail Santri">
                                                     <i class="ri-eye-line"></i>
                                                 </a>
-
-                                                {{-- Check-out button for active residents --}}
                                                 @if($resident->is_active)
                                                     <form method="POST"
                                                           action="{{ route('user.asrama.residents.checkout', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentUuid' => $resident->id]) }}"
                                                           class="d-inline"
-                                                          data-confirm="Keluarkan penghuni ini dari asrama? Data tetap tersimpan sebagai riwayat.">
+                                                          onsubmit="return confirm('Keluarkan penghuni ini dari asrama? Data tetap tersimpan sebagai riwayat.');">
                                                         @csrf
-                                                        <button type="submit"
-                                                                class="btn btn-sm btn-outline-danger"
-                                                                title="Check-out">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Check-out">
                                                             <i class="ri-logout-box-r-line"></i>
                                                         </button>
                                                     </form>
@@ -292,11 +304,66 @@
                         </table>
                     </div>
 
-                    {{-- Pagination (shared template) --}}
-                    @include('shared._pagination', ['paginator' => $residents->withQueryString()])
+                    @if($residents->hasPages())
+                        @include('shared._pagination', ['paginator' => $residents->withQueryString()])
+                    @endif
                 </div>
             </div>
         </div>
     </div>
-@endsection
 
+    {{-- ============================================================
+         MODAL FILTER LANJUTAN (pola template)
+    ============================================================ --}}
+    <div class="modal fade" id="residentFilterModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form method="GET" action="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-filter-3-line me-2 text-primary"></i>Filter Santri</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-search-line"></i>Pencarian</div>
+                                    <input type="text" name="search" class="form-control" value="{{ request('search') }}" placeholder="Nama / NISN santri...">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-home-4-line"></i>Kamar</div>
+                                    <select name="room_id" class="form-select">
+                                        <option value="">Semua Kamar</option>
+                                        @foreach($rooms as $room)
+                                            <option value="{{ $room->id }}" {{ request('room_id') == $room->id ? 'selected' : '' }}>
+                                                {{ $room->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group mb-0">
+                                    <div class="filter-group-title"><i class="ri-flag-line"></i>Status Penghuni</div>
+                                    <select name="status" class="form-select">
+                                        <option value="aktif" {{ ($status ?? 'aktif') === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                                        <option value="keluar" {{ ($status ?? '') === 'keluar' ? 'selected' : '' }}>Keluar</option>
+                                        <option value="semua" {{ ($status ?? '') === 'semua' ? 'selected' : '' }}>Semua</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ route('user.asrama.residents.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light">
+                            <i class="ri-refresh-line me-1"></i> Reset
+                        </a>
+                        <button type="submit" class="btn btn-primary"><i class="ri-filter-3-line me-1"></i> Terapkan Filter</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endsection

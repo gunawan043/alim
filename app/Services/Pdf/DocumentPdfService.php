@@ -32,6 +32,21 @@ class DocumentPdfService
         string $paper = 'A4',
         string $disposition = 'inline',
     ): Response {
+        $safe = $this->safeFilename($filename);
+
+        return response($this->renderHtml($html, $orientation, $paper), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$safe.'.pdf"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Render HTML menjadi bytes PDF tanpa membungkus response.
+     * Dipakai alur tanda tangan dokumen yang perlu menghitung hash final.
+     */
+    public function renderHtml(string $html, string $orientation = 'portrait', string $paper = 'A4'): string
+    {
         // Toolbar browser tidak boleh ikut tercetak oleh Dompdf.
         $html = $this->withoutBrowserToolbar($html);
 
@@ -59,13 +74,7 @@ class DocumentPdfService
         $dompdf->setPaper($paper, $orientation);
         $dompdf->render();
 
-        $safe = $this->safeFilename($filename);
-
-        return response($dompdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => $disposition.'; filename="'.$safe.'.pdf"',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
+        return (string) $dompdf->output();
     }
 
     private function withoutBrowserToolbar(string $html): string

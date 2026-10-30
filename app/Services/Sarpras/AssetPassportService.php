@@ -120,7 +120,7 @@ class AssetPassportService
     /**
      * Cost analytics — repair cost per asset, aggregated.
      */
-    public function getCostAnalytics(int $schoolId): array
+    public function getCostAnalytics(string $schoolId): array
     {
         $assets = Asset::where('school_id', $schoolId)
             ->with(['category', 'room', 'room.building', 'workUnit'])
@@ -150,7 +150,7 @@ class AssetPassportService
     /**
      * Predictive maintenance — MTBF, MTTR, health trend, recommendations.
      */
-    public function getPredictiveMaintenance(int $schoolId): array
+    public function getPredictiveMaintenance(string $schoolId): array
     {
         $assets = Asset::where('school_id', $schoolId)
             ->with(['category', 'room'])
@@ -261,7 +261,7 @@ class AssetPassportService
     /**
      * Technician performance — leaderboard data.
      */
-    public function getTechnicianPerformance(?int $schoolId = null): array
+    public function getTechnicianPerformance(?string $schoolId = null): array
     {
         $woQuery = WorkOrder::with(['assignedTo', 'repairRequest.asset']);
         if ($schoolId) {

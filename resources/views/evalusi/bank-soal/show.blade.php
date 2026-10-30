@@ -25,10 +25,14 @@
             <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0">Detail Bank Soal</h5>
-                    <div>
+                    <div class="d-flex flex-wrap gap-1">
+                        <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                           class="btn btn-soft-primary btn-sm">
+                            <i class="ri-edit-2-line me-1"></i> Edit Soal
+                        </a>
                         <a href="{{ route('user.bank-soal.edit', ['userId' => $userId, 'id' => $bank->id]) }}"
                            class="btn btn-primary btn-sm">
-                            <i class="ri-pencil-line me-1"></i> Edit
+                            <i class="ri-settings-3-line me-1"></i> Edit Bank
                         </a>
                         <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}"
                            class="btn btn-light btn-sm">
@@ -132,21 +136,30 @@
     {{-- Soal List --}}
     <div class="row">
         <div class="col-xl-12">
-            <div class="card">
-                <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card" id="daftar-soal" style="scroll-margin-top: 90px;">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
-                        <h5 class="card-title mb-0">Daftar Soal</h5>
-                        <small class="text-muted">Bahasa soal diatur per butir. Gunakan tombol Input Soal untuk menambah butir.</small>
+                        <h5 class="card-title mb-0">Daftar &amp; Edit Soal</h5>
+                        <small class="text-muted">
+                            Klik <strong>Edit Soal</strong> pada baris untuk membuka halaman edit semua soal.
+                        </small>
                     </div>
-                    <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}"
-                       class="btn btn-success btn-sm">
-                        <i class="ri-add-line me-1"></i> Input Soal
-                    </a>
+                    <div class="d-flex flex-wrap gap-1">
+                        <span class="badge bg-primary-subtle text-primary align-self-center">{{ $bank->soal->count() }} soal</span>
+                        <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                           class="btn btn-success btn-sm">
+                            <i class="ri-add-line me-1"></i> Input Soal
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     @if($bank->soal->isEmpty())
                         <div class="text-center py-4">
-                            <p class="text-muted">Belum ada soal dalam bank ini.</p>
+                            <p class="text-muted mb-2">Belum ada soal dalam bank ini.</p>
+                            <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                               class="btn btn-success btn-sm">
+                                <i class="ri-add-line me-1"></i> Input Soal Pertama
+                            </a>
                         </div>
                     @else
                         <div class="table-responsive">
@@ -156,10 +169,11 @@
                                         <th style="width:60px">#</th>
                                         <th>Jenis Soal</th>
                                         <th>Bahasa</th>
+                                        <th>Level Bloom</th>
                                         <th>Pertanyaan (singkat)</th>
                                         <th>Bobot</th>
                                         <th>Status</th>
-                                        <th style="width:120px">Aksi</th>
+                                        <th style="width:150px">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -168,6 +182,15 @@
                                             <td>{{ $i + 1 }}</td>
                                             <td><span class="badge bg-secondary-subtle text-secondary">{{ $soal->tipe_soal ?? '-' }}</span></td>
                                             <td><span class="badge bg-info-subtle text-info">{{ \App\Models\Soal::BAHASA_OPTIONS[$soal->bahasa] ?? 'Latin' }}</span></td>
+                                            <td>
+                                                @if($soal->level_kognitif)
+                                                    <span class="badge bg-primary-subtle text-primary" title="{{ $soal->level_kognitif_label }} · {{ $soal->level_kognitif_rumpun_label }}">
+                                                        {{ $soal->level_kognitif_code }} · {{ $soal->level_kognitif_rumpun }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-light text-muted border">Belum</span>
+                                                @endif
+                                            </td>
                                             <td style="max-width:300px">{{ Str::limit(strip_tags($soal->pertanyaan ?? ''), 60) }}</td>
                                             <td>{{ $soal->bobot_default ?? '-' }}</td>
                                             <td>
@@ -180,8 +203,9 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $bank->id, 'id' => $soal->id]) }}" class="btn btn-sm btn-soft-primary" title="Detail / Edit Soal">
-                                                    <i class="ri-pencil-line"></i> Detail
+                                                <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                                                   class="btn btn-sm btn-soft-primary" title="Buka halaman edit semua soal">
+                                                    <i class="ri-edit-2-line me-1"></i> Edit Soal
                                                 </a>
                                             </td>
                                         </tr>

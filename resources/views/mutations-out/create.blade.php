@@ -303,6 +303,9 @@
                         <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#mutationLayoutModal">
                             <i class="ri-settings-3-line me-1"></i>Pengaturan Layout
                         </button>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#documentSignatureModal">
+                            <i class="ri-shield-check-line me-1"></i>Tanda Tangan
+                        </button>
                         <span id="out-type-badge" class="out-type-badge mutation">Mutasi Keluar</span>
                     </div>
                 </div>
@@ -459,6 +462,21 @@
     </div>
 </div>
 @endsection
+
+
+<div class="modal fade" id="documentSignatureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-shield-check-line me-1"></i>Tanda Tangan Digital &amp; Validasi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @include('documents._signature_settings', ['type' => 'mutasi', 'userId' => $userId])
+            </div>
+        </div>
+    </div>
+</div>
 
 @section('script')
 <script>

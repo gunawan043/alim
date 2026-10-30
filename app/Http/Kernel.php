@@ -4,15 +4,21 @@ namespace App\Http;
 
 use App\Http\Middleware\ApplySecuritySettings;
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\AuthenticateSessionSecure;
 use App\Http\Middleware\BindOrganizationContext;
+use App\Http\Middleware\BlockDangerousUploads;
 use App\Http\Middleware\CheckIpBlocked;
 use App\Http\Middleware\DenyStudentOperatorAi;
 use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\EnsureApiUserScope;
 use App\Http\Middleware\EnsureBookPeriodWritable;
 use App\Http\Middleware\EnsureDormitoryStudentOperatorAccess;
 use App\Http\Middleware\EnsureEmployeeAccess;
+use App\Http\Middleware\EnsureGtkAccess;
 use App\Http\Middleware\EnsureKurikulumModuleAccess;
 use App\Http\Middleware\EnsureLabAccess;
+use App\Http\Middleware\EnsureOsippAccess;
+use App\Http\Middleware\EnsurePersonaliaPermission;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureSarprasAccess;
 use App\Http\Middleware\EnsureSatuanPendidikanFeature;
@@ -30,13 +36,15 @@ use App\Http\Middleware\RoleLevelMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\SchoolContextMiddleware;
 use App\Http\Middleware\SecurityHeadersMiddleware;
-use App\Http\Middleware\WebSecurityHeaders;
 use App\Http\Middleware\ShareRoleId;
 use App\Http\Middleware\TrimStrings;
+use App\Http\Middleware\TrustHosts;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Http\Middleware\VerifyPosApiKey;
+use App\Http\Middleware\VerifyRecruitmentApiKey;
 use App\Http\Middleware\WaliSchoolContextMiddleware;
+use App\Http\Middleware\WebSecurityHeaders;
 use Illuminate\Auth\Middleware\AuthenticateWithBasicAuth;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
@@ -64,6 +72,7 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
+        TrustHosts::class,
         // \App\Http\Middleware\TrustHosts::class,
         TrustProxies::class,
         HandleCors::class,
@@ -84,6 +93,7 @@ class Kernel extends HttpKernel
             AddQueuedCookiesToResponse::class,
             ApplySecuritySettings::class,
             StartSession::class,
+            AuthenticateSessionSecure::class,
             RequestIdMiddleware::class,
             WebSecurityHeaders::class,
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
@@ -95,6 +105,7 @@ class Kernel extends HttpKernel
             SchoolContextMiddleware::class,
             BindOrganizationContext::class,
             CheckIpBlocked::class,
+            BlockDangerousUploads::class,
             RestrictAdminIp::class,
             EnsureStudentPasswordChanged::class,
             DenyStudentOperatorAi::class,
@@ -138,15 +149,18 @@ class Kernel extends HttpKernel
         'employee.access' => EnsureEmployeeAccess::class,
         'organization.context' => BindOrganizationContext::class,
         'permission' => RequirePermission::class,
-        'personalia.access' => \App\Http\Middleware\EnsurePersonaliaPermission::class,
+        'personalia.access' => EnsurePersonaliaPermission::class,
         'permission-all' => RequirePermission::class,
         'dormitory.restrict' => RestrictDormitoryUserFromStudents::class,
         'kurikulum.access' => EnsureKurikulumModuleAccess::class,
         'sarpras.access' => EnsureSarprasAccess::class,
         'lab.access' => EnsureLabAccess::class,
-        'osipp.access' => \App\Http\Middleware\EnsureOsippAccess::class,
+        'osipp.access' => EnsureOsippAccess::class,
         'satuan.feature' => EnsureSatuanPendidikanFeature::class,
         'pos.api-key' => VerifyPosApiKey::class,
+        'recruitment.api-key' => VerifyRecruitmentApiKey::class,
+        'api.user-scope' => EnsureApiUserScope::class,
+        'gtk.access' => EnsureGtkAccess::class,
         'period.book' => EnsureBookPeriodWritable::class,
     ];
 }

@@ -195,14 +195,24 @@ class AbsensiGtkController extends Controller
             return true;
         }
 
-        return \App\Support\UserJabatan::hasAny($user, [
+        if (\App\Support\UserJabatan::hasAny($user, [
             'kepala satuan pendidikan',
             'wakil kepala satuan pendidikan',
-            'kepala tata usaha',
-            'tata usaha',
-            'staf tata usaha',
             'koordinator kurikulum',
-        ]) || (method_exists($user, 'tugasTambahan') && in_array('Tim Kurikulum', $user->tugasTambahan->pluck('nama')->all(), true));
+        ])) {
+            return true;
+        }
+
+        // Varian jabatan TU di data existing tidak seragam
+        // (mis. "STAF STAF TATA USAHA PENGASUHAN PUTRA").
+        foreach (\App\Support\UserJabatan::candidates($user) as $jabatan) {
+            if (str_contains($jabatan, 'tata usaha')) {
+                return true;
+            }
+        }
+
+        return method_exists($user, 'tugasTambahan')
+            && in_array('Tim Kurikulum', $user->tugasTambahan->pluck('nama')->all(), true);
     }
 
     public function settingsStore(Request $request, string $userId)

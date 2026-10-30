@@ -9,7 +9,7 @@ return new class extends Migration
     {
         $driver = DB::connection()->getDriverName();
         if ($driver === 'pgsql') {
-            DB::statement('CREATE SCHEMA IF NOT EXISTS authorization');
+            DB::statement('CREATE SCHEMA IF NOT EXISTS "authorization"');
         }
     }
 
@@ -17,7 +17,7 @@ return new class extends Migration
     {
         $driver = DB::connection()->getDriverName();
         if ($driver === 'pgsql') {
-            DB::statement('DROP SCHEMA IF EXISTS authorization');
+            DB::statement('DROP SCHEMA IF EXISTS "authorization"');
         }
     }
 };

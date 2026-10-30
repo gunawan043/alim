@@ -8,11 +8,15 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentMutationOut;
 use App\Models\StudentMutationSetting;
+use App\Services\Documents\DocumentSigningService;
+use App\Services\Documents\DocumentVisualService;
+use App\Services\Documents\SchoolLeaderService;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Pharaonic\Hijri\Hijri;
 
 class StudentMutationOutController extends Controller
@@ -110,8 +114,9 @@ class StudentMutationOutController extends Controller
                 ->where('user_id', $school->principal_user_id)
                 ->first();
         }
-        $defaultHeadName = $headEmployment?->user?->name ?? $school?->principal_name ?? '';
-        $defaultHeadNupy = $headEmployment?->nupy ?? $school?->principal_nupy ?? $school?->principal_nip ?? '';
+        $leader = app(SchoolLeaderService::class)->forSchool($school);
+        $defaultHeadName = $leader['display_name'];
+        $defaultHeadNupy = $leader['nupy'];
         $defaultHeadTitle = 'Kepala Sekolah';
 
         // Default tanggal Masehi hari ini
@@ -264,7 +269,17 @@ class StudentMutationOutController extends Controller
                 'status' => $request->boolean('submit_now') ? 'submitted' : 'draft',
             ]);
         } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan: '.$e->getMessage());
+            // Detail teknis hanya masuk log — pesan ke pengguna tidak boleh
+            // membocorkan nama kolom/tabel maupun query database.
+            Log::error('Gagal menyimpan data PD Keluar.', [
+                'user_id' => Auth::id(),
+                'school_id' => $data['school_id'] ?? $schoolContextId,
+                'out_type' => $data['out_type'] ?? null,
+                'exception' => $e,
+            ]);
+
+            return redirect()->back()->withInput()
+                ->with('error', 'Data PD Keluar gagal disimpan. Periksa kembali isian Anda lalu coba lagi.');
         }
 
         return redirect()->route($this->showRouteName($mutation->out_type), ['userId' => $userId, 'mutationUuid' => $mutation->id])
@@ -390,6 +405,37 @@ class StudentMutationOutController extends Controller
         );
     }
 
+    /**
+     * Lengkapi data surat (nomor surat, sekolah tujuan, alasan).
+     *
+     * Dipakai untuk surat yang dibuat otomatis dari proses Kenaikan Kelas:
+     * data santri sudah terisi, admin hanya perlu melengkapi nomor & tujuan.
+     */
+    public function updateLetter(Request $request, string $userId, string $mutationUuid)
+    {
+        $mutation = $this->findScopedMutation($mutationUuid);
+
+        $data = $request->validate([
+            'letter_number' => 'nullable|string|max:50',
+            'destination_school_name' => 'nullable|string|max:255',
+            'destination_school_address' => 'nullable|string|max:500',
+            'reason' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
+        ], [
+            'max' => ':attribute maksimal :max karakter.',
+        ], [
+            'letter_number' => 'nomor surat',
+            'destination_school_name' => 'sekolah tujuan',
+            'destination_school_address' => 'alamat sekolah tujuan',
+            'reason' => 'alasan',
+            'notes' => 'catatan',
+        ]);
+
+        $mutation->update($data);
+
+        return back()->with('success', 'Data surat mutasi berhasil diperbarui.');
+    }
+
     public function reject(Request $request, string $userId, string $mutationUuid)
     {
         $mutation = $this->findScopedMutation($mutationUuid);
@@ -455,6 +501,7 @@ class StudentMutationOutController extends Controller
         $schoolId = $schoolContextId ?: $request->input('school_id');
         $school = $schoolId ? School::find($schoolId) : null;
         abort_unless($school, 422, 'Satuan pendidikan tidak ditemukan untuk preview.');
+        $principal = app(SchoolLeaderService::class)->forSchool($school);
 
         $mutation = new StudentMutationOut($request->except([
             '_token', '_method', 'submit_now', 'student_id', 'school_id',
@@ -474,12 +521,17 @@ class StudentMutationOutController extends Controller
             : now();
         $mutation->setRelation('school', $school);
         $layout = StudentMutationSetting::forSchool($school->id)->layoutSettings();
+        $documentMedia = app(DocumentVisualService::class)->viewData($school, 'mutasi');
 
         $html = view('mutations-out.print.pdf', [
             'mutation' => $mutation,
             'userId' => $request->route('userId'),
             'school' => $school,
             'layout' => $layout,
+            'principal' => $principal,
+            // QR final baru diterbitkan saat dokumen disimpan.
+            'verification' => ['preview' => true],
+            'documentMedia' => $documentMedia,
         ])->render();
 
         $dompdf = new Dompdf;
@@ -516,12 +568,26 @@ class StudentMutationOutController extends Controller
     {
         $mutation = $this->findScopedMutation($mutationUuid)->load(['student', 'school']);
         $school = $mutation->school;
+        $principal = app(SchoolLeaderService::class)->forSchool($school);
         $layout = StudentMutationSetting::forSchool($school?->id)->layoutSettings();
-        $html = view('mutations-out.print.pdf', compact('mutation', 'userId', 'school', 'layout'))->render();
+
+        try {
+            $verification = $this->issueVerification($mutation);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+        $documentMedia = app(DocumentVisualService::class)->viewData($school, 'mutasi');
+        $html = view('mutations-out.print.pdf', compact('mutation', 'userId', 'school', 'layout', 'verification', 'documentMedia', 'principal'))->render();
+
         $dompdf = new Dompdf;
         $dompdf->loadHtml($html);
         $dompdf->setPaper($this->dompdfPaper($layout['paper_size'] ?? 'a4'));
         $dompdf->render();
+        $pdf = (string) $dompdf->output();
+
+        if ($verification) {
+            app(DocumentSigningService::class)->finalize($verification['document'], $pdf);
+        }
 
         $prefix = match ($mutation->out_type) {
             'graduation' => 'Surat-Kelulusan',
@@ -529,7 +595,64 @@ class StudentMutationOutController extends Controller
             default => 'Surat-Pindah',
         };
 
-        return $dompdf->stream($prefix.'-'.($mutation->student_name ?: 'Santri').'.pdf', ['Attachment' => false]);
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$prefix.'-'.($mutation->student_name ?: 'Santri').'.pdf"',
+        ]);
+    }
+
+    /**
+     * Daftarkan surat ke registry verifikasi publik. Kegagalan registry tidak
+     * boleh menghalangi pencetakan dokumen resmi.
+     */
+    private function issueVerification(StudentMutationOut $mutation): ?array
+    {
+        // Mode PAdES ditolak selama PSrE belum siap: jangan terbit dokumen
+        // yang tampak sah tanpa signature.
+        $mode = app(DocumentVisualService::class)->modeForPrinting($mutation->school, 'mutasi');
+
+        if ($mode === 'visual') {
+            return null;
+        }
+
+        try {
+            $title = match ($mutation->out_type) {
+                'graduation' => 'Surat Keterangan Lulus',
+                'dropout' => 'Surat Keterangan Drop Out',
+                default => 'Surat Pindah Santri',
+            };
+
+            $leader = app(SchoolLeaderService::class)->forSchool($mutation->school);
+            $signerName = $mutation->head_name ?: $leader['display_name'];
+            $signers = [];
+            if ($signerName) {
+                $signers[] = [
+                    'name' => $signerName,
+                    'role' => $mutation->head_title ?: 'Kepala Sekolah',
+                ];
+            }
+
+            return app(DocumentSigningService::class)->issue([
+                'document_type' => 'mutasi',
+                'document_number' => $mutation->letter_number,
+                'title' => $title,
+                'school_id' => $mutation->school_id,
+                'subject_type' => 'student',
+                'subject_id' => $mutation->student_id,
+                'issued_by' => Auth::id(),
+                'validation_mode' => $mode,
+                'metadata' => [
+                    'direction' => 'out',
+                    'subtype' => $mutation->out_type,
+                ],
+            ], $signers);
+        } catch (\RuntimeException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::warning('Gagal menerbitkan registry surat mutasi keluar: '.$e->getMessage());
+
+            return null;
+        }
     }
 
     /**

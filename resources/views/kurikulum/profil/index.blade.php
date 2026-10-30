@@ -33,16 +33,7 @@
         </div>
     </div>
 
-    @include('kurikulum.partials.curriculum-updates', [
-        'curriculumUpdates' => $curriculumUpdates ?? [],
-        'curriculumUpdatesAt' => $curriculumUpdatesAt ?? '',
-    ])
-
-    @include('kurikulum.partials.curriculum-flow', [
-        'curriculumFlow' => $curriculumFlow ?? [],
-    ])
-
-    <div class="row g-3">
+    <div class="row g-3 mb-3">
         @if($canManage)
         <div class="col-lg-7">
             <div class="card h-100">
@@ -162,6 +153,15 @@
             </div>
         </div>
     </div>
+
+    @include('kurikulum.partials.curriculum-updates', [
+        'curriculumUpdates' => $curriculumUpdates ?? [],
+        'curriculumUpdatesAt' => $curriculumUpdatesAt ?? '',
+    ])
+
+    @include('kurikulum.partials.curriculum-flow', [
+        'curriculumFlow' => $curriculumFlow ?? [],
+    ])
 
     <div class="alert alert-info mt-3 mb-0 small">
         <i class="ri-information-line me-1"></i>

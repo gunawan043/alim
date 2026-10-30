@@ -28,14 +28,8 @@ return new class extends Migration
         // Add patient_id foreign key only if the parent table exists
         // (it will be added later by 2026_07_31_235959_add_patient_id_foreign_to_uks_bed_assignments_table)
         if (Schema::hasTable('uks_patients') && Schema::hasColumn('uks_bed_assignments', 'patient_id')) {
-            $fkExists = collect(
-                DB::select(
-                    "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'uks_bed_assignments'
-                     AND COLUMN_NAME = 'patient_id' AND REFERENCED_TABLE_NAME IS NOT NULL",
-                    [config('database.connections.mysql.database')]
-                )
-            )->isNotEmpty();
+            $fkExists = collect(Schema::getForeignKeys('uks_bed_assignments'))
+                ->contains(fn ($fk) => in_array('patient_id', $fk['columns'] ?? [], true));
 
             if (! $fkExists) {
                 Schema::table('uks_bed_assignments', function (Blueprint $table) {

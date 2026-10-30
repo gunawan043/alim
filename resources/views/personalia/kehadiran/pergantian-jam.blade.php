@@ -118,7 +118,7 @@
 </div>
 
 {{-- Filter --}}
-<div class="card border mb-3 no-print">
+<div class="card border mb-3 mt-3 no-print">
     <div class="card-body py-3">
         <form method="GET" action="{{ route('user.kehadiran.pergantian-jam', ['userId' => $userId]) }}" class="row g-2 align-items-end">
             <div class="col-md-2">

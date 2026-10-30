@@ -19,6 +19,12 @@
                 <a href="{{ route('user.tahfidz.setoran.create', ['userId'=>$userId,'group_id'=>$group->id]) }}" class="btn btn-primary"><i class="ri-add-line me-1"></i>Input Setoran</a>
                 <a href="{{ route('user.tahfidz.progress.index', ['userId'=>$userId,'group_id'=>$group->id]) }}" class="btn btn-soft-info"><i class="ri-line-chart-line me-1"></i>Progres & Rekap</a>
                 <a href="{{ route('user.tahfidz.targets.index', ['userId'=>$userId,'group_id'=>$group->id]) }}" class="btn btn-soft-warning"><i class="ri-focus-3-line me-1"></i>Target</a>
+                @if($canTarget)
+                    <form method="POST" action="{{ route('user.tahfidz.halaqah.targets.apply', ['userId'=>$userId,'id'=>$group->id]) }}" class="d-inline" onsubmit="return confirm('Terapkan target muqorror ke seluruh santri aktif?')">
+                        @csrf
+                        <button class="btn btn-soft-success"><i class="ri-magic-line me-1"></i>Terapkan Target Muqorror</button>
+                    </form>
+                @endif
                 @if($canManage)<a href="{{ route('user.tahfidz.halaqah.edit', ['userId'=>$userId,'id'=>$group->id]) }}" class="btn btn-warning"><i class="ri-edit-line me-1"></i>Edit</a>@endif
                 <a href="{{ route('user.tahfidz.halaqah.index', ['userId'=>$userId]) }}" class="btn btn-light">Kembali</a>
             </div>

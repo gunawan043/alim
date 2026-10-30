@@ -3,18 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Exceptions\QuotaExceededException;
+use App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
 use App\Http\Requests\Dormitory\ApproveVisitLogRequest;
 use App\Http\Requests\Dormitory\RejectVisitLogRequest;
 use App\Http\Requests\Dormitory\StoreVisitRequest;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
-use App\Models\DormitoryResident;
 use App\Models\DormitoryDataConsent;
-use App\Models\DormitoryVisitLog;
+use App\Models\DormitoryPermit;
+use App\Models\DormitoryResident;
 use App\Models\DormitoryStaffAssignment;
-use App\Support\UserJabatan;
+use App\Models\DormitoryVisitLog;
 use App\Models\Student;
+use App\Services\Boarding\DormitoryPolicyAccess;
+use App\Services\Boarding\VisitScheduleService;
 use App\Services\Boarding\VisitWorkflowService;
+use App\Services\Dormitory\CardPdfRenderer;
+use App\Services\Dormitory\DormitoryQrAudit;
+use App\Support\UserJabatan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +28,8 @@ use Illuminate\Support\Facades\URL;
 
 class DormitoryVisitLogController extends Controller
 {
-    use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
+    use ValidatesDormitoryOwnership;
+
     public function __construct(
         private readonly VisitWorkflowService $visit,
     ) {}
@@ -108,8 +115,16 @@ class DormitoryVisitLogController extends Controller
         $students = $residents->pluck('student')->filter()->values();
 
         $visitPolicy = $this->visit->resolvePolicyForDormitory($asramaUuid);
+        $scheduleService = app(VisitScheduleService::class);
+        $visitScheduleSlots = $dormitory->gender === 'putri'
+            ? $scheduleService->defaultSlots('putri')
+            : ($dormitory->gender === 'campuran'
+                ? array_merge($scheduleService->defaultSlots('putra'), $scheduleService->defaultSlots('putri'))
+                : $scheduleService->defaultSlots('putra'));
 
-        return view('dormitory.visits.create', compact('dormitory', 'students', 'userId', 'visitPolicy'));
+        return view('dormitory.visits.create', compact(
+            'dormitory', 'students', 'userId', 'visitPolicy', 'visitScheduleSlots'
+        ));
     }
 
     /**
@@ -123,7 +138,7 @@ class DormitoryVisitLogController extends Controller
             'student_id' => 'required|string',
         ]);
 
-        $info = app(\App\Services\Boarding\VisitWorkflowService::class)
+        $info = app(VisitWorkflowService::class)
             ->inspectQuotaForVisit($data['student_id'], $asramaUuid);
 
         return response()->json($info);
@@ -148,6 +163,48 @@ class DormitoryVisitLogController extends Controller
             $this->assertDormitoryRoom($asramaUuid, $data['room_id']);
         }
 
+        $student = Student::findOrFail($data['student_id']);
+        $scheduleException = $request->boolean('schedule_exception');
+        $data['is_special_permission'] = $request->boolean('is_special_permission') || $scheduleException;
+
+        if ($scheduleException) {
+            $data['schedule_exception_reason'] = trim((string) ($data['schedule_exception_reason'] ?? ''));
+        } else {
+            $schedule = app(VisitScheduleService::class)->validate(
+                $student,
+                $data['expected_arrival_datetime'],
+                $asramaUuid,
+            );
+
+            if (! $schedule['allowed']) {
+                return back()->withInput()->withErrors([
+                    'expected_arrival_datetime' => $schedule['reason'] ?: 'Jadwal kunjungan tidak valid.',
+                ]);
+            }
+        }
+
+        // Kunjungan yang membawa/menjemput santri harus terhubung dengan izin.
+        if (($data['purpose'] ?? null) === 'antar_jemput') {
+            $linkedPermit = DormitoryPermit::query()
+                ->where('student_id', $student->id)
+                ->where('dormitory_id', $asramaUuid)
+                ->whereIn('status', ['approved', 'picked_up', 'overdue'])
+                ->latest('departure_datetime')
+                ->first();
+
+            if (! $linkedPermit) {
+                return back()->withInput()->withErrors([
+                    'purpose' => 'Kunjungan antar/jemput memerlukan izin perizinan aktif untuk santri ini.',
+                ]);
+            }
+
+            $data['linked_permit_id'] = $linkedPermit->id;
+        }
+
+        // Runtime-only fields are not database columns.
+        unset($data['schedule_exception'], $data['rules_acknowledged']);
+        $data['rules_acknowledged_at'] = now();
+
         try {
             $visit = $this->visit->submit(
                 data: $data,
@@ -155,12 +212,13 @@ class DormitoryVisitLogController extends Controller
             );
 
             $autoApproved = false;
-            if ($this->canAutoApproveRequest($request->user(), $asramaUuid)) {
+            if (! $data['is_special_permission']
+                && $this->canAutoApproveRequest($request->user(), $asramaUuid)) {
                 try {
                     $this->visit->approve($visit->id, $asramaUuid, 'Disetujui otomatis oleh Staf Perizinan/Staf Asrama.');
                     $autoApproved = true;
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('Auto-approve kunjungan gagal: '.$e->getMessage());
+                    Log::warning('Auto-approve kunjungan gagal: '.$e->getMessage());
                 }
             }
 
@@ -226,6 +284,16 @@ class DormitoryVisitLogController extends Controller
     public function approve(ApproveVisitLogRequest $request, string $userId, string $asramaUuid, string $visitUuid)
     {
         $this->ensureDormitoryAccess($asramaUuid);
+
+        $visit = DormitoryVisitLog::where('dormitory_id', $asramaUuid)->findOrFail($visitUuid);
+        if ($visit->is_special_permission) {
+            abort_unless(
+                auth()->user() && app(DormitoryPolicyAccess::class)
+                    ->canApprovePermit(auth()->user(), $asramaUuid),
+                403,
+                'Pengecualian jadwal kunjungan harus disetujui Kepala/Wakil Asrama.'
+            );
+        }
 
         try {
             $this->visit->approve(
@@ -398,7 +466,7 @@ class DormitoryVisitLogController extends Controller
         ]);
 
         $scanUrl = trim((string) $request->input('scan_url'));
-        $audit = app(\App\Services\Dormitory\DormitoryQrAudit::class);
+        $audit = app(DormitoryQrAudit::class);
 
         // QR kartu kunjungan berisi token bertanda tangan (id::exp::hmac).
         $visit = $this->resolveVisitQrToken($scanUrl, $asramaUuid);
@@ -440,7 +508,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "Santri berhasil dicatat kembali ke asrama. Status: Kunjungan Selesai.",
+                'Santri berhasil dicatat kembali ke asrama. Status: Kunjungan Selesai.',
                 true,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'checked_out']
             );
@@ -452,7 +520,7 @@ class DormitoryVisitLogController extends Controller
 
             return $this->scanResponse(
                 $request,
-                "KARTU KADALUARSA — kunjungan untuk santri ".($visit->student?->name ?? '-')." telah selesai pada {$waktu}. QR Code kartu kunjungan ini tidak berlaku lagi.",
+                'KARTU KADALUARSA — kunjungan untuk santri '.($visit->student?->name ?? '-')." telah selesai pada {$waktu}. QR Code kartu kunjungan ini tidak berlaku lagi.",
                 false,
                 ['visitor_name' => $visit->visitor_name, 'status' => 'expired', 'checked_out_at' => $waktu]
             );
@@ -553,7 +621,7 @@ class DormitoryVisitLogController extends Controller
                 + ($visit->is_special_permission ? 16 : 0)
                 + (mb_strlen((string) $visit->visitor_name) > 28 ? 14 : 0);
 
-            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)
+            $rendered = app(CardPdfRenderer::class)
                 ->renderEstimated($html, $estimatedHeight);
             $output = $rendered['output'];
             $filename = 'kartu-kunjungan-'.($visit->visitor_name ?? $visit->id).'-'.now()->format('Ymd-His').'.pdf';

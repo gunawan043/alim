@@ -64,7 +64,7 @@ final class LjkSchoolLetterhead
     {
         return trim(implode(' · ', array_filter([
             $school->address,
-            $school->city?->name,
+            $school->city?->display_name,
             $school->phone ? 'Telp. '.$school->phone : null,
         ])));
     }

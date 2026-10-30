@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Domain\Exceptions\ActivePermitExistsException;
 use App\Domain\Exceptions\QuotaExceededException;
+use App\Events\Boarding\LeaveReturned;
+use App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
 use App\Http\Requests\Dormitory\ApprovePermitRequest;
 use App\Http\Requests\Dormitory\RecordReturnRequest;
 use App\Http\Requests\Dormitory\RejectPermitRequest;
@@ -16,8 +18,15 @@ use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\PermitType;
 use App\Models\StudentHealthPermit;
+use App\Services\Boarding\DormitoryPolicyAccess;
 use App\Services\Boarding\LeaveWorkflowService;
+use App\Services\Boarding\VisitWorkflowService;
+use App\Services\Dormitory\CardPdfRenderer;
+use App\Services\Dormitory\DormitoryAudit;
+use App\Services\Dormitory\DormitoryQrAudit;
 use App\Services\DormitoryService;
+use App\Services\Notifications\GuardianWhatsAppNotifier;
+use App\Services\NotificationUniversalService;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +37,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class DormitoryPermitController extends Controller
 {
-    use \App\Http\Controllers\Concerns\ValidatesDormitoryOwnership;
+    use ValidatesDormitoryOwnership;
+
     protected DormitoryService $service;
 
     public function __construct(
@@ -138,7 +148,7 @@ class DormitoryPermitController extends Controller
         // Kuota kunjungan keluarga per santri (kebijakan boarding) — panel jatah.
         $visitQuotaInfo = null;
         if ($request->filled('quota_student')) {
-            $visitQuotaInfo = app(\App\Services\Boarding\VisitWorkflowService::class)
+            $visitQuotaInfo = app(VisitWorkflowService::class)
                 ->inspectQuotaForVisit($request->quota_student, $asramaUuid);
         }
 
@@ -203,6 +213,11 @@ class DormitoryPermitController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
 
         $data = $request->validated();
+
+        if ($request->hasFile('document')) {
+            $data['document_path'] = $request->file('document')->store('dormitory/permits', 'public');
+        }
+        unset($data['document']);
 
         // Pastikan santri benar-benar penghuni asrama ini.
         $this->assertDormitoryResident($asramaUuid, $data['student_id'], $activeYear->id);
@@ -288,10 +303,12 @@ class DormitoryPermitController extends Controller
             ->where('dormitory_id', $asramaUuid)
             ->findOrFail($permitUuid);
 
-        $canAuthorizePickup = app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+        $canAuthorizePickup = app(DormitoryPolicyAccess::class)
             ->canManageQuota(auth()->user(), $asramaUuid);
+        $canApprovePermit = app(DormitoryPolicyAccess::class)
+            ->canApprovePermit(auth()->user(), $asramaUuid);
 
-        return view('dormitory.permits.show', compact('dormitory', 'permit', 'userId', 'canAuthorizePickup'));
+        return view('dormitory.permits.show', compact('dormitory', 'permit', 'userId', 'canAuthorizePickup', 'canApprovePermit'));
     }
 
     /** Generate QR image for a permit (public, no auth required). */
@@ -319,6 +336,7 @@ class DormitoryPermitController extends Controller
 
     public function approve(ApprovePermitRequest $request, string $userId, string $asramaUuid, string $permitUuid)
     {
+        $this->authorizePermitApprover($asramaUuid);
         $data = $request->validated();
 
         // If admin changed the permit_type at approval time, persist that first.
@@ -342,16 +360,16 @@ class DormitoryPermitController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_APPROVED', 'dormitory_permits', $permitUuid);
+        DormitoryAudit::log('DORMITORY_PERMIT_APPROVED', 'dormitory_permits', $permitUuid);
 
         // Tahap 3: izin pulang mengisi kehadiran harian/mapel otomatis (status: izin).
         // Event LeaveApproved sudah di-dispatch oleh LeaveWorkflowService (hindari ganda).
-        $approvedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+        $approvedPermit = DormitoryPermit::with('student')->where('id', $permitUuid)->first();
 
         // Notifikasi IN-APP petugas asrama: izin disetujui.
         try {
             if ($approvedPermit && $approvedPermit->student) {
-                app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($asramaUuid, [
+                app(NotificationUniversalService::class)->notifyDormitoryStaff($asramaUuid, [
                     'module' => 'dormitory',
                     'reference_type' => 'dormitory_permit',
                     'reference_id' => $approvedPermit->id,
@@ -364,7 +382,7 @@ class DormitoryPermitController extends Controller
                 ]);
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Notif asrama approve gagal: '.$e->getMessage());
+            Log::warning('Notif asrama approve gagal: '.$e->getMessage());
         }
 
         return back()->with('success', 'Izin berhasil disetujui dan notifikasi ke wali telah dikirim.');
@@ -372,11 +390,13 @@ class DormitoryPermitController extends Controller
 
     public function reject(RejectPermitRequest $request, string $userId, string $asramaUuid, string $permitUuid)
     {
+        $this->authorizePermitApprover($asramaUuid);
+
         // Notifikasi IN-APP petugas asrama: izin ditolak.
         try {
-            $rejectedPermitForStaff = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+            $rejectedPermitForStaff = DormitoryPermit::with('student')->where('id', $permitUuid)->first();
             if ($rejectedPermitForStaff && $rejectedPermitForStaff->student) {
-                app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($asramaUuid, [
+                app(NotificationUniversalService::class)->notifyDormitoryStaff($asramaUuid, [
                     'module' => 'dormitory',
                     'reference_type' => 'dormitory_permit',
                     'reference_id' => $rejectedPermitForStaff->id,
@@ -388,7 +408,7 @@ class DormitoryPermitController extends Controller
                 ]);
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Notif asrama reject gagal: '.$e->getMessage());
+            Log::warning('Notif asrama reject gagal: '.$e->getMessage());
         }
 
         $data = $request->validated();
@@ -399,9 +419,21 @@ class DormitoryPermitController extends Controller
             note: $data['approval_note'] ?? null,
         );
 
-        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_REJECTED', 'dormitory_permits', $permitUuid);
+        DormitoryAudit::log('DORMITORY_PERMIT_REJECTED', 'dormitory_permits', $permitUuid);
 
         return back()->with('success', 'Izin ditolak.');
+    }
+
+    private function authorizePermitApprover(string $asramaUuid): void
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user && app(DormitoryPolicyAccess::class)
+                ->canApprovePermit($user, $asramaUuid),
+            403,
+            'Hanya Kepala/Wakil Asrama yang dapat menyetujui izin khusus.'
+        );
     }
 
     /**
@@ -412,7 +444,7 @@ class DormitoryPermitController extends Controller
         $user = auth()->user();
 
         abort_unless(
-            $user && app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+            $user && app(DormitoryPolicyAccess::class)
                 ->canManageQuota($user, $asramaUuid),
             403,
             'Hanya Kepala/Wakil Asrama yang dapat memverifikasi penjemput.'
@@ -465,7 +497,7 @@ class DormitoryPermitController extends Controller
 
         $permit->revokeScanToken('QR dicabut manual oleh '.auth()->user()?->name.' pada '.now()->format('d/m/Y H:i').'. Alasan: '.$data['reason']);
 
-        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_QR_REVOKED', 'dormitory_permits', $permit->id);
+        DormitoryAudit::log('DORMITORY_PERMIT_QR_REVOKED', 'dormitory_permits', $permit->id);
 
         return back()->with('success', 'QR kartu izin berhasil dicabut. Kartu lama tidak dapat digunakan lagi.');
     }
@@ -481,7 +513,7 @@ class DormitoryPermitController extends Controller
 
         $permit->forceRegenerateScanToken();
 
-        \App\Services\Dormitory\DormitoryAudit::log('DORMITORY_PERMIT_QR_REGENERATED', 'dormitory_permits', $permit->id);
+        DormitoryAudit::log('DORMITORY_PERMIT_QR_REGENERATED', 'dormitory_permits', $permit->id);
 
         return back()->with('success', 'QR kartu izin berhasil dibuat ulang. Silakan cetak ulang kartu.');
     }
@@ -489,7 +521,7 @@ class DormitoryPermitController extends Controller
     private function authorizeCardManager(string $asramaUuid): void
     {
         abort_unless(
-            auth()->user() && app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+            auth()->user() && app(DormitoryPolicyAccess::class)
                 ->canManageQuota(auth()->user(), $asramaUuid),
             403,
             'Hanya Kepala/Wakil Asrama yang dapat mencabut atau membuat ulang QR kartu.'
@@ -541,6 +573,16 @@ class DormitoryPermitController extends Controller
     public function returnRecord(RecordReturnRequest $request, string $userId, string $asramaUuid, string $permitUuid)
     {
         $data = $request->validated();
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
+
+        $isLate = $permit->expected_return_datetime
+            && CarbonImmutable::parse($data['actual_return_datetime'])->greaterThan($permit->expected_return_datetime);
+
+        if ($isLate && blank($data['late_return_reason'] ?? null)) {
+            return back()->withInput()->withErrors([
+                'late_return_reason' => 'Alasan keterlambatan wajib diisi karena melewati waktu izin.',
+            ]);
+        }
 
         $this->leave->recordReturn(
             permitId: $permitUuid,
@@ -549,13 +591,48 @@ class DormitoryPermitController extends Controller
         );
 
         // Tahap 3: kepulangan asrama → kehadiran kembali "hadir".
-        $returnedPermit = \App\Models\DormitoryPermit::with('student')->where('id', $permitUuid)->first();
+        $returnedPermit = DormitoryPermit::with('student')->where('id', $permitUuid)->first();
         if ($returnedPermit && $returnedPermit->student) {
-            \App\Events\Boarding\LeaveReturned::dispatch($returnedPermit, $returnedPermit->student, null);
+            LeaveReturned::dispatch($returnedPermit, $returnedPermit->student, null);
         }
 
-        // Catat bahwa permit selesai (bukan overdue)
+        $isLate = $permit->expected_return_datetime
+            && CarbonImmutable::parse($data['actual_return_datetime'])->greaterThan($permit->expected_return_datetime);
+
+        $permit->update([
+            'card_status' => 'returned',
+            'card_returned_at' => now(),
+            'card_returned_by' => auth()->id(),
+            'return_checklist' => [
+                'card_returned' => true,
+                'inspection_done' => true,
+                'notes' => $data['return_notes'] ?? null,
+            ],
+            'late_return_reason' => $isLate ? ($data['late_return_reason'] ?? null) : null,
+            'late_return_confirmed_by' => $isLate ? auth()->id() : null,
+            'late_return_confirmed_at' => $isLate ? now() : null,
+        ]);
+
         return back()->with('success', 'Kedatangan santri berhasil dicatat.');
+    }
+
+    public function issueCard(string $userId, string $asramaUuid, string $permitUuid)
+    {
+        $this->authorizeCardManager($asramaUuid);
+
+        $permit = DormitoryPermit::where('dormitory_id', $asramaUuid)->findOrFail($permitUuid);
+
+        if (! in_array($permit->status, ['approved', 'overdue', 'picked_up'], true)) {
+            return back()->with('error', 'Kartu hanya dapat diserahkan untuk izin yang sudah disetujui.');
+        }
+
+        $permit->update([
+            'card_issued_at' => now(),
+            'card_issued_by' => auth()->id(),
+            'card_status' => 'issued',
+        ]);
+
+        return back()->with('success', 'Kartu izin ditandai sudah diserahkan kepada santri/penjemput.');
     }
 
     /**
@@ -611,7 +688,7 @@ class DormitoryPermitController extends Controller
                 + ($permit->is_emergency ? 16 : 0)
                 + (mb_strlen((string) $permit->destination) > 30 ? 14 : 0);
 
-            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)
+            $rendered = app(CardPdfRenderer::class)
                 ->renderEstimated($html, $estimatedHeight);
             $output = $rendered['output'];
             $filename = 'kartu-izin-'.($permit->student?->name ?? $permit->id).'-'.now()->format('Ymd-His').'.pdf';
@@ -671,7 +748,7 @@ class DormitoryPermitController extends Controller
             $html = view('dormitory.permits.bulk-card-pdf', compact('dormitory', 'permits', 'userId', 'now'))->render();
 
             // Satu kartu per halaman; tinggi tetap ringkas untuk printer 58 mm.
-            $rendered = app(\App\Services\Dormitory\CardPdfRenderer::class)->renderFixed($html, 360);
+            $rendered = app(CardPdfRenderer::class)->renderFixed($html, 360);
             $output = $rendered['output'];
             $filename = 'cetak-kartu-izin-'.now()->format('Ymd-His').'.pdf';
 
@@ -788,7 +865,7 @@ class DormitoryPermitController extends Controller
                 return $this->scanResponse($request, 'Format scan tidak benar — gunakan scan URL atau masukkan token.', false);
             }
 
-            $audit = app(\App\Services\Dormitory\DormitoryQrAudit::class);
+            $audit = app(DormitoryQrAudit::class);
 
             if (! DormitoryPermit::verifyScanToken($token)) {
                 \Log::debug('Token verifikasi gagal', ['token_input' => $token]);
@@ -803,26 +880,31 @@ class DormitoryPermitController extends Controller
 
             if (! $permit) {
                 $audit->record($request, $asramaUuid, 'scan_izin', 'failed', reason: 'Token bukan milik asrama ini.');
+
                 return $this->scanResponse($request, 'Token tidak cocok dengan izin di asrama ini.', false);
             }
 
             if ($permit->scan_token_revoked_at) {
                 $audit->record($request, $asramaUuid, 'scan_izin', 'failed', $permit->id, reason: 'Token sudah dicabut.');
+
                 return $this->scanResponse($request, 'QR izin ini sudah dicabut oleh pengasuh.', false);
             }
 
             if ($permit->isScanTokenExpired()) {
                 $audit->record($request, $asramaUuid, 'scan_izin', 'failed', $permit->id, reason: 'Token kedaluwarsa.');
+
                 return $this->scanResponse($request, 'QR izin ini sudah kedaluwarsa. Cetak ulang kartu dari halaman perizinan.', false);
             }
 
             if (in_array($permit->status, ['approved', 'overdue'], true) && $permit->needsPickupAuthorization()) {
                 $audit->record($request, $asramaUuid, 'scan_keluar', 'blocked', $permit->id, reason: 'Penjemput belum diverifikasi.');
+
                 return $this->scanResponse($request, 'Penjemput belum diverifikasi oleh Kepala/Wakil Asrama. Scan keluar diblokir sampai penjemput disetujui.', false);
             }
 
             if ($permit->isPickupRejected()) {
                 $audit->record($request, $asramaUuid, 'scan_keluar', 'blocked', $permit->id, reason: 'Penjemput ditolak.');
+
                 return $this->scanResponse($request, 'Penjemput ditolak oleh pengasuh. QR tidak dapat digunakan untuk keluar asrama.', false);
             }
 
@@ -854,9 +936,9 @@ class DormitoryPermitController extends Controller
 
                 // Notifikasi WA wali santri: santri dijemput.
                 try {
-                    app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyPickedUp($permit);
+                    app(GuardianWhatsAppNotifier::class)->notifyPickedUp($permit);
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('WA notif picked_up gagal: '.$e->getMessage());
+                    Log::warning('WA notif picked_up gagal: '.$e->getMessage());
                 }
 
                 $this->service->notifyPermitPickedUpInApp($permit);
@@ -895,9 +977,9 @@ class DormitoryPermitController extends Controller
 
                 // Notifikasi WA wali santri: santri kembali ke asrama.
                 try {
-                    app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyReturned($permit);
+                    app(GuardianWhatsAppNotifier::class)->notifyReturned($permit);
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('WA notif returned gagal: '.$e->getMessage());
+                    Log::warning('WA notif returned gagal: '.$e->getMessage());
                 }
 
                 $this->service->notifyPermitReturnedInApp($permit);
@@ -993,10 +1075,10 @@ class DormitoryPermitController extends Controller
             $permit->save();
 
             try {
-                app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+                app(GuardianWhatsAppNotifier::class)
                     ->notifyPickedUp($permit->fresh(['student']));
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('WA notif pickup manual gagal: '.$e->getMessage());
+                Log::warning('WA notif pickup manual gagal: '.$e->getMessage());
             }
 
             $this->service->notifyPermitPickedUpInApp($permit->fresh(['student']));
@@ -1089,7 +1171,7 @@ class DormitoryPermitController extends Controller
         $permit->save();
 
         try {
-            $notifier = app(\App\Services\Notifications\GuardianWhatsAppNotifier::class);
+            $notifier = app(GuardianWhatsAppNotifier::class);
             if ($newStatus === 'picked_up') {
                 $notifier->notifyPickedUp($permit->fresh(['student']));
             } elseif ($newStatus === 'returned') {
@@ -1100,7 +1182,7 @@ class DormitoryPermitController extends Controller
                 $notifier->notifyPermitRejected($permit->fresh(['student']), $request->input('note'));
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif update status izin gagal: '.$e->getMessage());
+            Log::warning('WA notif update status izin gagal: '.$e->getMessage());
         }
 
         if ($newStatus === 'picked_up') {

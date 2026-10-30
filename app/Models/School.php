@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Documents\SchoolLeaderService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,10 +53,12 @@ class School extends Model
         'land_area',
         'building_area',
         'is_active',
+        'min_effective_days_per_week',
         'logo_path',
         'kop_path',
         'ttd_ksp_path',
         'stamp_path',
+        'document_visual_settings',
         'kop_nama',
         'kop_alamat',
         'kop_telp',
@@ -85,9 +88,28 @@ class School extends Model
         'building_area' => 'decimal:2',
         'is_active' => 'boolean',
         'kopsis_active' => 'boolean',
+        'document_visual_settings' => 'array',
     ];
 
     protected $appends = ['level_text', 'status_text'];
+
+    /**
+     * Nama kepala sekolah + gelar akademik untuk dokumen.
+     */
+    public function getPrincipalFullNameAttribute(): string
+    {
+        return app(SchoolLeaderService::class)
+            ->forSchool($this)['display_name'];
+    }
+
+    /**
+     * NUPY kepala sekolah; fallback ke NIP atau NUPY GTK.
+     */
+    public function getPrincipalNupyDisplayAttribute(): string
+    {
+        return app(SchoolLeaderService::class)
+            ->forSchool($this)['nupy'];
+    }
 
     // ── Relationships ──────────────────────────────────────────────
 
@@ -149,7 +171,7 @@ class School extends Model
             $this->address,
             $this->village?->name,
             $this->district?->name,
-            $this->city?->name,
+            $this->city?->display_name,
             $this->province?->name,
             $this->postal_code ? "{$this->postal_code}" : null,
         ]);

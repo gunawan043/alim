@@ -17,8 +17,7 @@ class JabatanController extends PosApiController
     {
         $query = StructuralPosition::query()->with('jenisGtk:id,nama');
 
-        if ($request->filled('search')) {
-            $search = $request->string('search')->toString();
+        if (($search = $this->searchTerm($request)) !== null) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%");

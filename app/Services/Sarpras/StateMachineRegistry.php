@@ -21,39 +21,42 @@ class StateMachineRegistry
     /* =========================================================================
      *  Repair Request (Damage Reporting → Repair Completion)
      * =========================================================================
-     *  draft -> submitted
-     *  submitted -> verified | rejected
-     *  verified -> waiting_work_order
-     *  rejected -> (terminal)
-     *  waiting_work_order -> assigned
-     *  assigned -> in_progress
-     *  in_progress -> completed
-     *  completed -> verified_by_pic
-     *  verified_by_pic -> closed
+     *  Status mengikuti RepairRequest::STATUS_* — kosakata yang dipakai
+     *  controller (SarprasRepairController) dan view (sarpras.repair.*):
+     *
+     *  submitted -> verification_pending -> verification_in_progress
+     *            -> approval_pending -> execution_pending -> started
+     *            -> completed -> closed
+     *  Ditambah cabang additional_info / stopped dan terminal
+     *  verification_rejected / approval_rejected.
      * ========================================================================= */
     public const REPAIR_REQUEST_TRANSITIONS = [
-        'draft' => ['submitted'],
-        'submitted' => ['verified', 'rejected'],
-        'verified' => ['waiting_work_order'],
-        'rejected' => [],
-        'waiting_work_order' => ['assigned'],
-        'assigned' => ['in_progress'],
-        'in_progress' => ['completed'],
-        'completed' => ['verified_by_pic'],
-        'verified_by_pic' => ['closed'],
+        'submitted' => ['verification_pending', 'verification_rejected', 'additional_info'],
+        'verification_pending' => ['verification_in_progress', 'approval_pending', 'verification_rejected', 'additional_info'],
+        'verification_in_progress' => ['approval_pending', 'verification_rejected', 'additional_info'],
+        'additional_info' => ['verification_pending', 'verification_in_progress', 'verification_rejected'],
+        'approval_pending' => ['execution_pending', 'approval_rejected'],
+        'execution_pending' => ['started', 'completed', 'approval_rejected'],
+        'started' => ['completed', 'stopped'],
+        'stopped' => ['started'],
+        'completed' => ['closed'],
         'closed' => [],
+        'verification_rejected' => [],
+        'approval_rejected' => [],
     ];
 
     /* =========================================================================
      *  Work Order
-     *  created -> assigned -> accepted/working/waiting_sparepart -> completed -> closed
+     *  Status mengikuti work_orders.status:
+     *  draft, dispatched, in_progress, paused, waiting_parts, completed,
+     *  closed, cancelled
      * ========================================================================= */
     public const WORK_ORDER_TRANSITIONS = [
-        'created' => ['assigned'],
-        'assigned' => ['accepted', 'cancelled'],
-        'accepted' => ['working', 'waiting_sparepart'],
-        'waiting_sparepart' => ['working'],
-        'working' => ['completed'],
+        'draft' => ['dispatched', 'cancelled'],
+        'dispatched' => ['in_progress', 'cancelled'],
+        'in_progress' => ['paused', 'waiting_parts', 'completed', 'cancelled'],
+        'paused' => ['in_progress', 'cancelled'],
+        'waiting_parts' => ['in_progress', 'cancelled'],
         'completed' => ['closed'],
         'closed' => [],
         'cancelled' => [],

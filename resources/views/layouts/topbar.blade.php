@@ -2,6 +2,20 @@
 {{-- Pusher config (dibaca oleh notifications.init.js) --}}
 <meta name="pusher-key" content="{{ config('broadcasting.connections.pusher.key') }}">
 <meta name="pusher-cluster" content="{{ config('broadcasting.connections.pusher.options.cluster') }}">
+<meta name="web-push-vapid-public-key" content="{{ \App\Support\WebPushConfig::vapidPublicKey() }}">
+@php
+    $portalTokenForPush = request()->routeIs('portal.*') ? request()->route('token') : null;
+    $webPushSubscribeUrl = $portalTokenForPush
+        ? route('portal.web-push.subscribe', ['token' => $portalTokenForPush])
+        : (auth()->check() ? route('user.notifications.web-push.subscribe', ['userId' => auth()->id()]) : '');
+    $webPushUnsubscribeUrl = $portalTokenForPush
+        ? route('portal.web-push.unsubscribe', ['token' => $portalTokenForPush])
+        : (auth()->check() ? route('user.notifications.web-push.unsubscribe', ['userId' => auth()->id()]) : '');
+@endphp
+<script>
+    window.alimWebPushSubscribeUrl = @json($webPushSubscribeUrl);
+    window.alimWebPushUnsubscribeUrl = @json($webPushUnsubscribeUrl);
+</script>
 @php
     $notifUnreadCount = 0;
     if (auth()->check()) {
@@ -79,18 +93,20 @@
                             data-bs-toggle="dropdown"
                             data-bs-auto-close="outside"
                             aria-haspopup="true"
-                            aria-expanded="false">
-                        <i class='bx bx-bell fs-22'></i>
-                        <span clasas="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger {{ $notifUnreadCount > 0 ? '' : 'd-none' }}"
-                              id="notif-badge-count">{{ $notifUnreadCount }}
-                            <span class="visually-hidden">unread messages</span>
+                            aria-expanded="false"
+                            aria-label="Notifikasi">
+                        <i class="bx bx-bell fs-22"></i>
+                        <span class="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger {{ $notifUnreadCount > 0 ? '' : 'd-none' }}"
+                            id="notif-badge-count">
+                            {{ $notifUnreadCount }}
+                            <span class="visually-hidden">pesan belum dibaca</span>
                         </span>
                     </button>
 
                     {{-- DROPDOWN PANEL --}}
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0 notif-dropdown-panel"
-                         aria-labelledby="page-header-notifications-dropdown"
-                         style="width: 400px;">
+                        aria-labelledby="page-header-notifications-dropdown"
+                        style="width: 400px;">
 
                         {{-- Header --}}
                         <div class="dropdown-head bg-primary bg-pattern rounded-top py-3 px-3">
@@ -98,7 +114,7 @@
                                 <div>
                                     <h6 class="m-0 fs-16 fw-semibold text-white">Notifikasi</h6>
                                     <p class="mb-0 mt-1">
-                                        <span class="text-white text-opacity-75 notif-new-badge" id="notif-new-badge">0</span>
+                                        <span class="text-white text-opacity-75 fw-semibold" id="notif-new-badge">{{ $notifUnreadCount }}</span>
                                         <span class="text-white text-opacity-75"> belum dibaca</span>
                                     </p>
                                 </div>
@@ -106,16 +122,27 @@
                                     <button type="button"
                                             class="btn btn-sm btn-ghost-light rounded-circle p-1 notif-mark-all-btn"
                                             title="Tandai semua dibaca"
+                                            aria-label="Tandai semua dibaca"
                                             data-bs-toggle="tooltip"
                                             data-bs-placement="bottom">
-                                        <i class='bx bx-check-double fs-16'></i>
+                                        <i class="bx bx-check-double fs-16"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-ghost-light rounded-circle p-1 d-none"
+                                            id="web-push-enable"
+                                            title="Aktifkan notifikasi browser"
+                                            aria-label="Aktifkan notifikasi browser"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="bottom">
+                                        <i class="bx bx-bell-plus fs-16"></i>
                                     </button>
                                     <a href="{{ route('user.notifications.page', ['userId' => $userId ?? auth()->id()]) }}"
                                     class="btn btn-sm btn-ghost-light rounded-circle p-1 notif-all-link"
-                                       title="Lihat semua"
-                                       data-bs-toggle="tooltip"
-                                       data-bs-placement="bottom">
-                                        <i class='bx bx-arrow-from-right fs-16'></i>
+                                    title="Lihat semua"
+                                    aria-label="Lihat semua notifikasi"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="bottom">
+                                        <i class="bx bx-arrow-from-right fs-16"></i>
                                     </a>
                                 </div>
                             </div>
@@ -129,19 +156,19 @@
                                 role="tablist">
                                 <li class="nav-item">
                                     <a class="nav-link active"
-                                       data-bs-toggle="tab"
-                                       href="#notif-tab-all"
-                                       role="tab"
-                                       aria-selected="true">
+                                    data-bs-toggle="tab"
+                                    href="#notif-tab-all"
+                                    role="tab"
+                                    aria-selected="true">
                                         Semua
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link notif-tab-unread"
-                                       data-bs-toggle="tab"
-                                       href="#notif-tab-unread"
-                                       role="tab"
-                                       aria-selected="false">
+                                    data-bs-toggle="tab"
+                                    href="#notif-tab-unread"
+                                    role="tab"
+                                    aria-selected="false">
                                         Belum Dibaca
                                     </a>
                                 </li>
@@ -152,15 +179,15 @@
                         <div class="tab-content" id="notifTabContent">
                             {{-- All Tab --}}
                             <div class="tab-pane fade show active"
-                                 id="notif-tab-all"
-                                 role="tabpanel">
+                                id="notif-tab-all"
+                                role="tabpanel">
                                 <div class="notif-list-scroll"
-                                     id="notif-all-list"
-                                     data-simplebar
-                                     style="max-height: 340px;">
+                                    id="notif-all-list"
+                                    data-simplebar
+                                    style="max-height: 340px;">
                                     <div class="text-center py-5 notif-empty-state d-none">
                                         <div class="mb-3">
-                                            <i class='bx bx-bell-slash display-4 text-muted opacity-25'></i>
+                                            <i class="bx bx-bell-slash display-4 text-muted opacity-25"></i>
                                         </div>
                                         <p class="text-muted mb-1" style="font-size: 14px;">Tidak ada notifikasi</p>
                                         <small class="text-muted">Semua sudah dilihat</small>
@@ -170,15 +197,15 @@
 
                             {{-- Unread Tab --}}
                             <div class="tab-pane fade"
-                                 id="notif-tab-unread"
-                                 role="tabpanel">
+                                id="notif-tab-unread"
+                                role="tabpanel">
                                 <div class="notif-list-scroll"
-                                     id="notif-unread-list"
-                                     data-simplebar
-                                     style="max-height: 340px;">
+                                    id="notif-unread-list"
+                                    data-simplebar
+                                    style="max-height: 340px;">
                                     <div class="text-center py-5 notif-empty-state d-none">
                                         <div class="mb-3">
-                                            <i class='bx bx-bell-check display-4 text-success opacity-25'></i>
+                                            <i class="bx bx-bell-check display-4 text-success opacity-25"></i>
                                         </div>
                                         <p class="text-muted mb-1" style="font-size: 14px;">Semua sudah dibaca</p>
                                         <small class="text-muted">Tidak ada notifikasi baru</small>
@@ -192,7 +219,7 @@
                             <a href="{{ route('user.notifications.page', ['userId' => $userId ?? auth()->id()]) }}"
                             class="notif-all-link d-block text-center py-1">
                                 <small class="text-primary fw-medium">Lihat Semua Notifikasi</small>
-                                <i class='bx bx-right-arrow-alt ms-1 text-primary'></i>
+                                <i class="bx bx-right-arrow-alt ms-1 text-primary"></i>
                             </a>
                         </div>
                     </div>
@@ -320,19 +347,23 @@
     </style>
 
     <style>
-        .alim-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-80%); color:#94a3b8; font-size:16px; }
-        .alim-search-input { width:100%; height:38px; padding:0 14px 0 36px; border-radius:10px; font-size:.85rem; transition:all .15s ease; }
-        .alim-search-input:focus { outline:none; background:#fff; box-shadow:0 0 0 3px rgba(10,95,158,.12); }
-        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background:#fff; border-radius:12px; z-index:2000; max-height:420px; overflow:auto; padding:.4rem;}
-        .alim-search-group { padding:.5rem .7rem .25rem; font-size:.66rem; letter-spacing:.6px; text-transform:uppercase; color:#94a3b8; font-weight:600; }
+        /* Warna memakai variabel Bootstrap agar ikut tema terang/gelap,
+           tanpa border/outline — pemisah memakai bayangan lembut. */
+        .alim-search-icon { position:absolute; left:12px; top:50%; transform:translateY(-80%); color:var(--bs-secondary-color); font-size:16px; }
+        .alim-search-input { width:100%; height:38px; padding:0 14px 0 36px; border-radius:10px; font-size:.85rem; background-color:var(--bs-tertiary-bg); border:1px solid transparent; color:var(--bs-body-color); transition:all .15s ease; }
+        .alim-search-input::placeholder { color:var(--bs-secondary-color); opacity:1; }
+        .alim-search-input:focus { outline:none; border-color:transparent; background-color:var(--bs-body-bg); box-shadow:0 0 0 3px rgba(var(--bs-primary-rgb), .18); }
+        .alim-search-panel { position:absolute; top:44px; left:0; right:0; background-color:var(--bs-body-bg); border:0; border-radius:12px; z-index:2000; max-height:420px; overflow:auto; padding:.4rem; box-shadow:0 10px 30px rgba(0,0,0,.14); }
+        [data-bs-theme="dark"] .alim-search-panel { box-shadow:0 10px 30px rgba(0,0,0,.55); }
+        .alim-search-group { padding:.5rem .7rem .25rem; font-size:.66rem; letter-spacing:.6px; text-transform:uppercase; color:var(--bs-secondary-color); font-weight:600; }
         .alim-search-group i { margin-right:4px; }
-        .alim-search-item { display:block; padding:.5rem .7rem; border-radius:9px; color:#1e293b; text-decoration:none; transition:background .12s ease; }
-        .alim-search-item:hover { background:rgba(10,95,158,.07); }
+        .alim-search-item { display:block; padding:.5rem .7rem; border-radius:9px; color:var(--bs-body-color); text-decoration:none; transition:background .12s ease; }
+        .alim-search-item:hover { background-color:var(--bs-tertiary-bg); color:var(--bs-body-color); }
         .alim-search-label { font-size:.82rem; font-weight:600; }
-        .alim-search-meta { font-size:.72rem; color:#94a3b8; }
-        .alim-search-loading, .alim-search-empty { padding:.85rem .7rem; font-size:.8rem; color:#94a3b8; text-align:center; }
+        .alim-search-meta { font-size:.72rem; color:var(--bs-secondary-color); }
+        .alim-search-loading, .alim-search-empty { padding:.85rem .7rem; font-size:.8rem; color:var(--bs-secondary-color); text-align:center; }
         .alim-search-empty i { font-size:22px; display:block; margin-bottom:4px; }
-        .alim-search-footer { border-top:1px solid #eef2f7; margin-top:.35rem; padding:.45rem .7rem; font-size:.68rem; color:#94a3b8; text-align:center; }
+        .alim-search-footer { border-top:1px solid var(--bs-border-color); margin-top:.35rem; padding:.45rem .7rem; font-size:.68rem; color:var(--bs-secondary-color); text-align:center; }
         .topbar-badge, .notif-badge-count { min-width:18px; height:18px; line-height:18px; font-size:10px; padding:0 5px; }
     </style>
 </header>

@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Dashboard\DashboardAnalyticsService;
+use App\Services\Dashboard\DashboardCalendarService;
+use App\Services\Dashboard\DashboardContextService;
+use App\Services\Dashboard\DashboardPresenter;
 use App\Services\SchoolGroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -82,6 +86,9 @@ abstract class DashboardController extends Controller
         // 7. Kelompokkan widget ke section (Ringkasan, Akademik, dll)
         $sections = $this->groupWidgets($widgets, $data, $config);
 
+        // 8. Konteks analitik bersama (filter, info carousel, broadcast, KPI)
+        $dashboard = $this->buildAnalyticsContext($request, $user, $jabatanLabel);
+
         return view("dashboard.{$this->getRoleSlug()}.index", [
             'user' => $user,
             'roleSlug' => $this->getRoleSlug(),
@@ -93,7 +100,71 @@ abstract class DashboardController extends Controller
             'data' => $data,
             'config' => $config,
             'viewPath' => "dashboard.{$this->getRoleSlug()}",
+            'dashboard' => $dashboard,
         ]);
+    }
+
+    /**
+     * Bangun konteks analitik: filter, carousel info, broadcast, dan paket data.
+     * Gagal pada satu bagian tidak boleh mematikan dashboard.
+     */
+    protected function buildAnalyticsContext(Request $request, User $user, string $jabatanLabel): array
+    {
+        $contextService = app(DashboardContextService::class);
+        $analyticsService = app(DashboardAnalyticsService::class);
+
+        try {
+            $filters = $contextService->filters($request, $user);
+            $infoSlides = $contextService->infoSlides($user, $filters);
+            $broadcasts = $contextService->pendingBroadcasts($user, $filters);
+            $analytics = $analyticsService->build($this->getRoleSlug(), $filters, $user);
+            $presented = app(DashboardPresenter::class)
+                ->present($this->getRoleSlug(), $analytics, $filters, $user);
+
+            $calendarService = app(DashboardCalendarService::class);
+            $calendar = [
+                'kaldik' => $calendarService->kaldik($filters),
+                'prayer' => $calendarService->prayerTimes($filters),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Dashboard analytics context failed: '.$e->getMessage());
+
+            $filters = [
+                'academic_year_id' => null, 'academic_year' => null,
+                'academic_year_name' => null, 'semester' => null,
+                'school_id' => null, 'school' => null, 'school_locked' => false,
+                'school_ids' => [], 'grade_level_id' => null, 'grade_level' => null,
+                'grade_levels' => collect(), 'schools' => collect(),
+                'academic_years' => collect(), 'period_label' => 'Periode belum tersedia',
+                'updated_at' => null,
+            ];
+            $infoSlides = collect();
+            $broadcasts = collect();
+            $analytics = [];
+            $presented = ['kpis' => [], 'charts' => [], 'findings' => []];
+            $calendar = ['kaldik' => ['month_label' => now()->translatedFormat('F Y'), 'items' => [], 'total' => 0], 'prayer' => ['available' => false, 'times' => []]];
+        }
+
+        return [
+            'filters' => $filters,
+            'info_slides' => $infoSlides,
+            'broadcasts' => $broadcasts,
+            'analytics' => $analytics,
+            'kpis' => $presented['kpis'] ?? [],
+            'charts' => $presented['charts'] ?? [],
+            'findings' => $presented['findings'] ?? [],
+            'calendar' => $calendar,
+            'role_label' => $jabatanLabel,
+            'export_url' => route('user.dashboard.export', array_merge(
+                ['userId' => $user->id, 'role' => $this->getRoleSlug()],
+                array_filter([
+                    'academic_year_id' => $filters['academic_year_id'] ?? null,
+                    'semester' => $filters['semester'] ?? null,
+                    'school_id' => $filters['school_id'] ?? null,
+                    'grade_level_id' => $filters['grade_level_id'] ?? null,
+                ]),
+            )),
+        ];
     }
 
     /**

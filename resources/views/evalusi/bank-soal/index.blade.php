@@ -249,8 +249,20 @@
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item"
+                                                       href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}">
+                                                        <i class="ri-edit-2-line me-2"></i>Edit Soal
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item"
                                                        href="{{ route('user.bank-soal.edit', ['userId' => $userId, 'id' => $bank->id]) }}">
-                                                        <i class="ri-pencil-line me-2"></i>Edit
+                                                        <i class="ri-settings-3-line me-2"></i>Edit Bank
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item"
+                                                       href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}">
+                                                        <i class="ri-add-line me-2"></i>Input Soal
                                                     </a>
                                                 </li>
                                                 <li>

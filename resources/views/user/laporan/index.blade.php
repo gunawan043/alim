@@ -103,6 +103,102 @@
 
     <div class="row g-4">
         <div class="col-lg-4">
+            <a href="{{ route('user.laporan.akademik', ['userId' => $userId]) }}" class="card card-block-link h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center me-3">
+                            <i class="ri-line-chart-line fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Analisis Akademik</h5>
+                            <p class="text-muted mb-0 small">Nilai murni STS/SAS</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Perbandingan STS/SAS, distribusi, tren, temuan otomatis, dan analisis per kelas.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-4">
+            <a href="{{ route('user.laporan.akademik.ketuntasan', ['userId' => $userId]) }}" class="card card-block-link h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center me-3">
+                            <i class="ri-checkbox-circle-line fs-4 text-success"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Nilai &amp; Ketuntasan</h5>
+                            <p class="text-muted mb-0 small">Rekap akademik</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Kelengkapan nilai, ketuntasan per kelas/mapel, dan perbandingan periode.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-4">
+            <a href="{{ route('user.laporan.akademik.kehadiran', ['userId' => $userId]) }}" class="card card-block-link h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center me-3">
+                            <i class="ri-calendar-check-line fs-4 text-info"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Kehadiran Santri</h5>
+                            <p class="text-muted mb-0 small">Presensi harian/mapel</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Persentase kehadiran, tren, santri berisiko, dan hubungan dengan nilai.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-4">
+            <a href="{{ route('user.laporan.akademik.keterlaksanaan', ['userId' => $userId]) }}" class="card card-block-link h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center me-3">
+                            <i class="ri-book-open-line fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Keterlaksanaan</h5>
+                            <p class="text-muted mb-0 small">Rencana vs realisasi</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Perangkat, jurnal, presensi mapel, jadwal, dan status pelaksanaan per guru.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-4">
+            <a href="{{ route('user.laporan.akademik.administrasi', ['userId' => $userId]) }}" class="card card-block-link h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center me-3">
+                            <i class="ri-folder-check-line fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Administrasi Akademik</h5>
+                            <p class="text-muted mb-0 small">Checklist kewajiban</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Kelengkapan perangkat, jurnal, presensi, input nilai, dan tindak lanjut.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-4">
+            <a href="{{ route('user.laporan.populasi.mutasi', ['userId' => $userId]) }}" class="card card-block-link h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-sm rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center me-3">
+                            <i class="ri-swap-box-line fs-4 text-info"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Mutasi &amp; Populasi</h5>
+                            <p class="text-muted mb-0 small">Perubahan jumlah santri</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0">Mutasi, pertumbuhan, profil sebaran, keberlanjutan, kenaikan kelas, dan kelulusan.</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-lg-4">
             <a href="{{ route('user.laporan.presensi', ['userId' => $userId]) }}" class="card card-block-link h-100">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">

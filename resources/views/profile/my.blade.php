@@ -196,12 +196,12 @@
         $ktpAddress      = $gtk->gtkProfile?->addresses->where('type', 'ktp')->first();
 
         $provinsiDomisili  = $domisiliAddress?->province->name ?? ($domisiliAddress?->provinsi ?? '-');
-        $kabKotaDomisili   = $domisiliAddress?->city->name    ?? ($domisiliAddress?->kab_kota  ?? '-');
+        $kabKotaDomisili   = $domisiliAddress?->city->display_name    ?? ($domisiliAddress?->kab_kota  ?? '-');
         $kecamatanDomisili = $domisiliAddress?->district->name ?? ($domisiliAddress?->kecamatan ?? '-');
         $desaDomisili      = $domisiliAddress?->village->name  ?? ($domisiliAddress?->desa      ?? '-');
 
         $provinsiKtp  = $ktpAddress?->province->name  ?? ($ktpAddress?->provinsi  ?? '-');
-        $kabKotaKtp   = $ktpAddress?->city->name      ?? ($ktpAddress?->kab_kota  ?? '-');
+        $kabKotaKtp   = $ktpAddress?->city->display_name      ?? ($ktpAddress?->kab_kota  ?? '-');
         $kecamatanKtp = $ktpAddress?->district->name  ?? ($ktpAddress?->kecamatan ?? '-');
         $desaKtp      = $ktpAddress?->village->name   ?? ($ktpAddress?->desa      ?? '-');
 
@@ -694,7 +694,166 @@
                                     @endif
                                 </div>
                             </div>
+                            {{-- ============================================================
+                                 TAB 2: INFO PENSIUN (embedded in profile)
+                                 ============================================================ --}}
+                            @php
+                                $pensionBupAge = \App\Models\PensionSetting::getInt('bup_age', 58);
+                                $pensionTglLahir = $gtk->gtkProfile?->tanggal_lahir;
+                                $pensionTmt = $pensionTglLahir ? \Carbon\Carbon::parse($pensionTglLahir)->addYears($pensionBupAge) : null;
+                                $pensionSisa = $pensionTmt ? \Carbon\Carbon::now()->diffInMonths($pensionTmt, false) : null;
+                                $pensionColor = $pensionSisa !== null
+                                    ? ($pensionSisa <= 0 ? 'danger' : ($pensionSisa <= 6 ? 'warning' : ($pensionSisa <= 12 ? 'info' : 'success')))
+                                    : 'secondary';
+                                $pensionSisaLabel = $pensionSisa !== null
+                                    ? ($pensionSisa <= 0 ? 'Sudah BUP' : (intval($pensionSisa) . ' bulan (' . round($pensionSisa/12, 1) . ' tahun)'))
+                                    : '–';
+                            @endphp
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0"><i class="ri-time-line text-primary me-2"></i>Informasi Pensiun</h5>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-xl-2 col-md-4 col-6">
+                                        <div class="card card-animate h-90">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-sm flex-shrink-0">
+                                                        <span class="avatar-title bg-primary-subtle rounded fs-2">
+                                                            <i class="bx bx-user text-primary"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Usia Sekarang</p>
+                                                        <h6 class="fw-bold ff-secondary mb-0">
+                                                            @if($gtk->gtkProfile?->tanggal_lahir)
+                                                                {{ \Carbon\Carbon::parse($gtk->gtkProfile->tanggal_lahir)->age }} th
+                                                            @else
+                                                                –
+                                                            @endif
+                                                        </h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+    
+                                    <div class="col-xl-2 col-md-4 col-6">
+                                        <div class="card card-animate h-90">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-sm flex-shrink-0">
+                                                        <span class="avatar-title bg-success-subtle rounded fs-2">
+                                                            <i class="bx bx-time-five text-success"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">BUP</p>
+                                                        <h6 class="fw-bold ff-secondary mb-0">{{ $pensionBupAge }} th</h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+    
+                                    <div class="col-xl-2 col-md-4 col-6">
+                                        <div class="card card-animate h-90">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-sm flex-shrink-0">
+                                                        <span class="avatar-title bg-info-subtle rounded fs-2">
+                                                            <i class="bx bx-calendar-check text-info"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">TMT Pensiun</p>
+                                                        <h6 class="fw-bold ff-secondary mb-0">
+                                                            @if($pensionTmt)
+                                                                {{ $pensionTmt->format('d/m/Y') }}
+                                                            @else
+                                                                –
+                                                            @endif
+                                                        </h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+    
+                                    <div class="col-xl-2 col-md-4 col-6">
+                                        <div class="card card-animate h-90">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-sm flex-shrink-0">
+                                                        <span class="avatar-title bg-warning-subtle rounded fs-2">
+                                                            <i class="ri-time-line text-warning"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Sisa Waktu</p>
+                                                        <h6 class="fw-bold ff-secondary mb-0 {{ $pensionColor }}">{{ $pensionSisaLabel }}</h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+    
+                                    <div class="col-xl-2 col-md-4 col-6">
+                                        <div class="card card-animate h-90">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-sm flex-shrink-0">
+                                                        <span class="avatar-title bg-secondary-subtle rounded fs-2">
+                                                            <i class="bx bx-tag text-secondary"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Jenis</p>
+                                                        <h6 class="fw-bold ff-secondary mb-0" style="font-size:0.8rem;">
+                                                            @if($gtk->pension)
+                                                                @if($gtk->pension->pension_type === 'normal') Normal
+                                                                @elseif($gtk->pension->pension_type === 'dini') Dini
+                                                                @elseif($gtk->pension->pension_type === 'cacat') Cacat
+                                                                @elseif($gtk->pension->pension_type === 'janda') Janda/Duda
+                                                                @else – @endif
+                                                            @else – @endif
+                                                        </h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+    
+                                    <div class="col-xl-2 col-md-4 col-6">
+                                        <div class="card card-animate h-90">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="avatar-sm flex-shrink-0">
+                                                        <span class="avatar-title bg-danger-subtle rounded fs-2">
+                                                            <i class="bx bx-flag text-danger"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Status</p>
+                                                        <h6 class="fw-bold ff-secondary mb-0" style="font-size:0.8rem;">
+                                                            @if($gtk->pension)
+                                                                @if($gtk->pension->pension_status === 'draft') Draft
+                                                                @elseif($gtk->pension->pension_status === 'pending') Pending
+                                                                @elseif($gtk->pension->pension_status === 'approved') Disetujui
+                                                                @elseif($gtk->pension->pension_status === 'completed') Selesai
+                                                                @elseif($gtk->pension->pension_status === 'cancelled') Batal
+                                                                @else – @endif
+                                                            @else – @endif
+                                                        </h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
 
                         {{-- ============================================================
                              TAB 3: PENDIDIKAN
@@ -974,7 +1133,9 @@
 @endsection
 
 @section('script')
-    <script src="{{ URL::asset('build/js/app.js') }}"></script>
+    {{-- app.js sudah dimuat oleh layouts.master (vendor-scripts); memuat ulang di sini
+         membuat handler .light-dark-mode terpasang dua kali sehingga toggle tema
+         menyala lalu langsung kembali (mode gelap tampak tidak berfungsi). --}}
     <script>
     /* ==========================================================================
        UTILITIES

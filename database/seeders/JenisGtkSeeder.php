@@ -96,6 +96,7 @@ class JenisGtkSeeder extends Seeder
                     'Pembina Ekstrakurikuler',
                     'Tim Kurikulum',
                     'Tim Kesiswaan',
+                    'Bendahara Sekolah',
                     'Koordinator Sarpras Satuan Pendidikan',
                 ],
             ],
@@ -228,6 +229,7 @@ class JenisGtkSeeder extends Seeder
                 'jabatan' => [
                     // ── Humas ────────────────────────────────────
                     'Kepala Humas & Personalia',
+                    'Wakil Kepala Humas & Personalia',
                     'Kepala Humas',
                     'Staf Humas',
 

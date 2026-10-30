@@ -9,6 +9,7 @@ return [
         'system' => ['label' => 'Sistem (in-app)', 'icon' => 'ri-notification-3-line'],
         'email' => ['label' => 'Email', 'icon' => 'ri-mail-line'],
         'wa' => ['label' => 'WhatsApp', 'icon' => 'ri-whatsapp-line'],
+        'push' => ['label' => 'Push Mobile/Web', 'icon' => 'ri-notification-badge-line'],
     ],
 
     'events' => [
@@ -32,6 +33,7 @@ return [
         'rapor' => ['group' => 'Akademik', 'label' => 'Rapor siap / nilai dikunci'],
         'rapor_published' => ['group' => 'Akademik', 'label' => 'Rapor dipublikasikan ke wali'],
         'nilai_published' => ['group' => 'Akademik', 'label' => 'Nilai mapel dipublikasikan ke wali'],
+        'nilai_updated' => ['group' => 'Akademik', 'label' => 'Nilai mapel diperbarui untuk wali'],
         'activity_alpa' => ['group' => 'Asrama', 'label' => 'Santri tidak hadir pada kegiatan asrama'],
         'emergency_broadcast' => ['group' => 'Asrama', 'label' => 'Broadcast darurat asrama ke wali'],
         'dormitory_announcement' => ['group' => 'Asrama', 'label' => 'Pengumuman asrama ke wali'],

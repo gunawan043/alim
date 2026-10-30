@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryResident;
 use App\Models\DormitoryVisitLog;
 use App\Models\Student;
 use App\Services\Boarding\LeaveWorkflowService;
@@ -95,13 +96,27 @@ class WaliSantriPortalController extends Controller
             ->orWhere('guardian_nik', auth()->user()->nik ?? '')
             ->findOrFail($data['student_id']);
 
+        $resident = DormitoryResident::where('student_id', $student->id)
+            ->where('is_active', true)
+            ->latest('check_in_date')
+            ->first();
+
+        if (! $resident || ! $student->dormitory_id) {
+            return back()->withErrors(['error' => 'Santri belum memiliki data asrama aktif.']);
+        }
+
         try {
             $permit = $this->leave->submit(
                 array_merge($data, [
-                    'permit_type' => 'wali_request',
+                    'permit_type' => 'keperluan_penting',
+                    'room_id' => $resident->room_id,
                     'departure_datetime' => $data['departure_date'],
-                    'expected_return_at' => $data['expected_return_date'],
+                    'expected_return_datetime' => $data['expected_return_date'],
+                    'purpose' => $data['reason'],
                     'companion_name' => $data['companion'] ?? null,
+                    'guardian_consent_confirmed' => true,
+                    'guardian_approval_channel' => 'portal',
+                    'guardian_approval_note' => 'Diajukan dan disetujui melalui portal wali.',
                     'submitted_via' => 'wali_portal',
                     'created_by' => auth()->id(),
                 ]),

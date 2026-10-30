@@ -21,8 +21,9 @@ use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
-use App\Services\KurikulumAccess;
 use App\Services\GuardianGradeColumnService;
+use App\Services\KurikulumAccess;
+use App\Services\NilaiPublishNotificationService;
 use App\Services\SumatifHarianService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -576,11 +577,25 @@ class NilaiGuruController extends Controller
 
         $auto = (bool) $validated['auto_publish'];
 
+        $wasPublished = $book['adminBook']->published_at !== null;
+        $hasGrades = $this->bookHasAnyNilai($book['adminBook']);
+        $publishNow = $auto && ($wasPublished || $hasGrades);
+
         $book['adminBook']->update([
             'auto_publish' => $auto,
-            'published_at' => $auto ? ($book['adminBook']->published_at ?? now()) : null,
-            'published_by' => $auto ? ($book['adminBook']->published_by ?? auth()->id()) : null,
+            'published_at' => $publishNow ? ($book['adminBook']->published_at ?? now()) : null,
+            'published_by' => $publishNow ? ($book['adminBook']->published_by ?? auth()->id()) : null,
         ]);
+
+        if ($auto && ! $wasPublished && $hasGrades) {
+            try {
+                app(NilaiPublishNotificationService::class)->notifyBookPublished($book['adminBook']);
+            } catch (\Throwable $e) {
+                Log::warning('Notifikasi aktivasi auto publish gagal: '.$e->getMessage(), [
+                    'admin_book_id' => $book['adminBook']->id,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -1092,9 +1107,9 @@ class NilaiGuruController extends Controller
 
         abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
 
-        if ($book['adminBook']->auto_publish && in_array($request->input('type'), ['sumatif', 'formatif', 'penghargaan'], true)) {
-            $this->autoPublishBook($book['adminBook']);
-        }
+        $shouldAutoPublish = $book['adminBook']->auto_publish
+            && in_array($request->input('type'), ['sumatif', 'formatif', 'penghargaan'], true);
+        $saved = false;
 
         $semester = $book['adminBook']->semester;
         $academicYearId = $book['adminBook']->academic_year_id;
@@ -1105,175 +1120,190 @@ class NilaiGuruController extends Controller
             'sumatif' => $data['sumatif'] ?? null,
         ]);
 
-        switch ($request->input('type')) {
-            case 'formatif':
-                return response()->json([
-                    'saved' => true,
-                    'skipped' => false,
-                    'saved_rows' => $this->saveFormatifRows($book, (array) ($data['formatif'] ?? [])),
-                ]);
+        try {
+            switch ($request->input('type')) {
+                case 'formatif':
+                    $savedRows = $this->saveFormatifRows($book, (array) ($data['formatif'] ?? []));
+                    $saved = $savedRows !== [];
 
-            case 'sumatif':
-                $service = app(SumatifHarianService::class);
-                $savedRows = [];
+                    return response()->json([
+                        'saved' => true,
+                        'skipped' => false,
+                        'saved_rows' => $savedRows,
+                    ]);
 
-                foreach ($data['sumatif'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn ($v) => ! is_array($v) && $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty()
-                        || collect($flds['sh'] ?? [])->filter(fn ($v) => $v !== '' && is_numeric($v))->isNotEmpty();
+                case 'sumatif':
+                    $service = app(SumatifHarianService::class);
+                    $savedRows = [];
 
-                    if (! $hasAny) {
-                        continue;
-                    }
+                    foreach ($data['sumatif'] ?? [] as $sid => $flds) {
+                        $hasAny = collect($flds)->filter(fn ($v) => ! is_array($v) && $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty()
+                            || collect($flds['sh'] ?? [])->filter(fn ($v) => $v !== '' && is_numeric($v))->isNotEmpty();
 
-                    $input = [
-                        'sts_murni' => array_key_exists('sts_murni', $flds) ? $flds['sts_murni'] : null,
-                        'sts' => array_key_exists('sts', $flds) ? $flds['sts'] : null,
-                        'sas_murni' => array_key_exists('sas_murni', $flds) ? $flds['sas_murni'] : null,
-                        'sas' => array_key_exists('sas', $flds) ? $flds['sas'] : null,
-                        'raport_sts' => array_key_exists('raport_sts', $flds) ? $flds['raport_sts'] : null,
-                        'ket' => $flds['ket'] ?? null,
-                        // Fallback form lama
-                        's1' => $flds['s1'] ?? null,
-                        's2' => $flds['s2'] ?? null,
-                        's3' => $flds['s3'] ?? null,
-                        's4' => $flds['s4'] ?? null,
-                        's5' => $flds['s5'] ?? null,
-                        's6' => $flds['s6'] ?? null,
-                    ];
-
-                    // Aturan: Nilai Murni STS/SAS wajib diisi sebelum kolom STS/SAS (autosave).
-                    $hasSts = isset($flds['sts']) && $flds['sts'] !== '' && $flds['sts'] !== null;
-                    $hasSas = isset($flds['sas']) && $flds['sas'] !== '' && $flds['sas'] !== null;
-                    $hasStsMurni = isset($flds['sts_murni']) && $flds['sts_murni'] !== '' && $flds['sts_murni'] !== null;
-                    $hasSasMurni = isset($flds['sas_murni']) && $flds['sas_murni'] !== '' && $flds['sas_murni'] !== null;
-
-                    if (($hasSts && ! $hasStsMurni) || ($hasSas && ! $hasSasMurni)) {
-                        return response()->json([
-                            'saved' => false,
-                            'message' => 'Isi Nilai Murni STS/SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS/SAS.',
-                        ], 422);
-                    }
-
-                    if (array_key_exists('sh', $flds) && is_array($flds['sh'])) {
-                        $input['sh'] = $flds['sh'];
-                    }
-
-                    // Pertahankan S6 otomatis (rata-rata formatif) agar tidak terhapus saat autosave SH.
-                    $formatifRow = NilaiFormatif::where('admin_book_id', $book['adminBook']->id)
-                        ->where('student_id', $sid)
-                        ->where('semester', $book['adminBook']->semester)
-                        ->first();
-                    $existingRow = NilaiSumatif::where('admin_book_id', $book['adminBook']->id)
-                        ->where('student_id', $sid)
-                        ->where('semester', $book['adminBook']->semester)
-                        ->first();
-                    $s6Keep = ($formatifRow && $formatifRow->nr_final !== null)
-                        ? (float) $formatifRow->nr_final
-                        : ($existingRow?->s6 !== null ? (float) $existingRow->s6 : null);
-
-                    if ($s6Keep !== null) {
-                        $input['s6'] = $s6Keep;
-                        if (isset($input['sh']) && is_array($input['sh'])) {
-                            $input['sh']['s6'] = $s6Keep;
+                        if (! $hasAny) {
+                            continue;
                         }
-                    }
 
-                    $row = $service->upsertSumatif($book['adminBook'], (string) $sid, $input);
-
-                    $savedRows[] = [
-                        'student_id' => (string) $sid,
-                        'rs' => $row->rs !== null ? (float) $row->rs : null,
-                        'rsa' => $row->rsa !== null ? (float) $row->rsa : null,
-                        'nr_murni' => $row->nr_murni !== null ? (float) $row->nr_murni : null,
-                        'nr_final' => $row->nr_final !== null ? (float) $row->nr_final : null,
-                    ];
-                }
-
-                if (empty($savedRows)) {
-                    return response()->json(['saved' => true, 'skipped' => true]);
-                }
-
-                return response()->json([
-                    'saved' => true,
-                    'saved_rows' => $savedRows,
-                ]);
-
-            case 'formatif':
-                $savedRows = [];
-                foreach ($data['formatif'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
-                    if (! $hasAny) {
-                        continue;
-                    }
-
-                    // NR Final = rata-rata skor yang terisi
-                    $scores = collect(['skor_lkpd', 'skor_diskusi', 'skor_kuis', 'skor_antarteman'])
-                        ->map(fn ($k) => $flds[$k] ?? null)
-                        ->filter(fn ($v) => is_numeric($v))
-                        ->values()
-                        ->toArray();
-                    $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
-
-                    NilaiFormatif::updateOrCreate(
-                        ['admin_book_id' => $book['adminBook']->id, 'student_id' => $sid, 'semester' => $semester],
-                        [
-                            'academic_year_id' => $academicYearId,
-                            'skor_lkpd' => $flds['skor_lkpd'] ?? null,
-                            'skor_diskusi' => $flds['skor_diskusi'] ?? null,
-                            'skor_kuis' => $flds['skor_kuis'] ?? null,
-                            'skor_antarteman' => $flds['skor_antarteman'] ?? null,
-                            'nr_final' => $nrFinal,
+                        $input = [
+                            'sts_murni' => array_key_exists('sts_murni', $flds) ? $flds['sts_murni'] : null,
+                            'sts' => array_key_exists('sts', $flds) ? $flds['sts'] : null,
+                            'sas_murni' => array_key_exists('sas_murni', $flds) ? $flds['sas_murni'] : null,
+                            'sas' => array_key_exists('sas', $flds) ? $flds['sas'] : null,
+                            'raport_sts' => array_key_exists('raport_sts', $flds) ? $flds['raport_sts'] : null,
                             'ket' => $flds['ket'] ?? null,
-                        ]
-                    );
-                    $savedRows[] = ['student_id' => $sid, 'nr_final' => $nrFinal];
-                }
-                if (empty($savedRows)) {
-                    return response()->json(['saved' => true, 'skipped' => true]);
-                }
+                            // Fallback form lama
+                            's1' => $flds['s1'] ?? null,
+                            's2' => $flds['s2'] ?? null,
+                            's3' => $flds['s3'] ?? null,
+                            's4' => $flds['s4'] ?? null,
+                            's5' => $flds['s5'] ?? null,
+                            's6' => $flds['s6'] ?? null,
+                        ];
 
-                return response()->json(['saved' => true, 'saved_rows' => $savedRows]);
+                        // Aturan: Nilai Murni STS/SAS wajib diisi sebelum kolom STS/SAS (autosave).
+                        $hasSts = isset($flds['sts']) && $flds['sts'] !== '' && $flds['sts'] !== null;
+                        $hasSas = isset($flds['sas']) && $flds['sas'] !== '' && $flds['sas'] !== null;
+                        $hasStsMurni = isset($flds['sts_murni']) && $flds['sts_murni'] !== '' && $flds['sts_murni'] !== null;
+                        $hasSasMurni = isset($flds['sas_murni']) && $flds['sas_murni'] !== '' && $flds['sas_murni'] !== null;
 
-            case 'penghargaan':
-                $savedRows = [];
-                foreach ($data['penghargaan'] ?? [] as $sid => $flds) {
-                    $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
-                    if (! $hasAny) {
-                        continue;
+                        if (($hasSts && ! $hasStsMurni) || ($hasSas && ! $hasSasMurni)) {
+                            return response()->json([
+                                'saved' => false,
+                                'message' => 'Isi Nilai Murni STS/SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS/SAS.',
+                            ], 422);
+                        }
+
+                        if (array_key_exists('sh', $flds) && is_array($flds['sh'])) {
+                            $input['sh'] = $flds['sh'];
+                        }
+
+                        // Pertahankan S6 otomatis (rata-rata formatif) agar tidak terhapus saat autosave SH.
+                        $formatifRow = NilaiFormatif::where('admin_book_id', $book['adminBook']->id)
+                            ->where('student_id', $sid)
+                            ->where('semester', $book['adminBook']->semester)
+                            ->first();
+                        $existingRow = NilaiSumatif::where('admin_book_id', $book['adminBook']->id)
+                            ->where('student_id', $sid)
+                            ->where('semester', $book['adminBook']->semester)
+                            ->first();
+                        $s6Keep = ($formatifRow && $formatifRow->nr_final !== null)
+                            ? (float) $formatifRow->nr_final
+                            : ($existingRow?->s6 !== null ? (float) $existingRow->s6 : null);
+
+                        if ($s6Keep !== null) {
+                            $input['s6'] = $s6Keep;
+                            if (isset($input['sh']) && is_array($input['sh'])) {
+                                $input['sh']['s6'] = $s6Keep;
+                            }
+                        }
+
+                        $row = $service->upsertSumatif($book['adminBook'], (string) $sid, $input);
+
+                        $savedRows[] = [
+                            'student_id' => (string) $sid,
+                            'rs' => $row->rs !== null ? (float) $row->rs : null,
+                            'rsa' => $row->rsa !== null ? (float) $row->rsa : null,
+                            'nr_murni' => $row->nr_murni !== null ? (float) $row->nr_murni : null,
+                            'nr_final' => $row->nr_final !== null ? (float) $row->nr_final : null,
+                        ];
                     }
 
-                    // NR Final = rata-rata komponen yang terisi
-                    $scores = collect(['jujur', 'disiplin', 'peduli', 'adab', 'kehadiran', 'keaktifan'])
-                        ->map(fn ($k) => $flds[$k] ?? null)
-                        ->filter(fn ($v) => is_numeric($v))
-                        ->values()
-                        ->toArray();
-                    $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
+                    if (empty($savedRows)) {
+                        return response()->json(['saved' => true, 'skipped' => true]);
+                    }
 
-                    PenghargaanAkademik::updateOrCreate(
-                        ['admin_book_id' => $book['adminBook']->id, 'student_id' => $sid, 'semester' => $semester],
-                        [
-                            'academic_year_id' => $academicYearId,
-                            'jujur' => $flds['jujur'] ?? null,
-                            'disiplin' => $flds['disiplin'] ?? null,
-                            'peduli' => $flds['peduli'] ?? null,
-                            'adab' => $flds['adab'] ?? null,
-                            'kehadiran' => $flds['kehadiran'] ?? null,
-                            'keaktifan' => $flds['keaktifan'] ?? null,
-                            'nr_final' => $nrFinal,
-                            'ket' => $flds['ket'] ?? null,
-                        ]
-                    );
-                    $savedRows[] = ['student_id' => $sid, 'nr_final' => $nrFinal];
-                }
-                if (empty($savedRows)) {
-                    return response()->json(['saved' => true, 'skipped' => true]);
-                }
+                    $saved = true;
 
-                return response()->json(['saved' => true, 'saved_rows' => $savedRows]);
+                    return response()->json([
+                        'saved' => true,
+                        'saved_rows' => $savedRows,
+                    ]);
 
-            default:
-                return response()->json(['saved' => false, 'error' => 'Unknown type'], 400);
+                case 'formatif':
+                    $savedRows = [];
+                    foreach ($data['formatif'] ?? [] as $sid => $flds) {
+                        $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
+                        if (! $hasAny) {
+                            continue;
+                        }
+
+                        // NR Final = rata-rata skor yang terisi
+                        $scores = collect(['skor_lkpd', 'skor_diskusi', 'skor_kuis', 'skor_antarteman'])
+                            ->map(fn ($k) => $flds[$k] ?? null)
+                            ->filter(fn ($v) => is_numeric($v))
+                            ->values()
+                            ->toArray();
+                        $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
+
+                        NilaiFormatif::updateOrCreate(
+                            ['admin_book_id' => $book['adminBook']->id, 'student_id' => $sid, 'semester' => $semester],
+                            [
+                                'academic_year_id' => $academicYearId,
+                                'skor_lkpd' => $flds['skor_lkpd'] ?? null,
+                                'skor_diskusi' => $flds['skor_diskusi'] ?? null,
+                                'skor_kuis' => $flds['skor_kuis'] ?? null,
+                                'skor_antarteman' => $flds['skor_antarteman'] ?? null,
+                                'nr_final' => $nrFinal,
+                                'ket' => $flds['ket'] ?? null,
+                            ]
+                        );
+                        $savedRows[] = ['student_id' => $sid, 'nr_final' => $nrFinal];
+                    }
+                    if (empty($savedRows)) {
+                        return response()->json(['saved' => true, 'skipped' => true]);
+                    }
+
+                    $saved = true;
+
+                    return response()->json(['saved' => true, 'saved_rows' => $savedRows]);
+
+                case 'penghargaan':
+                    $savedRows = [];
+                    foreach ($data['penghargaan'] ?? [] as $sid => $flds) {
+                        $hasAny = collect($flds)->filter(fn ($v) => $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty();
+                        if (! $hasAny) {
+                            continue;
+                        }
+
+                        // NR Final = rata-rata komponen yang terisi
+                        $scores = collect(['jujur', 'disiplin', 'peduli', 'adab', 'kehadiran', 'keaktifan'])
+                            ->map(fn ($k) => $flds[$k] ?? null)
+                            ->filter(fn ($v) => is_numeric($v))
+                            ->values()
+                            ->toArray();
+                        $nrFinal = count($scores) > 0 ? round(array_sum($scores) / count($scores), 2) : null;
+
+                        PenghargaanAkademik::updateOrCreate(
+                            ['admin_book_id' => $book['adminBook']->id, 'student_id' => $sid, 'semester' => $semester],
+                            [
+                                'academic_year_id' => $academicYearId,
+                                'jujur' => $flds['jujur'] ?? null,
+                                'disiplin' => $flds['disiplin'] ?? null,
+                                'peduli' => $flds['peduli'] ?? null,
+                                'adab' => $flds['adab'] ?? null,
+                                'kehadiran' => $flds['kehadiran'] ?? null,
+                                'keaktifan' => $flds['keaktifan'] ?? null,
+                                'nr_final' => $nrFinal,
+                                'ket' => $flds['ket'] ?? null,
+                            ]
+                        );
+                        $savedRows[] = ['student_id' => $sid, 'nr_final' => $nrFinal];
+                    }
+                    if (empty($savedRows)) {
+                        return response()->json(['saved' => true, 'skipped' => true]);
+                    }
+
+                    $saved = true;
+
+                    return response()->json(['saved' => true, 'saved_rows' => $savedRows]);
+
+                default:
+                    return response()->json(['saved' => false, 'error' => 'Unknown type'], 400);
+            }
+        } finally {
+            if ($saved && $shouldAutoPublish) {
+                $this->autoPublishBook($book['adminBook']);
+            }
         }
     }
 
@@ -1397,6 +1427,13 @@ class NilaiGuruController extends Controller
             ->values();
     }
 
+    private function bookHasAnyNilai(TeacherAdminBook $book): bool
+    {
+        return NilaiSumatif::where('admin_book_id', $book->id)->exists()
+            || NilaiFormatif::where('admin_book_id', $book->id)->exists()
+            || PenghargaanAkademik::where('admin_book_id', $book->id)->exists();
+    }
+
     /**
      * Publikasikan buku otomatis bila mode auto_publish aktif.
      */
@@ -1406,10 +1443,28 @@ class NilaiGuruController extends Controller
             return;
         }
 
-        $book->forceFill([
-            'published_at' => now(),
-            'published_by' => auth()->id(),
-        ])->save();
+        $wasPublished = $book->published_at !== null;
+
+        if (! $wasPublished) {
+            $book->forceFill([
+                'published_at' => now(),
+                'published_by' => auth()->id(),
+            ])->save();
+        }
+
+        try {
+            $notifier = app(NilaiPublishNotificationService::class);
+
+            if ($wasPublished) {
+                $notifier->notifyBookUpdated($book);
+            } else {
+                $notifier->notifyBookPublished($book);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Notifikasi perubahan nilai gagal: '.$e->getMessage(), [
+                'admin_book_id' => $book->id,
+            ]);
+        }
     }
 
     private function loadAdminBook(string $userId, string $adminBookId, bool $forWrite = false): array

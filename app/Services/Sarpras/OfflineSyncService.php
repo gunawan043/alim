@@ -223,7 +223,7 @@ class OfflineSyncService
         });
     }
 
-    public function getLastSyncToken(int $userId): ?string
+    public function getLastSyncToken(string $userId): ?string
     {
         return DB::table('user_sync_tokens')
             ->where('user_id', $userId)

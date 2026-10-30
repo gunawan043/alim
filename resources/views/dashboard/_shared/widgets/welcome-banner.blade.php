@@ -5,7 +5,8 @@
                 <i class="ri-shield-star-line me-1"></i>{{ $data['jabatan'] ?? 'Dashboard' }}
             </span>
             <h3 class="banner-title">
-                {{ $data['greeting'] ?? 'Assalamualaikum' }}, {{ $data['name'] ?? 'Pengguna' }}
+                {{ $data['salam'] ?? 'Assalamu\'alaikum warahmatullahi wabarakatuh' }},
+                <span class="banner-name">{{ $data['name'] ?? 'Pengguna' }}</span>
             </h3>
             <div class="banner-meta">
                 @if (! empty($data['school']))

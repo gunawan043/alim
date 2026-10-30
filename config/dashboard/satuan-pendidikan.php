@@ -39,7 +39,6 @@ return [
                 'stat-cuti-aktif-hari-ini',
                 'stat-supervisi-mendatang',
                 'chart-tren-kehadiran-santri',
-                'chart-gender-santri',
                 'chart-top-rombel',
                 'chart-santri-per-tingkat',
                 'table-jadwal-pelajaran-aktif',
@@ -272,7 +271,9 @@ return [
             ],
         ],
 
-        // ── Bendahara / Kasir / Operator Sekolah ─────────────────
+        // ── Bendahara Sekolah (jabatan struktural) ────────────────
+        // Lembaga yang memakai model tugas tambahan memakai konfigurasi
+        // 'tugas_tambahan' dengan nama yang sama.
         'tenaga_kependidikan_satuan_pendidikan_bendah_05e6e' => [
             'label'   => 'Bendahara Sekolah',
             'widgets' => [
@@ -285,6 +286,8 @@ return [
                 'quick-action-kepala-tu',
             ],
         ],
+
+        // ── Kasir / Operator Sekolah ─────────────────────────────
         'tenaga_kependidikan_satuan_pendidikan_kasir__050f1' => [
             'label'   => 'Kasir Sekolah',
             'widgets' => [
@@ -341,6 +344,20 @@ return [
             'label'   => 'Tim Kesiswaan',
             'widgets' => [
                 'table-pelanggaran-terbaru',
+            ],
+        ],
+
+        // Bendahara Sekolah adalah tugas tambahan, bukan jabatan/role Keuangan.
+        'Bendahara Sekolah' => [
+            'label'   => 'Bendahara Sekolah',
+            'widgets' => [
+                ...$welcome,
+                ...$statTotals,
+                'stat-payroll-bulan-ini',
+                'stat-pengajuan-pengadaan',
+                'stat-agenda-hari-ini',
+                'table-agenda-mendatang',
+                'quick-action-kepala-tu',
             ],
         ],
 
@@ -463,7 +480,6 @@ return [
 
         // Akademik & KBM
         'chart-tren-kehadiran-santri'      => 'akademik',
-        'chart-gender-santri'              => 'akademik',
         'chart-top-rombel'                 => 'akademik',
         'chart-statistik-santri-per-rombel' => 'akademik',
         'chart-santri-per-tingkat'         => 'akademik',

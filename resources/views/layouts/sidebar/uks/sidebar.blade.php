@@ -269,28 +269,6 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 9 — KONSELING
-     Akses: Kepala + Staf UKS
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if(($showAll || $isKepalaUKS || $isStaf) && menu_allowed('uks'))
-    <li class="menu-title"><span>Konseling</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.counseling-records.']) ? ' active' : '' }}"
-           href="{{ $uksUrl('user.uks.counseling-records.index') }}">
-            <i class="ri-chat-heart-line"></i><span>Catatan Konseling</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.student-counseling.']) ? ' active' : '' }}"
-           href="{{ $uksUrl('user.uks.student-counseling.index') }}">
-            <i class="ri-mental-health-line"></i><span>Konseling Santri</span>
-        </a>
-    </li>
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 10 — RUJUKAN FASKES
      Akses: Kepala + Staf UKS
      ═══════════════════════════════════════════════════════════════════════════ --}}

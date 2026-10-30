@@ -44,6 +44,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'push' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'push']) }}">
+                                <i class="ri-smartphone-line me-1"></i> Push Mobile
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'pos-api' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'pos-api']) }}">
                                 <i class="ri-plug-line me-1"></i> Integrasi POS
@@ -726,6 +732,248 @@
                             </div>
                         @endif
 
+                        {{-- TAB: Push Mobile (FCM + APNs) --}}
+                        @if($tab === 'push')
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0"><i class="ri-android-line me-1"></i>FCM — Android</h6>
+                                                <small class="text-muted">Firebase Cloud Messaging HTTP v1. Gratis, tanpa biaya per pesan.</small>
+                                            </div>
+                                            <span class="badge bg-{{ $push['fcm']['configured'] ? 'success' : 'warning' }}-subtle text-{{ $push['fcm']['configured'] ? 'success' : 'warning' }}">
+                                                {{ $push['fcm']['configured'] ? 'Siap' : 'Belum lengkap' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small">Firebase Project ID</label>
+                                                <input type="text" name="fcm_project_id" class="form-control font-monospace"
+                                                    value="{{ $push['fcm']['project_id'] }}" placeholder="alim-app">
+                                                <div class="form-text">
+                                                    Boleh dikosongkan jika project_id sudah ada di service account JSON.
+                                                    @if($push['fcm']['project_id_from_env'])
+                                                        <span class="badge bg-warning-subtle text-warning">dari .env</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small">Service Account JSON</label>
+                                                <textarea name="fcm_service_account_json" rows="8" class="form-control font-monospace"
+                                                    placeholder="{{ $push['fcm']['has_stored_service_account'] ? 'Sudah tersimpan — kosongkan jika tidak diubah' : 'Tempel isi file service-account.json di sini' }}"
+                                                    spellcheck="false"></textarea>
+                                                <div class="form-text">
+                                                    Firebase Console → Project settings → Service accounts → Generate new private key.
+                                                    @if($push['fcm']['has_stored_service_account'])
+                                                        <span class="badge bg-info-subtle text-info">tersimpan</span>
+                                                        @if($push['fcm']['service_account_encrypted'])
+                                                            <span class="badge bg-success-subtle text-success"><i class="ri-lock-2-line me-1"></i>terenkripsi</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-danger-subtle text-danger">belum ada</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="checkbox" name="fcm_service_account_clear" value="1"
+                                                    id="fcm-service-account-clear">
+                                                <label class="form-check-label small" for="fcm-service-account-clear">
+                                                    Hapus service account FCM yang tersimpan
+                                                </label>
+                                            </div>
+
+                                            <div class="alert alert-info small mb-0">
+                                                <i class="ri-information-line me-1"></i>
+                                                Android memakai token FCM dari Expo Notifications. Tidak ada biaya pengiriman per notifikasi.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0"><i class="ri-apple-line me-1"></i>APNs — iOS</h6>
+                                                <small class="text-muted">Apple Push Notification service token-based.</small>
+                                            </div>
+                                            <span class="badge bg-{{ $push['apns']['configured'] ? 'success' : 'warning' }}-subtle text-{{ $push['apns']['configured'] ? 'success' : 'warning' }}">
+                                                {{ $push['apns']['configured'] ? 'Siap' : 'Belum lengkap' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Key ID</label>
+                                                    <input type="text" name="apns_key_id" class="form-control font-monospace"
+                                                        value="{{ $push['apns']['key_id'] }}" placeholder="ABC123DEFG">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Team ID</label>
+                                                    <input type="text" name="apns_team_id" class="form-control font-monospace"
+                                                        value="{{ $push['apns']['team_id'] }}" placeholder="TEAM123456">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label small">Bundle ID</label>
+                                                    <input type="text" name="apns_bundle_id" class="form-control font-monospace"
+                                                        value="{{ $push['apns']['bundle_id'] }}" placeholder="com.alim.app">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Environment</label>
+                                                    <select name="apns_environment" class="form-select">
+                                                        <option value="sandbox" {{ $push['apns']['environment'] === 'sandbox' ? 'selected' : '' }}>Sandbox (development)</option>
+                                                        <option value="production" {{ $push['apns']['environment'] === 'production' ? 'selected' : '' }}>Production</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-3">
+                                                <label class="form-label small">Private Key (.p8)</label>
+                                                <textarea name="apns_private_key" rows="7" class="form-control font-monospace"
+                                                    placeholder="{{ $push['apns']['has_stored_key'] ? 'Sudah tersimpan — kosongkan jika tidak diubah' : 'Tempel isi file AuthKey_XXXXXXXXXX.p8' }}"
+                                                    spellcheck="false"></textarea>
+                                                <div class="form-text">
+                                                    Apple Developer → Certificates, Identifiers & Profiles → Keys → APNs.
+                                                    @if($push['apns']['has_stored_key'])
+                                                        <span class="badge bg-info-subtle text-info">tersimpan</span>
+                                                        @if($push['apns']['key_encrypted'])
+                                                            <span class="badge bg-success-subtle text-success"><i class="ri-lock-2-line me-1"></i>terenkripsi</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-danger-subtle text-danger">belum ada</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            <div class="form-check mt-3">
+                                                <input class="form-check-input" type="checkbox" name="apns_private_key_clear" value="1"
+                                                    id="apns-private-key-clear">
+                                                <label class="form-check-label small" for="apns-private-key-clear">
+                                                    Hapus private key APNs yang tersimpan
+                                                </label>
+                                            </div>
+
+                                            <div class="alert alert-info small mt-3 mb-0">
+                                                <i class="ri-information-line me-1"></i>
+                                                Gunakan <strong>sandbox</strong> untuk development build dan <strong>production</strong> untuk TestFlight/App Store.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-0"><i class="ri-global-line me-1"></i>Web Push — Browser</h6>
+                                                <small class="text-muted">VAPID; notifikasi muncul saat tab/browser ditutup.</small>
+                                            </div>
+                                            <span class="badge bg-{{ $webPush['configured'] ? 'success' : 'warning' }}-subtle text-{{ $webPush['configured'] ? 'success' : 'warning' }}">
+                                                {{ $webPush['configured'] ? 'Siap' : 'Belum lengkap' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            @if(! $webPush['configured'])
+                                                <div class="alert alert-warning small">
+                                                    <i class="ri-error-warning-line me-1"></i>
+                                                    Generate VAPID key terlebih dahulu. Setelah itu buka web dan klik
+                                                    <strong>Aktifkan Notifikasi Browser</strong> di lonceng notifikasi.
+                                                </div>
+                                            @endif
+
+                                            <div class="row g-3">
+                                                <div class="col-md-8">
+                                                    <label class="form-label small">VAPID Public Key</label>
+                                                    <div class="input-group">
+                                                        <input type="text" id="web-push-public-key" class="form-control font-monospace"
+                                                            value="{{ $webPush['public_key'] }}" readonly>
+                                                        <button type="button" class="btn btn-soft-secondary" onclick="webPushCopyKey()">
+                                                            <i class="ri-file-copy-line"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="form-text">
+                                                        Public key aman diketahui browser. Private key disimpan terenkripsi di server.
+                                                        @if($webPush['public_from_env'])
+                                                            <span class="badge bg-warning-subtle text-warning">dari .env</span>
+                                                        @elseif($webPush['has_public_key'])
+                                                            <span class="badge bg-info-subtle text-info">database</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Jumlah Browser</label>
+                                                    <div class="form-control bg-light">{{ number_format($webPush['subscription_count']) }}</div>
+                                                    <div class="form-text">Browser yang sudah subscribe.</div>
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label small">VAPID Subject</label>
+                                                    <input type="text" name="web_push_vapid_subject" class="form-control"
+                                                        value="{{ $webPush['subject'] }}" placeholder="mailto:admin@sekolah.sch.id">
+                                                    <div class="form-text">Gunakan <code>mailto:</code> atau URL resmi sekolah.</div>
+                                                </div>
+                                                <div class="col-md-4 d-flex align-items-end">
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <button type="submit" name="generate_web_push_keys" value="1" class="btn btn-sm btn-primary"
+                                                            onclick="return confirm('Generate key baru akan membuat subscription browser lama tidak valid. Lanjutkan?')">
+                                                            <i class="ri-refresh-line me-1"></i>{{ $webPush['configured'] ? 'Regenerate VAPID' : 'Generate VAPID' }}
+                                                        </button>
+                                                        @if($webPush['has_public_key'] || $webPush['has_private_key'])
+                                                            <button type="submit" name="web_push_vapid_clear" value="1" class="btn btn-sm btn-soft-danger"
+                                                                onclick="return confirm('Hapus VAPID key? Browser tidak akan menerima Web Push sampai key dibuat ulang.')">
+                                                                <i class="ri-delete-bin-line me-1"></i>Hapus
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="alert alert-info small mt-3 mb-0">
+                                                <i class="ri-information-line me-1"></i>
+                                                Web Push memerlukan HTTPS (localhost dikecualikan) dan izin notifikasi browser.
+                                                Mendukung Chrome/Edge/Firefox; Safari memerlukan dukungan Web Push/PWA sesuai versi OS.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-radar-line me-1"></i>Status Push</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-3">
+                                                    <div class="text-muted small">FCM</div>
+                                                    <div class="fw-semibold">{{ $push['fcm']['configured'] ? 'Siap' : 'Belum lengkap' }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="text-muted small">APNs</div>
+                                                    <div class="fw-semibold">{{ $push['apns']['configured'] ? 'Siap' : 'Belum lengkap' }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="text-muted small">Perangkat FCM</div>
+                                                    <div class="fw-semibold">{{ number_format($push['fcm_device_count']) }}</div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="text-muted small">Perangkat APNs</div>
+                                                    <div class="fw-semibold">{{ number_format($push['apns_device_count']) }}</div>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <div class="small text-muted">
+                                                Total perangkat aktif: <strong>{{ number_format($push['device_count']) }}</strong>.
+                                                Perangkat mendaftar setelah login melalui <code>POST /api/mobile/v1/devices</code>.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- TAB: Integrasi POS --}}
                         @if($tab === 'pos-api')
                             @php
@@ -737,7 +985,11 @@
                                 $posBaseUrl = url('/api/pos/v1');
                                 $posKeyFromEnv = ! \App\Support\PosApiConfig::hasStoredKey() && $posKey !== '';
                                 $posKeyEncrypted = \App\Support\PosApiConfig::isEncrypted($settings['pos_api_key'] ?? null);
-                                $posEndpoints = [
+                                $posProcEnabled = \App\Support\PosProcurementConfig::enabled();
+                                $posProcBase = \App\Support\PosProcurementConfig::baseUrl();
+                                $posProcHeader = \App\Support\PosProcurementConfig::header();
+                                $posProcHasToken = \App\Support\PosProcurementConfig::hasStoredToken() || \App\Support\PosProcurementConfig::token() !== null;
+                                $posProcEndpoints = [
                                     ['ping', 'Tes koneksi + ringkasan jumlah data', 'Untuk tombol "Tes Koneksi" di aplikasi POS'],
                                     ['satuan-kerja', 'Satuan kerja / unit kerja', 'Filter: type, divisi_id, is_active, search'],
                                     ['kepegawaian', 'Data pegawai (GTK): biodata, no. WhatsApp, satuan kerja', 'Filter: satuan_kerja, status_kepegawaian, jenis_gtk, jabatan, updated_since, search'],
@@ -832,6 +1084,44 @@
                                                     <textarea name="pos_api_allowed_ips" rows="2" class="form-control form-control-sm font-monospace"
                                                         placeholder="103.10.20.30, 10.0.0.0/8">{{ $posAllowedIps }}</textarea>
                                                     <small class="text-muted">Kosongkan = semua IP boleh (cukup token). Isi bila server POS ber-IP tetap.</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Koneksi ALIM → POS: API pengadaan --}}
+                                    <div class="card border mt-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-shopping-bag-3-line me-1"></i>API SIPLah POS (ALIM → BUMP)</h6>
+                                            <span class="badge bg-{{ $posProcEnabled ? 'success' : 'secondary' }}-subtle text-{{ $posProcEnabled ? 'success' : 'secondary' }}">{{ $posProcEnabled ? 'Aktif' : 'Nonaktif' }}</span>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="text-muted small">Dipakai halaman <strong>Pengajuan SIPLah</strong> untuk proposal, persetujuan, dan pemantauan status dari BUMP. Token berasal dari POS (Pengaturan → API Pengadaan).</p>
+                                            <div class="row g-3">
+                                                <div class="col-md-8">
+                                                    <label class="form-label small">Base URL POS</label>
+                                                    <input type="url" name="pos_procurement_base_url" class="form-control form-control-sm font-monospace" value="{{ $posProcBase }}" placeholder="https://pos.example.com">
+                                                    <small class="text-muted">Tanpa akhiran <code>/api/procurement/v1</code>.</small>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Header Token</label>
+                                                    <input name="pos_procurement_header" class="form-control form-control-sm font-monospace" value="{{ $posProcHeader }}" placeholder="X-POS-PROCUREMENT-KEY">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label class="form-label small">Token API Pengadaan POS</label>
+                                                    <input type="password" name="pos_procurement_api_key" class="form-control form-control-sm font-monospace" placeholder="{{ $posProcHasToken ? 'Sudah tersimpan — isi hanya bila ingin mengganti' : 'Tempel token dari POS' }}" autocomplete="off">
+                                                </div>
+                                                <div class="col-md-4 d-flex flex-column justify-content-end">
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" name="pos_procurement_enabled" value="1" id="pos-procurement-enabled" {{ $posProcEnabled ? 'checked' : '' }}>
+                                                        <label class="form-check-label small" for="pos-procurement-enabled">Aktifkan koneksi</label>
+                                                    </div>
+                                                    @if($posProcHasToken)
+                                                        <div class="form-check mt-1">
+                                                            <input class="form-check-input" type="checkbox" name="pos_procurement_api_key_clear" value="1" id="pos-procurement-token-clear">
+                                                            <label class="form-check-label small text-danger" for="pos-procurement-token-clear">Hapus token</label>
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
@@ -1158,6 +1448,29 @@
     </div>
 @endsection
 
+@if($tab === 'push')
+    @push('scripts')
+        <script>
+            function webPushCopyKey() {
+                const input = document.getElementById('web-push-public-key');
+                if (!input) return;
+
+                navigator.clipboard?.writeText(input.value).then(function () {
+                    if (typeof Toastify !== 'undefined') {
+                        Toastify({
+                            text: 'VAPID public key tersalin',
+                            duration: 1500,
+                            gravity: 'top',
+                            position: 'right',
+                            style: { background: '#0ab39c' }
+                        }).showToast();
+                    }
+                }).catch(function () {});
+            }
+        </script>
+    @endpush
+@endif
+
 @if($tab === 'notifications')
     @push('scripts')
         <script>
@@ -1169,6 +1482,7 @@
         </script>
     @endpush
 @endif
+
 
 @if($tab === 'pos-api')
     @push('scripts')

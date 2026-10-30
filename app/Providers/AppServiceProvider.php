@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Bootstrap\SystemSuperAdminBootstrap;
 use App\Domain\Events\BoardingPermitDecided;
 use App\Domain\Events\BoardingPermitSubmitted;
 use App\Domain\Events\BoardingVisitCheckIn;
@@ -186,12 +185,6 @@ class AppServiceProvider extends ServiceProvider
     {
         DormitoryResident::observe(DormitoryResidentObserver::class);
         Schema::defaultStringLength(191);
-
-        // ── System Super Admin bootstrap ───────────────────────────
-        // Ensure the Power User (super.admin@alim.local) exists with
-        // full permissions on every boot, even after migrate:fresh.
-        // Idempotent — safe to call repeatedly.
-        SystemSuperAdminBootstrap::ensure();
 
         // Terapkan konfigurasi email dari database (dengan fallback .env).
         app(SystemMailSettingsService::class)->apply();

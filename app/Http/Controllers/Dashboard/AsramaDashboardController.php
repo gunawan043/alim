@@ -84,11 +84,11 @@ class AsramaDashboardController extends DashboardController
                 );
             }
         } catch (\Throwable $e) {
-            Log::warning('getAsramaScope failed: ' . $e->getMessage());
+            Log::warning('getAsramaScope failed: '.$e->getMessage());
         }
 
         return $this->asramaScopes[$user->id] = (object) [
-            'roomIds'      => array_values(array_unique(array_filter($roomIds))),
+            'roomIds' => array_values(array_unique(array_filter($roomIds))),
             'dormitoryIds' => array_values(array_unique(array_filter($dormitoryIds))),
         ];
     }

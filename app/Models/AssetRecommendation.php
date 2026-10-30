@@ -12,19 +12,17 @@ class AssetRecommendation extends Model
 
     protected $table = 'asset_recommendations';
 
-    protected $keyType = 'string';
-
-    public $incrementing = false;
-
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?? (string) Str::uuid());
+
+        static::creating(fn ($m) => $m->uuid = $m->uuid ?: (string) Str::uuid());
     }
 
     public const RECOMMENDATIONS = ['GOOD', 'MONITOR', 'REPAIR', 'REPLACE', 'CRITICAL'];
 
     protected $fillable = [
+        'uuid',
         'asset_id',
         'recommendation',
         'score',

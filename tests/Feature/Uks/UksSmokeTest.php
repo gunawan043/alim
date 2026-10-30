@@ -132,6 +132,9 @@ class UksSmokeTest extends TestCase
 
         $routes = [
             'gtk-index' => route('user.gtk.index', ['userId' => $user->id]),
+            'import-medicine' => route('user.uks.imports.form', ['userId' => $user->id, 'dataset' => 'medicine']),
+            'import-metrics' => route('user.uks.imports.form', ['userId' => $user->id, 'dataset' => 'metrics']),
+            'import-gtk-health' => route('user.uks.imports.form', ['userId' => $user->id, 'dataset' => 'gtk-health']),
             'dashboard' => route('user.uks.dashboard', ['userId' => $user->id]),
             'gtk-health' => route('user.uks.gtk-health.index', ['userId' => $user->id]),
             'profile' => route('user.uks.profile', ['userId' => $user->id]),
@@ -153,8 +156,6 @@ class UksSmokeTest extends TestCase
             'health-metrics.dashboard' => route('user.uks.health-metrics.dashboard', ['userId' => $user->id]),
             'pharmacy' => route('user.uks.pharmacy.index', ['userId' => $user->id]),
             'medicine-inventory' => route('user.uks.medicine-inventory.index', ['userId' => $user->id]),
-            'counseling' => route('user.uks.counseling-records.index', ['userId' => $user->id]),
-            'student-counseling' => route('user.uks.student-counseling.index', ['userId' => $user->id]),
             'referrals' => route('user.uks.referrals.index', ['userId' => $user->id]),
             'facility-referrals' => route('user.uks.facility-referrals.index', ['userId' => $user->id]),
             'sanitation' => route('user.uks.sanitation-inspections.index', ['userId' => $user->id]),

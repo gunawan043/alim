@@ -1,5 +1,5 @@
 <!doctype html >
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-layout="vertical" data-topbar="light" data-sidebar="light"
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-layout="vertical" data-bs-theme="light" data-topbar="light" data-sidebar="light"
     data-sidebar-size="lg" data-sidebar-image="none" data-preloader="disable" data-theme="galaxy"
     data-theme-colors="default">
 <head>
@@ -11,6 +11,7 @@
     <!-- App favicon -->
     <link rel="shortcut icon" href="{{ URL::asset('build/images/alim-sm-light.png')}}">
     @include('layouts.head-css')
+    @include('layouts.partials.theme-fixes')
     @include('shared._styles')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <!-- Instead of document.write(), use: -->

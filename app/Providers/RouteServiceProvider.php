@@ -84,5 +84,14 @@ class RouteServiceProvider extends ServiceProvider
                 Limit::perMinute(8)->by('otp-session:'.$request->session()->getId()),
             ];
         });
+
+        RateLimiter::for('wali-link', function (Request $request) {
+            $identity = 'wali-link:'.($request->user()?->id ?? 'guest').'|'.$request->ip();
+
+            return [
+                Limit::perMinute(5)->by($identity),
+                Limit::perDay(20)->by($identity.'|day'),
+            ];
+        });
     }
 }

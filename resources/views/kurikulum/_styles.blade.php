@@ -1,29 +1,30 @@
 <style>
-    /* Konvensi UI modul Kurikulum — mengikuti pola gtk/index.blade.php */
+    /* Konvensi UI modul Kurikulum — mengikuti pola gtk/index.blade.php.
+       Warna memakai variabel Bootstrap agar ikut tema terang/gelap. */
     .filter-badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         padding: 6px 12px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--bs-border-color);
         border-radius: 30px;
         font-size: 13px;
         transition: all 0.2s;
         margin: 4px;
         cursor: pointer;
-        color: inherit;
+        color: var(--bs-body-color);
         text-decoration: none;
-        background: #fff;
+        background: transparent;
     }
 
-    .filter-badge:hover { background: #405189; border-color: #94a3b8; color: #fff; }
-    .filter-badge.active { background: #0a5f9e; border-color: #0a5f9e; color: #fff; }
+    .filter-badge:hover { background: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
+    .filter-badge.active { background: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
 
     .stat-label { font-size: 11px; }
 
     /* Kartu statistik — mengikuti gtk/index.blade.php */
     .card-animate { transition: all 0.3s ease; }
-    .card-animate:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    .card-animate:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); }
 
     .table-freeze th,
     .table-freeze td { vertical-align: middle; }
@@ -32,7 +33,7 @@
         top: 0;
         z-index: 20;
         font-weight: 600;
-        border-bottom: 2px solid #dee2e6;
+        border-bottom: 2px solid var(--bs-border-color);
     }
 
     /* Alur lengkap kurikulum — kartu bertahap yang dapat diklik */
@@ -47,17 +48,17 @@
         flex-direction: column;
         min-height: 150px;
         padding: 14px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--bs-border-color);
         border-radius: 10px;
-        background: #fff;
+        background: var(--bs-body-bg);
         color: inherit;
         text-decoration: none;
         transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
     .curriculum-flow-card:hover {
         transform: translateY(-3px);
-        border-color: #0a5f9e;
-        box-shadow: 0 8px 20px rgba(10, 95, 158, .12);
+        border-color: var(--bs-primary);
+        box-shadow: 0 8px 20px rgba(var(--bs-primary-rgb), .18);
         color: inherit;
     }
     .curriculum-flow-top {
@@ -74,14 +75,14 @@
         width: 28px;
         height: 28px;
         border-radius: 50%;
-        background: #0a5f9e;
+        background: var(--bs-primary);
         color: #fff;
         font-size: 12px;
         font-weight: 700;
         flex: 0 0 auto;
     }
     .curriculum-flow-icon {
-        color: #0a5f9e;
+        color: var(--bs-primary);
         font-size: 20px;
         line-height: 1;
     }
@@ -92,13 +93,13 @@
         margin-bottom: 4px;
     }
     .curriculum-flow-desc {
-        color: #6b7280;
+        color: var(--bs-secondary-color);
         font-size: 11px;
         line-height: 1.35;
         flex: 1;
     }
     .curriculum-flow-open {
-        color: #0a5f9e;
+        color: var(--bs-primary);
         font-size: 11px;
         font-weight: 600;
         margin-top: 10px;
@@ -109,8 +110,8 @@
         top: 50%;
         transform: translateY(-50%);
         z-index: 2;
-        color: #94a3b8;
-        background: #fff;
+        color: var(--bs-secondary-color);
+        background: var(--bs-body-bg);
         font-size: 15px;
     }
     @media (max-width: 1199.98px) {

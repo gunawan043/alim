@@ -56,7 +56,12 @@ class StockOpnameWorkflow
             $assetIds
         ) {
             $session = StockOpnameSession::create([
-                'work_unit_id' => $workUnitIds ? json_encode($workUnitIds) : null,
+                // Kolom work_unit_id hanya menampung satu UUID; bila lebih dari
+                // satu satuan kerja dipilih, simpan null dan andalkan filter
+                // queryAssetsByWorkUnits untuk pengisian item.
+                'work_unit_id' => is_array($workUnitIds) && count($workUnitIds) === 1
+                    ? (string) reset($workUnitIds)
+                    : null,
                 'school_id' => $creator->school_id,
                 'title' => $title,
                 'description' => $description,
@@ -82,7 +87,7 @@ class StockOpnameWorkflow
                         'expected_room_id' => $asset->room_id ?? null,
                         'observed_status' => null,
                         'observed_room_id' => null,
-                        'condition_observed' => null,
+                        'observed_condition' => null,
                     ]
                 );
             }
@@ -151,7 +156,7 @@ class StockOpnameWorkflow
         ) {
             $item->update([
                 'observed_status' => $observedStatus,
-                'condition_observed' => $conditionObserved,
+                'observed_condition' => $conditionObserved,
                 'observed_room_id' => $observedRoomId,
                 'notes' => $notes,
                 'scanned_at' => now(),
@@ -195,7 +200,15 @@ class StockOpnameWorkflow
                 'closed_by' => $closer->id,
             ]);
 
-            StockOpnameCompleted::dispatch($session, $closer);
+            $varianceCount = $session->items()
+                ->whereIn('observed_status', [
+                    StockOpnameSession::OBSERVATION_MISSING,
+                    StockOpnameSession::OBSERVATION_DAMAGED,
+                    StockOpnameSession::OBSERVATION_MOVED,
+                ])
+                ->count();
+
+            StockOpnameCompleted::dispatch($session, $closer, $varianceCount);
 
             // Log an aggregate event for all assets that were found/damaged but not closed.
             $discrepancies = $session->items()

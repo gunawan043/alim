@@ -93,10 +93,16 @@
                     Master slot sekolah: <strong>{{ $masterSlotCount }} slot</strong> (jam & istirahat mengikuti <code>class_schedule_slots</code>).
                     <a href="{{ route('user.jam-pelajaran.index', ['userId' => $userId]) }}" class="alert-link">Atur jam pelajaran</a>.
                 @else
-                    Sekolah belum memiliki master slot. Atur jam pelajaran terlebih dahulu di
-                    <a href="{{ route('user.jam-pelajaran.index', ['userId' => $userId]) }}" class="alert-link">menu Jam Pelajaran</a>
-                    — generator memakai grid default: mulai 07:00, 45 menit per jam, istirahat 30 menit setelah jam ke-4.
+                    Sekolah belum memiliki master slot. <strong>Generator tidak akan membuat jadwal</strong>
+                    sampai jam pelajaran diatur di
+                    <a href="{{ route('user.jam-pelajaran.index', ['userId' => $userId]) }}" class="alert-link">menu Jam Pelajaran</a>.
                 @endif
+                <span class="d-block mt-1">
+                    <i class="ri-user-settings-line me-1"></i>
+                    Batasi hari/jam guru di
+                    <a href="{{ route('user.jadwal-kbm.availability', ['userId' => $userId]) }}" class="alert-link">Ketersediaan Guru</a>
+                    sebelum generate.
+                </span>
             </div>
 
             @if(($readyCount ?? 0) === 0)
@@ -180,7 +186,7 @@
                         <input class="form-check-input" type="checkbox" role="switch" name="overwrite" value="1" id="overwrite">
                         <label class="form-check-label" for="overwrite">Timpa jadwal yang sudah ada</label>
                     </div>
-                    <button type="submit" class="btn btn-primary" {{ (! $selectedAy || $studyGroups->isEmpty()) ? 'disabled' : '' }}>
+                    <button type="submit" class="btn btn-primary" {{ (! $selectedAy || $studyGroups->isEmpty() || $masterSlotCount === 0) ? 'disabled' : '' }}>
                         <i class="ri-magic-line me-1"></i>Generate Jadwal Sekolah
                     </button>
                 </div>

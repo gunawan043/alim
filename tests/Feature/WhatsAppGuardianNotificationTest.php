@@ -2,17 +2,24 @@
 
 namespace Tests\Feature;
 
+use App\Models\AcademicYear;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryReward;
+use App\Models\DormitoryVisitLog;
+use App\Models\Kaldik;
+use App\Models\NotificationUniversal;
 use App\Models\School;
 use App\Models\Student;
+use App\Models\StudentAchievement;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\WaliSantri;
 use App\Services\DormitoryService;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\Notifications\WhatsAppGatewayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -150,14 +157,13 @@ class WhatsAppGuardianNotificationTest extends TestCase
         $this->assertNull($gateway->normalizePhone(''));
     }
 
-
     public function test_footer_branding_alim_dapat_ditambahkan(): void
     {
         config()->set('whatsapp.delivery_mode', 'central');
         config()->set('whatsapp.central_number', '0811-2222-3333');
         Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
 
-        \App\Models\SystemSetting::updateOrCreate(
+        SystemSetting::updateOrCreate(
             ['key' => 'wa_brand_footer'],
             ['value' => 'ALIM — https://alim.sch.id', 'group' => 'notification', 'type' => 'string']
         );
@@ -207,7 +213,7 @@ class WhatsAppGuardianNotificationTest extends TestCase
             'title' => 'Santri Keluar Asrama — Santri Notif',
         ]);
 
-        $notification = \App\Models\NotificationUniversal::where('user_id', $waliUser->id)->firstOrFail();
+        $notification = NotificationUniversal::where('user_id', $waliUser->id)->firstOrFail();
         $this->assertSame($this->student->id, $notification->data['student_id']);
         $this->assertSame($this->student->name, $notification->data['student_name']);
     }
@@ -218,10 +224,10 @@ class WhatsAppGuardianNotificationTest extends TestCase
         config()->set('whatsapp.central_number', '0811-2222-3333');
         Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
 
-        $reward = new \App\Models\DormitoryReward([
+        $reward = new DormitoryReward([
             'title' => 'Juara Tahfidz',
-            'category' => \App\Models\DormitoryReward::CAT_TAHFIDZ,
-            'level' => \App\Models\DormitoryReward::LEVEL_UGGALAN,
+            'category' => DormitoryReward::CAT_TAHFIDZ,
+            'level' => DormitoryReward::LEVEL_UGGALAN,
             'points' => 25,
             'description' => 'Hafalan 5 juz',
         ]);
@@ -233,11 +239,13 @@ class WhatsAppGuardianNotificationTest extends TestCase
         Http::assertSent(function ($request) {
             return $request['target'] === '6281122223333'
                 && str_contains($request['message'], 'Juara Tahfidz')
-                && str_contains($request['message'], 'Poin: +25');
+                && str_contains($request['message'], 'Poin: +25')
+                && str_contains($request['message'], 'Alhamdulillahilladzi bini\'matihi tatimmush sholihaat')
+                && ! str_contains($request['message'], 'Selamat');
         });
 
         // Toggle UI wa_event_achievement harus benar-benar mematikan event.
-        \App\Models\SystemSetting::updateOrCreate(
+        SystemSetting::updateOrCreate(
             ['key' => 'wa_event_achievement'],
             ['value' => '0', 'group' => 'notification', 'type' => 'boolean']
         );
@@ -246,13 +254,74 @@ class WhatsAppGuardianNotificationTest extends TestCase
         $this->assertFalse(app(GuardianWhatsAppNotifier::class)->notifyReward($reward));
     }
 
+    public function test_notifikasi_prestasi_dikirim_langsung_ke_wali_sebelum_approval(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'central');
+        config()->set('whatsapp.central_number', '0811-2222-3333');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $achievement = new StudentAchievement([
+            'event_name' => 'Olimpiade Matematika Provinsi',
+            'level' => 'provinsi',
+            'position' => 'juara_1',
+            'event_date' => now()->toDateString(),
+        ]);
+        $achievement->id = (string) Str::uuid();
+        $achievement->setRelation('student', $this->student);
+
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyAchievement($achievement));
+
+        Http::assertSent(function ($request) {
+            return $request['target'] === '6281122223333'
+                && str_contains($request['message'], 'Alhamdulillahilladzi bini\'matihi tatimmush sholihaat')
+                && str_contains($request['message'], 'Olimpiade Matematika Provinsi')
+                && ! str_contains($request['message'], 'Selamat');
+        });
+    }
+
+    public function test_flag_notify_wali_saat_pencatatan_prestasi_mengirim_wa(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'central');
+        config()->set('whatsapp.central_number', '0811-2222-3333');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $year = AcademicYear::create([
+            'name' => '2026/2027',
+            'semester' => 'ganjil',
+            'is_active' => true,
+            'start_date' => '2026-07-01',
+            'end_date' => '2027-06-30',
+        ]);
+        $operator = User::factory()->create(['is_active' => true]);
+
+        $achievement = new StudentAchievement([
+            'student_id' => $this->student->id,
+            'school_id' => $this->student->school_id,
+            'academic_year_id' => $year->id,
+            'achievement_type' => 'akademik',
+            'event_name' => 'Lomba Cerdas Cermat Provinsi',
+            'level' => 'provinsi',
+            'position' => 'juara_2',
+            'event_date' => now()->toDateString(),
+            'created_by' => $operator->id,
+        ]);
+        $achievement->notifyGuardianOnAchievement = true;
+        $achievement->save();
+
+        Http::assertSent(function ($request) {
+            return $request['target'] === '6281122223333'
+                && str_contains($request['message'], 'Lomba Cerdas Cermat Provinsi')
+                && str_contains($request['message'], 'Alhamdulillahilladzi bini\'matihi tatimmush sholihaat');
+        });
+    }
+
     public function test_toggle_wa_event_picked_up_mematikan_notifikasi(): void
     {
         config()->set('whatsapp.delivery_mode', 'central');
         config()->set('whatsapp.central_number', '0811-2222-3333');
         Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
 
-        \App\Models\SystemSetting::updateOrCreate(
+        SystemSetting::updateOrCreate(
             ['key' => 'wa_event_picked_up'],
             ['value' => '0', 'group' => 'notification', 'type' => 'boolean']
         );
@@ -300,7 +369,7 @@ class WhatsAppGuardianNotificationTest extends TestCase
         config()->set('whatsapp.delivery_mode', 'central');
         config()->set('whatsapp.central_number', '081122223333');
 
-        \App\Models\SystemSetting::updateOrCreate(
+        SystemSetting::updateOrCreate(
             ['key' => 'wa.template.picked_up'],
             ['value' => 'Kustom: {santri} dijemput pukul {waktu}.', 'group' => 'whatsapp', 'type' => 'string']
         );
@@ -327,7 +396,7 @@ class WhatsAppGuardianNotificationTest extends TestCase
         $this->assertSame('#EF4444', kaldik_default_color('libur'));
         $this->assertSame('#EF4444', kaldik_legend()['libur']['color']);
 
-        \App\Models\SystemSetting::updateOrCreate(
+        SystemSetting::updateOrCreate(
             ['key' => 'kaldik_legend_libur'],
             ['value' => '#DC2626', 'group' => 'kaldik', 'type' => 'string']
         );
@@ -335,10 +404,10 @@ class WhatsAppGuardianNotificationTest extends TestCase
         $this->assertSame('#DC2626', kaldik_default_color('libur'));
 
         // Pemberitahuan libur terkirim ke nomor admin ALIM.
-        $kaldik = new \App\Models\Kaldik;
+        $kaldik = new Kaldik;
         $kaldik->id = (string) Str::uuid();
         $kaldik->name = 'Libur Semester';
-        $kaldik->type = \App\Models\Kaldik::TYPE_LIBUR;
+        $kaldik->type = Kaldik::TYPE_LIBUR;
         $kaldik->start_date = now();
 
         $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyHoliday($kaldik));
@@ -348,7 +417,6 @@ class WhatsAppGuardianNotificationTest extends TestCase
         });
     }
 
-
     public function test_notifikasi_kunjungan_dan_pengingat_kembali(): void
     {
         config()->set('whatsapp.delivery_mode', 'central');
@@ -356,7 +424,7 @@ class WhatsAppGuardianNotificationTest extends TestCase
         Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
 
         // Kunjungan disetujui → wali diberi tahu.
-        $visit = new \App\Models\DormitoryVisitLog([
+        $visit = new DormitoryVisitLog([
             'visitor_name' => 'Ayah Santri',
             'expected_arrival_datetime' => now()->addDay(),
         ]);

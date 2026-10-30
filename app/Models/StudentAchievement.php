@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Services\Dormitory\DormitoryRewardRequestService;
+use App\Services\DormitoryService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -12,6 +16,12 @@ class StudentAchievement extends Model
     protected $keyType = 'string';
 
     public $incrementing = false;
+
+    /** Transient flag: kirim notifikasi pengajuan ke asrama saat prestasi dibuat. */
+    public bool $notifyDormitoryReward = true;
+
+    /** Transient flag: kirim WhatsApp prestasi ke wali saat prestasi dibuat. */
+    public bool $notifyGuardianOnAchievement = false;
 
     protected $fillable = [
         'student_id',
@@ -47,6 +57,45 @@ class StudentAchievement extends Model
         parent::boot();
 
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+
+        static::created(function (self $model) {
+            try {
+                app(DormitoryRewardRequestService::class)
+                    ->createFromAchievement($model, $model->notifyDormitoryReward);
+            } catch (\Throwable $e) {
+                Log::warning('Pengajuan penghargaan asrama gagal dibuat: '.$e->getMessage());
+            }
+
+            if ($model->notifyGuardianOnAchievement) {
+                app(DormitoryService::class)->notifyMahromOnAchievement($model);
+            }
+        });
+
+        static::updated(function (self $model) {
+            $relevant = [
+                'student_id', 'school_id', 'academic_year_id', 'achievement_type',
+                'hafalan_category', 'event_name', 'organizer', 'level', 'position',
+                'position_detail', 'event_date', 'event_location', 'notes',
+            ];
+
+            if ($model->wasChanged($relevant)) {
+                try {
+                    app(DormitoryRewardRequestService::class)
+                        ->syncFromAchievement($model);
+                } catch (\Throwable $e) {
+                    Log::warning('Sinkronisasi pengajuan penghargaan asrama gagal: '.$e->getMessage());
+                }
+            }
+        });
+
+        static::deleting(function (self $model) {
+            try {
+                app(DormitoryRewardRequestService::class)
+                    ->handleAchievementDeleting($model);
+            } catch (\Throwable $e) {
+                Log::warning('Pembatalan pengajuan penghargaan asrama gagal: '.$e->getMessage());
+            }
+        });
 
         static::deleted(function ($model) {
             if ($model->certificate_path && Storage::exists($model->certificate_path)) {
@@ -109,7 +158,22 @@ class StudentAchievement extends Model
 
     public function getCertificateUrlAttribute(): ?string
     {
-        return $this->certificate_path ? asset('storage/'.$this->certificate_path) : null;
+        if (! $this->certificate_path) {
+            return null;
+        }
+
+        if (Storage::disk('public')->exists($this->certificate_path)) {
+            return asset('storage/'.$this->certificate_path);
+        }
+
+        if (auth()->check()) {
+            return route('user.student-achievement.certificate', [
+                'userId' => auth()->id(),
+                'id' => $this->id,
+            ]);
+        }
+
+        return null;
     }
 
     public function getPhotoUrlAttribute(): ?string
@@ -137,6 +201,11 @@ class StudentAchievement extends Model
     public function coach(): BelongsTo
     {
         return $this->belongsTo(User::class, 'coach_id');
+    }
+
+    public function dormitoryRewardRequest(): HasOne
+    {
+        return $this->hasOne(DormitoryRewardRequest::class, 'student_achievement_id');
     }
 
     public function verifiedByUser(): BelongsTo

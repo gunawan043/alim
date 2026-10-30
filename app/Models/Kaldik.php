@@ -33,8 +33,10 @@ class Kaldik extends Model
         'start_date',
         'end_date',
         'description',
+        'source_type',
+        'source_id',
         'is_active',
-    
+
         'owner_user_id',
         'visibility',
     ];

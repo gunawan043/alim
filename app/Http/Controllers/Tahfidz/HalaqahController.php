@@ -19,6 +19,7 @@ use App\Models\TahfidzStudentTarget;
 use App\Models\User;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
+use App\Services\TahfidzTargetService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -27,6 +28,7 @@ class HalaqahController extends Controller
     public function __construct(
         private readonly TahfidzAccess $access,
         private readonly TahfidzProgressService $progress,
+        private readonly TahfidzTargetService $targets,
     ) {}
 
     public function index(Request $request, string $userId)
@@ -256,6 +258,20 @@ class HalaqahController extends Controller
         $member->update(['status' => 'pindah_halaqah', 'leave_date' => now()->toDateString()]);
 
         return back()->with('success', 'Santri dikeluarkan dari halaqah.');
+    }
+
+    public function applyTargets(Request $request, string $userId, string $id)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeTarget($request, $group);
+
+        $count = $this->targets->applyToGroup($group, $request->user()?->id);
+
+        if ($count === 0) {
+            return back()->with('error', 'Target muqorror belum tersedia untuk jenjang/halaqah ini.');
+        }
+
+        return back()->with('success', $count.' target santri berhasil diterapkan dari muqorror.');
     }
 
     public function storeTarget(Request $request, string $userId, string $id)

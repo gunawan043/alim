@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Kurikulum;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\AdditionalTaskType;
 use App\Models\OtherTeacherTask;
 use App\Models\School;
 use App\Models\Subject;
@@ -164,7 +165,9 @@ class SubjectGroupController extends Controller
             return back()->with('error', 'Tidak ada tahun ajaran aktif.');
         }
 
-        DB::transaction(function () use ($group, $schoolId, $data, $activeYear) {
+        $taskType = AdditionalTaskType::resolve(null, $group->coordinator_task_name);
+
+        DB::transaction(function () use ($group, $schoolId, $data, $activeYear, $taskType) {
             // Kebijakan: SATU koordinator aktif per rumpun + satuan pendidikan +
             // tahun ajaran. Penetapan baru menggantikan koordinator sebelumnya.
             OtherTeacherTask::query()
@@ -178,6 +181,7 @@ class SubjectGroupController extends Controller
                 'teacher_id' => $data['user_id'],
                 'school_id' => $schoolId,
                 'academic_year_id' => $activeYear->id,
+                'additional_task_type_id' => $taskType?->id,
                 'task_name' => $group->coordinator_task_name,
                 'task_code' => $group->code,
                 'weekly_hours' => 0,

@@ -13,6 +13,7 @@ use App\Models\StudentClassHistory;
 use App\Models\StudentPromotion;
 use App\Models\StudentPromotionDetail;
 use App\Models\StudyGroup;
+use App\Services\StudentExitLetterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -324,11 +325,15 @@ class StudentPromotionController extends Controller
                     }
                 }
 
-                // Mutasi keluar
+                // Mutasi keluar — keluar karena pindah WAJIB punya surat mutasi,
+                // jadi suratnya dibuat otomatis di sini (tinggal dilengkapi nomornya).
                 if ($detail->action === 'mutate_out') {
+                    $letter = app(StudentExitLetterService::class)
+                        ->createForPromotion($student, $promotionDate->toDateString(), auth()->id());
+
                     StudentMutatedOut::dispatch(
                         $student,
-                        $promotion,
+                        $letter ?? $promotion,
                         StudentMutatedOut::TYPE_MUTATION,
                         $promotionDate->toDateString(),
                         auth()->id(),

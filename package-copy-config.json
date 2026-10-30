@@ -1,6 +1,5 @@
 {
     "packagesToCopy": [
-        "@ckeditor/ckeditor5-build-classic",
         "@simonwep/pickr",
         "@tarekraafat/autocomplete.js",
         "aos",
@@ -33,19 +32,16 @@
         "list.js",
         "list.pagination.js",
         "masonry-layout",
-        "moment",
         "multi.js",
         "node-waves",
         "nouislider",
         "particles.js",
         "prismjs",
-        "quill",
         "rater-js",
         "shepherd.js",
         "simplebar",
         "sortablejs",
         "sweetalert2",
-        "swiper",
         "toastify-js",
         "wnumb"
     ]

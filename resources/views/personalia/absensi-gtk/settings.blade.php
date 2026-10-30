@@ -4,7 +4,7 @@
 
 @push('css')
 <style>
-.setting-item{border-left:3px solid #64748b;transition:border-color .2s ease}
+.setting-item{border-left:3px solid var(--bs-secondary-color);transition:border-color .2s ease}
 .setting-item:hover{border-left-color:#2563eb}
 </style>
 @endpush
@@ -18,13 +18,13 @@
     @slot('title') Pengaturan Absensi GTK @endslot
 @endcomponent
 
-<div class="page-header-card d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4" style="background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);border:1px solid #cbd5e1;padding:1.25rem 1.5rem;border-radius:.625rem">
+<div class="page-header-card d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4" style="background:linear-gradient(135deg,var(--bs-tertiary-bg) 0%,var(--bs-secondary-bg) 100%);border:1px solid var(--bs-border-color);padding:1.25rem 1.5rem;border-radius:.625rem">
     <div class="d-flex align-items-center gap-3">
-        <div style="width:48px;height:48px;background:#64748b18;color:#475569;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <div style="width:48px;height:48px;background:var(--bs-secondary-bg);color:var(--bs-secondary-color);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
             <i class="ri-settings-3-line fs-4"></i>
         </div>
         <div>
-            <h4 class="fw-bold text-dark mb-1" style="font-size:1.1rem">Pengaturan Absensi GTK</h4>
+            <h4 class="fw-bold mb-1" style="font-size:1.1rem;color:var(--bs-body-color)">Pengaturan Absensi GTK</h4>
             <p class="mb-0 text-muted" style="font-size:.8rem">Konfigurasi aturan dan parameter absensi GTK</p>
         </div>
     </div>

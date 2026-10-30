@@ -10,7 +10,7 @@
             'session_type' => $sessionType,
             'month' => $month,
         ] : ['userId' => $userId];
-        $statusColors = ['hadir' => 'primary', 'izin' => 'success', 'sakit' => 'warning', 'alpa' => 'danger'];
+        $statusColors = ['hadir' => 'primary', 'izin' => 'success', 'sakit' => 'warning', 'alpa' => 'danger', 'belum_setor' => 'secondary', 'belum_siap' => 'dark'];
         $sessionLabels = ['setoran' => 'Setoran', 'murajaah' => 'Murajaah', 'tasmi' => 'Tasmi’', 'evaluasi' => 'Evaluasi', 'tikror' => 'Tikror'];
     @endphp
     @include('tahfidz._styles')
@@ -108,6 +108,8 @@
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="alpa">Alpa</option>
+                                <option value="belum_setor">Belum setor</option>
+                                <option value="belum_siap">Belum siap setoran</option>
                             </select>
                         </div>
                         <div class="col-md-1 d-flex align-items-end">
@@ -139,6 +141,8 @@
                             <span class="badge bg-success-subtle text-success">I <span id="count-izin">{{ $stats['izin'] }}</span></span>
                             <span class="badge bg-warning-subtle text-warning">S <span id="count-sakit">{{ $stats['sakit'] }}</span></span>
                             <span class="badge bg-danger-subtle text-danger">A <span id="count-alpa">{{ $stats['alpa'] }}</span></span>
+                            <span class="badge bg-secondary-subtle text-secondary">B <span id="count-belum_setor">{{ $stats['belum_setor'] }}</span></span>
+                            <span class="badge bg-dark-subtle text-dark">N <span id="count-belum_siap">{{ $stats['belum_siap'] }}</span></span>
                         </span>
                     </div>
 
@@ -156,7 +160,10 @@
                                 @forelse($members as $index => $member)
                                     @php
                                         $record = $attendance->get($member->student_id);
-                                        $currentStatus = $record?->status ?? 'hadir';
+                                        $presenceRow = $presence->get((string) $member->student_id);
+                                        $currentStatus = $record?->status
+                                            ?? ($presenceRow['attendance_status'] ?? null)
+                                            ?? 'belum_setor';
                                     @endphp
                                     <tr class="attendance-row" data-sid="{{ $member->student_id }}" data-name="{{ strtolower($member->student?->name ?? '') }}" data-status="{{ $currentStatus }}">
                                         <td class="text-center text-muted">{{ $index + 1 }}</td>
@@ -167,11 +174,14 @@
                                                     <span class="avatar-title rounded-circle bg-primary text-white">{{ strtoupper(mb_substr($member->student?->name ?? '?', 0, 1)) }}</span>
                                                 </div>
                                                 <span class="fw-medium">{{ $member->student?->name ?? '—' }}</span>
+                                                @if($presenceRow ?? null)
+                                                    <span class="badge bg-{{ $presenceRow['color'] }}-subtle text-{{ $presenceRow['color'] }}" style="font-size:.62rem">{{ $presenceRow['label'] }}</span>
+                                                @endif
                                             </div>
                                         </td>
                                         <td>
                                             <div class="status-group d-inline-flex gap-2">
-                                                @foreach(['hadir' => 'H', 'izin' => 'I', 'sakit' => 'S', 'alpa' => 'A'] as $status => $letter)
+                                                @foreach(['hadir' => 'H', 'izin' => 'I', 'sakit' => 'S', 'alpa' => 'A', 'belum_setor' => 'B', 'belum_siap' => 'N'] as $status => $letter)
                                                     @php $color = $statusColors[$status]; @endphp
                                                     <button type="button"
                                                             class="status-btn btn btn-sm btn-icon rounded-circle {{ $currentStatus === $status ? 'btn-'.$color.' on' : 'btn-soft-'.$color }}"
@@ -242,6 +252,8 @@
                                     <th class="text-center">Izin</th>
                                     <th class="text-center">Sakit</th>
                                     <th class="text-center">Alpa</th>
+                                    <th class="text-center">Belum Setor</th>
+                                    <th class="text-center">Belum Siap</th>
                                     <th class="text-center">Total</th>
                                     <th class="text-center">Aksi</th>
                                 </tr>
@@ -256,13 +268,15 @@
                                         <td class="text-center"><span class="badge bg-success-subtle text-success">{{ $meeting->izin }}</span></td>
                                         <td class="text-center"><span class="badge bg-warning-subtle text-warning">{{ $meeting->sakit }}</span></td>
                                         <td class="text-center"><span class="badge bg-danger-subtle text-danger">{{ $meeting->alpa }}</span></td>
+                                        <td class="text-center"><span class="badge bg-secondary-subtle text-secondary">{{ $meeting->belum_setor }}</span></td>
+                                        <td class="text-center"><span class="badge bg-dark-subtle text-dark">{{ $meeting->belum_siap }}</span></td>
                                         <td class="text-center fw-medium">{{ $meeting->total }}</td>
                                         <td class="text-center">
                                             <a href="{{ route('user.tahfidz.attendance.index', array_merge($baseParams, ['tab' => 'input', 'date' => $meeting->date->toDateString()])) }}" class="btn btn-sm btn-outline-primary"><i class="ri-eye-line me-1"></i>Lihat</a>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="9" class="text-center text-muted py-5"><i class="ri-inbox-line fs-3 d-block mb-2"></i>Belum ada riwayat absensi untuk sesi ini.</td></tr>
+                                    <tr><td colspan="11" class="text-center text-muted py-5"><i class="ri-inbox-line fs-3 d-block mb-2"></i>Belum ada riwayat absensi untuk sesi ini.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -314,7 +328,7 @@
                                                 <br><small class="text-muted">{{ $row->student?->nis }}</small>
                                             </td>
                                             @foreach($row->per_meeting as $meeting)
-                                                <td class="text-center small {{ match($meeting['raw']) { 'hadir' => 'text-primary', 'izin' => 'text-success', 'sakit' => 'text-warning', 'alpa' => 'text-danger', default => 'text-muted' } }}" title="{{ $meeting['raw'] ? ucfirst($meeting['raw']) : 'Belum presensi' }}">{{ $meeting['letter'] }}</td>
+                                                <td class="text-center small {{ match($meeting['raw']) { 'hadir' => 'text-primary', 'izin' => 'text-success', 'sakit' => 'text-warning', 'alpa' => 'text-danger', 'belum_setor' => 'text-secondary', 'belum_siap' => 'text-dark', default => 'text-muted' } }}" title="{{ $meeting['raw'] ? ucfirst($meeting['raw']) : 'Belum presensi' }}">{{ $meeting['letter'] }}</td>
                                             @endforeach
                                             <td class="text-center fw-semibold">{{ $row->hadir }}/{{ $row->total_meetings }}</td>
                                             <td class="text-center fw-semibold {{ $row->percentage >= 90 ? 'text-success' : ($row->percentage >= 70 ? 'text-warning' : 'text-danger') }}">{{ number_format($row->percentage, 1) }}%</td>
@@ -326,10 +340,10 @@
                             </table>
                         </div>
                         <div class="row g-2 mt-1">
-                            @foreach([['Hadir', $recapTotals['hadir'], 'primary'], ['Izin', $recapTotals['izin'], 'success'], ['Sakit', $recapTotals['sakit'], 'warning'], ['Alpa', $recapTotals['alpa'], 'danger'], ['Pertemuan', $recapTotals['meetings'], 'secondary']] as [$label, $value, $color])
+                            @foreach([['Hadir', $recapTotals['hadir'], 'primary'], ['Izin', $recapTotals['izin'], 'success'], ['Sakit', $recapTotals['sakit'], 'warning'], ['Alpa', $recapTotals['alpa'], 'danger'], ['Belum Setor', $recapTotals['belum_setor'], 'secondary'], ['Belum Siap', $recapTotals['belum_siap'], 'dark'], ['Pertemuan', $recapTotals['meetings'], 'secondary']] as [$label, $value, $color])
                                 <div class="col-md-2 col-6"><div class="border rounded text-center py-2"><strong class="text-{{ $color }}">{{ $value }}</strong><small class="text-muted d-block">{{ $label }}</small></div></div>
                             @endforeach
-                            <div class="col-md-2 col-6 d-flex align-items-center justify-content-center text-muted small">H = Hadir · I = Izin · S = Sakit · A = Alpa · – = Belum</div>
+                            <div class="col-md-2 col-6 d-flex align-items-center justify-content-center text-muted small">H = Hadir · I = Izin · S = Sakit · A = Alpa · B = Belum Setor · N = Belum Siap · – = Belum</div>
                         </div>
                     @else
                         <div class="text-center text-muted py-5"><i class="ri-bar-chart-box-line fs-1 d-block mb-2"></i>Belum ada pertemuan tercatat pada bulan ini.</div>
@@ -357,7 +371,7 @@
             }
 
             function attendanceCounts() {
-                const counts = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+                const counts = { hadir: 0, izin: 0, sakit: 0, alpa: 0, belum_setor: 0, belum_siap: 0 };
                 document.querySelectorAll('#attendanceList .attendance-row').forEach(function (row) {
                     const input = document.getElementById('status-' + row.dataset.sid);
                     if (input && counts[input.value] !== undefined) counts[input.value]++;
@@ -377,7 +391,7 @@
                 row.dataset.status = status;
                 row.querySelectorAll('.status-btn').forEach(function (btn) {
                     const color = btn.dataset.color;
-                    btn.classList.remove('btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-soft-primary', 'btn-soft-success', 'btn-soft-warning', 'btn-soft-danger');
+                    btn.classList.remove('btn-primary', 'btn-success', 'btn-warning', 'btn-danger', 'btn-secondary', 'btn-dark', 'btn-soft-primary', 'btn-soft-success', 'btn-soft-warning', 'btn-soft-danger', 'btn-soft-secondary', 'btn-soft-dark');
                     btn.classList.add(btn === button ? 'btn-' + color : 'btn-soft-' + color);
                 });
                 if (wrap) wrap.classList.toggle('d-none', status === 'hadir');

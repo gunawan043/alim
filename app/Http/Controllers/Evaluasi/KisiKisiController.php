@@ -9,9 +9,13 @@ use App\Models\BankSoal;
 use App\Models\GradeLevel;
 use App\Models\KisiKisiItem;
 use App\Models\KisiKisiSoal;
+use App\Models\School;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Models\User;
+use App\Services\KurikulumAccess;
+use App\Services\Pdf\DocumentPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -39,7 +43,7 @@ class KisiKisiController extends Controller
         $activeAyId = $activeYear?->id;
         $activeSemester = $activeYear?->semester ?: 'ganjil';
 
-        $isPrivileged = app(\App\Services\KurikulumAccess::class)->canAccessAllBankSoal($user);
+        $isPrivileged = app(KurikulumAccess::class)->canAccessAllBankSoal($user);
 
         $subjectIds = null;   // null = semua mapel sekolah
         $gradeLevelIds = null;
@@ -122,7 +126,7 @@ class KisiKisiController extends Controller
 
         $user = $request->user();
 
-        if (app(\App\Services\KurikulumAccess::class)->isKurikulumTeam($user)) {
+        if (app(KurikulumAccess::class)->isKurikulumTeam($user)) {
             return;
         }
 
@@ -200,7 +204,7 @@ class KisiKisiController extends Controller
 
         return view('evalusi.kisi-kisi.create', compact(
             'subjects', 'gradeLevels', 'years', 'banks', 'jenisUjian',
-            'tps', 'defaultAyId', 'defaultSemester', 'isPrivileged'
+            'tps', 'defaultAyId', 'defaultSemester', 'isPrivileged', 'userId'
         ));
     }
 
@@ -281,10 +285,10 @@ class KisiKisiController extends Controller
         // Cetak = akses baca.
         $this->authorizeKisi($request, $kisi, false);
 
-        $school = \App\Models\School::find($kisi->school_id);
-        $penyusun = \App\Models\User::find($kisi->created_by)?->name;
+        $school = School::find($kisi->school_id);
+        $penyusun = User::find($kisi->created_by)?->name;
 
-        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
+        return app(DocumentPdfService::class)->fromView(
             'evalusi.kisi-kisi.cetak',
             compact('kisi', 'school', 'userId', 'penyusun'),
             'Kisi-Kisi-'.$kisi->judul,
@@ -319,7 +323,7 @@ class KisiKisiController extends Controller
 
         return view('evalusi.kisi-kisi.edit', compact(
             'kisi', 'subjects', 'gradeLevels', 'years', 'banks', 'jenisUjian',
-            'tps', 'defaultAyId', 'defaultSemester', 'isPrivileged'
+            'tps', 'defaultAyId', 'defaultSemester', 'isPrivileged', 'userId'
         ));
     }
 
@@ -351,7 +355,7 @@ class KisiKisiController extends Controller
         return DB::transaction(function () use ($validated, $id, $request) {
             $kisi = KisiKisiSoal::findOrFail($id);
 
-        $this->authorizeKisi($request, $kisi);
+            $this->authorizeKisi($request, $kisi);
             $kisi->fill(array_filter($validated, fn ($key) => ! in_array($key, ['items']), ARRAY_FILTER_USE_KEY));
             $kisi->save();
 

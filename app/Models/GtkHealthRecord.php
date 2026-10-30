@@ -57,6 +57,8 @@ class GtkHealthRecord extends Model
         'lifestyle',
         'notes',
         'examined_by',
+        'recorded_by',
+        'source',
         'medical_history_id',
     ];
 

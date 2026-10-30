@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 $schoolId = $this->getUserSchoolId($user);
 
 $bulanIni = DB::table('students')
+    ->whereNull('deleted_at')
     ->where('status', 'active')
     ->whereYear('created_at', now()->year)
     ->whereMonth('created_at', now()->month)
@@ -12,6 +13,7 @@ $bulanIni = DB::table('students')
     ->count();
 
 $bulanLalu = DB::table('students')
+    ->whereNull('deleted_at')
     ->where('status', 'active')
     ->whereYear('created_at', now()->subMonth()->year)
     ->whereMonth('created_at', now()->subMonth()->month)

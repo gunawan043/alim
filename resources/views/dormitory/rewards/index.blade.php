@@ -165,7 +165,17 @@
                                             <div class="fw-semibold">{{ $reward->student->name ?? '—' }}</div>
                                             <small class="text-muted">{{ $reward->student->nisn ?? '' }}</small>
                                         </td>
-                                        <td>{{ $reward->title }}</td>
+                                        <td>
+                                            {{ $reward->title }}
+                                            @if($reward->source_achievement_id)
+                                                <div><small class="badge bg-primary-subtle text-primary">
+                                                    <i class="ri-trophy-line me-1"></i>Dari Prestasi Santri
+                                                </small></div>
+                                                @if($reward->source_deleted_at)
+                                                    <small class="text-danger">Sumber prestasi telah dihapus</small>
+                                                @endif
+                                            @endif
+                                        </td>
                                         <td>
                                             <span class="badge bg-info-subtle text-info">{{ $reward->category_text }}</span>
                                         </td>

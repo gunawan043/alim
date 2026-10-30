@@ -8,24 +8,16 @@ use App\Models\AssetCostSnapshot;
 use App\Models\MaintenanceHistory;
 use App\Models\RepairCostHistory;
 use App\Models\School;
+use App\Models\User;
 use App\Services\Sarpras\TcoService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AssetCostCalculationTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-        DB::beginTransaction();
-    }
-
-    protected function tearDown(): void
-    {
-        DB::rollBack();
-        parent::tearDown();
-    }
+    use RefreshDatabase;
 
     /** @test */
     public function it_sums_purchase_repair_maintenance_sparepart_operational_into_total()
@@ -168,9 +160,14 @@ class AssetCostCalculationTest extends TestCase
     {
         $school = $this->makeSchool();
 
+        $category = $this->makeCategory('Asset Test');
+        $creator = User::factory()->create();
+
         return Asset::create(array_merge([
             'school_id' => $school->id,
-            'work_unit_id' => $this->makeWorkUnitId(),
+            'work_unit_id' => $school->work_unit_id,
+            'asset_category_id' => $category->id,
+            'created_by' => $creator->id,
             'asset_code' => 'AST-'.strtoupper(Str::random(6)),
             'asset_name' => 'Asset '.strtoupper(Str::random(4)),
             'condition' => 'baik',

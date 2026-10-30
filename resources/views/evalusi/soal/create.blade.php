@@ -1,8 +1,11 @@
 @extends('layouts.master')
-@section('title') Input Soal — {{ $bank->nama }} @endsection
+@section('title') {{ ($isEditMode ?? false) ? 'Edit Soal' : 'Input Soal' }} — {{ $bank->nama }} @endsection
 
 @section('content')
     @php
+        $isEditMode = $isEditMode ?? false;
+        $builderQuestions = $builderQuestions ?? [];
+        $formAction = $formAction ?? route('user.soal.store', ['userId' => $userId, 'bankId' => $bank->id]);
         $typeMap = [
             'pilihan_ganda' => 'pg',
             'multiple_choice_complex' => 'pg',
@@ -17,7 +20,7 @@
 
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}">Bank Soal</a> @endslot
-        @slot('title') Input Soal @endslot
+        @slot('title') {{ $isEditMode ? 'Edit Soal' : 'Input Soal' }} @endslot
     @endcomponent
 
     @if($errors->any())
@@ -46,13 +49,49 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('user.soal.store', ['userId' => $userId, 'bankId' => $bank->id]) }}" enctype="multipart/form-data" id="questionBuilder">
+    <div class="alert alert-info d-flex gap-2 align-items-start">
+        <i class="ri-sparkling-line fs-5 mt-1"></i>
+        <div>
+            <div class="fw-semibold">Level Bloom otomatis</div>
+            <div class="small mb-0">
+                C1–C2 = L1 · C3 = L2 · C4–C6 = L3. Kesulitan soal terpisah.
+                @if($isEditMode)
+                    Semua soal dimuat dan bisa disimpan sekaligus.
+                @endif
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-2">
+                <span class="badge bg-primary-subtle text-primary">C1 Mengingat · L1</span>
+                <span class="badge bg-info-subtle text-info">C2 Memahami · L1</span>
+                <span class="badge bg-success-subtle text-success">C3 Menerapkan · L2</span>
+                <span class="badge bg-warning-subtle text-warning">C4 Menganalisis · L3</span>
+                <span class="badge bg-danger-subtle text-danger">C5 Mengevaluasi · L3</span>
+                <span class="badge bg-purple-subtle text-purple">C6 Mencipta · L3</span>
+            </div>
+            <details class="mt-2 small">
+                <summary class="fw-semibold text-primary" style="cursor:pointer">Panduan singkat C1–C6 dan L1–L3</summary>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-6"><strong>C1 — Mengingat (L1)</strong><br>Fakta, istilah, definisi.</div>
+                    <div class="col-md-6"><strong>C2 — Memahami (L1)</strong><br>Menjelaskan, merangkum, memberi contoh.</div>
+                    <div class="col-md-6"><strong>C3 — Menerapkan (L2)</strong><br>Menggunakan konsep/rumus.</div>
+                    <div class="col-md-6"><strong>C4 — Menganalisis (L3)</strong><br>Membandingkan, menghubungkan, pola.</div>
+                    <div class="col-md-6"><strong>C5 — Mengevaluasi (L3)</strong><br>Menilai, mengkritik, menyimpulkan.</div>
+                    <div class="col-md-6"><strong>C6 — Mencipta (L3)</strong><br>Merancang, menyusun, mencipta.</div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data" id="questionBuilder">
         @csrf
 
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
             <div>
-                <h5 class="mb-1">Susunan Soal</h5>
-                <p class="text-muted mb-0 small">Susun soal dan wacana sesuai urutan cetak. Gunakan tombol naik/turun untuk memindahkan blok.</p>
+                <h5 class="mb-1">{{ $isEditMode ? 'Edit Semua Soal' : 'Tambah Soal Baru' }}</h5>
+                <p class="text-muted mb-0 small">
+                    {{ $isEditMode
+                        ? 'Semua soal bank dimuat di sini. Ubah beberapa soal sekaligus, lalu simpan sekali.'
+                        : 'Susun soal dan wacana sesuai urutan cetak. Gunakan tombol naik/turun untuk memindahkan blok.' }}
+                </p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <button type="button" class="btn btn-soft-primary btn-sm" onclick="addQuestion()"><i class="ri-add-line me-1"></i>Tambah Soal</button>
@@ -97,6 +136,7 @@
 const bankType = @json($bankType);
 const isMixed = @json($isMixed);
 const typeOptions = @json($tipeSoal);
+const bloomLevelOptions = @json(\App\Services\Evaluasi\BloomTaxonomyService::levelOptions());
 const tpOptions = @json($tps->map(fn ($tp) => ['id' => $tp->id, 'label' => ($tp->kode_tp ? $tp->kode_tp.' — ' : '').\Str::limit($tp->deskripsi ?? $tp->id, 65)])->values());
 let savedWacanas = @json($wacanas->map(fn ($wacana) => ['id' => $wacana->id, 'label' => ($wacana->judul ?: \Str::limit(strip_tags($wacana->teks), 45)).($wacana->rentang_nomor ? ' · No. '.$wacana->rentang_nomor : '')])->values());
 let questionIndex = 0;
@@ -105,6 +145,78 @@ const wacanaEditors = {};
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
+}
+
+// Preview ringan di browser. Perhitungan final tetap dilakukan server agar
+// indikator TP + pertanyaan + materi ikut dipertimbangkan.
+const bloomVerbs = {
+    C1: ['mengingat','menyebutkan','sebutkan','menyebut','menuliskan','tuliskan','menunjukkan','mendefinisikan','mencocokkan','mengidentifikasi','memilih','menyatakan','mendaftar','mengenali','menandai','apa yang dimaksud','pengertian','istilah'],
+    C2: ['menjelaskan','jelaskan','menguraikan','uraikan','menafsirkan','merangkum','meringkas','mengklasifikasikan','mengelompokkan','memberi contoh','mendeskripsikan','menerangkan','membedakan','mengubah','memperkirakan','mengapa','bagaimana'],
+    C3: ['menghitung','hitunglah','menerapkan','menggunakan','mendemonstrasikan','menyelesaikan','menentukan','mengoperasikan','mengukur','melaksanakan','mempraktikkan','menentukan nilai','berapa'],
+    C4: ['menganalisis','analisis','membandingkan','bandingkan','mengkorelasikan','memeriksa','menguji','memecahkan','mendiagnosis','mengorganisasikan','menemukan pola','menelaah','menghubungkan','menentukan hubungan'],
+    C5: ['mengevaluasi','evaluasi','menilai','mengkritik','menyimpulkan','simpulkan','memutuskan','mempertimbangkan','menimbang','memvalidasi','menjustifikasi','merekomendasikan','menentukan kelayakan'],
+    C6: ['merancang','rancanglah','menyusun','susunlah','membuat','buatlah','menciptakan','mengembangkan','mendesain','memproduksi','mengarang','merumuskan','mengombinasikan','mengkreasikan','menyusun kembali'],
+};
+const bloomMeta = {
+    C1: ['C1 — Mengingat', 'L1 — LOTS', 'primary', 'Mengingat fakta, istilah, definisi, atau informasi yang sudah dipelajari.'],
+    C2: ['C2 — Memahami', 'L1 — LOTS', 'info', 'Menjelaskan, merangkum, memberi contoh.'],
+    C3: ['C3 — Menerapkan', 'L2 — MOTS', 'success', 'Menggunakan konsep/rumus.'],
+    C4: ['C4 — Menganalisis', 'L3 — HOTS', 'warning', 'Membandingkan, menghubungkan, memeriksa, dan menemukan pola atau sebab akibat.'],
+    C5: ['C5 — Mengevaluasi', 'L3 — HOTS', 'danger', 'Menilai, mengkritik, menyimpulkan.'],
+    C6: ['C6 — Mencipta', 'L3 — HOTS', 'purple', 'Merancang, menyusun, mencipta.'],
+};
+
+function bloomResultFromLevel(level) {
+    const code = String(level || '').slice(0, 2);
+    const meta = bloomMeta[code];
+    if (!meta) return null;
+    return {code, label: meta[0], rumpun: meta[1], color: meta[2], description: meta[3], manual: true};
+}
+
+function detectBloomPreview(text) {
+    const normalized = String(text ?? '').toLowerCase().replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!normalized) return null;
+
+    const scores = {C1: 0, C2: 0, C3: 0, C4: 0, C5: 0, C6: 0};
+    Object.entries(bloomVerbs).forEach(([level, verbs]) => {
+        verbs.forEach(verb => { if (normalized.includes(verb)) scores[level] += 1; });
+    });
+    const order = ['C6', 'C5', 'C4', 'C3', 'C2', 'C1'];
+    const found = order.find(level => scores[level] > 0) || null;
+
+    if (!found) {
+        return {code: 'C2', label: bloomMeta.C2[0], rumpun: bloomMeta.C2[1], color: bloomMeta.C2[2], description: bloomMeta.C2[3], fallback: true};
+    }
+
+    return {code: found, label: bloomMeta[found][0], rumpun: bloomMeta[found][1], color: bloomMeta[found][2], description: bloomMeta[found][3]};
+}
+
+function updateBloomPreview(textarea) {
+    if (!textarea) return;
+    const card = textarea.closest('.question-card');
+    const box = textarea.closest('.card-body')?.querySelector('[data-bloom-preview]');
+    if (!box) return;
+
+    const select = card?.querySelector('.bloom-level-select');
+    const manual = select?.value;
+    let result = manual && manual !== 'auto'
+        ? bloomResultFromLevel(manual)
+        : detectBloomPreview(textarea.value);
+
+    if (!result) {
+        box.innerHTML = '<span class="badge bg-light text-muted border"><i class="ri-sparkling-line me-1"></i>Tulis pertanyaan</span>';
+        return;
+    }
+
+    const note = result.manual ? 'Manual' : (result.fallback ? 'Perkiraan C2' : 'Otomatis');
+
+    box.innerHTML = `<span class="badge bg-${result.color}-subtle text-${result.color}" title="${result.description || ''}"><i class="ri-sparkling-line me-1"></i>${result.label} · ${result.rumpun}</span>
+        <small class="text-muted d-block mt-1">${note}</small>`;
+}
+
+function updateBloomPreviewFromSelect(select) {
+    const card = select.closest('.question-card');
+    updateBloomPreview(card?.querySelector('textarea[name$="[pertanyaan]"]'));
 }
 
 function getEditor(id) {
@@ -156,34 +268,48 @@ function moveBlock(button, direction) {
     }
 }
 
-function typeSelect(i) {
-    if (! isMixed) return `<input type="hidden" name="questions[${i}][tipe_soal]" value="${bankType}">`;
+function typeSelect(i, selected = null) {
+    const chosen = selected || bankType;
+    if (! isMixed) return `<input type="hidden" name="questions[${i}][tipe_soal]" value="${chosen}">`;
     return `<select class="form-select form-select-sm" name="questions[${i}][tipe_soal]" onchange="toggleOptions(this)">
-        ${Object.entries(typeOptions).map(([key, label]) => `<option value="${key}" ${key === bankType ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+        ${Object.entries(typeOptions).map(([key, label]) => `<option value="${key}" ${key === chosen ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
     </select>`;
 }
 
-function optionRows(i, count = 4) {
-    return Array.from({length: count}, (_, j) => `
+function optionRows(i, options = [], count = null) {
+    const total = count ?? Math.max(4, options.length);
+    return Array.from({length: total}, (_, j) => {
+        const option = options[j] || {};
+        const checked = option.is_correct ? 'checked' : '';
+        const correctValue = option.is_correct ? '1' : '0';
+        return `
         <div class="input-group input-group-sm mb-1 option-row">
-            <span class="input-group-text fw-bold">${String.fromCharCode(65 + j)}</span>
-            <input type="text" class="form-control" name="questions[${i}][options][${j}][teks_opsi]" placeholder="Teks pilihan ${String.fromCharCode(65 + j)}">
-            <input type="hidden" class="correct-input" name="questions[${i}][options][${j}][is_correct]" value="0">
+            <span class="input-group-text fw-bold">${escapeHtml(option.label || String.fromCharCode(65 + j))}</span>
+            <input type="text" class="form-control" name="questions[${i}][options][${j}][teks_opsi]" value="${escapeHtml(option.teks_opsi || '')}" placeholder="Teks pilihan ${String.fromCharCode(65 + j)}">
+            <input type="hidden" class="correct-input" name="questions[${i}][options][${j}][is_correct]" value="${correctValue}">
             <label class="input-group-text" title="Tandai jawaban benar">
-                <input type="radio" name="correct_${i}" value="${j}" onchange="markCorrect(this, ${i}, ${j})">
+                <input type="radio" name="correct_${i}" value="${j}" ${checked} onchange="markCorrect(this, ${i}, ${j})">
                 <i class="ri-key-2-line ms-1 text-warning"></i>
             </label>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
-function addQuestion() {
+function addQuestion(data = {}, scroll = true) {
     const i = questionIndex++;
+    const id = data.id || '';
+    const type = data.tipe_soal || bankType;
+    const options = Array.isArray(data.options) ? data.options : [];
     const card = document.createElement('div');
     card.className = 'card mb-3 question-card block-item';
     card.dataset.key = `q${i}`;
+    card.dataset.id = id;
+    card.dataset.currentLevel = data.level_kognitif || '';
     card.innerHTML = `
         <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <span class="fw-semibold"><i class="ri-question-line me-1 text-primary"></i>Soal <span class="question-number"></span></span>
+            <span class="fw-semibold"><i class="ri-question-line me-1 text-primary"></i>Soal <span class="question-number"></span>
+                ${id ? '<span class="badge bg-success-subtle text-success ms-1">Tersimpan</span>' : ''}
+            </span>
             <div class="d-flex gap-1">
                 <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveBlock(this, -1)" title="Naikkan"><i class="ri-arrow-up-line"></i></button>
                 <button type="button" class="btn btn-sm btn-icon btn-soft-secondary" onclick="moveBlock(this, 1)" title="Turunkan"><i class="ri-arrow-down-line"></i></button>
@@ -191,54 +317,71 @@ function addQuestion() {
             </div>
         </div>
         <div class="card-body">
+            <input type="hidden" name="questions[${i}][id]" value="${escapeHtml(id)}">
             <div class="row g-2">
                 <div class="col-lg-9">
                     <label class="form-label">Pertanyaan <span class="text-danger">*</span></label>
-                    <textarea class="form-control" name="questions[${i}][pertanyaan]" rows="3" required placeholder="Tulis pertanyaan..."></textarea>
+                    <textarea class="form-control" name="questions[${i}][pertanyaan]" rows="3" required
+                              oninput="updateBloomPreview(this)" placeholder="Tulis pertanyaan...">${escapeHtml(data.pertanyaan || '')}</textarea>
                 </div>
                 <div class="col-lg-3">
-                    <label class="form-label">Level</label>
-                    <select class="form-select" name="questions[${i}][tingkat_kesulitan_estimasi]">
-                        <option value="mudah">Mudah</option><option value="sedang" selected>Sedang</option><option value="sulit">Sulit</option>
+                    <label class="form-label">Level Bloom <span class="text-muted fw-normal">(otomatis)</span></label>
+                    <div data-bloom-preview class="bloom-preview">
+                        <span class="badge bg-light text-muted border"><i class="ri-sparkling-line me-1"></i>Akan terdeteksi otomatis</span>
+                    </div>
+                    <select class="form-select form-select-sm mt-2 bloom-level-select"
+                            name="questions[${i}][level_kognitif]"
+                            onchange="updateBloomPreviewFromSelect(this)">
+                        <option value="auto">Otomatis</option>
+                        ${Object.entries(bloomLevelOptions).map(([key, label]) => `<option value="${key}">${escapeHtml(label)}</option>`).join('')}
                     </select>
+                    <small class="text-muted d-block mt-1">Otomatis dari soal + TP.</small>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Tujuan Pembelajaran</label>
                     <select class="form-select" name="questions[${i}][tp_id]" data-searchable>
                         <option value="">Tidak terkait</option>
-                        ${tpOptions.map(tp => `<option value="${tp.id}">${escapeHtml(tp.label)}</option>`).join('')}
+                        ${tpOptions.map(tp => `<option value="${tp.id}" ${String(data.tp_id || '') === String(tp.id) ? 'selected' : ''}>${escapeHtml(tp.label)}</option>`).join('')}
                     </select>
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label">Materi / Topik</label>
+                    <input type="text" class="form-control" name="questions[${i}][materi]" maxlength="150" value="${escapeHtml(data.materi || '')}" placeholder="Contoh: Perkalian bilangan bulat">
+                </div>
+                <div class="col-md-6">
                     <label class="form-label">Tipe Soal</label>
-                    ${typeSelect(i)}
+                    ${typeSelect(i, type)}
                 </div>
                 <div class="col-12">
                     <label class="form-label">Wacana</label>
-                    <select class="form-select wacana-select" name="questions[${i}][wacana_id]">${wacanaOptionsHtml('')}</select>
+                    <select class="form-select wacana-select" name="questions[${i}][wacana_id]">${wacanaOptionsHtml(data.wacana_id || '')}</select>
                 </div>
             </div>
             <div class="options-block mt-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label mb-0">Pilihan Jawaban <small class="text-muted">(klik kunci untuk jawaban benar)</small></label>
+                    <label class="form-label mb-0">Opsi Jawaban <small class="text-muted">(klik kunci untuk jawaban benar)</small></label>
                     <button type="button" class="btn btn-sm btn-link p-0" onclick="addOption(this)">+ Pilihan</button>
                 </div>
-                <div class="options-list">${optionRows(i)}</div>
+                <div class="options-list">${optionRows(i, options)}</div>
             </div>
             <div class="mt-2"><button type="button" class="btn btn-sm btn-soft-secondary" onclick="this.closest('.card-body').querySelector('.details-block').classList.toggle('d-none')"><i class="ri-settings-3-line me-1"></i>Pembahasan & Media</button></div>
             <div class="details-block d-none mt-3 border-top pt-3">
-                <div class="mb-2"><label class="form-label">Pembahasan</label><textarea class="form-control" name="questions[${i}][pembahasan]" rows="2"></textarea></div>
+                <div class="mb-2"><label class="form-label">Pembahasan</label><textarea class="form-control" name="questions[${i}][pembahasan]" rows="2">${escapeHtml(data.pembahasan || '')}</textarea></div>
                 <div class="row g-2">
                     <div class="col-md-6"><label class="form-label">Gambar Soal</label><input type="file" class="form-control" name="questions[${i}][gambar]" accept="image/*"></div>
-                    <div class="col-md-6"><label class="form-label">Keterangan Gambar / Nomor</label><input type="text" class="form-control" name="questions[${i}][gambar_keterangan]" maxlength="255" placeholder="mis. Gambar untuk soal 1–5"></div>
-                    <div class="col-12"><label class="form-label">Tags</label><input type="text" class="form-control" name="questions[${i}][tags]" placeholder="pisahkan dengan koma"></div>
+                    <div class="col-md-6"><label class="form-label">Keterangan Gambar / Nomor</label><input type="text" class="form-control" name="questions[${i}][gambar_keterangan]" maxlength="255" value="${escapeHtml(data.gambar_keterangan || '')}" placeholder="mis. Gambar untuk soal 1–5"></div>
+                    <div class="col-12"><label class="form-label">Tags</label><input type="text" class="form-control" name="questions[${i}][tags]" value="${escapeHtml(data.tags || '')}" placeholder="pisahkan dengan koma"></div>
                 </div>
             </div>
         </div>`;
     document.getElementById('blockList').appendChild(card);
     renumber();
+    if (['isian', 'uraian'].includes(type)) {
+        card.querySelector('.options-block').classList.add('d-none');
+    }
     if (window.initSearchableSelects) window.initSearchableSelects(card);
-    card.scrollIntoView({behavior: 'smooth', block: 'center'});
+    updateBloomPreview(card.querySelector('textarea[name$="[pertanyaan]"]'));
+    if (scroll) card.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
 function addWacanaBlock(data = {}) {
@@ -376,7 +519,7 @@ function addOption(button) {
     const count = list.querySelectorAll('.option-row').length;
     const i = card.dataset.key.replace('q', '');
     const wrapper = document.createElement('div');
-    wrapper.innerHTML = optionRows(i, 1);
+    wrapper.innerHTML = optionRows(i, [], 1);
     const row = wrapper.firstElementChild;
     row.querySelector('.input-group-text').textContent = String.fromCharCode(65 + count);
     row.querySelectorAll('[name]').forEach(input => { input.name = input.name.replace(/options\[\d+\]/, 'options[' + count + ']'); });
@@ -412,8 +555,14 @@ document.getElementById('questionBuilder').addEventListener('submit', async func
     }
 });
 
+const builderQuestions = @json($builderQuestions ?? []);
+
 document.addEventListener('DOMContentLoaded', function () {
-    addQuestion();
+    if (builderQuestions.length > 0) {
+        builderQuestions.forEach(question => addQuestion(question, false));
+    } else {
+        addQuestion();
+    }
     renumber();
 });
 </script>

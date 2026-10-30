@@ -177,13 +177,21 @@
                                    class="form-control" value="{{ old('bobot_default', $soal->bobot_default) }}" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Tingkat Kesulitan</label>
-                            <select name="tingkat_kesulitan_estimasi" class="form-control" required>
-                                <option value="mudah" {{ $soal->tingkat_kesulitan_estimasi === 'mudah' ? 'selected' : '' }}>Mudah</option>
-                                <option value="sedang" {{ $soal->tingkat_kesulitan_estimasi === 'sedang' ? 'selected' : '' }}>Sedang</option>
-                                <option value="sulit" {{ $soal->tingkat_kesulitan_estimasi === 'sulit' ? 'selected' : '' }}>Sulit</option>
-                            </select>
+                            <label class="form-label">Level Bloom <span class="text-muted fw-normal">(otomatis)</span></label>
+                            <div class="d-flex flex-wrap align-items-center gap-1">
+                                <span class="badge bg-primary-subtle text-primary">
+                                    {{ $soal->level_kognitif_label }}
+                                </span>
+                                <span class="badge bg-secondary-subtle text-secondary">{{ $soal->level_kognitif_rumpun_label }}</span>
+                                @if($soal->bloom_confidence)
+                                    <small class="text-muted">keyakinan {{ $soal->bloom_confidence }}%</small>
+                                @endif
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                Otomatis dari soal + TP · C1–C2 L1 · C3 L2 · C4–C6 L3
+                            </small>
                         </div>
+                        <input type="hidden" name="tingkat_kesulitan_estimasi" value="{{ $soal->tingkat_kesulitan_estimasi ?? 'sedang' }}">
                         <div class="mb-3">
                             <label class="form-label">Waktu Estimasi (menit)</label>
                             <input type="number" name="waktu_estimasi_menit" min="1" max="120"

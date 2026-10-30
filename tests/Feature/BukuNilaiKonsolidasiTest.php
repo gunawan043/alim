@@ -102,7 +102,6 @@ class BukuNilaiKonsolidasiTest extends TestCase
             ->get("/{$this->guruB->id}/schools/guru-mapel/{$book->id}/w1")
             ->assertOk();
 
-
         // Guru tanpa penugasan tidak dapat membuka.
         $guruLain = $this->makeUser('Guru Lain', 'guru.lain@nilai.test');
         $this->actingAs($guruLain)

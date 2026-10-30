@@ -12,6 +12,14 @@
     .schedule-matrix-table td.small { font-size: .74rem; }
     .subject-code { display: block; font-weight: 600; line-height: 1.15; }
     .teacher-code { display: block; color: #64748b; font-size: .68rem; line-height: 1.2; }
+    .matrix-day-start td { border-top: 2px solid #334155 !important; }
+    .matrix-day-name { background: #f8fafc; }
+    .matrix-cell { padding: .2rem !important; }
+    .matrix-cell-button { width: 100%; min-height: 32px; border: 0; background: transparent; padding: 2px; text-align: center; }
+    .matrix-cell-button:hover { background: rgba(17, 104, 145, .08); border-radius: .25rem; }
+    .matrix-cell-empty { color: #94a3b8; font-weight: 600; }
+    .matrix-conflict { background: #fef3c7 !important; }
+    .matrix-unavailable { background: #fee2e2 !important; }
     .matrix-layout { display: flex; gap: 1rem; align-items: flex-start; }
     .matrix-schedule { flex: 1 1 74%; min-width: 0; }
     .matrix-teachers { flex: 0 0 25%; min-width: 275px; }
@@ -163,6 +171,13 @@
     <div class="card-body">
         @if($studyGroups->isEmpty())
             <div class="text-muted text-center py-4">Belum ada rombel aktif.</div>
+        @elseif(empty($matrixData['masterDays']))
+            <div class="alert alert-warning mb-0">
+                <i class="ri-error-warning-line me-1"></i>
+                Master Jam Pelajaran belum diatur untuk sekolah ini.
+                <a href="{{ route('user.jam-pelajaran.index', ['userId' => $userId]) }}" class="alert-link">Atur Jam Pelajaran</a>
+                terlebih dahulu agar jadwal mengikuti jam yang benar.
+            </div>
         @else
             @include('jadwal-kbm._matrix', ['studyGroups' => $studyGroups, 'matrixData' => $matrixData])
         @endif
@@ -190,6 +205,12 @@
                     </a>
                     <a href="{{ route('user.jadwal-kbm.availability', ['userId' => $userId]) }}" class="btn btn-soft-warning">
                         <i class="ri-user-settings-line me-1"></i> Ketersediaan Guru
+                    </a>
+                    <a href="{{ route('user.jadwal-kbm.edit-all', ['userId' => $userId]) }}" class="btn btn-soft-info">
+                        <i class="ri-edit-2-line me-1"></i> Edit Semua Rombel
+                    </a>
+                    <a href="{{ route('user.jadwal-kbm.export-excel', ['userId' => $userId]) }}" class="btn btn-success">
+                        <i class="ri-file-excel-2-line me-1"></i> Export Excel
                     </a>
                     <a href="{{ route('user.jadwal-kbm.cetak-all', ['userId' => $userId]) }}" class="btn btn-soft-secondary" target="_blank" rel="noopener">
                         <i class="ri-printer-line me-1"></i> Cetak Semua Rombel

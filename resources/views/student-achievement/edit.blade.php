@@ -30,6 +30,12 @@
     </div>
 @endif
 
+<div class="alert alert-info">
+    <i class="ri-information-line me-1"></i>
+    Perubahan data prestasi akan memperbarui pengajuan penghargaan asrama yang masih
+    <strong>menunggu persetujuan</strong>. Penghargaan yang sudah disetujui tetap menjadi riwayat.
+</div>
+
 <div class="row">
     <div class="col-xl-9">
         <form method="POST"

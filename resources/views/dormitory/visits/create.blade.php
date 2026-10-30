@@ -71,7 +71,7 @@
                                 @error('visitor_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="visitor_id_number" class="form-label">Nomor Identitas (KTP/Passport)</label>
+                                <label for="visitor_id_number" class="form-label">Nomor Identitas (KTP/Passport/Kartu Kunjungan) <span class="text-danger">*</span></label>
                                 <input type="text" name="visitor_id_number" id="visitor_id_number" class="form-control @error('visitor_id_number') is-invalid @enderror"
                                        value="{{ old('visitor_id_number') }}" placeholder="Nomor KTP atau passport" maxlength="30">
                                 @error('visitor_id_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -81,6 +81,15 @@
                                 <input type="text" name="visitor_phone" id="visitor_phone" class="form-control @error('visitor_phone') is-invalid @enderror"
                                        value="{{ old('visitor_phone') }}" placeholder="08xxxxxxxxxx" maxlength="20">
                                 @error('visitor_phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="visitor_gender" class="form-label">Gender Tamu <span class="text-danger">*</span></label>
+                                <select name="visitor_gender" id="visitor_gender" class="form-control @error('visitor_gender') is-invalid @enderror" required>
+                                    <option value="">— Pilih Gender —</option>
+                                    <option value="putra" {{ old('visitor_gender') === 'putra' ? 'selected' : '' }}>Putra</option>
+                                    <option value="putri" {{ old('visitor_gender') === 'putri' ? 'selected' : '' }}>Putri</option>
+                                </select>
+                                @error('visitor_gender')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="visitor_relationship" class="form-label">Hubungan dengan Santri <span class="text-danger">*</span></label>
@@ -144,7 +153,34 @@
                                 @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
+
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <div class="form-check">
+                                <input type="checkbox" name="schedule_exception" id="schedule_exception"
+                                       class="form-check-input @error('schedule_exception_reason') is-invalid @enderror"
+                                       value="1" {{ old('schedule_exception') ? 'checked' : '' }}>
+                                <label class="form-check-label fw-semibold" for="schedule_exception">
+                                    Pengecualian jadwal (mis. kakak/adik)
+                                </label>
+                            </div>
+                            <input type="text" name="schedule_exception_reason" class="form-control form-control-sm mt-2
+                                   @error('schedule_exception_reason') is-invalid @enderror"
+                                   value="{{ old('schedule_exception_reason') }}"
+                                   placeholder="Alasan pengecualian jadwal dan dasar izin kepala pengasuhan">
+                            @error('schedule_exception_reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                     </div>
+                </div>
+
+                <div class="form-check mt-3">
+                    <input type="checkbox" name="rules_acknowledged" id="rules_acknowledged"
+                           class="form-check-input @error('rules_acknowledged') is-invalid @enderror"
+                           value="1" required {{ old('rules_acknowledged') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="rules_acknowledged">
+                        Tamu menyetujui aturan kunjungan: tertib, menjaga kebersihan, tidak merokok/mendengar musik,
+                        berpakaian syar’i, serta tidak meminjamkan HP kepada santri tanpa pengawasan.
+                    </label>
+                    @error('rules_acknowledged')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Action Buttons --}}
@@ -211,6 +247,15 @@
                             <li class="d-flex gap-2 mb-2">
                                 <i class="ri-time-line text-success mt-1" aria-hidden="true"></i>
                                 <span>Lama kunjungan maksimal 8 jam.</span>
+                            </li>
+                            <li class="d-flex gap-2 mb-2">
+                                <i class="ri-calendar-event-line text-success mt-1" aria-hidden="true"></i>
+                                <span>
+                                    Slot kunjungan:
+                                    @foreach(($visitScheduleSlots ?? []) as $slot)
+                                        <span class="badge bg-light text-dark me-1">{{ $slot['label'] }} {{ $slot['start'] }}–{{ $slot['end'] }}</span>
+                                    @endforeach
+                                </span>
                             </li>
                             @if($visitPolicy && $visitPolicy->visit_strategy === 'quota')
                                 <li class="d-flex gap-2 mb-2">

@@ -94,7 +94,7 @@ class SuratMasukController extends Controller
 
         SuratMasuk::create($validated);
 
-        return redirect()->route('waka.surat-masuk.index')
+        return redirect()->route('waka.surat-masuk.index', ['userId' => $request->user()?->id])
             ->with('success', 'Surat masuk berhasil dicatat.');
     }
 
@@ -146,7 +146,7 @@ class SuratMasukController extends Controller
 
         $surat->update($validated);
 
-        return redirect()->route('waka.surat-masuk.show', $surat->id)
+        return redirect()->route('waka.surat-masuk.show', ['userId' => $request->user()?->id, $surat->id])
             ->with('success', 'Surat masuk berhasil diperbarui.');
     }
 
@@ -160,7 +160,7 @@ class SuratMasukController extends Controller
         }
         $surat->delete();
 
-        return redirect()->route('waka.surat-masuk.index')
+        return redirect()->route('waka.surat-masuk.index', ['userId' => $request->user()?->id])
             ->with('success', 'Surat masuk berhasil dihapus.');
     }
 

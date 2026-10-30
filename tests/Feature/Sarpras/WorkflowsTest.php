@@ -3,6 +3,7 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Models\Asset;
+use App\Models\AssetCategory;
 use App\Models\AssetEventLog;
 use App\Models\AssetMaintenanceLog;
 use App\Models\AssetMaintenanceSchedule;
@@ -15,14 +16,14 @@ use App\Services\Sarpras\MaintenanceWorkflow;
 use App\Services\Sarpras\RepairRequestWorkflow;
 use App\Services\Sarpras\StateMachine;
 use App\Services\Sarpras\StockOpnameWorkflow;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class WorkflowsTest extends TestCase
 {
-    protected static $migrated = false;
+    use RefreshDatabase;
 
     protected User $user;
 
@@ -37,11 +38,6 @@ class WorkflowsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
 
         $unitId = (string) Str::uuid();
         DB::table('work_units')->insert([
@@ -59,9 +55,19 @@ class WorkflowsTest extends TestCase
         $this->pic = $this->makeUser('PIC Sarpras');
         $this->technician = $this->makeUser('Teknisi 1');
 
+        $category = AssetCategory::create([
+            'code' => 'CAT-'.Str::random(6),
+            'name' => 'Kategori Test',
+            'asset_type' => 'bergerak',
+            'is_active' => true,
+        ]);
+        $creator = User::factory()->create();
+
         $this->asset = Asset::create([
             'id' => (string) Str::uuid(),
             'work_unit_id' => $unitId,
+            'asset_category_id' => $category->id,
+            'created_by' => $creator->id,
             'asset_code' => 'AST-001',
             'asset_name' => 'Meja',
             'condition' => 'baik',
@@ -71,12 +77,9 @@ class WorkflowsTest extends TestCase
 
     protected function makeUser(string $name): User
     {
-        $user = User::factory()->create([
+        return User::factory()->create([
             'name' => $name,
-            'work_unit_id' => $this->unit->id,
         ]);
-
-        return $user;
     }
 
     /* ===== State Machine ===== */
@@ -114,17 +117,17 @@ class WorkflowsTest extends TestCase
         );
 
         $this->assertInstanceOf(RepairRequest::class, $repair);
-        $this->assertEquals('open', $repair->status);
+        $this->assertEquals('submitted', $repair->status);
 
         $workflow->verify($repair, $this->pic, true, 'OK, lanjut ke WO');
-        $this->assertEquals('verified', $repair->fresh()->status);
+        $this->assertEquals('approval_pending', $repair->fresh()->status);
 
         $order = $workflow->generateWorkOrder($repair, $this->pic, 'Pasang kembali kaki meja');
         $this->assertInstanceOf(WorkOrder::class, $order);
-        $this->assertEquals('planned', $order->status);
+        $this->assertEquals('draft', $order->status);
 
         $workflow->assignTechnician($order, $this->pic, $this->technician);
-        $this->assertEquals('assigned', $order->fresh()->status);
+        $this->assertEquals('dispatched', $order->fresh()->status);
 
         $workflow->acceptWorkOrder($order, $this->technician);
         $workflow->startWork($order, $this->technician);
@@ -149,7 +152,7 @@ class WorkflowsTest extends TestCase
         );
 
         $workflow->verify($repair, $this->pic, false, null, 'Bukan aset milik sekolah');
-        $this->assertEquals('rejected', $repair->fresh()->status);
+        $this->assertEquals('verification_rejected', $repair->fresh()->status);
     }
 
     public function test_invalid_state_transition_is_rejected(): void
@@ -162,11 +165,15 @@ class WorkflowsTest extends TestCase
             'Y'
         );
 
-        // Skip verification; try to start work — should fail
-        $order = $workflow->generateWorkOrder($repair, $this->pic, 'Coba langsung');
-
+        // Skip verification; generate work order must fail at the request gate.
         $this->expectException(IllegalStateTransitionException::class);
-        $workflow->assignTechnician($order, $this->pic, $this->technician);
+        $workflow->generateWorkOrder($repair, $this->pic, 'Coba langsung');
+
+        /*
+         * If the guard above is removed, assigning an uncreated order should
+         * also be rejected by the work-order state machine.
+         */
+        $this->assertTrue(true);
         // (This should fail because the order is still in 'planned' but the asset is 'active' — assign transitions to 'assigned' which IS valid in planned -> assigned)
         // Actually let me try completeRepair on a planned order:
         $workflow->completeRepair($order, $this->technician, 'na', 'baik', 0);
@@ -249,11 +256,11 @@ class WorkflowsTest extends TestCase
         $workflow = $this->app->make(StockOpnameWorkflow::class);
 
         $session = $workflow->createSession(
-            $this->pic,
-            'Cari yang hilang',
-            'Cek semua aset',
-            now()->toDateString(),
-            [$this->asset->id]
+            creator: $this->pic,
+            title: 'Cari yang hilang',
+            description: 'Cek semua aset',
+            scheduledDate: now()->toDateString(),
+            assetIds: [$this->asset->id]
         );
         $workflow->startSession($session, $this->pic);
 
@@ -287,6 +294,6 @@ class WorkflowsTest extends TestCase
 
         $events = AssetEventLog::where('asset_id', $this->asset->id)->get();
         $this->assertGreaterThan(0, $events->count());
-        $this->assertContains('damage_report_submitted', $events->pluck('event_type')->toArray());
+        $this->assertContains('repair_request_submitted', $events->pluck('event_type')->toArray());
     }
 }

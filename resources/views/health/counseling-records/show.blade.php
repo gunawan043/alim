@@ -7,8 +7,8 @@
 
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') UKS @endslot
-        @slot('li_2') <a href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}">Konseling</a> @endslot
+        @slot('li_1') Kesiswaan @endslot
+        @slot('li_2') <a href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}">Konseling</a> @endslot
         @slot('title') Detail Konseling @endslot
     @endcomponent
 
@@ -19,9 +19,9 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Detail Catatan Konseling</h5>
                         <div>
-                            <a href="{{ route('user.uks.counseling-records.edit', ['userId' => $userId, 'uuid' => $record->id]) }}"
+                            <a href="{{ route('user.kesiswaan.counseling-records.edit', ['userId' => $userId, 'uuid' => $record->id]) }}"
                                class="btn btn-sm btn-outline-secondary me-1"><i class="ri-edit-line"></i> Edit</a>
-                            <form method="POST" action="{{ route('user.uks.counseling-records.destroy', ['userId' => $userId, 'uuid' => $record->id]) }}"
+                            <form method="POST" action="{{ route('user.kesiswaan.counseling-records.destroy', ['userId' => $userId, 'uuid' => $record->id]) }}"
                                   class="d-inline" >
                                 @csrf @method('DELETE')
                                 <button type="button" class="btn btn-sm btn-outline-danger delete-btn"><i class="ri-delete-bin-line"></i></button>
@@ -101,7 +101,7 @@
                     @endif
                 </div>
                 <div class="card-footer">
-                    <a href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}" class="btn btn-secondary">
+                    <a href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}" class="btn btn-secondary">
                         <i class="ri-arrow-left-line me-1"></i> Kembali
                     </a>
                 </div>

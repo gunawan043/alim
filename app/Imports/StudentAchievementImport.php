@@ -32,13 +32,19 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
 
     protected array $studentMap = []; // nisn (lowercase) => Student
 
+    protected bool $notifyDormitoryReward;
+
+    protected bool $notifyGuardianOnAchievement;
+
     public function __construct(
         string $userId,
         string $schoolId,
         string $achievementType,
         ?string $hafalanCategory,
         ?string $academicYearId,
-        array $uploadedFiles = []
+        array $uploadedFiles = [],
+        bool $notifyDormitoryReward = false,
+        bool $notifyGuardianOnAchievement = false
     ) {
         $this->userId = $userId;
         $this->schoolId = $schoolId;
@@ -46,6 +52,8 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
         $this->hafalanCategory = $hafalanCategory;
         $this->academicYearId = $academicYearId;
         $this->uploadedFiles = $uploadedFiles;
+        $this->notifyDormitoryReward = $notifyDormitoryReward;
+        $this->notifyGuardianOnAchievement = $notifyGuardianOnAchievement;
 
         // Pre-load students for fast lookup
         $students = Student::where('school_id', $schoolId)
@@ -97,7 +105,7 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
     public function rules(): array
     {
         return [
-            'nisn' => 'required|string|max:30',
+            'nisn' => 'required|max:30',
             'nama_lomba' => 'required|string|max:191',
             'penyelenggara' => 'nullable|string|max:191',
             'tingkat' => 'nullable|string|max:50',
@@ -204,7 +212,10 @@ class StudentAchievementImport implements ToCollection, WithHeadingRow, WithVali
             $data['certificate_path'] = $certPath;
         }
 
-        StudentAchievement::create($data);
+        $achievement = new StudentAchievement($data);
+        $achievement->notifyDormitoryReward = $this->notifyDormitoryReward;
+        $achievement->notifyGuardianOnAchievement = $this->notifyGuardianOnAchievement;
+        $achievement->save();
 
         $this->successes[] = "{$student->name} — {$eventName}";
 

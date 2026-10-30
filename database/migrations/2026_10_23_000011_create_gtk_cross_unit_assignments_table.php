@@ -25,8 +25,8 @@ return new class extends Migration
                 $table->uuid('approved_by')->nullable();
                 $table->timestamps();
 
-                $table->index(['school_id', 'academic_year_id', 'status']);
-                $table->index(['user_id', 'status']);
+                $table->index(['school_id', 'academic_year_id', 'status'], 'gtk_cross_unit_school_year_status_idx');
+                $table->index(['user_id', 'status'], 'gtk_cross_unit_user_status_idx');
                 $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
                 $table->foreign('home_work_unit_id')->references('id')->on('work_units')->cascadeOnDelete();
                 $table->foreign('school_id')->references('id')->on('schools')->cascadeOnDelete();

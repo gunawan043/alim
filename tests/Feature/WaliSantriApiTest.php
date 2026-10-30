@@ -7,32 +7,20 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\WaliSantri;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class WaliSantriApiTest extends TestCase
 {
-    /**
-     * Use migrate:fresh once per test class (not per-test) to avoid the
-     * 250+ table rollback problem. RefreshDatabase is unreliable with this
-     * many tables and complex FK constraints.
-     */
-    protected static $migrated = false;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (! static::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            static::$migrated = true;
-        }
-
-        // Use transaction per test for speed (no need to drop 250 tables)
-        $this->beginDatabaseTransaction();
     }
 
     protected function beginDatabaseTransaction(): void

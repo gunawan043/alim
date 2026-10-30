@@ -30,7 +30,7 @@
         <div class="card-body">
             <form method="GET">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" id="studentPicker" class="form-select" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}</option>@endforeach</select></div>
+                    <div class="col-md-9"><label class="form-label small">Santri</label><select name="student_id" id="studentPicker" class="form-select" data-placeholder="Ketik kelas, NIS, atau nama santri..."><option value="">— Pilih Santri —</option>@foreach($schoolStudents as $student)<option value="{{ $student->id }}" @selected((string)request('student_id')===(string)$student->id)>{{ $studentClassMap[$student->id] ?? $student->currentClassHistory?->studyGroup?->name ?? '—' }} | {{ $student->nis ?? '—' }} | {{ $student->name }}@if(($presenceToday[$student->id] ?? null)) · {{ $presenceToday[$student->id]['label'] }}@endif</option>@endforeach</select></div>
                     <div class="col-md-3"><button class="btn btn-primary w-100" style="min-height:38px;"><i class="ri-eye-line me-1"></i>Tampilkan Riwayat</button></div>
                 </div>
                 <div class="form-text mt-1">Pencarian santri mencakup semua santri aktif di satuan pendidikan; tabel di bawah hanya menampilkan santri halaqah Anda. Dropdown surah hanya berisi nama surah, bukan nama santri.</div>
@@ -42,7 +42,7 @@
         <div class="card mt-3">
             <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2">
                 <div>
-                    <h5 class="card-title mb-1">{{ $selected->name }}</h5>
+                    <h5 class="card-title mb-1">{{ $selected->name }} @if(($presenceToday[$selected->id] ?? null))<span class="badge bg-{{ $presenceToday[$selected->id]['color'] }}-subtle text-{{ $presenceToday[$selected->id]['color'] }} ms-1">{{ $presenceToday[$selected->id]['label'] }}</span>@endif</h5>
                     <div class="text-muted small">{{ $selected->nis }} · {{ $selectedGroup?->name }} · {{ $selectedGroup?->school?->name }}</div>
                 </div>
                 <div class="d-flex gap-2">
@@ -152,7 +152,7 @@
                         <div class="alert alert-light border small mb-3"><i class="ri-lightbulb-line text-warning me-1"></i>Juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Ubah jika tidak sesuai; nilai akhir dan jumlah halaman dihitung otomatis.</div>
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" id="smart_setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
-                            <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah (hafalan baru)</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option></select></div>
+                            <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah (hafalan baru)</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option><option value="robet" @selected(old('setoran_type')==='robet')>Robet</option></select></div>
                             <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" id="smart_juz" min="1" max="30" class="form-control" value="{{ old('juz', $target?->juz_start ?? $lastSetoran?->juz) }}" placeholder="Otomatis"></div>
                             <div class="col-md-2"><label class="form-label">Nilai Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" id="smart_hasil" class="form-control" value="{{ old('hasil_hafalan') }}" placeholder="0–100"></div>
                             <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected(old('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected(old('status')==='ulang')>Ulang</option><option value="ditunda" @selected(old('status')==='ditunda')>Ditunda</option></select></div>
@@ -169,18 +169,20 @@
                             <div class="border rounded p-3 bg-light-subtle">
                                 <div class="fw-semibold mb-2"><i class="ri-list-settings-line me-1"></i>Detail Hafalan</div>
                                 <div class="row g-3">
-                                    <div class="col-md-2"><label class="form-label small">Pekan</label><input type="number" name="week_number" min="1" max="5" class="form-control" value="{{ old('week_number') }}"></div>
+                                    <div class="col-md-2"><label class="form-label small">Pekan</label><input type="number" name="week_number" min="1" max="6" class="form-control" value="{{ old('week_number') }}"></div>
                                     <div class="col-md-4"><label class="form-label small">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><select name="surah_start_name" id="smart_surah_start" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><select name="surah_start_name" id="smart_surah_start" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if(old('surah_start_name') && ! $surahs->contains('name_latin', old('surah_start_name')))<option value="{{ old('surah_start_name') }}" selected>{{ old('surah_start_name') }}</option>@endif
 </select></div>
                                     <div class="col-md-2"><label class="form-label small">Ayat Awal</label><input type="number" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start', $lastPosition['ayat_start'] ?? null) }}"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><select name="surah_end_name" id="surahEndPicker" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><select name="surah_end_name" id="surahEndPicker" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if(old('surah_end_name') && ! $surahs->contains('name_latin', old('surah_end_name')))<option value="{{ old('surah_end_name') }}" selected>{{ old('surah_end_name') }}</option>@endif
 </select></div>
                                     <div class="col-md-2"><label class="form-label small">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
                                     <div class="col-md-2"><label class="form-label small">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="smart_halaman_start" class="form-control" value="{{ old('halaman_start', $lastPosition['halaman_start'] ?? null) }}"></div>
+                                    <div class="col-md-1"><label class="form-label small">Baris</label><input type="number" min="1" max="20" name="baris_start" id="smart_baris_start" class="form-control" value="{{ old('baris_start', $lastPosition['baris_start'] ?? null) }}"></div>
                                     <div class="col-md-2"><label class="form-label small">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" id="smart_halaman_end" class="form-control" value="{{ old('halaman_end') }}"></div>
+                                    <div class="col-md-1"><label class="form-label small">Baris</label><input type="number" min="1" max="20" name="baris_end" id="smart_baris_end" class="form-control" value="{{ old('baris_end') }}"></div>
                                     <div class="col-md-2"><label class="form-label small">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" id="smart_jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis"></div>
                                     <div class="col-md-2"><label class="form-label small">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
                                     <div class="col-md-2"><label class="form-label small">Khofi</label><input type="number" step="0.01" min="0" max="100" name="khofi" id="smart_khofi" class="form-control" value="{{ old('khofi') }}"></div>
@@ -203,10 +205,38 @@
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
     document.addEventListener('DOMContentLoaded', function () {
+        const quranPositionUrl = @json(route('user.tahfidz.quran-position', ['userId' => $userId]));
         const pageStart = document.getElementById('smart_halaman_start');
         const pageEnd = document.getElementById('smart_halaman_end');
         const pageCount = document.getElementById('smart_jumlah_halaman');
         const scorePreview = document.getElementById('scorePreview');
+
+        async function fillSmartQuranPosition() {
+            const startSurah = document.getElementById('smart_surah_start');
+            const endSurah = document.getElementById('surahEndPicker');
+            const startAyah = document.getElementById('smart_ayat_start');
+            const endAyah = document.querySelector('input[name="ayat_end"]');
+            const s = startSurah?.selectedOptions?.[0]?.dataset?.number;
+            const a = startAyah?.value;
+            if (! s || ! a) return;
+            const es = endSurah?.selectedOptions?.[0]?.dataset?.number || s;
+            const ea = endAyah?.value || a;
+            const url = new URL(quranPositionUrl, window.location.origin);
+            url.searchParams.set('surah_start', s);
+            url.searchParams.set('ayah_start', a);
+            url.searchParams.set('surah_end', es);
+            url.searchParams.set('ayah_end', ea);
+            try {
+                const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                const data = await response.json();
+                if (! data.found || ! data.position) return;
+                document.getElementById('smart_halaman_start').value = data.position.page_start;
+                document.getElementById('smart_baris_start').value = data.position.line_start;
+                document.getElementById('smart_halaman_end').value = data.position.page_end;
+                document.getElementById('smart_baris_end').value = data.position.line_end;
+                calculatePages();
+            } catch (e) {}
+        }
 
         function calculatePages() {
             if (! pageStart || ! pageEnd || ! pageCount) return;
@@ -231,6 +261,13 @@
         }
 
         [pageStart, pageEnd].forEach(input => input?.addEventListener('input', calculatePages));
+        ['smart_surah_start', 'surahEndPicker', 'smart_ayat_start'].forEach(function (id) {
+            const field = document.getElementById(id);
+            if (! field) return;
+            field.addEventListener('change', fillSmartQuranPosition);
+            if (window.jQuery) jQuery(field).on('change', fillSmartQuranPosition);
+        });
+        document.querySelector('input[name="ayat_end"]')?.addEventListener('change', fillSmartQuranPosition);
         ['smart_hasil', 'smart_khofi', 'smart_jali'].forEach(id => document.getElementById(id)?.addEventListener('input', calculateScore));
         calculatePages();
         calculateScore();

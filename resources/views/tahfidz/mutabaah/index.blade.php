@@ -17,6 +17,7 @@
     @php
         $userId = $userId ?? auth()->id();
         $monthValue = $month->format('Y-m');
+        $mutabaahRoute = request()->routeIs('user.asrama.mutabaah.*') ? 'user.asrama.mutabaah' : 'user.tahfidz.mutabaah';
         $symbol = fn ($value) => match ($value) {
             'berjamaah' => 'B', 'sendiri' => 'S', 'qadha' => 'Q', 'tidak' => 'T', 'uzur' => 'U', default => '–',
         };
@@ -91,10 +92,10 @@
                             <td class="text-center">{{ $record->tikror_mandiri_halaman }}</td>
                             <td class="small">{{ $record->recordedBy?->name }}</td>
                             <td class="text-end text-nowrap">
-                                <a href="{{ route('user.tahfidz.mutabaah.print', ['userId'=>$userId,'studentId'=>$record->student_id,'month'=>$monthValue,'group_id'=>$record->tahfidz_group_id]) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Cetak Waraqat"><i class="ri-printer-line"></i></a>
+                                <a href="{{ route($mutabaahRoute.'.print', ['userId'=>$userId,'studentId'=>$record->student_id,'month'=>$monthValue,'group_id'=>$record->tahfidz_group_id]) }}" target="_blank" class="btn btn-sm btn-outline-dark" title="Cetak Waraqat"><i class="ri-printer-line"></i></a>
                                 @if($inputGroups->contains('id', $record->tahfidz_group_id))
                                     <button type="button" class="btn btn-sm btn-outline-warning edit-mutabaah" title="Edit" data-record="{{ json_encode($editPayload, JSON_HEX_APOS | JSON_HEX_QUOT) }}" onclick="openMutabaahEditModal(JSON.parse(this.dataset.record))"><i class="ri-edit-line"></i></button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger delete-mutabaah" title="Hapus" data-action="{{ route('user.tahfidz.mutabaah.destroy', ['userId'=>$userId,'id'=>$record->id]) }}" data-name="{{ $record->student?->name }}"><i class="ri-delete-bin-line"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-mutabaah" title="Hapus" data-action="{{ route($mutabaahRoute.'.destroy', ['userId'=>$userId,'id'=>$record->id]) }}" data-name="{{ $record->student?->name }}"><i class="ri-delete-bin-line"></i></button>
                                 @endif
                             </td>
                         </tr>
@@ -111,7 +112,7 @@
         <div class="modal fade mutabaah-modal" id="mutabaahModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
-                    <form method="POST" action="{{ route('user.tahfidz.mutabaah.store', ['userId'=>$userId]) }}" id="mutabaahForm">
+                    <form method="POST" action="{{ route($mutabaahRoute.'.store', ['userId'=>$userId]) }}" id="mutabaahForm">
                         @csrf
                         <input type="hidden" name="_method" value="PUT" id="mutabaahMethod" disabled>
                         <div class="modal-header bg-primary-subtle"><h5 class="modal-title" id="mutabaahModalTitle"><i class="ri-calendar-check-line me-1"></i>Input Mutaba’ah Harian</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -145,8 +146,8 @@
 @push('scripts')
 <script>
     @php
-        $mutabaahStoreUrl = route('user.tahfidz.mutabaah.store', ['userId'=>$userId]);
-        $mutabaahUpdateUrl = route('user.tahfidz.mutabaah.update', ['userId'=>$userId,'id'=>'__ID__']);
+        $mutabaahStoreUrl = route(request()->routeIs('user.asrama.mutabaah.*') ? 'user.asrama.mutabaah.store' : 'user.tahfidz.mutabaah.store', ['userId'=>$userId]);
+        $mutabaahUpdateUrl = route(request()->routeIs('user.asrama.mutabaah.*') ? 'user.asrama.mutabaah.update' : 'user.tahfidz.mutabaah.update', ['userId'=>$userId,'id'=>'__ID__']);
     @endphp
     const mutabaahMembers = @json($membersByGroup);
     const mutabaahStoreUrl = @json($mutabaahStoreUrl);

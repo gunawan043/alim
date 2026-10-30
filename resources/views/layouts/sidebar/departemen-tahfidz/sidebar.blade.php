@@ -141,9 +141,23 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mutabaah.']) ? ' active' : '' }}"
-           href="{{ $tahfidzUrl('user.tahfidz.mutabaah.index') }}">
-            <i class="ri-calendar-check-line"></i><span>Waraqat Mutaba’ah</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.sheet']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.monitoring.sheet') }}">
+            <i class="ri-file-chart-line"></i><span>Lembar Monitoring</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.gradebook.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.gradebook.index') }}">
+            <i class="ri-book-3-line"></i><span>Buku Nilai</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.reports.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.reports.index') }}">
+            <i class="ri-bar-chart-box-line"></i><span>Laporan &amp; Grafik</span>
         </a>
     </li>
 
@@ -188,7 +202,7 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.monitoring.index', 'user.tahfidz.monitoring.notify']) ? ' active' : '' }}"
            href="{{ $tahfidzUrl('user.tahfidz.monitoring.index') }}">
             <i class="ri-line-chart-line"></i><span>Monitoring & Leger Hafalan</span>
         </a>

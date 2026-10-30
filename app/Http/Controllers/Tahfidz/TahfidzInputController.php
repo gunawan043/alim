@@ -13,6 +13,7 @@ use App\Models\TahfidzSetoran;
 use App\Models\TahfidzStudentTarget;
 use App\Models\TahfidzSurahMaster;
 use App\Services\TahfidzAccess;
+use App\Services\TahfidzPresenceService;
 use Illuminate\Http\Request;
 
 class TahfidzInputController extends Controller
@@ -57,6 +58,9 @@ class TahfidzInputController extends Controller
             ->get(['id', 'name', 'nis', 'school_id']);
 
         $surahs = TahfidzSurahMaster::query()->orderBy('number')->get(['number', 'name_latin', 'name_arabic']);
+
+        $presenceToday = app(TahfidzPresenceService::class)
+            ->forStudents($schoolStudents->pluck('id'), now());
 
         $selected = null;
         $selectedMember = null;
@@ -120,7 +124,7 @@ class TahfidzInputController extends Controller
         return view('tahfidz.input.index', compact(
             'userId', 'academicYear', 'ownGroups', 'schoolGroups', 'members', 'schoolStudents', 'studentClassMap', 'surahs',
             'selected', 'selectedMember', 'selectedGroup', 'isSubstitute', 'history',
-            'lastSetoran', 'target', 'progress', 'recap', 'canInput'
+            'lastSetoran', 'target', 'progress', 'recap', 'canInput', 'presenceToday'
         ));
     }
 

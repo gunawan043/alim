@@ -14,6 +14,7 @@ use App\Models\Asset;
 use App\Models\RepairRequest;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Models\WorkOrderProgress;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -48,8 +49,8 @@ class RepairRequestWorkflow
      * ========================================================= */
 
     /**
-     * Submit a damage report. Creates RepairRequest in `draft`,
-     * then immediately moves it to `submitted`.
+     * Submit a damage report. Creates a RepairRequest in `submitted`,
+     * ready for the Sarpras verification step.
      */
     public function submitDamageReport(
         Asset $asset,
@@ -65,7 +66,7 @@ class RepairRequestWorkflow
                 'title' => $title,
                 'description' => $description,
                 'priority' => $priority,
-                'status' => RepairRequest::STATUS_VERIFICATION_PENDING,
+                'status' => 'submitted',
             ]);
 
             $this->eventLogger->logRepairSubmitted(
@@ -97,7 +98,7 @@ class RepairRequestWorkflow
             $fromStatus = $request->status;
 
             if ($approved) {
-                $this->moveRepairRequest($request, 'verified', $reviewer->id, [
+                $this->moveRepairRequest($request, 'verification_pending', $reviewer->id, [
                     'verification_notes' => $notes,
                 ], [
                     'verified_at' => now(),
@@ -116,8 +117,8 @@ class RepairRequestWorkflow
                     $this->moveAssetStatus($asset, 'damaged', $reviewer->id, 'damage verified');
                 }
 
-                // Auto-progress to waiting_work_order.
-                $this->moveRepairRequest($request, 'waiting_work_order', $reviewer->id, [
+                // Auto-progress to approval_pending — ready for work-order assignment.
+                $this->moveRepairRequest($request, 'approval_pending', $reviewer->id, [
                     'note' => 'queued for work-order assignment',
                 ]);
 
@@ -128,7 +129,7 @@ class RepairRequestWorkflow
                     WarrantyClaimOpportunity::dispatch($asset, $request, $daysRemaining);
                 }
             } else {
-                $this->moveRepairRequest($request, 'rejected', $reviewer->id, [
+                $this->moveRepairRequest($request, 'verification_rejected', $reviewer->id, [
                     'rejected_reason' => $rejectedReason,
                 ], [
                     'rejected_reason' => $rejectedReason,
@@ -162,7 +163,7 @@ class RepairRequestWorkflow
             $this->stateMachine->assert(
                 StateMachineRegistry::REPAIR_REQUEST,
                 $request->status,
-                'assigned'
+                'execution_pending'
             );
 
             $order = WorkOrder::create([
@@ -171,7 +172,7 @@ class RepairRequestWorkflow
                 'type' => 'corrective',
                 'scope_of_work' => $scopeOfWork,
                 'scheduled_date' => $scheduledDate,
-                'status' => 'created',
+                'status' => 'draft',
             ]);
 
             $this->eventLogger->logWorkOrderCreated(
@@ -180,10 +181,19 @@ class RepairRequestWorkflow
                 $creator->id
             );
 
-            WorkOrderProgressAdded::dispatch($order, $creator, 'Work order created', $scopeOfWork);
+            $progress = WorkOrderProgress::create([
+                'work_order_id' => $order->id,
+                'step_number' => '1',
+                'status' => 'pending',
+                'description' => 'Work order dibuat',
+                'notes' => $scopeOfWork,
+                'performed_by' => $creator->id,
+            ]);
 
-            // Move the request to `assigned` so the lifecycle matches the work-order.
-            $this->moveRepairRequest($request, 'assigned', $creator->id, [
+            WorkOrderProgressAdded::dispatch($order, $progress, $creator);
+
+            // Move the request to `execution_pending` so the lifecycle matches the work-order.
+            $this->moveRepairRequest($request, 'execution_pending', $creator->id, [
                 'order_number' => $order->order_number,
             ]);
 
@@ -204,12 +214,12 @@ class RepairRequestWorkflow
             $this->stateMachine->assert(
                 StateMachineRegistry::WORK_ORDER,
                 $order->status,
-                'assigned'
+                'dispatched'
             );
 
             $order->update([
                 'assignee_id' => $technician->id,
-                'status' => 'assigned',
+                'status' => 'dispatched',
             ]);
 
             $this->eventLogger->logWorkOrderAssigned(
@@ -225,17 +235,14 @@ class RepairRequestWorkflow
         });
     }
 
+    /**
+     * Teknisi mengakui/menerima penugasan. Status tetap `dispatched`;
+     * pengerjaan sesungguhnya dimulai lewat startWork().
+     */
     public function acceptWorkOrder(WorkOrder $order, User $technician): WorkOrder
     {
         return DB::transaction(function () use ($order) {
-            $this->stateMachine->assert(
-                StateMachineRegistry::WORK_ORDER,
-                $order->status,
-                'accepted'
-            );
-
             $order->update([
-                'status' => 'accepted',
                 'actual_start' => $order->actual_start ?? now(),
             ]);
 
@@ -246,16 +253,29 @@ class RepairRequestWorkflow
     public function startWork(WorkOrder $order, User $technician): WorkOrder
     {
         return DB::transaction(function () use ($order, $technician) {
+            if ($order->status === 'in_progress') {
+                return $order->fresh();
+            }
+
             $this->stateMachine->assert(
                 StateMachineRegistry::WORK_ORDER,
                 $order->status,
-                'working'
+                'in_progress'
             );
 
             $order->update([
-                'status' => 'working',
+                'status' => 'in_progress',
                 'actual_start' => $order->actual_start ?? now(),
             ]);
+
+            // Permintaan perbaikan ikut bergerak ke `started`.
+            $request = $order->repairRequest;
+            if ($request && $request->status === 'execution_pending') {
+                $this->moveRepairRequest($request, 'started', $technician->id, [
+                    'order_number' => $order->order_number,
+                    'started_at' => now(),
+                ]);
+            }
 
             WorkOrderStarted::dispatch($order, $technician);
 
@@ -269,10 +289,10 @@ class RepairRequestWorkflow
             $this->stateMachine->assert(
                 StateMachineRegistry::WORK_ORDER,
                 $order->status,
-                'waiting_sparepart'
+                'waiting_parts'
             );
 
-            $order->update(['status' => 'waiting_sparepart']);
+            $order->update(['status' => 'waiting_parts']);
 
             return $order->fresh();
         });
@@ -305,13 +325,16 @@ class RepairRequestWorkflow
                 'total_cost' => $totalCost,
             ]);
 
-            // Move the underlying request into `completed`.
-            $this->moveRepairRequest($order->repairRequest, 'completed', $technician->id, [
-                'order_number' => $order->order_number,
-                'completion_notes' => $completionNotes,
-                'result_description' => $completionNotes,
-                'completed_at' => now(),
-            ]);
+            // Move the underlying request into `completed` (from `started`).
+            $request = $order->repairRequest;
+            if ($request && $request->status === 'started') {
+                $this->moveRepairRequest($request, 'completed', $technician->id, [
+                    'order_number' => $order->order_number,
+                    'completion_notes' => $completionNotes,
+                    'result_description' => $completionNotes,
+                    'completed_at' => now(),
+                ]);
+            }
 
             // Log the lifecycle event so the asset condition listener fires.
             $this->eventLogger->logRepairCompleted(
@@ -335,11 +358,10 @@ class RepairRequestWorkflow
     public function verifyByPic(RepairRequest $request, User $pic, ?string $notes = null): RepairRequest
     {
         return DB::transaction(function () use ($request, $pic, $notes) {
-            $this->moveRepairRequest($request, 'verified_by_pic', $pic->id, [
-                'verification_notes' => $notes,
-            ]);
+            $request->refresh();
 
             $this->moveRepairRequest($request, 'closed', $pic->id, [
+                'verification_notes' => $notes,
                 'closed_at' => now(),
             ]);
 

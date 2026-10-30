@@ -57,6 +57,20 @@
                         <p>{{ $reward->description }}</p>
                     </div>
                 @endif
+                @if($reward->source_achievement_id || $reward->source_label)
+                    <div class="col-12">
+                        <label class="text-muted small">Sumber Penghargaan</label>
+                        <div class="alert alert-light border mb-0 py-2">
+                            <i class="ri-trophy-line me-1 text-warning"></i>
+                            <strong>Prestasi Santri:</strong> {{ $reward->source_label ?: $reward->title }}
+                            @if($reward->source_deleted_at)
+                                <span class="badge bg-danger-subtle text-danger ms-2">
+                                    <i class="ri-error-warning-line me-1"></i>Sumber prestasi telah dihapus
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                @endif
                 @if($reward->proof_path)
                     <div class="col-12">
                         <label class="text-muted small">Dokumen Pendukung</label>

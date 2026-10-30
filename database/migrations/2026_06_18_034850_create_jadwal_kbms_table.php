@@ -249,15 +249,16 @@ return new class extends Migration
             END;
         ";
 
-        // Run triggers directly via DB connection
-        try {
-            DB::unprepared($simpleGuruInsert);
-            DB::unprepared($simpleGuruUpdate);
-            DB::unprepared($simpleRomelInsert);
-            DB::unprepared($simpleRomelUpdate);
-        } catch (Exception $e) {
-            // Triggers may fail on non-MySQL connections — continue silently
-            DB::rollback();
+        // Trigger MySQL bersifat opsional; PostgreSQL memakai validasi aplikasi.
+        if (DB::getDriverName() === 'mysql') {
+            try {
+                DB::unprepared($simpleGuruInsert);
+                DB::unprepared($simpleGuruUpdate);
+                DB::unprepared($simpleRomelInsert);
+                DB::unprepared($simpleRomelUpdate);
+            } catch (Exception $e) {
+                // Triggers may fail on non-MySQL connections — continue silently
+            }
         }
     }
 
@@ -266,13 +267,15 @@ return new class extends Migration
      */
     public function down(): void
     {
-        try {
-            DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_guru_check_ins');
-            DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_guru_check_upd');
-            DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_rsm_check_ins');
-            DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_rsm_check_upd');
-        } catch (Exception $e) {
-            // Ignore
+        if (DB::getDriverName() === 'mysql') {
+            try {
+                DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_guru_check_ins');
+                DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_guru_check_upd');
+                DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_rsm_check_ins');
+                DB::statement('DROP TRIGGER IF EXISTS trg_jadwal_rsm_check_upd');
+            } catch (Exception $e) {
+                // Ignore
+            }
         }
 
         Schema::dropIfExists('jadwal_kbms');

@@ -125,41 +125,59 @@ class NilaiController extends Controller
             ? $request->semester
             : ($academicYears->firstWhere('id', $selectedAcademicYearId)?->semester === 'genap' ? 'genap' : 'ganjil');
 
-        // Base query: TeacherAdminBook — filter semester juga
-        // Sumber periode = buku admin pada TA/semester terpilih DAN rombel
-        // yang memang berada pada TA tersebut. Ini mencegah rombel TA lama
-        // ikut tampil hanya karena memiliki buku untuk TA aktif.
-        $baseQuery = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel'])
+        // Rombel = sumber daftar kelas. Buku Admin Guru hanya dipakai untuk
+        // menghitung mapel & mengarahkan aksi, sehingga kelas tetap tampil
+        // walau mapel/nilai pada periode ini belum disiapkan.
+        $rombelQuery = fn (?string $ayId) => StudyGroup::query()
+            ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when($selectedAcademicYearId, fn ($q) => $q->where('academic_year_id', $selectedAcademicYearId))
-            ->when($selectedSemester, fn ($q) => $q->where('semester', $selectedSemester))
-            ->when($selectedAcademicYearId, fn ($q) => $q->whereHas(
-                'studyGroup',
-                fn ($sg) => $sg->where('academic_year_id', $selectedAcademicYearId)->where('is_active', true)
-            ))
-            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->when($ayId, fn ($q) => $q->where('academic_year_id', $ayId));
 
-        // Dropdown tingkat (hanya dari data yang sesuai filter)
-        $gradeLevelIds = (clone $baseQuery)
-            ->get()
-            ->pluck('studyGroup.gradeLevel')
-            ->filter()
-            ->unique('id')
-            ->sortBy('level')
-            ->values();
+        // TA default belum punya rombel (mis. rolling TA belum dijalankan) →
+        // tampilkan TA terakhir yang memiliki rombel agar halaman tidak kosong.
+        $rombelFallback = false;
+        if ($selectedAcademicYearId && ! $request->filled('academic_year_id') && ! $rombelQuery($selectedAcademicYearId)->exists()) {
+            $fallbackAyId = StudyGroup::query()
+                ->join('academic_years', 'academic_years.id', '=', 'study_groups.academic_year_id')
+                ->where('study_groups.is_active', true)
+                ->when($schoolId, fn ($q) => $q->where('study_groups.school_id', $schoolId))
+                ->orderByDesc('academic_years.start_date')
+                ->value('study_groups.academic_year_id');
+
+            if ($fallbackAyId) {
+                $selectedAcademicYearId = $fallbackAyId;
+                $selectedSemester = $request->filled('semester')
+                    ? $request->semester
+                    : ($academicYears->firstWhere('id', $selectedAcademicYearId)?->semester === 'genap' ? 'genap' : 'ganjil');
+                $isArchiveAy = $activeAcademicYearId
+                    && (string) $selectedAcademicYearId !== (string) $activeAcademicYearId;
+                $rombelFallback = true;
+            }
+        }
 
         $selectedGradeLevelId = $request->filled('grade_level_id') ? $request->grade_level_id : null;
 
-        // Group by study_group (satu baris per rombel)
-        $rawBooks = (clone $baseQuery)->get();
+        // Buku admin pada TA/semester terpilih → hitung mapel per rombel.
+        $booksByGroup = TeacherAdminBook::with('subject')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($selectedAcademicYearId, fn ($q) => $q->where('academic_year_id', $selectedAcademicYearId))
+            ->when($selectedSemester, fn ($q) => $q->where('semester', $selectedSemester))
+            ->when(! $isPrivileged, fn ($q) => $q->where('teacher_id', $userId))
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('study_group_id');
 
-        $kelasList = $rawBooks
-            ->groupBy('study_group_id')
-            ->map(function ($books, $key) use ($selectedAcademicYearId) {
-                $book = $books->first();
+        $kelasList = $rombelQuery($selectedAcademicYearId)
+            ->when($selectedGradeLevelId, fn ($q) => $q->where('grade_level_id', $selectedGradeLevelId))
+            ->orderedByGrade()
+            ->orderBy('name')
+            ->get()
+            ->map(function (StudyGroup $sg) use ($booksByGroup, $selectedAcademicYearId, $selectedSemester) {
+                $books = $booksByGroup->get($sg->id) ?? collect();
+
                 $historyQuery = StudentClassHistory::query()
-                    ->where('study_group_id', $book->study_group_id)
+                    ->where('study_group_id', $sg->id)
                     ->where('academic_year_id', $selectedAcademicYearId);
 
                 // Roster normal = santri aktif. Bila satu kelas belum punya status
@@ -171,18 +189,14 @@ class NilaiController extends Controller
                     : (clone $historyQuery)->count();
 
                 return [
-                    'study_group' => $book->studyGroup,
-                    'academic_year' => $book->academicYear,
-                    'semester' => $book->semester,
+                    'study_group' => $sg,
+                    'academic_year' => $sg->academicYear,
+                    'semester' => $selectedSemester,
                     'total_mapel' => $books->pluck('subject_id')->unique()->count(),
                     'total_siswa' => $totalSiswa,
-                    'first_book' => $book,
+                    'first_book' => $books->first(),
                 ];
             })
-            ->when($selectedGradeLevelId, fn ($col) => $col->filter(fn ($k) => $k['study_group']->gradeLevel?->id === $selectedGradeLevelId
-            ))
-            ->sortBy(fn ($k) => $k['study_group']->gradeLevel?->level ?? 99)
-            ->sortBy(fn ($k) => $k['study_group']->name)
             ->values();
 
         // Filter tingkat mengikuti rombel yang tampil pada periode terpilih.
@@ -196,7 +210,7 @@ class NilaiController extends Controller
         return view('nilai.index', compact(
             'academicYears', 'kelasList', 'gradeLevelIds',
             'userId', 'isPrivileged', 'selectedAcademicYearId', 'selectedSemester',
-            'activeAcademicYearId', 'isArchiveAy'
+            'activeAcademicYearId', 'isArchiveAy', 'rombelFallback'
         ));
     }
 

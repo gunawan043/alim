@@ -477,7 +477,16 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($dormitory->posts()->latest()->limit(10)->get() as $i => $p)
+                                @php
+                                    $recentAnnouncements = \App\Models\HumasAnnouncement::with('creator:id,name')
+                                        ->where('target_type', 'dormitory')
+                                        ->where('dormitory_id', $dormitory->id)
+                                        ->where('category', '!=', 'broadcast')
+                                        ->latest()
+                                        ->limit(10)
+                                        ->get();
+                                @endphp
+                                @forelse($recentAnnouncements as $i => $p)
                                 <tr>
                                     <td>{{ $i+1 }}</td>
                                     <td>

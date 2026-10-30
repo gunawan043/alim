@@ -15,9 +15,13 @@ use App\Models\Dormitory;
 use App\Models\DormitoryVisitLog;
 use App\Models\DormitoryVisitorRestriction;
 use App\Models\Student;
+use App\Services\Notifications\GuardianWhatsAppNotifier;
+use App\Services\NotificationUniversalService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Visit lifecycle:
@@ -78,12 +82,10 @@ class VisitWorkflowService
 
         $data['dormitory_id'] = $dormitoryId;
         $data['created_by'] = auth()->id();
-        // visitor_count hanya dipakai untuk evaluasi kebijakan; bukan kolom tabel.
-        unset($data['visitor_count']);
+        $data['visitor_count'] = max(1, (int) ($data['visitor_count'] ?? 1));
 
         return DB::transaction(fn () => DormitoryVisitLog::create($data));
     }
-
 
     private function assertVisitorNotRestricted(array $data, string $dormitoryId): void
     {
@@ -142,14 +144,14 @@ class VisitWorkflowService
 
         if (! $policy) {
             $policy = BoardingPolicy::create([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'code' => 'VISIT-'.strtoupper(substr($dormitoryId, 0, 8)),
                 'name' => 'Kebijakan Kunjungan Asrama',
                 'is_active' => true,
             ]);
 
-            \Illuminate\Support\Facades\DB::table('dormitory_policy_assignments')->insert([
-                'id' => (string) \Illuminate\Support\Str::uuid(),
+            DB::table('dormitory_policy_assignments')->insert([
+                'id' => (string) Str::uuid(),
                 'boarding_policy_id' => $policy->id,
                 'target_id' => $dormitoryId,
                 'policy_assignment_type' => 'dormitory',
@@ -262,6 +264,8 @@ class VisitWorkflowService
                 'approved_by' => auth()->id(),
                 'approved_at' => now(),
                 'approval_note' => $note,
+                'schedule_exception_approved_by' => $visit->is_special_permission ? auth()->id() : $visit->schedule_exception_approved_by,
+                'schedule_exception_approved_at' => $visit->is_special_permission ? now() : $visit->schedule_exception_approved_at,
             ]);
 
             // Timeline VISIT_APPROVED dicatat oleh listener BoardingVisitDecided
@@ -323,16 +327,16 @@ class VisitWorkflowService
     private function notifyVisitDecision(DormitoryVisitLog $visit, string $stage): void
     {
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+            app(GuardianWhatsAppNotifier::class)
                 ->notifyVisit($visit, $stage);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif kunjungan gagal: '.$e->getMessage());
+            Log::warning('WA notif kunjungan gagal: '.$e->getMessage());
         }
 
         try {
             $approved = $stage === 'approved';
 
-            app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff($visit->dormitory_id, [
+            app(NotificationUniversalService::class)->notifyDormitoryStaff($visit->dormitory_id, [
                 'module' => 'dormitory',
                 'reference_type' => 'dormitory_visit',
                 'reference_id' => $visit->id,
@@ -344,7 +348,7 @@ class VisitWorkflowService
                 'priority' => 'low',
             ]);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Notif in-app kunjungan gagal: '.$e->getMessage());
+            Log::warning('Notif in-app kunjungan gagal: '.$e->getMessage());
         }
     }
 
@@ -352,11 +356,16 @@ class VisitWorkflowService
     {
         $visit = DormitoryVisitLog::where('dormitory_id', $dormitoryId)->findOrFail($visitId);
 
-        return DB::transaction(function () use ($visit, $note) {
+        return DB::transaction(function () use ($visit) {
             $visit->update([
                 'status' => 'arrived',
                 'actual_arrival_datetime' => now(),
                 'check_in_at' => now(),
+                'identity_verified_at' => $visit->identity_verified_at ?: now(),
+                'identity_verified_by' => $visit->identity_verified_by ?: auth()->id(),
+                'card_verified_at' => $visit->card_verified_at ?: now(),
+                'card_verified_by' => $visit->card_verified_by ?: auth()->id(),
+                'rules_acknowledged_at' => $visit->rules_acknowledged_at ?: now(),
             ]);
 
             // Timeline VISIT_CHECK_IN dicatat oleh listener BoardingVisitCheckIn.

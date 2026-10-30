@@ -18,7 +18,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (DB::connection()->getDriverName() === 'mysql') {
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
         }
 
@@ -38,14 +38,14 @@ return new class extends Migration
                 ->nullOnDelete();
         });
 
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (DB::connection()->getDriverName() === 'mysql') {
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
     }
 
     public function down(): void
     {
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (DB::connection()->getDriverName() === 'mysql') {
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
         }
 
@@ -58,7 +58,7 @@ return new class extends Migration
             $table->dropColumn('student_nik');
         });
 
-        if (DB::connection()->getDriverName() !== 'sqlite') {
+        if (DB::connection()->getDriverName() === 'mysql') {
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
     }

@@ -2,7 +2,8 @@
 
 namespace Tests\Feature\Sarpras;
 
-use Illuminate\Support\Facades\Artisan;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
@@ -10,27 +11,31 @@ use Tests\Traits\CreatesSarprasFixtures;
 class AssetDisposalTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
         Cache::flush();
+    }
+
+    /** Admin sistem: lolos EnsureSarprasAccess sekaligus canPermission. */
+    protected function makeAdmin(): User
+    {
+        return User::factory()->create([
+            'name' => 'Admin Sarpras',
+            'is_system_admin' => true,
+        ]);
     }
 
     /** @test */
     public function admin_can_view_disposal_queue()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = $this->makeAdmin();
         $asset = $this->createAsset(['condition' => 'dihapus']);
 
         $this->actingAs($admin)
-            ->get('/sarpras/disposal/pending')
+            ->get("/{$admin->id}/sarpras/disposal/pending")
             ->assertOk()
             ->assertSee($asset->asset_name);
     }
@@ -38,11 +43,11 @@ class AssetDisposalTest extends TestCase
     /** @test */
     public function admin_can_approve_disposal()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = $this->makeAdmin();
         $asset = $this->createAsset(['condition' => 'dihapus']);
 
         $response = $this->actingAs($admin)
-            ->postJson("/sarpras/disposal/{$asset->id}/approve", [
+            ->postJson("/{$admin->id}/sarpras/disposal/{$asset->id}/approve", [
                 'disposal_method' => 'scrap',
                 'disposal_reason' => 'Sudah tidak layak pakai',
             ]);
@@ -54,26 +59,28 @@ class AssetDisposalTest extends TestCase
     /** @test */
     public function admin_can_reject_disposal()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = $this->makeAdmin();
         $asset = $this->createAsset(['condition' => 'dihapus']);
 
         $response = $this->actingAs($admin)
-            ->postJson("/sarpras/disposal/{$asset->id}/reject", [
+            ->postJson("/{$admin->id}/sarpras/disposal/{$asset->id}/reject", [
                 'reason' => 'Aset masih bisa digunakan',
             ])
             ->assertOk();
 
-        $this->assertNotEquals('dihapus', $asset->fresh()->condition);
+        $asset->refresh();
+        $this->assertNull($asset->disposal_method);
+        $this->assertNotEquals('dihapus', $asset->condition);
     }
 
     /** @test */
     public function validation_fails_for_missing_method()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = $this->makeAdmin();
         $asset = $this->createAsset();
 
         $this->actingAs($admin)
-            ->postJson("/sarpras/disposal/{$asset->id}/approve", [
+            ->postJson("/{$admin->id}/sarpras/disposal/{$asset->id}/approve", [
                 'disposal_reason' => 'No method provided',
             ])
             ->assertStatus(422);
@@ -86,7 +93,7 @@ class AssetDisposalTest extends TestCase
         $asset = $this->createAsset();
 
         $this->actingAs($user)
-            ->postJson("/sarpras/disposal/{$asset->id}/approve", [
+            ->postJson("/{$user->id}/sarpras/disposal/{$asset->id}/approve", [
                 'disposal_method' => 'scrap',
                 'disposal_reason' => 'Test reason',
             ])

@@ -26,7 +26,9 @@ return new class extends Migration
         if (! Schema::hasTable('humas_satisfaction_responses')) {
             Schema::create('humas_satisfaction_responses', function (Blueprint $table) {
                 $table->uuid('id')->primary();
-                $table->foreignUuid('humas_satisfaction_survey_id')->constrained('humas_satisfaction_surveys')->cascadeOnDelete();
+                $table->foreignUuid('humas_satisfaction_survey_id')
+                    ->constrained('humas_satisfaction_surveys', indexName: 'humas_sat_resp_survey_fk')
+                    ->cascadeOnDelete();
                 $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
                 $table->unsignedTinyInteger('rating');
                 $table->text('feedback')->nullable();

@@ -7,14 +7,16 @@ use App\Models\BoardingTimelineEvent;
 use App\Models\Dormitory;
 use App\Models\DormitoryAttendance;
 use App\Models\DormitoryAttendanceRecap;
-use App\Models\DormitoryEmergencyBroadcast;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryReward;
 use App\Models\DormitoryViolation;
 use App\Models\Student;
+use App\Models\StudentAchievement;
 use App\Models\StudentHealthPermit;
 use App\Models\StudentMahrom;
+use App\Services\Notifications\GuardianWhatsAppNotifier;
+use Illuminate\Support\Facades\Log;
 
 class DormitoryService
 {
@@ -38,10 +40,10 @@ class DormitoryService
         }
 
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+            app(GuardianWhatsAppNotifier::class)
                 ->notifyPermitApproved($permit);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif approve izin gagal: '.$e->getMessage());
+            Log::warning('WA notif approve izin gagal: '.$e->getMessage());
         }
     }
 
@@ -68,7 +70,7 @@ class DormitoryService
         // WA langsung ke nomor wali/terpusat — tidak bergantung pada akun
         // login wali atau worker queue, sehingga notifikasi tetap terkirim.
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+            app(GuardianWhatsAppNotifier::class)
                 ->notifyViolation(
                     $student,
                     $violation->violation_type,
@@ -76,7 +78,7 @@ class DormitoryService
                     trim(($violation->notes ?? '').' '.($violation->action_taken ?? '')) ?: null,
                 );
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif pelanggaran gagal: '.$e->getMessage());
+            Log::warning('WA notif pelanggaran gagal: '.$e->getMessage());
         }
 
         // Notifikasi sistem untuk setiap akun wali yang terhubung ke santri.
@@ -109,6 +111,23 @@ class DormitoryService
     }
 
     /**
+     * Kirim notifikasi WA ke wali saat satuan pendidikan mencatat prestasi.
+     * Ini dikirim sebelum approval asrama dan bukan notifikasi reward final.
+     */
+    public function notifyMahromOnAchievement(StudentAchievement $achievement): void
+    {
+        if (! $achievement->student) {
+            return;
+        }
+
+        try {
+            app(GuardianWhatsAppNotifier::class)->notifyAchievement($achievement);
+        } catch (\Throwable $e) {
+            Log::warning('WA notif prestasi santri gagal: '.$e->getMessage());
+        }
+    }
+
+    /**
      * Kirim notifikasi WA ke wali saat penghargaan dicatat.
      */
     public function notifyMahromOnReward(DormitoryReward $reward): void
@@ -121,9 +140,9 @@ class DormitoryService
             ?? $reward->student->mahroms()->where('is_active', true)->first();
 
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)->notifyReward($reward);
+            app(GuardianWhatsAppNotifier::class)->notifyReward($reward);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif penghargaan gagal: '.$e->getMessage());
+            Log::warning('WA notif penghargaan gagal: '.$e->getMessage());
         }
 
         $this->notifyGuardiansForStudent($reward->student, [
@@ -133,7 +152,8 @@ class DormitoryService
             'type' => 'success',
             'action' => 'reward_recorded',
             'title' => "Penghargaan Asrama — {$reward->student->name}",
-            'message' => 'Bpk/Ibu '.($mahrom?->name ?? 'Wali').", anak Anda {$reward->student->name} menerima penghargaan "
+            'message' => 'Assalamu\'alaikum Bpk/Ibu '.($mahrom?->name ?? 'Wali').'. '
+                ."Alhamdulillahilladzi bini'matihi tatimmush sholihaat. Ananda {$reward->student->name} telah disetujui menerima penghargaan "
                 ."\"{$reward->title}\" ({$reward->category_text}, {$reward->level_text}) dengan poin +{$reward->points}.",
             'data' => [
                 'student_id' => $reward->student->id,
@@ -166,10 +186,10 @@ class DormitoryService
             ?? $student->mahroms()->where('is_active', true)->first();
 
         try {
-            app(\App\Services\Notifications\GuardianWhatsAppNotifier::class)
+            app(GuardianWhatsAppNotifier::class)
                 ->notifyOverdue($permit);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WA notif overdue gagal: '.$e->getMessage());
+            Log::warning('WA notif overdue gagal: '.$e->getMessage());
         }
 
         $this->notifyGuardiansForStudent($student, [
@@ -215,7 +235,7 @@ class DormitoryService
 
         $via = $data['broadcast_via'] ?? 'all';
 
-        return app(\App\Services\NotificationUniversalService::class)->notifyGuardiansForStudents(
+        return app(NotificationUniversalService::class)->notifyGuardiansForStudents(
             $studentIds,
             [
                 'module' => 'dormitory',
@@ -326,7 +346,7 @@ class DormitoryService
         try {
             return $this->notifService->notifyGuardiansForStudents([$student->id], $data);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Notif sistem wali gagal: '.$e->getMessage());
+            Log::warning('Notif sistem wali gagal: '.$e->getMessage());
 
             return 0;
         }

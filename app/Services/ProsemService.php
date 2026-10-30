@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
  * ProsemService — PROSEM = distribusi PROTA/ATP ke bulan & pekan efektif
  * dari Kalender Pendidikan (via Pekan Efektif). Tidak ada kalender kedua.
  *
- * Minggu berjenis libur (0 hari efektif) tidak dipakai; pekan ujian /
+ * Minggu yang tidak memenuhi batas hari efektif minimal tidak dipakai;
+ * pekan ujian /
  * kegiatan sekolah tetap dipakai tetapi ditandai pada keterangan.
  */
 class ProsemService
@@ -44,7 +45,12 @@ class ProsemService
     public function buildFromProta(Prota $prota): array
     {
         $weeks = $this->pekanEfektif($prota);
-        $effective = $weeks->filter(fn (PekanEfektif $p) => (int) $p->hari_efektif > 0)->values();
+        $minEffectiveDays = app(PekanEfektifService::class)
+            ->minEffectiveDays($prota->school_id);
+        $effective = $weeks
+            ->filter(fn (PekanEfektif $p) => (int) $p->hari_efektif >= $minEffectiveDays
+                && ! in_array($p->jenis, [PekanEfektif::JENIS_LIBUR, PekanEfektif::JENIS_TIDAK_EFEKTIF], true))
+            ->values();
 
         $items = $prota->items()->with('tujuanPembelajaran')->orderBy('urutan')->get();
 
@@ -86,6 +92,7 @@ class ProsemService
                 if ($remainingCapacity <= 0) {
                     $weekIdx++;
                     $remainingCapacity = $capacity;
+
                     continue;
                 }
 
@@ -206,7 +213,7 @@ class ProsemService
                 $existing = $prosem->items()->get()->keyBy('prota_item_id');
 
                 foreach ($computed['rows'] as $row) {
-                    /** @var \App\Models\ProsemItem|null $item */
+                    /** @var ProsemItem|null $item */
                     $item = $row['prota_item_id'] ? $existing->get($row['prota_item_id']) : null;
 
                     // Penyesuaian manual guru dipertahankan; total JP tetap mengikuti PROTA.

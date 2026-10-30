@@ -11,8 +11,12 @@
     <div class="row">
         <div class="col-xl-10">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <h5 class="card-title mb-0">Edit Bank Soal</h5>
+                    <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                       class="btn btn-sm btn-soft-primary">
+                        <i class="ri-edit-2-line me-1"></i> Edit Soal
+                    </a>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ route('user.bank-soal.update', ['userId' => $userId, 'id' => $bank->id]) }}">
@@ -127,6 +131,64 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-10">
+            <div class="card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <h5 class="card-title mb-0"><i class="ri-list-check-2 me-1 text-primary"></i>Daftar Soal</h5>
+                        <small class="text-muted">Edit bank dan kelola soal dalam satu halaman.</small>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                           class="btn btn-soft-primary btn-sm"><i class="ri-edit-2-line me-1"></i>Buka Halaman Edit Soal</a>
+                        <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                           class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i>Tambah Soal</a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if($bank->soal->isEmpty())
+                        <div class="text-center text-muted py-4">Belum ada soal.</div>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-striped align-middle mb-0">
+                                <thead class="table-light text-muted">
+                                    <tr>
+                                        <th class="ps-3" style="width:50px">#</th>
+                                        <th>Level</th>
+                                        <th>Pertanyaan</th>
+                                        <th>Status</th>
+                                        <th class="pe-3 text-end">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($bank->soal as $i => $soal)
+                                        <tr>
+                                            <td class="ps-3 text-muted">{{ $i + 1 }}</td>
+                                            <td>
+                                                @if($soal->level_kognitif)
+                                                    <span class="badge bg-primary-subtle text-primary">{{ $soal->level_kognitif_code }} · {{ $soal->level_kognitif_rumpun }}</span>
+                                                @else
+                                                    <span class="badge bg-light text-muted border">Belum</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ Str::limit(strip_tags($soal->pertanyaan ?? ''), 90) }}</td>
+                                            <td><span class="badge {{ $soal->status === 'approved' ? 'bg-success' : ($soal->status === 'draft' ? 'bg-warning text-dark' : 'bg-info') }}">{{ ucfirst($soal->status ?? '-') }}</span></td>
+                                            <td class="pe-3 text-end">
+                                                <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $bank->id, 'id' => $soal->id]) }}"
+                                                   class="btn btn-sm btn-soft-primary"><i class="ri-pencil-line me-1"></i>Edit Soal</a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

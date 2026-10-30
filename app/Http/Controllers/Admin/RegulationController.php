@@ -39,7 +39,7 @@ class RegulationController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'bab' => 'required|string|max:10',
             'pasal' => 'required|string|max:10',
             'title' => 'required|string|max:255',
@@ -47,7 +47,7 @@ class RegulationController extends Controller
             'order' => 'required|integer',
         ]);
 
-        Regulation::create($request->all());
+        Regulation::create($validated);
 
         return redirect()->back()->with('success', 'Peraturan berhasil ditambahkan!');
     }
@@ -65,7 +65,7 @@ class RegulationController extends Controller
      */
     public function update(Request $request, Regulation $regulation)
     {
-        $request->validate([
+        $validated = $request->validate([
             'bab' => 'required|string|max:10',
             'pasal' => 'required|string|max:10',
             'title' => 'required|string|max:255',
@@ -73,8 +73,7 @@ class RegulationController extends Controller
             'order' => 'required|integer',
         ]);
 
-        $request->merge(['updated_by' => auth()->id()]);
-        $regulation->update($request->all());
+        $regulation->update($validated);
 
         return redirect()->back()->with('success', 'Peraturan berhasil diubah!');
     }

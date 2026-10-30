@@ -253,6 +253,45 @@
                                 @error('expected_return_datetime')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                <div class="form-text">Maksimal 3 hari. Izin khusus dengan waktu lebih lama memerlukan approval.</div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning mb-4">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="ri-shield-user-line fs-5 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="guardian_consent_confirmed" id="guardian_consent_confirmed"
+                                               class="form-check-input @error('guardian_consent_confirmed') is-invalid @enderror"
+                                               value="1" required {{ old('guardian_consent_confirmed') ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-semibold" for="guardian_consent_confirmed">
+                                            Orang tua/wali telah memberikan izin untuk perizinan ini <span class="text-danger">*</span>
+                                        </label>
+                                    </div>
+                                    @error('guardian_consent_confirmed')
+                                        <div class="text-danger small mt-1">{{ $message }}</div>
+                                    @enderror
+                                    <div class="row g-2 mt-2">
+                                        <div class="col-md-5">
+                                            <label class="form-label small mb-1">Kanal konfirmasi wali</label>
+                                            <select name="guardian_approval_channel" class="form-select form-select-sm">
+                                                <option value="manual" {{ old('guardian_approval_channel', 'manual') === 'manual' ? 'selected' : '' }}>Tatap muka / manual</option>
+                                                <option value="whatsapp" {{ old('guardian_approval_channel') === 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
+                                                <option value="portal" {{ old('guardian_approval_channel') === 'portal' ? 'selected' : '' }}>Portal wali</option>
+                                                <option value="surat" {{ old('guardian_approval_channel') === 'surat' ? 'selected' : '' }}>Surat</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label small mb-1">Catatan persetujuan wali</label>
+                                            <input type="text" name="guardian_approval_note" class="form-control form-control-sm"
+                                                   maxlength="500" value="{{ old('guardian_approval_note') }}" placeholder="Contoh: disetujui via telepon">
+                                        </div>
+                                    </div>
+                                    <div class="small text-muted mt-2">
+                                        Izin biasa yang sudah diagendakan tetap diproses; izin khusus akan menunggu approval Kepala/Wakil Asrama.
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

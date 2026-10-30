@@ -158,7 +158,7 @@
     {{-- Lihat daftar aset Sarpras (untuk inventaris perangkat TI) --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.aset.', 'sarpras.assets.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.aset.index') }}">
+           href="{{ route('sarpras.aset.index', ['userId' => $userId]) }}">
             <i class="ri-archive-2-line"></i><span>Daftar Aset TI</span>
         </a>
     </li>
@@ -166,7 +166,7 @@
     {{-- Lihat ruang (untuk lokasi perangkat) --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.ruang.', 'sarpras.user.ruang.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.ruang.index') }}">
+           href="{{ route('sarpras.ruang.index', ['userId' => $userId]) }}">
             <i class="ri-door-open-line"></i><span>Ruang & Lokasi</span>
         </a>
     </li>
@@ -174,7 +174,7 @@
     {{-- Scan QR aset --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.qr.scanner', 'sarpras.qr.lookup', 'sarpras.assets.scan']) ? ' active' : '' }}"
-           href="{{ route('sarpras.qr.scanner') }}">
+           href="{{ route('sarpras.qr.scanner', ['userId' => $userId]) }}">
             <i class="ri-qr-scan-2-line"></i><span>Scan QR Aset</span>
         </a>
     </li>
@@ -190,7 +190,7 @@
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.kerusakan.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.kerusakan.index') }}">
+           href="{{ route('sarpras.user.kerusakan.index', ['userId' => $userId]) }}">
             <i class="ri-tools-line"></i><span>Lapor Kerusakan</span>
         </a>
     </li>

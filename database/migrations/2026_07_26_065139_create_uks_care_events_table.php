@@ -27,14 +27,8 @@ return new class extends Migration
         }
 
         if (Schema::hasTable('uks_patients') && Schema::hasColumn('uks_care_events', 'patient_id')) {
-            $fkExists = collect(
-                DB::select(
-                    "SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-                     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'uks_care_events'
-                     AND COLUMN_NAME = 'patient_id' AND REFERENCED_TABLE_NAME IS NOT NULL",
-                    [config('database.connections.mysql.database')]
-                )
-            )->isNotEmpty();
+            $fkExists = collect(Schema::getForeignKeys('uks_care_events'))
+                ->contains(fn ($fk) => in_array('patient_id', $fk['columns'] ?? [], true));
 
             if (! $fkExists) {
                 Schema::table('uks_care_events', function (Blueprint $table) {

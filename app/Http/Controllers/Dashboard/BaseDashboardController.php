@@ -123,14 +123,14 @@ abstract class BaseDashboardController extends Controller
             'guru' => (clone $query)
                 ->where(function ($q) {
                     $q->where('jenis_gtk', 'like', '%guru%')
-                      ->orWhere('jabatan', 'like', '%guru%');
+                        ->orWhere('jabatan', 'like', '%guru%');
                 })
                 ->count(),
             'tendik' => (clone $query)
                 ->where(function ($q) {
                     $q->where('jenis_gtk', 'like', '%tendik%')
-                      ->orWhere('jenis_gtk', 'like', '%tu%')
-                      ->orWhere('jabatan', 'like', '%tata usaha%');
+                        ->orWhere('jenis_gtk', 'like', '%tu%')
+                        ->orWhere('jabatan', 'like', '%tata usaha%');
                 })
                 ->count(),
         ];
@@ -197,7 +197,8 @@ abstract class BaseDashboardController extends Controller
                 ])
                 ->toArray();
         } catch (\Throwable $e) {
-            Log::warning('AuditLog query failed: ' . $e->getMessage());
+            Log::warning('AuditLog query failed: '.$e->getMessage());
+
             return [];
         }
     }

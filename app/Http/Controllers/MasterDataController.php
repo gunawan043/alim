@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdditionalTaskType;
 use App\Models\Divisi;
+use App\Models\GtkAdditionalTask;
 use App\Models\JenisGtk;
+use App\Models\OtherTeacherTask;
 use App\Models\StructuralPosition;
 use App\Models\WorkUnit;
 use Illuminate\Http\Request;
@@ -157,6 +160,124 @@ class MasterDataController extends Controller
 
         return redirect()->route('user.master-data.jabatan.index', ['userId' => $userId])
             ->with('success', 'Jabatan berhasil dihapus.');
+    }
+
+    // ============================================================
+    // JENIS TUGAS TAMBAHAN
+    // ============================================================
+    public function tugasTambahanIndex(Request $request, string $userId)
+    {
+        $query = AdditionalTaskType::with('jenisGtk')
+            ->orderBy('jenis_gtk_id')
+            ->orderBy('urutan')
+            ->orderBy('nama');
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('kode', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('jenis_gtk_id')) {
+            $query->where('jenis_gtk_id', $request->jenis_gtk_id);
+        }
+
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
+        }
+
+        $taskTypes = $query->paginate(20)->withQueryString();
+        $jenisGtkList = JenisGtk::orderBy('urutan')->orderBy('nama')->get();
+
+        return view('master-data.tugas-tambahan-index', compact(
+            'taskTypes', 'jenisGtkList', 'userId'
+        ));
+    }
+
+    public function tugasTambahanStore(Request $request, string $userId)
+    {
+        $data = $request->validate([
+            'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
+            'nama' => [
+                'required', 'string', 'max:100',
+                Rule::unique('additional_task_types', 'nama')
+                    ->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id)),
+            ],
+            'deskripsi' => 'nullable|string|max:1000',
+            'urutan' => 'nullable|integer|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        $data['kode'] = $this->uniqueTaskTypeCode((string) $data['nama']);
+        $data['is_active'] = $request->boolean('is_active', true);
+
+        AdditionalTaskType::create($data);
+
+        return redirect()
+            ->route('user.master-data.tugas-tambahan.index', ['userId' => $userId])
+            ->with('success', 'Jenis tugas tambahan berhasil ditambahkan.');
+    }
+
+    public function tugasTambahanUpdate(Request $request, string $userId, string $id)
+    {
+        $taskType = AdditionalTaskType::findOrFail($id);
+
+        $data = $request->validate([
+            'jenis_gtk_id' => 'required|exists:jenis_gtk,id',
+            'nama' => [
+                'required', 'string', 'max:100',
+                Rule::unique('additional_task_types', 'nama')
+                    ->where(fn ($q) => $q->where('jenis_gtk_id', $request->jenis_gtk_id))
+                    ->ignore($id),
+            ],
+            'deskripsi' => 'nullable|string|max:1000',
+            'urutan' => 'nullable|integer|min:0',
+            'is_active' => 'boolean',
+        ]);
+
+        $data['is_active'] = $request->boolean('is_active', true);
+
+        // Kode lama dipertahankan agar referensi tugas yang sudah ada tidak berubah.
+        $taskType->update($data);
+
+        return redirect()
+            ->route('user.master-data.tugas-tambahan.index', ['userId' => $userId])
+            ->with('success', 'Jenis tugas tambahan berhasil diperbarui.');
+    }
+
+    public function tugasTambahanDestroy(string $userId, string $id)
+    {
+        $taskType = AdditionalTaskType::findOrFail($id);
+
+        $used = GtkAdditionalTask::where('additional_task_type_id', $id)->exists()
+            || OtherTeacherTask::where('additional_task_type_id', $id)->exists();
+
+        if ($used) {
+            return redirect()
+                ->route('user.master-data.tugas-tambahan.index', ['userId' => $userId])
+                ->with('error', 'Jenis tugas ini sudah dipakai. Nonaktifkan saja agar riwayat penugasan tetap aman.');
+        }
+
+        $taskType->delete();
+
+        return redirect()
+            ->route('user.master-data.tugas-tambahan.index', ['userId' => $userId])
+            ->with('success', 'Jenis tugas tambahan berhasil dihapus.');
+    }
+
+    private function uniqueTaskTypeCode(string $name): string
+    {
+        $base = Str::slug($name) ?: 'tugas-tambahan';
+        $code = $base;
+        $counter = 2;
+
+        while (AdditionalTaskType::where('kode', $code)->exists()) {
+            $code = $base.'-'.$counter++;
+        }
+
+        return $code;
     }
 
     // ============================================================

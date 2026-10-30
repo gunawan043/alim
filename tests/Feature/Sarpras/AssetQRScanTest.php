@@ -2,46 +2,42 @@
 
 namespace Tests\Feature\Sarpras;
 
-use Illuminate\Support\Facades\Artisan;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class AssetQRScanTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use RefreshDatabase;
 
     /** @test */
     public function technician_can_scan_valid_qr()
     {
-        $user = $this->createUser('Admin');
+        $user = User::factory()->create(['name' => 'Admin', 'is_system_admin' => true]);
         $asset = $this->createAsset();
 
         $response = $this->actingAs($user)
-            ->postJson('/sarpras/scan/process', ['asset_code' => $asset->asset_code])
+            ->postJson("/{$user->id}/sarpras/qr/lookup", ['code' => $asset->asset_code])
             ->assertOk();
 
         $this->assertTrue($response->json('success'));
+        $this->assertEquals($asset->asset_code, $response->json('data.asset.asset_code'));
+        $this->assertDatabaseHas('qr_scan_histories', [
+            'asset_id' => $asset->id,
+            'scanned_by' => $user->id,
+        ]);
     }
 
     /** @test */
     public function invalid_qr_returns_error()
     {
-        $user = $this->createUser('Admin');
+        $user = User::factory()->create(['name' => 'Admin', 'is_system_admin' => true]);
 
         $response = $this->actingAs($user)
-            ->postJson('/sarpras/scan/process', ['asset_code' => 'INVALID-CODE-9999'])
-            ->assertOk();
+            ->postJson("/{$user->id}/sarpras/qr/lookup", ['code' => 'INVALID-CODE-9999'])
+            ->assertNotFound();
 
         $this->assertFalse($response->json('success'));
     }
@@ -49,10 +45,10 @@ class AssetQRScanTest extends TestCase
     /** @test */
     public function empty_asset_code_fails_validation()
     {
-        $user = $this->createUser('Admin');
+        $user = User::factory()->create(['name' => 'Admin', 'is_system_admin' => true]);
 
         $this->actingAs($user)
-            ->postJson('/sarpras/scan/process', ['asset_code' => ''])
+            ->postJson("/{$user->id}/sarpras/qr/lookup", ['code' => ''])
             ->assertStatus(422);
     }
 }

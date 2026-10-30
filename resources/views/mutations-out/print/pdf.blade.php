@@ -346,7 +346,7 @@
                 <td class="sig-right">
                     <table style="width:100%;margin-bottom:60px;">
                         <tr>
-                            <td style="width:65px" class="sig-city">{{ $mutation->established_city ?: $school->city ?? 'Kota' }},</td>
+                            <td style="width:65px" class="sig-city">{{ $mutation->established_city ? format_city_name($mutation->established_city) : ($school->city?->display_name ?? 'Mataram') }},</td>
                             <td class="sig-city" style="text-decoration: underline;">{{ $mutation->established_date ? $mutation->established_date->format('d F Y') : now()->format('d F Y') }} M</td>
                         </tr>
                         @if ($mutation->hijri_date)
@@ -359,15 +359,39 @@
                             <td colspan="2" class="sig-title">{{ $mutation->head_title ?: 'Kepala Sekolah' }}</td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="sig-name" style="padding-top: 70px">{{ $mutation->head_name ?: '-' }}</td>
+                            <td colspan="2">
+                                @if(($documentMedia['show_ttd_ksp'] ?? true) || ($documentMedia['show_stamp'] ?? true))
+                                    @php
+                                        $sigW = max((float) ($documentMedia['ttd_width'] ?? 30), (float) ($documentMedia['stamp_width'] ?? 30));
+                                        $sigH = max(
+                                            (float) ($documentMedia['ttd_margin'] ?? 2) + (float) ($documentMedia['ttd_height'] ?? 15),
+                                            (float) ($documentMedia['stamp_margin'] ?? 2) + (float) ($documentMedia['stamp_height'] ?? 30)
+                                        );
+                                    @endphp
+                                    <div style="position:relative;width:{{ $sigW }}mm;height:{{ $sigH }}mm;margin:2mm auto 0;">
+                                        @if(($documentMedia['show_stamp'] ?? true) && ! empty($documentMedia['stamp']))
+                                            <img src="{{ $documentMedia['stamp'] }}" alt="Stempel" style="position:absolute;left:0;top:{{ (float) ($documentMedia['stamp_margin'] ?? 2) }}mm;width:{{ (float) ($documentMedia['stamp_width'] ?? 30) }}mm;height:{{ (float) ($documentMedia['stamp_height'] ?? 30) }}mm;object-fit:contain;opacity:.9;">
+                                        @endif
+                                        @if(($documentMedia['show_ttd_ksp'] ?? true) && ! empty($documentMedia['ttd_ksp']))
+                                            <img src="{{ $documentMedia['ttd_ksp'] }}" alt="TTD KSP" style="position:absolute;left:0;top:{{ (float) ($documentMedia['ttd_margin'] ?? 2) }}mm;width:{{ (float) ($documentMedia['ttd_width'] ?? 30) }}mm;height:{{ (float) ($documentMedia['ttd_height'] ?? 15) }}mm;object-fit:contain;">
+                                        @endif
+                                    </div>
+                                @endif
+                            </td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="sig-nip">NUPY. {{ $mutation->head_nupy ?: '-' }}</td>
+                            <td colspan="2" class="sig-name" style="padding-top: 2mm">{{ $mutation->head_name ?: ($principal['display_name'] ?? '-') }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="sig-nip">NUPY. {{ $mutation->head_nupy ?: ($principal['nupy'] ?? '-') }}</td>
                         </tr>
                     </table>
                 </td>
             </tr>
         </table>
+
+        {{-- QR verifikasi (dekat blok TTD) --}}
+    @include('documents._qr-footer', ['verification' => $verification ?? null])
 
         {{-- Footer info --}}
         <div class="footer-info" style="width:100%;">

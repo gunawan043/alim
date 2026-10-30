@@ -123,7 +123,7 @@ class VendorPerformanceService
                 'rating_avg' => $vendor->rating_avg,
                 'rating_count' => $vendor->rating_count,
                 'active_orders' => WorkOrder::where('vendor_id', $vendor->id)
-                    ->whereIn('status', ['assigned', 'working'])->count(),
+                    ->whereIn('status', ['dispatched', 'in_progress', 'paused', 'waiting_parts'])->count(),
                 'on_time_pct' => $this->computeMetrics($vendor, now()->subYear()->toDateString(), now()->toDateString())['on_time_pct'] ?? 0,
                 'total_value_ytd' => PurchaseOrder::where('vendor_id', $vendor->id)
                     ->whereYear('order_date', now()->year)->sum('total'),

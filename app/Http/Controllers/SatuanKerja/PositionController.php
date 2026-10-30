@@ -69,6 +69,15 @@ class PositionController
                 'jabatan_id' => $validated['jabatan_id'],
                 'jabatan' => $jabatan?->name,
             ]);
+
+            // Jabatan pada satuan kerja ini ikut disinkronkan agar SK & halaman lain
+            // membaca nilai yang sama dengan struktur organisasi.
+            GtkWorkUnit::where('user_id', $userModel->id)
+                ->where('work_unit_id', $workUnitId)
+                ->update([
+                    'position_id' => $jabatan?->id,
+                    'jabatan' => $jabatan?->name,
+                ]);
         });
 
         return response()->json([
@@ -103,6 +112,13 @@ class PositionController
                     'jabatan_id' => $validated['jabatan_id'],
                     'jabatan' => $jabatan?->name,
                 ]);
+
+                GtkWorkUnit::where('user_id', $userModel->id)
+                    ->where('work_unit_id', $workUnitId)
+                    ->update([
+                        'position_id' => $jabatan?->id,
+                        'jabatan' => $jabatan?->name,
+                    ]);
 
                 $updated++;
             }

@@ -51,6 +51,8 @@ class TahfidzGroupAttendance extends Model
             'izin' => 'Izin',
             'sakit' => 'Sakit',
             'alpa' => 'Alpa',
+            'belum_setor' => 'Belum setor',
+            'belum_siap' => 'Belum siap setoran',
             default => ucfirst((string) $this->status),
         };
     }

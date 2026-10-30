@@ -5,13 +5,19 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\SystemSetting;
+use App\Models\UserDevice;
+use App\Models\WebPushSubscription;
 use App\Services\Notifications\WhatsAppGatewayService;
 use App\Services\Recruitment\RecruitmentApiClient;
 use App\Services\Sarpras\GoogleDriveService;
 use App\Services\SystemMailSettingsService;
+use App\Support\ApnsConfig;
+use App\Support\FcmConfig;
 use App\Support\PosApiConfig;
+use App\Support\PosProcurementConfig;
 use App\Support\RecruitmentApiConfig;
 use App\Support\RecruitmentOutboundConfig;
+use App\Support\WebPushConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -33,13 +39,48 @@ class SystemSettingController extends Controller
         $settings = SystemSetting::pluck('value', 'key')->toArray();
         $mailSettings = app(SystemMailSettingsService::class)->displayValues();
 
+        $push = [
+            'fcm' => [
+                'project_id' => FcmConfig::projectId(),
+                'configured' => FcmConfig::isConfigured(),
+                'has_stored_project_id' => FcmConfig::hasStoredProjectId(),
+                'has_stored_service_account' => FcmConfig::hasStoredServiceAccount(),
+                'service_account_encrypted' => FcmConfig::storedServiceAccountIsEncrypted(),
+                'project_id_from_env' => ! FcmConfig::hasStoredProjectId() && trim((string) config('services.fcm.project_id', '')) !== '',
+            ],
+            'apns' => [
+                'key_id' => ApnsConfig::keyId(),
+                'team_id' => ApnsConfig::teamId(),
+                'bundle_id' => ApnsConfig::bundleId(),
+                'environment' => ApnsConfig::environment(),
+                'configured' => ApnsConfig::isConfigured(),
+                'has_stored_key' => ApnsConfig::hasStoredPrivateKey(),
+                'key_encrypted' => ApnsConfig::storedPrivateKeyIsEncrypted(),
+                'key_id_from_env' => trim((string) config('services.apns.key_id', '')) !== '',
+            ],
+            'device_count' => UserDevice::query()->active()->count(),
+            'fcm_device_count' => UserDevice::query()->active()->where('provider', 'fcm')->count(),
+            'apns_device_count' => UserDevice::query()->active()->where('provider', 'apns')->count(),
+        ];
+
+        $webPush = [
+            'configured' => WebPushConfig::isConfigured(),
+            'public_key' => WebPushConfig::vapidPublicKey(),
+            'subject' => WebPushConfig::subject(),
+            'has_public_key' => WebPushConfig::hasStoredPublicKey(),
+            'has_private_key' => WebPushConfig::hasStoredPrivateKey(),
+            'private_encrypted' => WebPushConfig::storedPrivateKeyIsEncrypted(),
+            'public_from_env' => WebPushConfig::publicKeyFromEnv(),
+            'subscription_count' => WebPushSubscription::query()->active()->count(),
+        ];
+
         $waLogs = DB::table('wa_message_logs')
             ->orderByDesc('created_at')
             ->limit(15)
             ->get();
 
         return response()
-            ->view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings'))
+            ->view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings', 'push', 'webPush'))
             ->header('Cache-Control', 'no-store, private')
             ->header('Pragma', 'no-cache');
     }
@@ -90,6 +131,18 @@ class SystemSettingController extends Controller
             'email_notifications' => 'boolean',
             'whatsapp_notifications' => 'boolean',
             'push_notifications' => 'boolean',
+            'fcm_project_id' => 'nullable|string|max:191',
+            'fcm_service_account_json' => 'nullable|string',
+            'fcm_service_account_clear' => 'boolean',
+            'apns_key_id' => 'nullable|string|max:20',
+            'apns_team_id' => 'nullable|string|max:20',
+            'apns_bundle_id' => 'nullable|string|max:191',
+            'apns_environment' => 'nullable|in:sandbox,production',
+            'apns_private_key' => 'nullable|string',
+            'apns_private_key_clear' => 'boolean',
+            'web_push_vapid_subject' => 'nullable|string|max:500',
+            'generate_web_push_keys' => 'boolean',
+            'web_push_vapid_clear' => 'boolean',
             'wa_enabled' => 'boolean',
             'wa_provider' => 'nullable|string|max:30',
             'wa_api_token' => 'nullable|string|max:255',
@@ -128,6 +181,11 @@ class SystemSettingController extends Controller
             'wa_event_visit' => 'boolean',
             'pos_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'pos_api_allowed_ips' => 'nullable|string|max:2000',
+            'pos_procurement_enabled' => 'boolean',
+            'pos_procurement_base_url' => 'nullable|url|max:500',
+            'pos_procurement_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
+            'pos_procurement_api_key' => 'nullable|string|max:2000',
+            'pos_procurement_api_key_clear' => 'boolean',
             'recruitment_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'recruitment_api_allowed_ips' => 'nullable|string|max:2000',
             'recruitment_outbound_url' => 'nullable|url|max:500',
@@ -258,6 +316,13 @@ class SystemSettingController extends Controller
         // Field POS API ditangani khusus di bawah (normalisasi header, IP, dan
         // pembuatan token) — keluarkan dari penyimpanan generik.
         unset($validated['pos_api_header'], $validated['pos_api_allowed_ips']);
+        unset(
+            $validated['pos_procurement_enabled'],
+            $validated['pos_procurement_base_url'],
+            $validated['pos_procurement_header'],
+            $validated['pos_procurement_api_key'],
+            $validated['pos_procurement_api_key_clear']
+        );
         unset($validated['recruitment_api_header'], $validated['recruitment_api_allowed_ips']);
         unset(
             $validated['recruitment_outbound_url'],
@@ -276,6 +341,21 @@ class SystemSettingController extends Controller
             unset($validated[$driveKey]);
         }
 
+        unset(
+            $validated['fcm_project_id'],
+            $validated['fcm_service_account_json'],
+            $validated['fcm_service_account_clear'],
+            $validated['apns_key_id'],
+            $validated['apns_team_id'],
+            $validated['apns_bundle_id'],
+            $validated['apns_environment'],
+            $validated['apns_private_key'],
+            $validated['apns_private_key_clear'],
+            $validated['web_push_vapid_subject'],
+            $validated['generate_web_push_keys'],
+            $validated['web_push_vapid_clear']
+        );
+
         foreach ($validated as $key => $value) {
             SystemSetting::updateOrCreate(
                 ['key' => $key],
@@ -289,6 +369,107 @@ class SystemSettingController extends Controller
 
         if ($request->boolean('mail_settings')) {
             $this->writeSettingsAudit($request, 'EMAIL_SETTINGS_UPDATED');
+        }
+
+        // ── Tab Push Mobile: FCM + APNs ─────────────────────────────────
+        $pushFlash = null;
+
+        if ($request->exists('fcm_project_id')
+            || $request->exists('fcm_service_account_json')
+            || $request->boolean('fcm_service_account_clear')
+            || $request->exists('apns_key_id')
+            || $request->exists('apns_team_id')
+            || $request->exists('apns_bundle_id')
+            || $request->exists('apns_environment')
+            || $request->exists('apns_private_key')
+            || $request->boolean('apns_private_key_clear')) {
+            if ($request->exists('fcm_project_id')) {
+                FcmConfig::storeProjectId((string) $request->input('fcm_project_id', ''));
+            }
+
+            $serviceAccount = trim((string) $request->input('fcm_service_account_json', ''));
+
+            if ($serviceAccount !== '') {
+                $decoded = json_decode($serviceAccount, true);
+
+                if (! is_array($decoded) || empty($decoded['client_email']) || empty($decoded['private_key'])) {
+                    throw ValidationException::withMessages([
+                        'fcm_service_account_json' => 'Service account FCM tidak valid. Wajib berisi client_email dan private_key.',
+                    ]);
+                }
+
+                FcmConfig::storeServiceAccountJson($serviceAccount);
+            } elseif ($request->boolean('fcm_service_account_clear')) {
+                FcmConfig::clearServiceAccount();
+            }
+
+            if ($request->exists('apns_key_id')) {
+                ApnsConfig::storeKeyId((string) $request->input('apns_key_id', ''));
+            }
+
+            if ($request->exists('apns_team_id')) {
+                ApnsConfig::storeTeamId((string) $request->input('apns_team_id', ''));
+            }
+
+            if ($request->exists('apns_bundle_id')) {
+                ApnsConfig::storeBundleId((string) $request->input('apns_bundle_id', ''));
+            }
+
+            if ($request->exists('apns_environment')) {
+                ApnsConfig::storeEnvironment((string) $request->input('apns_environment', 'production'));
+            }
+
+            $apnsKey = trim((string) $request->input('apns_private_key', ''));
+
+            if ($apnsKey !== '') {
+                $normalizedKey = str_replace('\\n', "\n", $apnsKey);
+
+                if (openssl_pkey_get_private($normalizedKey) === false) {
+                    throw ValidationException::withMessages([
+                        'apns_private_key' => 'Private key APNs tidak valid. Tempel isi file .p8 lengkap.',
+                    ]);
+                }
+
+                ApnsConfig::storePrivateKey($apnsKey);
+            } elseif ($request->boolean('apns_private_key_clear')) {
+                ApnsConfig::clearPrivateKey();
+            }
+
+            $this->writeSettingsAudit($request, 'PUSH_SETTINGS_UPDATED');
+            $pushFlash = 'Pengaturan FCM/APNs berhasil disimpan.';
+        }
+
+        $webPushFlash = null;
+
+        if ($request->exists('web_push_vapid_subject')
+            || $request->boolean('generate_web_push_keys')
+            || $request->boolean('web_push_vapid_clear')) {
+            if ($request->exists('web_push_vapid_subject')) {
+                $subject = trim((string) $request->input('web_push_vapid_subject', ''));
+
+                if ($subject !== ''
+                    && ! str_starts_with($subject, 'mailto:')
+                    && filter_var($subject, FILTER_VALIDATE_URL) === false) {
+                    throw ValidationException::withMessages([
+                        'web_push_vapid_subject' => 'Subject VAPID harus diawali mailto: atau berupa URL.',
+                    ]);
+                }
+
+                WebPushConfig::storeSubject($subject);
+            }
+
+            if ($request->boolean('generate_web_push_keys')) {
+                WebPushConfig::generateKeys();
+                $this->writeSettingsAudit($request, 'WEB_PUSH_VAPID_KEYS_GENERATED');
+                $webPushFlash = 'VAPID key berhasil dibuat. Pengguna perlu mengaktifkan notifikasi browser sekali lagi.';
+            } elseif ($request->boolean('web_push_vapid_clear')) {
+                WebPushConfig::clearKeys();
+                $webPushFlash = 'VAPID key browser berhasil dihapus.';
+            } else {
+                $webPushFlash = 'Pengaturan Web Push berhasil disimpan.';
+            }
+
+            $this->writeSettingsAudit($request, 'WEB_PUSH_SETTINGS_UPDATED');
         }
 
         // ── Tab Integrasi POS: simpan pengaturan & kelola token ──────────
@@ -330,6 +511,18 @@ class SystemSettingController extends Controller
 
             if ($regenerated) {
                 $this->writeSettingsAudit($request, 'POS_API_TOKEN_ROTATED');
+            }
+
+            // Koneksi arah keluar ALIM → POS (API pengadaan).
+            PosProcurementConfig::storeEnabled($request->boolean('pos_procurement_enabled'));
+            PosProcurementConfig::storeBaseUrl($request->input('pos_procurement_base_url'));
+            PosProcurementConfig::storeHeader($request->input('pos_procurement_header'));
+
+            $outboundToken = trim((string) $request->input('pos_procurement_api_key', ''));
+            if ($outboundToken !== '') {
+                PosProcurementConfig::storeToken($outboundToken);
+            } elseif ($request->boolean('pos_procurement_api_key_clear')) {
+                PosProcurementConfig::clearToken();
             }
 
             $posFlash = $regenerated
@@ -447,7 +640,7 @@ class SystemSettingController extends Controller
         }
 
         return redirect()->back()
-            ->with('success', $posFlash ?? $recruitmentFlash ?? 'Pengaturan berhasil disimpan.');
+            ->with('success', $posFlash ?? $recruitmentFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
     }
 
     /**

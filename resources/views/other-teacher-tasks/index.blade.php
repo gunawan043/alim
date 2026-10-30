@@ -165,15 +165,14 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <select name="task_name" id="taskName" class="form-control js-select2" required>
+                            <select name="additional_task_type_id" id="taskType" class="form-control js-select2" required>
                                 <option value="">-- Pilih Tugas Tambahan --</option>
                                 @foreach($taskTypes as $type)
-                                    <option value="{{ $type->nama }}" data-code="{{ $type->kode }}"
-                                            data-needs-rombel="{{ str_contains(mb_strtolower($type->nama), 'wali kelas') ? '1' : '0' }}"
-                                            {{ old('task_name') == $type->nama ? 'selected' : '' }}>{{ $type->nama }}</option>
+                                    <option value="{{ $type->id }}"
+                                            data-needs-rombel="{{ $type->kode === 'wali-kelas' ? '1' : '0' }}"
+                                            {{ old('additional_task_type_id') === $type->id ? 'selected' : '' }}>{{ $type->nama }}</option>
                                 @endforeach
                             </select>
-                            <input type="hidden" name="task_code" id="taskCode" value="{{ old('task_code') }}">
                             <div id="rombelWrap" class="mt-2" style="display: none;">
                                 <select name="study_group_id" id="rombelSelect" class="form-control js-select2">
                                     <option value="">-- Pilih Rombel / Kelas --</option>
@@ -214,7 +213,7 @@
                                     <tr>
                                         <td class="fw-medium">{{ $task->teacher?->name ?? '-' }}</td>
                                         <td>
-                                            {{ $task->task_name }}
+                                            {{ $task->additionalTaskType?->nama ?? $task->task_name }}
                                             @if($task->studyGroup)
                                                 <span class="badge bg-primary-subtle text-primary ms-1">{{ $task->studyGroup->name }}</span>
                                             @endif
@@ -264,16 +263,13 @@
         $('.js-select2').select2({ width: '100%' });
 
         function syncRombel() {
-            const needsRombel = String($('#taskName').find(':selected').data('needs-rombel')) === '1';
+            const needsRombel = String($('#taskType').find(':selected').data('needs-rombel')) === '1';
             $('#rombelWrap').toggle(needsRombel);
             $('#rombelSelect').prop('required', needsRombel);
             if (!needsRombel) { $('#rombelSelect').val(null).trigger('change'); }
         }
 
-        $('#taskName').on('change', function () {
-            $('#taskCode').val($(this).find(':selected').data('code') || '');
-            syncRombel();
-        }).trigger('change');
+        $('#taskType').on('change', syncRombel).trigger('change');
     });
 </script>
 @endpush

@@ -3,17 +3,23 @@
 namespace Tests\Feature;
 
 use App\Authorization\ValueObjects\ScopeKey;
+use App\Http\Controllers\PekanEfektifPrintController;
+use App\Http\Controllers\Waka\PekanEfektifController;
 use App\Models\AcademicYear;
 use App\Models\Kaldik;
 use App\Models\PekanEfektif;
+use App\Models\PekanEfektifPrintSetting;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Policies\KaldikPolicy;
 use App\Services\PekanEfektifService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -112,6 +118,132 @@ class KaldikPekanEfektifTest extends TestCase
         $this->assertSame(25, $persisted['minggu_efektif']);
     }
 
+    public function test_semester_genap_menggunakan_tahun_ajaran_semester_genap(): void
+    {
+        $genap = AcademicYear::create([
+            'name' => '2026/2027',
+            'semester' => 'genap',
+            'is_active' => false,
+            'start_date' => '2027-01-01',
+            'end_date' => '2027-06-30',
+        ]);
+
+        $service = app(PekanEfektifService::class);
+        $resolved = $service->academicYearForSemester($this->ay, PekanEfektif::SEMESTER_GENAP);
+
+        $this->assertSame($genap->id, $resolved?->id);
+        $this->assertSame('genap', $resolved?->semester);
+    }
+
+    public function test_agenda_dari_info_tidak_ikut_menghitung_pekan_efektif(): void
+    {
+        $this->makeKaldik('Libur Resmi Pondok', Kaldik::TYPE_LIBUR, '2026-07-01', '2026-07-12');
+
+        // Agenda dari Info/Broadcast: bukan Kaldik resmi, meski tipenya libur.
+        Kaldik::create([
+            'name' => 'Libur Kegiatan Internal',
+            'category' => Kaldik::CATEGORY_AGENDA,
+            'semester' => 'ganjil',
+            'academic_year_id' => $this->ay->id,
+            'type' => Kaldik::TYPE_LIBUR,
+            'start_date' => '2026-07-13',
+            'end_date' => '2026-07-19',
+            'is_active' => true,
+            'created_by' => $this->pimpinan->id,
+        ]);
+
+        $svc = app(PekanEfektifService::class);
+        $result = $svc->generate($this->school->id, $this->ay->id, PekanEfektif::SEMESTER_GANJIL, $this->pimpinan->id);
+        $summary = $result['summary'];
+
+        // Hanya libur resmi 2 pekan yang dihitung.
+        $this->assertSame(2, $summary['minggu_libur']);
+        $this->assertSame(25, $summary['minggu_efektif']);
+        $this->assertSame(148, $summary['total_hari_efektif']);
+    }
+
+    public function test_pekan_dengan_hari_efektif_kurang_dari_batas_tidak_dihitung_efektif(): void
+    {
+        $this->school->update(['min_effective_days_per_week' => 3]);
+        $this->makeKaldik('Libur Sebagian Pekan', Kaldik::TYPE_LIBUR, '2026-07-06', '2026-07-09');
+
+        $svc = app(PekanEfektifService::class);
+        $result = $svc->computeWeeks($this->school->id, $this->ay->id, PekanEfektif::SEMESTER_GANJIL);
+
+        $partial = collect($result['rows'])->firstWhere('tanggal_mulai', '2026-07-06');
+        $this->assertNotNull($partial);
+        $this->assertSame(2, $partial['jumlah_hari']);
+        $this->assertSame(PekanEfektif::JENIS_TIDAK_EFEKTIF, $partial['jenis']);
+
+        $summary = $svc->summarize($result['rows'], 3);
+        $this->assertGreaterThan(0, $summary['minggu_tidak_efektif']);
+    }
+
+    public function test_batas_minimal_hari_pekan_dapat_diubah_per_sekolah(): void
+    {
+        $this->school->update(['min_effective_days_per_week' => 2]);
+        $this->makeKaldik('Libur Sebagian Pekan', Kaldik::TYPE_LIBUR, '2026-07-06', '2026-07-09');
+
+        $svc = app(PekanEfektifService::class);
+        $result = $svc->computeWeeks($this->school->id, $this->ay->id, PekanEfektif::SEMESTER_GANJIL);
+
+        $partial = collect($result['rows'])->firstWhere('tanggal_mulai', '2026-07-06');
+        $this->assertNotNull($partial);
+        $this->assertSame(2, $partial['jumlah_hari']);
+        $this->assertSame(PekanEfektif::JENIS_EFEKTIF, $partial['jenis']);
+    }
+
+    public function test_pengaturan_cetak_dan_pdf_analisis_pekan_efektif_per_sekolah(): void
+    {
+        $superAdmin = User::create([
+            'name' => 'Super Admin Cetak Pekan',
+            'email' => 'sa.cetak.pekan@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'is_system_admin' => true,
+        ]);
+
+        $request = Request::create('/'.$superAdmin->id.'/pekan-efektif/print-settings', 'POST', [
+            'school_id' => $this->school->id,
+            'margin_top' => 12,
+            'margin_right' => 11,
+            'margin_bottom' => 13,
+            'margin_left' => 14,
+            'font_size' => 10,
+            'title_font_size' => 14,
+            'table_font_size' => 9,
+            'info_font_size' => 10,
+            'footer_font_size' => 8,
+            'line_height' => 1.2,
+            'paper_size' => 'a4',
+            'show_kop' => 1,
+            'show_signature' => 1,
+            'city' => 'Mataram',
+            'guru_nama' => 'Guru Pekan',
+            'guru_nip' => '123456789',
+        ]);
+        $request->attributes->set('schoolContextId', $this->school->id);
+        $request->setUserResolver(fn () => $superAdmin);
+
+        $controller = app(PekanEfektifPrintController::class);
+        $controller->updateSettings($request, $superAdmin->id);
+
+        $setting = PekanEfektifPrintSetting::where('school_id', $this->school->id)->firstOrFail();
+        $this->assertSame(12.0, $setting->margin_top);
+        $this->assertSame('Guru Pekan', $setting->guru_nama);
+
+        $pdfRequest = Request::create('/'.$superAdmin->id.'/pekan-efektif/pdf', 'GET', [
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+        ]);
+        $pdfRequest->attributes->set('schoolContextId', $this->school->id);
+        $pdfRequest->setUserResolver(fn () => $superAdmin);
+
+        $response = $controller->pdf($pdfRequest, $superAdmin->id);
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
     public function test_alokasi_jp_efektif_per_kelas(): void
     {
         $this->makeKaldik('Libur Awal Tahun Ajaran', Kaldik::TYPE_LIBUR, '2026-07-01', '2026-07-12');
@@ -139,7 +271,7 @@ class KaldikPekanEfektifTest extends TestCase
 
     public function test_pengelolaan_kaldik_hanya_super_admin_dan_pimpinan(): void
     {
-        $policy = app(\App\Policies\KaldikPolicy::class);
+        $policy = app(KaldikPolicy::class);
 
         // Pimpinan boleh mengelola.
         $this->assertTrue($policy->create($this->pimpinan));
@@ -226,14 +358,14 @@ class KaldikPekanEfektifTest extends TestCase
     {
         $this->makeKaldik('Libur Awal Tahun Ajaran', Kaldik::TYPE_LIBUR, '2026-07-01', '2026-07-12');
 
-        $request = \Illuminate\Http\Request::create('/pekan-efektif/generate', 'POST', [
+        $request = Request::create('/pekan-efektif/generate', 'POST', [
             'academic_year_id' => $this->ay->id,
             'semester' => PekanEfektif::SEMESTER_GANJIL,
         ]);
         $request->attributes->set('schoolContextId', $this->school->id);
         $request->setUserResolver(fn () => $this->pimpinan);
 
-        $controller = app(\App\Http\Controllers\Waka\PekanEfektifController::class);
+        $controller = app(PekanEfektifController::class);
         $response = $controller->generate($request);
 
         $this->assertSame(302, $response->getStatusCode());
@@ -295,7 +427,7 @@ class KaldikPekanEfektifTest extends TestCase
         ]);
         $superAdmin->assignRole($superAdminRole);
 
-        $policy = app(\App\Policies\KaldikPolicy::class);
+        $policy = app(KaldikPolicy::class);
 
         $this->assertTrue($policy->create($superAdmin));
         $this->assertTrue($policy->update($superAdmin, new Kaldik));
@@ -363,9 +495,9 @@ class KaldikPekanEfektifTest extends TestCase
         $satuanRole = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
         $guruRole = Role::firstOrCreate(['name' => 'Guru', 'guard_name' => 'web'], ['level' => 12]);
 
-        \App\Models\Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
-        \App\Models\Permission::firstOrCreate(['name' => 'teacher-attendance_manual', 'guard_name' => 'web']);
-        \App\Models\Permission::firstOrCreate(['name' => 'teacher-attendance_view', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'impersonate_role', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'teacher-attendance_manual', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'teacher-attendance_view', 'guard_name' => 'web']);
 
         $this->pimpinan = User::create([
             'name' => 'Pimpinan Kaldik',

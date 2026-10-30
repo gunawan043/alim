@@ -120,6 +120,9 @@
                             <p class="text-muted mb-0 small">Pengelolaan stok obat di UKS pondok</p>
                         </div>
                         <div class="col-sm-auto">
+                            <a href="{{ route('user.uks.imports.form', ['userId' => $userId, 'dataset' => 'medicine']) }}" class="btn btn-soft-success me-2">
+                                <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Import Obat
+                            </a>
                             <a href="{{ route('user.uks.medicine-inventory.create', ['userId' => $userId]) }}" class="btn btn-success">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Obat
                             </a>

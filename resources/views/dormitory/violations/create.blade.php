@@ -115,7 +115,7 @@
 
                         {{-- Violation Date + Category --}}
                         <div class="row g-3 mb-4">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-semibold">
                                     Tanggal Pelanggaran <span class="text-danger">*</span>
                                 </label>
@@ -126,7 +126,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label fw-semibold">
                                     Kategori <span class="text-danger">*</span>
                                 </label>
@@ -138,6 +138,18 @@
                                     <option value="berat"  {{ old('violation_category') == 'berat' ? 'selected' : '' }}>Berat</option>
                                 </select>
                                 @error('violation_category')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">
+                                    Poin Pelanggara
+                                </label>
+                                <input type="number" name="points" id="points"
+                                       class="form-control @error('points') is-invalid @enderror"
+                                       placeholder="Mengikuti katalog resmi."
+                                       value="{{ old('points') }}" readonly>
+                                @error('points')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -168,22 +180,6 @@
                             @enderror
                         </div>
 
-                        {{-- Points --}}
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">
-                                    Poin Pelanggaran <span class="text-muted fw-normal">(otomatis)</span>
-                                </label>
-                                <input type="number" name="points" id="points"
-                                       class="form-control @error('points') is-invalid @enderror"
-                                       placeholder="Pilih katalog"
-                                       value="{{ old('points') }}" readonly>
-                                <div class="form-text">Mengikuti katalog resmi.</div>
-                                @error('points')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
 
                         {{-- Action Taken --}}
                         <div class="mb-4">

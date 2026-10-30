@@ -7,6 +7,8 @@ use App\Models\Province;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Services\Documents\DocumentVisualService;
+use App\Services\Documents\SchoolLeaderService;
 use App\Services\GtkPositionAssignmentService;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
@@ -297,6 +299,24 @@ class SchoolController extends Controller
             'remove_kop_path' => 'nullable|boolean',
             'remove_ttd_ksp_path' => 'nullable|boolean',
             'remove_stamp_path' => 'nullable|boolean',
+            'document_visual' => 'nullable|array',
+            'document_visual.mutasi.show_ttd_ksp' => 'nullable|boolean',
+            'document_visual.mutasi.show_stamp' => 'nullable|boolean',
+            'document_visual.mutasi.validation_mode' => 'nullable|in:visual,qr,pades',
+            'document_visual.sk.show_ttd_ksp' => 'nullable|boolean',
+            'document_visual.sk.show_stamp' => 'nullable|boolean',
+            'document_visual.sk.validation_mode' => 'nullable|in:visual,qr,pades',
+            'document_visual.skl.show_ttd_ksp' => 'nullable|boolean',
+            'document_visual.skl.show_stamp' => 'nullable|boolean',
+            'document_visual.skl.validation_mode' => 'nullable|in:visual,qr,pades',
+            'document_visual.*.ttd_width' => 'nullable|numeric|min:5|max:100',
+            'document_visual.*.ttd_height' => 'nullable|numeric|min:5|max:60',
+            'document_visual.*.ttd_margin' => 'nullable|numeric|min:0|max:30',
+            'document_visual.*.stamp_width' => 'nullable|numeric|min:5|max:100',
+            'document_visual.*.stamp_height' => 'nullable|numeric|min:5|max:100',
+            'document_visual.*.stamp_margin' => 'nullable|numeric|min:0|max:30',
+            'document_leader_name' => 'nullable|string|max:255',
+            'document_leader_nupy' => 'nullable|string|max:50',
         ]);
 
         $updated = [];
@@ -308,6 +328,7 @@ class SchoolController extends Controller
                 }
                 $school->{$field} = null;
                 $updated[] = $field;
+
                 continue;
             }
 
@@ -320,13 +341,34 @@ class SchoolController extends Controller
             }
         }
 
+        $visualChanged = false;
+        if ($request->has('document_visual')) {
+            app(DocumentVisualService::class)
+                ->update($school, (array) $request->input('document_visual', []));
+            $visualChanged = true;
+        }
+
+        if ($request->has('document_leader_name') || $request->has('document_leader_nupy')) {
+            $visual = is_array($school->document_visual_settings) ? $school->document_visual_settings : [];
+            $leaderName = trim((string) $request->input('document_leader_name', ''));
+            $leaderNupy = trim((string) $request->input('document_leader_nupy', ''));
+            $auto = app(SchoolLeaderService::class)->autoForSchool($school);
+            $visual['leader'] = ($leaderName === $auto['display_name'] && $leaderNupy === $auto['nupy'])
+                ? ['name' => '', 'nupy' => '']
+                : ['name' => $leaderName, 'nupy' => $leaderNupy];
+            $school->document_visual_settings = $visual;
+            $visualChanged = true;
+        }
+
         $school->save();
+
+        $changed = array_merge($updated, $visualChanged ? ['pengaturan tampilan TTD/stempel'] : []);
 
         return back()->with(
             'success',
-            $updated === []
-                ? 'Tidak ada file yang diubah.'
-                : 'Dokumen sekolah berhasil diperbarui: '.implode(', ', $updated).'.'
+            $changed === []
+                ? 'Tidak ada file atau pengaturan yang diubah.'
+                : 'Dokumen sekolah berhasil diperbarui: '.implode(', ', $changed).'.'
         );
     }
 

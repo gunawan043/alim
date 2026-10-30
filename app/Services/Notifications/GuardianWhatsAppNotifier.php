@@ -4,8 +4,10 @@ namespace App\Services\Notifications;
 
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryReward;
+use App\Models\DormitoryVisitLog;
 use App\Models\Kaldik;
 use App\Models\Student;
+use App\Models\StudentAchievement;
 use App\Models\TeacherAdminBook;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -118,6 +120,27 @@ class GuardianWhatsAppNotifier
         return $this->sendToTargets($student, $message, 'violation', $student->id);
     }
 
+    /**
+     * WhatsApp ke wali saat satuan pendidikan mencatat prestasi.
+     * Dikirim sebelum approval asrama; bukan notifikasi penghargaan final.
+     */
+    public function notifyAchievement(StudentAchievement $achievement): bool
+    {
+        if (! $this->eventEnabled('achievement') || ! $achievement->student) {
+            return false;
+        }
+
+        $message = $this->template('achievement_submitted', [
+            'santri' => $achievement->student->name,
+            'prestasi' => $achievement->event_name,
+            'tingkat' => $achievement->level_label,
+            'peringkat' => $achievement->position_label,
+            'tanggal' => $achievement->event_date?->format('d/m/Y') ?? '-',
+        ]);
+
+        return $this->sendToTargets($achievement->student, $message, 'achievement_submitted', (string) $achievement->id);
+    }
+
     public function notifyReward(DormitoryReward $reward): bool
     {
         if (! $this->eventEnabled('achievement') || ! $reward->student) {
@@ -152,7 +175,7 @@ class GuardianWhatsAppNotifier
         return $this->sendToTargets($permit->student, $message, 'overdue', $permit->id);
     }
 
-    public function notifyVisit(\App\Models\DormitoryVisitLog $visit, string $stage = 'approved'): bool
+    public function notifyVisit(DormitoryVisitLog $visit, string $stage = 'approved'): bool
     {
         if (! $this->eventEnabled('visit') || ! $visit->student) {
             return false;
@@ -333,7 +356,6 @@ class GuardianWhatsAppNotifier
 
         return $template;
     }
-
 
     /**
      * Tambahkan footer branding ALIM bila dikonfigurasi.

@@ -1146,12 +1146,28 @@ const SCAN_OUTCOMES = {
     info:    { icon: 'ri-information-fill',     cls: 'text-info',    btn: 'btn-info',    title: 'Informasi',       close: 'Mengerti' },
 };
 
+function cleanupScanModalArtifacts() {
+    const existing = document.getElementById('scanResultModal');
+    if (existing) {
+        try {
+            bootstrap.Modal.getInstance(existing)?.hide();
+        } catch (e) { /* ignore */ }
+        existing.remove();
+    }
+
+    document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) { backdrop.remove(); });
+    if (!document.querySelector('.modal.show')) {
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+    }
+}
+
 function buildModal(outcome, message, extraHtml) {
     const cfg = SCAN_OUTCOMES[outcome] || SCAN_OUTCOMES.error;
     const isSuccess = outcome === 'success';
 
-    const existing = document.getElementById('scanResultModal');
-    if (existing) existing.remove();
+    cleanupScanModalArtifacts();
 
     const wrap = document.createElement('div');
     wrap.innerHTML = `
@@ -1184,6 +1200,7 @@ function buildModal(outcome, message, extraHtml) {
     const modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
     el.addEventListener('hidden.bs.modal', () => {
         el.remove();
+        cleanupScanModalArtifacts();
         if (isSuccess) {
             window.location.reload();
         } else {
@@ -1196,27 +1213,26 @@ function buildModal(outcome, message, extraHtml) {
     return modal;
 }
 
-function showLoadingModal() {
-    const existing = document.getElementById('scanResultModal');
-    if (existing) existing.remove();
+function hideLoadingModal() {
+    document.getElementById('scanLoadingOverlay')?.remove();
+}
 
-    const wrap = document.createElement('div');
-    wrap.innerHTML = `
-        <div class="modal fade" id="scanResultModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-body text-center p-4">
-                        <div class="spinner-border text-primary mb-3" role="status"></div>
-                        <p class="mb-0 text-muted">Memproses absensi…</p>
-                    </div>
-                </div>
-            </div>
+function showLoadingModal() {
+    hideLoadingModal();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'scanLoadingOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:28px 36px;text-align:center;box-shadow:0 16px 40px rgba(0,0,0,.2);">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <p class="mb-0 text-muted">Memproses absensi…</p>
         </div>`;
-    document.body.appendChild(wrap.firstElementChild);
-    new bootstrap.Modal(document.getElementById('scanResultModal'), { backdrop: 'static', keyboard: false }).show();
+    document.body.appendChild(overlay);
 }
 
 function showResult(ok, message, data) {
+    hideLoadingModal();
     let extra = '';
     if (data && data.type === 'check_in' && data.scheduled_start) {
         extra = `<p class="small text-muted mb-0">Jadwal: ${data.scheduled_start?.substring(0,5) ?? ''}${data.scheduled_end ? '–' + data.scheduled_end.substring(0,5) : ''} · ${data.study_group_name ?? ''}</p>`;

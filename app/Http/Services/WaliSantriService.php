@@ -233,6 +233,15 @@ class WaliSantriService
                 'status' => 'active',
             ]);
 
+            // Registrasi oleh wali = jalur masuk non-mutasi; catat sumbernya.
+            app(\App\Services\StudentEnrollmentService::class)->recordEntry(
+                $student,
+                \App\Services\StudentEnrollmentService::SOURCE_GUARDIAN,
+                null,
+                $wali->id,
+                ['registered_by' => 'wali'],
+            );
+
             // ── STEP 4: Buat link wali_santri (tenant-scoped) ────────────────
             $waliSantri = WaliSantri::create([
                 'user_id' => $wali->id,

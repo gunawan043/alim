@@ -43,7 +43,7 @@
             </li>
             <li class="nav-item">
                 <a class="nav-link{{ $uksCounselActive ? ' active' : '' }}"
-                   href="{{ route('user.uks.counseling-records.index', ['userId' => $userId]) }}"
+                   href="{{ route('user.kesiswaan.counseling-records.index', ['userId' => $userId]) }}"
                    style="font-size:0.85rem">Konseling</a>
             </li>
             <li class="nav-item">

@@ -110,6 +110,9 @@
                                 }
                                 Notification.requestPermission().then(function (p) {
                                     status(p === 'granted' ? '✅ Notifikasi aktif.' : '❌ Notifikasi ditolak — izinkan lewat ikon gembok di alamat situs.');
+                                    if (p === 'granted' && typeof window.alimSubscribeWebPush === 'function') {
+                                        window.alimSubscribeWebPush(false).catch(function () {});
+                                    }
                                 });
                             });
                         });

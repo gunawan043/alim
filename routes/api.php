@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Mobile\V1\AcademicController;
 use App\Http\Controllers\Api\Mobile\V1\AnnouncementController;
 use App\Http\Controllers\Api\Mobile\V1\AuthController;
 use App\Http\Controllers\Api\Mobile\V1\DashboardController;
+use App\Http\Controllers\Api\Mobile\V1\DeviceController;
 use App\Http\Controllers\Api\Mobile\V1\DormitoryPermitController;
 use App\Http\Controllers\Api\Mobile\V1\DormitoryReturnController;
 use App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController;
@@ -24,7 +25,13 @@ use App\Http\Controllers\Api\Mobile\V1\Sarpras\SarprasIntelligenceApiController;
 use App\Http\Controllers\Api\Mobile\V1\StudentController;
 use App\Http\Controllers\Api\Mobile\V1\TahfidzController;
 use App\Http\Controllers\Api\Mobile\V1\VersionController;
+use App\Http\Controllers\Api\Mobile\V1\WaliComplaintController;
+use App\Http\Controllers\Api\Mobile\V1\WaliDocumentController;
+use App\Http\Controllers\Api\Mobile\V1\WaliLinkAdminController;
+use App\Http\Controllers\Api\Mobile\V1\WaliLinkController;
+use App\Http\Controllers\Api\Mobile\V1\WaliReportController;
 use App\Http\Controllers\Api\Mobile\V1\WaliSantriController;
+use App\Http\Controllers\Api\Mobile\V1\WaliSurveyController;
 use App\Http\Controllers\Api\Pos\V1\DivisiController as PosDivisiController;
 use App\Http\Controllers\Api\Pos\V1\JabatanController as PosJabatanController;
 use App\Http\Controllers\Api\Pos\V1\JenisGtkController as PosJenisGtkController;
@@ -33,6 +40,13 @@ use App\Http\Controllers\Api\Pos\V1\KoneksiController as PosKoneksiController;
 use App\Http\Controllers\Api\Pos\V1\SantriController as PosSantriController;
 use App\Http\Controllers\Api\Pos\V1\SatuanKerjaController as PosSatuanKerjaController;
 use App\Http\Controllers\Api\Pos\V1\SekolahController as PosSekolahController;
+use App\Http\Controllers\Api\Recruitment\V1\JabatanController as RecruitmentJabatanController;
+use App\Http\Controllers\Api\Recruitment\V1\JenisGtkController as RecruitmentJenisGtkController;
+use App\Http\Controllers\Api\Recruitment\V1\KoneksiController as RecruitmentKoneksiController;
+use App\Http\Controllers\Api\Recruitment\V1\PegawaiController as RecruitmentPegawaiController;
+use App\Http\Controllers\Api\Recruitment\V1\RoleController as RecruitmentRoleController;
+use App\Http\Controllers\Api\Recruitment\V1\SatuanKerjaController as RecruitmentSatuanKerjaController;
+use App\Http\Controllers\Api\Recruitment\V1\SekolahController as RecruitmentSekolahController;
 use App\Http\Controllers\Api\Sarpras\AssetPassportController;
 use App\Http\Controllers\Api\Sarpras\RepairRequestController;
 use App\Http\Controllers\Api\Sarpras\SarprasDashboardController;
@@ -66,6 +80,16 @@ Route::prefix('mobile/v1')->group(function () {
     Route::get('system/status', [VersionController::class, 'status'])->name('mobile.v1.system.status');
     Route::get('health', [VersionController::class, 'health'])->name('mobile.v1.health');
 
+    // ── PUSH NOTIFICATION DEVICES ────────────────────────────────────────────
+    // Token FCM (Android) atau APNs (iOS) per instalasi aplikasi mobile.
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('devices', [DeviceController::class, 'index'])->name('mobile.v1.devices.index');
+        Route::post('devices', [DeviceController::class, 'store'])->name('mobile.v1.devices.store');
+        Route::delete('devices/{device}', [DeviceController::class, 'destroy'])
+            ->whereUuid('device')
+            ->name('mobile.v1.devices.destroy');
+    });
+
     // ── AUTH ─────────────────────────────────────────────────────────────────
     Route::prefix('auth')->group(function () {
         Route::post('register', [AuthController::class, 'register']);
@@ -92,6 +116,52 @@ Route::prefix('mobile/v1')->group(function () {
             Route::patch('sessions/current', [AuthController::class, 'updateCurrentSession']);
             Route::delete('sessions/others', [AuthController::class, 'revokeOtherSessions']);
         });
+    });
+
+    // ── WALI API (user-scoped) ─────────────────────────────────────────────
+    // Semua endpoint memakai {userId} UUID dan divalidasi api.user-scope.
+    Route::prefix('{userId}/wali')->middleware(['auth:sanctum', 'api.user-scope'])->group(function () {
+        // Penghubungan wali–santri
+        Route::prefix('links')->group(function () {
+            Route::post('preview', [WaliLinkController::class, 'preview'])->middleware('throttle:wali-link');
+            Route::post('confirm', [WaliLinkController::class, 'confirm']);
+            Route::get('children', [WaliLinkController::class, 'children']);
+            Route::get('siblings/{student}', [WaliLinkController::class, 'siblings'])->whereUuid('student');
+            Route::post('siblings/preview', [WaliLinkController::class, 'siblingPreview'])->middleware('throttle:wali-link');
+
+            Route::prefix('admin')->group(function () {
+                Route::get('pending', [WaliLinkAdminController::class, 'pending']);
+                Route::post('{id}/approve', [WaliLinkAdminController::class, 'approve'])->whereUuid('id');
+                Route::post('{id}/reject', [WaliLinkAdminController::class, 'reject'])->whereUuid('id');
+                Route::post('{id}/suspend', [WaliLinkAdminController::class, 'suspend'])->whereUuid('id');
+                Route::post('{id}/revoke', [WaliLinkAdminController::class, 'revoke'])->whereUuid('id');
+            });
+        });
+
+        // Survei kepuasan
+        Route::get('surveys', [WaliSurveyController::class, 'index']);
+        Route::get('surveys/{id}', [WaliSurveyController::class, 'show'])->whereUuid('id');
+        Route::post('surveys/{id}', [WaliSurveyController::class, 'submit'])->whereUuid('id');
+
+        // Kritik & saran
+        Route::get('complaints', [WaliComplaintController::class, 'index']);
+        Route::post('complaints', [WaliComplaintController::class, 'store']);
+        Route::get('complaints/{id}', [WaliComplaintController::class, 'show'])->whereUuid('id');
+
+        // Laporan ringkas
+        Route::get('reports', [WaliReportController::class, 'index']);
+
+        // Export dokumen
+        Route::get('raport/{student}/pdf', [WaliDocumentController::class, 'raport'])->whereUuid('student');
+        Route::get('achievements/{id}/certificate', [WaliDocumentController::class, 'achievementCertificate'])->whereUuid('id');
+        Route::get('tahfidz/certificates/{student}', [WaliDocumentController::class, 'tahfidzCertificates'])->whereUuid('student');
+        Route::get('tahfidz/certificates/{certificate}/pdf', [WaliDocumentController::class, 'tahfidzCertificate'])->whereUuid('certificate');
+
+        // Pengumuman & broadcast (sekolah/asrama/global)
+        Route::get('announcements', [AnnouncementController::class, 'index']);
+        Route::get('announcements/{id}', [AnnouncementController::class, 'show'])->whereUuid('id');
+        Route::post('announcements/{id}/read', [AnnouncementController::class, 'markRead'])->whereUuid('id');
+        Route::post('announcements/{id}/ack', [AnnouncementController::class, 'acknowledge'])->whereUuid('id');
     });
 
     // ── SANTRI ───────────────────────────────────────────────��────────────────
@@ -160,10 +230,6 @@ Route::prefix('mobile/v1')->group(function () {
             Route::get('/', [DashboardController::class, 'index']);
             Route::get('attendance', [DashboardController::class, 'attendance']);
         });
-
-        // ── ANNOUNCEMENTS (Sprint 3) ──────────────────────────────────────
-        Route::get('announcements', [AnnouncementController::class, 'index']);
-        Route::get('announcements/{id}', [AnnouncementController::class, 'show']);
 
         // ── JADWAL KBM (Sprint 3) ─────────────────────────────────────────
         Route::prefix('jadwal')->group(function () {
@@ -360,18 +426,19 @@ Route::middleware(['auth:sanctum', 'organization.context'])->prefix('sarpras/v2'
 
 // ── POS / KASIR INTEGRATION API v1 ───────────────────────────────────────────
 // Read-only master data for the external POS (kasir) application.
-// Auth: static API key via `X-API-KEY` header (env: POS_API_KEY).
+// Auth: static token via custom header (default X-ALIM-POS-KEY) or Bearer.
+// Configure at Super Admin → Pengaturan Sistem → Integrasi POS.
 Route::middleware('pos.api-key')->prefix('pos/v1')->group(function () {
     // ── TES KONEKSI ──────────────────────────────────────────────────────
     Route::get('ping', [PosKoneksiController::class, 'ping']);
 
     // ── SATUAN KERJA ─────────────────────────────────────────────────────
     Route::get('satuan-kerja', [PosSatuanKerjaController::class, 'index']);
-    Route::get('satuan-kerja/{id}', [PosSatuanKerjaController::class, 'show']);
+    Route::get('satuan-kerja/{id}', [PosSatuanKerjaController::class, 'show'])->whereUuid('id');
 
     // ── KEPEGAWAIAN (GTK) ────────────────────────────────────────────────
     Route::get('kepegawaian', [PosKepegawaianController::class, 'index']);
-    Route::get('kepegawaian/{id}', [PosKepegawaianController::class, 'show']);
+    Route::get('kepegawaian/{id}', [PosKepegawaianController::class, 'show'])->whereUuid('id');
 
     // ── MASTER ORGANISASI ────────────────────────────────────────────────
     Route::get('divisi', [PosDivisiController::class, 'index']);
@@ -380,9 +447,30 @@ Route::middleware('pos.api-key')->prefix('pos/v1')->group(function () {
 
     // ── PROFIL SEKOLAH / LEMBAGA ─────────────────────────────────────────
     Route::get('sekolah', [PosSekolahController::class, 'index']);
-    Route::get('sekolah/{id}', [PosSekolahController::class, 'show']);
+    Route::get('sekolah/{id}', [PosSekolahController::class, 'show'])->whereUuid('id');
 
     // ── SANTRI ───────────────────────────────────────────────────────────
     Route::get('santri', [PosSantriController::class, 'index']);
-    Route::get('santri/{id}', [PosSantriController::class, 'show']);
+    Route::get('santri/{id}', [PosSantriController::class, 'show'])->whereUuid('id');
+});
+
+// ── RECRUITMENT INTEGRATION API v1 ───────────────────────────────────────────
+// Data referensi milik Personalia untuk aplikasi recruitment (applicant app).
+// Auth: static token via custom header (default X-ALIM-RECRUITMENT-KEY).
+Route::middleware('recruitment.api-key')->prefix('recruitment/v1')->group(function () {
+    Route::get('ping', [RecruitmentKoneksiController::class, 'ping']);
+
+    Route::get('pegawai', [RecruitmentPegawaiController::class, 'index']);
+    Route::get('pegawai/{id}', [RecruitmentPegawaiController::class, 'show'])->whereUuid('id');
+
+    Route::get('satuan-kerja', [RecruitmentSatuanKerjaController::class, 'index']);
+    Route::get('satuan-kerja/{id}', [RecruitmentSatuanKerjaController::class, 'show'])->whereUuid('id');
+
+    Route::get('jabatan', [RecruitmentJabatanController::class, 'index']);
+    Route::get('jenis-gtk', [RecruitmentJenisGtkController::class, 'index']);
+
+    Route::get('sekolah', [RecruitmentSekolahController::class, 'index']);
+    Route::get('sekolah/{id}', [RecruitmentSekolahController::class, 'show'])->whereUuid('id');
+
+    Route::get('role', [RecruitmentRoleController::class, 'index']);
 });

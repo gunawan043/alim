@@ -35,7 +35,7 @@ return new class extends Migration
             $table->enum('position', [
                 'juara_1', 'juara_2', 'juara_3',
                 'harapan_1', 'harapan_2', 'harapan_3',
-                'peserta', 'lainnya',
+                'peserta', 'mumtaz_murtafi', 'lainnya',
             ]);
             $table->string('position_detail', 100)->nullable()
                 ->comment('Detail posisi jika lainnya, misal: Medali Emas, Best Paper');

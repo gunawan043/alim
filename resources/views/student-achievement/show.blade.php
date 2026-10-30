@@ -47,6 +47,13 @@ $typeParam = request('type', 'akademik');
                 <i class="ri-shield-check-line me-1"></i> Terverifikasi
             </span>
         @endif
+        @if($achievement->dormitoryRewardRequest)
+            @php $rewardRequest = $achievement->dormitoryRewardRequest; @endphp
+            <span class="badge bg-{{ $rewardRequest->status_badge }}-subtle text-{{ $rewardRequest->status_badge }}">
+                <i class="ri-hotel-line me-1"></i>
+                Asrama: {{ $rewardRequest->status_label }}
+            </span>
+        @endif
     </div>
     <div class="d-flex gap-2">
         <a href="{{ route('user.student-achievement.edit', ['userId' => $userId, 'id' => $achievement->id, 'type' => $typeParam]) }}"

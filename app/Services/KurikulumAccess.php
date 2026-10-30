@@ -35,7 +35,10 @@ class KurikulumAccess
             return true;
         }
 
-        return in_array('tim kurikulum', $this->tugasTambahan($user), true);
+        $tugas = $this->tugasTambahan($user);
+
+        return in_array('tim kurikulum', $tugas, true)
+            || in_array('koordinator kurikulum', $tugas, true);
     }
 
     /**

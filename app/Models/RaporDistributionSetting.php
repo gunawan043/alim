@@ -51,10 +51,13 @@ class RaporDistributionSetting extends Model
         'kop_height',
         'ttd_ksp_width',
         'ttd_ksp_height',
+        'ttd_ksp_margin',
         'ttd_wali_width',
         'ttd_wali_height',
+        'ttd_wali_margin',
         'stamp_width',
         'stamp_height',
+        'stamp_margin',
         'updated_by',
     ];
 
@@ -79,10 +82,13 @@ class RaporDistributionSetting extends Model
         'kop_height' => 'float',
         'ttd_ksp_width' => 'float',
         'ttd_ksp_height' => 'float',
+        'ttd_ksp_margin' => 'float',
         'ttd_wali_width' => 'float',
         'ttd_wali_height' => 'float',
+        'ttd_wali_margin' => 'float',
         'stamp_width' => 'float',
         'stamp_height' => 'float',
+        'stamp_margin' => 'float',
     ];
 
     /**
@@ -111,10 +117,13 @@ class RaporDistributionSetting extends Model
             'kop_height' => 25.0,
             'ttd_ksp_width' => 30.0,
             'ttd_ksp_height' => 15.0,
+            'ttd_ksp_margin' => 2.0,
             'ttd_wali_width' => 30.0,
             'ttd_wali_height' => 15.0,
+            'ttd_wali_margin' => 2.0,
             'stamp_width' => 30.0,
             'stamp_height' => 30.0,
+            'stamp_margin' => 2.0,
         ];
     }
 
@@ -195,10 +204,13 @@ class RaporDistributionSetting extends Model
             'kop_height' => (float) ($this->kop_height ?? $defaults['kop_height']),
             'ttd_ksp_width' => (float) ($this->ttd_ksp_width ?? $defaults['ttd_ksp_width']),
             'ttd_ksp_height' => (float) ($this->ttd_ksp_height ?? $defaults['ttd_ksp_height']),
+            'ttd_ksp_margin' => (float) ($this->ttd_ksp_margin ?? $defaults['ttd_ksp_margin']),
             'ttd_wali_width' => (float) ($this->ttd_wali_width ?? $defaults['ttd_wali_width']),
             'ttd_wali_height' => (float) ($this->ttd_wali_height ?? $defaults['ttd_wali_height']),
+            'ttd_wali_margin' => (float) ($this->ttd_wali_margin ?? $defaults['ttd_wali_margin']),
             'stamp_width' => (float) ($this->stamp_width ?? $defaults['stamp_width']),
             'stamp_height' => (float) ($this->stamp_height ?? $defaults['stamp_height']),
+            'stamp_margin' => (float) ($this->stamp_margin ?? $defaults['stamp_margin']),
         ];
     }
 

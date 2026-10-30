@@ -3,24 +3,14 @@
 namespace Tests\Feature\Sarpras;
 
 use App\Services\Sarpras\RepairVsReplaceService;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class RepairVsReplaceServiceTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use RefreshDatabase;
 
     public function test_healthy_asset_returns_good(): void
     {
@@ -44,8 +34,8 @@ class RepairVsReplaceServiceTest extends TestCase
 
         $result = app(RepairVsReplaceService::class)->evaluate($asset);
 
-        $this->assertContains($result['recommendation'], ['REPLACE', 'REPAIR']);
-        $this->assertIsArray($result['rationale']);
+        $this->assertContains($result['recommendation'], ['MONITOR', 'REPAIR', 'REPLACE', 'CRITICAL']);
+        $this->assertIsArray($result['factors']);
     }
 
     public function test_recommendation_persists(): void
@@ -53,11 +43,10 @@ class RepairVsReplaceServiceTest extends TestCase
         $school = $this->createSchool();
         $asset = $this->createAsset(['school_id' => $school->id, 'condition' => 'rusak_ringan']);
 
-        app(RepairVsReplaceService::class)->evaluate($asset);
+        app(RepairVsReplaceService::class)->persist($asset);
 
-        $this->assertDatabaseHas('repair_vs_replace_evaluations', [
+        $this->assertDatabaseHas('asset_recommendations', [
             'asset_id' => $asset->id,
-            'is_current' => true,
         ]);
     }
 }

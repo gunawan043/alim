@@ -32,11 +32,37 @@ if (!$hasAsramaContext) {
 
 /*
 |--------------------------------------------------------------------------
-| Fallback: first active dormitory
+| Fallback: asrama yang terkait dengan user, lalu first active dormitory
 |--------------------------------------------------------------------------
+| Jangan langsung memilih asrama aktif pertama. Kepala/Wakil Asrama harus
+| diarahkan ke asrama yang menjadi tanggung jawabnya.
 */
 if (!$hasAsramaContext) {
-    $firstAsrama = \App\Models\Dormitory::where('is_active', true)->first();
+    $preferredAsrama = \App\Models\Dormitory::query()
+        ->where('is_active', true)
+        ->where(function ($query) use ($userId) {
+            $query->where('head_id', $userId)
+                ->orWhereIn('work_unit_id', function ($sub) use ($userId) {
+                    $sub->select('work_unit_id')
+                        ->from('gtk_work_unit')
+                        ->where('user_id', $userId);
+                });
+        })
+        ->orderBy('name')
+        ->first();
+
+    if (!$preferredAsrama) {
+        $schoolId = $currentUser->employment?->school_id;
+        if ($schoolId) {
+            $preferredAsrama = \App\Models\Dormitory::query()
+                ->where('is_active', true)
+                ->where('school_id', $schoolId)
+                ->orderBy('name')
+                ->first();
+        }
+    }
+
+    $firstAsrama = $preferredAsrama ?? \App\Models\Dormitory::where('is_active', true)->first();
 
     if ($firstAsrama) {
         $asramaUuid = $firstAsrama->id;
@@ -83,6 +109,17 @@ $isKepalaAsrama = in_array($currentUserJob, [
     'Kepala Departemen Bahasa',
     'Kepala Departemen Kesiswaan',
 ]);
+
+$canApproveRewards = $hasAsramaContext && $asramaUuid
+    ? app(\App\Services\Boarding\DormitoryPolicyAccess::class)
+        ->canApproveReward($currentUser, $asramaUuid)
+    : false;
+$pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
+    ? \App\Models\DormitoryRewardRequest::query()
+        ->where('dormitory_id', $asramaUuid)
+        ->where('status', \App\Models\DormitoryRewardRequest::STATUS_PENDING)
+        ->count()
+    : 0;
 @endphp
 
 @php
@@ -349,6 +386,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
 <li class="nav-item">
     <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.rewards.')
+        && ! isActiveAsr($currentRoute, 'user.asrama.rewards.approvals.')
         ? ' active' : ''
     }}"
        href="{{ $hasAsramaContext
@@ -361,6 +399,25 @@ $isKepalaAsrama = in_array($currentUserJob, [
         <span>Penghargaan</span>
     </a>
 </li>
+
+@if($canApproveRewards)
+<li class="nav-item">
+    <a class="nav-link menu-link{{
+        isActiveAsr($currentRoute, 'user.asrama.rewards.approvals.')
+        ? ' active' : ''
+    }}"
+       href="{{ route('user.asrama.rewards.approvals.index', [
+            'userId' => $userId,
+            'asramaUuid' => $asramaUuid,
+       ]) }}">
+        <i class="ri-check-double-line"></i>
+        <span>Persetujuan Penghargaan</span>
+        @if($pendingRewardApprovals > 0)
+            <span class="badge bg-danger rounded-pill ms-auto">{{ $pendingRewardApprovals }}</span>
+        @endif
+    </a>
+</li>
+@endif
 
 <li class="nav-item">
     <a class="nav-link menu-link{{
@@ -431,6 +488,14 @@ $isKepalaAsrama = in_array($currentUserJob, [
             : $asramaProfileFallback }}">
         <i class="ri-user-follow-line"></i>
         <span>Presensi Kegiatan</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.mutabaah.') ? ' active' : '' }}"
+       href="{{ route('user.asrama.mutabaah.index', ['userId' => $userId]) }}">
+        <i class="ri-calendar-todo-line"></i>
+        <span>Waraqah Mutaba’ah</span>
     </a>
 </li>
 
@@ -713,16 +778,6 @@ $isKepalaAsrama = in_array($currentUserJob, [
     <span>GTK</span>
 </li>
 
-<li class="nav-item">
-    <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.gtk-additional-tasks.')
-        ? ' active' : ''
-    }}"
-       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
-        <i class="ri-task-line"></i>
-        <span>Tugas Tambahan GTK</span>
-    </a>
-</li>
 
 <li class="nav-item">
     <a class="nav-link menu-link{{

@@ -13,7 +13,7 @@
         @slot('title') {{ $instrumen->nama }} @endslot
     @endcomponent
 
-    <x-supervisi-workflow current="instrument" :admin="$canManageInstrumen" />
+    <x-supervisi-workflow current="instrument" :admin="$canEditInstrumen ?? false" />
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">

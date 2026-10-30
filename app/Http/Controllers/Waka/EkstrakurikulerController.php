@@ -86,7 +86,7 @@ class EkstrakurikulerController extends Controller
 
         $ekskul = Ekstrakurikuler::create($validated);
 
-        return redirect()->route('waka.ekstrakurikuler.show', $ekskul->id)
+        return redirect()->route('waka.ekstrakurikuler.show', ['userId' => $request->user()?->id, $ekskul->id])
             ->with('success', 'Ekstrakurikuler berhasil ditambahkan.');
     }
 
@@ -141,7 +141,7 @@ class EkstrakurikulerController extends Controller
 
         $ekskul->update($validated);
 
-        return redirect()->route('waka.ekstrakurikuler.show', $ekskul->id)
+        return redirect()->route('waka.ekstrakurikuler.show', ['userId' => $request->user()?->id, $ekskul->id])
             ->with('success', 'Ekstrakurikuler berhasil diperbarui.');
     }
 
@@ -151,7 +151,7 @@ class EkstrakurikulerController extends Controller
         $ekskul = Ekstrakurikuler::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($id);
         $ekskul->delete();
 
-        return redirect()->route('waka.ekstrakurikuler.index')
+        return redirect()->route('waka.ekstrakurikuler.index', ['userId' => $request->user()?->id])
             ->with('success', 'Ekstrakurikuler berhasil dihapus.');
     }
 

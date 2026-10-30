@@ -196,12 +196,12 @@
         $ktpAddress      = $gtk->gtkProfile?->addresses->where('type', 'ktp')->first();
 
         $provinsiDomisili  = $domisiliAddress?->province->name ?? ($domisiliAddress?->provinsi ?? '-');
-        $kabKotaDomisili   = $domisiliAddress?->city->name    ?? ($domisiliAddress?->kab_kota  ?? '-');
+        $kabKotaDomisili   = $domisiliAddress?->city->display_name    ?? ($domisiliAddress?->kab_kota  ?? '-');
         $kecamatanDomisili = $domisiliAddress?->district->name ?? ($domisiliAddress?->kecamatan ?? '-');
         $desaDomisili      = $domisiliAddress?->village->name  ?? ($domisiliAddress?->desa      ?? '-');
 
         $provinsiKtp  = $ktpAddress?->province->name  ?? ($ktpAddress?->provinsi  ?? '-');
-        $kabKotaKtp   = $ktpAddress?->city->name      ?? ($ktpAddress?->kab_kota  ?? '-');
+        $kabKotaKtp   = $ktpAddress?->city->display_name      ?? ($ktpAddress?->kab_kota  ?? '-');
         $kecamatanKtp = $ktpAddress?->district->name  ?? ($ktpAddress?->kecamatan ?? '-');
         $desaKtp      = $ktpAddress?->village->name   ?? ($ktpAddress?->desa      ?? '-');
 

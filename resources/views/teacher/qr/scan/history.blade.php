@@ -14,12 +14,12 @@
     .table-container { position: relative; width: 100%; overflow-x: auto; }
     .table-freeze { table-layout: auto; min-width: 940px; width: 100%; margin-bottom: 0; }
     .table-freeze th, .table-freeze td { vertical-align: middle; padding: 11px 14px; word-break: break-word; }
-    .table-freeze thead th { position: sticky; top: 0; z-index: 20; font-weight: 600; background: #f8fafc; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
-    .table-freeze tbody tr:hover td { background: #f8fafc; }
+    .table-freeze thead th { position: sticky; top: 0; z-index: 20; font-weight: 600; background: var(--bs-tertiary-bg); border-bottom: 2px solid var(--bs-border-color); white-space: nowrap; }
+    .table-freeze tbody tr:hover td { background: var(--bs-tertiary-bg); }
 
-    .filter-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 30px; font-size: 12px; transition: all .2s; cursor: pointer; background: #fff; color: #64748b; text-decoration: none; }
-    .filter-badge:hover { background: #405189; border-color: #94a3b8; color: #fff; }
-    .filter-badge.active { background: #0a5f9e; border-color: #0a5f9e; color: #fff; }
+    .filter-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--bs-border-color); border-radius: 30px; font-size: 12px; transition: all .2s; cursor: pointer; background: transparent; color: var(--bs-secondary-color); text-decoration: none; }
+    .filter-badge:hover { background: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
+    .filter-badge.active { background: var(--bs-primary); border-color: var(--bs-primary); color: #fff; }
 
     .teacher-avatar { width: 28px; height: 28px; border-radius: 50%; background: #6366f118; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; color: #6366f1; flex-shrink: 0; }
     .time-mono { font-family: 'SF Mono', Monaco, monospace; font-size: .8rem; }
@@ -66,7 +66,7 @@
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#eff6ff;color:#3b82f6"><i class="ri-file-list-3-line"></i></div>
+                <div class="stat-icon" style="background:rgba(59,130,246,.15);color:#3b82f6"><i class="ri-file-list-3-line"></i></div>
                 <div>
                     <p class="stat-label mb-1">Total Record</p>
                     <h4 class="stat-value mb-0 text-primary">{{ number_format($stats['total'] ?? 0) }}</h4>
@@ -77,7 +77,7 @@
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#f0fdf4;color:#22c55e"><i class="ri-checkbox-circle-fill"></i></div>
+                <div class="stat-icon" style="background:rgba(34,197,94,.15);color:#22c55e"><i class="ri-checkbox-circle-fill"></i></div>
                 <div>
                     <p class="stat-label mb-1">Tepat Waktu</p>
                     <h4 class="stat-value mb-0 text-success">{{ number_format($stats['hadir'] ?? 0) }}</h4>
@@ -88,7 +88,7 @@
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#fffbeb;color:#f59e0b"><i class="ri-alert-fill"></i></div>
+                <div class="stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b"><i class="ri-alert-fill"></i></div>
                 <div>
                     <p class="stat-label mb-1">Terlambat</p>
                     <h4 class="stat-value mb-0 text-warning">{{ number_format($stats['terlambat'] ?? 0) }}</h4>
@@ -99,7 +99,7 @@
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#fef2f2;color:#ef4444"><i class="ri-time-fill"></i></div>
+                <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="ri-time-fill"></i></div>
                 <div>
                     <p class="stat-label mb-1">Belum Keluar</p>
                     <h4 class="stat-value mb-0" style="color:#ef4444">{{ number_format($stats['belum_keluar'] ?? 0) }}</h4>
@@ -110,7 +110,7 @@
     <div class="col-6 col-md-4 col-xl">
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="stat-icon" style="background:#f8fafc;color:#64748b"><i class="ri-repeat-clock-line"></i></div>
+                <div class="stat-icon" style="background:var(--bs-tertiary-bg);color:var(--bs-secondary-color)"><i class="ri-repeat-clock-line"></i></div>
                 <div>
                     <p class="stat-label mb-1">Rata-rata Terlambat</p>
                     <h4 class="stat-value mb-0 text-muted">{{ number_format($stats['avg_late'] ?? 0) }} <span class="fs-6">mnt</span></h4>

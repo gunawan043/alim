@@ -124,19 +124,9 @@ class Dormitory extends Model
         return $this->hasMany(DormitoryViolation::class);
     }
 
-    public function posts(): HasMany
-    {
-        return $this->hasMany(DormitoryPost::class);
-    }
-
     public function inventories(): HasMany
     {
         return $this->hasMany(DormitoryInventory::class);
-    }
-
-    public function broadcasts(): HasMany
-    {
-        return $this->hasMany(DormitoryEmergencyBroadcast::class);
     }
 
     public function policyAssignments(): HasMany

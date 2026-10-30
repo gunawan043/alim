@@ -596,19 +596,19 @@
                     <div class="alert alert-danger m-3">{{ session('error') }}</div>
                 @endif
 
-                <div id="bulkActionBar" class="px-3 py-2 bg-light border-bottom d-none align-items-center gap-3">
-                    <span class="badge bg-primary" id="bulkSelectedCount">0</span>
-                    <span class="text-muted small">GTK terpilih</span>
-                    <div class="vr"></div>
-                    @if($canMassUpdate)
+                @if($canMassUpdate)
+                    <div id="bulkActionBar" class="px-3 py-2 bg-light border-bottom d-none align-items-center gap-3">
+                        <span class="badge bg-primary" id="bulkSelectedCount">0</span>
+                        <span class="text-muted small">GTK terpilih</span>
+                        <div class="vr"></div>
                         <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#massUpdateModal">
                             <i class="ri-edit-fill me-1"></i>Update Massal
                         </button>
-                    @endif
-                    <button type="button" class="btn btn-sm btn-outline-danger" id="bulkClearBtn">
-                        <i class="ri-close-circle-line me-1"></i>Hapus Pilihan
-                    </button>
-                </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="bulkClearBtn">
+                            <i class="ri-close-circle-line me-1"></i>Hapus Pilihan
+                        </button>
+                    </div>
+                @endif
                 <div class="card-body">
                     <div class="table-container">
                         <table class="table table-hover align-middle table-freeze" id="gtkTable">
@@ -622,10 +622,12 @@
                                          status_kepegawaian, tmt, satuan_kerja, status_aktif
                                     ============================================================ --}}
 
-                                    {{-- BULK SELECT --}}
-                                    <th style="width:36px;min-width:36px;" class="text-center">
-                                        <input type="checkbox" id="bulkSelectAll" class="form-check-input" style="cursor:pointer;">
-                                    </th>
+                                    @if($canMassUpdate)
+                                        {{-- BULK SELECT --}}
+                                        <th style="width:36px;min-width:36px;" class="text-center">
+                                            <input type="checkbox" id="bulkSelectAll" class="form-check-input" style="cursor:pointer;">
+                                        </th>
+                                    @endif
 
                                     {{-- DEFAULT --}}
                                     <th data-column="nama">Nama GTK</th>
@@ -684,9 +686,11 @@
                             <tbody class="list">
                                 @forelse($gtkList as $gtk)
                                     <tr data-gtk-id="{{ $gtk->id }}">
-                                        <td class="text-center">
-                                            <input type="checkbox" class="form-check-input bulk-gtk-select" value="{{ $gtk->id }}" data-name="{{ $gtk->name }}" style="cursor:pointer;">
-                                        </td>
+                                        @if($canMassUpdate)
+                                            <td class="text-center">
+                                                <input type="checkbox" class="form-check-input bulk-gtk-select" value="{{ $gtk->id }}" data-name="{{ $gtk->name }}" style="cursor:pointer;">
+                                            </td>
+                                        @endif
                                         {{-- DEFAULT --}}
                                         <td data-column="nama">
                                             <div class="d-flex align-items-center">
@@ -1600,6 +1604,7 @@
             cb.addEventListener('change', function () { toggleColumnVisibility(this); });
         });
 
+        @if($canMassUpdate)
         // ── BULK SELECT ─────────────────────────────────────────────
         const bulkSelectAll = document.getElementById('bulkSelectAll');
         const bulkRows      = document.querySelectorAll('.bulk-gtk-select');
@@ -1653,6 +1658,7 @@
                 refreshBulkBar();
             });
         }
+        @endif
 
         // ── MASS UPDATE ─────────────────────────────────────────────
         const massJenisSelect = document.getElementById('massJenisGtk');

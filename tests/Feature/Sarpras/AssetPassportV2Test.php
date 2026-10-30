@@ -4,24 +4,14 @@ namespace Tests\Feature\Sarpras;
 
 use App\Models\RepairCostHistory;
 use App\Services\Sarpras\AssetPassportService;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class AssetPassportV2Test extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use RefreshDatabase;
 
     public function test_build_full_includes_legacy_fields(): void
     {
@@ -46,6 +36,7 @@ class AssetPassportV2Test extends TestCase
             'school_id' => $school->id,
             'amount' => 100000,
             'cost_category' => 'repair',
+            'description' => 'Perbaikan fixture',
             'incurred_date' => now(),
         ]);
 
@@ -65,6 +56,6 @@ class AssetPassportV2Test extends TestCase
 
         $passport = app(AssetPassportService::class)->buildPassportV2($asset);
 
-        $this->assertContains($passport['criticality']['level'], ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+        $this->assertContains(strtoupper($passport['criticality']['risk_level']), ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
     }
 }

@@ -26,6 +26,10 @@
 .navbar-nav .nav-item .nav-link.active i {
     color: #405189 !important;
 }
+/* Submenu: text-only, tanpa icon. Icon hanya dipakai pada menu utama. */
+.app-menu .menu-dropdown .nav-sm .nav-link i {
+    display: none !important;
+}
 /* Active sidebar item — dark mode */
 [data-bs-theme="dark"] .navbar-nav .nav-item .nav-link.active,
 [data-bs-theme="dark"] .navbar-nav .nav-item .nav-link.active i {
@@ -133,10 +137,48 @@
         ->values()
         ->toArray();
 
-    // ── Helper: cek role / jabatan / tugas (case-insensitive untuk jabatan) ─
-    $hasRole    = fn ($role)  => in_array($role, $userRoles, true);
-    $hasJabatan = fn ($jab)   => strtolower(trim($userJabatan)) === strtolower(trim($jab));
-    $hasTugas   = fn ($tugas) => in_array($tugas, $userTugas, true);
+    // ── Helper: cek role / jabatan / tugas ────────────────────────────────
+    $hasRole  = fn ($role)  => in_array($role, $userRoles, true);
+    $hasTugas = fn ($tugas) => in_array($tugas, $userTugas, true);
+
+    /**
+     * Normalisasi nama jabatan agar varian data hasil import tetap terbaca:
+     *   "STAFF HUMAS DAN PERSONALIA (SUB OFFICE ASISTAND)" → "staf humas dan personalia"
+     *   "STAF STAF TATA USAHA PENGASUHAN PUTRA"            → "staf tata usaha pengasuhan putra"
+     *   "KEPALA UNIT GIZI & LOGISTIK (UGL)"                → "kepala unit gizi dan logistik"
+     */
+    $normalizeJabatan = static function ($value): string {
+        $v = strtolower(trim((string) $value));
+        if ($v === '') {
+            return '';
+        }
+        $v = preg_replace('/\([^)]*\)/', ' ', $v);          // buang keterangan dalam kurung
+        $v = str_replace('&', ' dan ', $v);
+        $v = str_replace('staff', 'staf', $v);
+        $v = preg_replace('/[^a-z0-9]+/', ' ', $v);          // tanda baca → spasi
+        $v = preg_replace('/\s+/', ' ', $v);
+        $v = preg_replace('/\b(\w+)( \1\b)+/', '$1', $v);  // kata ganda: "staf staf" → "staf"
+
+        return trim($v);
+    };
+
+    $jabatanNorm = $normalizeJabatan($userJabatan);
+
+    /**
+     * Cocokkan jabatan user dengan nama jabatan baku.
+     * Cocok bila sama persis ATAU jabatan user diawali nama baku + spasi
+     * (mis. "staf tata usaha pengasuhan putra" cocok dengan "Staf Tata Usaha").
+     * Aturan "diawali" mencegah "Wakil Kepala Satuan Pendidikan" dianggap
+     * sebagai "Kepala Satuan Pendidikan".
+     */
+    $hasJabatan = static function ($jab) use ($jabatanNorm, $normalizeJabatan): bool {
+        $target = $normalizeJabatan($jab);
+        if ($target === '' || $jabatanNorm === '') {
+            return false;
+        }
+
+        return $jabatanNorm === $target || str_starts_with($jabatanNorm, $target.' ');
+    };
 
     // ── Helper: context route ─────────────────────────────────────────────
     $currentRoute = request()->route() ? request()->route()->getName() : '';
@@ -367,7 +409,8 @@
 
                 {{-- ═══════════════════════════════════════════════════════════
                      MODE 3 — USER NORMAL
-                     Render semua role + semua tugas tambahan.
+                     Render role + tugas tambahan yang belum terwakili
+                     di sidebar role (hindari menu ganda saat rangkap).
                      ═══════════════════════════════════════════════════════════ --}}
                 @else
 
@@ -387,13 +430,39 @@
                         @endif
                     @endforeach
 
-                    {{-- 3b. Semua tugas tambahan yang dimiliki user --}}
+                    {{-- 3b. Tugas tambahan.
+                         Sidebar Satuan Pendidikan sudah memuat menu tugas
+                         berikut secara terpadu. Jangan meng-include sidebar
+                         tugas terpisah untuk tugas-tugas tersebut agar menu
+                         tidak dobel saat user merangkap jabatan. Tugas yang
+                         belum terwakili (asrama, perizinan, UKS, OSIPP)
+                         tetap ditampilkan dari sidebar tugasnya. --}}
+                    @php
+                        $satuanIntegratedTugasSlugs = [
+                            'wali-kelas',
+                            'koordinator-kurikulum',
+                            'koordinator-kesiswaan',
+                            'koordinator-ekskul',
+                            'koordinator-lab',
+                            'koordinator-sarpras',
+                            'koordinator-guru-umum',
+                            'koordinator-guru-agama',
+                            'koordinator-guru-hadits',
+                            'koordinator-guru-bahasa-arab',
+                            'koordinator-guru-tahfidz',
+                            'tim-kesiswaan',
+                            'pembina-ekskul',
+                        ];
+                        $hasSatuanRole = in_array('Satuan Pendidikan', $userRoles, true);
+                    @endphp
                     @foreach($userTugas as $tugasName)
                         @php
                             $slug = $tugasFileMap[$tugasName] ?? null;
                             $viewPath = $slug ? 'layouts.sidebar.tugas-tambahan.' . $slug : null;
+                            $alreadyIntegrated = $hasSatuanRole
+                                && in_array($slug, $satuanIntegratedTugasSlugs, true);
                         @endphp
-                        @if($viewPath && view()->exists($viewPath))
+                        @if($viewPath && ! $alreadyIntegrated && view()->exists($viewPath))
                             @include($viewPath)
                             @php $renderedCount++; @endphp
                         @endif

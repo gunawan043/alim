@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzMutabaah;
+use App\Models\User;
 use App\Services\TahfidzAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -56,7 +57,7 @@ class MutabaahController extends Controller
             ->withQueryString();
 
         $inputGroups = $groups
-            ->filter(fn ($group) => $this->access->canInputSetoran($request->user(), $group))
+            ->filter(fn ($group) => $this->canInput($request->user(), $group))
             ->values();
 
         $membersByGroup = TahfidzGroupMember::with('student:id,name,nis')
@@ -220,7 +221,9 @@ class MutabaahController extends Controller
             ->when($activeYear, fn ($q) => $q->where('academic_year_id', $activeYear->id));
 
         if (! $this->access->canViewAllSchools($user)) {
-            if ($this->access->isSchoolCoordinator($user, $schoolId)
+            if ($this->isAsramaStaff($user) && $schoolId) {
+                $query->where('school_id', $schoolId);
+            } elseif ($this->access->isSchoolCoordinator($user, $schoolId)
                 || $this->access->isSchoolLeader($user)) {
                 $query->where('school_id', $schoolId);
             } else {
@@ -249,7 +252,7 @@ class MutabaahController extends Controller
 
     private function authorizeInput(Request $request, ?TahfidzGroup $group): void
     {
-        abort_unless($group && $this->access->canInputSetoran($request->user(), $group), 403, 'Anda tidak berwenang mencatat mutaba’ah halaqah ini.');
+        abort_unless($group && $this->canInput($request->user(), $group), 403, 'Anda tidak berwenang mencatat mutaba’ah halaqah ini.');
     }
 
     private function authorizeView(Request $request): void
@@ -270,10 +273,35 @@ class MutabaahController extends Controller
             || $this->access->isSchoolLeader($user)
             || $hasGroupAssignment
             || $this->access->isTahfidzTeacher($user)
+            || $this->isAsramaStaff($user)
             || (function_exists('canPermission') && canPermission('tahfidz_view')),
             403,
             'Anda tidak berwenang melihat mutaba’ah tahfidz.'
         );
+    }
+
+    private function canInput(User $user, TahfidzGroup $group): bool
+    {
+        return $this->isAsramaStaff($user)
+            || $this->access->canInputSetoran($user, $group);
+    }
+
+    private function isAsramaStaff(User $user): bool
+    {
+        $roles = method_exists($user, 'getRoleNames')
+            ? $user->getRoleNames()->map(fn ($role) => mb_strtolower((string) $role))->all()
+            : [];
+
+        if (collect($roles)->contains(fn ($role) => str_contains($role, 'asrama'))) {
+            return true;
+        }
+
+        $jabatan = mb_strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+
+        return str_contains($jabatan, 'asrama')
+            || str_contains($jabatan, 'musyrif')
+            || str_contains($jabatan, 'musrifah')
+            || str_contains($jabatan, 'wali kamar');
     }
 
     private function month(Request $request): Carbon

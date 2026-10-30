@@ -20,6 +20,10 @@ use App\Models\PermitType;
 use App\Models\Student;
 use App\Models\StudentMahrom;
 use App\Models\User;
+use App\Services\DormitoryService;
+use App\Services\Notifications\GuardianWhatsAppNotifier;
+use App\Services\Notifications\WhatsAppGatewayService;
+use App\Services\NotificationUniversalService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -45,8 +49,8 @@ class LeaveWorkflowService
      */
     public static function getSpecialPermitTypes(): array
     {
-        // Cache di kelas jika perlu; disini langsung fetch dari DB (kecil dataset).
-        return PermitType::where('category', 'special')->pluck('code')->toArray();
+        // Izin khusus dan darurat selalu memerlukan approval kepala/wakil.
+        return PermitType::whereIn('category', ['special', 'emergency'])->pluck('code')->toArray();
     }
 
     public function __construct(
@@ -122,12 +126,39 @@ class LeaveWorkflowService
         $student = Student::find($data['student_id']);
         $permitType = (string) ($data['permit_type'] ?? '');
 
+        // ── Persetujuan orang tua/wali wajib dicatat untuk semua jenis izin ──
+        $guardianConfirmed = (bool) ($data['guardian_consent_confirmed'] ?? false);
+        if (! $guardianConfirmed) {
+            throw new \InvalidArgumentException('Persetujuan orang tua/wali wajib dicatat sebelum izin diajukan.');
+        }
+
+        $data['guardian_approval_status'] = 'approved';
+        $data['guardian_approved_at'] = now();
+        $data['guardian_approval_channel'] = $data['guardian_approval_channel'] ?? 'manual';
+        $data['guardian_approval_note'] = $data['guardian_approval_note'] ?? null;
+        unset($data['guardian_consent_confirmed']);
+
         // ── Sinkronisasi master jenis izin & policy per-asrama ──────
         // Jenis izin yang dinonaktifkan di master atau di asrama tidak boleh
         // tetap bisa diajukan lewat request manual.
         $permitTypeMaster = PermitType::where('code', $permitType)->first();
         if ($permitTypeMaster && ! $permitTypeMaster->is_active) {
             throw new \InvalidArgumentException('Jenis izin ini sedang dinonaktifkan oleh pengelola pondok.');
+        }
+
+        // Izin meninggalkan pembelajaran maksimal 3 hari, kecuali darurat
+        // atau izin khusus yang secara eksplisit disetujui.
+        $maxDays = (int) config('asrama.max_learning_leave_days', 3);
+        $isEmergencyRequest = (bool) ($data['is_emergency'] ?? false) || $permitType === 'darurat';
+        $isSpecialRequest = (bool) ($data['is_special_permission'] ?? false);
+        if (! $isEmergencyRequest && ! $isSpecialRequest) {
+            $departureCheck = CarbonImmutable::parse($data['departure_datetime']);
+            $returnCheck = CarbonImmutable::parse($data['expected_return_datetime']);
+            if ($returnCheck->greaterThan($departureCheck->addDays($maxDays))) {
+                throw new \InvalidArgumentException(
+                    "Izin meninggalkan pembelajaran maksimal {$maxDays} hari. Ajukan izin khusus jika memerlukan waktu lebih lama."
+                );
+            }
         }
 
         $leavePolicy = DormitoryLeavePolicy::where('dormitory_id', $dormitoryId)
@@ -245,17 +276,19 @@ class LeaveWorkflowService
         // WA notification will fire after commit
 
         // ── Auto-approve sesuai pengaturan asrama ──────────────────
-        // Izin khusus tetap wajib approval. Untuk jenis izin biasa, hormati
-        // toggle "Memerlukan persetujuan" di halaman pengaturan.
+        // Izin biasa (kategori default, mis. pulang terjadwal) adalah hak
+        // santri dan tidak perlu approval. Izin khusus/darurat selalu
+        // menunggu Kepala/Wakil Asrama.
+        $permitCategory = $permitTypeMaster?->category;
+        $isOrdinaryPermit = $permitCategory === 'default';
         $forceRequiresApproval = in_array($permitType, self::getSpecialPermitTypes(), true);
         $requiresApproval = $leavePolicy?->requires_approval ?? true;
 
-        $shouldAutoApprove = false;
-        if (! $forceRequiresApproval) {
+        $shouldAutoApprove = $isOrdinaryPermit;
+        if (! $isOrdinaryPermit && ! $forceRequiresApproval) {
             if (! $requiresApproval) {
                 $shouldAutoApprove = true;
             } elseif (! empty($data['is_special_permission'])) {
-                // Special permission bypass untuk izin pulang
                 $shouldAutoApprove = true;
             } elseif ($this->isGtk($creator) && $leavePolicy?->auto_approve_gtk) {
                 $shouldAutoApprove = true;
@@ -285,7 +318,7 @@ class LeaveWorkflowService
             // ── Notifikasi penjemput di luar mahrom ─────────────────────
             if (($pickupAuthorization['status'] ?? null) === 'pending') {
                 try {
-                    app(\App\Services\NotificationUniversalService::class)->notifyDormitoryStaff(
+                    app(NotificationUniversalService::class)->notifyDormitoryStaff(
                         $permit->dormitory_id,
                         [
                             'module' => 'dormitory',
@@ -948,7 +981,7 @@ class LeaveWorkflowService
         });
 
         $this->notifyPermitGuardian($permit->fresh(['student']), 'returned');
-        app(\App\Services\DormitoryService::class)->notifyPermitReturnedInApp($permit->fresh(['student']));
+        app(DormitoryService::class)->notifyPermitReturnedInApp($permit->fresh(['student']));
 
         return $permit;
     }
@@ -960,7 +993,7 @@ class LeaveWorkflowService
     private function notifyPermitGuardian(DormitoryPermit $permit, string $stage, ?string $note = null): void
     {
         try {
-            $notifier = app(\App\Services\Notifications\GuardianWhatsAppNotifier::class);
+            $notifier = app(GuardianWhatsAppNotifier::class);
 
             match ($stage) {
                 'rejected' => $notifier->notifyPermitRejected($permit, $note),
@@ -1083,7 +1116,7 @@ class LeaveWorkflowService
                     continue;
                 }
                 $phone = preg_replace('/[^0-9]/', '', $phone);
-                $sent = app(\App\Services\Notifications\WhatsAppGatewayService::class)
+                $sent = app(WhatsAppGatewayService::class)
                     ->send($phone, $msg, ['event' => 'emergency_leave', 'reference_type' => 'dormitory_permit', 'reference_id' => $permit->id]);
                 \Log::channel('daily')->info('[EMERGENCY WA] '.($sent ? 'Terkirim' : 'Gagal').' ke '.$phone.': '.$msg);
             }

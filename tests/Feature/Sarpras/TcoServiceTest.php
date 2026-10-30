@@ -4,24 +4,14 @@ namespace Tests\Feature\Sarpras;
 
 use App\Models\RepairCostHistory;
 use App\Services\Sarpras\TcoService;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class TcoServiceTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
-    }
+    use RefreshDatabase;
 
     public function test_snapshot_contains_all_components(): void
     {
@@ -33,15 +23,16 @@ class TcoServiceTest extends TestCase
             'school_id' => $school->id,
             'amount' => 150000,
             'cost_category' => 'repair',
+            'description' => 'Perbaikan fixture',
             'incurred_date' => now(),
         ]);
 
         $snapshot = app(TcoService::class)->snapshot($asset);
 
         $this->assertEquals($asset->id, $snapshot->asset_id);
-        $this->assertGreaterThanOrEqual(5000000, $snapshot->acquisition_cost_total);
-        $this->assertEquals(150000, $snapshot->repair_cost_total);
-        $this->assertGreaterThan(0, $snapshot->tco_total);
+        $this->assertGreaterThanOrEqual(5000000, (float) $snapshot->purchase_cost);
+        $this->assertEquals(150000, (float) $snapshot->repair_cost);
+        $this->assertGreaterThan(0, (float) $snapshot->total_cost);
     }
 
     public function test_breakdown_returns_categorized_history(): void
@@ -54,12 +45,15 @@ class TcoServiceTest extends TestCase
             'school_id' => $school->id,
             'amount' => 100000,
             'cost_category' => 'repair',
+            'description' => 'Perbaikan fixture',
             'incurred_date' => now(),
         ]);
 
-        $breakdown = app(TcoService::class)->breakdown($asset);
+        $breakdown = app(TcoService::class)->build($asset);
 
-        $this->assertArrayHasKey('repair', $breakdown);
-        $this->assertArrayHasKey('maintenance', $breakdown);
+        $this->assertArrayHasKey('repair_cost', $breakdown);
+        $this->assertArrayHasKey('maintenance_cost', $breakdown);
+        $this->assertArrayHasKey('breakdown', $breakdown);
+        $this->assertEquals(100000, $breakdown['repair_cost']);
     }
 }

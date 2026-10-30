@@ -21,6 +21,9 @@ class StorePostRequest extends FormRequest
             'needs_response' => 'boolean',
             'is_pinned' => 'boolean',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png,doc,docx|max:2048',
+            'banners' => 'nullable|array|max:5',
+            'banners.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+            'banner' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
         ];
     }
 

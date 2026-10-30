@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
 use App\Models\DormitoryPermit;
+use App\Models\DormitoryResident;
 use App\Models\DormitoryVisitLog;
+use App\Models\HumasAnnouncement;
+use App\Models\HumasSatisfactionResponse;
+use App\Models\HumasSatisfactionSurvey;
 use App\Models\NotificationUniversal;
 use App\Models\Student;
 use App\Models\StudentHealthPermit;
@@ -90,8 +94,9 @@ class GuardianPortalController extends Controller
             return view('portal.token-expired');
         }
         Auth::loginUsingId($wali->user_id);
-        $surveys = \App\Models\HumasSatisfactionSurvey::active()
+        $surveys = HumasSatisfactionSurvey::active()
             ->whereIn('audience', ['all', 'wali'])
+            ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $wali->school_id))
             ->with(['responses' => fn ($q) => $q->where('user_id', $wali->user_id)])
             ->latest()->get();
 
@@ -105,10 +110,12 @@ class GuardianPortalController extends Controller
             return view('portal.token-expired');
         }
         Auth::loginUsingId($wali->user_id);
-        $survey = \App\Models\HumasSatisfactionSurvey::active()
-            ->whereIn('audience', ['all', 'wali'])->findOrFail($id);
+        $survey = HumasSatisfactionSurvey::active()
+            ->whereIn('audience', ['all', 'wali'])
+            ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $wali->school_id))
+            ->findOrFail($id);
         $validated = $request->validate(['rating' => 'required|integer|min:1|max:5', 'feedback' => 'nullable|string|max:2000']);
-        \App\Models\HumasSatisfactionResponse::updateOrCreate(
+        HumasSatisfactionResponse::updateOrCreate(
             ['humas_satisfaction_survey_id' => $survey->id, 'user_id' => $wali->user_id],
             ['rating' => $validated['rating'], 'feedback' => $validated['feedback'] ?? null, 'submitted_at' => now()]
         );
@@ -124,8 +131,9 @@ class GuardianPortalController extends Controller
         }
         Auth::loginUsingId($wali->user_id);
 
-        $announcements = \App\Models\HumasAnnouncement::published()
+        $announcements = HumasAnnouncement::published()
             ->whereIn('audience', ['all', 'wali'])
+            ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $wali->school_id))
             ->orderByDesc('is_pinned')->latest('published_at')->paginate(12);
 
         return view('portal.announcements', compact('wali', 'announcements', 'token'));
@@ -139,8 +147,10 @@ class GuardianPortalController extends Controller
         }
         Auth::loginUsingId($wali->user_id);
 
-        $announcement = \App\Models\HumasAnnouncement::published()
-            ->whereIn('audience', ['all', 'wali'])->findOrFail($id);
+        $announcement = HumasAnnouncement::published()
+            ->whereIn('audience', ['all', 'wali'])
+            ->where(fn ($q) => $q->whereNull('school_id')->orWhere('school_id', $wali->school_id))
+            ->findOrFail($id);
 
         return view('portal.announcement-show', compact('wali', 'announcement', 'token'));
     }
@@ -321,6 +331,31 @@ class GuardianPortalController extends Controller
 
         $student = Student::findOrFail($data['student_id']);
         $activeYear = $student->academic_year_id ?? AcademicYear::active()?->id;
+        $resident = DormitoryResident::where('student_id', $student->id)
+            ->where('is_active', true)
+            ->latest('check_in_date')
+            ->first();
+
+        if (! $resident || ! $student->dormitory_id) {
+            return back()->withErrors(['student_id' => 'Santri belum memiliki data asrama aktif.']);
+        }
+
+        $typeMap = [
+            'sakit' => 'sakit',
+            'keluarga' => 'keperluan_penting',
+            'libur' => 'pulang',
+            'acara' => 'keperluan_penting',
+            'izin_khusus' => 'keperluan_penting',
+        ];
+
+        $data['permit_type'] = $typeMap[$data['permit_type']] ?? 'keperluan_penting';
+        $data['room_id'] = $resident->room_id;
+        $data['expected_return_datetime'] = $data['expected_return_at'];
+        $data['purpose'] = $data['reason'];
+        $data['guardian_consent_confirmed'] = true;
+        $data['guardian_approval_channel'] = 'portal';
+        $data['guardian_approval_note'] = 'Diajukan dan disetujui melalui portal wali.';
+        $data['created_by'] = auth()->id();
 
         $permit = $this->leave->submit($data, $student->dormitory_id, $activeYear);
 

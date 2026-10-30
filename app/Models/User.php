@@ -97,6 +97,22 @@ class User extends Authenticatable
         )->where('wali_santri.status', WaliSantri::STATUS_ACTIVE);
     }
 
+    /**
+     * Perangkat mobile yang terdaftar untuk push notification.
+     */
+    public function userDevices()
+    {
+        return $this->hasMany(UserDevice::class);
+    }
+
+    /**
+     * Subscription Web Push untuk browser user.
+     */
+    public function webPushSubscriptions()
+    {
+        return $this->hasMany(WebPushSubscription::class);
+    }
+
     // ── Relations ─────────────────────────────────────────────────────────────
     public function gtkProfile()
     {

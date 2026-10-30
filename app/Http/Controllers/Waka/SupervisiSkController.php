@@ -66,7 +66,7 @@ class SupervisiSkController extends Controller
         $this->syncDecreeAndLetter($sk);
 
         return redirect()
-            ->route('waka.supervisi-sk.edit', $sk->id)
+            ->route('waka.supervisi-sk.edit', ['userId' => $request->user()?->id, $sk->id])
             ->with('success', 'SK dibuat. Tambahkan anggota tim supervisi.');
     }
 
@@ -121,7 +121,7 @@ class SupervisiSkController extends Controller
         $sk = SupervisiSk::where('school_id', $schoolId)->findOrFail($id);
         $sk->delete();
 
-        return redirect()->route('waka.supervisi-sk.index')->with('success', 'SK dihapus.');
+        return redirect()->route('waka.supervisi-sk.index', ['userId' => $request->user()?->id])->with('success', 'SK dihapus.');
     }
 
     public function storeMember(Request $request, string $id)

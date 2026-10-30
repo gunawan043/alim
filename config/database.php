@@ -103,6 +103,45 @@ return [
             'sslmode' => 'prefer',
         ],
 
+        /*
+        |--------------------------------------------------------------------------
+        | Supabase PostgreSQL
+        |--------------------------------------------------------------------------
+        | Gunakan DB_CONNECTION=supabase untuk menjadikan Supabase database
+        | utama. Isi SUPABASE_DB_URL dengan connection string dari Supabase
+        | (gunakan Session Pooler port 5432 untuk migration, bukan port 6543).
+        */
+        'supabase' => [
+            'driver' => 'pgsql',
+            'url' => env('SUPABASE_DB_URL'),
+            'host' => env('SUPABASE_DB_HOST', '127.0.0.1'),
+            'port' => env('SUPABASE_DB_PORT', '5432'),
+            'database' => env('SUPABASE_DB_DATABASE', 'postgres'),
+            'username' => env('SUPABASE_DB_USERNAME', 'postgres'),
+            'password' => env('SUPABASE_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'schema' => env('SUPABASE_DB_SCHEMA', 'public'),
+            'sslmode' => env('SUPABASE_DB_SSLMODE', 'require'),
+        ],
+
+        // Koneksi administratif hanya untuk migration/DDL. Jangan dipakai runtime.
+        'supabase_admin' => [
+            'driver' => 'pgsql',
+            'url' => env('SUPABASE_ADMIN_DB_URL'),
+            'host' => env('SUPABASE_ADMIN_DB_HOST', env('SUPABASE_DB_HOST', '127.0.0.1')),
+            'port' => env('SUPABASE_ADMIN_DB_PORT', env('SUPABASE_DB_PORT', '5432')),
+            'database' => env('SUPABASE_ADMIN_DB_DATABASE', env('SUPABASE_DB_DATABASE', 'postgres')),
+            'username' => env('SUPABASE_ADMIN_DB_USERNAME', env('SUPABASE_DB_USERNAME', 'postgres')),
+            'password' => env('SUPABASE_ADMIN_DB_PASSWORD', env('SUPABASE_DB_PASSWORD', '')),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'schema' => env('SUPABASE_DB_SCHEMA', 'public'),
+            'sslmode' => env('SUPABASE_DB_SSLMODE', 'require'),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DATABASE_URL'),

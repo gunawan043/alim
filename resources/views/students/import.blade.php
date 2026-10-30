@@ -6,29 +6,29 @@
     @include('kurikulum._styles')
 <style>
 .import-hero {
-    background: linear-gradient(135deg, #0d6efd08 0%, #19875408 100%);
-    border: 2px dashed #dee2e6;
+    background: linear-gradient(135deg, rgba(13,110,253,.03) 0%, rgba(25,135,84,.03) 100%);
+    border: 2px dashed var(--bs-border-color);
     border-radius: 16px;
     transition: all 0.25s ease;
     cursor: pointer;
 }
 .import-hero:hover,
 .import-hero.dragover {
-    border-color: #0d6efd;
-    background: linear-gradient(135deg, #0d6efd15 0%, #19875415 100%);
+    border-color: var(--bs-primary);
+    background: linear-gradient(135deg, rgba(13,110,253,.08) 0%, rgba(25,135,84,.08) 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(13,110,253,0.12);
 }
 .import-hero .upload-icon {
     width: 80px; height: 80px;
-    background: linear-gradient(135deg, #0d6efd20, #19875420);
+    background: linear-gradient(135deg, rgba(13,110,253,.13), rgba(25,135,84,.13));
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     margin: 0 auto 1rem;
-    font-size: 2rem; color: #0d6efd;
+    font-size: 2rem; color: var(--bs-primary);
 }
 .step-card {
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--bs-border-color);
     border-radius: 12px;
     padding: 1.25rem;
     transition: box-shadow 0.2s;
@@ -36,27 +36,34 @@
 .step-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
 .step-number {
     width: 36px; height: 36px;
-    background: #0d6efd; color: #fff;
+    background: var(--bs-primary); color: #fff;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 15px; flex-shrink: 0;
 }
 .rombel-badge {
     display: inline-flex; align-items: center; gap: 4px;
-    background: #f0f9ff; border: 1px solid #bfdbfe;
-    color: #1d4ed8; padding: 2px 10px; border-radius: 20px;
+    background: rgba(13,110,253,.10); border: 1px solid rgba(13,110,253,.35);
+    color: var(--bs-primary); padding: 2px 10px; border-radius: 20px;
     font-size: 11px; font-weight: 600;
 }
 .duplicate-table { font-size: 12px; }
-.duplicate-table thead th { background: #f8f9fa; white-space: nowrap; }
-.dup-highlight { background: #fff8e1; }
+.duplicate-table thead th { background: var(--bs-tertiary-bg); white-space: nowrap; }
+.dup-highlight { background: rgba(255,193,7,.16); }
 .info-box {
-    background: #f8f9fa;
-    border-left: 4px solid #0d6efd;
+    background: var(--bs-tertiary-bg);
+    border-left: 4px solid var(--bs-primary);
     border-radius: 8px;
     padding: 1rem 1.25rem;
 }
-.info-box strong { color: #0d6efd; }
+.info-box strong { color: var(--bs-primary); }
+
+/* Mode gelap: hilangkan outline terang pada kartu langkah. */
+[data-bs-theme="dark"] .step-card {
+    border-color: transparent;
+    background: var(--bs-tertiary-bg);
+}
+[data-bs-theme="dark"] .step-card:hover { box-shadow: 0 4px 15px rgba(0,0,0,.45); }
 </style>
 @endsection
 

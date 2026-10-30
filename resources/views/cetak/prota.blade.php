@@ -70,11 +70,11 @@
                 <div class="name">{{ $prota->teacher?->name ?? '................................' }}</div>
             </td>
             <td style="width:50%">
-                {{ $school?->city?->name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>
+                {{ $school?->city?->display_name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>
                 Disetujui Oleh<br>Kepala Satuan Pendidikan
                 <div class="space"></div>
-                <div class="name">{{ $school?->principal_name ?? '................................' }}</div>
-                @if($school?->principal_nip)<div class="nip">NIP. {{ $school->principal_nip }}</div>@endif
+                <div class="name">{{ $school?->principal_full_name ?? '................................' }}</div>
+                @if($school?->principal_nupy_display)<div class="nip">NUPY. {{ $school->principal_nupy_display }}</div>@endif
             </td>
         </tr>
     </table>

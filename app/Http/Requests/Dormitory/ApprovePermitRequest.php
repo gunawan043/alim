@@ -15,7 +15,7 @@ class ApprovePermitRequest extends FormRequest
     {
         return [
             'approval_note' => 'nullable|string',
-            'permit_type' => 'nullable|string|in:pulang,sakit,berobat,keperluan_keluarga,keluar_kota,darurat,lainnya',
+            'permit_type' => 'nullable|string|in:pulang,sakit,berobat,keperluan_keluarga,keluar_kota,darurat,lainnya,musibah,walimah_keluarga,haji_umrah,wisuda_keluarga,keperluan_penting',
         ];
     }
 }

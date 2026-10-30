@@ -120,7 +120,7 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Kota / Kab</label>
-                                <input type="text" class="form-control form-control-sm" value="{{ $school->city?->name ?? '' }}" readonly placeholder="Otomatis dari kode wilayah">
+                                <input type="text" class="form-control form-control-sm" value="{{ $school->city?->display_name ?? '' }}" readonly placeholder="Otomatis dari kode wilayah">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Kecamatan</label>

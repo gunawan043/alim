@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\GtkEmployment;
+use App\Models\GtkWorkUnit;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -77,7 +79,7 @@ class SchoolGroupService
                 'name' => $school->name,
                 'npsn' => $school->npsn,
                 'address' => $school->address,
-                'city_name' => $school->city?->name,
+                'city_name' => $school->city?->display_name,
                 'status' => $school->school_status,
                 'logo_url' => $school->logo_url,
                 'principal_name' => $school->principalUser?->name ?? $school->principal_name,
@@ -210,12 +212,12 @@ class SchoolGroupService
 
         if ($workUnitId) {
             $ids = $ids->merge(
-                \App\Models\GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id')
+                GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id')
             );
         }
 
         $ids = $ids->merge(
-            \App\Models\GtkEmployment::where('school_id', $schoolId)->pluck('user_id')
+            GtkEmployment::where('school_id', $schoolId)->pluck('user_id')
         );
 
         return $ids->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
@@ -227,6 +229,17 @@ class SchoolGroupService
         $employment = $user->employment;
         if ($employment && $employment->school_id && $employment->school) {
             return $employment->school;
+        }
+
+        // Kepala sekolah yang belum memiliki school_id pada gtk_employments:
+        // sekolah menunjuk langsung ke user melalui principal_user_id.
+        $principalSchool = School::query()
+            ->where('principal_user_id', $user->id)
+            ->active()
+            ->first();
+
+        if ($principalSchool) {
+            return $principalSchool;
         }
 
         // Try gtkWorkUnits → workUnit → schools

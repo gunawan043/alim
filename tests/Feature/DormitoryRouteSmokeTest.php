@@ -128,7 +128,7 @@ class DormitoryRouteSmokeTest extends TestCase
             'visitUuid' => ['dormitory_visit_logs', 'visitId'],
             'violationUuid' => ['dormitory_violations', 'violationId'],
             'residentUuid' => ['dormitory_residents', 'residentId'],
-            'postUuid' => ['dormitory_posts', 'postId'],
+            'postUuid' => ['humas_announcements', 'postId'],
             'moveUuid' => ['dormitory_room_moves', 'moveId'],
             'itemUuid' => ['dormitory_inventories', 'itemId'],
         ];

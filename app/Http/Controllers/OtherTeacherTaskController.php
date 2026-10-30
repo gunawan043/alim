@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
+use App\Models\AdditionalTaskType;
 use App\Models\OtherTeacherTask;
 use App\Models\School;
 use App\Models\User;
@@ -100,7 +101,8 @@ class OtherTeacherTaskController extends Controller
         $rules = [
             'teacher_id' => 'required|exists:users,id',
             'academic_year_id' => 'required|exists:academic_years,id',
-            'task_name' => 'required|string|max:100',
+            'additional_task_type_id' => 'nullable|exists:additional_task_types,id',
+            'task_name' => 'nullable|string|max:100',
             'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
             'weekly_hours' => 'required|integer|min:0|max:40',
@@ -115,8 +117,23 @@ class OtherTeacherTaskController extends Controller
             $data['school_id'] = $schoolId;
         }
 
+        // Nama & kode tugas WAJIB berasal dari master additional_task_types.
+        $type = AdditionalTaskType::resolve(
+            $data['additional_task_type_id'] ?? null,
+            $data['task_name'] ?? null,
+            $data['task_code'] ?? null
+        );
+
+        if (! $type) {
+            return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
+        }
+
+        $data['additional_task_type_id'] = $type->id;
+        $data['task_name'] = $type->nama;
+        $data['task_code'] = $type->kode;
+
         // Tugas berbasis kelas (mis. Wali Kelas) wajib memilih rombel; rombel harus milik sekolah.
-        if (str_contains(mb_strtolower($data['task_name']), 'wali kelas') && empty($data['study_group_id'])) {
+        if ($type->kode === 'wali-kelas' && empty($data['study_group_id'])) {
             return back()->withInput()->with('error', 'Untuk tugas "Wali Kelas", pilih rombel/kelas terlebih dahulu.');
         }
 
@@ -141,7 +158,8 @@ class OtherTeacherTaskController extends Controller
         }
 
         $rules = [
-            'task_name' => 'required|string|max:100',
+            'additional_task_type_id' => 'nullable|exists:additional_task_types,id',
+            'task_name' => 'nullable|string|max:100',
             'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
             'weekly_hours' => 'required|integer|min:0|max:40',
@@ -150,8 +168,22 @@ class OtherTeacherTaskController extends Controller
 
         $data = $request->validate($rules);
 
+        $type = AdditionalTaskType::resolve(
+            $data['additional_task_type_id'] ?? null,
+            $data['task_name'] ?? null,
+            $data['task_code'] ?? null
+        );
+
+        if (! $type) {
+            return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
+        }
+
+        $data['additional_task_type_id'] = $type->id;
+        $data['task_name'] = $type->nama;
+        $data['task_code'] = $type->kode;
+
         // Tugas berbasis kelas (mis. Wali Kelas) wajib memilih rombel.
-        if (str_contains(mb_strtolower($data['task_name']), 'wali kelas') && empty($data['study_group_id'])) {
+        if ($type->kode === 'wali-kelas' && empty($data['study_group_id'])) {
             return back()->withInput()->with('error', 'Untuk tugas "Wali Kelas", pilih rombel/kelas terlebih dahulu.');
         }
 

@@ -33,6 +33,7 @@ class GtkWorkUnit extends Model
         'user_id',
         'work_unit_id',
         'jabatan',
+        'position_id',
         'is_primary',
     ];
 
@@ -52,6 +53,14 @@ class GtkWorkUnit extends Model
     public function workUnit()
     {
         return $this->belongsTo(WorkUnit::class);
+    }
+
+    /**
+     * Jabatan struktural pada satuan kerja ini (master structural_positions).
+     */
+    public function position()
+    {
+        return $this->belongsTo(StructuralPosition::class, 'position_id');
     }
 
     // SCOPES

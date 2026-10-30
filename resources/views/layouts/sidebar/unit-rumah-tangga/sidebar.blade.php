@@ -608,44 +608,52 @@
             <i class="ri-recycle-line"></i><span>Fasilitas Sampah</span>
         </a>
     </li>
+
+    {{-- ✅ AKTIF: Konsol pengaturan item (atur, tambah, kelompokkan, perbarui) --}}
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.item-manager.']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.item-manager.index') }}">
+            <i class="ri-settings-4-line"></i><span>Pengaturan Item</span>
+        </a>
+    </li>
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     SECTION 11 — TRANSPORTASI  [SOON]
+     SECTION 11 — TRANSPORTASI / ARMADA
      Akses: Driver + Kepala/Koordinator
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if(($showAll || $isDriver || $isStruktural) && menu_allowed('rumah-tangga'))
     <li class="menu-title"><span>Transportasi</span></li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.armada.index', 'sarpras.armada.store', 'sarpras.armada.update', 'sarpras.armada.toggle', 'sarpras.armada.destroy']) ? ' active' : '' }}"
+           href="{{ route('sarpras.armada.index') }}">
             <i class="ri-roadster-line"></i>
-            <span>Daftar Kendaraan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+            <span>Daftar Kendaraan</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.armada.trips']) ? ' active' : '' }}"
+           href="{{ route('sarpras.armada.trips') }}">
             <i class="ri-calendar-schedule-line"></i>
-            <span>Jadwal Perjalanan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+            <span>Jadwal Perjalanan</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.armada.fuel']) ? ' active' : '' }}"
+           href="{{ route('sarpras.armada.fuel') }}">
             <i class="ri-gas-station-line"></i>
-            <span>Log BBM <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+            <span>Log BBM</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.armada.service']) ? ' active' : '' }}"
+           href="{{ route('sarpras.armada.service') }}">
             <i class="ri-tools-line"></i>
-            <span>Servis Rutin <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+            <span>Servis Rutin</span>
         </a>
     </li>
 @endif

@@ -1,9 +1,8 @@
 @extends('layouts.master')
-@section('title', 'Penempatan Kamar — '.$dormitory->name)
+@section('title', 'Penempatan Kamar — '.($dormitory->name ?? 'Asrama'))
+@php $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null); @endphp
 
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
-
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.asrama.rooms.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Kamar</a> @endslot
         @slot('title') Penempatan Kamar — {{ $dormitory->name }} · {{ $dormitory->school?->name }} @endslot
@@ -11,8 +10,14 @@
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="ri-checkbox-circle-line me-1"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="ri-checkbox-circle-line me-1"></i> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="ri-error-warning-line me-1"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
 
@@ -24,7 +29,9 @@
         $wings = $rooms->pluck('wing')->filter()->unique('id')->sortBy('name');
     @endphp
 
-    {{-- Statistik ringkas penempatan (pola GTK) --}}
+    {{-- ============================================================
+         STATS CARDS
+    ============================================================ --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
             <div class="card card-animate stat-card h-90">
@@ -112,35 +119,47 @@
                 </div>
                 <div class="col-sm-auto">
                     <div class="toolbar-actions">
-                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#pullModal">
-                            <i class="ri-download-cloud-2-line me-1"></i> Tarik Santri
-                        </button>
-                        <button type="button" class="btn btn-soft-primary btn-sm" data-bs-toggle="modal" data-bs-target="#boardingModal">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#boardingModal">
                             <i class="ri-user-settings-line me-1"></i> Status Boarding
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#pullModal">
+                            <i class="ri-download-cloud-2-line me-1"></i> Tarik Santri
                         </button>
                     </div>
                 </div>
             </div>
         </div>
         <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <div class="d-flex gap-2 flex-grow-1" style="max-width:420px;">
+            {{-- ============================================================
+                 FILTER CEPAT (inline, tanpa modal)
+            ============================================================ --}}
+            <form class="d-flex flex-wrap align-items-center gap-2 mb-3" onsubmit="return false;">
+                <div class="flex-grow-1" style="min-width:200px;max-width:320px;">
                     <input type="search" id="placement-search" class="form-control form-control-sm"
                            placeholder="Cari kamar, gedung, atau nama santri...">
-                    <button type="button" class="btn btn-primary btn-sm flex-shrink-0" onclick="applyPlacementFilters()">
-                        <i class="ri-search-line"></i> Cari
-                    </button>
                 </div>
-                <div class="toolbar-actions">
-                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#placementFilterModal">
-                        <i class="ri-filter-3-line me-1"></i> Filter Lanjutan
-                        <span id="placementFilterCount" class="badge bg-light text-dark ms-1" style="display:none;">0</span>
-                    </button>
-                    <button type="button" class="btn btn-light btn-sm" onclick="resetPlacementFilters()" title="Reset filter">
-                        <i class="ri-refresh-line"></i>
-                    </button>
+                <div style="min-width:150px;max-width:190px;">
+                    <select id="placementFilterStatus" class="form-select form-select-sm">
+                        <option value="">Semua Status</option>
+                        <option value="available">Tersedia</option>
+                        <option value="full">Penuh</option>
+                    </select>
                 </div>
-            </div>
+                <div style="min-width:160px;max-width:220px;">
+                    <select id="placementFilterWing" class="form-select form-select-sm">
+                        <option value="">Semua Gedung</option>
+                        @foreach($wings as $wing)
+                            <option value="{{ $wing->id }}">{{ $wing->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm flex-shrink-0" onclick="applyPlacementFilters()">
+                    <i class="ri-search-line"></i> Cari
+                </button>
+                <button type="button" class="btn btn-light btn-sm flex-shrink-0" onclick="resetPlacementFilters()" title="Reset filter">
+                    <i class="ri-refresh-line"></i>
+                </button>
+            </form>
 
             <div id="placementActiveFilters" class="mb-3"></div>
             <div class="d-flex align-items-center gap-2 mb-2">
@@ -206,7 +225,7 @@
                                                 title="Lihat penghuni">
                                             <i class="ri-eye-line"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-soft-primary btn-tempatkan"
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-tempatkan"
                                                 data-room="{{ $room->id }}"
                                                 data-room-name="{{ $room->name ?: $room->code }}"
                                                 data-sisa="{{ $sisa }}"
@@ -234,13 +253,13 @@
                                                                 <span class="text-muted">· ranjang #{{ $resident->bed_number }}</span>
                                                             </span>
                                                             <span class="d-flex gap-1">
-                                                                <button type="button" class="btn btn-sm btn-soft-danger btn-keluar"
+                                                                <button type="button" class="btn btn-sm btn-outline-danger btn-keluar"
                                                                         data-resident="{{ $resident->id }}" data-room="{{ $room->id }}"
                                                                         title="Keluarkan dari kamar"><i class="ri-logout-box-r-line"></i></button>
-                                                                <button type="button" class="btn btn-sm btn-soft-warning btn-berhenti"
+                                                                <button type="button" class="btn btn-sm btn-outline-warning btn-berhenti"
                                                                         data-resident="{{ $resident->id }}" data-nama="{{ $resident->student?->name }}"
                                                                         title="Berhenti mondok (tetap sekolah)"><i class="ri-user-unfollow-line"></i></button>
-                                                                <button type="button" class="btn btn-sm btn-soft-primary btn-pindah"
+                                                                <button type="button" class="btn btn-sm btn-outline-primary btn-pindah"
                                                                         data-resident="{{ $resident->id }}" data-nama="{{ $resident->student?->name }}"
                                                                         title="Ajukan pindah kamar (butuh persetujuan)"><i class="ri-arrow-left-right-line"></i></button>
                                                             </span>
@@ -255,11 +274,13 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr>
-                                <td colspan="7" class="text-center text-muted py-5">
-                                    Belum ada kamar. <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">Tambah kamar</a> terlebih dahulu.
-                                </td>
-                            </tr>
+                            <x-empty-state colspan="7" title="Belum ada kamar"
+                                message="Tambahkan kamar terlebih dahulu untuk mulai menempatkan santri.">
+                                <a href="{{ route('user.asrama.rooms.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                                   class="btn btn-primary btn-sm mt-3">
+                                    <i class="ri-add-line me-1"></i> Tambah Kamar
+                                </a>
+                            </x-empty-state>
                         @endforelse
                     </tbody>
                 </table>
@@ -267,59 +288,20 @@
         </div>
     </div>
 
-    {{-- Modal filter lanjutan --}}
-    <div class="modal fade" id="placementFilterModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="ri-filter-3-line me-2 text-primary"></i>Filter Kamar</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="filter-group mb-0">
-                                <div class="filter-group-title"><i class="ri-door-open-line"></i>Status Kamar</div>
-                                <select id="placementFilterStatus" class="form-select">
-                                    <option value="">Semua status</option>
-                                    <option value="available">Tersedia</option>
-                                    <option value="full">Penuh</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="filter-group mb-0">
-                                <div class="filter-group-title"><i class="ri-building-line"></i>Gedung</div>
-                                <select id="placementFilterWing" class="form-select">
-                                    <option value="">Semua gedung</option>
-                                    @foreach($wings as $wing)
-                                        <option value="{{ $wing->id }}">{{ $wing->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" onclick="resetPlacementFilters()"><i class="ri-refresh-line me-1"></i>Reset</button>
-                    <button type="button" class="btn btn-primary" onclick="applyPlacementFilters()"><i class="ri-filter-3-line me-1"></i>Terapkan Filter</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Modal: Tarik Data Santri --}}
+    {{-- ============================================================
+         MODAL: Tarik Data Santri
+    ============================================================ --}}
     <div class="modal fade" id="pullModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header bg-success-subtle">
-                    <h5 class="modal-title"><i class="ri-download-cloud-2-line me-1"></i>Tarik Data Santri Belum Berkamar</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-download-cloud-2-line me-2 text-primary"></i>Tarik Data Santri Belum Berkamar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-2 align-items-end mb-3">
                         <div class="col-md-6">
-                            <label class="form-label small">Pilih Kamar Tujuan</label>
+                            <label class="form-label fs-12 text-muted mb-1">Pilih Kamar Tujuan</label>
                             <select id="pull-room" class="form-select">
                                 <option value="">— pilih kamar —</option>
                                 @foreach($rooms as $room)
@@ -331,11 +313,13 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small">Cari</label>
+                            <label class="form-label fs-12 text-muted mb-1">Cari</label>
                             <input type="search" id="pull-search" class="form-control" placeholder="Nama / NISN…">
                         </div>
                         <div class="col-md-2">
-                            <button type="button" class="btn btn-soft-primary w-100" id="pull-load"><i class="ri-refresh-line"></i></button>
+                            <button type="button" class="btn btn-outline-primary w-100" id="pull-load" title="Muat ulang">
+                                <i class="ri-refresh-line"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -346,7 +330,7 @@
                 <div class="modal-footer">
                     <span class="text-muted small me-auto" id="pull-count">0 dipilih</span>
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-success" id="pull-submit" disabled>
+                    <button type="button" class="btn btn-primary" id="pull-submit" disabled>
                         <i class="ri-user-add-line me-1"></i>Tempatkan
                     </button>
                 </div>
@@ -354,18 +338,20 @@
         </div>
     </div>
 
-    {{-- Modal: Kelola Status Boarding --}}
+    {{-- ============================================================
+         MODAL: Kelola Status Boarding
+    ============================================================ --}}
     <div class="modal fade" id="boardingModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header bg-primary-subtle">
-                    <h5 class="modal-title"><i class="ri-user-settings-line me-1"></i>Kelola Status Boarding — {{ $dormitory->school?->name }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-user-settings-line me-2 text-primary"></i>Kelola Status Boarding — {{ $dormitory->school?->name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
                     <div class="d-flex gap-2 mb-2">
                         <input type="search" id="bs-search" class="form-control" placeholder="Cari nama / NISN…">
-                        <button type="button" class="btn btn-soft-primary" id="bs-load"><i class="ri-refresh-line"></i></button>
+                        <button type="button" class="btn btn-outline-primary" id="bs-load" title="Muat ulang"><i class="ri-refresh-line"></i></button>
                     </div>
                     <div id="bs-list" class="border rounded" style="max-height:340px;overflow:auto;">
                         <div class="text-center text-muted py-4 small">Memuat data…</div>
@@ -373,211 +359,26 @@
                 </div>
                 <div class="modal-footer">
                     <span class="text-muted small me-auto" id="bs-count">0 dipilih</span>
-                    <button type="button" class="btn btn-soft-success" id="bs-set-boarding" disabled><i class="ri-home-heart-line me-1"></i>Tandai Boarding</button>
-                    <button type="button" class="btn btn-soft-secondary" id="bs-set-non" disabled><i class="ri-home-line me-1"></i>Tandai Non-Boarding</button>
+                    <button type="button" class="btn btn-outline-secondary" id="bs-set-non" disabled><i class="ri-home-line me-1"></i>Tandai Non-Boarding</button>
+                    <button type="button" class="btn btn-primary" id="bs-set-boarding" disabled><i class="ri-home-heart-line me-1"></i>Tandai Boarding</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
-    (function () {
-        const statusUrl = "{{ route('user.asrama.api.boarding-status', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
-        const updateUrl = "{{ route('user.asrama.api.boarding-status.update', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
-        const checkoutTemplate = "{{ route('user.asrama.api.residents.checkout', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentId' => '__R__']) }}";
-        const csrf = "{{ csrf_token() }}";
-
-        const bsList = document.getElementById('bs-list');
-        const bsCount = document.getElementById('bs-count');
-        const btnBoarding = document.getElementById('bs-set-boarding');
-        const btnNon = document.getElementById('bs-set-non');
-
-        function selectedIds() {
-            return Array.from(bsList.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value);
-        }
-        function refreshBs() {
-            const n = selectedIds().length;
-            bsCount.textContent = n + ' dipilih';
-            btnBoarding.disabled = n === 0;
-            btnNon.disabled = n === 0;
-        }
-
-        function loadBs() {
-            const q = document.getElementById('bs-search').value.trim();
-            bsList.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat…</div>';
-
-            fetch(statusUrl + (q ? '?q=' + encodeURIComponent(q) : ''), { headers: { 'Accept': 'application/json' } })
-                .then(r => r.json())
-                .then(function (data) {
-                    if (!data.success || !data.students.length) {
-                        bsList.innerHTML = '<div class="text-center text-muted py-4 small">Tidak ada santri.</div>';
-                        refreshBs();
-                        return;
-                    }
-                    bsList.innerHTML = data.students.map(function (s) {
-                        const badge = s.boarding_status === 'boarding'
-                            ? '<span class="badge bg-success-subtle text-success">Boarding</span>'
-                            : (s.boarding_status === 'non_boarding'
-                                ? '<span class="badge bg-secondary-subtle text-secondary">Non-Boarding</span>'
-                                : '<span class="badge bg-warning-subtle text-warning">Belum ditentukan</span>');
-                        const room = s.has_room ? '<span class="badge bg-info-subtle text-info ms-1">Berkamar</span>' : '';
-                        return '<label class="d-flex align-items-center gap-2 border-bottom px-3 py-2" style="cursor:pointer">' +
-                            '<input type="checkbox" class="form-check-input" value="' + s.id + '">' +
-                            '<span><span class="fw-semibold">' + s.name + '</span>' +
-                            '<span class="text-muted small"> · NISN ' + (s.nisn || '-') + '</span> ' + badge + room + '</span></label>';
-                    }).join('');
-                    bsList.querySelectorAll('input[type=checkbox]').forEach(c => c.addEventListener('change', refreshBs));
-                    refreshBs();
-                });
-        }
-
-        function setStatus(status) {
-            const ids = selectedIds();
-            if (!ids.length) return;
-
-            fetch(updateUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-                body: JSON.stringify({ student_ids: ids, status: status })
-            })
-            .then(r => r.json())
-            .then(function (data) {
-                if (data.success) {
-                    Swal.fire({ icon: 'success', title: 'Tersimpan', text: data.message, timer: 1500, showConfirmButton: false })
-                        .then(() => window.location.reload());
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Terjadi kesalahan.' });
-                }
-            });
-        }
-
-        document.getElementById('bs-load').addEventListener('click', loadBs);
-        document.getElementById('bs-search').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadBs(); } });
-        btnBoarding.addEventListener('click', () => setStatus('boarding'));
-        btnNon.addEventListener('click', () => setStatus('non_boarding'));
-        document.getElementById('boardingModal').addEventListener('shown.bs.modal', loadBs);
-
-        // Berhenti mondok
-        document.querySelectorAll('.btn-berhenti').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                const id = this.dataset.resident;
-                const nama = this.dataset.nama || 'santri';
-
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Berhenti Mondok?',
-                    input: 'text',
-                    inputLabel: 'Alasan (opsional)',
-                    inputPlaceholder: 'mis. pindah domisili / permintaan orang tua',
-                    text: nama + ' akan dikeluarkan dari asrama TETAPI tetap terdaftar di sekolah.',
-                    showCancelButton: true,
-                    confirmButtonText: 'Berhenti Mondok',
-                    cancelButtonText: 'Batal',
-                }).then(function (res) {
-                    if (!res.isConfirmed) return;
-                    fetch(checkoutTemplate.replace('__R__', id), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-                        body: JSON.stringify({ reason: res.value || 'Berhenti mondok' })
-                    })
-                    .then(r => r.json())
-                    .then(function (data) {
-                        if (data.success) { window.location.reload(); }
-                        else { Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Terjadi kesalahan.' }); }
-                    });
-                });
-            });
-        });
-
-        // ── Mutasi kamar: ajukan, daftar pending, setujui/tolak ──
-        const moveTemplate = "{{ route('user.asrama.api.residents.request-move', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentId' => '__R__']) }}";
-        const pendingUrl = "{{ route('user.asrama.api.room-moves.pending', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
-        const approveTemplate = "{{ route('user.asrama.api.room-moves.approve', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'moveId' => '__M__']) }}";
-        const rejectTemplate = "{{ route('user.asrama.api.room-moves.reject', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'moveId' => '__M__']) }}";
-        let moveResident = null;
-
-        document.querySelectorAll('.btn-pindah').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                moveResident = this.dataset.resident;
-                document.getElementById('move-nama').textContent = this.dataset.nama || 'santri';
-                document.getElementById('move-reason').value = '';
-                new bootstrap.Modal(document.getElementById('moveModal')).show();
-            });
-        });
-
-        document.getElementById('move-submit').addEventListener('click', function () {
-            const room = document.getElementById('move-room').value;
-            if (!room) { Swal.fire({ icon: 'info', title: 'Pilih kamar tujuan', text: 'Silakan pilih kamar tujuan.' }); return; }
-
-            fetch(moveTemplate.replace('__R__', moveResident), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-                body: JSON.stringify({ to_room_id: room, reason: document.getElementById('move-reason').value })
-            })
-            .then(r => r.json())
-            .then(function (data) {
-                if (data.success) {
-                    Swal.fire({ icon: 'success', title: 'Diajukan', text: data.message, timer: 1500, showConfirmButton: false })
-                        .then(() => window.location.reload());
-                } else { Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Terjadi kesalahan.' }); }
-            });
-        });
-
-        function loadPendingMoves() {
-            fetch(pendingUrl, { headers: { 'Accept': 'application/json' } })
-                .then(r => r.json())
-                .then(function (data) {
-                    const card = document.getElementById('pending-moves-card');
-                    const box = document.getElementById('pending-moves');
-
-                    if (!data.success || !data.moves.length) { card.style.display = 'none'; return; }
-                    card.style.display = '';
-
-                    box.innerHTML = data.moves.map(function (m) {
-                        return '<div class="d-flex justify-content-between align-items-center border-bottom py-2">' +
-                            '<div><div class="fw-semibold">' + m.student + '</div>' +
-                            '<div class="small text-muted">' + m.from_room + ' → ' + m.to_room +
-                            (m.reason ? ' · ' + m.reason : '') + '</div></div>' +
-                            '<div class="d-flex gap-2">' +
-                            '<button class="btn btn-sm btn-success btn-approve-move" data-id="' + m.id + '"><i class="ri-check-line me-1"></i>Setujui</button>' +
-                            '<button class="btn btn-sm btn-outline-danger btn-reject-move" data-id="' + m.id + '"><i class="ri-close-line me-1"></i>Tolak</button>' +
-                            '</div></div>';
-                    }).join('');
-
-                    box.querySelectorAll('.btn-approve-move').forEach(b => b.addEventListener('click', function () {
-                        fetch(approveTemplate.replace('__M__', this.dataset.id), { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } })
-                            .then(r => r.json()).then(d => { if (d.success) { window.location.reload(); } else { Swal.fire({ icon: 'error', title: 'Gagal', text: d.message }); } });
-                    }));
-                    box.querySelectorAll('.btn-reject-move').forEach(b => b.addEventListener('click', function () {
-                        fetch(rejectTemplate.replace('__M__', this.dataset.id), { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: '{}' })
-                            .then(r => r.json()).then(d => { if (d.success) { window.location.reload(); } else { Swal.fire({ icon: 'error', title: 'Gagal', text: d.message }); } });
-                    }));
-                })
-                .catch(() => {});
-        }
-
-        loadPendingMoves();
-    })();
-    </script>
-
-    <div class="card mt-3" id="pending-moves-card" style="display:none">
-        <div class="card-header border-bottom-dashed">
-            <h6 class="mb-0"><i class="ri-arrow-left-right-line me-1"></i>Mutasi Kamar Menunggu Persetujuan</h6>
-        </div>
-        <div class="card-body"><div id="pending-moves"></div></div>
-    </div>
-
-    {{-- Modal: Ajukan Pindah Kamar --}}
+    {{-- ============================================================
+         MODAL: Ajukan Pindah Kamar
+    ============================================================ --}}
     <div class="modal fade" id="moveModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header bg-primary-subtle">
-                    <h5 class="modal-title"><i class="ri-arrow-left-right-line me-1"></i>Pindah Kamar — <span id="move-nama"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-arrow-left-right-line me-2 text-primary"></i>Pindah Kamar — <span id="move-nama"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label small">Kamar Tujuan</label>
+                        <label class="form-label fs-12 text-muted mb-1">Kamar Tujuan</label>
                         <select id="move-room" class="form-select">
                             <option value="">— pilih kamar —</option>
                             @foreach($rooms as $room)
@@ -589,16 +390,30 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small">Alasan (opsional)</label>
+                        <label class="form-label fs-12 text-muted mb-1">Alasan (opsional)</label>
                         <input type="text" id="move-reason" class="form-control" placeholder="mis. kepengurusan kamar / kondisi khusus">
                     </div>
-                    <div class="alert alert-info small mb-0"><i class="ri-information-line me-1"></i>Mutasi kamar membutuhkan <strong>persetujuan</strong> sebelum penghuni dipindahkan.</div>
+                    <div class="alert alert-info small mb-0">
+                        <i class="ri-information-line me-1"></i>Mutasi kamar membutuhkan <strong>persetujuan</strong> sebelum penghuni dipindahkan.
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-primary" id="move-submit"><i class="ri-send-plane-line me-1"></i>Ajukan Mutasi</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    {{-- ============================================================
+         CARD: Mutasi Kamar Menunggu Persetujuan
+    ============================================================ --}}
+    <div class="card mt-3" id="pending-moves-card" style="display:none">
+        <div class="card-header border-bottom-dashed">
+            <h5 class="card-title mb-0"><i class="ri-arrow-left-right-line me-1 text-warning"></i>Mutasi Kamar Menunggu Persetujuan</h5>
+        </div>
+        <div class="card-body">
+            <div id="pending-moves"></div>
         </div>
     </div>
 @endsection
@@ -609,6 +424,135 @@ document.addEventListener('DOMContentLoaded', function () {
     const asrama = "{{ $dormitory->id }}";
     const userId = "{{ $userId }}";
     const csrf = "{{ csrf_token() }}";
+
+    /* ============================================================
+       PLACEMENT FILTER (inline, tanpa modal)
+    ============================================================ */
+    const searchInput = document.getElementById('placement-search');
+    const table = document.getElementById('placementTable');
+    const rows = table ? Array.from(table.querySelectorAll('.placement-room-row')) : [];
+    const activeBox = document.getElementById('placementActiveFilters');
+    const visibleCount = document.getElementById('placementVisibleCount');
+    const filterCount = document.getElementById('placementFilterCount');
+    const statusLabels = { available: 'Status: Tersedia', full: 'Status: Penuh' };
+
+    function selectedWingLabel() {
+        const select = document.getElementById('placementFilterWing');
+        return select && select.value ? (select.options[select.selectedIndex]?.text || '') : '';
+    }
+
+    function renderActiveBadges() {
+        if (!activeBox) return;
+        activeBox.innerHTML = '';
+
+        const status = document.getElementById('placementFilterStatus')?.value || '';
+        if (status) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = (statusLabels[status] || status) + ' <span class="remove-filter">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                document.getElementById('placementFilterStatus').value = '';
+                window.applyPlacementFilters();
+            });
+            activeBox.appendChild(badge);
+        }
+
+        const wingId = document.getElementById('placementFilterWing')?.value || '';
+        if (wingId) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = 'Gedung: ' + selectedWingLabel() + ' <span class="remove-filter">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                document.getElementById('placementFilterWing').value = '';
+                window.applyPlacementFilters();
+            });
+            activeBox.appendChild(badge);
+        }
+
+        const query = (searchInput?.value || '').trim();
+        if (query) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge active';
+            badge.innerHTML = 'Cari: "' + query + '" <span class="remove-filter">&times;</span>';
+            badge.querySelector('.remove-filter').addEventListener('click', function () {
+                searchInput.value = '';
+                window.applyPlacementFilters();
+            });
+            activeBox.appendChild(badge);
+        }
+    }
+
+    window.applyPlacementFilters = function () {
+        const query = (searchInput?.value || '').trim().toLowerCase();
+        const status = document.getElementById('placementFilterStatus')?.value || '';
+        const wingId = document.getElementById('placementFilterWing')?.value || '';
+        let visible = 0;
+
+        rows.forEach(function (row) {
+            const text = (row.dataset.searchText || '').toLowerCase();
+            const matches = (!query || text.includes(query))
+                && (!status || row.dataset.status === status)
+                && (!wingId || row.dataset.wing === wingId);
+
+            row.style.display = matches ? '' : 'none';
+            const detail = document.getElementById('residents-' + row.dataset.roomId);
+            if (detail && !matches) detail.style.display = 'none';
+            if (matches) visible++;
+        });
+
+        if (visibleCount) visibleCount.textContent = visible;
+        const count = [status, wingId, query].filter(Boolean).length;
+        if (filterCount) {
+            filterCount.textContent = count;
+            filterCount.style.display = count ? '' : 'none';
+        }
+        renderActiveBadges();
+    };
+
+    window.resetPlacementFilters = function () {
+        if (searchInput) searchInput.value = '';
+        const status = document.getElementById('placementFilterStatus');
+        const wing = document.getElementById('placementFilterWing');
+        if (status) status.value = '';
+        if (wing) wing.value = '';
+        rows.forEach(function (row) {
+            row.style.display = '';
+            const detail = document.getElementById('residents-' + row.dataset.roomId);
+            if (detail) detail.style.display = 'none';
+        });
+        window.applyPlacementFilters();
+    };
+
+    searchInput?.addEventListener('input', window.applyPlacementFilters);
+
+    // Tombol mata: buka/tutup daftar penghuni kamar.
+    document.querySelectorAll('.btn-toggle-residents').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const target = document.querySelector(this.dataset.target);
+            if (!target) return;
+            const isHidden = target.style.display === 'none' || target.style.display === '';
+            target.style.display = isHidden ? '' : 'none';
+            this.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+            this.classList.toggle('btn-outline-primary', !isHidden);
+            this.classList.toggle('btn-primary', isHidden);
+        });
+    });
+
+    // Tombol Tempatkan: pilih kamar di modal tarik santri lalu buka modal.
+    document.querySelectorAll('.btn-tempatkan').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const select = document.getElementById('pull-room');
+            if (!select) return;
+            select.value = this.dataset.room || '';
+            new bootstrap.Modal(document.getElementById('pullModal')).show();
+        });
+    });
+
+    window.applyPlacementFilters();
+
+    /* ============================================================
+       TARIK SANTRI
+    ============================================================ */
     const pullUrl = "{{ route('user.asrama.api.pullable-students', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
     const assignUrlTemplate = "{{ route('user.asrama.api.rooms.assign-students', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomUuid' => '__ROOM__']) }}";
     const removeUrlTemplate = "{{ route('user.asrama.api.rooms.remove-resident', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'roomUuid' => '__ROOM__']) }}";
@@ -616,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const list = document.getElementById('pull-list');
     const submitBtn = document.getElementById('pull-submit');
     const countEl = document.getElementById('pull-count');
-    const searchInput = document.getElementById('pull-search');
+    const pullSearch = document.getElementById('pull-search');
 
     function selected() {
         return Array.from(list.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value);
@@ -627,8 +571,8 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.disabled = n === 0;
     }
 
-    function load() {
-        const q = searchInput.value.trim();
+    function loadPull() {
+        const q = pullSearch.value.trim();
         list.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Menarik data…</div>';
 
         fetch(pullUrl + (q ? '?q=' + encodeURIComponent(q) : ''), { headers: { 'Accept': 'application/json' } })
@@ -649,9 +593,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => { list.innerHTML = '<div class="text-center text-danger py-4 small">Gagal menarik data.</div>'; });
     }
 
-    document.getElementById('pull-load').addEventListener('click', load);
-    searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); load(); } });
-    document.getElementById('pullModal').addEventListener('shown.bs.modal', load);
+    document.getElementById('pull-load').addEventListener('click', loadPull);
+    pullSearch.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadPull(); } });
+    document.getElementById('pullModal').addEventListener('shown.bs.modal', loadPull);
 
     submitBtn.addEventListener('click', function () {
         const room = document.getElementById('pull-room').value;
@@ -713,138 +657,189 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
-});
-</script>
-<script>
-(function () {
-    const searchInput = document.getElementById('placement-search');
-    const table = document.getElementById('placementTable');
-    const rows = table ? Array.from(table.querySelectorAll('.placement-room-row')) : [];
-    const activeBox = document.getElementById('placementActiveFilters');
-    const visibleCount = document.getElementById('placementVisibleCount');
-    const filterCount = document.getElementById('placementFilterCount');
-    if (!table || !rows.length) return;
 
-    const statusLabels = { available: 'Status: Tersedia', full: 'Status: Penuh' };
+    /* ============================================================
+       STATUS BOARDING
+    ============================================================ */
+    const statusUrl = "{{ route('user.asrama.api.boarding-status', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
+    const updateUrl = "{{ route('user.asrama.api.boarding-status.update', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
 
-    function selectedWingLabel() {
-        const select = document.getElementById('placementFilterWing');
-        return select && select.value ? (select.options[select.selectedIndex]?.text || '') : '';
+    const bsList = document.getElementById('bs-list');
+    const bsCount = document.getElementById('bs-count');
+    const btnBoarding = document.getElementById('bs-set-boarding');
+    const btnNon = document.getElementById('bs-set-non');
+
+    function bsSelected() {
+        return Array.from(bsList.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value);
+    }
+    function refreshBs() {
+        const n = bsSelected().length;
+        bsCount.textContent = n + ' dipilih';
+        btnBoarding.disabled = n === 0;
+        btnNon.disabled = n === 0;
     }
 
-    function renderActiveBadges() {
-        if (!activeBox) return;
-        activeBox.innerHTML = '';
+    function loadBs() {
+        const q = document.getElementById('bs-search').value.trim();
+        bsList.innerHTML = '<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Memuat…</div>';
 
-        const status = document.getElementById('placementFilterStatus')?.value || '';
-        if (status) {
-            const badge = document.createElement('span');
-            badge.className = 'filter-badge active';
-            badge.innerHTML = (statusLabels[status] || status) + ' <span class="remove-filter">&times;</span>';
-            badge.querySelector('.remove-filter').addEventListener('click', function () {
-                document.getElementById('placementFilterStatus').value = '';
-                applyPlacementFilters();
+        fetch(statusUrl + (q ? '?q=' + encodeURIComponent(q) : ''), { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(function (data) {
+                if (!data.success || !data.students.length) {
+                    bsList.innerHTML = '<div class="text-center text-muted py-4 small">Tidak ada santri.</div>';
+                    refreshBs();
+                    return;
+                }
+                bsList.innerHTML = data.students.map(function (s) {
+                    const badge = s.boarding_status === 'boarding'
+                        ? '<span class="badge bg-success-subtle text-success">Boarding</span>'
+                        : (s.boarding_status === 'non_boarding'
+                            ? '<span class="badge bg-secondary-subtle text-secondary">Non-Boarding</span>'
+                            : '<span class="badge bg-warning-subtle text-warning">Belum ditentukan</span>');
+                    const room = s.has_room ? '<span class="badge bg-info-subtle text-info ms-1">Berkamar</span>' : '';
+                    return '<label class="d-flex align-items-center gap-2 border-bottom px-3 py-2" style="cursor:pointer">' +
+                        '<input type="checkbox" class="form-check-input" value="' + s.id + '">' +
+                        '<span><span class="fw-semibold">' + s.name + '</span>' +
+                        '<span class="text-muted small"> · NISN ' + (s.nisn || '-') + '</span> ' + badge + room + '</span></label>';
+                }).join('');
+                bsList.querySelectorAll('input[type=checkbox]').forEach(c => c.addEventListener('change', refreshBs));
+                refreshBs();
             });
-            activeBox.appendChild(badge);
-        }
-
-        const wingId = document.getElementById('placementFilterWing')?.value || '';
-        if (wingId) {
-            const badge = document.createElement('span');
-            badge.className = 'filter-badge active';
-            badge.innerHTML = 'Gedung: ' + selectedWingLabel() + ' <span class="remove-filter">&times;</span>';
-            badge.querySelector('.remove-filter').addEventListener('click', function () {
-                document.getElementById('placementFilterWing').value = '';
-                applyPlacementFilters();
-            });
-            activeBox.appendChild(badge);
-        }
-
-        const query = (searchInput?.value || '').trim();
-        if (query) {
-            const badge = document.createElement('span');
-            badge.className = 'filter-badge active';
-            badge.innerHTML = 'Cari: "' + query + '" <span class="remove-filter">&times;</span>';
-            badge.querySelector('.remove-filter').addEventListener('click', function () {
-                searchInput.value = '';
-                applyPlacementFilters();
-            });
-            activeBox.appendChild(badge);
-        }
     }
 
-    window.applyPlacementFilters = function () {
-        const query = (searchInput?.value || '').trim().toLowerCase();
-        const status = document.getElementById('placementFilterStatus')?.value || '';
-        const wingId = document.getElementById('placementFilterWing')?.value || '';
-        let visible = 0;
+    function setBoardingStatus(status) {
+        const ids = bsSelected();
+        if (!ids.length) return;
 
-        rows.forEach(function (row) {
-            const text = (row.dataset.searchText || '').toLowerCase();
-            const matches = (!query || text.includes(query))
-                && (!status || row.dataset.status === status)
-                && (!wingId || row.dataset.wing === wingId);
-
-            row.style.display = matches ? '' : 'none';
-            const detail = document.getElementById('residents-' + row.dataset.roomId);
-            if (detail) {
-                if (!matches) detail.style.display = 'none';
+        fetch(updateUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: JSON.stringify({ student_ids: ids, status: status })
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Tersimpan', text: data.message, timer: 1500, showConfirmButton: false })
+                    .then(() => window.location.reload());
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Terjadi kesalahan.' });
             }
-            if (matches) visible++;
         });
+    }
 
-        if (visibleCount) visibleCount.textContent = visible;
-        const count = [status, wingId, query].filter(Boolean).length;
-        if (filterCount) {
-            filterCount.textContent = count;
-            filterCount.style.display = count ? '' : 'none';
-        }
-        renderActiveBadges();
-    };
+    document.getElementById('bs-load').addEventListener('click', loadBs);
+    document.getElementById('bs-search').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); loadBs(); } });
+    btnBoarding.addEventListener('click', () => setBoardingStatus('boarding'));
+    btnNon.addEventListener('click', () => setBoardingStatus('non_boarding'));
+    document.getElementById('boardingModal').addEventListener('shown.bs.modal', loadBs);
 
-    window.resetPlacementFilters = function () {
-        if (searchInput) searchInput.value = '';
-        const status = document.getElementById('placementFilterStatus');
-        const wing = document.getElementById('placementFilterWing');
-        if (status) status.value = '';
-        if (wing) wing.value = '';
-        rows.forEach(function (row) {
-            row.style.display = '';
-            const detail = document.getElementById('residents-' + row.dataset.roomId);
-            if (detail) detail.style.display = 'none';
-        });
-        applyPlacementFilters();
-        const modal = bootstrap.Modal.getInstance(document.getElementById('placementFilterModal'));
-        if (modal) modal.hide();
-    };
+    /* ============================================================
+       BERHENTI MONDOK
+    ============================================================ */
+    const checkoutTemplate = "{{ route('user.asrama.api.residents.checkout', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentId' => '__R__']) }}";
 
-    searchInput?.addEventListener('input', window.applyPlacementFilters);
+    document.querySelectorAll('.btn-berhenti').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.resident;
+            const nama = this.dataset.nama || 'santri';
 
-    // Tombol mata: buka/tutup daftar penghuni kamar.
-    document.querySelectorAll('.btn-toggle-residents').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const target = document.querySelector(this.dataset.target);
-            if (!target) return;
-            const isHidden = target.style.display === 'none' || target.style.display === '';
-            target.style.display = isHidden ? '' : 'none';
-            this.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
-            this.classList.toggle('btn-outline-primary', !isHidden);
-            this.classList.toggle('btn-primary', isHidden);
-        });
-    });
-
-    // Tombol Tempatkan: pilih kamar di modal tarik santri lalu buka modal.
-    document.querySelectorAll('.btn-tempatkan').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const select = document.getElementById('pull-room');
-            if (!select) return;
-            select.value = this.dataset.room || '';
-            const modal = new bootstrap.Modal(document.getElementById('pullModal'));
-            modal.show();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Berhenti Mondok?',
+                input: 'text',
+                inputLabel: 'Alasan (opsional)',
+                inputPlaceholder: 'mis. pindah domisili / permintaan orang tua',
+                text: nama + ' akan dikeluarkan dari asrama TETAPI tetap terdaftar di sekolah.',
+                showCancelButton: true,
+                confirmButtonText: 'Berhenti Mondok',
+                cancelButtonText: 'Batal',
+            }).then(function (res) {
+                if (!res.isConfirmed) return;
+                fetch(checkoutTemplate.replace('__R__', id), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({ reason: res.value || 'Berhenti mondok' })
+                })
+                .then(r => r.json())
+                .then(function (data) {
+                    if (data.success) { window.location.reload(); }
+                    else { Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Terjadi kesalahan.' }); }
+                });
+            });
         });
     });
 
-    window.applyPlacementFilters();
-})();
+    /* ============================================================
+       MUTASI KAMAR (ajukan, daftar pending, approve/reject)
+    ============================================================ */
+    const moveTemplate = "{{ route('user.asrama.api.residents.request-move', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'residentId' => '__R__']) }}";
+    const pendingUrl = "{{ route('user.asrama.api.room-moves.pending', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}";
+    const approveTemplate = "{{ route('user.asrama.api.room-moves.approve', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'moveId' => '__M__']) }}";
+    const rejectTemplate = "{{ route('user.asrama.api.room-moves.reject', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'moveId' => '__M__']) }}";
+    let moveResident = null;
+
+    document.querySelectorAll('.btn-pindah').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            moveResident = this.dataset.resident;
+            document.getElementById('move-nama').textContent = this.dataset.nama || 'santri';
+            document.getElementById('move-reason').value = '';
+            new bootstrap.Modal(document.getElementById('moveModal')).show();
+        });
+    });
+
+    document.getElementById('move-submit').addEventListener('click', function () {
+        const room = document.getElementById('move-room').value;
+        if (!room) { Swal.fire({ icon: 'info', title: 'Pilih kamar tujuan', text: 'Silakan pilih kamar tujuan.' }); return; }
+
+        fetch(moveTemplate.replace('__R__', moveResident), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: JSON.stringify({ to_room_id: room, reason: document.getElementById('move-reason').value })
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Diajukan', text: data.message, timer: 1500, showConfirmButton: false })
+                    .then(() => window.location.reload());
+            } else { Swal.fire({ icon: 'error', title: 'Gagal', text: data.message || 'Terjadi kesalahan.' }); }
+        });
+    });
+
+    function loadPendingMoves() {
+        fetch(pendingUrl, { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(function (data) {
+                const card = document.getElementById('pending-moves-card');
+                const box = document.getElementById('pending-moves');
+
+                if (!data.success || !data.moves.length) { card.style.display = 'none'; return; }
+                card.style.display = '';
+
+                box.innerHTML = data.moves.map(function (m) {
+                    return '<div class="d-flex justify-content-between align-items-center border-bottom py-2">' +
+                        '<div><div class="fw-semibold">' + m.student + '</div>' +
+                        '<div class="small text-muted">' + m.from_room + ' → ' + m.to_room +
+                        (m.reason ? ' · ' + m.reason : '') + '</div></div>' +
+                        '<div class="d-flex gap-2">' +
+                        '<button class="btn btn-sm btn-outline-danger btn-reject-move" data-id="' + m.id + '"><i class="ri-close-line me-1"></i>Tolak</button>' +
+                        '<button class="btn btn-sm btn-primary btn-approve-move" data-id="' + m.id + '"><i class="ri-check-line me-1"></i>Setujui</button>' +
+                        '</div></div>';
+                }).join('');
+
+                box.querySelectorAll('.btn-approve-move').forEach(b => b.addEventListener('click', function () {
+                    fetch(approveTemplate.replace('__M__', this.dataset.id), { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } })
+                        .then(r => r.json()).then(d => { if (d.success) { window.location.reload(); } else { Swal.fire({ icon: 'error', title: 'Gagal', text: d.message }); } });
+                }));
+                box.querySelectorAll('.btn-reject-move').forEach(b => b.addEventListener('click', function () {
+                    fetch(rejectTemplate.replace('__M__', this.dataset.id), { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: '{}' })
+                        .then(r => r.json()).then(d => { if (d.success) { window.location.reload(); } else { Swal.fire({ icon: 'error', title: 'Gagal', text: d.message }); } });
+                }));
+            })
+            .catch(() => {});
+    }
+
+    loadPendingMoves();
+});
 </script>
 @endsection

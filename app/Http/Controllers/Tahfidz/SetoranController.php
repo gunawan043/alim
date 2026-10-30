@@ -8,6 +8,7 @@ use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupMember;
 use App\Models\TahfidzSetoran;
 use App\Models\TahfidzSurahMaster;
+use App\Services\QuranPositionService;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
 use Illuminate\Http\Request;
@@ -258,8 +259,8 @@ class SetoranController extends Controller
             'tahfidz_group_id' => 'required|exists:tahfidz_groups,id',
             'student_id' => 'required|exists:students,id',
             'setoran_date' => 'required|date',
-            'week_number' => 'nullable|integer|min:1|max:5',
-            'setoran_type' => 'required|in:ziyadah,murajaah,tikror',
+            'week_number' => 'nullable|integer|min:1|max:6',
+            'setoran_type' => 'required|in:ziyadah,murajaah,tikror,robet',
             'metode_pembelajaran' => 'nullable|string|max:100',
             'juz' => 'nullable|integer|min:1|max:30',
             'surah_start_name' => 'nullable|string|max:100',
@@ -267,7 +268,9 @@ class SetoranController extends Controller
             'surah_end_name' => 'nullable|string|max:100',
             'ayat_end' => 'nullable|integer|min:0',
             'halaman_start' => 'nullable|numeric|min:0|max:604',
+            'baris_start' => 'nullable|integer|min:1|max:20',
             'halaman_end' => 'nullable|numeric|min:0|max:604',
+            'baris_end' => 'nullable|integer|min:1|max:20',
             'jumlah_halaman' => 'nullable|numeric|min:0|max:604',
             'jumlah_baris' => 'nullable|integer|min:0|max:10000',
             'hasil_hafalan' => 'nullable|numeric|min:0|max:100',
@@ -276,6 +279,14 @@ class SetoranController extends Controller
             'nilai_setoran' => 'nullable|numeric|min:0|max:100',
             'capaian_target' => 'nullable|in:tercapai,belum_tercapai,melampaui',
             'keterangan_capaian' => 'nullable|string|max:2000',
+            'tikrar_task' => 'nullable|string|max:3000',
+            'tikrar_repetitions' => 'nullable|integer|min:0|max:1000',
+            'nilai_tikrar' => 'nullable|numeric|min:0|max:100',
+            'robet_status' => 'nullable|in:siap,belum_siap,perlu_diulang',
+            'hasil_hafalan_catatan' => 'nullable|string|max:3000',
+            'lahn_khofi_count' => 'nullable|integer|min:0|max:1000',
+            'lahn_jali_count' => 'nullable|integer|min:0|max:1000',
+            'nilai_lahn' => 'nullable|numeric|min:0|max:100',
             'status' => 'required|in:lulus,ulang,ditunda',
             'catatan_guru' => 'nullable|string|max:3000',
         ]);
@@ -286,20 +297,60 @@ class SetoranController extends Controller
         $scores = collect([$validated['hasil_hafalan'] ?? null, $validated['khofi'] ?? null, $validated['jali'] ?? null])->filter(fn ($v) => $v !== null && $v !== '');
         $nilai = $validated['nilai_setoran'] ?? ($scores->isNotEmpty() ? round((float) $scores->avg(), 2) : null);
 
+        $position = $this->resolvePosition($validated);
+        $halamanStart = $validated['halaman_start'] ?? $position['page_start'] ?? null;
+        $halamanEnd = $validated['halaman_end'] ?? $position['page_end'] ?? $halamanStart;
+        $barisStart = $validated['baris_start'] ?? $position['line_start'] ?? null;
+        $barisEnd = $validated['baris_end'] ?? $position['line_end'] ?? $barisStart;
+
         $jumlahHalaman = $validated['jumlah_halaman'] ?? null;
-        if ($jumlahHalaman === null
-            && isset($validated['halaman_start'], $validated['halaman_end'])
-            && $validated['halaman_start'] !== null
-            && $validated['halaman_end'] !== null) {
-            $jumlahHalaman = max(0, (float) $validated['halaman_end'] - (float) $validated['halaman_start'] + 1);
+        if ($jumlahHalaman === null && $halamanStart !== null && $halamanEnd !== null) {
+            $jumlahHalaman = max(0, (float) $halamanEnd - (float) $halamanStart + 1);
         }
 
         return array_merge($validated, [
             'teacher_id' => $request->user()?->id,
             'academic_year_id' => $group->academic_year_id,
+            'halaman_start' => $halamanStart,
+            'baris_start' => $barisStart,
+            'halaman_end' => $halamanEnd,
+            'baris_end' => $barisEnd,
             'jumlah_halaman' => $jumlahHalaman,
             'nilai_setoran' => $nilai,
         ]);
+    }
+
+    private function resolvePosition(array $validated): ?array
+    {
+        $surahStart = $this->surahNumber($validated['surah_start_name'] ?? null);
+        $surahEnd = $this->surahNumber($validated['surah_end_name'] ?? null);
+        $ayatStart = $validated['ayat_start'] ?? null;
+
+        if (! $surahStart || ! $ayatStart) {
+            return null;
+        }
+
+        return app(QuranPositionService::class)->range(
+            $surahStart,
+            (int) $ayatStart,
+            $surahEnd,
+            isset($validated['ayat_end']) ? (int) $validated['ayat_end'] : null,
+        );
+    }
+
+    private function surahNumber(?string $name): ?int
+    {
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            return null;
+        }
+
+        $number = TahfidzSurahMaster::query()
+            ->where('name_latin', $name)
+            ->value('number');
+
+        return $number ? (int) $number : null;
     }
 
     private function isLocked(TahfidzSetoran $setoran): bool

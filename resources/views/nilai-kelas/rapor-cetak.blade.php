@@ -491,8 +491,8 @@
                 <br>{!! $text($label('orang_tua')) !!}
             </td>
             <td class="with-gap" style="width:30%;">
-                <div class="signature-block" style="min-height: {{ $layout['ttd_wali_height'] }}mm;">
-                    @if(($layout['show_ttd_wali'] ?? true) && ! empty($ttdWaliBase64))
+                <div class="signature-block" style="min-height: {{ $layout['ttd_wali_height'] }}mm; margin-top: {{ $layout['ttd_wali_margin'] ?? 2 }}mm;">
+                    @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_wali'] ?? true) && ! empty($ttdWaliBase64))
                         <img src="{{ $ttdWaliBase64 }}" class="signature-image"
                              style="width: {{ $layout['ttd_wali_width'] }}mm; height: {{ $layout['ttd_wali_height'] }}mm;"
                              alt="TTD Wali Kelas">
@@ -516,24 +516,26 @@
                 <br>
                 {!! $text($label('mengetahui_kepala')) !!}
                 <div class="signature-stack"
-                     style="width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm; margin-top: 4mm;">
-                    @if(($layout['show_stamp'] ?? true) && ! empty($stampBase64))
+                     style="width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm; margin-top: {{ max((float) ($layout['ttd_ksp_margin'] ?? 2), (float) ($layout['stamp_margin'] ?? 2)) }}mm;">
+                    @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? true) && ! empty($stampBase64))
                         <img src="{{ $stampBase64 }}" class="stamp-image"
                              style="width: {{ $layout['stamp_width'] }}mm; height: {{ $layout['stamp_height'] }}mm;"
                              alt="Stempel Sekolah">
                     @endif
-                    @if(($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
+                    @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
                         <img src="{{ $ttdKspBase64 }}" class="ttd-image"
                              style="width: {{ $layout['ttd_ksp_width'] }}mm; height: {{ $layout['ttd_ksp_height'] }}mm;"
                              alt="TTD Kepala Sekolah">
                     @endif
                 </div>
                 <div class="signature-line">________________________</div>
-                <br><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($studyGroup->school?->principal_name ?? '................................')) !!}</strong>
-                <br>{!! $text($label('nip')) !!} {{ $studyGroup->school?->principal_nip ?? '...................' }}
+                <br><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($principal['display_name'] ?? $studyGroup->school?->principal_full_name ?? '................................')) !!}</strong>
+                <br>{!! $text($label('nip')) !!} {{ $principal['nupy'] ?? $studyGroup->school?->principal_nupy_display ?? '...................' }}
             </td>
         </tr>
     </table>
+
+    @include('documents._qr-footer', ['verification' => $verificationByStudent[$key] ?? null])
 
 </div>
 @endforeach

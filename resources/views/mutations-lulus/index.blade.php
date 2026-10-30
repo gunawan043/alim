@@ -167,6 +167,7 @@
                             <option value="submit">Ajukan</option>
                             <option value="approve">Setujui</option>
                             <option value="reject">Tolak</option>
+                            <option value="print_skl">Cetak SKL Massal</option>
                         </select>
                         <button type="button" class="btn btn-sm btn-primary" onclick="runBulkAction()">Terapkan</button>
                         <span class="small text-muted" id="bulkCount">0 dipilih</span>
@@ -285,12 +286,39 @@ document.addEventListener('DOMContentLoaded', function () {
         var checked = boxes().filter(function (b) { return b.checked; });
         if (!action) { alert('Pilih aksi terlebih dahulu.'); return; }
         if (!checked.length) { alert('Pilih minimal satu data.'); return; }
+        if (action === 'print_skl') { printSklMassal(checked); return; }
         var reason = action === 'reject' ? (prompt('Alasan penolakan (opsional):') || '') : '';
         if (!confirm(checked.length + ' data akan diproses massal. Lanjutkan?')) return;
         document.getElementById('bulkActionInput').value = action;
         document.getElementById('bulkReasonInput').value = reason;
         document.getElementById('bulkForm').submit();
     };
+
+    // Cetak SKL untuk banyak santri sekaligus (satu PDF, satu halaman per santri).
+    function printSklMassal(checked) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route('user.students.graduation-certificate.bulk', ['userId' => $userId]) }}';
+        form.target = '_blank';
+
+        var token = document.createElement('input');
+        token.type = 'hidden';
+        token.name = '_token';
+        token.value = '{{ csrf_token() }}';
+        form.appendChild(token);
+
+        checked.forEach(function (box) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids[]';
+            input.value = box.value;
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+    }
 });
 </script>
 @endsection

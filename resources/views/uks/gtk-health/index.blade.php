@@ -193,6 +193,9 @@
                         <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#filterModal">
                             <i class="bx bx-filter-alt align-bottom me-1"></i> Filter
                         </button>
+                        <a href="{{ route('user.uks.imports.form', ['userId' => $userId, 'dataset' => 'gtk-health']) }}" class="btn btn-soft-success">
+                            <i class="ri-upload-cloud-2-line align-bottom me-1"></i> Import Kesehatan GTK
+                        </a>
                     </div>
                 </div>
             </div>

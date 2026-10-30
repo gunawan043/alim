@@ -136,7 +136,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
         $this->assertFalse($notifier->notifySick($student), 'Aktif tetapi tanpa penerima tetap aman.');
     }
 
-
     public function test_resolusi_satuan_kerja_via_kepegawaian_dan_global_fallback(): void
     {
         $service = app(NotificationUniversalService::class);
@@ -176,7 +175,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
         );
     }
 
-
     public function test_endpoint_topbar_mengembalikan_json_notifikasi_milik_pengguna(): void
     {
         $service = app(NotificationUniversalService::class);
@@ -190,7 +188,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             ->assertJsonPath('unread_count', 1);
     }
 
-
     public function test_halaman_lihat_semua_notifikasi_render(): void
     {
         app(NotificationUniversalService::class)->send($this->userA->id, [
@@ -202,7 +199,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             ->assertOk()
             ->assertSee('Halaman Uji');
     }
-
 
     public function test_endpoint_unread_count_mengembalikan_angka(): void
     {
@@ -217,7 +213,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             ->assertJsonPath('count', 1);
     }
 
-
     public function test_endpoint_pencarian_http(): void
     {
         $this->actingAs($this->userA)
@@ -225,7 +220,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['menus', 'students']);
     }
-
 
     public function test_mark_all_read_hanya_akun_sendiri(): void
     {
@@ -253,7 +247,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
 
         $this->assertFalse((bool) DB::table('notifications_universal')->where('id', $notifB->id)->value('is_read'));
     }
-
 
     public function test_url_notifikasi_absolut_lokal_dinormalkan_ke_path_relatif(): void
     {

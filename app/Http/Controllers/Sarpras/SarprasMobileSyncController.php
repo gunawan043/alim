@@ -30,8 +30,8 @@ class SarprasMobileSyncController extends SarprasBaseController
     {
         $user = Auth::user();
 
-        $orders = WorkOrder::where('assigned_to', $user->id)
-            ->whereIn('status', ['assigned', 'in_progress', 'paused'])
+        $orders = WorkOrder::where('assignee_id', $user->id)
+            ->whereIn('status', ['dispatched', 'in_progress', 'paused', 'waiting_parts'])
             ->with(['asset', 'progressNotes', 'pauseEvents'])
             ->get();
 

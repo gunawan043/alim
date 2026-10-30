@@ -33,7 +33,7 @@
                         @if($pekan->keterangan)
                             <tr><th>Keterangan</th><td>{{ $pekan->keterangan }}</td></tr>
                         @endif
-                        <tr><th>Hari Efektif</th><td><span class="badge {{ $pekan->hari_efektif > 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">{{ $pekan->hari_efektif }} hari</span></td></tr>
+                        <tr><th>Hari Efektif</th><td><span class="badge {{ $pekan->hari_efektif >= $minEffectiveDays && ! in_array($pekan->jenis, ['libur', 'tidak_efektif'], true) ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}">{{ $pekan->hari_efektif }} hari</span></td></tr>
                         <tr><th>Sumber</th>
                             <td>
                                 @if($pekan->is_generated)

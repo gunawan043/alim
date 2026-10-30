@@ -29,7 +29,7 @@
         <div class="table-responsive"><table class="table table-hover align-middle mb-0 tahfidz-table"><thead class="table-light"><tr><th>Santri</th><th>Halaqah</th><th class="text-center">Semester</th><th class="text-center">Bulan</th><th class="text-center">Juz</th><th class="text-center">Halaman</th><th class="text-center">Hadits</th><th>Catatan</th><th class="text-end">Aksi</th></tr></thead><tbody>
             @forelse($targets as $target)
                 @php $payload = ['id'=>$target->id,'tahfidz_group_id'=>$target->tahfidz_group_id,'student_id'=>$target->student_id,'semester'=>$target->semester,'target_bulan'=>$target->target_bulan,'juz_start'=>$target->juz_start,'juz_end'=>$target->juz_end,'target_halaman'=>$target->target_halaman,'target_hadits'=>$target->target_hadits,'notes'=>$target->notes]; @endphp
-                <tr><td><a href="{{ route('user.tahfidz.santri.show', ['userId'=>$userId,'studentId'=>$target->student_id]) }}" class="fw-medium text-decoration-none">{{ $target->student?->name }}</a><div class="text-muted small">{{ $target->student?->nis }}</div></td><td>{{ $target->group?->name }}</td><td class="text-center">{{ ucfirst($target->semester) }}</td><td class="text-center">{{ $target->target_bulan }}</td><td class="text-center">{{ $target->juz_start ?? '—' }}{{ $target->juz_end ? '–'.$target->juz_end : '' }}</td><td class="text-center">{{ $target->target_halaman ?? '—' }}</td><td class="text-center">{{ $target->target_hadits ?? 0 }}</td><td class="small text-muted">{{ \Illuminate\Support\Str::limit($target->notes, 60) }}</td><td class="text-end">@if($inputGroups->contains('id', $target->tahfidz_group_id))<button class="btn btn-sm btn-outline-warning" onclick="openTargetEditModal(JSON.parse(this.dataset.target))" data-target="{{ json_encode($payload, JSON_HEX_APOS | JSON_HEX_QUOT) }}"><i class="ri-edit-line"></i></button><button class="btn btn-sm btn-outline-danger delete-target" data-action="{{ route('user.tahfidz.targets.destroy', ['userId'=>$userId,'id'=>$target->id]) }}" data-name="{{ $target->student?->name }}"><i class="ri-delete-bin-line"></i></button>@endif</td></tr>
+                <tr><td><a href="{{ route('user.tahfidz.santri.show', ['userId'=>$userId,'studentId'=>$target->student_id]) }}" class="fw-medium text-decoration-none">{{ $target->student?->name }}</a><div class="text-muted small">{{ $target->student?->nis }}</div>@if($directions[$target->student_id] ?? null)<div class="text-muted" style="font-size:.68rem">{{ $directions[$target->student_id]['label'] }}</div>@endif</td><td>{{ $target->group?->name }}</td><td class="text-center">{{ ucfirst($target->semester) }}</td><td class="text-center">{{ $target->target_bulan }}</td><td class="text-center">{{ $target->juz_start ?? '—' }}{{ $target->juz_end ? '–'.$target->juz_end : '' }}</td><td class="text-center">{{ $target->target_halaman ?? '—' }}</td><td class="text-center">{{ $target->target_hadits ?? 0 }}</td><td class="small text-muted">{{ \Illuminate\Support\Str::limit($target->notes, 60) }}</td><td class="text-end">@if($inputGroups->contains('id', $target->tahfidz_group_id))<button class="btn btn-sm btn-outline-warning" onclick="openTargetEditModal(JSON.parse(this.dataset.target))" data-target="{{ json_encode($payload, JSON_HEX_APOS | JSON_HEX_QUOT) }}"><i class="ri-edit-line"></i></button><button class="btn btn-sm btn-outline-danger delete-target" data-action="{{ route('user.tahfidz.targets.destroy', ['userId'=>$userId,'id'=>$target->id]) }}" data-name="{{ $target->student?->name }}"><i class="ri-delete-bin-line"></i></button>@endif</td></tr>
             @empty<tr><td colspan="9" class="text-center text-muted py-5">Belum ada target.</td></tr>@endforelse
         </tbody></table></div>
     </div>
@@ -37,7 +37,7 @@
     @if($inputGroups->isNotEmpty())
         <div class="modal fade" id="targetModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form method="POST" action="{{ route('user.tahfidz.targets.store', ['userId'=>$userId]) }}" id="targetForm">@csrf<input type="hidden" name="_method" value="PUT" id="targetMethod" disabled><div class="modal-header bg-primary-subtle"><h5 class="modal-title" id="targetModalTitle"><i class="ri-focus-3-line me-1"></i>Tambah Target</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row g-3">
             <div class="col-md-6"><label class="form-label">Halaqah <span class="text-danger">*</span></label><select name="tahfidz_group_id" id="targetGroup" class="form-select" required onchange="fillTargetStudents(this.value)">@foreach($inputGroups as $group)<option value="{{ $group->id }}">{{ $group->name }}</option>@endforeach</select></div>
-            <div class="col-md-6"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="targetStudent" class="form-select" required><option value="">—</option></select></div>
+            <div class="col-md-6"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="targetStudent" class="form-select" required><option value="">—</option></select><div id="targetDirection" class="form-text"></div></div>
             <div class="col-md-4"><label class="form-label">Semester <span class="text-danger">*</span></label><select name="semester" id="target_semester" class="form-select" required><option value="ganjil">Ganjil</option><option value="genap">Genap</option></select></div>
             <div class="col-md-4"><label class="form-label">Bulan Ke- <span class="text-danger">*</span></label><select name="target_bulan" id="target_bulan" class="form-select" required>@for($i=1;$i<=12;$i++)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></div>
             <div class="col-md-4"><label class="form-label">Target Hadits</label><input type="number" name="target_hadits" id="target_hadits" min="0" max="1000" class="form-control" value="0"></div>
@@ -58,6 +58,14 @@
         $targetStoreUrl = route('user.tahfidz.targets.store', ['userId'=>$userId]);
         $targetUpdateUrl = route('user.tahfidz.targets.update', ['userId'=>$userId,'id'=>'__ID__']);
     @endphp
+    const targetDirections = @json($directions);
+    function updateTargetDirection(studentId) {
+        const el = document.getElementById('targetDirection');
+        if (! el) return;
+        const direction = targetDirections[studentId] || null;
+        el.textContent = direction ? direction.label : '';
+    }
+
     const targetStoreUrl = @json($targetStoreUrl);
     const targetUpdateUrl = @json($targetUpdateUrl);
     function fillTargetStudents(groupId, selected) {
@@ -103,6 +111,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         const group = document.getElementById('targetGroup');
         if (group) fillTargetStudents(group.value);
+        document.getElementById('targetStudent')?.addEventListener('change', function () { updateTargetDirection(this.value); });
         @if($errors->any() && $inputGroups->isNotEmpty()) openTargetModal(); @endif
         document.querySelectorAll('.delete-target').forEach(function (button) {
             button.addEventListener('click', function () {

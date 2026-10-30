@@ -385,13 +385,6 @@ $isKepala = in_array($currentUserJob, [
 @if($isKepala)
 <li class="menu-title"><span>GTK</span></li>
 <li class="nav-item">
-    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'user.gtk-additional-tasks.') ? ' active' : '' }}"
-       href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">
-        <i class="ri-task-line"></i>
-        <span>Tugas Tambahan GTK</span>
-    </a>
-</li>
-<li class="nav-item">
     <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'user.gtk-positions.') ? ' active' : '' }}"
        href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
         <i class="ri-briefcase-line"></i>

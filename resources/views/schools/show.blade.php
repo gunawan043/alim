@@ -3,10 +3,12 @@
 @section('css')
     <style>
     .school-badge-lg { font-size: 0.9rem; padding: 0.4em 0.8em; }
-    .doc-preview { border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; background: #f8f9fa; min-height: 140px; display: flex; align-items: center; justify-content: center; }
+    /* Pakai variabel Bootstrap agar ikut tema terang/gelap. */
+    .doc-preview { border: 1px solid var(--bs-border-color); border-radius: 8px; overflow: hidden; background: var(--bs-tertiary-bg); min-height: 140px; display: flex; align-items: center; justify-content: center; }
     .doc-preview img { max-height: 120px; object-fit: contain; }
-    .doc-preview-placeholder { color: #adb5bd; font-size: 2rem; }
-    .info-card-profile { border: 1px solid #f0f0f0; border-radius: 10px; }
+    .doc-preview-placeholder { color: var(--bs-secondary-color); font-size: 2rem; }
+    .info-card-profile { border: 1px solid var(--bs-border-color); border-radius: 10px; }
+    [data-bs-theme="dark"] .info-card-profile { border-color: transparent; }
     </style>
 @endsection
 
@@ -30,7 +32,7 @@
             <div class="row g-4 align-items-center">
                 <div class="col-auto">
                     @if($school->logo_path)
-                        <img src="{{ $school->logo_url }}" alt="{{ $school->name }}" class="rounded-circle" width="90" height="90" style="object-fit:cover;border:3px solid #dee2e6">
+                        <img src="{{ $school->logo_url }}" alt="{{ $school->name }}" class="rounded-circle" width="90" height="90" style="object-fit:cover;border:3px solid var(--bs-border-color)">
                     @else
                         <div class="avatar-xl bg-{{ $school->school_level === 'smk' ? 'info' : ($school->school_level === 'sma' ? 'primary' : ($school->school_level === 'smp' ? 'warning' : 'success')) }}-subtle rounded-circle d-flex align-items-center justify-content-center" style="width:90px;height:90px">
                             <span class="fs-2 fw-bold text-{{ $school->school_level === 'smk' ? 'info' : ($school->school_level === 'sma' ? 'primary' : ($school->school_level === 'smp' ? 'warning' : 'success')) }}">
@@ -294,7 +296,7 @@
                 <div class="card-body">
                     @if($school->kop_path)
                         <div class="mb-3 text-center">
-                            <img src="{{ asset('storage/' . $school->kop_path) }}" alt="Kop Surat" class="img-fluid rounded" style="max-height:200px;border:1px solid #dee2e6">
+                            <img src="{{ asset('storage/' . $school->kop_path) }}" alt="Kop Surat" class="img-fluid rounded" style="max-height:200px;border:1px solid var(--bs-border-color)">
                         </div>
                     @else
                         <div class="doc-preview mb-3">

@@ -285,7 +285,7 @@
     {{-- Daftar aset (peralatan dapur, meja, dsb) --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.aset.', 'sarpras.assets.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.aset.index') }}">
+           href="{{ route('sarpras.aset.index', ['userId' => $userId]) }}">
             <i class="ri-archive-2-line"></i><span>Aset Dapur & Logistik</span>
         </a>
     </li>
@@ -293,7 +293,7 @@
     {{-- Lapor kerusakan peralatan dapur --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.kerusakan.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.kerusakan.index') }}">
+           href="{{ route('sarpras.user.kerusakan.index', ['userId' => $userId]) }}">
             <i class="ri-tools-line"></i><span>Lapor Kerusakan</span>
         </a>
     </li>
@@ -301,7 +301,7 @@
     {{-- Permintaan pengadaan --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.pengadaan.']) ? ' active' : '' }}"
-           href="{{ route('sarpras.user.pengadaan.index') }}">
+           href="{{ route('sarpras.user.pengadaan.index', ['userId' => $userId]) }}">
             <i class="ri-shopping-bag-3-line"></i><span>Permintaan Pengadaan</span>
         </a>
     </li>

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\RecruitmentDocument;
 use App\Models\RecruitmentProfile;
+use App\Support\RecruitmentOutboundConfig;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class RecruitmentDocumentService
      */
     protected static function getBaseUrl(): string
     {
-        return config('services.recruitment_api.url', env('RECRUITMENT_API_URL', 'https://recruitment.abuhurairah.id'));
+        return RecruitmentOutboundConfig::baseUrl();
     }
 
     /**
@@ -29,7 +30,7 @@ class RecruitmentDocumentService
      */
     protected static function getApiToken(): ?string
     {
-        return config('services.recruitment_api.token', env('RECRUITMENT_API_TOKEN'));
+        return RecruitmentOutboundConfig::token();
     }
 
     /**

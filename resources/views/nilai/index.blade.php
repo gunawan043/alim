@@ -16,9 +16,9 @@
         padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
         border: 1px solid transparent;
     }
-    .semester-pill.gasal { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
-    .semester-pill.genap { background: #fef9c3; color: #854d0e; border-color: #fcd34d; }
-    .semester-pill.inactive { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; cursor: default; }
+    .semester-pill.gasal { background: rgba(13,110,253,.15); color: var(--bs-primary); border-color: rgba(13,110,253,.45); }
+    .semester-pill.genap { background: rgba(255,193,7,.18); color: var(--bs-warning-text-emphasis); border-color: rgba(255,193,7,.45); }
+    .semester-pill.inactive { background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); border-color: var(--bs-border-color); cursor: default; }
 </style>
 @endsection
 
@@ -41,7 +41,17 @@
         @slot('title') Data Nilai @endslot
     @endcomponent
 
-    @if($isArchiveAy ?? false)
+    @if($rombelFallback ?? false)
+        <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2" role="alert">
+            <i class="ri-information-line fs-5"></i>
+            <div>
+                Tahun ajaran aktif belum memiliki rombel. Menampilkan rombel terakhir:
+                <strong>{{ $selectedAy?->name ?? '-' }} ({{ $selectedAy?->semester_text ?? '-' }})</strong>.
+            </div>
+        </div>
+    @endif
+
+    @if(($isArchiveAy ?? false) && ! ($rombelFallback ?? false))
         <div class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2" role="alert">
             <i class="ri-archive-line fs-5"></i>
             <div>
@@ -306,16 +316,27 @@
                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="ri-edit-2-line me-1"></i> STS
                                                 </a>
-                                            @else
+                                            @elseif($kelas['first_book'])
                                                 <a href="{{ route('user.schools.nilai.sts', ['userId' => $userId, 'adminBookId' => $kelas['first_book']->id]) }}"
                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="ri-edit-2-line me-1"></i> STS
                                                 </a>
+                                            @else
+                                                <span class="btn btn-sm btn-outline-secondary disabled">
+                                                    <i class="ri-edit-2-line me-1"></i> STS
+                                                </span>
                                             @endif
-                                            <a href="{{ route('user.schools.nilai.sas', ['userId' => $userId, 'adminBookId' => $kelas['first_book']->id]) }}"
-                                               class="btn btn-sm btn-outline-warning">
-                                                <i class="ri-edit-2-line me-1"></i> SAS
-                                            </a>
+                                            @if($kelas['first_book'])
+                                                <a href="{{ route('user.schools.nilai.sas', ['userId' => $userId, 'adminBookId' => $kelas['first_book']->id]) }}"
+                                                   class="btn btn-sm btn-outline-warning">
+                                                    <i class="ri-edit-2-line me-1"></i> SAS
+                                                </a>
+                                            @else
+                                                <span class="btn btn-sm btn-outline-secondary disabled"
+                                                      title="Belum ada Buku Admin Guru untuk rombel ini">
+                                                    <i class="ri-edit-2-line me-1"></i> SAS
+                                                </span>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty

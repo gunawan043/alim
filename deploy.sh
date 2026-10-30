@@ -78,6 +78,10 @@ fi
 log "[3/7] Artisan migrate..."
 ${PHP_BIN} artisan migrate --force --no-interaction 2>&1 | tee -a "${DEPLOY_LOG}"
 
+# ---------- 3b. Backfill level kognitif Bloom ----------
+log "[3b/7] Backfill level Bloom..."
+${PHP_BIN} artisan soal:classify-bloom --chunk=100 2>&1 | tee -a "${DEPLOY_LOG}" || true
+
 # ---------- 4. NPM build ----------
 log "[4/7] NPM build..."
 if [ -f package.json ]; then

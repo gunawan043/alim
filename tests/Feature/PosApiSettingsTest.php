@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\PosApiConfig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -49,8 +51,13 @@ class PosApiSettingsTest extends TestCase
         $this->assertSame('X-KASIR-TOKEN', SystemSetting::get('pos_api_header'));
         $this->assertSame('103.10.20.30,10.0.0.0/8', SystemSetting::get('pos_api_allowed_ips'));
 
-        $key = (string) SystemSetting::get('pos_api_key');
-        $this->assertSame(64, strlen($key), 'Token POS harus 64 karakter hex.');
+        $rawKey = (string) SystemSetting::get('pos_api_key');
+        $this->assertStringStartsWith('enc:v1:', $rawKey, 'Token harus disimpan terenkripsi.');
+        $this->assertTrue(PosApiConfig::isEncrypted($rawKey));
+
+        $plainKey = PosApiConfig::key();
+        $this->assertSame(64, strlen($plainKey), 'Token POS harus 64 karakter hex.');
+        $this->assertNotSame($rawKey, $plainKey);
         $this->assertNotNull(SystemSetting::get('pos_api_key_generated_at'));
     }
 
@@ -85,6 +92,21 @@ class PosApiSettingsTest extends TestCase
         $this->assertSame('0', SystemSetting::get('pos_api_enabled'));
     }
 
+    public function test_system_settings_are_forbidden_for_regular_users(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+
+        $this->withoutMiddleware()
+            ->actingAs($user)
+            ->get("/{$user->id}/sa/system-settings?tab=pos-api")
+            ->assertForbidden();
+
+        $this->withoutMiddleware()
+            ->actingAs($user)
+            ->post("/{$user->id}/sa/system-settings", ['pos_tab' => '1'])
+            ->assertForbidden();
+    }
+
     public function test_generate_button_rotates_existing_token(): void
     {
         $admin = $this->admin();
@@ -97,7 +119,7 @@ class PosApiSettingsTest extends TestCase
             'pos_api_allowed_ips' => '',
         ]);
 
-        $firstKey = (string) SystemSetting::get('pos_api_key');
+        $firstKey = PosApiConfig::key();
         $this->assertSame(64, strlen($firstKey));
 
         $this->actingAs($admin)->post($url, [
@@ -108,9 +130,30 @@ class PosApiSettingsTest extends TestCase
             'regenerate_pos_key' => '1',
         ]);
 
-        $rotatedKey = (string) SystemSetting::get('pos_api_key');
+        $rotatedKey = PosApiConfig::key();
         $this->assertSame(64, strlen($rotatedKey));
         $this->assertNotSame($firstKey, $rotatedKey, 'Token baru harus berbeda dari token lama.');
+    }
+
+    public function test_legacy_plaintext_token_is_encrypted_on_next_save(): void
+    {
+        $admin = $this->admin();
+        $url = $this->saveUrl($admin);
+
+        $legacyKey = str_repeat('a', 64);
+        SystemSetting::set('pos_api_key', $legacyKey, 'pos_api');
+        Cache::forget('system_settings_map');
+
+        $this->actingAs($admin)->post($url, [
+            'pos_tab' => '1',
+            'pos_api_enabled' => '1',
+            'pos_api_header' => 'X-ALIM-POS-KEY',
+            'pos_api_allowed_ips' => '',
+        ]);
+
+        $raw = (string) SystemSetting::get('pos_api_key');
+        $this->assertStringStartsWith('enc:v1:', $raw, 'Token lama harus otomatis dienkripsi.');
+        $this->assertSame($legacyKey, PosApiConfig::key(), 'Nilai token tidak boleh berubah saat migrasi.');
     }
 
     public function test_pos_tab_renders_with_token_and_endpoint_list(): void
@@ -125,7 +168,7 @@ class PosApiSettingsTest extends TestCase
             'pos_api_allowed_ips' => '',
         ]);
 
-        $savedKey = (string) SystemSetting::get('pos_api_key');
+        $savedKey = PosApiConfig::key();
 
         $response = $this->actingAs($admin)->get($url.'?tab=pos-api');
 
@@ -137,6 +180,7 @@ class PosApiSettingsTest extends TestCase
             ->assertSee('Alamat API')
             ->assertSee('kepegawaian')
             ->assertSee('/api/pos/v1')
+            ->assertSee('terenkripsi')
             ->assertSee($savedKey, false);
     }
 

@@ -29,7 +29,8 @@ class TechnicianWorkspaceService
             ->all();
 
         $query = WorkOrder::with(['asset.category', 'repairRequest'])
-            ->whereIn('status', ['assigned', 'in_progress', 'paused']);
+            // Kosakata work_orders: draft, dispatched, in_progress, paused, waiting_parts, ...
+            ->whereIn('status', ['draft', 'dispatched', 'in_progress', 'paused', 'waiting_parts']);
 
         if (! empty($skillCategories)) {
             $query->whereHas('asset.category', function ($q) use ($skillCategories) {
@@ -72,7 +73,7 @@ class TechnicianWorkspaceService
     public function startWork(WorkOrder $order, User $technician, array $payload = []): WorkOrder
     {
         return DB::transaction(function () use ($order, $technician, $payload) {
-            if (! in_array($order->status, ['assigned', 'in_progress', 'paused'], true)) {
+            if (! in_array($order->status, ['draft', 'dispatched', 'in_progress', 'paused', 'waiting_parts'], true)) {
                 throw new \DomainException(
                     "Cannot start work on order in status: {$order->status}"
                 );

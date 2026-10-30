@@ -24,6 +24,19 @@
 {{-- app.js HARUS dimuat terakhir — berisi init simplebar, hamburger toggle, sidebar logic, dark mode, dll --}}
 <script src="{{ URL::asset('build/js/app.js').'?v='.(@filemtime(public_path('build/js/app.js')) ?: '1') }}"></script>
 <script src="{{ URL::asset('build/js/pages/notifications.init.js') }}?v={{ @filemtime(public_path('build/js/pages/notifications.init.js')) ?: '1' }}"></script>
+<script>
+// Bersihkan backdrop Bootstrap yang tertinggal setelah modal ditutup.
+document.addEventListener('hidden.bs.modal', function () {
+    if (document.querySelector('.modal.show')) return;
+
+    document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+        backdrop.remove();
+    });
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+});
+</script>
 
 @yield('script')
 @yield('script-bottom')

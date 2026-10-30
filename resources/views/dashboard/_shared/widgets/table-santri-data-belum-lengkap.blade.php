@@ -10,6 +10,7 @@
                     <tr class="text-muted fs-13">
                         <th>Nama</th>
                         <th>Field Kosong</th>
+                        <th class="text-end">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -17,9 +18,18 @@
                         <tr>
                             <td class="fw-medium">{{ $item['name'] }}</td>
                             <td><span class="badge bg-danger-subtle text-danger">{{ $item['missing'] }}</span></td>
+                            <td class="text-end">
+                                @if (!empty($item['url']))
+                                    <a href="{{ $item['url'] }}" class="btn btn-soft-warning btn-sm">
+                                        <i class="ri-edit-box-line me-1"></i>Lengkapi
+                                    </a>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="2" class="border-0 p-0">
+                        <tr><td colspan="3" class="border-0 p-0">
                             @include('dashboard._shared.widgets._empty', ['icon' => 'ri-user-follow-line', 'title' => 'Semua data santri lengkap'])
                         </td></tr>
                     @endforelse

@@ -52,6 +52,12 @@ class SuratMenyuratSmokeTest extends TestCase
         ]);
 
         $this->actingAs($this->user);
+
+        // Rute waka memakai prefix {userId}; pada request nyata nilainya diisi
+        // middleware ShareRoleId. Tes ini memanggil controller langsung, jadi
+        // default-nya disetel manual agar route() di dalam view tetap bisa
+        // membangun URL.
+        \Illuminate\Support\Facades\URL::defaults(['userId' => $this->user->id]);
     }
 
     public function test_surat_masuk_crud_dan_halaman_render(): void

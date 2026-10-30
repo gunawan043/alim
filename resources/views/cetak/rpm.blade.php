@@ -244,7 +244,7 @@
                 @endif
             </td>
             <td style="width:50%">
-                {{ $school?->city?->name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>
+                {{ $school?->city?->display_name ?? 'Mataram' }}, {{ now()->locale('id')->translatedFormat('d F Y') }}<br>
                 Guru Mata Pelajaran
                 <div class="space"></div>
                 <div class="name">__________________________</div>

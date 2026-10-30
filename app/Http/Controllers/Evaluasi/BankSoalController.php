@@ -241,7 +241,8 @@ class BankSoalController extends Controller
             'soal' => fn ($q) => $q->with('tujuanPembelajaran')
                 ->orderBy('created_at')
                 ->select('id', 'bank_soal_id', 'tipe_soal', 'bahasa', 'pertanyaan',
-                    'status', 'bobot_default', 'created_at')])
+                    'status', 'bobot_default', 'level_kognitif', 'level_kognitif_rumpun',
+                    'bloom_confidence', 'created_at')])
             ->findOrFail($id);
 
         $this->authorizeBankView($request, $bank);
@@ -254,7 +255,13 @@ class BankSoalController extends Controller
      */
     public function edit(Request $request, string $userId, string $id)
     {
-        $bank = BankSoal::findOrFail($id);
+        $bank = BankSoal::with([
+            'subject:id,name',
+            'soal' => fn ($q) => $q->orderBy('created_at')->select(
+                'id', 'bank_soal_id', 'tipe_soal', 'pertanyaan', 'status',
+                'tingkat_kesulitan_estimasi', 'level_kognitif', 'level_kognitif_rumpun', 'created_at'
+            ),
+        ])->findOrFail($id);
 
         $this->authorizeBankManage($request, $bank);
 

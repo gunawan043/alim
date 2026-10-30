@@ -13,21 +13,24 @@ use App\Models\DormitoryPointLedger;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryReward;
 use App\Services\Dormitory\DormitoryPointService;
+use App\Services\DormitoryService;
 use Illuminate\Http\Request;
 
 class DormitoryRewardController extends Controller
 {
-    public function __construct(private readonly DormitoryPointService $pointService)
-    {
-    }
+    public function __construct(private readonly DormitoryPointService $pointService) {}
 
     public function index(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        $query = DormitoryReward::with(['student:id,name,nisn', 'dormitory:id,name', 'givenBy:id,name'])
-            ->where('dormitory_id', $asramaUuid);
+        $query = DormitoryReward::with([
+            'student:id,name,nisn',
+            'dormitory:id,name',
+            'givenBy:id,name',
+            'sourceAchievement:id,event_name',
+        ])->where('dormitory_id', $asramaUuid);
 
         if ($activeYear) {
             $query->where(function ($q) use ($activeYear) {
@@ -127,7 +130,7 @@ class DormitoryRewardController extends Controller
         $this->pointService->recordReward($reward);
 
         if ($sendNotification) {
-            app(\App\Services\DormitoryService::class)->notifyMahromOnReward($reward->fresh('student'));
+            app(DormitoryService::class)->notifyMahromOnReward($reward->fresh('student'));
         }
 
         return redirect()->route('user.asrama.rewards.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
@@ -138,10 +141,12 @@ class DormitoryRewardController extends Controller
 
     public function show(string $userId, string $asramaUuid, string $rewardUuid)
     {
-        $reward = DormitoryReward::with(['student', 'dormitory', 'givenBy', 'academicYear'])
+        $dormitory = Dormitory::findOrFail($asramaUuid);
+        $reward = DormitoryReward::with(['student', 'dormitory', 'givenBy', 'academicYear', 'sourceAchievement'])
+            ->where('dormitory_id', $asramaUuid)
             ->findOrFail($rewardUuid);
 
-        return view('dormitory.rewards.show', compact('reward', 'userId', 'asramaUuid'));
+        return view('dormitory.rewards.show', compact('reward', 'dormitory', 'userId', 'asramaUuid'));
     }
 
     public function edit(string $userId, string $asramaUuid, string $rewardUuid)
@@ -191,7 +196,7 @@ class DormitoryRewardController extends Controller
         }
 
         if ($sendNotification) {
-            app(\App\Services\DormitoryService::class)->notifyMahromOnReward($reward->fresh('student'));
+            app(DormitoryService::class)->notifyMahromOnReward($reward->fresh('student'));
         }
 
         return redirect()->route('user.asrama.rewards.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])

@@ -76,9 +76,14 @@ class TahfidzTasmiService
         }
 
         $type = $this->certificateType($totalJuz);
+        $className = $participant->student?->currentClassHistory?->studyGroup?->name
+            ?? $participant->student?->currentClassHistory?->studyGroup?->full_name;
+        $materi = $participant->materi_detail
+            ?: ($juzList !== [] ? 'Juz '.implode(', ', $juzList) : null);
 
         return TahfidzCertificate::create([
             'student_id' => $participant->student_id,
+            'class_name' => $className,
             'school_id' => $participant->session?->school_id,
             'academic_year_id' => $participant->academic_year_id,
             'tasmian_participant_id' => $participant->id,
@@ -86,6 +91,7 @@ class TahfidzTasmiService
             'certificate_number' => $this->certificateNumber($participant),
             'issued_date' => now()->toDateString(),
             'total_juz_completed' => $totalJuz,
+            'materi' => $materi,
             'juz_detail' => $juzList,
             'nilai_akhir' => $score->nilai_akhir,
             'predikat' => $score->predikat,

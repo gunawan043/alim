@@ -53,7 +53,6 @@ class Asset extends Model
         });
 
         static::updated(function ($model) {
-            Cache::forget('sarpras_dashboard_version');
             $model->versionBump();
         });
     }
@@ -80,7 +79,13 @@ class Asset extends Model
 
     protected function versionBump(): void
     {
-        Cache::rememberForever('sarpras_dashboard_version', fn () => (int) Cache::get('sarpras_dashboard_version', 0) + 1);
+        // Konsisten dengan SarprasCacheInvalidator: naikkan versi tanpa
+        // meresetnya ke 0/1, agar cache dashboard seluruh client tetap invalid.
+        if (Cache::has('sarpras_dashboard_version')) {
+            Cache::increment('sarpras_dashboard_version');
+        } else {
+            Cache::forever('sarpras_dashboard_version', 2);
+        }
     }
 
     protected $fillable = [

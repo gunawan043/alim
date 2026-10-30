@@ -201,6 +201,8 @@ class StudentAchievementController extends Controller
             'coach_id' => 'nullable|uuid|exists:users,id',
             'certificate' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'notes' => 'nullable|string|max:500',
+            'notify_dormitory' => 'nullable|boolean',
+            'notify_wali' => 'nullable|boolean',
         ]);
 
         $data = [
@@ -222,17 +224,51 @@ class StudentAchievementController extends Controller
         ];
 
         if ($request->hasFile('certificate')) {
-            $path = $request->file('certificate')->store('student-achievements/certificates/'.date('Y/m'), 'public');
+            $path = $request->file('certificate')->store('student-achievements/certificates/'.date('Y/m'), 'local');
             $data['certificate_path'] = $path;
         }
 
-        $achievement = StudentAchievement::create($data);
+        $achievement = new StudentAchievement($data);
+        $achievement->notifyDormitoryReward = $request->boolean('notify_dormitory', true);
+        $achievement->notifyGuardianOnAchievement = $request->boolean('notify_wali', true);
+        $achievement->save();
 
         $redirectType = $achievementType === 'hafalan_quran' ? 'quran' : ($achievementType === 'hafalan_hadits' ? 'hadits' : $achievementType);
 
         return redirect()
             ->route('user.student-achievement.show', ['userId' => $userId, 'id' => $achievement->id, 'type' => $redirectType])
             ->with('success', 'Data prestasi berhasil disimpan.');
+    }
+
+    // ─── Download Piagam ─────────────────────────────────────────────────
+
+    public function downloadCertificate(Request $request, string $userId, string $id)
+    {
+        abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
+
+        $schoolId = $this->getSchoolContextId($request);
+
+        $achievement = StudentAchievement::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($id);
+
+        $path = (string) $achievement->certificate_path;
+
+        if ($path === '') {
+            abort(404, 'File piagam tidak tersedia.');
+        }
+
+        $filename = 'Piagam-'.preg_replace('/[^A-Za-z0-9]+/', '-', $achievement->event_name ?: 'Prestasi')
+            .'.'.pathinfo($path, PATHINFO_EXTENSION);
+
+        if (Storage::disk('local')->exists($path)) {
+            return Storage::disk('local')->download($path, $filename);
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->download($path, $filename);
+        }
+
+        abort(404, 'File piagam tidak ditemukan.');
     }
 
     // ─── Show ────────────────────────────────────────────────────────────
@@ -243,7 +279,10 @@ class StudentAchievementController extends Controller
 
         $schoolId = $this->getSchoolContextId($request);
 
-        $achievement = StudentAchievement::with(['student', 'academicYear', 'coach', 'creator', 'verifiedByUser'])
+        $achievement = StudentAchievement::with([
+            'student', 'academicYear', 'coach', 'creator', 'verifiedByUser',
+            'dormitoryRewardRequest.reward',
+        ])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($id);
 
@@ -298,10 +337,11 @@ class StudentAchievementController extends Controller
 
         if ($request->hasFile('certificate')) {
             // Delete old
-            if ($achievement->certificate_path && Storage::exists($achievement->certificate_path)) {
-                Storage::delete($achievement->certificate_path);
+            if ($achievement->certificate_path) {
+                Storage::disk('local')->delete($achievement->certificate_path);
+                Storage::disk('public')->delete($achievement->certificate_path);
             }
-            $path = $request->file('certificate')->store('student-achievements/certificates/'.date('Y/m'), 'public');
+            $path = $request->file('certificate')->store('student-achievements/certificates/'.date('Y/m'), 'local');
             $data['certificate_path'] = $path;
         }
 
@@ -392,6 +432,8 @@ class StudentAchievementController extends Controller
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
             'images.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'notify_dormitory' => 'nullable|boolean',
+            'notify_wali' => 'nullable|boolean',
         ], [
             'file.required' => 'File Excel wajib diupload.',
             'file.mimes' => 'File harus berformat .xlsx, .xls, atau .csv.',
@@ -417,7 +459,9 @@ class StudentAchievementController extends Controller
             $achievementType,
             $hafalanCategory,
             $academicYearId,
-            $uploadedFiles
+            $uploadedFiles,
+            $request->boolean('notify_dormitory', false),
+            $request->boolean('notify_wali', true)
         );
 
         Excel::import($import, $request->file('file'));

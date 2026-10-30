@@ -2,34 +2,30 @@
 
 namespace Tests\Feature\Sarpras;
 
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\User;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
 class DashboardAggregationTest extends TestCase
 {
     use CreatesSarprasFixtures;
-
-    protected static $migrated = false;
+    use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
-        if (! self::$migrated) {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            self::$migrated = true;
-        }
         Cache::flush();
     }
 
     /** @test */
     public function dashboard_returns_aggregation_data()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = User::factory()->create(['name' => 'Admin Sarpras', 'is_system_admin' => true]);
 
         $this->actingAs($admin)
-            ->get('/sarpras')
+            ->get("/{$admin->id}/sarpras")
             ->assertOk()
             ->assertViewIs('sarpras.dashboard.index');
     }
@@ -37,11 +33,11 @@ class DashboardAggregationTest extends TestCase
     /** @test */
     public function dashboard_loads_in_under_500ms()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = User::factory()->create(['name' => 'Admin Sarpras', 'is_system_admin' => true]);
         $this->createAsset();
 
         $start = microtime(true);
-        $this->actingAs($admin)->get('/sarpras');
+        $this->actingAs($admin)->get("/{$admin->id}/sarpras");
         $duration = (microtime(true) - $start) * 1000;
 
         $this->assertLessThan(500, $duration, 'Dashboard should load in under 500ms');
@@ -50,7 +46,7 @@ class DashboardAggregationTest extends TestCase
     /** @test */
     public function asset_update_invalidates_dashboard_version()
     {
-        $admin = $this->createUser('Admin Sarpras');
+        $admin = User::factory()->create(['name' => 'Admin Sarpras', 'is_system_admin' => true]);
         $asset = $this->createAsset();
         Cache::forever('sarpras_dashboard_version', 1);
 
@@ -64,7 +60,7 @@ class DashboardAggregationTest extends TestCase
     {
         $user = $this->createUser('Other');
 
-        $this->actingAs($user)->get('/sarpras')
+        $this->actingAs($user)->get("/{$user->id}/sarpras")
             ->assertStatus(403);
     }
 }

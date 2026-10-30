@@ -47,6 +47,10 @@ class WaliSantri extends Model
 
     public const ROLE_NENEK = 'nenek';
 
+    public const ROLE_PAMAN = 'paman';
+
+    public const ROLE_BIBI = 'bibi';
+
     public const ROLE_WALI = 'wali';
 
     public const ROLE_LAINNYA = 'lainnya';
@@ -56,6 +60,8 @@ class WaliSantri extends Model
         self::ROLE_IBU,
         self::ROLE_KAKEK,
         self::ROLE_NENEK,
+        self::ROLE_PAMAN,
+        self::ROLE_BIBI,
         self::ROLE_WALI,
         self::ROLE_LAINNYA,
     ];
