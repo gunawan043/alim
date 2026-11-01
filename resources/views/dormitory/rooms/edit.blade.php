@@ -65,7 +65,7 @@
                                 <select name="room_type" id="room_type_select" class="form-control @error('room_type') is-invalid @enderror">
                                     <option value="">— Pilih Tipe —</option>
                                     <option value="reguler" {{ old('room_type', $room->room_type) === 'reguler' ? 'selected' : '' }}>Reguler</option>
-                                    <option value="musyrif" {{ old('room_type', $room->room_type) === 'musyrif' ? 'selected' : '' }}>Musyrif</option>
+                                    <option value="musyrif" {{ old('room_type', $room->room_type) === 'musyrif' ? 'selected' : '' }}>Staf Asrama</option>
                                     @if($room->room_type && ! in_array($room->room_type, ['reguler', 'musyrif'], true))
                                         {{-- Pertahankan nilai lama agar data tidak hilang saat disimpan ulang. --}}
                                         <option value="{{ $room->room_type }}" selected>{{ ucfirst($room->room_type) }} (data lama)</option>

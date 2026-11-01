@@ -243,7 +243,7 @@
                                         <td class="text-center">
                                             @if($r->room_type)
                                                 <span class="badge bg-{{ $r->room_type === 'musyrif' ? 'warning' : 'info' }}-subtle text-{{ $r->room_type === 'musyrif' ? 'warning' : 'info' }}">
-                                                    {{ ucfirst($r->room_type) }}
+                                                    {{ $r->room_type === 'musyrif' ? 'Staf Asrama' : ucfirst($r->room_type) }}
                                                 </span>
                                             @else
                                                 <span class="text-muted">—</span>
@@ -409,7 +409,7 @@
                                         class="form-select @error('room_type') is-invalid @enderror">
                                     <option value="">— Pilih Tipe —</option>
                                     <option value="reguler" {{ old('room_type') === 'reguler' ? 'selected' : '' }}>Reguler</option>
-                                    <option value="musyrif" {{ old('room_type') === 'musyrif' ? 'selected' : '' }}>Musyrif</option>
+                                    <option value="musyrif" {{ old('room_type') === 'musyrif' ? 'selected' : '' }}>Staf Asrama</option>
                                 </select>
                                 @error('room_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

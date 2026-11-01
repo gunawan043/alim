@@ -190,14 +190,16 @@
 @if($mode === 'asrama')
     <li class="menu-title"><span>Piket & Operasional</span></li>
 
-    {{-- 12. Log Piket Asrama (Soon) --}}
+    {{-- 12. Tugas Harian per shift --}}
+    @if($scanAsramaId)
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-file-list-2-line"></i>
-            <span>Log Piket Asrama <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.daily-tasks.']) ? ' active' : '' }}"
+           href="{{ $spAsramaUrl('user.asrama.daily-tasks.index') }}">
+            <i class="ri-checkbox-multiple-line"></i>
+            <span>Tugas Harian</span>
         </a>
     </li>
+    @endif
 
     {{-- 13. Konsumsi Asrama (Soon) --}}
     <li class="nav-item">

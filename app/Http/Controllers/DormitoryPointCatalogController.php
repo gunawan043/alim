@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DormitoryPointAutomation;
 use App\Models\DormitoryPointCatalog;
 use App\Models\DormitoryPointRule;
 use App\Models\Dormitory;
+use App\Services\Dormitory\DormitoryViolationAutomationService;
 use Illuminate\Http\Request;
 
 class DormitoryPointCatalogController extends Controller
@@ -23,8 +25,37 @@ class DormitoryPointCatalogController extends Controller
             'dormitory' => $dormitory, 'userId' => $userId,
             'catalogs' => $query->orderBy('kind')->orderBy('sort_order')->paginate(50)->withQueryString(),
             'rules' => DormitoryPointRule::orderBy('min_points')->get(),
+            'automations' => DormitoryPointAutomation::with('pointCatalog')->orderBy('source_key')->get(),
+            'violationCatalogs' => DormitoryPointCatalog::active()->kind('violation')->orderBy('sort_order')->orderBy('code')->get(),
+            'automationSources' => DormitoryViolationAutomationService::sources(),
             'canManage' => $this->canManage(),
         ]);
+    }
+
+    public function updateAutomations(Request $request, string $userId, string $asramaUuid)
+    {
+        $this->authorizeManager();
+
+        $data = $request->validate([
+            'automations' => 'required|array',
+            'automations.*.point_catalog_id' => 'nullable|exists:dormitory_point_catalogs,id',
+            'automations.*.is_active' => 'nullable|boolean',
+        ]);
+
+        foreach (DormitoryViolationAutomationService::sources() as $sourceKey => $label) {
+            $row = $data['automations'][$sourceKey] ?? [];
+
+            DormitoryPointAutomation::updateOrCreate(
+                ['source_key' => $sourceKey],
+                [
+                    'label' => $label,
+                    'point_catalog_id' => $row['point_catalog_id'] ?? null,
+                    'is_active' => ! empty($row['is_active']),
+                ]
+            );
+        }
+
+        return back()->with('success', 'Integrasi poin otomatis berhasil disimpan.');
     }
 
     public function store(Request $request, string $userId, string $asramaUuid)

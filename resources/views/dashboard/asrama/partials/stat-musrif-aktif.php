@@ -31,7 +31,7 @@ return [
     '_type' => 'stat',
     '_col'  => 'col-xl-3 col-md-6',
     'value' => $count,
-    'label' => 'Musrif Aktif',
+    'label' => 'Staf Asrama Aktif',
     'icon'  => 'ri-user-star-line',
     'color' => 'primary',
     'sub'   => 'Staf pengasuhan & wali kamar aktif',

@@ -46,7 +46,7 @@
                             <td>
                                 @if($room->room_type)
                                     <span class="badge bg-{{ $room->room_type === 'musyrif' ? 'warning' : 'info' }}-subtle">
-                                        {{ ucfirst($room->room_type) }}
+                                        {{ $room->room_type === 'musyrif' ? 'Staf Asrama' : ucfirst($room->room_type) }}
                                     </span>
                                 @else — @endif
                             </td>

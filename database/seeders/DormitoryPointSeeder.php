@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\DormitoryPointAutomation;
 use App\Models\DormitoryPointCatalog;
 use App\Models\DormitoryPointRule;
 use Illuminate\Database\Seeder;
@@ -214,6 +215,53 @@ class DormitoryPointSeeder extends Seeder
                 'sort_order' => (int) substr($code, 2),
                 'description' => $note,
             ]);
+        }
+
+        // Katalog yang dipakai integrasi kehadiran otomatis.
+        foreach ([
+            ['116', 'Tidak hadir pada absensi asrama', 116],
+            ['117', 'Tidak hadir kelas tanpa izin', 117],
+        ] as [$code, $name, $sortOrder]) {
+            DormitoryPointCatalog::firstOrCreate(
+                ['code' => $code],
+                [
+                    'kind' => 'violation',
+                    'name' => $name,
+                    'category' => 'kedisiplinan',
+                    'severity' => 'ringan',
+                    'points_min' => 5,
+                    'points_max' => 5,
+                    'is_permanent' => false,
+                    'is_active' => true,
+                    'sort_order' => $sortOrder,
+                    'description' => 'Dibuat otomatis dari integrasi kehadiran/kegiatan.',
+                ]
+            );
+        }
+
+        // Pemetaan default; admin dapat mengubah katalognya di halaman Katalog Poin.
+        foreach ([
+            ['dormitory_attendance_alpa', 'Absensi asrama: alpa', '116'],
+            ['activity_alpa', 'Kegiatan asrama: alpa', '113'],
+            ['academic_attendance_alpa', 'Kehadiran kelas: alpa', '117'],
+            ['permit_late_return', 'Izin: kembali melewati batas waktu', '106'],
+        ] as [$sourceKey, $label, $catalogCode]) {
+            $automation = DormitoryPointAutomation::firstOrCreate(
+                ['source_key' => $sourceKey],
+                [
+                    'label' => $label,
+                    'point_catalog_id' => DormitoryPointCatalog::where('code', $catalogCode)->value('id'),
+                    'is_active' => true,
+                ]
+            );
+
+            // Fresh install: katalog sumber belum ada saat migrasi, jadi lengkapi
+            // pemetaan yang masih kosong tanpa menimpa pilihan admin.
+            if (! $automation->point_catalog_id) {
+                $automation->update([
+                    'point_catalog_id' => DormitoryPointCatalog::where('code', $catalogCode)->value('id'),
+                ]);
+            }
         }
     }
 }

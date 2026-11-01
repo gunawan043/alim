@@ -68,7 +68,12 @@
                         <div class="col-12">
                             <div class="bg-light rounded p-3">
                                 <div class="text-muted small mb-1">Jenis Pelanggaran</div>
-                                <div class="fw-semibold">{{ $violation->violation_type ?: '—' }}</div>
+                                <div class="fw-semibold">
+                                    {{ $violation->violation_type ?: '—' }}
+                                    @if($violation->is_automatic)
+                                        <span class="badge bg-primary-subtle text-primary ms-1">Otomatis</span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                         {{-- Description --}}

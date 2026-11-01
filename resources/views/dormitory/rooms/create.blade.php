@@ -88,7 +88,7 @@
                                 <select name="room_type" id="room_type_select" class="form-control @error('room_type') is-invalid @enderror">
                                     <option value="">— Pilih Tipe —</option>
                                     <option value="reguler" {{ old('room_type') === 'reguler' ? 'selected' : '' }}>Reguler</option>
-                                    <option value="musyrif" {{ old('room_type') === 'musyrif' ? 'selected' : '' }}>Musyrif</option>
+                                    <option value="musyrif" {{ old('room_type') === 'musyrif' ? 'selected' : '' }}>Staf Asrama</option>
                                 </select>
                                 @error('room_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

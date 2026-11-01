@@ -33,6 +33,9 @@ class DormitoryViolation extends Model
         'points',
         'point_catalog_id',
         'point_rule_id',
+        'source_type',
+        'source_id',
+        'is_automatic',
         'recommended_action',
         'action_status',
         'action_taken',
@@ -44,6 +47,7 @@ class DormitoryViolation extends Model
     protected $casts = [
         'violation_date' => 'date',
         'points' => 'integer',
+        'is_automatic' => 'boolean',
         'parent_notified_at' => 'datetime',
     ];
 

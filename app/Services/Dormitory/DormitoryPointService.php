@@ -144,6 +144,18 @@ class DormitoryPointService
     }
 
     /**
+     * Hapus catatan ledger saat pelanggaran otomatis dibatalkan
+     * (mis. status kehadiran berubah dari alpa menjadi hadir).
+     */
+    public function removeViolation(DormitoryViolation $violation): void
+    {
+        DormitoryPointLedger::query()
+            ->where('reference_type', 'dormitory_violation')
+            ->where('reference_id', $violation->id)
+            ->delete();
+    }
+
+    /**
      * Total poin berjalan (reward positif, pelanggaran negatif) untuk satu santri.
      * Poin permanent tetap dihitung walau berasal dari tahun ajaran lain.
      */

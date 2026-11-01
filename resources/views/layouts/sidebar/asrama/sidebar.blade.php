@@ -227,6 +227,16 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.daily-tasks.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.daily-tasks.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-checkbox-multiple-line"></i>
+        <span>Tugas Harian</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.asrama.permits.') && ! isActiveAsr($currentRoute, 'user.asrama.permits.scan')
         ? ' active' : ''

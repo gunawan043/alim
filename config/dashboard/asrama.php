@@ -3,7 +3,7 @@
 /**
  * Dashboard config — Role: Asrama
  *
- * Jabatan: Kepala/Wakil Kepala Asrama, Musrif/Musrifah/Musyrif/Musyrifah,
+ * Jabatan: Kepala/Wakil Kepala Asrama, Staf Asrama,
  * TU Asrama, Staf Perizinan.
  * Tugas tambahan: Wali Kamar, Pembina Kegiatan Asrama, Petugas Piket Asrama.
  *
@@ -120,9 +120,9 @@ return [
             ],
         ],
 
-        // ── Musrif / Musrifah / Musyrif / Musyrifah ──────────────
+        // ── Staf Asrama ──────────────────────────────────────────
         'tenaga_pengasuhan_keasramaan_musrif' => [
-            'label'   => 'Musrif',
+            'label'   => 'Staf Asrama',
             'widgets' => [
                 ...$welcome,
                 'stat-penghuni-asrama',
@@ -151,7 +151,7 @@ return [
             ],
         ],
         'tenaga_pengasuhan_keasramaan_musrifah' => [
-            'label'   => 'Musrifah',
+            'label'   => 'Staf Asrama',
             'widgets' => [
                 ...$welcome,
                 'stat-penghuni-asrama',
@@ -180,7 +180,7 @@ return [
             ],
         ],
         'tenaga_pengasuhan_keasramaan_musyrif' => [
-            'label'   => 'Musyrif',
+            'label'   => 'Staf Asrama',
             'widgets' => [
                 ...$welcome,
                 'stat-penghuni-asrama',
@@ -209,7 +209,7 @@ return [
             ],
         ],
         'tenaga_pengasuhan_keasramaan_musyrifah' => [
-            'label'   => 'Musyrifah',
+            'label'   => 'Staf Asrama',
             'widgets' => [
                 ...$welcome,
                 'stat-penghuni-asrama',

@@ -123,7 +123,7 @@
                                             <td class="text-center">
                                                 @if($r->room_type)
                                                     <span class="badge bg-{{ $r->room_type === 'musyrif' ? 'warning' : 'info' }}-subtle">
-                                                        {{ ucfirst($r->room_type) }}
+                                                        {{ $r->room_type === 'musyrif' ? 'Staf Asrama' : ucfirst($r->room_type) }}
                                                     </span>
                                                 @else — @endif
                                             </td>

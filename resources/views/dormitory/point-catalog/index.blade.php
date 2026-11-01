@@ -13,6 +13,65 @@
 <div class="col-xl-3"><div class="card stat-card"><div class="card-body py-3"><p class="stat-label mb-0">Katalog Aktif</p><h3 class="stat-value">{{ $catalogs->total() }}</h3></div></div></div>
 <div class="col-xl-6"><div class="card"><div class="card-body py-3 small text-muted"><i class="ri-information-line me-1"></i>Semua asrama dapat melihat katalog. Hanya Superadmin yang dapat mengubah.</div></div></div>
 </div>
+
+@php $automationMap = $automations->keyBy('source_key'); @endphp
+<div class="card mt-3">
+    <div class="card-header border-bottom-dashed">
+        <h6 class="mb-0"><i class="ri-links-line me-1 text-primary"></i>Integrasi Poin Otomatis</h6>
+        <small class="text-muted">Hubungkan kehadiran, kegiatan, dan keterlambatan kembali izin ke poin pelanggaran asrama. Pelanggaran otomatis tidak menimpa catatan manual.</small>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ route('user.asrama.point-catalog.automations', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}">
+            @csrf
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Sumber Event</th>
+                            <th>Katalog Poin</th>
+                            <th class="text-center">Aktif</th>
+                            <th class="text-center">Poin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($automationSources as $sourceKey => $sourceLabel)
+                            @php $automation = $automationMap->get($sourceKey); @endphp
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ $sourceLabel }}</div>
+                                    <code class="small">{{ $sourceKey }}</code>
+                                </td>
+                                <td>
+                                    <select name="automations[{{ $sourceKey }}][point_catalog_id]" class="form-select form-select-sm" @disabled(! $canManage)>
+                                        <option value="">— Tidak membuat poin —</option>
+                                        @foreach($violationCatalogs as $catalog)
+                                            <option value="{{ $catalog->id }}" @selected(($automation?->point_catalog_id) === $catalog->id)>
+                                                {{ $catalog->code }} — {{ $catalog->name }} ({{ $catalog->points_min }} poin)
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input" name="automations[{{ $sourceKey }}][is_active]" value="1"
+                                           @checked($automation?->is_active) @disabled(! $canManage)>
+                                </td>
+                                <td class="text-center">
+                                    {{ $automation?->pointCatalog?->points_min ?? '—' }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if($canManage)
+                <div class="d-flex justify-content-end mt-3">
+                    <button class="btn btn-primary btn-sm"><i class="ri-save-line me-1"></i>Simpan Integrasi</button>
+                </div>
+            @endif
+        </form>
+    </div>
+</div>
+
 <div class="card">
 <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between gap-2">
 <form method="GET" class="d-flex gap-2">

@@ -92,6 +92,13 @@ $asramaProfileFallback = route('user.asrama.my-profile', ['userId' => $userId]);
     </ul>
 </li>
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.daily-tasks.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext ? route('user.asrama.daily-tasks.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
+        <i class="ri-checkbox-multiple-line"></i>
+        <span>Tugas Harian</span>
+    </a>
+</li>
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.violations.') ? ' active' : '' }}"
        href="{{ $hasAsramaContext ? route('user.asrama.violations.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid]) : $asramaProfileFallback }}">
         <i class="ri-error-warning-line"></i>

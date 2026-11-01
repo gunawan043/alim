@@ -71,6 +71,7 @@ use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DokumenIsoController;
 use App\Http\Controllers\DormitoryActivityController;
 use App\Http\Controllers\DormitoryAttendanceController;
+use App\Http\Controllers\DormitoryDailyTaskController;
 use App\Http\Controllers\DormitoryImportController;
 use App\Http\Controllers\DormitoryInventoryController;
 use App\Http\Controllers\DormitoryLeavePolicyController;
@@ -2483,6 +2484,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/{asramaUuid}/absensi/verify', [DormitoryAttendanceController::class, 'verify'])->name('attendance.verify');
                 Route::get('/{asramaUuid}/absensi/rekap', [DormitoryAttendanceController::class, 'recap'])->name('attendance.recap');
 
+                // ── TUGAS HARIAN PER SHIFT ────────────────────────────
+                Route::prefix('{asramaUuid}/tugas-harian')->name('daily-tasks.')->group(function () {
+                    Route::get('/', [DormitoryDailyTaskController::class, 'index'])->name('index');
+                    Route::get('/buat', [DormitoryDailyTaskController::class, 'create'])->name('create');
+                    Route::post('/', [DormitoryDailyTaskController::class, 'store'])->name('store');
+                    Route::post('/checklist', [DormitoryDailyTaskController::class, 'storeChecklist'])->name('checklist');
+                    Route::get('/{taskId}/edit', [DormitoryDailyTaskController::class, 'edit'])->name('edit');
+                    Route::put('/{taskId}', [DormitoryDailyTaskController::class, 'update'])->name('update');
+                    Route::delete('/{taskId}', [DormitoryDailyTaskController::class, 'destroy'])->name('destroy');
+                    Route::post('/{taskId}/toggle', [DormitoryDailyTaskController::class, 'toggle'])->name('toggle');
+                });
+
                 // ── PERIZINAN ────────────────────────────────────────
                 Route::get('/{asramaUuid}/izin', [DormitoryPermitController::class, 'index'])->name('permits.index');
                 Route::get('/{asramaUuid}/izin/aju', [DormitoryPermitController::class, 'create'])->name('permits.create');
@@ -2520,6 +2533,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
                 // ── KATALOG POIN PELANGGARAN & REWARD ───────────────
                 Route::get('/{asramaUuid}/poin/katalog', [DormitoryPointCatalogController::class, 'index'])->name('point-catalog.index');
+                Route::post('/{asramaUuid}/poin/otomatisasi', [DormitoryPointCatalogController::class, 'updateAutomations'])->name('point-catalog.automations');
                 Route::post('/{asramaUuid}/poin/katalog', [DormitoryPointCatalogController::class, 'store'])->name('point-catalog.store');
                 Route::put('/{asramaUuid}/poin/katalog/{catalogUuid}', [DormitoryPointCatalogController::class, 'update'])->name('point-catalog.update');
                 Route::delete('/{asramaUuid}/poin/katalog/{catalogUuid}', [DormitoryPointCatalogController::class, 'destroy'])->name('point-catalog.destroy');

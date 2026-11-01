@@ -232,7 +232,12 @@
                                                 <span class="badge bg-secondary-subtle text-secondary">{{ $v->violation_category }}</span>
                                             @endif
                                         </td>
-                                        <td>{{ $v->violation_type ?: '—' }}</td>
+                                        <td>
+                                            {{ $v->violation_type ?: '—' }}
+                                            @if($v->is_automatic)
+                                                <span class="badge bg-primary-subtle text-primary ms-1" title="Dibuat otomatis dari integrasi kehadiran/kegiatan">Otomatis</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             <span class="badge bg-danger-subtle text-danger">{{ $v->points }}</span>
                                         </td>

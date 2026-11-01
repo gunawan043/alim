@@ -47,8 +47,12 @@ use App\Listeners\RecordRmaTransition;
 use App\Listeners\RecordVendorAuditListener;
 use App\Listeners\SendVendorNotificationListener;
 use App\Models\AbsensiGtk;
+use App\Models\AdminPresensiHarian;
 use App\Models\BoardingPolicy;
 use App\Models\DokumenIso;
+use App\Models\DormitoryActivityAttendance;
+use App\Models\DormitoryAttendance;
+use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\DormitoryStaffAssignment;
 use App\Models\GradeLevel;
@@ -63,8 +67,12 @@ use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\TeachingAssignment;
 use App\Observers\AbsensiGtkPeriodObserver;
+use App\Observers\AdminPresensiHarianPointObserver;
 use App\Observers\BoardingPolicyObserver;
 use App\Observers\DokumenIsoObserver;
+use App\Observers\DormitoryActivityPointObserver;
+use App\Observers\DormitoryAttendancePointObserver;
+use App\Observers\DormitoryPermitPointObserver;
 use App\Observers\DormitoryResidentObserver;
 use App\Observers\DormitoryStaffAssignmentObserver;
 use App\Observers\GtkAdditionalTaskObserver;
@@ -284,6 +292,12 @@ class AppServiceProvider extends ServiceProvider
         GtkEmployment::observe(GtkEmploymentObserver::class);
         GtkProfile::observe(GtkProfileObserver::class);
         DormitoryStaffAssignment::observe(DormitoryStaffAssignmentObserver::class);
+
+        // Integrasi kehadiran/kegiatan/izin → poin pelanggaran asrama.
+        DormitoryAttendance::observe(DormitoryAttendancePointObserver::class);
+        DormitoryActivityAttendance::observe(DormitoryActivityPointObserver::class);
+        AdminPresensiHarian::observe(AdminPresensiHarianPointObserver::class);
+        DormitoryPermit::observe(DormitoryPermitPointObserver::class);
 
         // Penugasan mengajar → provisioning buku nilai/SGS + notifikasi + pindah kepemilikan.
         TeachingAssignment::observe(TeachingAssignmentObserver::class);
