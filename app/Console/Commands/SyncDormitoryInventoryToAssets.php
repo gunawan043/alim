@@ -8,7 +8,7 @@ use App\Models\AssetCategory;
 use App\Models\AssetRoom;
 use App\Models\Dormitory;
 use App\Models\DormitoryInventory;
-use App\Models\DormitoryRoom;
+use App\Models\RoomSupervisor;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -49,23 +49,26 @@ class SyncDormitoryInventoryToAssets extends Command
                 );
 
                 foreach ($dorm->rooms as $room) {
-                    $assetRoom = AssetRoom::firstOrCreate(
-                        ['room_code' => Str::limit('DORM-'.$dorm->code.'-'.$room->code, 30, '')],
-                        [
-                            'work_unit_id' => $dorm->work_unit_id,
-                            'school_id' => $dorm->school_id,
-                            'building_id' => $building->id,
-                            'dormitory_room_id' => $room->id,
-                            'room_name' => $room->name ?? $room->code,
-                            'floor' => $room->floor ?? 1,
-                            'room_type' => 'lainnya',
-                            'capacity' => $room->capacity,
-                            'condition' => 'baik',
-                            'responsible_user_id' => \App\Models\RoomSupervisor::active()
-                                ->where('room_id', $room->id)->value('user_id') ?? $dorm->head_id,
-                            'is_active' => 1,
-                        ]
-                    );
+                    // Ruang yang sudah dibuat observer kamar asrama dipakai ulang
+                    // agar tidak terjadi duplikat.
+                    $assetRoom = AssetRoom::where('dormitory_room_id', $room->id)->first()
+                        ?? AssetRoom::firstOrCreate(
+                            ['room_code' => Str::limit('DORM-'.$dorm->code.'-'.$room->code, 30, '')],
+                            [
+                                'work_unit_id' => $dorm->work_unit_id,
+                                'school_id' => $dorm->school_id,
+                                'building_id' => $building->id,
+                                'dormitory_room_id' => $room->id,
+                                'room_name' => $room->name ?? $room->code,
+                                'floor' => $room->floor ?? 1,
+                                'room_type' => 'lainnya',
+                                'capacity' => $room->capacity,
+                                'condition' => 'baik',
+                                'responsible_user_id' => RoomSupervisor::active()
+                                    ->where('room_id', $room->id)->value('user_id') ?? $dorm->head_id,
+                                'is_active' => 1,
+                            ]
+                        );
                     $createdRooms += $assetRoom->wasRecentlyCreated ? 1 : 0;
 
                     DormitoryInventory::withTrashed()
@@ -73,7 +76,11 @@ class SyncDormitoryInventoryToAssets extends Command
                         ->where('room_id', $room->id)
                         ->whereNull('asset_id')
                         ->each(function (DormitoryInventory $item) use ($assetRoom, $category, $createdBy, &$createdAssets, $dry) {
-                            if ($dry) { $createdAssets++; return; }
+                            if ($dry) {
+                                $createdAssets++;
+
+                                return;
+                            }
 
                             $asset = Asset::create([
                                 'work_unit_id' => $assetRoom->work_unit_id,
@@ -97,14 +104,20 @@ class SyncDormitoryInventoryToAssets extends Command
                         });
                 }
             }
-            if ($dry) { DB::rollBack(); } else { DB::commit(); }
+            if ($dry) {
+                DB::rollBack();
+            } else {
+                DB::commit();
+            }
         } catch (\Throwable $e) {
             DB::rollBack();
             $this->error('Gagal sinkron: '.$e->getMessage());
+
             return self::FAILURE;
         }
 
         $this->info(($dry ? '[DRY RUN] ' : '').'Selesai: '.$createdAssets.' aset, '.$createdRooms.' ruang asrama dipetakan.');
+
         return self::SUCCESS;
     }
 }

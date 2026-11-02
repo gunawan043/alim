@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Observers\DormitoryRoomObserver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +21,9 @@ class DormitoryRoom extends Model
     {
         parent::boot();
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+
+        // Setiap kamar asrama otomatis menjadi ruang di Sarpras.
+        static::observe(DormitoryRoomObserver::class);
     }
 
     protected $fillable = [
