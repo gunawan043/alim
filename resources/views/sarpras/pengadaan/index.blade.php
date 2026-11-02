@@ -24,6 +24,7 @@
                 <div class="row g-4">
                     <div class="col-sm"><h5 class="card-title mb-0">Daftar Usulan Barang Non-BUMP</h5></div>
                     <div class="col-sm-auto">
+                        <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-outline-secondary"><i class="ri-flow-chart me-1"></i> Alur</a>
                         <a href="{{ route('sarpras.pengadaan.create') }}" class="btn btn-success"><i class="ri-add-line me-1"></i> Usulan Barang</a>
                     </div>
                 </div>

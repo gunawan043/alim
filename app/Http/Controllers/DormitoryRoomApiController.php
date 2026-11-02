@@ -56,13 +56,37 @@ class DormitoryRoomApiController extends Controller
                 ->orWhere('nis', 'like', "%{$needle}%"));
         }
 
-        $students = $query->orderBy('name')->limit(100)->get(['id', 'name', 'nisn', 'nis', 'gender']);
+        $students = $query
+            ->with(['currentClassHistory.studyGroup.gradeLevel'])
+            ->orderBy('name')
+            ->limit(100)
+            ->get(['id', 'name', 'nisn', 'nis', 'gender']);
 
         return response()->json([
             'success' => true,
             'count' => $students->count(),
-            'students' => $students,
+            'students' => $students->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'nis' => $s->nis,
+                'nisn' => $s->nisn,
+                'gender' => $s->gender,
+                'class_name' => $s->class_name,
+            ])->values(),
         ]);
+    }
+
+    /**
+     * Kode gender santri yang diizinkan untuk sebuah asrama.
+     * Asrama `putra` → hanya L, `putri` → hanya P, campuran → null (keduanya).
+     */
+    private function dormitoryGenderCode(?Dormitory $dormitory): ?string
+    {
+        return match ($dormitory?->gender) {
+            'putra' => 'L',
+            'putri' => 'P',
+            default => null,
+        };
     }
 
     /**
@@ -196,22 +220,36 @@ class DormitoryRoomApiController extends Controller
         $query = DormitoryResident::where('dormitory_id', $asramaUuid)
             ->where('is_active', true)
             ->whereNotIn('student_id', $assignedInRoomIds)
-            ->with('student:id,name,nisn,gender,birth_place,birth_date');
+            ->with([
+                'student:id,name,nisn,nis,gender,birth_place,birth_date',
+                'student.currentClassHistory.studyGroup.gradeLevel',
+            ]);
+
+        // Pertahanan berlapis: kamar/asrama putra hanya menampilkan santri L, dst.
+        $dormitory = \App\Models\Dormitory::find($asramaUuid);
+        if ($genderCode = $this->dormitoryGenderCode($dormitory)) {
+            $query->whereHas('student', fn ($sq) => $sq->where('gender', $genderCode));
+        }
 
         if ($request->filled('q')) {
             $query->whereHas('student', fn ($sq) => $sq
                 ->where('name', 'like', '%'.$request->q.'%')
                 ->orWhere('nisn', 'like', '%'.$request->q.'%')
+                ->orWhere('nis', 'like', '%'.$request->q.'%')
             );
         }
 
-        $residents = $query->orderBy('student.name')->get();
+        $residents = $query
+            ->orderBy(\App\Models\Student::select('name')->whereColumn('students.id', 'dormitory_residents.student_id'))
+            ->get();
 
         $data = $residents->map(fn ($r) => [
             'id' => $r->id,
             'student_id' => $r->student_id,
             'student_name' => $r->student?->name ?? '-',
             'nisn' => $r->student?->nisn ?? '-',
+            'nis' => $r->student?->nis ?? '-',
+            'class_name' => $r->student?->class_name ?? '-',
             'gender' => $r->student?->gender ?? '-',
             'bed_number' => $r->bed_number,
         ]);
@@ -354,33 +392,97 @@ class DormitoryRoomApiController extends Controller
      */
     /**
      * Daftar santri AKTIF satuan pendidikan asrama + status boarding (untuk pemilihan).
+     *
+     * Aturan akses:
+     *  - SELALU terkunci pada gender asrama (putra → L, putri → P).
+     *  - Scope default `dormitory` hanya menampilkan santri yang belum berkamar
+     *    di asrama mana pun + penghuni asrama ini. Santri yang sudah ditempatkan
+     *    di asrama lain TIDAK ditampilkan (data lintas asrama dijaga).
+     *  - Scope `all` dipakai halaman khusus "Santri Boarding" (tetap satu gender).
      */
     public function studentsStatus(Request $request, string $userId, string $asramaUuid)
     {
         $dormitory = \App\Models\Dormitory::find($asramaUuid);
 
+        if (! $dormitory) {
+            return response()->json(['success' => false, 'message' => 'Asrama tidak ditemukan.'], 404);
+        }
+
+        $genderCode = $this->dormitoryGenderCode($dormitory);
+        $scope = (string) $request->input('scope', 'dormitory');
+
         $activeYearId = \App\Models\AcademicYear::where('is_active', true)->value('id');
 
-        $withRoom = \App\Models\DormitoryResident::where('is_active', true)->whereNotNull('room_id')->pluck('student_id');
+        // Penempatan aktif per santri (dengan info asrama & kamar pemiliknya).
+        $residents = DormitoryResident::query()
+            ->where('is_active', true)
+            ->whereNotNull('room_id')
+            ->when($activeYearId, fn ($q) => $q->where('academic_year_id', $activeYearId))
+            ->with(['dormitory:id,name', 'room:id,name,code'])
+            ->get()
+            ->keyBy('student_id');
 
-        $students = \App\Models\Student::where('school_id', $dormitory?->school_id)
+        $assignedElsewhere = $residents
+            ->filter(fn ($r) => (string) $r->dormitory_id !== (string) $dormitory->id)
+            ->keys();
+
+        $query = \App\Models\Student::query()
+            ->where('school_id', $dormitory->school_id)
             ->where('status', 'active')
-            ->when($request->filled('q'), fn ($q) => $q->where(fn ($qq) => $qq
-                ->where('name', 'like', '%'.$request->q.'%')
-                ->orWhere('nisn', 'like', '%'.$request->q.'%')))
-            ->orderBy('name')
-            ->limit(300)
-            ->get(['id', 'name', 'nisn', 'gender', 'boarding_status'])
-            ->map(fn ($s) => [
-                'id' => $s->id,
-                'name' => $s->name,
-                'nisn' => $s->nisn,
-                'gender' => $s->gender,
-                'boarding_status' => $s->boarding_status,
-                'has_room' => $withRoom->contains($s->id),
-            ]);
+            ->with(['currentClassHistory.studyGroup.gradeLevel']);
 
-        return response()->json(['success' => true, 'students' => $students]);
+        if ($genderCode) {
+            // Kunci gender: tidak ada data lawan jenis pada halaman asrama ini.
+            $query->where('gender', $genderCode);
+        }
+
+        if ($scope !== 'all' && $assignedElsewhere->isNotEmpty()) {
+            $query->whereNotIn('id', $assignedElsewhere->all());
+        }
+
+        if ($request->filled('boarding_status')) {
+            $status = (string) $request->input('boarding_status');
+            if ($status === 'belum') {
+                $query->whereNull('boarding_status');
+            } elseif (in_array($status, ['boarding', 'non_boarding'], true)) {
+                $query->where('boarding_status', $status);
+            }
+        }
+
+        if ($request->filled('q')) {
+            $needle = $request->input('q');
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$needle}%")
+                ->orWhere('nisn', 'like', "%{$needle}%")
+                ->orWhere('nis', 'like', "%{$needle}%"));
+        }
+
+        $students = $query->orderBy('name')->limit(300)->get(['id', 'name', 'nis', 'nisn', 'gender', 'boarding_status']);
+
+        $data = $students->map(function ($student) use ($residents, $dormitory) {
+            $resident = $residents->get($student->id);
+            $isThisDormitory = $resident && (string) $resident->dormitory_id === (string) $dormitory->id;
+
+            return [
+                'id' => $student->id,
+                'name' => $student->name,
+                'nis' => $student->nis,
+                'nisn' => $student->nisn,
+                'gender' => $student->gender,
+                'class_name' => $student->class_name,
+                'boarding_status' => $student->boarding_status,
+                'has_room' => $isThisDormitory,
+                'room' => $isThisDormitory ? ($resident->room?->name ?? $resident->room?->code) : null,
+                'other_dormitory' => ($resident && ! $isThisDormitory) ? $resident->dormitory?->name : null,
+                'other_room' => ($resident && ! $isThisDormitory) ? ($resident->room?->name ?? $resident->room?->code) : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'scope' => $scope,
+            'gender' => $genderCode,
+            'students' => $data,
+        ]);
     }
 
     /**
@@ -397,9 +499,27 @@ class DormitoryRoomApiController extends Controller
 
         $dormitory = \App\Models\Dormitory::find($asramaUuid);
 
-        $updated = \App\Models\Student::whereIn('id', $data['student_ids'])
-            ->where('school_id', $dormitory?->school_id)
-            ->update(['boarding_status' => $data['status']]);
+        if (! $dormitory) {
+            return response()->json(['success' => false, 'message' => 'Asrama tidak ditemukan.'], 404);
+        }
+
+        $genderCode = $this->dormitoryGenderCode($dormitory);
+
+        // Kunci gender + satuan pendidikan: hanya santri yang sah boleh diubah.
+        $eligible = \App\Models\Student::whereIn('id', $data['student_ids'])
+            ->where('school_id', $dormitory->school_id)
+            ->when($genderCode, fn ($q) => $q->where('gender', $genderCode));
+
+        $eligibleIds = (clone $eligible)->pluck('id')->all();
+
+        if (count($eligibleIds) !== count($data['student_ids'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terdapat santri di luar gender/satuan pendidikan asrama ini — status tidak diubah.',
+            ], 422);
+        }
+
+        $updated = $eligible->update(['boarding_status' => $data['status']]);
 
         return response()->json([
             'success' => true,

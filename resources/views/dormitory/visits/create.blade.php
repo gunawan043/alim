@@ -155,6 +155,13 @@
                                 @error('expected_arrival_datetime')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-2">
+                                <label for="departure_datetime" class="form-label">Rencana Waktu Kembali/Pulang <span class="text-danger">*</span></label>
+                                <input type="datetime-local" name="departure_datetime" id="departure_datetime" class="form-control @error('departure_datetime') is-invalid @enderror"
+                                       value="{{ old('departure_datetime') }}" required aria-describedby="departure_help">
+                                <small id="departure_help" class="text-muted">Wajib diisi — menjadi acuan pengingat otomatis ke wali.</small>
+                                @error('departure_datetime')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-2">
                                 <label for="expected_meet_duration_minutes" class="form-label">Durasi Rencana (menit)</label>
                                 <input type="number" name="expected_meet_duration_minutes" id="expected_meet_duration_minutes" class="form-control @error('expected_meet_duration_minutes') is-invalid @enderror"
                                        value="{{ old('expected_meet_duration_minutes', 60) }}" min="5" max="480" step="5" aria-describedby="expected_duration_help">

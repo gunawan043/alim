@@ -9,6 +9,9 @@ return [
     // Maksimal hari izin meninggalkan pembelajaran (Pasal 14).
     'max_learning_leave_days' => (int) env('ASRAMA_MAX_LEARNING_LEAVE_DAYS', 3),
 
+    // Izin pulang bulanan: batas kembali otomatis dihitung dari waktu berangkat.
+    'monthly_return_hours' => (int) env('ASRAMA_MONTHLY_RETURN_HOURS', 24),
+
     'retention' => [
         // Data kunjungan yang lebih lama akan dianonimkan.
         'visit_months' => (int) env('ASRAMA_VISIT_RETENTION_MONTHS', 24),

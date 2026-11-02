@@ -165,6 +165,7 @@
                                     <tr>
                                         <th style="width:40px">No</th>
                                         <th>Nama Santri</th>
+                                        <th>Kelas</th>
                                         <th>NISN</th>
                                         <th>JK</th>
                                         <th>No. TT</th>
@@ -185,6 +186,13 @@
                                                 <a href="{{ route('user.students.show', ['userId' => $userId, 'santriUuid' => $resident->student_id]) }}">
                                                     {{ $resident->student?->name ?? '-' }}
                                                 </a>
+                                            </td>
+                                            <td>
+                                                @if($resident->student?->class_name && $resident->student->class_name !== '-')
+                                                    <span class="badge bg-info-subtle text-info">{{ $resident->student->class_name }}</span>
+                                                @else
+                                                    <span class="text-muted">-</span>
+                                                @endif
                                             </td>
                                             <td><span class="text-muted">{{ $resident->student?->nisn ?? '-' }}</span></td>
                                             <td>
@@ -419,7 +427,7 @@ function renderBulkList(residents) {
             ' onchange="toggleResident(\'' + r.id + '\')">' +
             '<label class="form-check-label flex-grow-1" for="cb-' + r.id + '" style="cursor:pointer">' +
                 '<strong>' + escHtml(r.student_name) + '</strong>' +
-                '<span class="text-muted ms-2">NISN: ' + escHtml(r.nisn) + '</span>' +
+                '<span class="text-muted ms-2">' + escHtml(r.class_name || '-') + ' · NISN: ' + escHtml(r.nisn) + '</span>' +
             '</label>' +
             '<span class="badge ' + genderClass + '">' + genderLabel + '</span>' +
         '</div>';

@@ -45,7 +45,7 @@ class NotificationUniversalService
         }
 
         $action = (string) ($data['action'] ?? 'system');
-        $systemEnabled = $this->channelAllowed($action, 'system');
+        $systemEnabled = $this->channelAllowed($action, 'system') && ($data['send_in_app'] ?? true);
         $data['action_url'] = $this->resolveActionUrl($data['action_url'] ?? null, $userId);
 
         $notification = NotificationUniversal::create([

@@ -31,7 +31,10 @@
     </div>
 
     <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0"><i class="ri-tools-line me-2 text-primary"></i>Permintaan Perbaikan</h5><p class="text-muted small mb-0">Laporan kerusakan unit otomatis masuk antrean. URT menentukan petugas dan jadwal.</p></div>
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div><h5 class="card-title mb-0"><i class="ri-tools-line me-2 text-primary"></i>Permintaan Perbaikan</h5><p class="text-muted small mb-0">Laporan kerusakan unit otomatis masuk antrean. URT menentukan petugas dan jadwal.</p></div>
+            <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-outline-secondary btn-sm"><i class="ri-flow-chart me-1"></i>Alur Perbaikan</a>
+        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">

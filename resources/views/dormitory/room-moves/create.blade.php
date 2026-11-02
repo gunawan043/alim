@@ -361,7 +361,7 @@
             var item = document.createElement('a');
             item.href = '#';
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-start py-2 px-3';
-            item.innerHTML = '<div><div class="fw-semibold">' + s.name + '</div><div class="small text-muted">NISN: ' + (s.nisn ?? '-') + '</div>' + roomInfo + '</div>' + genderBadge;
+            item.innerHTML = '<div><div class="fw-semibold">' + s.name + '</div><div class="small text-muted">' + (s.class_name && s.class_name !== '-' ? s.class_name + ' · ' : '') + 'NISN: ' + (s.nisn ?? '-') + '</div>' + roomInfo + '</div>' + genderBadge;
             item.addEventListener('click', function(e) {
                 e.preventDefault();
                 selectStudent(s);

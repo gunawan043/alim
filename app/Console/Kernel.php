@@ -92,12 +92,8 @@ class Kernel extends ConsoleKernel
             ->emailOutputOnFailure(config('mail.admin_address'));
 
         // DORMITORY OVERDUE PERMITS
-
-        // Cek permit overdue setiap jam (reminder + eskalasi)
-        $schedule->command('dormitory:process-overdue')
-            ->hourly()
-            ->withoutOverlapping()
-            ->runInBackground();
+        // Dijadwalkan setiap menit di routes/console.php agar interval
+        // pengingat per asrama (Pengaturan Notifikasi) benar-benar dihormati.
 
         // ARSIP PERIODE
 

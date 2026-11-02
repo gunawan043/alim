@@ -49,9 +49,12 @@
                 <h5 class="card-title mb-0"><i class="ri-user-star-line me-2 text-primary"></i>Petugas Sarpras per Satuan Kerja</h5>
                 <p class="text-muted small mb-0">Satu GTK mendata seluruh aset unit; wali kelas/wali asrama mendata ruangnya masing-masing.</p>
             </div>
-            @if($canManage)
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addOfficerModal"><i class="ri-add-line me-1"></i>Tugaskan Petugas</button>
-            @endif
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('sarpras.workflow.assignment') }}" class="btn btn-outline-primary btn-sm"><i class="ri-flow-chart me-1"></i>Lanjut: Bagi Area Kerja</a>
+                @if($canManage)
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addOfficerModal"><i class="ri-add-line me-1"></i>Tugaskan Petugas</button>
+                @endif
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

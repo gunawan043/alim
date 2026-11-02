@@ -51,6 +51,11 @@ class PosProcurementClient
         return $this->get('bump-orders/payment-methods')['data'] ?? [];
     }
 
+    public function institutionDebtSummary(array $query = []): array
+    {
+        return $this->get('institution-debts/summary', $query);
+    }
+
     public function bumpOrders(array $query = []): array
     {
         return $this->get('bump-orders', $query);

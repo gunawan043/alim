@@ -18,6 +18,9 @@
 
 $welcome = ['welcome-banner'];
 
+// Agenda mendatang + prioritas tampil di semua jabatan URT.
+$blokAgenda = ['agenda-prioritas-urt'];
+
 $blokTicketing = [
     'stat-wo-open',
     'stat-wo-hari-ini',
@@ -74,7 +77,7 @@ return [
         'tenaga_rumah_tangga_sarpras_kepala_unit_ruma_79636' => [
             'label'   => 'Kepala Unit Rumah Tangga',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokKebersihan, ...$blokPemeliharaan, 'quick-action-urt',
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokKebersihan, ...$blokPemeliharaan, 'quick-action-urt',
             ],
         ],
 
@@ -82,13 +85,13 @@ return [
         'tenaga_rumah_tangga_sarpras_koordinator_sarpras' => [
             'label'   => 'Koordinator Sarpras',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan, 'quick-action-urt',
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan, 'quick-action-urt',
             ],
         ],
         'tenaga_rumah_tangga_sarpras_koordinator_sara_16855' => [
             'label'   => 'Koordinator Sarana Prasarana',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan, 'quick-action-urt',
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan, 'quick-action-urt',
             ],
         ],
 
@@ -96,25 +99,25 @@ return [
         'tenaga_rumah_tangga_sarpras_tata_usaha_urt' => [
             'label'   => 'Tata Usaha URT',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokKebersihan, ...$blokPemeliharaan, 'quick-action-urt',
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokKebersihan, ...$blokPemeliharaan, 'quick-action-urt',
             ],
         ],
         'tenaga_rumah_tangga_sarpras_tu_urt' => [
             'label'   => 'TU URT',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokKebersihan, ...$blokPemeliharaan, 'quick-action-urt',
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokKebersihan, ...$blokPemeliharaan, 'quick-action-urt',
             ],
         ],
         'tenaga_rumah_tangga_sarpras_staf_tu_urt' => [
             'label'   => 'Staf TU URT',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan,
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan,
             ],
         ],
         'tenaga_rumah_tangga_sarpras_staf_urt' => [
             'label'   => 'Staf URT',
             'widgets' => [
-                ...$welcome, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan,
+                ...$welcome, ...$blokAgenda, ...$blokTicketing, ...$blokAset, ...$blokGudang, ...$blokPemeliharaan,
             ],
         ],
 
@@ -122,7 +125,7 @@ return [
         'tenaga_rumah_tangga_sarpras_teknisi_maintenance' => [
             'label'   => 'Teknisi Maintenance',
             'widgets' => [
-                ...$welcome,
+                ...$welcome, ...$blokAgenda,
                 'stat-wo-open', 'stat-wo-hari-ini', 'stat-wo-overdue',
                 'chart-wo-7-hari',
                 'table-wo-terbaru', 'table-wo-progress',
@@ -134,7 +137,7 @@ return [
         'tenaga_rumah_tangga_sarpras_teknisi' => [
             'label'   => 'Teknisi',
             'widgets' => [
-                ...$welcome,
+                ...$welcome, ...$blokAgenda,
                 'stat-wo-open', 'stat-wo-hari-ini', 'stat-wo-overdue',
                 'chart-wo-7-hari',
                 'table-wo-terbaru', 'table-wo-progress',
@@ -148,7 +151,7 @@ return [
         'tenaga_rumah_tangga_sarpras_petugas_kebersihan' => [
             'label'   => 'Petugas Kebersihan',
             'widgets' => [
-                ...$welcome, ...$blokKebersihan,
+                ...$welcome, ...$blokAgenda, ...$blokKebersihan,
                 'stat-wo-open', 'table-wo-terbaru',
                 'quick-action-urt',
             ],
@@ -156,7 +159,7 @@ return [
         'tenaga_rumah_tangga_sarpras_janitor' => [
             'label'   => 'Janitor',
             'widgets' => [
-                ...$welcome, ...$blokKebersihan,
+                ...$welcome, ...$blokAgenda, ...$blokKebersihan,
                 'stat-wo-open', 'table-wo-terbaru',
                 'quick-action-urt',
             ],
@@ -166,7 +169,7 @@ return [
         'tenaga_rumah_tangga_sarpras_petugas_pertamanan' => [
             'label'   => 'Petugas Pertamanan',
             'widgets' => [
-                ...$welcome, ...$blokPertamanan, ...$blokKebersihan,
+                ...$welcome, ...$blokAgenda, ...$blokPertamanan, ...$blokKebersihan,
                 'stat-wo-open', 'table-wo-terbaru',
                 'quick-action-urt',
             ],
@@ -176,7 +179,7 @@ return [
         'tenaga_rumah_tangga_sarpras_driver' => [
             'label'   => 'Driver',
             'widgets' => [
-                ...$welcome,
+                ...$welcome, ...$blokAgenda,
         ['stat-armada-total', 'stat-armada-tersedia', 'stat-armada-servis', 'table-armada'],
                 'stat-wo-open',
                 'table-wo-terbaru',
@@ -185,7 +188,7 @@ return [
         'tenaga_rumah_tangga_sarpras_pengemudi' => [
             'label'   => 'Pengemudi',
             'widgets' => [
-                ...$welcome,
+                ...$welcome, ...$blokAgenda,
         ['stat-armada-total', 'stat-armada-tersedia', 'stat-armada-servis', 'table-armada'],
                 'stat-wo-open',
                 'table-wo-terbaru',
@@ -237,7 +240,7 @@ return [
     'default' => [
         'label'   => 'Unit Rumah Tangga',
         'widgets' => [
-            ...$welcome,
+            ...$welcome, ...$blokAgenda,
             'stat-wo-open',
             'stat-total-aset',
             'table-wo-terbaru',
@@ -249,6 +252,7 @@ return [
     // ══════════════════════════════════════════════════════════════
     'sections' => [
         'ringkasan'    => ['title' => 'Ringkasan URT',            'icon' => 'ri-home-gear-line'],
+        'agenda'       => ['title' => 'Agenda & Prioritas',        'icon' => 'ri-calendar-check-line'],
         'ticketing'    => ['title' => 'Ticketing Perbaikan',      'icon' => 'ri-customer-service-2-line'],
         'aset'         => ['title' => 'Inventaris Aset',          'icon' => 'ri-archive-2-line'],
         'gudang'       => ['title' => 'Logistik & Gudang',        'icon' => 'ri-stack-line'],
@@ -262,6 +266,7 @@ return [
     // ══════════════════════════════════════════════════════════════
     'section_map' => [
         'welcome-banner'            => 'ringkasan',
+        'agenda-prioritas-urt'      => 'agenda',
         'stat-wo-open'              => 'ringkasan',
         'stat-wo-hari-ini'          => 'ringkasan',
         'stat-wo-selesai-bulan'     => 'ringkasan',

@@ -40,6 +40,22 @@ return [
         'kaldik_created' => ['group' => 'Akademik', 'label' => 'Agenda Kalender Pendidikan dibuat'],
         'kaldik_updated' => ['group' => 'Akademik', 'label' => 'Agenda Kalender Pendidikan diperbarui'],
 
+        // Sarpras & Unit Rumah Tangga (penugasan, perbaikan, pemeliharaan)
+        'WorkOrderAssigned' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Work order ditugaskan ke petugas/teknisi'],
+        'work_order_assigned' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Work order ditugaskan (varian lama)'],
+        'WorkOrderStarted' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Work order mulai dikerjakan'],
+        'WorkOrderCompleted' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Work order selesai'],
+        'RepairRequestSubmitted' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Permintaan perbaikan diajukan'],
+        'RepairStatusChanged' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Status perbaikan berubah'],
+        'CleaningAssigned' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Petugas area kebersihan ditugaskan'],
+        'MaintenanceDue' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Jadwal pemeliharaan mendekati jatuh tempo'],
+        'MaintenanceOverdue' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Pemeliharaan melewati jatuh tempo'],
+        'LoanOverdue' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Peminjaman barang terlambat dikembalikan'],
+        'AssetMoved' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Aset dipindahkan'],
+        'StockOpnameStarted' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Stock opname dimulai'],
+        'StockOpnameCompleted' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Stock opname selesai'],
+        'WarrantyExpired' => ['group' => 'Sarpras & Unit Rumah Tangga', 'label' => 'Garansi aset habis'],
+
         // Sistem
         'announcement' => ['group' => 'Sistem', 'label' => 'Pengumuman'],
         'login' => ['group' => 'Sistem', 'label' => 'Notifikasi login akun'],

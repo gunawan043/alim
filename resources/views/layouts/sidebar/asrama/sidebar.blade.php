@@ -272,6 +272,16 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
     </a>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.notifications.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.notifications.edit', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-notification-3-line"></i>
+        <span>Notifikasi Kembali</span>
+    </a>
+</li>
+
 @if (! (($showAll || $isStafPerizinanGlobal) && menu_allowed('asrama') && ($scanAsramaId ?? null)))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.permits.scan') ? ' active' : '' }}"

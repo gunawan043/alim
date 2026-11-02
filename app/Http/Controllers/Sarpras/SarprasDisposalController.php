@@ -18,17 +18,65 @@ class SarprasDisposalController extends SarprasBaseController
 
     public function pending()
     {
-        // Bungkus orWhere agar filter unit/scope tidak bocor ke cabang or.
+        // Antrean = usulan yang belum dieksekusi. Aset yang sudah dihapus
+        // (condition = dihapus) tidak boleh muncul lagi di antrean.
         $candidates = Asset::query()
             ->where(function ($q) {
-                $q->where('condition', 'dihapus')
-                    ->orWhere(fn ($qq) => $qq->whereNotNull('disposal_date')->whereNull('disposal_reason'));
+                $q->where(fn ($qq) => $qq->whereNotNull('disposal_date')->where('condition', '!=', 'dihapus'))
+                    ->orWhere(fn ($qq) => $qq->where('condition', 'dihapus')->whereNull('disposal_date'));
             })
+            ->with(['category:id,name', 'room:id,room_name'])
             ->orderBy('updated_at', 'desc')
             ->limit(50)
             ->get();
 
         return view('sarpras.disposal.pending', compact('candidates'));
+    }
+
+    /**
+     * Langkah pertama prosedur penghapusan: unit/URT mengusulkan aset.
+     * Aset belum dihapus sampai Kepala URT menyetujui.
+     */
+    public function propose(string $userId, Asset $asset, Request $request): RedirectResponse|JsonResponse
+    {
+        if ($asset->condition === 'dihapus') {
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'error' => 'Aset sudah dihapus.'], 422)
+                : back()->with('error', 'Aset ini sudah dihapus dari inventaris.');
+        }
+
+        $isUnitOwner = in_array($asset->work_unit_id, $this->accessibleWorkUnitIds(), true);
+
+        if (! $this->isCentralSarpras() && ! $isUnitOwner) {
+            abort(403, 'Anda hanya dapat mengusulkan penghapusan aset milik satuan kerja Anda.');
+        }
+
+        $data = $request->validate([
+            'disposal_method' => 'required|in:sell,scrap,transfer,donate,destroy',
+            'disposal_reason' => 'required|string|max:500',
+            'disposal_value' => 'nullable|numeric|min:0',
+        ]);
+
+        $asset->update([
+            'disposal_method' => $data['disposal_method'],
+            'disposal_reason' => $data['disposal_reason'],
+            'disposal_value' => $data['disposal_value'] ?? null,
+            'disposal_date' => now(),
+        ]);
+
+        app(AssetEventLogger::class)->logAssetStatusChanged(
+            $asset,
+            $asset->condition ?: 'active',
+            'disposal_proposed',
+            'Usulan penghapusan: '.$data['disposal_reason']
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('sarpras.disposal.pending')
+            ->with('success', 'Usulan penghapusan dikirim. Menunggu persetujuan Kepala URT.');
     }
 
     public function approve(string $userId, Asset $asset, Request $request): RedirectResponse|JsonResponse

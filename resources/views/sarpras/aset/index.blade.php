@@ -45,6 +45,7 @@
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h5 class="card-title mb-0"><i class="ri-archive-line me-2 text-primary"></i>Daftar Aset / Inventaris</h5>
             <div class="d-flex gap-2">
+                <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-outline-secondary btn-sm"><i class="ri-flow-chart me-1"></i>Alur</a>
                 <a href="{{ route('sarpras.aset.import') }}" class="btn btn-outline-primary btn-sm"><i class="ri-upload-cloud-line me-1"></i>Import</a>
                 <a href="{{ route('sarpras.data-exchange.export', ['dataset' => 'aset']) }}" class="btn btn-outline-success btn-sm"><i class="ri-file-excel-2-line me-1"></i>Export</a>
                 <a href="{{ route('sarpras.aset.create') }}" class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i>Tambah</a>
@@ -80,8 +81,9 @@
                                         <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#verifyAssetModal" data-action="{{ route('sarpras.aset.verify', ['id' => $a->id]) }}" data-name="{{ $a->asset_name }}" title="Verifikasi"><i class="ri-check-line"></i></button>
                                         <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectAssetModal" data-action="{{ route('sarpras.aset.verify', ['id' => $a->id]) }}" data-name="{{ $a->asset_name }}" title="Tolak"><i class="ri-close-line"></i></button>
                                     @endif
-                                    <a href="{{ route('sarpras.aset.show', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-info"><i class="ri-eye-line"></i></a>
-                                    <a href="{{ route('sarpras.aset.edit', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-warning"><i class="ri-edit-line"></i></a>
+                                    <a href="{{ route('sarpras.aset.show', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-info" title="Detail"><i class="ri-eye-line"></i></a>
+                                    <a href="{{ route('sarpras.aset.timeline', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-primary" title="Timeline kegiatan"><i class="ri-calendar-2-line"></i></a>
+                                    <a href="{{ route('sarpras.aset.edit', ['id' => $a->id]) }}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="ri-edit-line"></i></a>
                                 </div>
                             </td>
                         </tr>

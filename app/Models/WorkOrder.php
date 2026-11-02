@@ -64,6 +64,12 @@ class WorkOrder extends Model
         return $this->belongsTo(AssetMaintenanceSchedule::class, 'maintenance_schedule_id');
     }
 
+    /** Laporan hasil pekerjaan (satu work order = satu laporan). */
+    public function assignmentReport()
+    {
+        return $this->hasOne(SarprasAssignmentReport::class, 'work_order_id');
+    }
+
     public function room()
     {
         return $this->belongsTo(AssetRoom::class, 'room_id');

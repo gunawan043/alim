@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Sarpras;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 use Tests\Traits\CreatesSarprasFixtures;
 
@@ -27,7 +27,9 @@ class DashboardAggregationTest extends TestCase
         $this->actingAs($admin)
             ->get("/{$admin->id}/sarpras")
             ->assertOk()
-            ->assertViewIs('sarpras.dashboard.index');
+            ->assertViewIs('sarpras.dashboard.index')
+            ->assertSee('Agenda Mendatang', false)
+            ->assertSee('Prioritas', false);
     }
 
     /** @test */

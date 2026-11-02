@@ -54,6 +54,7 @@ return new class extends Migration
             $table->uuid('user_id');
             $table->string('role', 30)->default('petugas');
             $table->uuid('backup_user_id')->nullable();
+            $table->uuid('supervisor_id')->nullable();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->boolean('is_active')->default(true);
@@ -64,6 +65,7 @@ return new class extends Migration
             $table->foreign('area_id')->references('id')->on('cleaning_areas')->cascadeOnDelete();
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('backup_user_id')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('supervisor_id')->references('id')->on('users')->nullOnDelete();
             $table->foreign('created_by')->references('id')->on('users')->nullOnDelete();
             $table->unique(['area_id', 'user_id', 'start_date'], 'cleaning_assignment_unique');
             $table->index(['user_id', 'is_active']);

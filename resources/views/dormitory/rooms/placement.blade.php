@@ -119,6 +119,9 @@
                 </div>
                 <div class="col-sm-auto">
                     <div class="toolbar-actions">
+                        <a href="{{ route('user.asrama.boarding.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-shield-user-line me-1"></i> Data Lintas Asrama
+                        </a>
                         <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#boardingModal">
                             <i class="ri-user-settings-line me-1"></i> Status Boarding
                         </button>
@@ -250,7 +253,13 @@
                                                             <span class="small">
                                                                 <i class="ri-user-line me-1 text-muted"></i>
                                                                 <strong>{{ $resident->student?->name ?? '—' }}</strong>
+                                                                @if($resident->student?->class_name && $resident->student->class_name !== '-')
+                                                                    <span class="badge bg-info-subtle text-info ms-1">{{ $resident->student->class_name }}</span>
+                                                                @endif
                                                                 <span class="text-muted">· ranjang #{{ $resident->bed_number }}</span>
+                                                                @if($resident->student?->nisn)
+                                                                    <span class="text-muted d-block">NISN {{ $resident->student->nisn }}</span>
+                                                                @endif
                                                             </span>
                                                             <span class="d-flex gap-1">
                                                                 <button type="button" class="btn btn-sm btn-outline-danger btn-keluar"
@@ -345,10 +354,15 @@
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="ri-user-settings-line me-2 text-primary"></i>Kelola Status Boarding — {{ $dormitory->school?->name }}</h5>
+                    <h5 class="modal-title"><i class="ri-user-settings-line me-2 text-primary"></i>Kelola Status Boarding — {{ $dormitory->name }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-info py-2 px-3 small mb-2">
+                        <i class="ri-lock-line me-1"></i>
+                        Hanya santri <strong>{{ $dormitory->gender === 'putri' ? 'putri' : 'putra' }}</strong> yang belum berkamar di asrama lain.
+                        Data lintas asrama dikelola di <a href="{{ route('user.asrama.boarding.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="fw-semibold">halaman Santri Boarding</a>.
+                    </div>
                     <div class="d-flex gap-2 mb-2">
                         <input type="search" id="bs-search" class="form-control" placeholder="Cari nama / NISN…">
                         <button type="button" class="btn btn-outline-primary" id="bs-load" title="Muat ulang"><i class="ri-refresh-line"></i></button>
@@ -584,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     '<label class="d-flex align-items-center gap-2 border-bottom px-3 py-2" style="cursor:pointer">' +
                     '<input type="checkbox" class="form-check-input" value="' + s.id + '">' +
                     '<span><span class="fw-semibold">' + s.name + '</span>' +
-                    '<span class="text-muted small"> · NISN ' + (s.nisn || '-') + ' · ' + (s.gender === 'L' ? 'Putra' : 'Putri') + '</span></span>' +
+                    '<span class="text-muted small"> · ' + (s.class_name || '-') + ' · NISN ' + (s.nisn || '-') + ' · ' + (s.gender === 'L' ? 'Putra' : 'Putri') + '</span></span>' +
                     '</label>'
                 ).join('');
                 list.querySelectorAll('input[type=checkbox]').forEach(c => c.addEventListener('change', refreshCount));
@@ -701,7 +715,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     return '<label class="d-flex align-items-center gap-2 border-bottom px-3 py-2" style="cursor:pointer">' +
                         '<input type="checkbox" class="form-check-input" value="' + s.id + '">' +
                         '<span><span class="fw-semibold">' + s.name + '</span>' +
-                        '<span class="text-muted small"> · NISN ' + (s.nisn || '-') + '</span> ' + badge + room + '</span></label>';
+                        '<span class="text-muted small"> · ' + (s.class_name || '-') + ' · NISN ' + (s.nisn || '-') + '</span> ' + badge + room + '</span></label>';
                 }).join('');
                 bsList.querySelectorAll('input[type=checkbox]').forEach(c => c.addEventListener('change', refreshBs));
                 refreshBs();

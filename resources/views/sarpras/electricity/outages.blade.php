@@ -22,7 +22,10 @@
     <div class="card">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-alarm-warning-line me-2 text-danger"></i>Kejadian Listrik Padam</h5><p class="text-muted small mb-0">Catat kejadian, tindakan petugas, waktu menyala kembali, dan foto sebelum/sesudah.</p></div>
-            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#addOutageModal"><i class="ri-add-line me-1"></i>Catat Kejadian</button>
+            <div class="d-flex gap-2">
+                <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-outline-secondary btn-sm"><i class="ri-flow-chart me-1"></i>Alur</a>
+                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#addOutageModal"><i class="ri-add-line me-1"></i>Catat Kejadian</button>
+            </div>
         </div>
         <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>No</th><th>Waktu</th><th>Lokasi</th><th>Jenis</th><th>Penyebab</th><th>Petugas</th><th>Status</th><th class="text-end">Aksi</th></tr></thead><tbody>
             @forelse($outages as $i => $outage)

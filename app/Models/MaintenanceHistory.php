@@ -33,6 +33,7 @@ class MaintenanceHistory extends Model
         'work_description',
         'cost',
         'next_due_date',
+        'notes',
     ];
 
     protected $casts = [

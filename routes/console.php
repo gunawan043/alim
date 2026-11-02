@@ -20,7 +20,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // ── Asrama: overdue & pengingat kembali ─────────────────────────
-Schedule::command('dormitory:remind-returns')->dailyAt('16:00')->withoutOverlapping();
+// Dijalankan tiap menit; interval kirim diatur per asrama pada halaman
+// Pengaturan Notifikasi (Pengaturan → Notifikasi Kembali Asrama).
+Schedule::command('dormitory:remind-returns')->everyMinute()->withoutOverlapping();
+Schedule::command('dormitory:process-overdue')->everyMinute()->withoutOverlapping();
 
 // Pengingat operasional Laboratorium IPA.
 Schedule::command('lab:send-reminders')->dailyAt('07:20')->withoutOverlapping();

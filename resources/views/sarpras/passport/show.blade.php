@@ -189,7 +189,7 @@
                         <h5 class="card-title mb-0">QR Code</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="{{ route('sarpras.qr.generate', ['id' => $asset->id]) }}" alt="QR" class="img-fluid mb-3" style="max-height: 250px;">
+                        <img src="{{ route('sarpras.qr.image', ['id' => $asset->id, 'size' => 240]) }}" alt="QR" class="img-fluid mb-3" style="max-height: 250px;">
                         <p class="text-muted">Scan untuk melihat passport aset</p>
                     </div>
                 </div>

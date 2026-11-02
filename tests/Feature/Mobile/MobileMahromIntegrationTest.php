@@ -251,6 +251,7 @@ class MobileMahromIntegrationTest extends TestCase
             'visitor_relationship' => 'mahrom',
             'purpose' => 'menjenguk',
             'expected_arrival_datetime' => now()->addHour()->toDateTimeString(),
+            'departure_datetime' => now()->addHours(2)->toDateTimeString(),
             'mahrom_id' => $mahrom->id,
         ]);
 
@@ -281,6 +282,7 @@ class MobileMahromIntegrationTest extends TestCase
             'visitor_relationship' => 'mahrom',
             'purpose' => 'menjenguk',
             'expected_arrival_datetime' => now()->addHour()->toDateTimeString(),
+            'departure_datetime' => now()->addHours(2)->toDateTimeString(),
             'mahrom_id' => $mahrom->id,
         ]);
 

@@ -296,7 +296,7 @@
 
     async function fetchStudent(q) {
         try {
-            var url = '/{userId}/asrama/' + asramaUuid + '/santri/find?q=' + encodeURIComponent(q);
+            var url = "{{ route('user.asrama.residents.find-student', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}?mode=candidate&q=" + encodeURIComponent(q);
             var res = await fetch(url);
             var data = await res.json();
 
@@ -323,7 +323,7 @@
                 <div>
                     <div class="fw-semibold">${s.name}</div>
                     <div class="small text-muted">
-                        NISN: ${s.nisn ?? '-'} ${s.nis ? ' | NIS: ' + s.nis : ''}
+                        ${s.class_name && s.class_name !== '-' ? s.class_name + ' · ' : ''}NISN: ${s.nisn ?? '-'} ${s.nis ? ' | NIS: ' + s.nis : ''}
                     </div>
                 </div>
                 ${genderBadge}

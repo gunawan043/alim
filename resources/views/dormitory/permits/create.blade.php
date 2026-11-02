@@ -304,7 +304,12 @@
                                 @error('expected_return_datetime')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <div class="form-text">Maksimal 3 hari. Izin khusus dengan waktu lebih lama memerlukan approval.</div>
+                                <div class="form-text">
+                                    Maksimal 3 hari. Izin khusus dengan waktu lebih lama memerlukan approval.
+                                    <span id="monthlyReturnHint" class="text-primary d-block d-none">
+                                        <i class="ri-magic-line me-1"></i>Izin pulang otomatis 24 jam sejak waktu berangkat (bisa diubah manual).
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -734,6 +739,36 @@
         departureInput.value = rounded.getFullYear() + '-' + pad(rounded.getMonth() + 1) + '-' + pad(rounded.getDate())
             + 'T' + pad(rounded.getHours()) + ':' + pad(rounded.getMinutes());
     }
+
+    // ── Izin pulang: waktu kembali otomatis 24 jam dari waktu berangkat ──
+    const returnInput = document.getElementById('expected_return_datetime');
+    const monthlyHint = document.getElementById('monthlyReturnHint');
+    const MONTHLY_RETURN_HOURS = {{ (int) config('asrama.monthly_return_hours', 24) }};
+    let returnTouched = false;
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function toLocalInput(date) {
+        return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate())
+            + 'T' + pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+    }
+    function syncMonthlyReturn(force) {
+        const isMonthly = permitTypeSel.value === 'pulang';
+        if (monthlyHint) monthlyHint.classList.toggle('d-none', !isMonthly);
+        if (!isMonthly || !departureInput || !returnInput) return;
+
+        if (force || !returnTouched || !returnInput.value) {
+            const dep = new Date(departureInput.value);
+            if (isNaN(dep.getTime())) return;
+            returnInput.value = toLocalInput(new Date(dep.getTime() + MONTHLY_RETURN_HOURS * 3600000));
+        }
+    }
+    permitTypeSel.addEventListener('change', function () {
+        returnTouched = false;
+        syncMonthlyReturn(true);
+    });
+    if (departureInput) departureInput.addEventListener('change', function () { syncMonthlyReturn(false); });
+    if (returnInput) returnInput.addEventListener('input', function () { returnTouched = true; });
+    syncMonthlyReturn(false);
 
     // ── Pre-load jika ada oldStudentId (mis. validasi gagal) ────
     if (oldStudentId && residentMap[oldStudentId]) {

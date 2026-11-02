@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Lab\LabItemProfile;
 use App\Models\Traits\LogsDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -52,6 +53,25 @@ class Asset extends Model
             }
         });
 
+        static::saving(function (Asset $asset) {
+            $asset->qr_mode = $asset->qr_mode ?: self::QR_MODE_INDIVIDUAL;
+
+            if ($asset->qr_mode === self::QR_MODE_GROUP) {
+                $asset->qr_group_key = $asset->qr_group_key ?: static::makeQrGroupKey(
+                    $asset->room_id,
+                    $asset->asset_category_id,
+                    $asset->work_unit_id,
+                );
+            } else {
+                $asset->qr_group_key = null;
+            }
+
+            // QR dibuat otomatis — tidak perlu aksi manual lagi.
+            if (blank($asset->qr_generated_at)) {
+                $asset->qr_generated_at = now();
+            }
+        });
+
         static::updated(function ($model) {
             $model->versionBump();
         });
@@ -75,6 +95,51 @@ class Asset extends Model
         } while ($exists);
 
         return $code;
+    }
+
+    /**
+     * Kunci kelompok QR: aset sejenis di ruang yang sama berbagi satu label.
+     */
+    public static function makeQrGroupKey(?string $roomId, ?string $categoryId, ?string $workUnitId = null): string
+    {
+        $basis = implode('|', array_filter([$roomId, $categoryId, $workUnitId]));
+
+        return 'GRP-'.strtoupper(substr(sha1($basis), 0, 10));
+    }
+
+    public function isGroupQr(): bool
+    {
+        return $this->qr_mode === self::QR_MODE_GROUP && filled($this->qr_group_key);
+    }
+
+    /**
+     * Isi QR: URL scan stabil (tanpa userId) agar label tetap valid
+     * walau dicetak/dipindai oleh pegawai yang berbeda.
+     */
+    public function qrScanUrl(): string
+    {
+        if ($this->isGroupQr()) {
+            return url('/sarpras/scan/group/'.$this->qr_group_key);
+        }
+
+        return url('/sarpras/scan/'.($this->asset_code ?: $this->id));
+    }
+
+    public function qrModeLabel(): string
+    {
+        return self::QR_MODE_OPTIONS[$this->qr_mode] ?? self::QR_MODE_OPTIONS[self::QR_MODE_INDIVIDUAL];
+    }
+
+    /**
+     * Aset lain yang berbagi label QR yang sama.
+     */
+    public function qrGroupMembers()
+    {
+        return static::query()
+            ->where('qr_mode', self::QR_MODE_GROUP)
+            ->where('qr_group_key', $this->qr_group_key)
+            ->where('is_active', true)
+            ->orderBy('asset_name');
     }
 
     protected function versionBump(): void
@@ -123,6 +188,8 @@ class Asset extends Model
         'last_audit_by',
         'last_condition_update',
         'qr_generated_at',
+        'qr_mode',
+        'qr_group_key',
         'photo_path',
         'notes',
         'is_active',
@@ -160,6 +227,19 @@ class Asset extends Model
 
     const CONDITION_OPTIONS = ['baik', 'rusak_ringan', 'rusak_sedang', 'rusak_berat', 'hilang', 'dihapus'];
 
+    /**
+     * QR per unit (aset elektronik / aset besar) atau QR seragam untuk
+     * kelompok aset sejenis di satu ruang (mis. kursi, meja).
+     */
+    const QR_MODE_INDIVIDUAL = 'individual';
+
+    const QR_MODE_GROUP = 'group';
+
+    const QR_MODE_OPTIONS = [
+        self::QR_MODE_INDIVIDUAL => 'QR per unit aset',
+        self::QR_MODE_GROUP => 'QR seragam per kelompok',
+    ];
+
     const STATUS_OPTIONS = ['active', 'borrowed', 'under_maintenance', 'under_repair', 'damaged', 'disposed', 'lost', 'tersedia', 'dipinjam', 'dalam_perbaikan', 'dihapus'];
 
     const ACQUISITION_SOURCE_OPTIONS = [
@@ -185,7 +265,7 @@ class Asset extends Model
 
     public function labItemProfile()
     {
-        return $this->hasOne(\App\Models\Lab\LabItemProfile::class, 'asset_id');
+        return $this->hasOne(LabItemProfile::class, 'asset_id');
     }
 
     public function category()

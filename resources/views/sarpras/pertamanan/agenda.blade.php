@@ -29,6 +29,7 @@
                     <form method="GET" action="{{ route('sarpras.pertamanan.agenda.index') }}" class="d-flex gap-1"><input type="date" name="date" class="form-control form-control-sm" value="{{ $date->toDateString() }}"><button class="btn btn-primary btn-sm">Tampilkan</button></form>
                     <a href="{{ route('sarpras.pertamanan.agenda.index', ['date' => $nextDate->toDateString()]) }}" class="btn btn-outline-secondary btn-sm" title="Hari berikutnya"><i class="ri-arrow-right-s-line"></i></a>
                     <a href="{{ route('sarpras.pertamanan.agenda.index') }}" class="btn btn-light btn-sm" title="Hari ini"><i class="ri-today-line"></i></a>
+                    <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-outline-secondary btn-sm" title="Alur pemeliharaan taman"><i class="ri-flow-chart"></i></a>
                 </div>
             </div>
         </div>

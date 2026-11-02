@@ -320,14 +320,29 @@ class DormitoryResidentController extends Controller
 
         // Take dormitory ID from query param (sent by JS) or route parameter as fallback
         $dormitoryId = $request->get('dormitory_id') ?? $request->route('asramaUuid');
+        $dormitory = \App\Models\Dormitory::find($dormitoryId);
 
         $academicYear = AcademicYear::where('is_active', true)->first();
+
+        // Mode: `resident` (mutasi internal — hanya penghuni asrama ini) atau
+        // `candidate` (tambah penghuni baru — santri belum berkamar di asrama mana pun).
+        $mode = (string) $request->get('mode', 'resident');
+
+        // Kunci gender + hanya penghuni asrama ini → tidak ada data lintas asrama/gender.
+        $genderCode = match ($dormitory?->gender) {
+            'putra' => 'L',
+            'putri' => 'P',
+            default => null,
+        };
 
         $students = $this->lookup->search(
             query: $q,
             dormitoryId: $dormitoryId,
             academicYearId: $academicYear?->id,
-            limit: 20
+            limit: 20,
+            genderCode: $genderCode,
+            onlyDormitoryResidents: $mode !== 'candidate',
+            excludeAssignedAnywhere: $mode === 'candidate',
         );
 
         return response()->json([
@@ -337,6 +352,7 @@ class DormitoryResidentController extends Controller
                     'name' => $s->name,
                     'nisn' => $s->nisn,
                     'nis' => $s->nis,
+                    'class_name' => $s->class_name,
                     'gender' => $s->gender,
                     'gender_text' => $s->gender_text,
                     'birth_place' => $s->birth_place,

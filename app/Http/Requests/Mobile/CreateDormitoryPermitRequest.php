@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Mobile;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreateDormitoryPermitRequest extends FormRequest
@@ -9,6 +10,22 @@ class CreateDormitoryPermitRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Izin pulang bulanan: kembali otomatis = berangkat + 24 jam.
+        if ($this->input('permit_type') === 'pulang'
+            && $this->filled('departure_datetime')
+            && ! $this->filled('expected_return_datetime')) {
+            $hours = (int) config('asrama.monthly_return_hours', 24);
+
+            $this->merge([
+                'expected_return_datetime' => CarbonImmutable::parse($this->input('departure_datetime'))
+                    ->addHours($hours)
+                    ->format('Y-m-d H:i:s'),
+            ]);
+        }
     }
 
     public function rules(): array

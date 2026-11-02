@@ -141,6 +141,7 @@ class DormitoryPermit extends Model
         'actual_return_datetime' => 'datetime',
         'approved_at' => 'datetime',
         'overdue_notified_at' => 'datetime',
+        'return_reminder_sent_at' => 'datetime',
         'escalation_triggered_at' => 'datetime',
         'scanned_at' => 'datetime',
         'scan_token_expires_at' => 'datetime',

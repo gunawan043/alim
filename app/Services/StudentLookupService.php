@@ -23,22 +23,43 @@ class StudentLookupService
      * @param  string|null  $dormitoryId  Limit to students from same school as this dormitory (optional)
      * @param  string|null  $academicYearId  Filter by academic year
      * @param  int  $limit  Max results
+     * @param  string|null  $genderCode  Batasi gender ('L'/'P') — wajib untuk konteks asrama
+     * @param  bool  $onlyDormitoryResidents  Hanya penghuni aktif asrama ini (untuk mutasi internal)
+     * @param  bool  $excludeAssignedAnywhere  Kecualikan santri yang sudah berkamar di asrama mana pun
      */
-    public function search(string $query, ?string $dormitoryId = null, ?string $academicYearId = null, int $limit = 20): \Illuminate\Support\Collection
+    public function search(
+        string $query,
+        ?string $dormitoryId = null,
+        ?string $academicYearId = null,
+        int $limit = 20,
+        ?string $genderCode = null,
+        bool $onlyDormitoryResidents = false,
+        bool $excludeAssignedAnywhere = false,
+    ): \Illuminate\Support\Collection
     {
         $activeYears = AcademicYear::pluck('id')->toArray();
         $yearId = $academicYearId ?? (AcademicYear::where('is_active', true)->value('id'));
 
         return Cache::remember(
-            sprintf('student_search:%s:%s:%d:%d', md5($query), $yearId ?? 'all', $limit, $dormitoryId ?? 'none'),
+            sprintf(
+                'student_search:%s:%s:%d:%d:%s:%s:%s',
+                md5($query),
+                $yearId ?? 'all',
+                $limit,
+                $dormitoryId ?? 'none',
+                $genderCode ?? 'all',
+                $onlyDormitoryResidents ? 'residents' : 'all',
+                $excludeAssignedAnywhere ? 'unassigned' : 'any'
+            ),
             self::CACHE_TTL,
-            function () use ($query, $dormitoryId, $yearId, $limit) {
+            function () use ($query, $dormitoryId, $yearId, $limit, $genderCode, $onlyDormitoryResidents, $excludeAssignedAnywhere) {
                 $queryObj = Student::where('status', 'active')
                     ->where(fn ($sq) => $sq
                         ->where('name', 'like', "%{$query}%")
                         ->orWhere('nisn', 'like', "%{$query}%")
                         ->orWhere('nik', 'like', "%{$query}%")
                     )
+                    ->when($genderCode, fn ($q) => $q->where('gender', $genderCode))
                     ->limit($limit);
 
                 // If dormitory belongs to a school, scope students to that school
@@ -49,9 +70,29 @@ class StudentLookupService
                     if ($schoolId) {
                         $queryObj->where('school_id', $schoolId);
                     }
+
+                    // Mutasi internal: hanya penghuni aktif asrama ini.
+                    if ($onlyDormitoryResidents) {
+                        $residentIds = DormitoryResident::where('dormitory_id', $dormitoryId)
+                            ->where('is_active', true)
+                            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+                            ->pluck('student_id');
+
+                        $queryObj->whereIn('id', $residentIds);
+                    } elseif ($excludeAssignedAnywhere) {
+                        // Kandidat penghuni baru: belum berkamar di asrama mana pun.
+                        $assignedIds = DormitoryResident::where('is_active', true)
+                            ->whereNotNull('room_id')
+                            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+                            ->pluck('student_id');
+
+                        $queryObj->whereNotIn('id', $assignedIds);
+                    }
                 }
 
-                $students = $queryObj->get(['id', 'name', 'nisn', 'nis', 'gender', 'birth_place', 'birth_date', 'status', 'school_id']);
+                $students = $queryObj
+                    ->with(['currentClassHistory.studyGroup.gradeLevel'])
+                    ->get(['id', 'name', 'nisn', 'nis', 'gender', 'birth_place', 'birth_date', 'status', 'school_id']);
 
                 if ($students->isEmpty()) {
                     return $students;
@@ -73,6 +114,7 @@ class StudentLookupService
                         'name' => $student->name,
                         'nisn' => $student->nisn,
                         'nis' => $student->nis,
+                        'class_name' => $student->class_name,
                         'gender' => $student->gender,
                         'gender_text' => $student->gender_text,
                         'birth_place' => $student->birth_place,
@@ -229,6 +271,26 @@ class StudentLookupService
 
         if ($student->status !== 'active') {
             return (object) ['valid' => false, 'student' => null, 'error' => "Santri berstatus '{$student->status_text}' dan tidak dapat ditugaskan ke asrama."];
+        }
+
+        // Kunci gender: asrama putra hanya L, putri hanya P.
+        if ($dormitoryId) {
+            $dormitory = \App\Models\Dormitory::find($dormitoryId);
+            $expectedGender = match ($dormitory?->gender) {
+                'putra' => 'L',
+                'putri' => 'P',
+                default => null,
+            };
+
+            if ($expectedGender && $student->gender !== $expectedGender) {
+                return (object) [
+                    'valid' => false,
+                    'student' => null,
+                    'error' => 'Santri '.($expectedGender === 'L' ? 'putra' : 'putri')
+                        .' tidak dapat ditempatkan di '.($dormitory->name ?? 'asrama').' (asrama '
+                        .($dormitory?->gender ?? '-').').',
+                ];
+            }
         }
 
         // Check for existing assignment in this dormitory + year

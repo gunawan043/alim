@@ -202,6 +202,7 @@
                                 <tr>
                                     <th class="text-center" style="width:50px;">No</th>
                                     <th>Nama Santri</th>
+                                    <th style="width:11%">Kelas</th>
                                     <th style="width:12%">NISN</th>
                                     <th style="width:12%">Ruang / Kamar</th>
                                     <th class="text-center" style="width:7%">Tempat Tidur</th>
@@ -233,6 +234,13 @@
                                                     @endif
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td>
+                                            @if($resident->student?->class_name && $resident->student->class_name !== '-')
+                                                <span class="badge bg-info-subtle text-info">{{ $resident->student->class_name }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
                                         </td>
                                         <td><code class="text-dark">{{ $resident->student?->nisn ?? '—' }}</code></td>
                                         <td>
@@ -292,7 +300,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <x-empty-state colspan="8" title="Belum ada penghuni"
+                                    <x-empty-state colspan="9" title="Belum ada penghuni"
                                         message="Belum ada santri yang ditempatkan di asrama ini pada filter tersebut.">
                                         <a href="{{ route('user.asrama.residents.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
                                            class="btn btn-primary btn-sm mt-3">

@@ -3,11 +3,15 @@
 namespace App\Services\Sarpras\Automation;
 
 use App\Jobs\Sarpras\SendSarprasNotificationJob;
-use App\Models\NotificationUniversal;
+use App\Services\NotificationUniversalService;
 use Illuminate\Support\Facades\Log;
 
 class SarprasNotificationService
 {
+    public function __construct(
+        protected NotificationUniversalService $universal,
+    ) {}
+
     /**
      * Build payload for a Sarpras event and dispatch asynchronously.
      */
@@ -48,24 +52,33 @@ class SarprasNotificationService
 
     /**
      * Direct delivery (synchronous — for caller who already has Service).
+     *
+     * Wajib lewat NotificationUniversalService::send() agar
+     * handleDeliveryChannels() ikut berjalan (WhatsApp/email/push).
+     * Membuat record NotificationUniversal secara langsung akan melewati
+     * kanal tersebut sehingga penugasan tidak pernah masuk ke WhatsApp.
      */
     public function deliver(string $userId, array $payload): void
     {
+        $eventType = (string) ($payload['event_type'] ?? 'sarpras');
+
         try {
-            NotificationUniversal::create([
-                'user_id' => $userId,
+            $this->universal->send($userId, [
                 'module' => $payload['module'] ?? 'sarpras',
                 'reference_type' => $payload['reference_type'] ?? null,
                 'reference_id' => $payload['reference_id'] ?? null,
                 'reference_code' => $payload['reference_code'] ?? null,
                 'type' => $payload['type'] ?? 'info',
-                'action' => $payload['event_type'] ?? 'system',
+                'action' => $eventType,
                 'title' => $payload['title'],
                 'message' => $payload['message'],
                 'data' => $payload['data'] ?? null,
                 'action_url' => $payload['action_url'] ?? null,
                 'action_text' => $payload['action_text'] ?? 'Lihat Detail',
                 'priority' => $payload['priority'] ?? 'medium',
+                // Kanal in-app selalu dibuat oleh send(); penugasan hanya
+                // menambah WhatsApp agar tidak mengubah perilaku email/push.
+                'send_whatsapp' => true,
             ]);
         } catch (\Throwable $e) {
             Log::warning("SarprasNotification deliver failed for user {$userId}: ".$e->getMessage());

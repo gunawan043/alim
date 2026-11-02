@@ -21,6 +21,7 @@ class CreateDormitoryVisitRequest extends FormRequest
             'visitor_relationship' => 'required|in:mahrom,wali,keluarga,pihak_pondok,lainnya',
             'purpose' => 'required|in:menjenguk,bawa_bantuan,pertemuan_wali,antar_jemput,lainnya',
             'expected_arrival_datetime' => 'required|date|after:now',
+            'departure_datetime' => 'required|date|after:expected_arrival_datetime',
             'expected_meet_duration_minutes' => 'nullable|integer|min:15|max:480',
             'notes' => 'nullable|string|max:500',
             'mahrom_id' => 'nullable|uuid|exists:student_mahroms,id',
@@ -39,6 +40,8 @@ class CreateDormitoryVisitRequest extends FormRequest
             'purpose.required' => 'Tujuan kunjungan wajib dipilih.',
             'expected_arrival_datetime.required' => 'Waktu kedatangan wajib diisi.',
             'expected_arrival_datetime.after' => 'Waktu kedatangan harus di waktu yang akan datang.',
+            'departure_datetime.required' => 'Tanggal dan jam kembali/pulang wajib diisi.',
+            'departure_datetime.after' => 'Waktu kembali harus setelah waktu kedatangan.',
             'mahrom_id.exists' => 'Mahrom tidak ditemukan.',
         ];
     }

@@ -115,6 +115,13 @@ class SarprasTechnicianWorkspaceController extends SarprasBaseController
             return response()->json(['success' => true, 'order' => $updated]);
         }
 
+        // Pekerjaan selesai -> langsung arahkan mengisi laporan singkat.
+        if (! $updated->assignmentReport()->exists()) {
+            return redirect()
+                ->route('sarpras.assignment-report.index', ['work_order_id' => $updated->id])
+                ->with('success', 'Work order diselesaikan. Lengkapi laporan pekerjaan di bawah ini.');
+        }
+
         return back()->with('success', 'Work order diselesaikan.');
     }
 

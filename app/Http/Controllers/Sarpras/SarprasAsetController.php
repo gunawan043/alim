@@ -174,7 +174,21 @@ class SarprasAsetController extends SarprasBaseController
         // Riwayat perpindahan
         $riwayatPerpindahan = $aset->locationHistories()->with(['fromRoom', 'toRoom', 'mover'])->orderBy('moved_date', 'desc')->limit(10)->get();
 
-        return view('sarpras.aset.show', compact('aset', 'riwayatPinjaman', 'riwayatMaintenance', 'riwayatPerpindahan'));
+        // QR: siapa yang boleh mengubah mode (per unit / seragam)
+        $canManageQr = $this->isCentralSarpras()
+            || $this->isUrtLeadership()
+            || $this->isUnitSarprasOfficer();
+
+        $qrGroupMembers = $aset->isGroupQr()
+            ? $aset->qrGroupMembers()->with('room')->get()
+            : collect();
+
+        $qrModeOptions = Asset::QR_MODE_OPTIONS;
+
+        return view('sarpras.aset.show', compact(
+            'aset', 'riwayatPinjaman', 'riwayatMaintenance', 'riwayatPerpindahan',
+            'canManageQr', 'qrGroupMembers', 'qrModeOptions',
+        ));
     }
 
     public function edit(string $userId, Request $request, string $id)

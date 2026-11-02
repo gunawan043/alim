@@ -301,12 +301,191 @@ class DormitoryPermitController extends Controller
                 : 'Permintaan izin berhasil diajukan.');
     }
 
+    /**
+     * Ubah tanggal/jam kembali untuk banyak izin sekaligus (kepulangan masal).
+     */
+    public function bulkUpdateReturn(Request $request, string $userId, string $asramaUuid)
+    {
+        $this->enforceDormitoryScope($asramaUuid);
+
+        $data = $request->validate([
+            'permit_ids' => 'required|array|min:1',
+            'permit_ids.*' => 'uuid',
+            'expected_return_datetime' => 'required|date',
+        ], [
+            'permit_ids.required' => 'Pilih minimal satu izin.',
+            'expected_return_datetime.required' => 'Tanggal dan jam kembali wajib diisi.',
+        ]);
+
+        $returnAt = CarbonImmutable::parse($data['expected_return_datetime']);
+        $permits = DormitoryPermit::with('student')
+            ->where('dormitory_id', $asramaUuid)
+            ->whereIn('id', $data['permit_ids'])
+            ->whereIn('status', [
+                DormitoryPermit::STATUS_PENDING,
+                DormitoryPermit::STATUS_APPROVED,
+                DormitoryPermit::STATUS_PICKED_UP,
+                DormitoryPermit::STATUS_OVERDUE,
+            ])
+            ->get();
+
+        $updated = 0;
+        $skipped = [];
+
+        foreach ($permits as $permit) {
+            if ($permit->departure_datetime && ! $returnAt->greaterThan($permit->departure_datetime)) {
+                $skipped[] = $permit->student?->name ?? $permit->id;
+
+                continue;
+            }
+
+            // Reset penghitung pengingat agar jadwal baru dihitung ulang.
+            $permit->forceFill([
+                'expected_return_datetime' => $returnAt,
+                'overdue_notified_count' => 0,
+                'overdue_notified_at' => null,
+                'return_reminder_sent_at' => null,
+            ])->save();
+
+            $updated++;
+        }
+
+        $message = "Tanggal kembali {$updated} izin berhasil diperbarui.";
+        if ($skipped !== []) {
+            $message .= ' Dilewati (tanggal kembali tidak valid): '.implode(', ', $skipped).'.';
+        }
+
+        return back()->with($updated > 0 ? 'success' : 'error', $message);
+    }
+
+    /**
+     * Form kepulangan masal: buat izin untuk banyak santri dalam satu kali isi.
+     */
+    public function massalCreate(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->first();
+
+        $activePermitStudentIds = DormitoryPermit::where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->whereIn('status', ['pending', 'approved', 'picked_up', 'overdue'])
+            ->pluck('student_id')
+            ->all();
+
+        $residents = DormitoryResident::with(['student', 'room'])
+            ->where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true)
+            ->whereNotIn('student_id', $activePermitStudentIds)
+            ->get()
+            ->sortBy(fn ($r) => $r->student?->name)
+            ->values();
+
+        $permitTypes = PermitType::active()->ordered()->get();
+
+        return view('dormitory.permits.massal', [
+            'dormitory' => $dormitory,
+            'residents' => $residents,
+            'permitTypes' => $permitTypes,
+            'userId' => $userId,
+            'activeYear' => $activeYear,
+            'excludedCount' => count($activePermitStudentIds),
+        ]);
+    }
+
+    /**
+     * Simpan kepulangan masal — satu tanggal kembali untuk semua santri terpilih.
+     */
+    public function massalStore(Request $request, string $userId, string $asramaUuid)
+    {
+        $dormitory = $this->enforceDormitoryScope($asramaUuid);
+        $activeYear = AcademicYear::where('is_active', true)->firstOrFail();
+
+        $data = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'exists:students,id',
+            'permit_type' => 'required|string|max:50',
+            'departure_datetime' => 'required|date',
+            'expected_return_datetime' => 'nullable|date|after:departure_datetime',
+            'destination' => 'nullable|string|max:191',
+            'purpose' => 'nullable|string',
+            'guardian_consent_confirmed' => 'required|accepted',
+            'notes' => 'nullable|string',
+        ], [
+            'student_ids.required' => 'Pilih minimal satu santri.',
+            'guardian_consent_confirmed.accepted' => 'Persetujuan orang tua/wali wajib dicatat untuk kepulangan masal.',
+        ]);
+
+        $returnAt = filled($data['expected_return_datetime'] ?? null)
+            ? CarbonImmutable::parse($data['expected_return_datetime'])
+            : CarbonImmutable::parse($data['departure_datetime'])
+                ->addHours((int) config('asrama.monthly_return_hours', 24));
+
+        $residentIds = DormitoryResident::where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear->id)
+            ->where('is_active', true)
+            ->whereIn('student_id', $data['student_ids'])
+            ->pluck('student_id')
+            ->all();
+
+        $created = 0;
+        $skipped = [];
+
+        foreach ($data['student_ids'] as $studentId) {
+            if (! in_array($studentId, $residentIds, true)) {
+                $skipped[] = 'Bukan penghuni aktif asrama';
+
+                continue;
+            }
+
+            if (AsramaConfig::consentRequiredForDormitory($asramaUuid)
+                && ! DormitoryDataConsent::activeFor($studentId, $asramaUuid)) {
+                $skipped[] = (\App\Models\Student::whereKey($studentId)->value('name') ?? $studentId).' (PDP belum dicatat)';
+
+                continue;
+            }
+
+            try {
+                $this->leave->submit(
+                    data: [
+                        'student_id' => $studentId,
+                        'room_id' => DormitoryResident::where('student_id', $studentId)
+                            ->where('dormitory_id', $asramaUuid)
+                            ->where('is_active', true)
+                            ->value('room_id'),
+                        'permit_type' => $data['permit_type'],
+                        'destination' => $data['destination'] ?? null,
+                        'purpose' => $data['purpose'] ?? null,
+                        'departure_datetime' => $data['departure_datetime'],
+                        'expected_return_datetime' => $returnAt->format('Y-m-d H:i:s'),
+                        'guardian_consent_confirmed' => true,
+                        'guardian_approval_channel' => 'manual',
+                        'notes' => $data['notes'] ?? null,
+                        'created_by' => $request->user()?->id,
+                    ],
+                    dormitoryId: $asramaUuid,
+                    activeYearId: $activeYear->id,
+                );
+                $created++;
+            } catch (QuotaExceededException|ActivePermitExistsException|\InvalidArgumentException $e) {
+                $skipped[] = (\App\Models\Student::whereKey($studentId)->value('name') ?? $studentId).' ('.$e->getMessage().')';
+            }
+        }
+
+        $message = "{$created} izin kepulangan masal berhasil dibuat.";
+        if ($skipped !== []) {
+            $message .= ' '.count($skipped).' santri dilewati.';
+        }
+
+        return redirect()
+            ->route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            ->with($created > 0 ? 'success' : 'error', $message)
+            ->with('massal_skipped', $skipped);
+    }
+
     public function show(Request $request, string $userId, string $asramaUuid, string $permitUuid)
     {
         $dormitory = $this->enforceDormitoryScope($asramaUuid);
-        $permit = DormitoryPermit::with(['student.mahroms', 'room', 'mahrom', 'approvedBy', 'creator'])
-            ->where('dormitory_id', $asramaUuid)
-            ->findOrFail($permitUuid);
 
         $canAuthorizePickup = app(DormitoryPolicyAccess::class)
             ->canManageQuota(auth()->user(), $asramaUuid);

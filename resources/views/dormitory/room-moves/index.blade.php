@@ -204,6 +204,9 @@
                                                 </div>
                                                 <div>
                                                     <span class="fw-semibold">{{ $move->resident?->student?->name ?? '—' }}</span>
+                                                    @if($move->resident?->student?->class_name && $move->resident->student->class_name !== '-')
+                                                        <span class="badge bg-info-subtle text-info ms-1">{{ $move->resident->student->class_name }}</span>
+                                                    @endif
                                                     @if($move->resident?->student?->nisn)
                                                         <br><small class="text-muted">{{ $move->resident->student->nisn }}</small>
                                                     @endif

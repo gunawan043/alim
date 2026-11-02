@@ -113,6 +113,16 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
         </div>
     @endif
+    @if(session('massal_skipped') && count(session('massal_skipped')) > 0)
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="ri-alert-line me-2"></i>
+            <strong>Santri dilewati pada kepulangan masal:</strong>
+            <ul class="mb-0 mt-1">
+                @foreach(session('massal_skipped') as $reason)<li>{{ $reason }}</li>@endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+        </div>
+    @endif
 
     @php
         $totalApproved = ($stats['approved'] ?? 0) + ($stats['picked_up'] ?? 0);
@@ -394,6 +404,19 @@
                         </form>
 
                         <div class="toolbar-actions">
+                            <a href="{{ route('user.asrama.permits.massal.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                               class="btn btn-outline-primary btn-sm" title="Buat izin untuk banyak santri sekaligus">
+                                <i class="ri-user-shared-line me-1"></i> Kepulangan Masal
+                            </a>
+                            <button type="button" class="btn btn-outline-warning btn-sm" id="btnBulkReturn" disabled
+                                    data-bs-toggle="modal" data-bs-target="#bulkReturnModal" title="Atur tanggal kembali untuk izin terpilih">
+                                <i class="ri-calendar-2-line me-1"></i> Atur Tanggal Kembali
+                                <span class="badge bg-warning text-dark ms-1" id="bulkReturnCount">0</span>
+                            </button>
+                            <a href="{{ route('user.asrama.notifications.edit', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}"
+                               class="btn btn-outline-primary btn-sm" title="Atur pengingat otomatis ke wali">
+                                <i class="ri-notification-3-line me-1"></i> Pengaturan Notifikasi
+                            </a>
                             <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#permitFilterModal">
                                 <i class="ri-filter-3-line me-1"></i> Filter Lanjutan
                                 @if(request()->hasAny(['status', 'permit_type', 'start_date', 'end_date']))
@@ -440,6 +463,9 @@
                         <table class="table table-hover align-middle table-freeze">
                             <thead class="table-light">
                                 <tr>
+                                    <th class="text-center" style="width:34px;">
+                                        <input type="checkbox" class="form-check-input" id="permitCheckAll" aria-label="Pilih semua izin">
+                                    </th>
                                     <th class="text-center">No</th>
                                     <th>Santri</th>
                                     <th>Jenis</th>
@@ -453,6 +479,12 @@
                             <tbody class="list">
                                 @forelse($permits as $i => $permit)
                                     <tr class="{{ $permit->isOverdue ? 'table-danger' : '' }}">
+                                        <td class="text-center">
+                                            @if(in_array($permit->status, ['pending', 'approved', 'picked_up', 'overdue'], true))
+                                                <input type="checkbox" class="form-check-input permit-row-check"
+                                                       value="{{ $permit->id }}" aria-label="Pilih izin {{ $permit->student?->name }}">
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             <span class="text-muted" style="font-size:12px;">{{ $permits->firstItem() + $i }}</span>
                                         </td>
@@ -818,6 +850,34 @@
         </div>
     </div>
 
+    {{-- MODAL: Atur tanggal kembali massal --}}
+    <div class="modal fade" id="bulkReturnModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="POST" action="{{ route('user.asrama.permits.bulk-return', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" id="bulkReturnForm">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="ri-calendar-2-line me-2 text-warning"></i>Atur Tanggal Kembali Massal</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="bulkReturnIds"></div>
+                        <p class="text-muted small mb-3">
+                            <span id="bulkReturnSelected">0</span> izin terpilih akan memakai tanggal kembali yang sama.
+                        </p>
+                        <label for="bulk_return_datetime" class="form-label">Tanggal &amp; Jam Kembali <span class="text-danger">*</span></label>
+                        <input type="datetime-local" name="expected_return_datetime" id="bulk_return_datetime" class="form-control" required>
+                        <div class="form-text">Pengingat otomatis ke wali akan dihitung ulang dari tanggal baru ini.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-warning"><i class="ri-save-line me-1"></i> Simpan Tanggal</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
 @endsection
 
 @section('script')
@@ -970,6 +1030,49 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+});
+</script>
+<script>
+// ── Atur tanggal kembali massal ──────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
+    const checks = Array.from(document.querySelectorAll('.permit-row-check'));
+    const checkAll = document.getElementById('permitCheckAll');
+    const btn = document.getElementById('btnBulkReturn');
+    const countBadge = document.getElementById('bulkReturnCount');
+    const selectedLabel = document.getElementById('bulkReturnSelected');
+    const idsWrap = document.getElementById('bulkReturnIds');
+    const form = document.getElementById('bulkReturnForm');
+
+    function selectedIds() {
+        return checks.filter(c => c.checked).map(c => c.value);
+    }
+
+    function refresh() {
+        const ids = selectedIds();
+        if (countBadge) countBadge.textContent = ids.length;
+        if (btn) btn.disabled = ids.length === 0;
+        if (selectedLabel) selectedLabel.textContent = ids.length;
+        if (idsWrap) {
+            idsWrap.innerHTML = ids.map(id => '<input type="hidden" name="permit_ids[]" value="' + id + '">').join('');
+        }
+    }
+
+    checkAll?.addEventListener('change', function () {
+        checks.forEach(c => { c.checked = checkAll.checked; });
+        refresh();
+    });
+
+    checks.forEach(c => c.addEventListener('change', refresh));
+
+    form?.addEventListener('submit', function (e) {
+        const dt = document.getElementById('bulk_return_datetime');
+        if (selectedIds().length === 0 || !dt || !dt.value) {
+            e.preventDefault();
+            alert('Pilih izin dan isi tanggal kembali terlebih dahulu.');
+        }
+    });
+
+    refresh();
 });
 </script>
 @endsection

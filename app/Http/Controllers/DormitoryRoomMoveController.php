@@ -22,7 +22,7 @@ class DormitoryRoomMoveController extends Controller
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        $query = DormitoryRoomMove::with(['student', 'fromRoom', 'toRoom', 'approvedBy'])
+        $query = DormitoryRoomMove::with(['student.currentClassHistory.studyGroup.gradeLevel', 'fromRoom', 'toRoom', 'approvedBy'])
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id);
 
@@ -66,7 +66,7 @@ class DormitoryRoomMoveController extends Controller
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        $residents = DormitoryResident::with(['student', 'room'])
+        $residents = DormitoryResident::with(['student.currentClassHistory.studyGroup.gradeLevel', 'room'])
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id)
             ->where('is_active', true)

@@ -10,6 +10,7 @@ use App\Models\AssetRoom;
 use App\Models\ProcurementRequest;
 use App\Models\RoomBooking;
 use App\Models\School;
+use App\Services\Sarpras\UrtAgendaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -55,6 +56,15 @@ class SarprasDashboardController extends SarprasBaseController
         );
 
         // ===================================================================
+        // AGENDA MENDATANG + PRIORITAS (URT/Sarpras)
+        // ===================================================================
+        $agenda = Cache::remember(
+            'sarpras_dashboard_agenda:v'.$sarprasVersion.':'.($filterSchoolId ?? 'all'),
+            now()->addMinutes(5),
+            fn () => app(UrtAgendaService::class)->build($filterSchoolId)
+        );
+
+        // ===================================================================
         // AKTIVITAS TERAKHIR (audit log-style)
         // ===================================================================
         $recentAssets = Asset::query()
@@ -86,6 +96,7 @@ class SarprasDashboardController extends SarprasBaseController
             'pengadaanPending', 'pengadaanApproved',
             'chartKondisi', 'chartStatus',
             'recentAssets', 'recentLoans',
+            'agenda',
             'schools', 'viewAll', 'filterSchoolId'
         ));
     }

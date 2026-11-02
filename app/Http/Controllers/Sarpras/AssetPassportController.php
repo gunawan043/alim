@@ -79,44 +79,49 @@ class AssetPassportController extends SarprasBaseController
      */
     public function scan(string $userId, Request $request, string $code)
     {
-        $user = $request->user();
+        return $this->resolveScan($request, $code);
+    }
 
-        try {
-            $scanHistory = QrScanHistory::create([
-                'asset_id' => null,
-                'scanned_by' => $user?->id,
-                'scan_type' => 'qr',
-                'lookup_value' => (string) $code,
-                'source' => $request->header('X-QR-Source', 'web-scanner'),
-                'ip_address' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 255),
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('QR scan history recording failed', ['code' => $code, 'error' => $e->getMessage()]);
-            $scanHistory = null;
+    /**
+     * QR seragam kelompok: satu label untuk banyak unit aset sejenis
+     * (mis. kursi ruang kelas). Halaman ini menampilkan seluruh unit
+     * dalam kelompok beserta kondisinya.
+     */
+    public function scanGroup(string $userId, Request $request, string $key)
+    {
+        $assets = Asset::with(['room', 'room.school', 'category'])
+            ->where('qr_mode', Asset::QR_MODE_GROUP)
+            ->where('qr_group_key', $key)
+            ->where('is_active', true)
+            ->orderBy('asset_name')
+            ->get();
+
+        if ($assets->isEmpty()) {
+            return view('sarpras.passport.scan_missing', ['code' => $key]);
         }
 
-        // Resolve asset by code or UUID
+        $this->recordScan($request, $key, $assets->first(), 'group');
+
+        return view('sarpras.qr.group', [
+            'groupKey' => $key,
+            'assets' => $assets,
+            'asset' => $assets->first(),
+        ]);
+    }
+
+    private function resolveScan(Request $request, string $code)
+    {
         $asset = Asset::where('id', $code)
             ->orWhere('asset_code', $code)
             ->first();
+
+        $this->recordScan($request, $code, $asset);
 
         if (! $asset) {
             return view('sarpras.passport.scan_missing', ['code' => $code]);
         }
 
-        if ($scanHistory) {
-            $scanHistory->update(['asset_id' => $asset->id]);
-        }
-
-        // Dispatch the existing event for analytics/audit pipelines
-        try {
-            AssetQrScanned::dispatch($asset, $scanHistory, $user);
-        } catch (\Throwable $e) {
-            Log::warning('AssetQrScanned event dispatch failed', ['asset' => $asset->id, 'error' => $e->getMessage()]);
-        }
-
-        if (! $asset->is_active || $asset->status === 'dihapus') {
+        if ($asset->status === 'dihapus') {
             return view('sarpras.passport.scan_disposed', ['asset' => $asset]);
         }
 
@@ -125,5 +130,39 @@ class AssetPassportController extends SarprasBaseController
         }
 
         return redirect()->route('sarpras.assets.passport', ['uuid' => $asset->id]);
+    }
+
+    /**
+     * Catat riwayat scan + kirim event (best-effort, tidak boleh menggagalkan scan).
+     */
+    private function recordScan(Request $request, string $code, ?Asset $asset, string $scanType = 'qr'): void
+    {
+        $user = $request->user();
+
+        try {
+            $scanHistory = QrScanHistory::create([
+                'asset_id' => $asset?->id,
+                'scanned_by' => $user?->id,
+                'scan_type' => $scanType,
+                'lookup_value' => (string) $code,
+                'source' => $request->header('X-QR-Source', 'web-scanner'),
+                'ip_address' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 255),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('QR scan history recording failed', ['code' => $code, 'error' => $e->getMessage()]);
+
+            return;
+        }
+
+        if (! $asset) {
+            return;
+        }
+
+        try {
+            AssetQrScanned::dispatch($asset, $scanHistory, $user);
+        } catch (\Throwable $e) {
+            Log::warning('AssetQrScanned event dispatch failed', ['asset' => $asset->id, 'error' => $e->getMessage()]);
+        }
     }
 }

@@ -253,6 +253,23 @@ class Student extends Model
         return $this->gender === 'L' ? 'Laki-laki' : 'Perempuan';
     }
 
+    /**
+     * Label kelas santri dari riwayat kelas terakhir (mis. "Kelas 7 A").
+     * Dipakai lintas modul (asrama, penempatan kamar) agar tampilan konsisten.
+     */
+    public function getClassNameAttribute(): string
+    {
+        $group = $this->currentClassHistory?->studyGroup;
+
+        if (! $group) {
+            return '-';
+        }
+
+        $label = trim(($group->gradeLevel?->name ?? '').' '.($group->name ?? ''));
+
+        return $label !== '' ? $label : '-';
+    }
+
     public function getStatusTextAttribute(): string
     {
         return match ($this->status) {

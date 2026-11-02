@@ -15,6 +15,44 @@
 <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>
 @endif
 
+{{-- PETA ALUR KERJA URT --}}
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h5 class="card-title mb-0"><i class="ri-flow-chart me-2 text-primary"></i>Alur Kerja Unit Rumah Tangga</h5>
+                <p class="text-muted small mb-0">Sembilan prosedur, dari satuan kerja sampai eksekusi dan verifikasi.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('sarpras.qr.scanner') }}" class="btn btn-sm btn-outline-danger"><i class="ri-qr-scan-2-line me-1"></i>Scan QR Aset</a>
+                <a href="{{ route('sarpras.assignment-report.index') }}" class="btn btn-sm btn-outline-warning"><i class="ri-file-list-3-line me-1"></i>Laporan Penugasan</a>
+                <a href="{{ route('sarpras.workflow.assignment') }}" class="btn btn-sm btn-outline-primary"><i class="ri-user-settings-line me-1"></i>Penugasan &amp; Area Kerja</a>
+                <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-sm btn-primary"><i class="ri-arrow-right-line me-1"></i>Buka Peta Alur</a>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach([
+                ['Pendataan Aset', 'ri-archive-2-line', 'sarpras.aset.index'],
+                ['Pemeliharaan', 'ri-calendar-todo-line', 'sarpras.pemeliharaan.schedule.index'],
+                ['Perbaikan', 'ri-tools-line', 'sarpras.repair.index'],
+                ['Peminjaman', 'ri-hand-coin-line', 'sarpras.peminjaman.index'],
+                ['Penghapusan', 'ri-delete-bin-6-line', 'sarpras.disposal.pending'],
+                ['Pengadaan', 'ri-shopping-cart-2-line', 'sarpras.pengadaan.index'],
+                ['Listrik Padam', 'ri-flashlight-line', 'sarpras.electricity.outages.index'],
+                ['Kebersihan', 'ri-brush-line', 'sarpras.kebersihan.areas'],
+                ['Pertamanan', 'ri-plant-line', 'sarpras.pertamanan.agenda.index'],
+            ] as [$label, $icon, $route])
+                <a href="{{ route($route) }}" class="btn btn-sm btn-light border"><i class="{{ $icon }} me-1 text-primary"></i>{{ $label }}</a>
+            @endforeach
+        </div>
+    </div>
+</div>
+
+{{-- AGENDA MENDATANG & PRIORITAS --}}
+<div class="mb-4">
+    @include('dashboard.unit-rumah-tangga.widgets.agenda-prioritas-urt', ['data' => $agenda])
+</div>
+
 <div class="row">
     {{-- GEDUNG --}}
     <div class="col-xl-3 col-md-6">

@@ -283,55 +283,14 @@ class DormitoryService
 
     /**
      * Proses eskalasi permit yang overdue.
-     * Dipanggil oleh scheduled job setiap jam.
+     * Dijalankan oleh scheduler setiap menit; aturan (interval, jumlah
+     * pengingat, kanal, eskalasi) mengikuti pengaturan per asrama.
      */
     public function processOverduePermits(): int
     {
-        $overduePermits = DormitoryPermit::where('status', 'approved')
-            ->whereNull('actual_return_datetime')
-            ->where('expected_return_datetime', '<', now())
-            ->where('overdue_notified_count', '<', 3)
-            ->get();
+        $result = app(\App\Services\Dormitory\ReturnReminderService::class)->process();
 
-        $count = 0;
-        foreach ($overduePermits as $permit) {
-            $permit->increment('overdue_notified_count');
-            $permit->update(['overdue_notified_at' => now()]);
-            $this->notifyMahromOnAlpa($permit);
-            $count++;
-        }
-
-        // Eskalasi ke admin jika sudah 3x notifikasi dan masih overdue > 3 jam
-        DormitoryPermit::where('status', 'approved')
-            ->whereNull('actual_return_datetime')
-            ->where('overdue_notified_count', '>=', 3)
-            ->where('expected_return_datetime', '<', now()->subHours(3))
-            ->whereNull('escalation_triggered_at')
-            ->each(function (DormitoryPermit $p) {
-                $p->update(['status' => 'overdue', 'escalation_triggered_at' => now()]);
-
-                // Emit a TYPE_LEAVE_OVERDUE timeline event so the audit
-                // trail and per-student history reflect the escalation.
-                $this->timeline->record(
-                    studentId: $p->student_id,
-                    eventType: BoardingTimelineEvent::TYPE_LEAVE_OVERDUE,
-                    dormitoryId: $p->dormitory_id,
-                    subjectRefs: [
-                        'permit_id' => $p->id,
-                        'permit_type' => $p->permit_type,
-                        'expected_return_datetime' => $p->expected_return_datetime,
-                    ],
-                    payload: [
-                        'overdue_notified_count' => $p->overdue_notified_count,
-                        'overdue_minutes' => $p->expected_return_datetime
-                            ? now()->diffInMinutes($p->expected_return_datetime)
-                            : null,
-                    ],
-                    sourceSystem: 'dormitory.overdue-job',
-                );
-            });
-
-        return $count;
+        return (int) ($result['reminders'] ?? 0);
     }
 
     /**

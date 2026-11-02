@@ -595,7 +595,20 @@ class DormitoryReportController extends Controller
     public function studentDetail(string $userId, string $asramaUuid, string $studentId)
     {
         $dormitory = $this->enforceScope($asramaUuid);
-        $student = Student::findOrFail($studentId);
+
+        // Batas akses: hanya santri yang pernah tercatat di asrama ini DAN
+        // sesuai gender asrama. Mencegah profil santri asrama lain dibuka via URL.
+        $expectedGender = match ($dormitory->gender) {
+            'putra' => 'L',
+            'putri' => 'P',
+            default => null,
+        };
+
+        $student = Student::query()
+            ->whereKey($studentId)
+            ->when($expectedGender, fn ($q) => $q->where('gender', $expectedGender))
+            ->whereIn('id', DormitoryResident::where('dormitory_id', $asramaUuid)->select('student_id'))
+            ->firstOrFail();
 
         $residents = DormitoryResident::with(['room.wing'])
             ->where('student_id', $studentId)

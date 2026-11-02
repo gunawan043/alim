@@ -33,6 +33,27 @@ $isAdminFn = $isActiveFn ?? 'isActiveSarpras';
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.workflow.index') ? ' active' : '' }}"
+       href="{{ route('sarpras.workflow.index', ['userId' => $userId]) }}">
+        <i class="ri-flow-chart"></i><span>Alur Kerja URT</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.workflow.assignment') ? ' active' : '' }}"
+       href="{{ route('sarpras.workflow.assignment', ['userId' => $userId]) }}">
+        <i class="ri-user-settings-line"></i><span>Penugasan &amp; Area Kerja</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.assignment-report.index') ? ' active' : '' }}"
+       href="{{ route('sarpras.assignment-report.index', ['userId' => $userId]) }}">
+        <i class="ri-file-list-3-line"></i><span>Laporan Penugasan</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ $isAdminFn($currentRoute, 'sarpras.agenda') ? ' active' : '' }}"
        href="{{ route('sarpras.agenda.index', ['userId' => $userId]) }}">
         <i class="ri-calendar-task-line"></i><span>Agenda Kerja</span>

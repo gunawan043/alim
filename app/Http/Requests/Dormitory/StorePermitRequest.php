@@ -81,6 +81,23 @@ class StorePermitRequest extends FormRequest
     /**
      * Prepare data so booleans survive validation properly.
      */
+    protected function prepareForValidation(): void
+    {
+        // Izin pulang (kepulangan bulanan): waktu kembali otomatis
+        // berangkat + N jam (default 24 jam) bila tidak diisi manual.
+        if ($this->input('permit_type') === 'pulang'
+            && $this->filled('departure_datetime')
+            && ! $this->filled('expected_return_datetime')) {
+            $hours = (int) config('asrama.monthly_return_hours', 24);
+
+            $this->merge([
+                'expected_return_datetime' => CarbonImmutable::parse($this->input('departure_datetime'))
+                    ->addHours($hours)
+                    ->format('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
     protected function passedValidation(): void
     {
         $data = $this->all();

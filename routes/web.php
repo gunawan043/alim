@@ -13,7 +13,6 @@ use App\Http\Controllers\AppFeedbackController;
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Arsip\ArsipInventarisController;
-use App\Http\Controllers\SeoController;
 use App\Http\Controllers\AsramaDashboardController;
 use App\Http\Controllers\AtsDashboardController;
 use App\Http\Controllers\Auth\AccessValidatorController;
@@ -31,6 +30,7 @@ use App\Http\Controllers\Bahasa\BahasaReferenceController;
 use App\Http\Controllers\Bahasa\LanguageActivityController;
 use App\Http\Controllers\Bahasa\LanguageCertificationController;
 use App\Http\Controllers\Bahasa\LanguageDailyLogController;
+use App\Http\Controllers\Bahasa\LanguageViolationController;
 // use App\Http\Controllers\Dashboard\BendaharaDashboardController;
 // use App\Http\Controllers\Dashboard\GuruDashboardController;
 // use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
@@ -44,7 +44,6 @@ use App\Http\Controllers\Bahasa\LanguageDailyLogController;
 // use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
 // use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
 // use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
-use App\Http\Controllers\Bahasa\LanguageViolationController;
 use App\Http\Controllers\Bahasa\MufradatController;
 use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
 use App\Http\Controllers\Boarding\BoardingHeadDashboardController;
@@ -55,10 +54,11 @@ use App\Http\Controllers\BoardingRegulationController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\BulkGraduationController;
 use App\Http\Controllers\BulkPromotionController;
+use App\Http\Controllers\BumpOrderController;
 use App\Http\Controllers\CandidateController;
 use App\Http\Controllers\ClassQrController;
-use App\Http\Controllers\Dashboard\DashboardActionController;
 use App\Http\Controllers\Dashboard\AsramaDashboardController as RoleAsramaDashboardController;
+use App\Http\Controllers\Dashboard\DashboardActionController;
 use App\Http\Controllers\Dashboard\KeuanganDashboardController;
 use App\Http\Controllers\Dashboard\PersonaliaDashboardController as RolePersonaliaDashboardController;
 use App\Http\Controllers\Dashboard\PimpinanDashboardController;
@@ -68,14 +68,18 @@ use App\Http\Controllers\Dashboard\UksDashboardController as RoleUksDashboardCon
 use App\Http\Controllers\Dashboard\UnitRumahTanggaDashboardController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\DivisiController;
+use App\Http\Controllers\DocumentSignatureSettingController;
+use App\Http\Controllers\DocumentVerificationController;
 use App\Http\Controllers\DokumenIsoController;
 use App\Http\Controllers\DormitoryActivityController;
 use App\Http\Controllers\DormitoryAttendanceController;
+use App\Http\Controllers\DormitoryBoardingController;
 use App\Http\Controllers\DormitoryDailyTaskController;
 use App\Http\Controllers\DormitoryImportController;
 use App\Http\Controllers\DormitoryInventoryController;
 use App\Http\Controllers\DormitoryLeavePolicyController;
 use App\Http\Controllers\DormitoryMasterController;
+use App\Http\Controllers\DormitoryNotificationSettingController;
 use App\Http\Controllers\DormitoryPermitController;
 use App\Http\Controllers\DormitoryPointCatalogController;
 use App\Http\Controllers\DormitoryPostController;
@@ -109,6 +113,7 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\GradeLevelApiController;
 use App\Http\Controllers\GradeLevelController;
+use App\Http\Controllers\GraduationCertificateController;
 use App\Http\Controllers\GtkAdditionalTaskController;
 use App\Http\Controllers\GtkArabicNameController;
 use App\Http\Controllers\GTKEducationController;
@@ -124,6 +129,7 @@ use App\Http\Controllers\HumasGuestVisitController;
 use App\Http\Controllers\HumasMediaContactController;
 use App\Http\Controllers\HumasSatisfactionController;
 use App\Http\Controllers\ImpersonateController;
+use App\Http\Controllers\InstitutionDebtController;
 use App\Http\Controllers\InstitutionDecreeController;
 use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\JadwalKbmController;
@@ -174,11 +180,11 @@ use App\Http\Controllers\Perpustakaan\LibraryMemberController;
 use App\Http\Controllers\Perpustakaan\LibraryProgramController;
 use App\Http\Controllers\Perpustakaan\LibraryReportController;
 use App\Http\Controllers\Perpustakaan\LibraryRoomController;
+// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Perpustakaan\LibraryStockOpnameController;
 use App\Http\Controllers\Perpustakaan\LibraryStudentOperatorController;
 use App\Http\Controllers\Perpustakaan\LibraryUnitController;
 use App\Http\Controllers\Perpustakaan\LibraryVisitController;
-// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Personalia\AbsensiGtkController;
 use App\Http\Controllers\Personalia\AnalisisGtkController;
 use App\Http\Controllers\Personalia\CrossUnitAssignmentController;
@@ -206,6 +212,7 @@ use App\Http\Controllers\Sarpras\AssetPassportPdfController;
 use App\Http\Controllers\Sarpras\DivisionPortalController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasAsetController;
+use App\Http\Controllers\Sarpras\SarprasAssetTimelineController;
 use App\Http\Controllers\Sarpras\SarprasAssetMovementController;
 use App\Http\Controllers\Sarpras\SarprasAuditorWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasBookingController;
@@ -215,11 +222,11 @@ use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasDashboardController;
 use App\Http\Controllers\Sarpras\SarprasDataAuditController;
 use App\Http\Controllers\Sarpras\SarprasDataExchangeController;
+// REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasDisposalController;
 use App\Http\Controllers\Sarpras\SarprasDivisionPortalController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
-// REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
 use App\Http\Controllers\Sarpras\SarprasItemManagerController;
 use App\Http\Controllers\Sarpras\SarprasKepalaApprovalController;
@@ -232,7 +239,6 @@ use App\Http\Controllers\Sarpras\SarprasPertamananController;
 use App\Http\Controllers\Sarpras\SarprasPicApprovalController;
 use App\Http\Controllers\Sarpras\SarprasPredictiveMaintenanceController;
 use App\Http\Controllers\Sarpras\SarprasProcurementController;
-use App\Http\Controllers\Sarpras\SarprasVehicleController;
 use App\Http\Controllers\Sarpras\SarprasPurchaseOrderController;
 use App\Http\Controllers\Sarpras\SarprasQRController;
 use App\Http\Controllers\Sarpras\SarprasRepairController;
@@ -243,8 +249,11 @@ use App\Http\Controllers\Sarpras\SarprasSparepartController;
 use App\Http\Controllers\Sarpras\SarprasStockOpnameController;
 use App\Http\Controllers\Sarpras\SarprasTechnicianWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasUserController;
+use App\Http\Controllers\Sarpras\SarprasVehicleController;
 use App\Http\Controllers\Sarpras\SarprasVendorController;
 use App\Http\Controllers\Sarpras\SarprasWasteController;
+use App\Http\Controllers\Sarpras\SarprasAssignmentReportController;
+use App\Http\Controllers\Sarpras\SarprasWorkflowController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\SatuanKerja\PositionController as SatuanPositionController;
 use App\Http\Controllers\SatuanKerja\TaskController as SatuanTaskController;
@@ -252,14 +261,14 @@ use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolsGlobalController;
 use App\Http\Controllers\SchoolUnitController;
 use App\Http\Controllers\SecureAccessController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\SiplahController;
 use App\Http\Controllers\StudentAchievementController;
 use App\Http\Controllers\StudentArabicNameController;
-use App\Http\Controllers\DocumentSignatureSettingController;
-use App\Http\Controllers\StudentDataReconciliationController;
-use App\Http\Controllers\GraduationCertificateController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentCounselingRecordController;
+use App\Http\Controllers\StudentDataReconciliationController;
 use App\Http\Controllers\StudentHealthCheckupController;
 use App\Http\Controllers\StudentHealthMetricController;
 use App\Http\Controllers\StudentHealthPermitController;
@@ -268,10 +277,10 @@ use App\Http\Controllers\StudentMahromController;
 use App\Http\Controllers\StudentMedicineInventoryController;
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
-use App\Http\Controllers\StudentPopulationReportController;
 use App\Http\Controllers\StudentMutationInController;
 use App\Http\Controllers\StudentMutationOutController;
 use App\Http\Controllers\StudentPhotoController;
+use App\Http\Controllers\StudentPopulationReportController;
 use App\Http\Controllers\StudentPromotionController;
 use App\Http\Controllers\StudentRoomHistoryController;
 use App\Http\Controllers\StudentTimelineController;
@@ -294,7 +303,6 @@ use App\Http\Controllers\SuperAdmin\SidebarAccessController;
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
 use App\Http\Controllers\SuperAdmin\TokenSesiController;
 use App\Http\Controllers\SuperAdmin\UserController;
-use App\Http\Controllers\DocumentVerificationController;
 use App\Http\Controllers\SuratVerificationController;
 use App\Http\Controllers\System\SystemDashboardController;
 use App\Http\Controllers\System\ViewAsController;
@@ -311,8 +319,8 @@ use App\Http\Controllers\Tahfidz\TahfidzInterventionController;
 use App\Http\Controllers\Tahfidz\TahfidzMasterController;
 use App\Http\Controllers\Tahfidz\TahfidzMonitoringController;
 use App\Http\Controllers\Tahfidz\TahfidzMonitoringSheetController;
-use App\Http\Controllers\Tahfidz\TahfidzQuranPositionController;
 use App\Http\Controllers\Tahfidz\TahfidzProgressController;
+use App\Http\Controllers\Tahfidz\TahfidzQuranPositionController;
 use App\Http\Controllers\Tahfidz\TahfidzReportController;
 use App\Http\Controllers\Tahfidz\TahfidzSantriController;
 use App\Http\Controllers\Tahfidz\TahfidzTargetController;
@@ -2432,6 +2440,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'update'])->name('rooms.update');
                 Route::delete('/{asramaUuid}/kamar/{roomUuid}', [DormitoryRoomController::class, 'destroy'])->name('rooms.destroy');
 
+                // ── SANTRI BOARDING (data lintas asrama, terkunci satu gender) ──
+                Route::get('/{asramaUuid}/santri-boarding', [DormitoryBoardingController::class, 'index'])->name('boarding.index');
+
+                // ── PENGATURAN NOTIFIKASI KEMBALI ASRAMA ─────────────────
+                Route::get('/{asramaUuid}/pengaturan-notifikasi', [DormitoryNotificationSettingController::class, 'edit'])->name('notifications.edit');
+                Route::put('/{asramaUuid}/pengaturan-notifikasi', [DormitoryNotificationSettingController::class, 'update'])->name('notifications.update');
+
                 // ── ROOM API ─────────────────────────────────────────────
                 Route::get('/{asramaUuid}/kamar/{roomUuid}/penghuni-tersedia', [DormitoryRoomApiController::class, 'availableResidents'])->name('api.rooms.available-residents');
                 Route::get('/{asramaUuid}/santri-tersedia', [DormitoryRoomApiController::class, 'pullableStudents'])->name('api.pullable-students');
@@ -2512,6 +2527,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 // ── PERIZINAN ────────────────────────────────────────
                 Route::get('/{asramaUuid}/izin', [DormitoryPermitController::class, 'index'])->name('permits.index');
                 Route::get('/{asramaUuid}/izin/aju', [DormitoryPermitController::class, 'create'])->name('permits.create');
+                Route::get('/{asramaUuid}/izin/massal', [DormitoryPermitController::class, 'massalCreate'])->name('permits.massal.create');
+                Route::post('/{asramaUuid}/izin/massal', [DormitoryPermitController::class, 'massalStore'])->name('permits.massal.store');
+                Route::post('/{asramaUuid}/izin/tanggal-kembali-massal', [DormitoryPermitController::class, 'bulkUpdateReturn'])->name('permits.bulk-return');
                 Route::post('/{asramaUuid}/izin', [DormitoryPermitController::class, 'store'])->name('permits.store');
                 Route::get('/{asramaUuid}/izin/{permitUuid}', [DormitoryPermitController::class, 'show'])->name('permits.show');
                 Route::get('/{asramaUuid}/izin/{permitUuid}/qr', [DormitoryPermitController::class, 'qrImage'])->name('permits.qr');
@@ -3333,19 +3351,23 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 | Akses langsung di /sarpras/* — TIDAK menggunakan prefix {userId}
 */
 Route::middleware(['auth'])->prefix('{userId}/bump-orders')->name('user.bump-orders.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\BumpOrderController::class, 'index'])->name('index');
-    Route::get('/create', [\App\Http\Controllers\BumpOrderController::class, 'create'])->name('create');
-    Route::post('/', [\App\Http\Controllers\BumpOrderController::class, 'store'])->name('store');
-    Route::get('/{number}', [\App\Http\Controllers\BumpOrderController::class, 'show'])->name('show');
-    Route::post('/{number}/cancel', [\App\Http\Controllers\BumpOrderController::class, 'cancel'])->name('cancel');
+    Route::get('/', [BumpOrderController::class, 'index'])->name('index');
+    Route::get('/create', [BumpOrderController::class, 'create'])->name('create');
+    Route::post('/', [BumpOrderController::class, 'store'])->name('store');
+    Route::get('/{number}', [BumpOrderController::class, 'show'])->name('show');
+    Route::post('/{number}/cancel', [BumpOrderController::class, 'cancel'])->name('cancel');
+});
+
+Route::middleware(['auth'])->prefix('{userId}/hutang-lembaga')->name('user.institution-debts.')->group(function () {
+    Route::get('/', [InstitutionDebtController::class, 'index'])->name('index');
 });
 
 Route::middleware(['auth'])->prefix('{userId}/siplah')->name('user.siplah.')->group(function () {
-    Route::get('/', [\App\Http\Controllers\SiplahController::class, 'index'])->name('index');
-    Route::get('/create', [\App\Http\Controllers\SiplahController::class, 'create'])->name('create');
-    Route::post('/', [\App\Http\Controllers\SiplahController::class, 'store'])->name('store');
-    Route::get('/{number}', [\App\Http\Controllers\SiplahController::class, 'show'])->name('show');
-    Route::post('/{number}/{action}', [\App\Http\Controllers\SiplahController::class, 'action'])->name('action');
+    Route::get('/', [SiplahController::class, 'index'])->name('index');
+    Route::get('/create', [SiplahController::class, 'create'])->name('create');
+    Route::post('/', [SiplahController::class, 'store'])->name('store');
+    Route::get('/{number}', [SiplahController::class, 'show'])->name('show');
+    Route::post('/{number}/{action}', [SiplahController::class, 'action'])->name('action');
 });
 
 Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name('sarpras.')->group(function () {
@@ -3355,6 +3377,17 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // Dashboard user satuan kerja (info aset saja)
     Route::get('/user/dashboard', [SarprasUserController::class, 'dashboard'])->name('user.dashboard');
+
+    // Peta alur kerja URT: satuan kerja -> petugas -> area -> uraian -> eksekusi
+    Route::get('/alur', [SarprasWorkflowController::class, 'index'])->name('workflow.index');
+    Route::get('/alur/penugasan', [SarprasWorkflowController::class, 'assignment'])->name('workflow.assignment');
+
+    // Laporan penugasan (perbaikan & pemeliharaan) — menutup agenda yang sudah dikerjakan
+    Route::get('/laporan-penugasan', [SarprasAssignmentReportController::class, 'index'])->name('assignment-report.index');
+    Route::post('/laporan-penugasan', [SarprasAssignmentReportController::class, 'store'])->name('assignment-report.store');
+    Route::get('/laporan-penugasan/{reportId}', [SarprasAssignmentReportController::class, 'show'])->name('assignment-report.show');
+    Route::post('/laporan-penugasan/{reportId}/verify', [SarprasAssignmentReportController::class, 'verify'])->name('assignment-report.verify');
+    Route::delete('/laporan-penugasan/{reportId}', [SarprasAssignmentReportController::class, 'destroy'])->name('assignment-report.destroy');
 
     // Halaman pengadaan mandiri lama tidak dipakai; arahkan ke Pengajuan SIPLah.
     Route::get('/user/pengadaan', fn (string $userId) => redirect()->route('user.siplah.index', ['userId' => $userId]))->name('user.pengadaan.index');
@@ -3437,6 +3470,11 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::delete('/aset/{id}', [SarprasAsetController::class, 'destroy'])->name('aset.destroy');
     Route::post('/aset/{id}/photo', [SarprasAsetController::class, 'addPhoto'])->name('aset.photo.add');
     Route::delete('/aset/{id}/photo/{photoId}', [SarprasAsetController::class, 'deletePhoto'])->name('aset.photo.delete');
+
+    // Timeline kegiatan aset (grid ala Excel)
+    Route::get('/aset/{id}/timeline', [SarprasAssetTimelineController::class, 'index'])->name('aset.timeline');
+    Route::post('/aset/{id}/timeline', [SarprasAssetTimelineController::class, 'save'])->name('aset.timeline.save');
+    Route::get('/aset/{id}/timeline/export', [SarprasAssetTimelineController::class, 'export'])->name('aset.timeline.export');
 
     // Import / Export data Sarpras
     Route::prefix('data-exchange')->name('data-exchange.')->group(function () {
@@ -3646,6 +3684,8 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::post('/qr/lookup', [SarprasQRController::class, 'lookup'])->name('qr.lookup');
     Route::get('/qr/audit/{id}', [SarprasQRController::class, 'audit'])->name('qr.audit');
     Route::post('/qr/audit/{id}', [SarprasQRController::class, 'auditSubmit'])->name('qr.audit.submit');
+    Route::get('/qr/image/{id}', [SarprasQRController::class, 'image'])->name('qr.image');
+    Route::post('/qr/mode/{id}', [SarprasQRController::class, 'setMode'])->name('qr.mode');
     Route::get('/qr/bulk-audit', [SarprasQRController::class, 'bulkAudit'])->name('qr.bulk-audit');
     Route::post('/qr/bulk-audit', [SarprasQRController::class, 'bulkAuditSubmit'])->name('qr.bulk-audit.submit');
 
@@ -3665,6 +3705,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
     Route::get('/assets/{uuid}/passport.json', [AssetPassportController::class, 'json'])->name('assets.passport.json');
     Route::get('/assets/{uuid}/passport/v2', [AssetPassportController::class, 'showV2'])->name('assets.passport.v2');
     Route::get('/assets/{uuid}/passport/v2.json', [AssetPassportController::class, 'jsonV2'])->name('assets.passport.v2.json');
+    Route::get('/scan/group/{key}', [AssetPassportController::class, 'scanGroup'])->name('assets.scan.group');
     Route::get('/scan/{code}', [AssetPassportController::class, 'scan'])->name('assets.scan');
 
     // Division portal
@@ -3773,6 +3814,7 @@ Route::middleware(['auth', 'sarpras.access'])->prefix('{userId}/sarpras')->name(
 
     // ── ASSET DISPOSAL ─────────────────────────────────────
     Route::get('/disposal/pending', [SarprasDisposalController::class, 'pending'])->name('disposal.pending');
+    Route::post('/disposal/{asset}/propose', [SarprasDisposalController::class, 'propose'])->name('disposal.propose');
     Route::post('/disposal/{asset}/approve', [SarprasDisposalController::class, 'approve'])->name('disposal.approve');
     Route::post('/disposal/{asset}/reject', [SarprasDisposalController::class, 'reject'])->name('disposal.reject');
     Route::post('/disposal/{asset}/sale', [SarprasDisposalController::class, 'recordSale'])->name('disposal.sale');

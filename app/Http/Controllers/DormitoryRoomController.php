@@ -17,7 +17,7 @@ class DormitoryRoomController extends Controller
     {
         $dormitory = Dormitory::findOrFail($asramaUuid);
 
-        $query = DormitoryRoom::with(['wing', 'residents.student', 'activeSupervisor.user'])
+        $query = DormitoryRoom::with(['wing', 'residents.student.currentClassHistory.studyGroup.gradeLevel', 'activeSupervisor.user'])
             ->where('dormitory_id', $asramaUuid);
 
         if ($request->filled('wing_id')) {
@@ -67,7 +67,7 @@ class DormitoryRoomController extends Controller
         $rooms = \App\Models\DormitoryRoom::with([
                 'wing:id,name',
                 'residents' => function ($q) {
-                    $q->where('is_active', true)->with('student:id,name,nisn,gender');
+                    $q->where('is_active', true)->with(['student:id,name,nisn,nis,gender', 'student.currentClassHistory.studyGroup.gradeLevel']);
                 },
             ])
             ->where('dormitory_id', $asramaUuid)
@@ -175,7 +175,7 @@ class DormitoryRoomController extends Controller
         $room = DormitoryRoom::with([
             'dormitory',
             'wing',
-            'residents' => fn ($q) => $q->where('is_active', true)->with('student'),
+            'residents' => fn ($q) => $q->where('is_active', true)->with(['student.currentClassHistory.studyGroup.gradeLevel']),
             'supervisors' => fn ($q) => $q->with('user')->orderByDesc('start_date'),
             'activeSupervisor.user',
         ])->where('dormitory_id', $asramaUuid)

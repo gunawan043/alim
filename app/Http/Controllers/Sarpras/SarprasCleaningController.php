@@ -12,10 +12,12 @@ use App\Models\CleaningTask;
 use App\Models\GtkWorkUnit;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Services\Sarpras\Automation\SarprasNotificationService;
 use App\Services\Sarpras\PhotoProofService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -262,8 +264,8 @@ class SarprasCleaningController extends SarprasBaseController
             'location_notes' => 'nullable|string|max:1000',
         ]);
 
-        $building = $validated['building_id'] ? AssetBuilding::find($validated['building_id']) : null;
-        $room = $validated['room_id'] ? \App\Models\AssetRoom::find($validated['room_id']) : null;
+        $building = ($validated['building_id'] ?? null) ? AssetBuilding::find($validated['building_id']) : null;
+        $room = ($validated['room_id'] ?? null) ? \App\Models\AssetRoom::find($validated['room_id']) : null;
 
         CleaningArea::create([
             ...$validated,
@@ -291,8 +293,8 @@ class SarprasCleaningController extends SarprasBaseController
             'is_active' => 'nullable|boolean',
         ]);
 
-        $building = $validated['building_id'] ? AssetBuilding::find($validated['building_id']) : null;
-        $room = $validated['room_id'] ? \App\Models\AssetRoom::find($validated['room_id']) : null;
+        $building = ($validated['building_id'] ?? null) ? AssetBuilding::find($validated['building_id']) : null;
+        $room = ($validated['room_id'] ?? null) ? \App\Models\AssetRoom::find($validated['room_id']) : null;
 
         $area->update([
             ...$validated,
@@ -435,7 +437,76 @@ class SarprasCleaningController extends SarprasBaseController
             ]
         );
 
-        return back()->with('success', 'Petugas area berhasil ditugaskan.');
+        $withoutPhone = $this->notifyAssignment($area, $validated);
+
+        $message = 'Petugas area berhasil ditugaskan.';
+        if ($withoutPhone !== []) {
+            $message .= ' Notifikasi WhatsApp belum terkirim untuk '.implode(', ', $withoutPhone)
+                .' — nomor WhatsApp belum diisi pada data GTK.';
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Kirim notifikasi penugasan area (in-app + WhatsApp) ke petugas.
+     */
+    private function notifyAssignment(CleaningArea $area, array $data): array
+    {
+        $recipients = collect([$data['user_id'] ?? null, $data['backup_user_id'] ?? null])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($recipients)) {
+            return [];
+        }
+
+        $withoutPhone = User::whereIn('id', $recipients)
+            ->get()
+            ->filter(fn (User $user) => blank($user->gtkContact?->no_whatsapp)
+                && blank($user->no_hp)
+                && blank($user->gtkProfile?->no_whatsapp))
+            ->pluck('name')
+            ->all();
+
+        $location = $area->room?->name ?: ($area->building?->name ?: $area->name);
+        $role = ($data['role'] ?? 'petugas') === 'koordinator' ? 'Koordinator' : 'Petugas';
+        $period = ! empty($data['start_date'])
+            ? ' mulai '.Carbon::parse($data['start_date'])->translatedFormat('d M Y')
+            : '';
+
+        try {
+            $actionUrl = route('sarpras.kebersihan.area.show', ['areaId' => $area->id]);
+        } catch (\Throwable $e) {
+            $actionUrl = null;
+        }
+
+        try {
+            app(SarprasNotificationService::class)->dispatch(
+                eventType: 'CleaningAssigned',
+                recipientUserIds: $recipients,
+                title: 'Penugasan area: '.$area->name,
+                message: "Anda ditugaskan sebagai {$role} di area {$location}{$period}.",
+                context: [
+                    'reference_type' => 'cleaning_area',
+                    'reference_id' => $area->id,
+                    'reference_code' => $area->name,
+                    'action_url' => $actionUrl,
+                    'action_text' => 'Buka Area Kerja',
+                    'priority' => 'high',
+                ],
+                priority: 'high',
+            );
+        } catch (\Throwable $e) {
+            Log::warning('sarpras.cleaning.assignment.notify_failed', [
+                'area_id' => $area->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return $withoutPhone;
     }
 
     public function toggleAssignment(string $userId, Request $request, string $assignmentId)

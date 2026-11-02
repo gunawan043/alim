@@ -21,8 +21,7 @@ class StudentLookupServiceTest extends TestCase
 
     private function setUpSchool(): School
     {
-        return School::create([
-            'id' => (string) Str::uuid(),
+        return School::factory()->create([
             'name' => 'Test Madrasah',
             'address' => 'Jl. Test No. 1',
         ]);
@@ -32,10 +31,12 @@ class StudentLookupServiceTest extends TestCase
     {
         $dormitory = Dormitory::create([
             'id' => (string) Str::uuid(),
+            'work_unit_id' => $school->work_unit_id,
             'school_id' => $school->id,
+            'code' => 'ASR-'.Str::random(4),
             'name' => 'Asrama A',
             'address' => 'Jl. Asrama No. 1',
-            'status' => 'active',
+            'gender' => 'putra',
         ]);
 
         $wing = DormitoryWing::create([
@@ -43,6 +44,7 @@ class StudentLookupServiceTest extends TestCase
             'dormitory_id' => $dormitory->id,
             'name' => 'Sayap Kiri',
             'code' => 'A',
+            'gender' => 'putra',
             'is_active' => true,
         ]);
 
@@ -53,7 +55,7 @@ class StudentLookupServiceTest extends TestCase
             'code' => 'A1',
             'name' => 'Ruang A1',
             'capacity' => 4,
-            'room_type' => 'L',
+            'gender' => 'putra',
             'is_active' => true,
         ]);
 
@@ -70,15 +72,17 @@ class StudentLookupServiceTest extends TestCase
         ]);
     }
 
-    private function setUpStudent(School $school): Student
+    private function setUpStudent(School $school, ?string $nisn = null): Student
     {
+        $nisn ??= '12345678';
+
         return Student::create([
             'id' => (string) Str::uuid(),
             'school_id' => $school->id,
             'name' => 'Fulan',
-            'nisn' => '12345678',
-            'nis' => 'NIS001',
-            'nik' => '3201012345678901',
+            'nisn' => $nisn,
+            'nis' => 'NIS-'.$nisn,
+            'nik' => '3201012345'.substr(str_pad((string) abs(crc32($nisn)), 6, '0', STR_PAD_LEFT), 0, 6),
             'gender' => 'L',
             'religion' => 'Islam',
             'birth_place' => 'Jakarta',
@@ -86,7 +90,7 @@ class StudentLookupServiceTest extends TestCase
             'status' => 'active',
             'full_address' => 'Jl. Mawar No. 10',
             'phone' => '081234567890',
-            'email' => 'ahmad@test.com',
+            'email' => 'ahmad+'.$nisn.'@test.com',
             'entry_date' => '2024-07-01',
             'entry_grade_level' => '2',
             'graduation_year' => 2027,
@@ -111,7 +115,7 @@ class StudentLookupServiceTest extends TestCase
 
         Cache::flush();
 
-        $results = $service->search('Ahmad', $school->id.'.dormitorys.1');
+        $results = $service->search('Fulan');
 
         $this->assertCount(1, $results);
         $this->assertEquals('Fulan', $results->first()->name);
@@ -209,7 +213,7 @@ class StudentLookupServiceTest extends TestCase
         $validation = $this->getService()->validateAssignment($student->id, $dormitory->id, null);
 
         $this->assertFalse($validation->valid);
-        $this->assertStringContainsString('graduate', strtolower($validation->error));
+        $this->assertStringContainsString('lulus', strtolower($validation->error));
     }
 
     /** @test */
@@ -312,9 +316,10 @@ class StudentLookupServiceTest extends TestCase
 
         // Fill the room to capacity (4)
         for ($i = 0; $i < 4; $i++) {
+            $occupant = $this->setUpStudent($school, '5555000'.$i);
             DormitoryResident::create([
                 'id' => (string) Str::uuid(),
-                'student_id' => (string) Str::uuid(),
+                'student_id' => $occupant->id,
                 'dormitory_id' => $dormitory->id,
                 'room_id' => $room->id,
                 'academic_year_id' => $year->id,

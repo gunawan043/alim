@@ -37,7 +37,29 @@
     </a>
 </li>
 
-{{-- 2. Inventaris Aset Unit --}}
+{{-- 2. Alur & Penugasan --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.workflow.index']) ? ' active' : '' }}"
+       href="{{ $koorSarUrl('sarpras.workflow.index') }}">
+        <i class="ri-flow-chart"></i><span>Alur Kerja URT</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.workflow.assignment']) ? ' active' : '' }}"
+       href="{{ $koorSarUrl('sarpras.workflow.assignment') }}">
+        <i class="ri-user-settings-line"></i><span>Penugasan &amp; Area Kerja</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.assignment-report.index', 'sarpras.assignment-report.show']) ? ' active' : '' }}"
+       href="{{ $koorSarUrl('sarpras.assignment-report.index') }}">
+        <i class="ri-file-list-3-line"></i><span>Laporan Penugasan</span>
+    </a>
+</li>
+
+{{-- 3. Inventaris Aset Unit --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.aset.']) ? ' active' : '' }}"
        href="{{ $koorSarUrl('sarpras.user.aset.index') }}">

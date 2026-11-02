@@ -142,6 +142,35 @@
 </li>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
+     SECTION 2B — ALUR & PENUGASAN
+     Sembilan prosedur URT + rantai satuan kerja → petugas → area → uraian.
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if(menu_allowed('rumah-tangga'))
+    <li class="menu-title"><span>Alur &amp; Penugasan</span></li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.workflow.index', 'sarpras.workflow.assignment']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.workflow.index') }}">
+            <i class="ri-flow-chart"></i><span>Alur Kerja URT</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.workflow.assignment']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.workflow.assignment') }}">
+            <i class="ri-user-settings-line"></i><span>Penugasan &amp; Area Kerja</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.assignment-report.index', 'sarpras.assignment-report.show']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.assignment-report.index') }}">
+            <i class="ri-file-list-3-line"></i><span>Laporan Penugasan</span>
+        </a>
+    </li>
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
      SECTION 3 — ASET & BANGUNAN
      Akses: Kepala, Koordinator (full) | Operasional (view)
      ═══════════════════════════════════════════════════════════════════════════ --}}
@@ -232,6 +261,17 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) ? ' active' : '' }}"
            href="{{ $sarprasUrl('sarpras.user.ruang.index') }}">
             <i class="ri-layout-grid-line"></i><span>Ruang Saya</span>
+        </a>
+    </li>
+    @endif
+
+    {{-- Akses cepat semua pegawai/petugas URT: scan QR aset --}}
+    @if(menu_allowed('rumah-tangga'))
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.qr.scanner', 'sarpras.assets.scan', 'sarpras.assets.scan.group']) ? ' active' : '' }}"
+           href="{{ $sarprasUrl('sarpras.qr.scanner') }}">
+            <i class="ri-qr-scan-2-line"></i><span>Scan QR Aset</span>
+            <span class="badge bg-success-subtle text-success ms-auto">Cepat</span>
         </a>
     </li>
     @endif

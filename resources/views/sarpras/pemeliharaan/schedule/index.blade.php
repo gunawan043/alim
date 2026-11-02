@@ -34,7 +34,10 @@
     <div class="card">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div><h5 class="card-title mb-0"><i class="ri-tools-line me-2 text-primary"></i>Jadwal Pemeliharaan</h5><p class="text-muted small mb-0">URT menyusun jadwal; satuan kerja hanya melihat dan menyetujui jadwal unitnya.</p></div>
-            @if($canManage)<a href="{{ route('sarpras.pemeliharaan.schedule.create') }}" class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i>Tambah Jadwal</a>@endif
+            <div class="d-flex gap-2">
+                <a href="{{ route('sarpras.workflow.index') }}" class="btn btn-outline-secondary btn-sm"><i class="ri-flow-chart me-1"></i>Alur</a>
+                @if($canManage)<a href="{{ route('sarpras.pemeliharaan.schedule.create') }}" class="btn btn-success btn-sm"><i class="ri-add-line me-1"></i>Tambah Jadwal</a>@endif
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

@@ -2,12 +2,12 @@
 
 namespace App\Console\Commands;
 
-use App\Models\DormitoryPermit;
-use App\Services\Notifications\GuardianWhatsAppNotifier;
+use App\Services\Dormitory\ReturnReminderService;
 use Illuminate\Console\Command;
 
 /**
- * Pengingat H-1 sebelum batas kembali izin asrama (WA wali + in-app petugas).
+ * Pengingat H-1 sebelum batas kembali izin asrama (WA wali + kanal lain).
+ * Dijadwalkan setiap menit; jam kirim mengikuti pengaturan tiap asrama.
  */
 class RemindReturnPermitsCommand extends Command
 {
@@ -15,29 +15,13 @@ class RemindReturnPermitsCommand extends Command
 
     protected $description = 'Kirim pengingat H-1 kepada wali untuk izin yang harus kembali besok';
 
-    public function handle(GuardianWhatsAppNotifier $notifier): int
+    public function handle(ReturnReminderService $reminders): int
     {
-        $tomorrowStart = now()->addDay()->startOfDay();
-        $tomorrowEnd = now()->addDay()->endOfDay();
+        $sent = $reminders->processHeadStartReminders();
 
-        $permits = DormitoryPermit::with(['student', 'dormitory'])
-            ->whereIn('status', ['approved', 'picked_up'])
-            ->whereBetween('expected_return_datetime', [$tomorrowStart, $tomorrowEnd])
-            ->get();
-
-        $sent = 0;
-
-        foreach ($permits as $permit) {
-            try {
-                if ($notifier->notifyReturnReminder($permit)) {
-                    $sent++;
-                }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Reminder H-1 gagal: '.$e->getMessage());
-            }
+        if ($sent > 0) {
+            $this->info("Pengingat H-1 terkirim untuk {$sent} izin.");
         }
-
-        $this->info("Pengingat H-1 terkirim untuk {$sent} dari {$permits->count()} izin.");
 
         return self::SUCCESS;
     }

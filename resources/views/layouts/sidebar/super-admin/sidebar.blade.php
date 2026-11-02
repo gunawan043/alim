@@ -227,6 +227,24 @@
                     <i class="ri-archive-line me-1"></i> Aset
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.workflow.index']) ? ' active' : '' }}"
+                   href="{{ route('sarpras.workflow.index', ['userId' => $userId]) }}">
+                    <i class="ri-flow-chart me-1"></i> Alur Kerja URT
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.workflow.assignment']) ? ' active' : '' }}"
+                   href="{{ route('sarpras.workflow.assignment', ['userId' => $userId]) }}">
+                    <i class="ri-user-settings-line me-1"></i> Penugasan &amp; Area Kerja
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.assignment-report.index']) ? ' active' : '' }}"
+                   href="{{ route('sarpras.assignment-report.index', ['userId' => $userId]) }}">
+                    <i class="ri-file-list-3-line me-1"></i> Laporan Penugasan
+                </a>
+            </li>
         </ul>
     </div>
 </li>

@@ -31,6 +31,17 @@
                         <form method="POST" action="{{ route('sarpras.teknisi.resume', ['orderId' => $order->id]) }}">@csrf<button class="btn btn-primary"><i class="ri-play-line me-1"></i>Lanjutkan</button></form>
                     @endif
                     <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#noteModal"><i class="ri-chat-1-line me-1"></i>Catatan</button>
+                    @if(in_array($order->status, ['completed','closed']))
+                        @if($order->assignmentReport)
+                            <a href="{{ route('sarpras.assignment-report.show', ['reportId' => $order->assignmentReport->id]) }}" class="btn btn-outline-success">
+                                <i class="ri-file-text-line me-1"></i>Lihat Laporan
+                            </a>
+                        @else
+                            <a href="{{ route('sarpras.assignment-report.index', ['work_order_id' => $order->id]) }}" class="btn btn-primary">
+                                <i class="ri-edit-line me-1"></i>Isi Laporan
+                            </a>
+                        @endif
+                    @endif
                 </div>
             </div>
         </div>

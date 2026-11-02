@@ -117,6 +117,7 @@
         try {
             const response = await fetch(urls.lookup + '?code=' + encodeURIComponent(code), { headers: { 'Accept': 'application/json' } });
             const data = await response.json();
+            if (response.ok && data.data?.redirect) { window.location.href = data.data.redirect; return; }
             if (!response.ok || !data.data?.asset) { throw new Error(data.message || data.error || 'Aset tidak ditemukan.'); }
             showResult(data.data.asset);
         } catch (e) {

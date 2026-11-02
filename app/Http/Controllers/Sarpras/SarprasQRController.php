@@ -11,6 +11,7 @@ use App\Models\QrScanHistory;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\PhotoProofService;
 use Carbon\Carbon;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -102,36 +103,34 @@ class SarprasQRController extends SarprasBaseController
     }
 
     /**
-     * Bulk generate + download QR labels as PDF
+     * Bulk generate + download QR labels as PDF.
+     * Aset bermode "group" dicetak satu label per kelompok.
      */
     public function downloadPdf(Request $request)
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = Asset::where('is_active', true)->whereNotNull('qr_generated_at');
+        $query = Asset::with(['room', 'room.school', 'category'])->where('is_active', true);
         if ($schoolId) {
             $query->where('school_id', $schoolId);
         }
         if ($request->filled('room_id')) {
             $query->where('room_id', $request->room_id);
         }
+        if ($request->filled('asset_id')) {
+            $query->whereKey($request->asset_id);
+        }
 
         $assets = $query->orderBy('asset_name')->limit(200)->get();
 
         if ($assets->isEmpty()) {
-            return back()->with('error', 'Tidak ada aset dengan QR code.');
+            return back()->with('error', 'Tidak ada aset untuk dicetak.');
         }
 
-        // Generate QR codes
-        $qrData = [];
-        foreach ($assets as $asset) {
-            $url = url('/sarpras/scan/'.$asset->asset_code);
-            $qrImage = QrCode::format('svg')->size(120)->margin(1)->generate($url);
-            $qrData[$asset->id] = 'data:image/svg+xml;base64,'.base64_encode((string) $qrImage);
-        }
+        $labels = $this->buildLabels($assets);
 
-        $pdf = new \Dompdf\Dompdf(['isRemoteEnabled' => true, 'defaultFont' => 'DejaVu Sans']);
-        $pdf->loadHtml(view('sarpras.qr.pdf', compact('assets', 'qrData'))->render());
+        $pdf = new Dompdf(['isRemoteEnabled' => true, 'defaultFont' => 'DejaVu Sans']);
+        $pdf->loadHtml(view('sarpras.qr.pdf', compact('labels'))->render());
         $pdf->setPaper('A4', 'portrait');
         $pdf->render();
 
@@ -139,6 +138,93 @@ class SarprasQRController extends SarprasBaseController
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="qr-labels-'.date('Ymd').'.pdf"',
         ]);
+    }
+
+    /**
+     * Siapkan data label: satu baris per unit (individual) atau per kelompok (group).
+     */
+    private function buildLabels($assets): array
+    {
+        $labels = [];
+        $seenGroups = [];
+
+        foreach ($assets as $asset) {
+            if ($asset->isGroupQr()) {
+                if (isset($seenGroups[$asset->qr_group_key])) {
+                    continue;
+                }
+                $seenGroups[$asset->qr_group_key] = true;
+
+                $labels[] = [
+                    'name' => $asset->category?->name ?? $asset->asset_name,
+                    'code' => 'Kelompok '.$asset->qrGroupMembers()->count().' unit',
+                    'room' => $asset->room?->room_name,
+                    'school' => $asset->room?->school?->name,
+                    'url' => $asset->qrScanUrl(),
+                    'mode' => Asset::QR_MODE_GROUP,
+                ];
+
+                continue;
+            }
+
+            $labels[] = [
+                'name' => $asset->asset_name,
+                'code' => $asset->asset_code,
+                'room' => $asset->room?->room_name,
+                'school' => $asset->room?->school?->name,
+                'url' => $asset->qrScanUrl(),
+                'mode' => Asset::QR_MODE_INDIVIDUAL,
+            ];
+        }
+
+        foreach ($labels as $index => $label) {
+            $svg = QrCode::format('svg')->size(120)->margin(1)->generate($label['url']);
+            $labels[$index]['qr'] = 'data:image/svg+xml;base64,'.base64_encode((string) $svg);
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Gambar QR aset (SVG) untuk ditampilkan di halaman detail.
+     */
+    public function image(string $userId, Request $request, string $id)
+    {
+        $asset = Asset::findOrFail($id);
+        $this->authorizeAssetAccess($asset, $request);
+
+        $size = max(80, min(600, (int) $request->query('size', 240)));
+        $svg = QrCode::format('svg')->size($size)->margin(1)->generate($asset->qrScanUrl());
+
+        return response((string) $svg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
+    }
+
+    /**
+     * Ubah mode QR: per unit (aset elektronik/besar) atau seragam per kelompok.
+     */
+    public function setMode(string $userId, Request $request, string $id)
+    {
+        $asset = Asset::findOrFail($id);
+        $this->authorizeAssetAccess($asset, $request);
+
+        if (! ($this->isCentralSarpras() || $this->isUrtLeadership() || $this->isUnitSarprasOfficer())) {
+            abort(403, 'Hanya pengelola Sarpras yang dapat mengubah mode QR.');
+        }
+
+        $validated = $request->validate([
+            'qr_mode' => 'required|in:'.implode(',', array_keys(Asset::QR_MODE_OPTIONS)),
+        ]);
+
+        $asset->update([
+            'qr_mode' => $validated['qr_mode'],
+            'qr_group_key' => null,
+            'qr_generated_at' => Carbon::now(),
+        ]);
+
+        return back()->with('success', 'Mode QR diubah menjadi: '.$asset->fresh()->qrModeLabel().'.');
     }
 
     /**
@@ -159,6 +245,21 @@ class SarprasQRController extends SarprasBaseController
     public function lookup(Request $request)
     {
         $code = $request->get('code');
+
+        // QR seragam kelompok: arahkan ke halaman daftar unit.
+        if ($code && (str_contains($code, '/scan/group/') || str_starts_with($code, 'GRP-'))) {
+            $key = str_contains($code, '/scan/group/')
+                ? trim(substr($code, strpos($code, '/scan/group/') + strlen('/scan/group/')))
+                : trim($code);
+
+            if (! Asset::where('qr_group_key', $key)->exists()) {
+                return $this->notFound('Kelompok aset tidak ditemukan.');
+            }
+
+            return $this->ok([
+                'redirect' => route('sarpras.assets.scan.group', ['key' => $key]),
+            ], 'QR kelompok terdeteksi.');
+        }
 
         // Support both URL format and asset code format
         if ($code && str_contains($code, '/sarpras/aset/')) {
