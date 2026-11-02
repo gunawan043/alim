@@ -8,9 +8,12 @@ use App\Mail\AccountLockedMail;
 use App\Mail\IpBlockedMail;
 use App\Mail\LoginOtpMail;
 use App\Models\AuditLog;
+use App\Models\Dormitory;
 use App\Models\FailedLoginAttempt;
+use App\Models\GtkAdditionalTask;
 use App\Models\LoginOtp;
 use App\Models\OtherTeacherTask;
+use App\Models\School;
 use App\Models\StudentOperatorAssignment;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
@@ -322,8 +325,8 @@ class LoginController extends Controller
 
         $userId = $user->id;
 
-        $isAsramaHead = \App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists();
-        $isSchoolHead = \App\Models\School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
+        $isAsramaHead = Dormitory::where('head_id', $user->id)->where('is_active', true)->exists();
+        $isSchoolHead = School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
 
         if ($isAsramaHead && $isSchoolHead) {
             return redirect()->route('user.dashboard.choose', ['userId' => $userId]);
@@ -333,11 +336,11 @@ class LoginController extends Controller
         $roleName = strtolower(trim((string) $roles->first()));
 
         // Bendahara Sekolah adalah tugas tambahan Satuan Pendidikan.
-        $hasBendaharaTask = \App\Models\GtkAdditionalTask::query()
+        $hasBendaharaTask = GtkAdditionalTask::query()
             ->where('user_id', $user->id)
             ->where('nama_tugas', 'Bendahara Sekolah')
             ->where(function ($query) {
-                $query->whereNull('tst')->orWhere('tst', '>=', now()->toDateString());
+                $query->whereNull('tst')->orWhereDate('tst', '>=', today());
             })
             ->exists();
 

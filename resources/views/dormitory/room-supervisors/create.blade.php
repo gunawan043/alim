@@ -42,7 +42,7 @@
                         <select name="room_id" class="form-select js-select2" required>
                             <option value="">-- Pilih Kamar --</option>
                             @foreach($rooms as $r)
-                                <option value="{{ $r->id }}" {{ old('room_id') === $r->id ? 'selected' : '' }}>
+                                <option value="{{ $r->id }}" {{ old('room_id', $preselectedRoomId ?? null) === $r->id ? 'selected' : '' }}>
                                     {{ $r->code }} {{ $r->name ? "— {$r->name}" : '' }} {{ $r->wing ? "[{$r->wing->name}]" : '' }}
                                 </option>
                             @endforeach

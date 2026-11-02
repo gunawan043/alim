@@ -88,8 +88,11 @@ class RoomSupervisorController extends Controller
 
         $academicYears = AcademicYear::orderByDesc('start_date')->limit(5)->get();
 
+        // Bisa dipanggil dari halaman detail kamar: /wali-kamar/tetapkan?room_id=...
+        $preselectedRoomId = $request->query('room_id');
+
         return view('dormitory.room-supervisors.create', compact(
-            'dormitory', 'rooms', 'gtkUsers', 'academicYears', 'userId'
+            'dormitory', 'rooms', 'gtkUsers', 'academicYears', 'userId', 'preselectedRoomId'
         ));
     }
 

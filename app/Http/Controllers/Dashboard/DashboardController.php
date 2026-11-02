@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\School;
 use App\Models\User;
 use App\Services\Dashboard\DashboardAnalyticsService;
 use App\Services\Dashboard\DashboardCalendarService;
@@ -224,7 +225,7 @@ abstract class DashboardController extends Controller
             return DB::table('gtk_additional_tasks')
                 ->where('user_id', $user->id)
                 ->where(function ($q) {
-                    $q->whereNull('tst')->orWhere('tst', '>=', now()->toDateString());
+                    $q->whereNull('tst')->orWhereDate('tst', '>=', today());
                 })
                 ->orderBy('tmt')
                 ->pluck('nama_tugas')
@@ -340,7 +341,7 @@ abstract class DashboardController extends Controller
 
             // Rangkap jabatan: kepala sekolah tetap memakai sekolah yang
             // dipimpinnya walau satuan kerja utama berada di asrama.
-            $principalSchoolId = \App\Models\School::query()
+            $principalSchoolId = School::query()
                 ->where('principal_user_id', $user->id)
                 ->value('id');
 
@@ -455,8 +456,8 @@ abstract class DashboardController extends Controller
                 ->join('study_groups as sg', 'sg.id', '=', 'ha.study_group_id')
                 ->where('ha.teacher_id', $user->id)
                 ->where('ha.status', 'active')
-                ->where('ha.start_date', '<=', $today)
-                ->where(fn ($q) => $q->whereNull('ha.end_date')->orWhere('ha.end_date', '>=', $today))
+                ->whereDate('ha.start_date', '<=', $today)
+                ->where(fn ($q) => $q->whereNull('ha.end_date')->orWhereDate('ha.end_date', '>=', $today))
                 ->whereNull('ha.deleted_at')
                 ->when($academicYearId, fn ($q) => $q->where('ha.academic_year_id', $academicYearId))
                 ->select('sg.*')

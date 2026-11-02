@@ -109,9 +109,20 @@
             <div class="card mt-3">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <h5 class="mb-0"><i class="ri-shield-user-line me-1"></i> Wali Kamar</h5>
-                    <a href="{{ route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="ri-list-unordered me-1"></i> Kelola
-                    </a>
+                    <div class="d-flex gap-2">
+                        @if($room->activeSupervisor)
+                            <a href="{{ route('user.asrama.room-supervisors.edit', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $room->activeSupervisor->id]) }}" class="btn btn-sm btn-primary">
+                                <i class="ri-pencil-line me-1"></i> Ubah Wali Kamar
+                            </a>
+                        @else
+                            <a href="{{ route('user.asrama.room-supervisors.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'room_id' => $room->id]) }}" class="btn btn-sm btn-primary">
+                                <i class="ri-user-add-line me-1"></i> Tetapkan Wali Kamar
+                            </a>
+                        @endif
+                        <a href="{{ route('user.asrama.room-supervisors.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="ri-list-unordered me-1"></i> Kelola
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     @if($room->activeSupervisor)
@@ -129,8 +140,11 @@
                                     <i class="ri-mail-line me-1"></i>{{ $room->activeSupervisor->user->email ?? '' }}
                                 </small>
                             </div>
-                            <a href="{{ route('user.asrama.room-supervisors.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $room->activeSupervisor->id]) }}" class="btn btn-sm btn-soft-info">
+                            <a href="{{ route('user.asrama.room-supervisors.show', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $room->activeSupervisor->id]) }}" class="btn btn-sm btn-soft-info" title="Detail Wali Kamar">
                                 <i class="ri-eye-line"></i>
+                            </a>
+                            <a href="{{ route('user.asrama.room-supervisors.edit', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $room->activeSupervisor->id]) }}" class="btn btn-sm btn-soft-primary" title="Ubah Wali Kamar">
+                                <i class="ri-pencil-line"></i>
                             </a>
                         </div>
                     @else
@@ -138,6 +152,11 @@
                             <i class="ri-shield-user-line fs-3 d-block mb-1"></i>
                             Kamar ini belum memiliki Wali Kamar.
                         </p>
+                        <div class="text-center">
+                            <a href="{{ route('user.asrama.room-supervisors.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'room_id' => $room->id]) }}" class="btn btn-sm btn-primary">
+                                <i class="ri-user-add-line me-1"></i> Tetapkan Wali Kamar
+                            </a>
+                        </div>
                     @endif
                 </div>
             </div>

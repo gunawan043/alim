@@ -226,6 +226,10 @@
                                                    class="btn btn-sm btn-outline-primary" title="Detail">
                                                     <i class="ri-eye-line"></i>
                                                 </a>
+                                                <a href="{{ route('user.asrama.room-supervisors.edit', ['userId' => $userId, 'asramaUuid' => $dormitory->id, 'supervisorUuid' => $s->id]) }}"
+                                                   class="btn btn-sm btn-outline-secondary" title="Ubah">
+                                                    <i class="ri-pencil-line"></i>
+                                                </a>
                                             </div>
                                         </td>
                                     </tr>

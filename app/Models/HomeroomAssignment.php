@@ -69,8 +69,8 @@ class HomeroomAssignment extends Model
     {
         return $query->where('status', 'active')
             ->where(function ($q) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
+                $q->whereNull('end_date')->orWhereDate('end_date', '>=', today());
             })
-            ->where('start_date', '<=', now()->toDateString());
+            ->whereDate('start_date', '<=', today());
     }
 }

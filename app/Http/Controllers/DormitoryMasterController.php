@@ -154,7 +154,7 @@ class DormitoryMasterController extends Controller
         $dormitoryId = DB::table('dormitory_staff_assignments')
             ->where('user_id', $user->id)
             ->where('status', 'active')
-            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString()))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', today()))
             ->value('dormitory_id');
 
         if (! $dormitoryId) {

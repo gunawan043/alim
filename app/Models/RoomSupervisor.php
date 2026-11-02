@@ -69,9 +69,9 @@ class RoomSupervisor extends Model
     {
         return $query->where('status', 'active')
             ->where(function ($q) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
+                $q->whereNull('end_date')->orWhereDate('end_date', '>=', today());
             })
-            ->where('start_date', '<=', now()->toDateString());
+            ->whereDate('start_date', '<=', today());
     }
 
     public function scopeCurrent($query)
@@ -81,9 +81,9 @@ class RoomSupervisor extends Model
         return $query->where(function ($q) use ($activeYearId) {
             $q->where('status', 'active')
                 ->where(function ($q2) {
-                    $q2->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
+                    $q2->whereNull('end_date')->orWhereDate('end_date', '>=', today());
                 })
-                ->where('start_date', '<=', now()->toDateString());
+                ->whereDate('start_date', '<=', today());
 
             if ($activeYearId) {
                 $q->orWhere('academic_year_id', $activeYearId);

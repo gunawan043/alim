@@ -279,7 +279,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(GtkAdditionalTask::class, 'user_id')
             ->where(function ($q) {
-                $q->whereNull('tst')->orWhere('tst', '>=', now()->toDateString());
+                $q->whereNull('tst')->orWhereDate('tst', '>=', today());
             });
     }
 
@@ -313,9 +313,9 @@ class User extends Authenticatable
         return $this->hasMany(RoomSupervisor::class, 'user_id')
             ->where('status', 'active')
             ->where(function ($q) {
-                $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString());
+                $q->whereNull('end_date')->orWhereDate('end_date', '>=', today());
             })
-            ->where('start_date', '<=', now()->toDateString());
+            ->whereDate('start_date', '<=', today());
     }
 
     // NOTE: 'password' is already hashed via the 'password' => 'hashed' cast.
@@ -688,7 +688,7 @@ class User extends Authenticatable
             ->where('teacher_id', $this->id)
             ->where('status', 'active')
             ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
-            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString()))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', today()))
             ->pluck('study_group_id');
 
         return $fromGroups->merge($fromAssignments)

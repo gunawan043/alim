@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Models\Dormitory;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -44,7 +45,7 @@ class AsramaDashboardController extends DashboardController
         }
 
         try {
-            if (\App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists()) {
+            if (Dormitory::where('head_id', $user->id)->where('is_active', true)->exists()) {
                 return true;
             }
 
@@ -53,12 +54,12 @@ class AsramaDashboardController extends DashboardController
             return DB::table('dormitory_staff_assignments')
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
-                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today))
                 ->exists()
                 || DB::table('room_supervisors')
                     ->where('user_id', $user->id)
                     ->where('status', 'active')
-                    ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                    ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today))
                     ->exists();
         } catch (\Throwable) {
             return false;
@@ -68,7 +69,7 @@ class AsramaDashboardController extends DashboardController
     protected function detectJabatanCode(User $user): string
     {
         try {
-            if (\App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists()) {
+            if (Dormitory::where('head_id', $user->id)->where('is_active', true)->exists()) {
                 $code = DB::table('structural_positions')
                     ->where('name', 'Kepala Asrama')
                     ->value('code');
@@ -103,7 +104,7 @@ class AsramaDashboardController extends DashboardController
             $roomIds = DB::table('room_supervisors')
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
-                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today))
                 ->pluck('room_id')
                 ->filter()
                 ->unique()
@@ -113,7 +114,7 @@ class AsramaDashboardController extends DashboardController
             $dormitoryIds = DB::table('dormitory_staff_assignments')
                 ->where('user_id', $user->id)
                 ->where('status', 'active')
-                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today))
                 ->pluck('dormitory_id')
                 ->filter()
                 ->unique()
