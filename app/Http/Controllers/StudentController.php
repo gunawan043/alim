@@ -13,6 +13,7 @@ use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudentMutationIn;
 use App\Models\StudentMutationOut;
+use App\Models\User;
 use App\Models\StudyGroup;
 use App\Services\StudentEnrollmentService;
 use App\Services\Uks\StudentHealthSyncService;
@@ -35,8 +36,8 @@ class StudentController extends Controller
             ? Student::onlyTrashed()->with(['school', 'classHistories.studyGroup'])
             : Student::with(['school', 'classHistories.studyGroup']);
 
-        // User asrama hanya boleh melihat Santri yang mondok (active DormitoryResident).
-        if ($user && $user->isDormitoryUser()) {
+        // User asrama hanya boleh melihat Santri yang mondok — kecuali ia wali kelas.
+        if ($user && $user->isDormitoryUser() && ! $user->isHomeroomTeacher()) {
             $query->whereHas('activeDormitoryResident');
         }
 
@@ -315,7 +316,7 @@ class StudentController extends Controller
             'gradeLevels', 'mutationInCount', 'mutationOutCount',
             'academicYears', 'selectedAcademicYearId', 'rombelDisplayAyId', 'activeAcademicYearId', 'isArchiveAy',
             'showArchived',
-        ))->with('isDormitoryUser', optional($request->user())->isDormitoryUser() ?? false);
+        ))->with('isDormitoryUser', optional($request->user())->isDormitoryUser() && ! optional($request->user())->isHomeroomTeacher());
     }
 
     public function create(Request $request)
@@ -480,13 +481,15 @@ class StudentController extends Controller
 
         $this->authorizeStudentAccess($request, $student);
 
-        // User asrama hanya boleh mengakses Santri yang mondok (active DormitoryResident).
-        if ($user && $user->isDormitoryUser() && ! $student->activeDormitoryResident()->exists()) {
+        // User asrama hanya boleh mengakses Santri yang mondok — kecuali wali kelas.
+        if ($user && $user->isDormitoryUser() && ! $user->isHomeroomTeacher() && ! $student->activeDormitoryResident()->exists()) {
             abort(403, 'Anda hanya dapat melihat data Santri yang tinggal di asrama.');
         }
 
+        $isDormitoryUser = optional($user)->isDormitoryUser() && ! optional($user)->isHomeroomTeacher();
+
         return view('students.show', compact('student', 'userId'))
-            ->with('isDormitoryUser', optional($user)->isDormitoryUser() ?? false);
+            ->with('isDormitoryUser', $isDormitoryUser);
     }
 
     public function edit(Request $request, string $userId, string $santriUuid)
@@ -902,12 +905,48 @@ class StudentController extends Controller
         if ($schoolContextId && ! $isGlobalView && $student->school_id !== $schoolContextId) {
             abort(404, 'Data santri tidak ditemukan pada satuan pendidikan Anda.');
         }
+
+        $user = $request->user();
+
+        if (! $user) {
+            return;
+        }
+
+        // Wali kelas hanya boleh mengelola santri di rombel yang diwalikan.
+        // Admin/struktural tetap memiliki akses penuh sesuai kebijakan lama.
+        if (! $this->hasBroadStudentAccess($user) && $user->isHomeroomTeacher()) {
+            abort_unless(
+                $user->isHomeroomTeacherOf($student),
+                403,
+                'Anda hanya dapat mengelola data santri di kelas yang Anda walikan.'
+            );
+        }
+    }
+
+    /**
+     * Akses penuh ke data santri (semua kelas): admin sistem, super admin,
+     * pemegang izin student-all-access, atau jabatan struktural terkait.
+     */
+    private function hasBroadStudentAccess(User $user): bool
+    {
+        if ($user->isSystemAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        if (canPermission('student-all-access')) {
+            return true;
+        }
+
+        return $user->hasAnyRole(['Pimpinan', 'Humas Personalia', 'Keuangan']);
     }
 
     private function abortIfDormitoryUser(Request $request): void
     {
         $user = $request->user();
-        if ($user && method_exists($user, 'isDormitoryUser') && $user->isDormitoryUser()) {
+
+        // Wali kelas yang juga memegang role asrama tetap boleh mengelola
+        // data santri di kelasnya (scope ditegakkan di authorizeStudentAccess).
+        if ($user && method_exists($user, 'isDormitoryUser') && $user->isDormitoryUser() && ! $user->isHomeroomTeacher()) {
             abort(403, 'Akun asrama tidak diizinkan mengelola data Santri. Hanya data Mahrom yang dapat diubah.');
         }
     }

@@ -660,11 +660,67 @@ class User extends Authenticatable
     public function isDormitoryUser(): bool
     {
         $roles = $this->effectiveRoles();
+
         if (empty($roles)) {
             return false;
         }
 
         return (bool) array_intersect($roles, self::DORMITORY_ROLES);
+    }
+
+    /**
+     * ID rombel yang diwalikan (wali kelas) pada tahun ajaran aktif.
+     * Sumber: kolom homeroom_teacher_id dan/atau HomeroomAssignment aktif.
+     *
+     * @return array<int, string>
+     */
+    public function homeroomStudyGroupIds(?string $academicYearId = null): array
+    {
+        $yearId = $academicYearId ?? AcademicYear::where('is_active', true)->value('id');
+
+        $fromGroups = StudyGroup::withoutGlobalScope('school_context')
+            ->where('homeroom_teacher_id', $this->id)
+            ->where('is_active', true)
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->pluck('id');
+
+        $fromAssignments = HomeroomAssignment::query()
+            ->where('teacher_id', $this->id)
+            ->where('status', 'active')
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', now()->toDateString()))
+            ->pluck('study_group_id');
+
+        return $fromGroups->merge($fromAssignments)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function isHomeroomTeacher(?string $academicYearId = null): bool
+    {
+        return $this->homeroomStudyGroupIds($academicYearId) !== [];
+    }
+
+    /**
+     * Apakah santri terdaftar pada rombel yang diwalikan user (TA aktif)?
+     */
+    public function isHomeroomTeacherOf(Student $student, ?string $academicYearId = null): bool
+    {
+        $groupIds = $this->homeroomStudyGroupIds($academicYearId);
+
+        if ($groupIds === []) {
+            return false;
+        }
+
+        $yearId = $academicYearId ?? AcademicYear::where('is_active', true)->value('id');
+
+        return StudentClassHistory::query()
+            ->where('student_id', $student->id)
+            ->whereIn('study_group_id', $groupIds)
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->exists();
     }
 
     /**

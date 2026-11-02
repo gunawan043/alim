@@ -15,18 +15,75 @@ use Illuminate\Support\Facades\Storage;
 
 class DormitoryMasterController extends Controller
 {
+    /** Permission yang membuka modul master asrama (admin maupun pengguna asrama). */
+    private const ACCESS_PERMISSIONS = [
+        'dormitory-master-all-access',
+        'view_global_school_data',
+        'asrama-view',
+        'asrama-manage',
+        'asrama-create',
+        'dormitory_view',
+        'menu-asrama-sidebar',
+    ];
+
+    /** Permission yang menandakan pengelola master data (boleh lihat semua asrama). */
+    private const MASTER_PERMISSIONS = [
+        'dormitory-master-all-access',
+        'view_global_school_data',
+    ];
+
+    /**
+     * Cek izin lewat lapisan snapshot (canPermission) DAN Spatie.
+     * Snapshot izin bisa kosong/basi sehingga canPermission mengembalikan false
+     * padahal role Spatie milik pengguna sudah benar.
+     */
+    private function hasPermission(string $permission): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if (canPermission($permission)) {
+            return true;
+        }
+
+        // getAllPermissions() tidak melempar exception bila permission belum ada di DB
+        // (hasPermissionTo() melempar PermissionDoesNotExist).
+        return $user->getAllPermissions()->contains(fn ($item) => $item->name === $permission);
+    }
+
+    private function hasMasterAccess(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin())) {
+            return true;
+        }
+
+        foreach (self::MASTER_PERMISSIONS as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function validateAccess(string $userId): void
     {
         abort_unless(auth()->check() && canAccessUser($userId), 403, 'Akses ditolak.');
-        abort_unless(
-            canPermission('dormitory-master-all-access')
-            || canPermission('view_global_school_data')
-            || canPermission('asrama-view')
-            || canPermission('asrama-manage')
-            || canPermission('asrama-create'),
-            403,
-            'Anda tidak memiliki akses ke halaman asrama.'
-        );
+
+        foreach (self::ACCESS_PERMISSIONS as $permission) {
+            if ($this->hasPermission($permission)) {
+                return;
+            }
+        }
+
+        abort(403, 'Anda tidak memiliki akses ke halaman asrama.');
     }
 
     private function validateWriteAccess(string $userId): void
@@ -47,7 +104,7 @@ class DormitoryMasterController extends Controller
             ->withCount(['residents as total_residents' => fn ($q) => $q->where('is_active', true)]);
 
         // Non-admin hanya melihat asrama yang boleh diakses (kepala/staf/wali kamar).
-        if (! canPermission('dormitory-master-all-access') && ! canPermission('view_global_school_data')) {
+        if (! $this->hasMasterAccess()) {
             $accessibleIds = Dormitory::pluck('id')
                 ->filter(fn ($id) => auth()->user()?->canAccessDormitory($id))
                 ->values();
@@ -112,8 +169,10 @@ class DormitoryMasterController extends Controller
         }
 
         if ($dormitoryId) {
-            return redirect()->route('user.dormitory-master.show', [
-                'userId'     => $userId,
+            // Pakai URL modul asrama (/asrama/{asramaUuid}) agar konsisten dengan
+            // menu "Profil Asrama" dan status aktif di sidebar.
+            return redirect()->route('user.asrama.show', [
+                'userId' => $userId,
                 'asramaUuid' => $dormitoryId,
             ]);
         }
@@ -199,6 +258,15 @@ class DormitoryMasterController extends Controller
     public function show(string $userId, string $asramaUuid)
     {
         $this->validateAccess($userId);
+
+        // Non-admin hanya boleh membuka asrama yang memang menjadi tanggung jawabnya.
+        if (! $this->hasMasterAccess()) {
+            abort_unless(
+                auth()->user()?->canAccessDormitory($asramaUuid),
+                403,
+                'Anda tidak memiliki akses ke asrama ini.'
+            );
+        }
 
         $dormitory = Dormitory::with(['workUnit', 'school', 'head', 'wings', 'rooms'])
             ->withCount(['residents as total_residents' => fn ($q) => $q->where('is_active', true)])
