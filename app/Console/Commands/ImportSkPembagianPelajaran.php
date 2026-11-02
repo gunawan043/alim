@@ -28,7 +28,7 @@ class ImportSkPembagianPelajaran extends Command
 {
     protected $signature = 'sk:import-pembagian
         {--file=database/data/sk-pembagian-smp-putri-2026-2027.json : Berkas JSON sumber tabel}
-        {--school=Smp It Putri : Nama sekolah (pencarian LIKE)}
+        {--school=SMP IT Putri : Nama sekolah (pencarian LIKE)}
         {--year= : Tahun ajaran, default tahun ajaran aktif}
         {--decree-number= : Nomor SK (wajib saat --commit)}
         {--decree-date= : Tanggal SK (Y-m-d), default hari ini}

@@ -24,7 +24,7 @@ class SkSdItPutraGenap2026Seeder extends Seeder
 {
     public function run(): void
     {
-        $school = School::where('name', 'like', '%Sd It Putra Abu Hurairah%')
+        $school = School::where('name', 'like', '%SD IT Putra Abu Hurairah%')
             ->orWhere('name', 'like', '%SDIT Putra Abu Hurairah%')
             ->firstOrFail();
 
