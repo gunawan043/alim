@@ -831,17 +831,6 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
 
 <li class="nav-item">
     <a class="nav-link menu-link{{
-        isActiveAsr($currentRoute, 'user.gtk-positions.')
-        ? ' active' : ''
-    }}"
-       href="{{ route('user.gtk-positions.index', ['userId' => $userId]) }}">
-        <i class="ri-briefcase-line"></i>
-        <span>Jabatan GTK</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{
         isActiveAsr($currentRoute, 'user.gtk-position-proposals.')
         ? ' active' : ''
     }}"

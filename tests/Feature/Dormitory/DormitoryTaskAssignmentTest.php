@@ -148,6 +148,18 @@ class DormitoryTaskAssignmentTest extends TestCase
             ->assertSee($this->leader->name);
     }
 
+    public function test_sidebar_asrama_tidak_mengarahkan_kepala_ke_gtk_positions_global(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('user.asrama.task-assignments.index', [
+                'userId' => $this->leader->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]))
+            ->assertOk()
+            ->assertSee('Pembagian Tugas')
+            ->assertDontSee(route('user.gtk-positions.index', ['userId' => $this->leader->id]), false);
+    }
+
     public function test_staf_tanpa_jabatan_tidak_dapat_membuka_halaman(): void
     {
         $this->actingAs($this->staff)
