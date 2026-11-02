@@ -199,6 +199,13 @@
             <span>Tugas Harian</span>
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.task-assignments.']) ? ' active' : '' }}"
+           href="{{ $spAsramaUrl('user.asrama.task-assignments.index') }}">
+            <i class="ri-user-settings-line"></i>
+            <span>Pembagian Tugas</span>
+        </a>
+    </li>
     @endif
 
     {{-- 13. Konsumsi Asrama (Soon) --}}

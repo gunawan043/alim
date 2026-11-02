@@ -32,27 +32,42 @@ class DormitoryStaffAssignmentController extends Controller
     {
         $targetUserId = (string) $request->route('targetUserId');
 
-        $dormitoryIds = $request->input('dormitory_ids', []);
+        $dormitoryIds = array_values(array_unique($request->input('dormitory_ids', [])));
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $notes = $request->input('notes');
 
-        // Clear existing active assignments for this user
-        DormitoryStaffAssignment::where('user_id', $targetUserId)
-            ->where('status', 'active')
-            ->update(['status' => 'ended']);
+        $existingAssignments = DormitoryStaffAssignment::where('user_id', $targetUserId)
+            ->get()
+            ->keyBy('dormitory_id');
 
-        // Create new assignments
+        // Akhiri assignment yang tidak lagi dipilih tanpa menghapus data
+        // jabatan/tugas asrama yang sudah diatur dari halaman Pembagian Tugas.
+        foreach ($existingAssignments as $dormitoryId => $assignment) {
+            if (! in_array($dormitoryId, $dormitoryIds, true)) {
+                $assignment->update(['status' => 'ended']);
+            }
+        }
+
         foreach ($dormitoryIds as $dormitoryId) {
-            DormitoryStaffAssignment::create([
-                'user_id' => $targetUserId,
-                'dormitory_id' => $dormitoryId,
+            $assignment = $existingAssignments->get($dormitoryId);
+
+            $payload = [
                 'assigned_by_id' => $request->user()?->id ?? null,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'status' => 'active',
-                'notes' => $notes,
-            ]);
+                'notes' => $notes ?? $assignment?->notes,
+            ];
+
+            if ($assignment) {
+                $assignment->update($payload);
+            } else {
+                DormitoryStaffAssignment::create($payload + [
+                    'user_id' => $targetUserId,
+                    'dormitory_id' => $dormitoryId,
+                ]);
+            }
         }
 
         return back()->with('success', 'Staf Perizinan scope updated successfully.');

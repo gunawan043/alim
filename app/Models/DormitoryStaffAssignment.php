@@ -23,6 +23,7 @@ class DormitoryStaffAssignment extends Model
         'start_date' => 'date',
         'end_date' => 'date',
         'is_active' => 'boolean',
+        'duties' => 'array',
     ];
 
     protected static function boot(): void
@@ -38,7 +39,11 @@ class DormitoryStaffAssignment extends Model
         'start_date',
         'end_date',
         'status',
+        'position',
+        'shift',
+        'duties',
         'notes',
+        'updated_by_id',
     ];
 
     public function user(): BelongsTo

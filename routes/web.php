@@ -90,6 +90,7 @@ use App\Http\Controllers\DormitoryRoomController;
 use App\Http\Controllers\DormitoryRoomMoveController;
 use App\Http\Controllers\DormitoryStaffAssignmentController;
 use App\Http\Controllers\DormitoryStudentOperatorController;
+use App\Http\Controllers\DormitoryTaskAssignmentController;
 use App\Http\Controllers\DormitoryViolationController;
 use App\Http\Controllers\DormitoryVisitCalendarController;
 use App\Http\Controllers\DormitoryVisitLogController;
@@ -2494,6 +2495,15 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{taskId}', [DormitoryDailyTaskController::class, 'update'])->name('update');
                     Route::delete('/{taskId}', [DormitoryDailyTaskController::class, 'destroy'])->name('destroy');
                     Route::post('/{taskId}/toggle', [DormitoryDailyTaskController::class, 'toggle'])->name('toggle');
+                });
+
+                // ── PEMBAGIAN TUGAS STAF ASRAMA ──────────────────────
+                Route::prefix('{asramaUuid}/pembagian-tugas')->name('task-assignments.')->group(function () {
+                    Route::get('/', [DormitoryTaskAssignmentController::class, 'index'])->name('index');
+                    Route::post('/', [DormitoryTaskAssignmentController::class, 'store'])->name('store');
+                    Route::get('/cetak', [DormitoryTaskAssignmentController::class, 'print'])->name('print');
+                    Route::put('/{assignmentUuid}', [DormitoryTaskAssignmentController::class, 'update'])->name('update');
+                    Route::delete('/{assignmentUuid}', [DormitoryTaskAssignmentController::class, 'destroy'])->name('destroy');
                 });
 
                 // ── PERIZINAN ────────────────────────────────────────

@@ -3,6 +3,7 @@
 namespace App\Services\Boarding;
 
 use App\Models\Dormitory;
+use App\Models\DormitoryStaffAssignment;
 use App\Models\User;
 
 /**
@@ -42,6 +43,19 @@ class DormitoryPolicyAccess
         $dormitory = Dormitory::withTrashed()->find($dormitoryId);
 
         if ($dormitory && (string) $dormitory->head_id === (string) $user->id) {
+            return true;
+        }
+
+        // Jabatan asrama yang ditetapkan Kepala melalui halaman Pembagian Tugas
+        // juga berlaku sebagai izin operasional untuk asrama tersebut.
+        $isAssignedLeader = DormitoryStaffAssignment::query()
+            ->active()
+            ->forUser($user->id)
+            ->forDormitory($dormitoryId)
+            ->whereIn('position', ['kepala_asrama', 'wakil_kepala_asrama'])
+            ->exists();
+
+        if ($isAssignedLeader) {
             return true;
         }
 

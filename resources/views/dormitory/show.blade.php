@@ -205,6 +205,9 @@
                                 <a href="{{ route('user.asrama.daily-tasks.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light text-start">
                                     <i class="ri-checkbox-multiple-line me-2 text-success"></i> Tugas Harian
                                 </a>
+                                <a href="{{ route('user.asrama.task-assignments.index', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light text-start">
+                                    <i class="ri-user-settings-line me-2 text-primary"></i> Pembagian Tugas
+                                </a>
                                 <a href="{{ route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $dormitory->id]) }}" class="btn btn-light text-start">
                                     <i class="ri-file-list-3-line me-2 text-warning"></i> Ajukan Izin
                                 </a>
