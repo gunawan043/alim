@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Role;
 use App\Models\User;
 
 /**
@@ -63,5 +64,22 @@ class UnitHeadAccess
             403,
             'Hanya Personalia dan Super Admin yang dapat mengganti kepala satuan kerja.'
         );
+    }
+
+    /**
+     * Pastikan user yang merangkap Kepala Asrama tetap memiliki role Asrama
+     * tanpa menghapus role utama (mis. Satuan Pendidikan).
+     */
+    public static function ensureAsramaRole(User $user): void
+    {
+        try {
+            $role = Role::firstOrCreate(['name' => 'Asrama', 'guard_name' => 'web']);
+
+            if (! $user->hasRole($role)) {
+                $user->assignRole($role);
+            }
+        } catch (\Throwable) {
+            // Pemberian role tidak boleh menggagalkan penyimpanan data kepala.
+        }
     }
 }

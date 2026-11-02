@@ -182,7 +182,13 @@ class DormitoryMasterController extends Controller
             $head = User::find($dormitory->head_id);
 
             if ($head) {
-                $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+                // Jangan menimpa jabatan utama jika user juga Kepala Satuan
+                // Pendidikan. Cukup tambahkan akses operasional Asrama.
+                if (School::where('principal_user_id', $head->id)->exists()) {
+                    UnitHeadAccess::ensureAsramaRole($head);
+                } else {
+                    $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+                }
             }
         }
 
@@ -277,7 +283,11 @@ class DormitoryMasterController extends Controller
             $head = User::find($dormitory->head_id);
 
             if ($head) {
-                $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+                if (School::where('principal_user_id', $head->id)->exists()) {
+                    UnitHeadAccess::ensureAsramaRole($head);
+                } else {
+                    $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+                }
             }
         }
 

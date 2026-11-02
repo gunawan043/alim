@@ -31,7 +31,8 @@ class SchoolController extends Controller
         if ($user->isSystemAdmin()
             || canPermission('school-update')
             || $user->hasRole('Kepala Sekolah')
-            || $user->hasRole('Kepala Satuan Pendidikan')) {
+            || $user->hasRole('Kepala Satuan Pendidikan')
+            || School::where('principal_user_id', $user->id)->where('is_active', true)->exists()) {
             return true;
         }
 
@@ -78,7 +79,8 @@ class SchoolController extends Controller
             ->toArray();
 
         abort_if(
-            ! in_array($school->work_unit_id, $userWorkUnitIds),
+            ! in_array($school->work_unit_id, $userWorkUnitIds)
+                && (string) $school->principal_user_id !== (string) $authUser->id,
             403,
             'Anda tidak memiliki akses ke sekolah ini.'
         );
@@ -96,8 +98,10 @@ class SchoolController extends Controller
 
         // Super Admin & Administrator: school-all-access or view_global_school_data
         // Tata Usaha: school_view (can only see schools in their work unit)
+        // Kepala sekolah rangkap jabatan: tetap melihat sekolah yang dipimpin.
+        $isPrincipal = School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
         $hasFullAccess = canPermission('school-all-access') || canPermission('view_global_school_data');
-        $hasViewAccess = canPermission('school_view');
+        $hasViewAccess = canPermission('school_view') || $isPrincipal;
 
         // If the user doesn't have any school-related permission, show a helpful message
         if (! $hasFullAccess && ! $hasViewAccess) {
@@ -112,7 +116,10 @@ class SchoolController extends Controller
             $userWorkUnitIds = GtkWorkUnit::where('user_id', $user->id)
                 ->pluck('work_unit_id')
                 ->toArray();
-            $query->whereIn('work_unit_id', $userWorkUnitIds);
+            $query->where(function ($q) use ($userWorkUnitIds, $user) {
+                $q->whereIn('work_unit_id', $userWorkUnitIds)
+                    ->orWhere('principal_user_id', $user->id);
+            });
         }
 
         if ($request->filled('search')) {
@@ -466,6 +473,12 @@ class SchoolController extends Controller
 
             if ($principal) {
                 $assignments->assign($principal, $school->workUnit, 'Kepala Satuan Pendidikan', 'kepala_sekolah');
+
+                // Rangkap jabatan: pertahankan akses Asrama jika user juga
+                // tercatat sebagai Kepala Asrama.
+                if (\App\Models\Dormitory::where('head_id', $principal->id)->where('is_active', true)->exists()) {
+                    UnitHeadAccess::ensureAsramaRole($principal);
+                }
             }
         }
 

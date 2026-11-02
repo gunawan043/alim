@@ -108,7 +108,7 @@ $isKepalaAsrama = in_array($currentUserJob, [
     'Kepala Departemen Tahfidz',
     'Kepala Departemen Bahasa',
     'Kepala Departemen Kesiswaan',
-]);
+]) || \App\Models\Dormitory::where('head_id', $userId)->where('is_active', true)->exists();
 
 $canApproveRewards = $hasAsramaContext && $asramaUuid
     ? app(\App\Services\Boarding\DormitoryPolicyAccess::class)
@@ -156,6 +156,16 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
         <span>Dashboard</span>
     </a>
 </li>
+
+@if($isDualUnitHead ?? false)
+<li class="nav-item">
+    <a class="nav-link menu-link{{ $currentRoute === 'user.dashboard.choose' ? ' active' : '' }}"
+       href="{{ route('user.dashboard.choose', ['userId' => $userId]) }}">
+        <i class="ri-arrow-left-right-line"></i>
+        <span>Pilih Dashboard</span>
+    </a>
+</li>
+@endif
 
 <li class="nav-item">
     <a class="nav-link menu-link{{ $currentRoute === 'user.profile.my' ? ' active' : '' }}"
@@ -608,6 +618,16 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
             : $asramaProfileFallback }}">
         <i class="ri-layout-grid-line"></i>
         <span>Penempatan Kamar</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.boarding.') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.boarding.index', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-shield-user-line"></i>
+        <span>Santri Boarding</span>
     </a>
 </li>
 

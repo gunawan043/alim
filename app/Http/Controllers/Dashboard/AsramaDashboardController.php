@@ -34,6 +34,57 @@ class AsramaDashboardController extends DashboardController
     }
 
     /**
+     * Rangkap jabatan: kepala asrama tetap boleh membuka dashboard asrama
+     * walau role utamanya saat ini Satuan Pendidikan.
+     */
+    protected function canAccessDashboard(User $user): bool
+    {
+        if ($user->hasRole($this->getRoleLabel())) {
+            return true;
+        }
+
+        try {
+            if (\App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists()) {
+                return true;
+            }
+
+            $today = now()->toDateString();
+
+            return DB::table('dormitory_staff_assignments')
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                ->exists()
+                || DB::table('room_supervisors')
+                    ->where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->where(fn ($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $today))
+                    ->exists();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    protected function detectJabatanCode(User $user): string
+    {
+        try {
+            if (\App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists()) {
+                $code = DB::table('structural_positions')
+                    ->where('name', 'Kepala Asrama')
+                    ->value('code');
+
+                if ($code) {
+                    return $code;
+                }
+            }
+        } catch (\Throwable) {
+            // fallback ke deteksi bawaan
+        }
+
+        return parent::detectJabatanCode($user);
+    }
+
+    /**
      * Scope asrama user.
      * Array kosong = tidak dibatasi (melihat semua asrama unit).
      */

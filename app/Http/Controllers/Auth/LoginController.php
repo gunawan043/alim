@@ -321,6 +321,14 @@ class LoginController extends Controller
         }
 
         $userId = $user->id;
+
+        $isAsramaHead = \App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists();
+        $isSchoolHead = \App\Models\School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
+
+        if ($isAsramaHead && $isSchoolHead) {
+            return redirect()->route('user.dashboard.choose', ['userId' => $userId]);
+        }
+
         $jabatanLower = strtolower(trim((string) ($user->employment?->jabatan ?? '')));
         $roleName = strtolower(trim((string) $roles->first()));
 

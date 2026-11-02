@@ -507,6 +507,9 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'employee.access'])->group(function () {
 
     Route::get('/', [HomeController::class, 'root'])->name('root');
+    Route::get('/{userId}/pilih-dashboard', [HomeController::class, 'chooseDashboard'])
+        ->middleware(['auth', 'role.access'])
+        ->name('user.dashboard.choose');
 
     Route::get('/access/{token}/data-pegawai', [SecureAccessController::class, 'dataPegawai'])
         ->name('secure.data.pegawai')

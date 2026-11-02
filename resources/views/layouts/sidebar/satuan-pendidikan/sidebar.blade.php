@@ -31,7 +31,20 @@
     $primaryWorkUnit   = $userWorkUnits->where('is_primary', true)->first() ?? $userWorkUnits->first();
     $primaryWorkUnitId = $primaryWorkUnit?->workUnit?->id;
     $sekolah           = $primaryWorkUnit?->workUnit?->school;
-    $sekolahId         = $sekolah?->id;
+
+    // Rangkap jabatan: jika user adalah kepala sekolah tetapi satuan kerja
+    // primernya bukan unit sekolah (mis. Kepala Asrama), pakai sekolah yang
+    // dipimpinnya sebagai konteks sidebar.
+    $headedSchool = \App\Models\School::query()
+        ->where('principal_user_id', $userId)
+        ->where('is_active', true)
+        ->first();
+
+    if ($headedSchool) {
+        $sekolah = $headedSchool;
+    }
+
+    $sekolahId = $sekolah?->id;
 
     /* ── Tahun ajaran aktif (satu sumber — bukan perkiraan kalender) ──── */
     $activeAcademicYearId = \App\Models\AcademicYear::where('is_active', true)->value('id');
@@ -71,7 +84,7 @@
         : collect();
 
     /* ── Jabatan ─────────────────────────────────────────────────────── */
-    $isKepala       = $hasJabatan('Kepala Satuan Pendidikan');
+    $isKepala       = $hasJabatan('Kepala Satuan Pendidikan') || $headedSchool !== null;
     $isWakil        = $hasJabatan('Wakil Kepala Satuan Pendidikan');
     $isGuruUmum     = $hasJabatan('Guru Umum');
     $isGuruAgama    = $hasJabatan('Guru Agama');
@@ -203,6 +216,10 @@
     $addDashboard($isKoorMapel, 'user.dashboard.koordinator-guru', 'Dashboard Koordinator Mapel', 'ri-team-line');
     $addDashboard($isKoorLab, 'lab.index', 'Dashboard Laboratorium', 'ri-flask-line');
     $addDashboard($isKoorSarpras, 'user.dashboard.koordinator-sarpras', 'Dashboard Koordinator Sarpras', 'ri-tools-line');
+
+    if ($isDualUnitHead ?? false) {
+        $addDashboard(true, 'user.dashboard.choose', 'Pilih Dashboard', 'ri-arrow-left-right-line');
+    }
 
     if ($dashboardOptions === []) {
         $dashboardOptions[] = ['routeName' => 'root', 'label' => 'Dashboard', 'icon' => 'ri-home-6-line'];

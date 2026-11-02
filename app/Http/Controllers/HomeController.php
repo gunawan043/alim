@@ -54,6 +54,13 @@ class HomeController extends Controller
             return redirect()->route('system.dashboard');
         }
 
+        $isAsramaHead = \App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists();
+        $isSchoolHead = \App\Models\School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
+
+        if ($isAsramaHead && $isSchoolHead) {
+            return redirect()->route('user.dashboard.choose', ['userId' => $user->id]);
+        }
+
         $roles = $user->getRoleNames();
 
         // Boarding roles with dedicated dashboards
@@ -162,6 +169,36 @@ class HomeController extends Controller
 
         // Default → GTK dashboard for any remaining role (Guru/Tendik/GTK)
         return redirect('/dashboard/gtk');
+    }
+
+    /**
+     * Pemilih dashboard untuk user yang merangkap jabatan,
+     * mis. Kepala Asrama sekaligus Kepala Satuan Pendidikan.
+     */
+    public function chooseDashboard(Request $request)
+    {
+        $user = $request->user() ?: Auth::user();
+
+        $dormitories = \App\Models\Dormitory::query()
+            ->where('head_id', $user->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $schools = \App\Models\School::query()
+            ->where('principal_user_id', $user->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        abort_if($dormitories->isEmpty() && $schools->isEmpty(), 403, 'Tidak ada dashboard yang tersedia untuk akun ini.');
+
+        return view('dashboard.choose-role', [
+            'user' => $user,
+            'userId' => $user->id,
+            'dormitories' => $dormitories,
+            'schools' => $schools,
+        ]);
     }
 
     /* Language Translation */

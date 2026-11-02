@@ -91,6 +91,32 @@
         ? $user->roles->pluck('name')->toArray()
         : [];
 
+    /*
+     * Rangkap jabatan: satu user dapat menjadi Kepala Asrama sekaligus
+     * Kepala Satuan Pendidikan. Data kepala pada master asrama/sekolah
+     * menjadi sumber kebenaran, jadi kedua sidebar tetap ditampilkan
+     * meskipun role Spatie hanya menyimpan salah satunya.
+     */
+    $isDualUnitHead = false;
+    if ($user && ! $isSystemAdmin) {
+        try {
+            $isDualUnitHead = \App\Models\Dormitory::query()
+                ->where('head_id', $user->id)
+                ->where('is_active', true)
+                ->exists()
+                && \App\Models\School::query()
+                    ->where('principal_user_id', $user->id)
+                    ->where('is_active', true)
+                    ->exists();
+        } catch (\Throwable) {
+            $isDualUnitHead = false;
+        }
+    }
+
+    if ($isDualUnitHead) {
+        $userRoles = array_values(array_unique(array_merge($userRoles, ['Asrama', 'Satuan Pendidikan'])));
+    }
+
     // ── Jabatan: PRIORITAS dari employment.jabatan ────────────────────────
     // Setelah import GTK, jabatan disimpan di `gtk_employments.jabatan` (string),
     // BUKAN di relasi `$user->jabatan` (yang mungkin UUID/objek/null).

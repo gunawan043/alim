@@ -337,6 +337,16 @@ abstract class DashboardController extends Controller
             if ($schoolId) {
                 return (string) $schoolId;
             }
+
+            // Rangkap jabatan: kepala sekolah tetap memakai sekolah yang
+            // dipimpinnya walau satuan kerja utama berada di asrama.
+            $principalSchoolId = \App\Models\School::query()
+                ->where('principal_user_id', $user->id)
+                ->value('id');
+
+            if ($principalSchoolId) {
+                return (string) $principalSchoolId;
+            }
         } catch (\Throwable $e) {
             Log::warning('resolveSchoolId failed: '.$e->getMessage());
         }
