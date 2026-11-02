@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
 use App\Models\DormitoryStaffAssignment;
+use App\Models\RoomSupervisor;
 use App\Models\User;
 use App\Services\Boarding\DormitoryPolicyAccess;
 use App\Services\Dormitory\DormitoryAudit;
@@ -19,7 +20,7 @@ class DormitoryTaskAssignmentController extends Controller
         $dormitory = Dormitory::findOrFail($asramaUuid);
         $this->authorizeManager($request->user(), $dormitory);
 
-        $rows = $this->assignmentRows($dormitory);
+        $assignedRows = $this->assignmentRows($dormitory);
         $assignments = DormitoryStaffAssignment::with(['user.employment'])
             ->where('dormitory_id', $asramaUuid)
             ->where('status', 'active')
@@ -31,6 +32,8 @@ class DormitoryTaskAssignmentController extends Controller
         $assignedUserIds = $assignments->keys()->push((string) $dormitory->head_id)->filter()->unique()->all();
         $availableUsers = $eligibleUsers->reject(fn (User $user) => in_array((string) $user->id, $assignedUserIds, true))->values();
 
+        $rows = $assignedRows->concat($this->unassignedRows($availableUsers));
+
         return view('dormitory.task-assignments.index', [
             'dormitory' => $dormitory,
             'userId' => $userId,
@@ -41,9 +44,9 @@ class DormitoryTaskAssignmentController extends Controller
             'duties' => DormitoryPosition::duties(),
             'shifts' => DormitoryPosition::shiftOptions(),
             'stats' => [
-                'total' => $rows->count(),
-                'leaders' => $rows->whereIn('position', [DormitoryPosition::KEPALA, DormitoryPosition::WAKIL])->count(),
-                'duties' => $rows->sum(fn (array $row) => count($row['duties'] ?? [])),
+                'total' => $assignedRows->count(),
+                'leaders' => $assignedRows->whereIn('position', [DormitoryPosition::KEPALA, DormitoryPosition::WAKIL])->count(),
+                'duties' => $assignedRows->sum(fn (array $row) => count($row['duties'] ?? [])),
             ],
         ]);
     }
@@ -156,15 +159,26 @@ class DormitoryTaskAssignmentController extends Controller
 
     private function assertEligibleUser(Dormitory $dormitory, string $targetUserId): void
     {
-        $target = User::with('employment')->findOrFail($targetUserId);
+        $target = User::with(['employment', 'gtkWorkUnits'])->findOrFail($targetUserId);
 
-        if (! $target->employment) {
-            abort(422, 'User belum memiliki data kepegawaian.');
-        }
+        $sameSchool = $dormitory->school_id
+            && (string) $target->employment?->school_id === (string) $dormitory->school_id;
 
-        if ($dormitory->school_id
-            && (string) $target->employment->school_id !== (string) $dormitory->school_id) {
-            abort(422, 'Staf harus berasal dari satuan pendidikan yang sama dengan asrama.');
+        $sameWorkUnit = $dormitory->work_unit_id
+            && $target->gtkWorkUnits->contains(fn ($row) => (string) $row->work_unit_id === (string) $dormitory->work_unit_id);
+
+        $alreadyAssigned = DormitoryStaffAssignment::where('user_id', $target->id)
+            ->where('dormitory_id', $dormitory->id)
+            ->where('status', 'active')
+            ->exists();
+
+        $roomSupervisor = RoomSupervisor::where('user_id', $target->id)
+            ->where('dormitory_id', $dormitory->id)
+            ->where('status', 'active')
+            ->exists();
+
+        if (! $target->employment || (! $sameSchool && ! $sameWorkUnit && ! $alreadyAssigned && ! $roomSupervisor)) {
+            abort(422, 'Staf harus berasal dari satuan pendidikan/satuan kerja asrama ini.');
         }
     }
 
@@ -187,18 +201,63 @@ class DormitoryTaskAssignmentController extends Controller
      */
     private function eligibleUsers(Dormitory $dormitory): Collection
     {
-        return User::with('employment')
+        $linkedUserIds = RoomSupervisor::where('dormitory_id', $dormitory->id)
+            ->where('status', 'active')
+            ->pluck('user_id')
+            ->merge(
+                DormitoryStaffAssignment::where('dormitory_id', $dormitory->id)
+                    ->where('status', 'active')
+                    ->pluck('user_id')
+            )
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return User::with(['employment', 'gtkWorkUnits'])
             ->where('is_active', true)
-            ->whereHas('employment', function ($query) use ($dormitory) {
+            ->where(function ($query) use ($dormitory, $linkedUserIds) {
                 if ($dormitory->school_id) {
-                    $query->where('school_id', $dormitory->school_id);
-                } elseif ($dormitory->work_unit_id) {
-                    $query->where('work_unit_id', $dormitory->work_unit_id);
+                    $query->whereHas('employment', fn ($employment) => $employment
+                        ->where('school_id', $dormitory->school_id));
+                }
+
+                if ($dormitory->work_unit_id) {
+                    $query->orWhereHas('gtkWorkUnits', fn ($workUnit) => $workUnit
+                        ->where('work_unit_id', $dormitory->work_unit_id));
+                }
+
+                if ($linkedUserIds !== []) {
+                    $query->orWhereIn('id', $linkedUserIds);
                 }
             })
             ->orderBy('name')
             ->limit(500)
             ->get();
+    }
+
+    /**
+     * GTK yang sudah terhubung dengan asrama tetapi belum punya
+     * pembagian tugas. Ditampilkan agar Kepala bisa langsung menugaskan.
+     *
+     * @param  Collection<int, User>  $users
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function unassignedRows(Collection $users): Collection
+    {
+        return $users->map(fn (User $user) => [
+            'assignment_id' => null,
+            'user' => $user,
+            'position' => null,
+            'position_label' => 'Belum ditugaskan',
+            'shift' => null,
+            'duties' => [],
+            'notes' => null,
+            'start_date' => null,
+            'end_date' => null,
+            'is_head' => false,
+            'is_unassigned' => true,
+        ])->values();
     }
 
     /**

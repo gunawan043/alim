@@ -5,7 +5,7 @@
 @unless($isEdit)
     <div class="mb-3">
         <label class="form-label">Pilih Staf <span class="text-danger">*</span></label>
-        <select name="user_id" class="form-select" required>
+        <select name="user_id" id="{{ $prefix }}_user_id" class="form-select" required>
             <option value="">— Pilih Staf —</option>
             @foreach($availableUsers as $user)
                 <option value="{{ $user->id }}" @selected(old('user_id') === $user->id)>

@@ -151,6 +151,12 @@
                                         </div>
                                     @elseif($row['is_head'])
                                         <span class="text-muted small">Diatur di Profil Asrama</span>
+                                    @elseif($row['is_unassigned'] ?? false)
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-assign-user"
+                                                data-bs-toggle="modal" data-bs-target="#addAssignmentModal"
+                                                data-user-id="{{ $row['user']->id }}">
+                                            <i class="ri-user-add-line me-1"></i>Tugaskan
+                                        </button>
                                     @else
                                         <span class="text-muted small">—</span>
                                     @endif
@@ -235,6 +241,15 @@
 
     const editForm = document.getElementById('editAssignmentForm');
     const editName = document.getElementById('edit_assignment_name');
+
+    document.querySelectorAll('.btn-assign-user').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const select = document.getElementById('add_user_id');
+            if (select) {
+                select.value = this.dataset.userId || '';
+            }
+        });
+    });
 
     document.querySelectorAll('.btn-edit-assignment').forEach(function (button) {
         button.addEventListener('click', function () {
