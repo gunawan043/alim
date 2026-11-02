@@ -95,6 +95,40 @@ class RoomSupervisorVisibilityTest extends TestCase
         $this->assertSame(1, RoomSupervisor::query()->active()->count());
     }
 
+    public function test_wali_kamar_aktif_tetap_terbaca_saat_ada_penugasan_lama_di_tanggal_sama(): void
+    {
+        $admin = User::factory()->create(['is_active' => true, 'is_system_admin' => true]);
+        [$dormitory, $room] = $this->makeRoom($admin);
+        $newUser = User::factory()->create(['name' => 'Wali Baru', 'is_active' => true]);
+        $oldUser = User::factory()->create(['name' => 'Wali Lama', 'is_active' => true]);
+
+        $active = $this->makeSupervisor($dormitory, $room, $newUser);
+
+        // Penugasan lama: tanggal mulai sama, status ended, id lebih "besar".
+        \DB::table('room_supervisors')->insert([
+            'id' => 'ffffffff-0000-0000-0000-000000000000',
+            'user_id' => $oldUser->id,
+            'room_id' => $room->id,
+            'dormitory_id' => $dormitory->id,
+            'academic_year_id' => $active->academic_year_id,
+            'start_date' => now()->toDateString().' 00:00:00',
+            'end_date' => now()->toDateString().' 00:00:00',
+            'status' => 'ended',
+            'notes' => 'Digantikan oleh wali kamar lain',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $fresh = $room->fresh();
+        $this->assertNotNull($fresh->activeSupervisor);
+        $this->assertSame($active->id, $fresh->activeSupervisor->id);
+        $this->assertSame('Wali Baru', $fresh->activeSupervisor->user->name);
+
+        // Eager loading (dipakai halaman daftar kamar) harus konsisten.
+        $eager = DormitoryRoom::with('activeSupervisor')->find($room->id);
+        $this->assertSame($active->id, $eager->activeSupervisor->id);
+    }
+
     public function test_halaman_detail_kamar_menampilkan_wali_kamar_dan_tombol_ubah(): void
     {
         $admin = User::factory()->create(['is_active' => true, 'is_system_admin' => true]);

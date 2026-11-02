@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class DormitoryRoom extends Model
@@ -60,7 +61,15 @@ class DormitoryRoom extends Model
         return $this->hasMany(RoomSupervisor::class, 'room_id');
     }
 
-    public function activeSupervisor()
+    /**
+     * Wali kamar yang sedang aktif.
+     *
+     * Tidak memakai latestOfMany(): subquery agregatnya mengabaikan filter
+     * status/tanggal, sehingga bila ada penugasan lama dengan start_date sama
+     * relasi bisa mengembalikan null. Cukup urutkan, hasOne mengambil yang
+     * pertama.
+     */
+    public function activeSupervisor(): HasOne
     {
         return $this->hasOne(RoomSupervisor::class, 'room_id')
             ->where('status', 'active')
@@ -68,6 +77,7 @@ class DormitoryRoom extends Model
                 $q->whereNull('end_date')->orWhereDate('end_date', '>=', today());
             })
             ->whereDate('start_date', '<=', today())
-            ->latestOfMany('start_date');
+            ->orderByDesc('start_date')
+            ->orderByDesc('created_at');
     }
 }
