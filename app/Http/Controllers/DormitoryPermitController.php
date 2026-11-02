@@ -17,6 +17,7 @@ use App\Models\DormitoryLeavePolicy;
 use App\Models\DormitoryPermit;
 use App\Models\DormitoryResident;
 use App\Models\PermitType;
+use App\Models\Student;
 use App\Models\StudentHealthPermit;
 use App\Services\Boarding\DormitoryPolicyAccess;
 use App\Services\Boarding\LeaveWorkflowService;
@@ -171,11 +172,14 @@ class DormitoryPermitController extends Controller
         $dormitory = $this->enforceDormitoryScope($asramaUuid);
         $activeYear = AcademicYear::where('is_active', true)->first();
 
-        // Ambil resident aktif
+        // Ambil resident aktif yang sudah menempati kamar. Santri yang sudah
+        // ditarik dari kamar (room_id null) belum punya kamar/wali kamar,
+        // jadi tidak boleh muncul di form izin.
         $residents = DormitoryResident::with('student.mahroms')
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id)
             ->where('is_active', true)
+            ->whereNotNull('room_id')
             ->orderBy('room_id')
             ->get();
 
@@ -228,7 +232,7 @@ class DormitoryPermitController extends Controller
         if (AsramaConfig::consentRequiredForDormitory($asramaUuid)
             && ! $request->boolean('is_emergency')
             && ! DormitoryDataConsent::activeFor($data['student_id'], $asramaUuid)) {
-            $studentName = \App\Models\Student::whereKey($data['student_id'])->value('name') ?? 'Santri';
+            $studentName = Student::whereKey($data['student_id'])->value('name') ?? 'Santri';
 
             return back()->withInput()->withErrors([
                 'consent' => "Persetujuan data wali (PDP) belum dicatat untuk {$studentName}.",
@@ -376,6 +380,7 @@ class DormitoryPermitController extends Controller
             ->where('dormitory_id', $asramaUuid)
             ->where('academic_year_id', $activeYear?->id)
             ->where('is_active', true)
+            ->whereNotNull('room_id')
             ->whereNotIn('student_id', $activePermitStudentIds)
             ->get()
             ->sortBy(fn ($r) => $r->student?->name)
@@ -440,7 +445,7 @@ class DormitoryPermitController extends Controller
 
             if (AsramaConfig::consentRequiredForDormitory($asramaUuid)
                 && ! DormitoryDataConsent::activeFor($studentId, $asramaUuid)) {
-                $skipped[] = (\App\Models\Student::whereKey($studentId)->value('name') ?? $studentId).' (PDP belum dicatat)';
+                $skipped[] = (Student::whereKey($studentId)->value('name') ?? $studentId).' (PDP belum dicatat)';
 
                 continue;
             }
@@ -468,7 +473,7 @@ class DormitoryPermitController extends Controller
                 );
                 $created++;
             } catch (QuotaExceededException|ActivePermitExistsException|\InvalidArgumentException $e) {
-                $skipped[] = (\App\Models\Student::whereKey($studentId)->value('name') ?? $studentId).' ('.$e->getMessage().')';
+                $skipped[] = (Student::whereKey($studentId)->value('name') ?? $studentId).' ('.$e->getMessage().')';
             }
         }
 
