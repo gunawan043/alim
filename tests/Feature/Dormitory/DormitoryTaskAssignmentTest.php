@@ -160,6 +160,16 @@ class DormitoryTaskAssignmentTest extends TestCase
             ->assertDontSee(route('user.gtk-positions.index', ['userId' => $this->leader->id]), false);
     }
 
+    public function test_url_gtk_positions_mengarah_ke_pembagian_tugas_untuk_kepala_asrama(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('user.gtk-positions.index', ['userId' => $this->leader->id]))
+            ->assertRedirect(route('user.asrama.task-assignments.index', [
+                'userId' => $this->leader->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]));
+    }
+
     public function test_staf_tanpa_jabatan_tidak_dapat_membuka_halaman(): void
     {
         $this->actingAs($this->staff)

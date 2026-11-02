@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dormitory;
 use App\Models\StructuralPosition;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,24 @@ class GtkPositionController extends Controller
 {
     public function index(Request $request, string $userId)
     {
-        abort_unless(canPermission('gtk-update'), 403, 'Anda tidak memiliki izin untuk mengelola jabatan GTK.');
+        if (! canPermission('gtk-update')) {
+            $dormitory = Dormitory::query()
+                ->where('head_id', $request->user()?->id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->first();
+
+            if ($dormitory) {
+                return redirect()
+                    ->route('user.asrama.task-assignments.index', [
+                        'userId' => $userId,
+                        'asramaUuid' => $dormitory->id,
+                    ])
+                    ->with('warning', 'Jabatan GTK global hanya untuk Personalia/Super Admin. Gunakan Pembagian Tugas Asrama untuk mengatur jabatan dan tugas staf asrama.');
+            }
+
+            abort(403, 'Anda tidak memiliki izin untuk mengelola jabatan GTK.');
+        }
 
         $query = User::with(['employment', 'gtkProfile', 'gtkWorkUnits.workUnit'])
             ->whereHas('employment');
