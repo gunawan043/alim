@@ -66,26 +66,28 @@ class DormitoryPolicyAlignmentTest extends TestCase
         $this->assertSame('pending', $permit->status);
     }
 
-    public function test_izin_lebih_dari_tiga_hari_ditolak(): void
+    public function test_izin_lebih_dari_tiga_hari_tetap_diterima_tetapi_menunggu_kepala_asrama(): void
     {
         $this->seed(PermitTypeSeeder::class);
         [$user, $dorm, $student, $year] = $this->fixtures();
 
         $this->actingAs($user);
 
-        $this->expectException(\InvalidArgumentException::class);
-
-        app(LeaveWorkflowService::class)->submit([
+        $permit = app(LeaveWorkflowService::class)->submit([
             'student_id' => $student->id,
             'room_id' => DormitoryResident::where('student_id', $student->id)->value('room_id'),
-            'permit_type' => 'musibah',
+            'permit_type' => 'pulang',
             'destination' => 'Rumah keluarga',
-            'purpose' => 'Musibah keluarga',
+            'purpose' => 'Keperluan keluarga',
             'departure_datetime' => now()->addDay()->toDateTimeString(),
             'expected_return_datetime' => now()->addDays(5)->toDateTimeString(),
             'guardian_consent_confirmed' => true,
             'created_by' => $user->id,
         ], $dorm->id, $year->id);
+
+        // Izin panjang tidak ditolak, tetapi tidak di-auto-approve.
+        $this->assertSame('pending', $permit->status);
+        $this->assertNull($permit->approved_by);
     }
 
     public function test_jadwal_kunjungan_putra_dan_pekan_kelima_divalidasi(): void

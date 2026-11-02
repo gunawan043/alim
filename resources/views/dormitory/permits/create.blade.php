@@ -311,7 +311,10 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                                 <div class="form-text">
-                                    Maksimal 3 hari. Izin khusus dengan waktu lebih lama memerlukan approval.
+                                    Izin lebih dari {{ (int) config('asrama.max_learning_leave_days', 3) }} hari tetap dapat diajukan, tetapi wajib disetujui Kepala Asrama.
+                                    <span id="longLeaveHint" class="text-warning fw-semibold d-block d-none">
+                                        <i class="ri-shield-user-line me-1"></i>Durasi <span id="longLeaveDays">0</span> hari — pengajuan akan menunggu persetujuan Kepala Asrama.
+                                    </span>
                                     <span id="monthlyReturnHint" class="text-primary d-block d-none">
                                         <i class="ri-magic-line me-1"></i>Izin pulang otomatis 24 jam sejak waktu berangkat (bisa diubah manual).
                                     </span>
@@ -777,6 +780,28 @@
     if (departureInput) departureInput.addEventListener('change', function () { syncMonthlyReturn(false); });
     if (returnInput) returnInput.addEventListener('input', function () { returnTouched = true; });
     syncMonthlyReturn(false);
+
+    // ── Peringatan izin panjang: > batas hari wajib disetujui Kepala Asrama ──
+    const MAX_LEAVE_DAYS = {{ (int) config('asrama.max_learning_leave_days', 3) }};
+    const longLeaveHint = document.getElementById('longLeaveHint');
+    const longLeaveDays = document.getElementById('longLeaveDays');
+    function syncLongLeaveHint() {
+        if (!longLeaveHint || !departureInput || !returnInput) return;
+        const dep = new Date(departureInput.value);
+        const ret = new Date(returnInput.value);
+        if (isNaN(dep.getTime()) || isNaN(ret.getTime()) || ret <= dep) {
+            longLeaveHint.classList.add('d-none');
+            return;
+        }
+        const days = Math.ceil((ret - dep) / 86400000);
+        const isLong = days > MAX_LEAVE_DAYS;
+        longLeaveHint.classList.toggle('d-none', !isLong);
+        if (isLong && longLeaveDays) longLeaveDays.textContent = days;
+    }
+    if (departureInput) departureInput.addEventListener('change', syncLongLeaveHint);
+    if (returnInput) returnInput.addEventListener('input', syncLongLeaveHint);
+    if (returnInput) returnInput.addEventListener('change', syncLongLeaveHint);
+    syncLongLeaveHint();
 
     // ── Pre-load jika ada oldStudentId (mis. validasi gagal) ────
     if (oldStudentId && residentMap[oldStudentId]) {

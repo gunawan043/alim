@@ -6,7 +6,6 @@ use App\Models\PermitType;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class StorePermitRequest extends FormRequest
 {
@@ -107,16 +106,8 @@ class StorePermitRequest extends FormRequest
             }
         }
 
-        if ($this->filled('departure_datetime') && $this->filled('expected_return_datetime')) {
-            $departure = CarbonImmutable::parse($this->input('departure_datetime'));
-            $return = CarbonImmutable::parse($this->input('expected_return_datetime'));
-            $maxDays = (int) config('asrama.max_learning_leave_days', 3);
-
-            if ($return->greaterThan($departure->addDays($maxDays))) {
-                throw ValidationException::withMessages([
-                    'expected_return_datetime' => "Izin meninggalkan pembelajaran maksimal {$maxDays} hari. Ajukan izin khusus jika memerlukan waktu lebih lama.",
-                ]);
-            }
-        }
+        // Izin melebihi batas hari (default 3) TIDAK lagi ditolak di sini.
+        // Pengajuan tetap diterima dan diteruskan ke Kepala Asrama untuk
+        // disetujui — lihat LeaveWorkflowService::submit().
     }
 }

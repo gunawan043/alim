@@ -146,19 +146,14 @@ class LeaveWorkflowService
             throw new \InvalidArgumentException('Jenis izin ini sedang dinonaktifkan oleh pengelola pondok.');
         }
 
-        // Izin meninggalkan pembelajaran maksimal 3 hari, kecuali darurat
-        // atau izin khusus yang secara eksplisit disetujui.
+        // Izin melebihi batas hari (default 3) tetap boleh diajukan, tetapi
+        // tidak di-auto-approve: wajib disetujui Kepala/Wakil Asrama.
         $maxDays = (int) config('asrama.max_learning_leave_days', 3);
-        $isEmergencyRequest = (bool) ($data['is_emergency'] ?? false) || $permitType === 'darurat';
-        $isSpecialRequest = (bool) ($data['is_special_permission'] ?? false);
-        if (! $isEmergencyRequest && ! $isSpecialRequest) {
+        $isLongLeave = false;
+        if (! empty($data['departure_datetime']) && ! empty($data['expected_return_datetime'])) {
             $departureCheck = CarbonImmutable::parse($data['departure_datetime']);
             $returnCheck = CarbonImmutable::parse($data['expected_return_datetime']);
-            if ($returnCheck->greaterThan($departureCheck->addDays($maxDays))) {
-                throw new \InvalidArgumentException(
-                    "Izin meninggalkan pembelajaran maksimal {$maxDays} hari. Ajukan izin khusus jika memerlukan waktu lebih lama."
-                );
-            }
+            $isLongLeave = $returnCheck->greaterThan($departureCheck->addDays($maxDays));
         }
 
         $leavePolicy = DormitoryLeavePolicy::where('dormitory_id', $dormitoryId)
@@ -284,8 +279,9 @@ class LeaveWorkflowService
         $forceRequiresApproval = in_array($permitType, self::getSpecialPermitTypes(), true);
         $requiresApproval = $leavePolicy?->requires_approval ?? true;
 
-        $shouldAutoApprove = $isOrdinaryPermit;
-        if (! $isOrdinaryPermit && ! $forceRequiresApproval) {
+        // Izin panjang (melebihi batas hari) selalu butuh approval Kepala Asrama.
+        $shouldAutoApprove = $isOrdinaryPermit && ! $isLongLeave;
+        if (! $isOrdinaryPermit && ! $forceRequiresApproval && ! $isLongLeave) {
             if (! $requiresApproval) {
                 $shouldAutoApprove = true;
             } elseif (! empty($data['is_special_permission'])) {
