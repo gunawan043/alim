@@ -105,14 +105,20 @@
                 'classroom' => $studyGroup?->full_name,
                 'has_consent' => ! $consentRequired || in_array((string) $r->student_id, $consentedStudentIds, true),
                 'consent_url' => str_replace('RESIDENT_ID', (string) $r->id, $consentUrlTemplate),
-                'mahroms'   => $r->student->mahroms->map(function ($m) {
-                    return [
-                        'id'       => (string) $m->id,
-                        'name'     => $m->name,
-                        'relation' => $m->relation,
-                        'phone'    => $m->phone,
-                    ];
-                })->values(),
+                'mahroms'   => $r->student->mahroms
+                    ->where('is_active', true)
+                    ->sortByDesc('is_primary')
+                    ->map(function ($m) use ($r) {
+                        return [
+                            'id'             => (string) $m->id,
+                            'name'           => $m->name,
+                            'relation'       => $m->relationship,
+                            'relation_text'  => $m->relationship_text,
+                            // Fallback: nomor mahrom kosong → nomor santri/wali terdaftar.
+                            'phone'          => $m->phone ?: ($r->student->mobile_phone ?: $r->student->phone),
+                            'is_primary'     => (bool) $m->is_primary,
+                        ];
+                    })->values(),
             ];
         })->keyBy('id')->values();
     @endphp
@@ -605,9 +611,11 @@
         mahroms.forEach(function(m) {
             const opt = document.createElement('option');
             opt.value = m.id;
-            opt.textContent = m.name + ' (' + m.relation + ')';
+            const relationLabel = m.relation_text || m.relation || '';
+            opt.textContent = m.name + (relationLabel ? ' (' + relationLabel + ')' : '')
+                + (m.phone ? ' · ' + m.phone : '');
             opt.dataset.name = m.name;
-            opt.dataset.relation = m.relation;
+            opt.dataset.relation = relationLabel;
             opt.dataset.phone = m.phone || '';
             if (m.id === oldMahromId) opt.selected = true;
             mahromSelect.appendChild(opt);

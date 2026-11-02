@@ -60,16 +60,19 @@ class StudentImportMahromTest extends TestCase
             ->where('relationship', 'ayah')->firstOrFail();
         $this->assertSame('Bapak Ahmad', $ayah->name);
         $this->assertSame('3201010101010001', $ayah->id_number);
+        $this->assertSame('081200000001', $ayah->phone);
         $this->assertTrue((bool) $ayah->is_primary);
 
         $ibu = StudentMahrom::where('student_id', $student->id)
             ->where('relationship', 'ibu')->firstOrFail();
         $this->assertSame('Ibu Siti', $ibu->name);
+        $this->assertSame('081200000002', $ibu->phone);
         $this->assertFalse((bool) $ibu->is_primary);
 
         $wali = StudentMahrom::where('student_id', $student->id)
             ->where('relationship', 'wali')->firstOrFail();
         $this->assertSame('Pak Wali', $wali->name);
+        $this->assertSame('081200000003', $wali->phone);
 
         // Data orang tua tetap tersimpan di tabel students (kompatibilitas).
         $this->assertSame('Bapak Ahmad', $student->father_name);
@@ -108,6 +111,13 @@ class StudentImportMahromTest extends TestCase
             ->where('relationship', 'ibu')->count());
         $this->assertSame(1, StudentMahrom::where('student_id', $student->id)
             ->where('relationship', 'wali')->count());
+
+        // Nomor HP mahrom lama yang kosong dilengkapi dari file terbaru.
+        $this->assertSame(
+            '081200000001',
+            StudentMahrom::where('student_id', $student->id)
+                ->where('relationship', 'ayah')->value('phone')
+        );
     }
 
     /**
@@ -115,7 +125,7 @@ class StudentImportMahromTest extends TestCase
      */
     private function rows(): Collection
     {
-        $data = array_fill(0, 66, '');
+        $data = array_fill(0, 69, '');
         $data[1] = 'Ahmad Fauzi';
         $data[2] = 'S-001';
         $data[3] = 'L';
@@ -130,6 +140,7 @@ class StudentImportMahromTest extends TestCase
         $data[26] = 'SMA';
         $data[27] = 'Petani';
         $data[29] = '3201010101010001';
+        $data[66] = '081200000001';
 
         // Ibu
         $data[30] = 'Ibu Siti';
@@ -137,6 +148,7 @@ class StudentImportMahromTest extends TestCase
         $data[32] = 'SMA';
         $data[33] = 'Ibu Rumah Tangga';
         $data[35] = '3201010101010002';
+        $data[67] = '081200000002';
 
         // Wali
         $data[36] = 'Pak Wali';
@@ -144,6 +156,7 @@ class StudentImportMahromTest extends TestCase
         $data[38] = 'S1';
         $data[39] = 'Guru';
         $data[41] = '3201010101010003';
+        $data[68] = '081200000003';
 
         return collect([
             collect([]), collect([]), collect([]), collect([]), collect([]),

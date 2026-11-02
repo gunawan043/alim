@@ -70,10 +70,13 @@ class StudentImportRombelTest extends TestCase
         $headings = $export->headings()[0];
 
         $this->assertInstanceOf(Export::class, $export);
-        $this->assertCount(66, $headings);
+        $this->assertCount(69, $headings);
         $this->assertSame('Rombel Saat Ini', $headings[42]);
         $this->assertSame('No Peserta Ujian Nasional', $headings[43]);
         $this->assertSame('Jarak Rumah ke Sekolah (KM)', $headings[65]);
+        $this->assertSame('No. HP Ayah', $headings[66]);
+        $this->assertSame('No. HP Ibu', $headings[67]);
+        $this->assertSame('No. HP Wali', $headings[68]);
         $this->assertStringStartsWith('PK', Excel::raw($export, \Maatwebsite\Excel\Excel::XLSX));
     }
 

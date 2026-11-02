@@ -66,7 +66,8 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
                 'Nama di KIP', 'Nomor KKS', 'No Registrasi Akta Lahir', 'Bank', 'Nomor Rekening Bank',
                 'Rekening Atas Nama', 'Layak PIP', 'Alasan Layak PIP', 'Kebutuhan Khusus', 'Sekolah Asal',
                 'Anak ke-berapa', 'Lintang', 'Bujur', 'No KK', 'Berat Badan', 'Tinggi Badan',
-                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)'],
+                'Lingkar Kepala', 'Jml Saudara Kandung', 'Jarak Rumah ke Sekolah (KM)',
+                'No. HP Ayah', 'No. HP Ibu', 'No. HP Wali'],
         ];
     }
 
@@ -86,12 +87,13 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
             'BA' => 22, 'BB' => 12, 'BC' => 20, 'BD' => 14, 'BE' => 22,
             'BF' => 14, 'BG' => 14, 'BH' => 14, 'BI' => 20, 'BJ' => 10,
             'BK' => 10, 'BL' => 20, 'BM' => 10, 'BN' => 18,
+            'BO' => 18, 'BP' => 18, 'BQ' => 18,
         ];
     }
 
     public function styles(Worksheet $sheet): array
     {
-        $totalCols = 66;
+        $totalCols = 69;
         $lastCol = Coordinate::stringFromColumnIndex($totalCols);
 
         // Empat baris info, lalu dua baris header, data mulai baris 7.
@@ -109,7 +111,7 @@ class StudentTemplateExport implements Export, WithColumnWidths, WithHeadings, W
 
         $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
             'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN', 'AO', 'AP',
-            'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN'];
+            'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN', 'BO', 'BP', 'BQ'];
 
         // Header normal: satu sel merge vertikal baris 5-6.
         // Kolom orang tua memakai header grup + subheader seperti file Dapodik.

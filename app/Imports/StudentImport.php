@@ -53,6 +53,7 @@ class StudentImport implements ToCollection
     // 57=Lintang  58=Bujur  59=No KK
     // 60=Berat Badan  61=Tinggi Badan  62=Lingkar Kepala
     // 63=Jml Saudara Kandung  64=Jarak ke Sekolah (KM)
+    // 66=No. HP Ayah  67=No. HP Ibu  68=No. HP Wali (opsional, di akhir template)
 
     public function __construct(?string $schoolId = null, ?string $overrideStudyGroupId = null, ?StudentHealthSyncService $healthSync = null)
     {
@@ -619,7 +620,7 @@ class StudentImport implements ToCollection
      * Simpan data Ayah/Ibu/Wali dari file import sebagai mahrom santri.
      * Hanya membuat peran yang belum ada — data lama tidak ditimpa.
      */
-    private function createMahroms(Student $student, Collection $row): int
+    private function createMahroms(Student $student, Collection $row, ?int $shiftFrom = null): int
     {
         $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
 
@@ -633,16 +634,27 @@ class StudentImport implements ToCollection
 
         $created = 0;
 
-        foreach ($this->parentRows($row) as $parent) {
+        foreach ($this->parentRows($row, $shiftFrom) as $parent) {
+            $name = trim($parent['name']);
+            $phone = trim((string) ($parent['phone'] ?? ''));
+
+            // Sudah ada peran yang sama → jangan duplikasi, tetapi lengkapi
+            // nomor HP yang masih kosong dari file terbaru (sinkron kontak).
+            if (in_array($parent['relationship'], $existingRelationships, true)) {
+                if ($phone !== '') {
+                    StudentMahrom::where('student_id', $student->id)
+                        ->where('relationship', $parent['relationship'])
+                        ->where(fn ($q) => $q->whereNull('phone')->orWhere('phone', ''))
+                        ->update(['phone' => mb_substr($phone, 0, 20)]);
+                }
+
+                continue;
+            }
+
             if ($existingCount >= $maxMahrom) {
                 break;
             }
 
-            if (in_array($parent['relationship'], $existingRelationships, true)) {
-                continue;
-            }
-
-            $name = trim($parent['name']);
             if ($name === '') {
                 continue;
             }
@@ -663,6 +675,7 @@ class StudentImport implements ToCollection
                 'name' => mb_substr($name, 0, 191),
                 'id_number' => $nik !== '' ? mb_substr($nik, 0, 30) : null,
                 'relationship' => $parent['relationship'],
+                'phone' => $phone !== '' ? mb_substr($phone, 0, 20) : null,
                 'is_active' => true,
                 'is_primary' => ! $hasPrimary,
                 'notes' => $notes ? implode(' · ', $notes) : null,
@@ -696,6 +709,7 @@ class StudentImport implements ToCollection
                 'education' => $this->logicalCell($row, 26, $shiftFrom),
                 'occupation' => $this->logicalCell($row, 27, $shiftFrom),
                 'nik' => $this->logicalCell($row, 29, $shiftFrom),
+                'phone' => $this->logicalCell($row, 66, $shiftFrom),
             ],
             [
                 'relationship' => 'ibu',
@@ -704,6 +718,7 @@ class StudentImport implements ToCollection
                 'education' => $this->logicalCell($row, 32, $shiftFrom),
                 'occupation' => $this->logicalCell($row, 33, $shiftFrom),
                 'nik' => $this->logicalCell($row, 35, $shiftFrom),
+                'phone' => $this->logicalCell($row, 67, $shiftFrom),
             ],
             [
                 'relationship' => 'wali',
@@ -712,6 +727,7 @@ class StudentImport implements ToCollection
                 'education' => $this->logicalCell($row, 38, $shiftFrom),
                 'occupation' => $this->logicalCell($row, 39, $shiftFrom),
                 'nik' => $this->logicalCell($row, 41, $shiftFrom),
+                'phone' => $this->logicalCell($row, 68, $shiftFrom),
             ],
         ];
     }
