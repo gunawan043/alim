@@ -37,7 +37,7 @@ class DormitoryTaskAssignmentController extends Controller
             'rows' => $rows,
             'assignments' => $assignments,
             'availableUsers' => $availableUsers,
-            'positions' => DormitoryPosition::options(),
+            'positions' => DormitoryPosition::assignableOptions(),
             'duties' => DormitoryPosition::duties(),
             'shifts' => DormitoryPosition::shiftOptions(),
             'stats' => [
@@ -55,7 +55,7 @@ class DormitoryTaskAssignmentController extends Controller
 
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'position' => 'required|in:'.implode(',', DormitoryPosition::keys()),
+            'position' => 'required|in:'.implode(',', DormitoryPosition::assignableKeys()),
             'shift' => 'nullable|in:'.implode(',', array_keys(DormitoryPosition::shiftOptions())),
             'duties' => 'nullable|array',
             'duties.*' => 'string|in:'.implode(',', DormitoryPosition::dutyKeys()),
@@ -98,7 +98,7 @@ class DormitoryTaskAssignmentController extends Controller
         $assignment = DormitoryStaffAssignment::where('dormitory_id', $asramaUuid)->findOrFail($assignmentUuid);
 
         $data = $request->validate([
-            'position' => 'required|in:'.implode(',', DormitoryPosition::keys()),
+            'position' => 'required|in:'.implode(',', DormitoryPosition::assignableKeys()),
             'shift' => 'nullable|in:'.implode(',', array_keys(DormitoryPosition::shiftOptions())),
             'duties' => 'nullable|array',
             'duties.*' => 'string|in:'.implode(',', DormitoryPosition::dutyKeys()),

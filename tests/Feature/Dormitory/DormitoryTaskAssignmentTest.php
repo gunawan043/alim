@@ -95,6 +95,36 @@ class DormitoryTaskAssignmentTest extends TestCase
         $this->assertSame(['kebersihan', 'keamanan'], $assignment->duties);
     }
 
+    public function test_kepala_asrama_tidak_dapat_diubah_dari_halaman_pembagian_tugas(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('user.asrama.task-assignments.index', [
+                'userId' => $this->leader->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]))
+            ->assertOk()
+            ->assertDontSee('value="kepala_asrama"', false);
+
+        $this->actingAs($this->leader)
+            ->post(route('user.asrama.task-assignments.store', [
+                'userId' => $this->leader->id,
+                'asramaUuid' => $this->dormitory->id,
+            ]), [
+                'user_id' => $this->wakil->id,
+                'position' => DormitoryPosition::KEPALA,
+                'shift' => 'pagi',
+                'duties' => ['kebersihan'],
+                'start_date' => now()->toDateString(),
+            ])
+            ->assertSessionHasErrors('position');
+
+        $this->assertDatabaseMissing('dormitory_staff_assignments', [
+            'user_id' => $this->wakil->id,
+            'dormitory_id' => $this->dormitory->id,
+            'position' => DormitoryPosition::KEPALA,
+        ]);
+    }
+
     public function test_wakil_yang_ditetapkan_dapat_mengakses_pembagian_tugas(): void
     {
         DormitoryStaffAssignment::create([

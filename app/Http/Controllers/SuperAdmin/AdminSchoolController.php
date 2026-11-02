@@ -6,6 +6,7 @@ use App\Models\Province;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Support\UnitHeadAccess;
 use Illuminate\Http\Request;
 
 class AdminSchoolController extends Controller
@@ -90,6 +91,10 @@ class AdminSchoolController extends Controller
             'npwp' => 'nullable|string|max:30',
         ]);
 
+        if (! empty($validated['principal_user_id']) && ! UnitHeadAccess::canManage($request->user())) {
+            abort(403, 'Hanya Personalia dan Super Admin yang dapat menetapkan kepala satuan pendidikan.');
+        }
+
         $school = School::create($validated);
 
         if ($request->hasFile('logo_path')) {
@@ -157,6 +162,15 @@ class AdminSchoolController extends Controller
             'kop_npsn' => 'nullable|string|max:20',
             'npwp' => 'nullable|string|max:30',
         ]);
+
+        if (! UnitHeadAccess::canManage($request->user())) {
+            $newPrincipalId = $request->exists('principal_user_id')
+                ? ($validated['principal_user_id'] ?? null)
+                : $school->principal_user_id;
+
+            UnitHeadAccess::ensureCanChange($school->principal_user_id, $newPrincipalId, $request->user());
+            $validated['principal_user_id'] = $school->principal_user_id;
+        }
 
         $school->update($validated);
 

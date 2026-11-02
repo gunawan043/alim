@@ -7,6 +7,7 @@ use App\Models\Dormitory;
 use App\Models\DormitoryRoom;
 use App\Models\DormitoryWing;
 use App\Models\School;
+use App\Support\UnitHeadAccess;
 use Illuminate\Http\Request;
 
 class DormitoryController extends Controller
@@ -145,6 +146,10 @@ class DormitoryController extends Controller
 
         $data['is_active'] = $request->boolean('is_active', true);
 
+        if (! empty($data['head_id']) && ! UnitHeadAccess::canManage($request->user())) {
+            abort(403, 'Hanya Personalia dan Super Admin yang dapat menetapkan kepala asrama.');
+        }
+
         $dormitory = Dormitory::create($data);
 
         return redirect()->route('user.asrama.show', [
@@ -217,6 +222,13 @@ class DormitoryController extends Controller
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
+
+        if (! UnitHeadAccess::canManage($request->user())) {
+            $newHeadId = $request->exists('head_id') ? ($data['head_id'] ?? null) : $dormitory->head_id;
+            UnitHeadAccess::ensureCanChange($dormitory->head_id, $newHeadId, $request->user());
+            $data['head_id'] = $dormitory->head_id;
+        }
+
         $dormitory->update($data);
 
         return redirect()->route('user.asrama.show', ['userId' => $userId, 'asramaUuid' => $asramaUuid])

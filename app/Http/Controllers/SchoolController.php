@@ -10,6 +10,7 @@ use App\Models\WorkUnit;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
 use App\Services\GtkPositionAssignmentService;
+use App\Support\UnitHeadAccess;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -220,6 +221,10 @@ class SchoolController extends Controller
             'ttd_ksp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
             'stamp_path' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
         ]);
+
+        if (! empty($data['principal_user_id']) && ! UnitHeadAccess::canManage($request->user())) {
+            abort(403, 'Hanya Personalia dan Super Admin yang dapat menetapkan kepala satuan pendidikan.');
+        }
 
         // Auto-fill name from WorkUnit if work_unit_id is selected
         if (! empty($data['work_unit_id'])) {
@@ -441,6 +446,15 @@ class SchoolController extends Controller
                 }
                 $data[$field] = null;
             }
+        }
+
+        if (! UnitHeadAccess::canManage($request->user())) {
+            $newPrincipalId = $request->exists('principal_user_id')
+                ? ($data['principal_user_id'] ?? null)
+                : $school->principal_user_id;
+
+            UnitHeadAccess::ensureCanChange($school->principal_user_id, $newPrincipalId, $request->user());
+            $data['principal_user_id'] = $school->principal_user_id;
         }
 
         $school->update($data);

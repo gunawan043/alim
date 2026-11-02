@@ -7,6 +7,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
 use App\Services\GtkPositionAssignmentService;
+use App\Support\UnitHeadAccess;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -157,6 +158,10 @@ class DormitoryMasterController extends Controller
 
         $data['is_active'] = $request->boolean('is_active', true);
 
+        if (! empty($data['head_id']) && ! UnitHeadAccess::canManage($request->user())) {
+            abort(403, 'Hanya Personalia dan Super Admin yang dapat menetapkan kepala asrama.');
+        }
+
         // Auto-fill name dari WorkUnit if not provided
         if (empty($data['name']) && ! empty($data['work_unit_id'])) {
             $wu = WorkUnit::find($data['work_unit_id']);
@@ -243,6 +248,12 @@ class DormitoryMasterController extends Controller
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
+
+        if (! UnitHeadAccess::canManage($request->user())) {
+            $newHeadId = $request->exists('head_id') ? ($data['head_id'] ?? null) : $dormitory->head_id;
+            UnitHeadAccess::ensureCanChange($dormitory->head_id, $newHeadId, $request->user());
+            $data['head_id'] = $dormitory->head_id;
+        }
 
         if ($request->hasFile('logo_path')) {
             if ($dormitory->logo_path) {

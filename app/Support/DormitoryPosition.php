@@ -39,6 +39,26 @@ class DormitoryPosition
         return array_keys(self::options());
     }
 
+    /**
+     * Jabatan yang boleh ditetapkan dari halaman Pembagian Tugas.
+     * Kepala Asrama hanya boleh diubah Personalia/Super Admin lewat
+     * master asrama, bukan oleh Kepala/Wakil Asrama.
+     *
+     * @return array<string, string>
+     */
+    public static function assignableOptions(): array
+    {
+        return array_diff_key(self::options(), [self::KEPALA => true]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function assignableKeys(): array
+    {
+        return array_keys(self::assignableOptions());
+    }
+
     public static function label(?string $position): string
     {
         return self::options()[$position] ?? 'Staf Asrama';

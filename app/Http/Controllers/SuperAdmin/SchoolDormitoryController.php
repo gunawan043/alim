@@ -6,6 +6,7 @@ use App\Models\Dormitory;
 use App\Models\School;
 use App\Models\User;
 use App\Models\WorkUnit;
+use App\Support\UnitHeadAccess;
 use Illuminate\Http\Request;
 
 class DormitoryController extends Controller
@@ -66,6 +67,10 @@ class DormitoryController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        if (! empty($validated['head_id']) && ! UnitHeadAccess::canManage($request->user())) {
+            abort(403, 'Hanya Personalia dan Super Admin yang dapat menetapkan kepala asrama.');
+        }
+
         $dormitory = Dormitory::create($validated);
 
         if ($request->hasFile('logo_path')) {
@@ -107,6 +112,12 @@ class DormitoryController extends Controller
             'logo_path' => 'nullable|image|mimes:png,jpg,jpeg|max:2048',
             'notes' => 'nullable|string',
         ]);
+
+        if (! UnitHeadAccess::canManage($request->user())) {
+            $newHeadId = $request->exists('head_id') ? ($validated['head_id'] ?? null) : $dormitory->head_id;
+            UnitHeadAccess::ensureCanChange($dormitory->head_id, $newHeadId, $request->user());
+            $validated['head_id'] = $dormitory->head_id;
+        }
 
         $dormitory->update($validated);
 
