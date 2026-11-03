@@ -162,18 +162,16 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-ruler-2-line"></i>
-            <span>Standar Penilaian <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.standards.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.standards.index') }}">
+            <i class="ri-ruler-2-line"></i><span>Standar Penilaian</span>
         </a>
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-map-2-line"></i>
-            <span>Mapping Surah & Juz <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.mapping.']) ? ' active' : '' }}"
+           href="{{ $tahfidzUrl('user.tahfidz.mapping.index') }}">
+            <i class="ri-map-2-line"></i><span>Mapping Surah &amp; Juz</span>
         </a>
     </li>
 @endif

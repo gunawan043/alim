@@ -26,11 +26,11 @@ use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Bahasa\BahasaAcademicController;
 use App\Http\Controllers\Bahasa\BahasaDashboardController;
+use App\Http\Controllers\Bahasa\BahasaGuardianNotificationController;
 use App\Http\Controllers\Bahasa\BahasaReferenceController;
+use App\Http\Controllers\Bahasa\BahasaStandardController;
 use App\Http\Controllers\Bahasa\LanguageActivityController;
 use App\Http\Controllers\Bahasa\LanguageCertificationController;
-use App\Http\Controllers\Bahasa\LanguageDailyLogController;
-use App\Http\Controllers\Bahasa\LanguageViolationController;
 // use App\Http\Controllers\Dashboard\BendaharaDashboardController;
 // use App\Http\Controllers\Dashboard\GuruDashboardController;
 // use App\Http\Controllers\Dashboard\KaTataUsahaDashboardController;
@@ -44,6 +44,8 @@ use App\Http\Controllers\Bahasa\LanguageViolationController;
 // use App\Http\Controllers\Dashboard\StafTataUsahaDashboardController;
 // use App\Http\Controllers\Dashboard\WakaSatuanPendidikanDashboardController;
 // use App\Http\Controllers\Dashboard\WaliKelasDashboardController;
+use App\Http\Controllers\Bahasa\LanguageDailyLogController;
+use App\Http\Controllers\Bahasa\LanguageViolationController;
 use App\Http\Controllers\Bahasa\MufradatController;
 use App\Http\Controllers\Boarding\BoardingEducationDashboardController;
 use App\Http\Controllers\Boarding\BoardingHeadDashboardController;
@@ -71,6 +73,8 @@ use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\DocumentSignatureSettingController;
 use App\Http\Controllers\DocumentVerificationController;
 use App\Http\Controllers\DokumenIsoController;
+use App\Http\Controllers\Dormitory\MealConsumptionController;
+use App\Http\Controllers\Dormitory\NightActivityController;
 use App\Http\Controllers\DormitoryActivityController;
 use App\Http\Controllers\DormitoryAttendanceController;
 use App\Http\Controllers\DormitoryBoardingController;
@@ -137,6 +141,9 @@ use App\Http\Controllers\JamPelajaranController;
 use App\Http\Controllers\JenjangKarirController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KaldikController;
+use App\Http\Controllers\Kesiswaan\DutyScheduleController as KesiswaanDutyController;
+use App\Http\Controllers\Kesiswaan\EkskulScheduleController;
+use App\Http\Controllers\Kesiswaan\LatenessController as KesiswaanLatenessController;
 use App\Http\Controllers\Kurikulum\AiContentController;
 use App\Http\Controllers\Kurikulum\AlurTujuanPembelajaranController;
 use App\Http\Controllers\Kurikulum\CapaianPembelajaranController;
@@ -173,6 +180,7 @@ use App\Http\Controllers\PermitTypeController;
 use App\Http\Controllers\Perpustakaan\LibraryCatalogController;
 use App\Http\Controllers\Perpustakaan\LibraryDashboardController;
 use App\Http\Controllers\Perpustakaan\LibraryFineController;
+// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Perpustakaan\LibraryGenreController;
 use App\Http\Controllers\Perpustakaan\LibraryImportController;
 use App\Http\Controllers\Perpustakaan\LibraryLoanController;
@@ -180,7 +188,6 @@ use App\Http\Controllers\Perpustakaan\LibraryMemberController;
 use App\Http\Controllers\Perpustakaan\LibraryProgramController;
 use App\Http\Controllers\Perpustakaan\LibraryReportController;
 use App\Http\Controllers\Perpustakaan\LibraryRoomController;
-// use App\Http\Controllers\SidebarMenuController; // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Perpustakaan\LibraryStockOpnameController;
 use App\Http\Controllers\Perpustakaan\LibraryStudentOperatorController;
 use App\Http\Controllers\Perpustakaan\LibraryUnitController;
@@ -212,8 +219,10 @@ use App\Http\Controllers\Sarpras\AssetPassportPdfController;
 use App\Http\Controllers\Sarpras\DivisionPortalController;
 use App\Http\Controllers\Sarpras\SarprasAgendaController;
 use App\Http\Controllers\Sarpras\SarprasAsetController;
-use App\Http\Controllers\Sarpras\SarprasAssetTimelineController;
 use App\Http\Controllers\Sarpras\SarprasAssetMovementController;
+use App\Http\Controllers\Sarpras\SarprasAssetTimelineController;
+use App\Http\Controllers\Sarpras\SarprasAssignmentReportController;
+// REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasAuditorWorkspaceController;
 use App\Http\Controllers\Sarpras\SarprasBookingController;
 use App\Http\Controllers\Sarpras\SarprasCameraController;
@@ -222,18 +231,8 @@ use App\Http\Controllers\Sarpras\SarprasCleaningController;
 use App\Http\Controllers\Sarpras\SarprasDashboardController;
 use App\Http\Controllers\Sarpras\SarprasDataAuditController;
 use App\Http\Controllers\Sarpras\SarprasDataExchangeController;
-// REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasDisposalController;
 use App\Http\Controllers\Sarpras\SarprasDivisionPortalController;
-use App\Http\Controllers\Security\SecurityConfigController;
-use App\Http\Controllers\Security\SecurityDashboardController;
-use App\Http\Controllers\Security\SecurityGateController;
-use App\Http\Controllers\Security\SecurityGuestController;
-use App\Http\Controllers\Security\SecurityIncidentController;
-use App\Http\Controllers\Security\SecurityPatrolController;
-use App\Http\Controllers\Security\SecurityReportController;
-use App\Http\Controllers\Security\SecurityTeamController;
-use App\Http\Controllers\Security\SecurityVehicleController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
 use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
@@ -261,7 +260,6 @@ use App\Http\Controllers\Sarpras\SarprasUserController;
 use App\Http\Controllers\Sarpras\SarprasVehicleController;
 use App\Http\Controllers\Sarpras\SarprasVendorController;
 use App\Http\Controllers\Sarpras\SarprasWasteController;
-use App\Http\Controllers\Sarpras\SarprasAssignmentReportController;
 use App\Http\Controllers\Sarpras\SarprasWorkflowController;
 use App\Http\Controllers\SarprasController;
 use App\Http\Controllers\SatuanKerja\PositionController as SatuanPositionController;
@@ -270,14 +268,23 @@ use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SchoolsGlobalController;
 use App\Http\Controllers\SchoolUnitController;
 use App\Http\Controllers\SecureAccessController;
+use App\Http\Controllers\Security\SecurityConfigController;
+use App\Http\Controllers\Security\SecurityDashboardController;
+use App\Http\Controllers\Security\SecurityGateController;
+use App\Http\Controllers\Security\SecurityGuestController;
+use App\Http\Controllers\Security\SecurityIncidentController;
+use App\Http\Controllers\Security\SecurityPatrolController;
+use App\Http\Controllers\Security\SecurityReportController;
+use App\Http\Controllers\Security\SecurityTeamController;
+use App\Http\Controllers\Security\SecurityVehicleController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SiplahController;
 use App\Http\Controllers\StudentAchievementController;
 use App\Http\Controllers\StudentArabicNameController;
 use App\Http\Controllers\StudentController;
-use App\Http\Controllers\StudentDapodikExportController;
 use App\Http\Controllers\StudentCounselingRecordController;
+use App\Http\Controllers\StudentDapodikExportController;
 use App\Http\Controllers\StudentDataReconciliationController;
 use App\Http\Controllers\StudentHealthCheckupController;
 use App\Http\Controllers\StudentHealthMetricController;
@@ -333,6 +340,7 @@ use App\Http\Controllers\Tahfidz\TahfidzProgressController;
 use App\Http\Controllers\Tahfidz\TahfidzQuranPositionController;
 use App\Http\Controllers\Tahfidz\TahfidzReportController;
 use App\Http\Controllers\Tahfidz\TahfidzSantriController;
+use App\Http\Controllers\Tahfidz\TahfidzStandardController;
 use App\Http\Controllers\Tahfidz\TahfidzTargetController;
 use App\Http\Controllers\Tahfidz\TahfidzWorkspaceController;
 use App\Http\Controllers\Tahfidz\TasmiController;
@@ -344,20 +352,15 @@ use App\Http\Controllers\Uks\BedManagementController;
 use App\Http\Controllers\Uks\CareLocationController;
 use App\Http\Controllers\Uks\ClinicController;
 use App\Http\Controllers\Uks\GtkHealthController;
+use App\Http\Controllers\Uks\GuardianNotificationController as UksGuardianNotificationController;
 use App\Http\Controllers\Uks\ImportController;
+use App\Http\Controllers\Uks\InsuranceController as UksInsuranceController;
 use App\Http\Controllers\Uks\MedicationAdministrationController;
 use App\Http\Controllers\Uks\PatientController;
 use App\Http\Controllers\Uks\PharmacyController;
 use App\Http\Controllers\Uks\SchedulingController;
 use App\Http\Controllers\Uks\StudentHealthController;
 use App\Http\Controllers\Uks\TreatmentStatusController;
-use App\Http\Controllers\Dormitory\MealConsumptionController;
-use App\Http\Controllers\Dormitory\NightActivityController;
-use App\Http\Controllers\Kesiswaan\DutyScheduleController as KesiswaanDutyController;
-use App\Http\Controllers\Kesiswaan\EkskulScheduleController;
-use App\Http\Controllers\Kesiswaan\LatenessController as KesiswaanLatenessController;
-use App\Http\Controllers\Uks\GuardianNotificationController as UksGuardianNotificationController;
-use App\Http\Controllers\Uks\InsuranceController as UksInsuranceController;
 use App\Http\Controllers\UserKalkulasiNilaiController;
 use App\Http\Controllers\UserLaporanController;
 use App\Http\Controllers\UserSecurityController;
@@ -628,6 +631,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::prefix('bahasa')->name('bahasa.')->group(function () {
                 Route::get('/', [BahasaDashboardController::class, 'index'])->name('dashboard');
 
+                Route::get('standar-penilaian', [BahasaStandardController::class, 'index'])->name('standards.index');
+
+                Route::prefix('notifikasi-wali')->name('guardian-notifications.')->group(function () {
+                    Route::get('/', [BahasaGuardianNotificationController::class, 'index'])->name('index');
+                    Route::post('/', [BahasaGuardianNotificationController::class, 'store'])->name('store');
+                });
+
                 Route::prefix('academic')->name('academic.')->group(function () {
                     Route::get('/', [BahasaAcademicController::class, 'nilai'])->name('nilai');
                     Route::get('/progress', [BahasaAcademicController::class, 'progress'])->name('progress');
@@ -706,6 +716,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             // ── TAHFIDZ: MASTER MUQORROR & RPP ─────────────────────
             Route::prefix('tahfidz')->name('tahfidz.')->group(function () {
+                // Referensi read-only: standar penilaian & pemetaan surah–juz.
+                Route::get('standar-penilaian', [TahfidzStandardController::class, 'index'])->name('standards.index');
+                Route::get('mapping-surah-juz', [TahfidzStandardController::class, 'mapping'])->name('mapping.index');
+
                 Route::prefix('muqorror')->name('muqorror.')->group(function () {
                     Route::get('/', [TahfidzMasterController::class, 'muqorrorIndex'])->name('index');
                     Route::get('/create', [TahfidzMasterController::class, 'muqorrorCreate'])->name('create');

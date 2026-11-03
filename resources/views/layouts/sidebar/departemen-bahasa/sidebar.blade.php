@@ -111,12 +111,11 @@
         </a>
     </li>
 
-    {{-- PLACEHOLDER: standar penilaian bahasa --}}
+    {{-- KKM/KKTP buku ajar bahasa (read-only, sumber: subject_kktp) --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-ruler-2-line"></i>
-            <span>Standar Penilaian <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.standards.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.standards.index') }}">
+            <i class="ri-ruler-2-line"></i><span>Standar Penilaian</span>
         </a>
     </li>
 
@@ -309,15 +308,7 @@
 @if(($showAll || $isAdmin) && menu_allowed('bahasa-pelengkap'))
     <li class="menu-title"><span>Administrasi Bahasa</span></li>
 
-    {{-- PLACEHOLDER: rekam pelanggaran --}}
-    <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-file-list-2-line"></i>
-            <span>Rekam Pelanggaran <small class="badge bg-warning text-dark ms-1">Soon</small></span>
-        </a>
-    </li>
-
+    {{-- Pencatatan pelanggaran sudah tersedia di section Pelanggaran Bahasa --}}
     {{-- PLACEHOLDER: kartu bahasa santri --}}
     <li class="nav-item">
         <a class="nav-link menu-link text-muted" href="#" onclick="return false"
@@ -327,12 +318,11 @@
         </a>
     </li>
 
-    {{-- PLACEHOLDER: notifikasi wali --}}
+    {{-- Kirim ringkasan pelanggaran ke wali santri --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-mail-send-line"></i>
-            <span>Notifikasi Wali Santri <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.guardian-notifications.']) ? ' active' : '' }}"
+           href="{{ $bahasaUrl('user.bahasa.guardian-notifications.index') }}">
+            <i class="ri-mail-send-line"></i><span>Notifikasi Wali Santri</span>
         </a>
     </li>
 
