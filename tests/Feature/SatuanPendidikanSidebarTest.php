@@ -118,6 +118,34 @@ class SatuanPendidikanSidebarTest extends TestCase
         );
     }
 
+    public function test_sidebar_jabatan_memakai_section_yang_bisa_dilipat(): void
+    {
+        $user = $this->makeUser('Satuan Pendidikan', 'KEPALA SATUAN PENDIDIKAN');
+
+        $response = $this->actingAs($user)
+            ->get('/'.$user->id.'/dashboard/satuan-pendidikan');
+
+        $response->assertOk();
+
+        // Section utama harus tersedia sebagai grup collapsible...
+        foreach ([
+            'sp_sec_kesiswaan',
+            'sp_sec_akademik',
+            'sp_sec_gtk',
+            'sp_sec_sarpras',
+            'sp_sec_administrasi',
+            'sp_sec_kehadiran',
+            'sp_sec_laporan',
+            'sp_sec_lintas',
+        ] as $sectionId) {
+            $response->assertSee('id="'.$sectionId.'"', false);
+        }
+
+        // ...tanpa menghilangkan menu di dalamnya.
+        $response->assertSee('Data Santri');
+        $response->assertSee('Data Mahrom');
+    }
+
     public function test_route_debug_sudah_dihapus(): void
     {
         $user = $this->makeUser('Satuan Pendidikan', 'KEPALA SATUAN PENDIDIKAN');

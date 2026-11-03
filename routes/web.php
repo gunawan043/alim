@@ -351,6 +351,13 @@ use App\Http\Controllers\Uks\PharmacyController;
 use App\Http\Controllers\Uks\SchedulingController;
 use App\Http\Controllers\Uks\StudentHealthController;
 use App\Http\Controllers\Uks\TreatmentStatusController;
+use App\Http\Controllers\Dormitory\MealConsumptionController;
+use App\Http\Controllers\Dormitory\NightActivityController;
+use App\Http\Controllers\Kesiswaan\DutyScheduleController as KesiswaanDutyController;
+use App\Http\Controllers\Kesiswaan\EkskulScheduleController;
+use App\Http\Controllers\Kesiswaan\LatenessController as KesiswaanLatenessController;
+use App\Http\Controllers\Uks\GuardianNotificationController as UksGuardianNotificationController;
+use App\Http\Controllers\Uks\InsuranceController as UksInsuranceController;
 use App\Http\Controllers\UserKalkulasiNilaiController;
 use App\Http\Controllers\UserLaporanController;
 use App\Http\Controllers\UserSecurityController;
@@ -2230,6 +2237,57 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{uuid}', [StudentCounselingRecordController::class, 'update'])->name('update');
                     Route::delete('/{uuid}', [StudentCounselingRecordController::class, 'destroy'])->name('destroy');
                 });
+            });
+
+            // ── KETERLAMBATAN SANTRI (KESISWAAN) ──────────────────
+            // Menulis ke admin_presensi_harian (status=terlambat) agar
+            // rekap absensi harian ikut terisi.
+            Route::prefix('kesiswaan/keterlambatan')->name('kesiswaan.lateness.')->group(function () {
+                Route::get('/', [KesiswaanLatenessController::class, 'index'])->name('index');
+                Route::post('/', [KesiswaanLatenessController::class, 'store'])->name('store');
+                Route::delete('/{recordId}', [KesiswaanLatenessController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── PIKET KESISWAAN ───────────────────────────────────
+            Route::prefix('kesiswaan/piket')->name('kesiswaan.duties.')->group(function () {
+                Route::get('/', [KesiswaanDutyController::class, 'index'])->name('index');
+                Route::post('/', [KesiswaanDutyController::class, 'store'])->name('store');
+                Route::delete('/{dutyId}', [KesiswaanDutyController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── JADWAL LATIHAN EKSTRAKURIKULER ────────────────────
+            Route::prefix('kesiswaan/jadwal-latihan')->name('kesiswaan.ekskul-schedules.')->group(function () {
+                Route::get('/', [EkskulScheduleController::class, 'index'])->name('index');
+                Route::put('/{ekskulId}', [EkskulScheduleController::class, 'update'])->name('update');
+            });
+
+            // ── UKS: ASURANSI / BPJS ──────────────────────────────
+            Route::prefix('uks/asuransi')->name('uks.insurance.')->group(function () {
+                Route::get('/', [UksInsuranceController::class, 'index'])->name('index');
+                Route::post('/', [UksInsuranceController::class, 'store'])->name('store');
+                Route::put('/{insuranceId}', [UksInsuranceController::class, 'update'])->name('update');
+                Route::delete('/{insuranceId}', [UksInsuranceController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── UKS: NOTIFIKASI WALI SANTRI ───────────────────────
+            Route::prefix('uks/notifikasi-wali')->name('uks.guardian-notifications.')->group(function () {
+                Route::get('/', [UksGuardianNotificationController::class, 'index'])->name('index');
+                Route::post('/', [UksGuardianNotificationController::class, 'store'])->name('store');
+            });
+
+            // ── ASRAMA: KONSUMSI MAKAN ────────────────────────────
+            Route::prefix('konsumsi-asrama')->name('meals.')->group(function () {
+                Route::get('/', [MealConsumptionController::class, 'index'])->name('index');
+                Route::post('/', [MealConsumptionController::class, 'store'])->name('store');
+                Route::delete('/{mealId}', [MealConsumptionController::class, 'destroy'])->name('destroy');
+            });
+
+            // ── ASRAMA: KEGIATAN MALAM ────────────────────────────
+            Route::prefix('kegiatan-malam')->name('night-activities.')->group(function () {
+                Route::get('/', [NightActivityController::class, 'index'])->name('index');
+                Route::post('/', [NightActivityController::class, 'store'])->name('store');
+                Route::patch('/{activityId}/status', [NightActivityController::class, 'updateStatus'])->name('status');
+                Route::delete('/{activityId}', [NightActivityController::class, 'destroy'])->name('destroy');
             });
 
             // ── ABSENSI HARIAN PESERTA DIDIK ───────────────────────

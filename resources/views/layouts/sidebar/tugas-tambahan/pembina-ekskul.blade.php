@@ -66,12 +66,11 @@
 </li>
 
 {{-- Daftar ekskul sudah tersedia di sidebar Satuan Pendidikan. --}}
-{{-- 3. Jadwal Latihan (Soon) --}}
+{{-- 3. Jadwal Latihan --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-calendar-schedule-line"></i>
-        <span>Jadwal Latihan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kesiswaan.ekskul-schedules.']) ? ' active' : '' }}"
+       href="{{ $pembinaEksUrl('user.kesiswaan.ekskul-schedules.index') }}">
+        <i class="ri-calendar-schedule-line"></i><span>Jadwal Latihan</span>
     </a>
 </li>
 @endmenuallowed

@@ -208,21 +208,19 @@
     </li>
     @endif
 
-    {{-- 13. Konsumsi Asrama (Soon) --}}
+    {{-- 13. Konsumsi Asrama --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-restaurant-line"></i>
-            <span>Konsumsi Asrama <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.meals.']) ? ' active' : '' }}"
+           href="{{ $spUrl('user.meals.index') }}">
+            <i class="ri-restaurant-line"></i><span>Konsumsi Asrama</span>
         </a>
     </li>
 
-    {{-- 14. Pendampingan Kegiatan Malam (Soon) --}}
+    {{-- 14. Pendampingan Kegiatan Malam --}}
     <li class="nav-item">
-        <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-           style="cursor:not-allowed">
-            <i class="ri-moon-line"></i>
-            <span>Kegiatan Malam <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.night-activities.']) ? ' active' : '' }}"
+           href="{{ $spUrl('user.night-activities.index') }}">
+            <i class="ri-moon-line"></i><span>Kegiatan Malam</span>
         </a>
     </li>
 @endif

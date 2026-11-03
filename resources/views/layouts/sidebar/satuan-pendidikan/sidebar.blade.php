@@ -194,6 +194,19 @@
             : (method_exists(auth()->user(), 'hasPermissionTo') && auth()->user()->hasPermissionTo('teacher-attendance_manual'))
         );
 
+    /* ── Status buka/tutup section sidebar ───────────────────────────── */
+    // Section dibuka otomatis bila route aktif berada di dalamnya, supaya
+    // pengguna tidak perlu membuka manual saat berpindah halaman.
+    $sectionOpen = static function (array $prefixes) use ($currentRoute): bool {
+        foreach ($prefixes as $prefix) {
+            if ($prefix !== '' && str_starts_with((string) $currentRoute, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     /* ── Opsi dashboard sesuai jabatan/tugas ─────────────────────────── */
     // Dashboard per-jabatan sudah dikonsolidasi: nama route lama kini hanya
     // me-redirect ke satu halaman (lihat routes/web.php). Tanpa pemetaan ini,
@@ -453,26 +466,38 @@
 @if($showAll || $isStruktural)
     <li class="menu-title"><span>Jabatan · {{ $isKepala ? 'Kepala Satuan Pendidikan' : 'Wakil Kepala Satuan Pendidikan' }}</span></li>
 
-    <li class="menu-title"><span>Kesiswaan</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'admin'])
+    <x-sidebar-section id="sp_sec_kesiswaan" label="Kesiswaan" icon="ri-group-line"
+        :open="$sectionOpen(['user.kesiswaan.', 'user.violation-points.', 'user.students.', 'user.study-groups.', 'user.alumni.', 'user.mutations-', 'user.student-move.', 'user.schools.nilai-kelas.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'admin'])
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>Akademik &amp; Asesmen</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'supervisor'])
+    <x-sidebar-section id="sp_sec_akademik" label="Akademik & Asesmen" icon="ri-book-open-line"
+        :open="$sectionOpen(['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.jadwal-kbm.', 'user.jam-pelajaran.', 'user.pekan-efektif.', 'user.teaching-assignments.', 'user.institution-decrees.', 'user.asesmen.', 'user.kaldik.', 'user.kalender-kegiatan.', 'user.kurikulum.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'supervisor'])
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>GTK &amp; Mutu</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'supervisi'])
+    <x-sidebar-section id="sp_sec_gtk" label="GTK & Mutu" icon="ri-team-line"
+        :open="$sectionOpen(['user.gtk.', 'user.gtk-requests.', 'user.kinerja.', 'user.other-teacher-tasks.', 'user.rapor-gtk.', 'user.wali-links.', 'waka.supervisi'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'supervisi'])
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>Sarpras</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'full'])
+    <x-sidebar-section id="sp_sec_sarpras" label="Sarpras" icon="ri-tools-line"
+        :open="$sectionOpen(['sarpras.', 'user.bump-orders.', 'user.institution-debts.', 'user.siplah.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'full'])
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>Administrasi</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-administrasi')
+    <x-sidebar-section id="sp_sec_administrasi" label="Administrasi" icon="ri-folder-3-line"
+        :open="$sectionOpen(['user.arsip.', 'user.dokumen-iso.', 'waka.surat-'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-administrasi')
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>Kehadiran</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'koordinator'])
+    <x-sidebar-section id="sp_sec_kehadiran" label="Kehadiran" icon="ri-calendar-check-line"
+        :open="$sectionOpen(['user.kehadiran.', 'user.teacher-qr.', 'user.absensi', 'user.qr.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'koordinator'])
+    </x-sidebar-section>
 
     <li class="menu-title"><span>Informasi &amp; Broadcast</span></li>
     @if($showAll || $isKepala || $isWakil)
@@ -497,40 +522,56 @@
     @endif
 
     @if(menu_allowed('laporan'))
-        <li class="menu-title"><span>Laporan</span></li>
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-laporan')
+        <x-sidebar-section id="sp_sec_laporan" label="Laporan" icon="ri-file-chart-line"
+            :open="$sectionOpen(['user.laporan.'])">
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-laporan')
+        </x-sidebar-section>
     @endif
 
     {{-- Lintas divisi: boleh untuk KSP & Waka --}}
-    <li class="menu-title"><span>Lintas Divisi</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-bahasa')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'manage'])
+    <x-sidebar-section id="sp_sec_lintas" label="Lintas Divisi" icon="ri-share-forward-line"
+        :open="$sectionOpen(['user.bahasa.', 'user.tahfidz.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-bahasa')
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'manage'])
+    </x-sidebar-section>
 @endif
 
 @if($showAll || $isAdminTU)
     <li class="menu-title"><span>Jabatan · {{ $isKepalaTU ? 'Kepala Tata Usaha' : 'Tata Usaha' }}</span></li>
 
-    <li class="menu-title"><span>Kesiswaan</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'admin'])
+    <x-sidebar-section id="sp_tu_kesiswaan" label="Kesiswaan" icon="ri-group-line"
+        :open="$sectionOpen(['user.kesiswaan.', 'user.violation-points.', 'user.students.', 'user.study-groups.', 'user.alumni.', 'user.mutations-', 'user.student-move.', 'user.schools.nilai-kelas.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'admin'])
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>Akademik &amp; Asesmen</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+    <x-sidebar-section id="sp_tu_akademik" label="Akademik & Asesmen" icon="ri-book-open-line"
+        :open="$sectionOpen(['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.jadwal-kbm.', 'user.jam-pelajaran.', 'user.pekan-efektif.', 'user.teaching-assignments.', 'user.institution-decrees.', 'user.asesmen.', 'user.kaldik.', 'user.kalender-kegiatan.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>GTK</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'admin'])
+    <x-sidebar-section id="sp_tu_gtk" label="GTK" icon="ri-team-line"
+        :open="$sectionOpen(['user.gtk.', 'user.gtk-requests.', 'user.kinerja.', 'user.other-teacher-tasks.', 'user.rapor-gtk.', 'user.wali-links.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'admin'])
+    </x-sidebar-section>
 
     @if($showAll || $isKepalaTU)
-        <li class="menu-title"><span>Sarpras</span></li>
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'aset'])
+        <x-sidebar-section id="sp_tu_sarpras" label="Sarpras" icon="ri-tools-line"
+            :open="$sectionOpen(['sarpras.', 'user.bump-orders.', 'user.institution-debts.', 'user.siplah.'])">
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'aset'])
+        </x-sidebar-section>
     @endif
 
-    <li class="menu-title"><span>Administrasi</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-administrasi')
+    <x-sidebar-section id="sp_tu_administrasi" label="Administrasi" icon="ri-folder-3-line"
+        :open="$sectionOpen(['user.arsip.', 'user.dokumen-iso.', 'waka.surat-'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-administrasi')
+    </x-sidebar-section>
 
-    <li class="menu-title"><span>Kehadiran</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'admin'])
+    <x-sidebar-section id="sp_tu_kehadiran" label="Kehadiran" icon="ri-calendar-check-line"
+        :open="$sectionOpen(['user.kehadiran.', 'user.teacher-qr.', 'user.absensi', 'user.qr.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'admin'])
+    </x-sidebar-section>
 
     <li class="menu-title"><span>Informasi &amp; Broadcast</span></li>
     <li class="nav-item">

@@ -99,12 +99,11 @@
     </a>
 </li>
 
-{{-- 7. Piket Blok --}}
+{{-- 7. Piket Blok — memakai Tugas Harian per shift blok --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-calendar-todo-line"></i>
-        <span>Piket Blok <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.daily-tasks.']) ? ' active' : '' }}"
+       href="{{ $waUrl('user.asrama.daily-tasks.index') }}">
+        <i class="ri-calendar-todo-line"></i><span>Piket Blok</span>
     </a>
 </li>
 @endmenuallowed

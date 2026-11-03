@@ -181,10 +181,9 @@
 
 {{-- Validasi Perangkat Ajar --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-checkbox-circle-line"></i>
-        <span>Validasi Perangkat Ajar <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
+       href="{{ $koorKurUrl('user.kurikulum.perangkat.index') }}">
+        <i class="ri-checkbox-circle-line"></i><span>Validasi Perangkat Ajar</span>
     </a>
 </li>
 

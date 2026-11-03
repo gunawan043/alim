@@ -147,20 +147,18 @@
      ═══════════════════════════════════════════════════════════════════════════ --}}
 <li class="menu-title"><span>Asuransi</span></li>
 
-{{-- 9. Asuransi / BPJS (Soon) --}}
+{{-- 9. Asuransi / BPJS --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-shield-check-line"></i>
-        <span>Asuransi / BPJS <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.insurance.']) ? ' active' : '' }}"
+       href="{{ $adminUksUrl('user.uks.insurance.index') }}">
+        <i class="ri-shield-check-line"></i><span>Asuransi / BPJS</span>
     </a>
 </li>
 
-{{-- 10. Notifikasi Wali Santri (Soon) --}}
+{{-- 10. Notifikasi Wali Santri --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-mail-send-line"></i>
-        <span>Notifikasi Wali <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.uks.guardian-notifications.']) ? ' active' : '' }}"
+       href="{{ $adminUksUrl('user.uks.guardian-notifications.index') }}">
+        <i class="ri-mail-send-line"></i><span>Notifikasi Wali</span>
     </a>
 </li>

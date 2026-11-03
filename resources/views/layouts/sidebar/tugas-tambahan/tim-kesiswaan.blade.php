@@ -50,12 +50,11 @@
     </a>
 </li>
 
-{{-- 3. Catat Keterlambatan (Soon) --}}
+{{-- 3. Catat Keterlambatan --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-timer-line"></i>
-        <span>Catat Keterlambatan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kesiswaan.lateness.']) ? ' active' : '' }}"
+       href="{{ $timKesUrl('user.kesiswaan.lateness.index') }}">
+        <i class="ri-timer-line"></i><span>Catat Keterlambatan</span>
     </a>
 </li>
 
@@ -83,12 +82,11 @@
     </a>
 </li>
 
-{{-- 7. Piket Kesiswaan (Soon) --}}
+{{-- 7. Piket Kesiswaan --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-calendar-todo-line"></i>
-        <span>Piket Kesiswaan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kesiswaan.duties.']) ? ' active' : '' }}"
+       href="{{ $timKesUrl('user.kesiswaan.duties.index') }}">
+        <i class="ri-calendar-todo-line"></i><span>Piket Kesiswaan</span>
     </a>
 </li>
 @endmenuallowed

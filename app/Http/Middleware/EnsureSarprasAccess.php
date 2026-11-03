@@ -4,8 +4,10 @@ namespace App\Http\Middleware;
 
 use App\Models\Dormitory;
 use App\Models\GtkWorkUnit;
+use App\Models\OtherTeacherTask;
 use App\Models\RoomSupervisor;
 use App\Models\StudyGroup;
+use App\Models\User;
 use App\Models\WorkUnitSarprasOfficer;
 use App\Support\SecurityAccess;
 use Closure;
@@ -62,8 +64,10 @@ class EnsureSarprasAccess
         }
 
         // Satuan Keamanan melaporkan kerusakan fasilitas lewat Portal Divisi.
+        // Koordinator Sarpras Satuan Pendidikan memakai portal yang sama untuk
+        // melaporkan kerusakan dan melihat riwayat laporan unitnya.
         if (str_starts_with($routeName, 'sarpras.divisi.')) {
-            if (SecurityAccess::hasAccess($user)) {
+            if (SecurityAccess::hasAccess($user) || $this->isSarprasCoordinator($user)) {
                 return $next($request);
             }
         }
@@ -152,5 +156,31 @@ class EnsureSarprasAccess
         }
 
         abort(403, 'Anda tidak memiliki akses ke modul Sarpras / Unit Rumah Tangga.');
+    }
+
+    /**
+     * Koordinator Sarpras Satuan Pendidikan ditetapkan sebagai tugas tambahan
+     * (SK maupun penugasan operasional), bukan role Spatie.
+     */
+    private function isSarprasCoordinator(User $user): bool
+    {
+        $duties = collect();
+
+        if (method_exists($user, 'tugasTambahan')) {
+            $duties = $duties->merge($user->tugasTambahan->pluck('nama_tugas'));
+        }
+
+        if (class_exists(OtherTeacherTask::class)) {
+            $duties = $duties->merge(
+                OtherTeacherTask::query()
+                    ->where('teacher_id', $user->id)
+                    ->where('is_active', 1)
+                    ->pluck('task_name')
+            );
+        }
+
+        return $duties
+            ->filter()
+            ->contains(fn ($duty) => str_contains(strtolower((string) $duty), 'koordinator sarpras'));
     }
 }

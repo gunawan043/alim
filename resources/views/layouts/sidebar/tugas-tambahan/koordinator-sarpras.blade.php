@@ -91,12 +91,11 @@
     </a>
 </li>
 
-{{-- 6. Riwayat Laporan Unit --}}
+{{-- 6. Riwayat Laporan Unit — portal divisi sarpras --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-history-line"></i>
-        <span>Riwayat Laporan Unit <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['sarpras.divisi.history']) ? ' active' : '' }}"
+       href="{{ $koorSarUrl('sarpras.divisi.history') }}">
+        <i class="ri-history-line"></i><span>Riwayat Laporan Unit</span>
     </a>
 </li>
 @endmenuallowed

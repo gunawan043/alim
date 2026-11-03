@@ -84,12 +84,11 @@
     </a>
 </li>
 
-{{-- 7. Keterlambatan (Soon) --}}
+{{-- 7. Keterlambatan --}}
 <li class="nav-item">
-    <a class="nav-link menu-link text-muted" href="#" onclick="return false"
-       style="cursor:not-allowed">
-        <i class="ri-timer-line"></i>
-        <span>Keterlambatan <small class="badge bg-warning text-dark ms-1">Soon</small></span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kesiswaan.lateness.']) ? ' active' : '' }}"
+       href="{{ $koorKesUrl('user.kesiswaan.lateness.index') }}">
+        <i class="ri-timer-line"></i><span>Keterlambatan</span>
     </a>
 </li>
 
