@@ -7,6 +7,7 @@ use App\Models\GtkWorkUnit;
 use App\Models\RoomSupervisor;
 use App\Models\StudyGroup;
 use App\Models\WorkUnitSarprasOfficer;
+use App\Support\SecurityAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -58,6 +59,13 @@ class EnsureSarprasAccess
             }
 
             abort(403, 'Kepala Tata Usaha sekolah hanya dapat mengakses data aset dan ruang.');
+        }
+
+        // Satuan Keamanan melaporkan kerusakan fasilitas lewat Portal Divisi.
+        if (str_starts_with($routeName, 'sarpras.divisi.')) {
+            if (SecurityAccess::hasAccess($user)) {
+                return $next($request);
+            }
         }
 
         // Halaman personal/read-only boleh diakses semua GTK yang login.

@@ -22,6 +22,7 @@ use App\Http\Middleware\EnsurePersonaliaPermission;
 use App\Http\Middleware\EnsureRoleAccess;
 use App\Http\Middleware\EnsureSarprasAccess;
 use App\Http\Middleware\EnsureSatuanPendidikanFeature;
+use App\Http\Middleware\EnsureSecurityAccess;
 use App\Http\Middleware\EnsureStudentPasswordChanged;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
 use App\Http\Middleware\Localization;
@@ -161,6 +162,7 @@ class Kernel extends HttpKernel
         'recruitment.api-key' => VerifyRecruitmentApiKey::class,
         'api.user-scope' => EnsureApiUserScope::class,
         'gtk.access' => EnsureGtkAccess::class,
+        'keamanan.access' => EnsureSecurityAccess::class,
         'period.book' => EnsureBookPeriodWritable::class,
     ];
 }

@@ -225,6 +225,15 @@ use App\Http\Controllers\Sarpras\SarprasDataExchangeController;
 // REMOVED - Sidebar menu DB unused
 use App\Http\Controllers\Sarpras\SarprasDisposalController;
 use App\Http\Controllers\Sarpras\SarprasDivisionPortalController;
+use App\Http\Controllers\Security\SecurityConfigController;
+use App\Http\Controllers\Security\SecurityDashboardController;
+use App\Http\Controllers\Security\SecurityGateController;
+use App\Http\Controllers\Security\SecurityGuestController;
+use App\Http\Controllers\Security\SecurityIncidentController;
+use App\Http\Controllers\Security\SecurityPatrolController;
+use App\Http\Controllers\Security\SecurityReportController;
+use App\Http\Controllers\Security\SecurityTeamController;
+use App\Http\Controllers\Security\SecurityVehicleController;
 use App\Http\Controllers\Sarpras\SarprasElectricityController;
 use App\Http\Controllers\Sarpras\SarprasGedungController;
 use App\Http\Controllers\Sarpras\SarprasIntelligenceDashboardController;
@@ -267,6 +276,7 @@ use App\Http\Controllers\SiplahController;
 use App\Http\Controllers\StudentAchievementController;
 use App\Http\Controllers\StudentArabicNameController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentDapodikExportController;
 use App\Http\Controllers\StudentCounselingRecordController;
 use App\Http\Controllers\StudentDataReconciliationController;
 use App\Http\Controllers\StudentHealthCheckupController;
@@ -2047,6 +2057,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/import', [StudentController::class, 'importForm'])->name('import-form')->middleware('dormitory.restrict:students');
                 Route::post('/import', [StudentController::class, 'importProcess'])->name('import-process')->middleware('dormitory.restrict:students');
                 Route::get('/template', [StudentController::class, 'downloadTemplate'])->name('template');
+                Route::get('/dapodik-export', [StudentDapodikExportController::class, 'export'])
+                    ->name('dapodik-export');
+                Route::get('/dapodik-mapping', [StudentDapodikExportController::class, 'index'])
+                    ->name('dapodik-mapping');
+                Route::post('/dapodik-mapping', [StudentDapodikExportController::class, 'save'])
+                    ->name('dapodik-mapping.save');
 
                 // Rekonsiliasi data santri (data tidak valid / tidak konsisten).
                 Route::get('/reconciliation', [StudentDataReconciliationController::class, 'index'])
@@ -4113,6 +4129,100 @@ Route::middleware(['auth'])->get('/waka/{path?}', function (Request $request, ?s
 
     return redirect($target.($query ? '?'.$query : ''));
 })->where('path', '.*')->name('waka.legacy');
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SATUAN KEAMANAN
+//  Semua route menyertakan {userId} agar konsisten dengan modul lain.
+// ═══════════════════════════════════════════════════════════════════════════
+Route::prefix('{userId}/keamanan')
+    ->middleware(['auth', 'employee.access', 'keamanan.access'])
+    ->name('user.keamanan.')
+    ->group(function () {
+        Route::get('/', [SecurityDashboardController::class, 'index'])->name('dashboard');
+
+        // ── POS GERBANG: TAMU ───────────────────────────────────────────
+        Route::prefix('tamu')->name('guests.')->group(function () {
+            Route::get('/', [SecurityGuestController::class, 'index'])->name('index');
+            Route::post('/', [SecurityGuestController::class, 'store'])->name('store');
+            Route::get('/{guest}', [SecurityGuestController::class, 'show'])->name('show');
+            Route::post('/{guest}/keluar', [SecurityGuestController::class, 'checkout'])->name('checkout');
+            Route::get('/{guest}/kartu', [SecurityGuestController::class, 'card'])->name('card');
+        });
+
+        // ── POS GERBANG: KENDARAAN ──────────────────────────────────────
+        Route::prefix('kendaraan')->name('vehicles.')->group(function () {
+            Route::get('/', [SecurityVehicleController::class, 'index'])->name('index');
+            Route::post('/', [SecurityVehicleController::class, 'store'])->name('store');
+            Route::post('/{vehicle}/keluar', [SecurityVehicleController::class, 'checkout'])->name('checkout');
+        });
+
+        // ── PANTAUAN SANTRI KELUAR-MASUK (baca saja) ────────────────────
+        Route::get('/santri', [SecurityGateController::class, 'index'])->name('gate.index');
+
+        // ── PATROLI & RONDA ─────────────────────────────────────────────
+        Route::prefix('patroli')->name('patrol.')->group(function () {
+            Route::get('/', [SecurityPatrolController::class, 'index'])->name('index');
+            Route::post('/', [SecurityPatrolController::class, 'store'])->name('store');
+            Route::get('/checkpoint', [SecurityPatrolController::class, 'checkpoints'])->name('checkpoints.index');
+            Route::post('/checkpoint', [SecurityPatrolController::class, 'storeCheckpoint'])->name('checkpoints.store');
+            Route::put('/checkpoint/{checkpoint}', [SecurityPatrolController::class, 'updateCheckpoint'])->name('checkpoints.update');
+            Route::delete('/checkpoint/{checkpoint}', [SecurityPatrolController::class, 'destroyCheckpoint'])->name('checkpoints.destroy');
+            Route::get('/checkpoint/{checkpoint}/qr', [SecurityPatrolController::class, 'checkpointQr'])->name('checkpoints.qr');
+            Route::get('/scan/{token}', [SecurityPatrolController::class, 'scan'])->name('scan');
+            Route::post('/scan', [SecurityPatrolController::class, 'scanStore'])->name('scan.store');
+            Route::get('/{schedule}', [SecurityPatrolController::class, 'show'])->name('show');
+            Route::post('/{schedule}/mulai', [SecurityPatrolController::class, 'start'])->name('start');
+            Route::post('/{schedule}/selesai', [SecurityPatrolController::class, 'finish'])->name('finish');
+        });
+
+        // ── INSIDEN KEAMANAN ────────────────────────────────────────────
+        Route::prefix('insiden')->name('incidents.')->group(function () {
+            Route::get('/', [SecurityIncidentController::class, 'index'])->name('index');
+            Route::get('/tambah', [SecurityIncidentController::class, 'create'])->name('create');
+            Route::post('/', [SecurityIncidentController::class, 'store'])->name('store');
+            Route::get('/{incident}', [SecurityIncidentController::class, 'show'])->name('show');
+            Route::post('/{incident}/aksi', [SecurityIncidentController::class, 'action'])->name('action');
+            Route::post('/{incident}/tutup', [SecurityIncidentController::class, 'close'])->name('close');
+        });
+
+        // ── MANAJEMEN REGU ──────────────────────────────────────────────
+        Route::prefix('regu')->name('teams.')->group(function () {
+            Route::get('/', [SecurityTeamController::class, 'index'])->name('index');
+            Route::post('/', [SecurityTeamController::class, 'store'])->name('store');
+            Route::put('/{team}', [SecurityTeamController::class, 'update'])->name('update');
+            Route::delete('/{team}', [SecurityTeamController::class, 'destroy'])->name('destroy');
+            Route::post('/{team}/anggota', [SecurityTeamController::class, 'storeMember'])->name('members.store');
+            Route::delete('/{team}/anggota/{member}', [SecurityTeamController::class, 'destroyMember'])->name('members.destroy');
+        });
+
+        // ── LAPORAN ─────────────────────────────────────────────────────
+        Route::prefix('laporan')->name('reports.')->group(function () {
+            Route::get('/', [SecurityReportController::class, 'index'])->name('index');
+            Route::get('/tamu', [SecurityReportController::class, 'guests'])->name('guests');
+            Route::get('/insiden', [SecurityReportController::class, 'incidents'])->name('incidents');
+            Route::get('/patroli', [SecurityReportController::class, 'patrols'])->name('patrols');
+        });
+
+        // ── SOP & KONFIGURASI ───────────────────────────────────────────
+        Route::prefix('pengaturan')->name('config.')->group(function () {
+            Route::get('/', [SecurityConfigController::class, 'index'])->name('index');
+
+            Route::post('/pos', [SecurityConfigController::class, 'storePost'])->name('posts.store');
+            Route::delete('/pos/{post}', [SecurityConfigController::class, 'destroyPost'])->name('posts.destroy');
+
+            Route::post('/shift', [SecurityConfigController::class, 'storeShift'])->name('shifts.store');
+            Route::delete('/shift/{shift}', [SecurityConfigController::class, 'destroyShift'])->name('shifts.destroy');
+
+            Route::post('/zona', [SecurityConfigController::class, 'storeZone'])->name('zones.store');
+            Route::delete('/zona/{zone}', [SecurityConfigController::class, 'destroyZone'])->name('zones.destroy');
+
+            Route::post('/jenis-insiden', [SecurityConfigController::class, 'storeIncidentType'])->name('incident-types.store');
+            Route::delete('/jenis-insiden/{type}', [SecurityConfigController::class, 'destroyIncidentType'])->name('incident-types.destroy');
+
+            Route::post('/kontak', [SecurityConfigController::class, 'storeContact'])->name('contacts.store');
+            Route::delete('/kontak/{contact}', [SecurityConfigController::class, 'destroyContact'])->name('contacts.destroy');
+        });
+    });
 
 // ── SEO: robots & sitemap (halaman publik saja) ───────────────────────────────
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');

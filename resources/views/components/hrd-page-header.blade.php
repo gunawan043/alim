@@ -26,6 +26,14 @@ $colorMap = [
     'pink'   => ['bg' => 'bg-pink-subtle',        'text' => 'text-pink',      'border' => 'border-pink'],
     'slate'  => ['bg' => 'bg-secondary-subtle',  'text' => 'text-secondary',  'border' => 'border-secondary'],
 ];
+
+// Alias nama warna Bootstrap agar pemanggil bisa memakai 'primary'/'success'/dst.
+$colorMap['primary']   = $colorMap['blue'];
+$colorMap['success']   = $colorMap['green'];
+$colorMap['danger']    = $colorMap['red'];
+$colorMap['warning']   = $colorMap['amber'];
+$colorMap['info']      = $colorMap['violet'];
+$colorMap['secondary'] = $colorMap['slate'];
 $color = $color ?? 'blue';
 $c = $colorMap[$color] ?? $colorMap['blue'];
 @endphp

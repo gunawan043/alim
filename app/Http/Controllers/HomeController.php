@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dormitory;
+use App\Models\School;
 use App\Models\User;
 use App\Services\SecurityPolicy;
 use Illuminate\Contracts\Support\Renderable;
@@ -54,8 +56,8 @@ class HomeController extends Controller
             return redirect()->route('system.dashboard');
         }
 
-        $isAsramaHead = \App\Models\Dormitory::where('head_id', $user->id)->where('is_active', true)->exists();
-        $isSchoolHead = \App\Models\School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
+        $isAsramaHead = Dormitory::where('head_id', $user->id)->where('is_active', true)->exists();
+        $isSchoolHead = School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
 
         if ($isAsramaHead && $isSchoolHead) {
             return redirect()->route('user.dashboard.choose', ['userId' => $user->id]);
@@ -75,6 +77,10 @@ class HomeController extends Controller
 
         if ($roles->contains('UKS')) {
             return redirect()->route('user.uks.dashboard', ['userId' => $user->id]);
+        }
+
+        if ($roles->contains('Satuan Keamanan')) {
+            return redirect()->route('user.keamanan.dashboard', ['userId' => $user->id]);
         }
 
         // Existing dedicated dashboards for other roles
@@ -179,13 +185,13 @@ class HomeController extends Controller
     {
         $user = $request->user() ?: Auth::user();
 
-        $dormitories = \App\Models\Dormitory::query()
+        $dormitories = Dormitory::query()
             ->where('head_id', $user->id)
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        $schools = \App\Models\School::query()
+        $schools = School::query()
             ->where('principal_user_id', $user->id)
             ->where('is_active', true)
             ->orderBy('name')
