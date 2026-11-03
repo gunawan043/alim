@@ -2370,11 +2370,6 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 )->name("dashboard.{$legacyJabatanSlug}");
             }
 
-            // DEBUG TEST ROUTE - check if basic routing works
-            Route::get('/route-test', function () {
-                return '<pre>Routes are LOADED! Basic working test at /route-test</pre>';
-            });
-
             // GTK Dashboard - simple working version with inline Blade (bypasses complex controller/view dependencies)
             Route::get('/dashboard/gtk', function () {
                 $user = auth()->user();

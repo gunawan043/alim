@@ -195,11 +195,43 @@
         );
 
     /* ── Opsi dashboard sesuai jabatan/tugas ─────────────────────────── */
+    // Dashboard per-jabatan sudah dikonsolidasi: nama route lama kini hanya
+    // me-redirect ke satu halaman (lihat routes/web.php). Tanpa pemetaan ini,
+    // user yang merangkap jabatan melihat beberapa entri "Dashboard" yang
+    // semuanya mendarat di halaman yang sama.
+    $unifiedDashboardRoute = 'user.dashboard.satuan-pendidikan';
+    $legacyDashboardRoutes = [
+        'user.dashboard.kepala-satuan-pendidikan',
+        'user.dashboard.wakil-kepala',
+        'user.dashboard.guru',
+        'user.dashboard.ka-tata-usaha',
+        'user.dashboard.staf-tata-usaha',
+        'user.dashboard.bendahara',
+        'user.dashboard.koordinator-kurikulum',
+        'user.dashboard.koordinator-kesiswaan',
+        'user.dashboard.koordinator-ekskul',
+        'user.dashboard.wali-kelas',
+        'user.dashboard.koordinator-guru',
+        'user.dashboard.koordinator-sarpras',
+    ];
+
     $dashboardOptions = [];
-    $addDashboard = function (bool $condition, string $routeName, string $label, string $icon) use (&$dashboardOptions): void {
-        if ($condition) {
-            $dashboardOptions[] = compact('routeName', 'label', 'icon');
+    $addDashboard = function (bool $condition, string $routeName, string $label, string $icon) use (&$dashboardOptions, $legacyDashboardRoutes, $unifiedDashboardRoute): void {
+        if (! $condition) {
+            return;
         }
+
+        $resolved = in_array($routeName, $legacyDashboardRoutes, true) ? $unifiedDashboardRoute : $routeName;
+
+        // Satu tujuan = satu entri. Label pertama dipertahankan karena urutan
+        // pemanggilan sudah mengikuti prioritas jabatan.
+        foreach ($dashboardOptions as $existing) {
+            if ($existing['routeName'] === $resolved) {
+                return;
+            }
+        }
+
+        $dashboardOptions[] = ['routeName' => $resolved, 'label' => $label, 'icon' => $icon];
     };
 
     $addDashboard($isKepala, 'user.dashboard.kepala-satuan-pendidikan', 'Dashboard Kepala', 'ri-vip-crown-line');
