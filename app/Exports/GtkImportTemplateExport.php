@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -44,40 +45,107 @@ class GtkImportTemplateExport implements Export, WithMultipleSheets
 
 class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeadings, WithStyles, WithTitle
 {
+    /**
+     * Kolom template: nama kolom => lebar. Urutan array = urutan kolom di Excel.
+     * Kolom "satuan_kerja" dibaca per baris supaya satu file bisa memuat GTK
+     * dari beberapa satuan kerja sekaligus.
+     */
+    public const COLUMNS = [
+        'name' => 22,
+        'email' => 26,
+        'nik' => 20,
+        'no_kk' => 20,
+        'nama_pasangan' => 22,
+        'nupy_pasangan' => 16,
+        'nama_anak_1' => 20,
+        'tanggal_lahir_anak_1' => 16,
+        'jenis_kelamin_anak_1' => 10,
+        'nama_anak_2' => 20,
+        'tanggal_lahir_anak_2' => 16,
+        'jenis_kelamin_anak_2' => 10,
+        'nama_anak_3' => 20,
+        'tanggal_lahir_anak_3' => 16,
+        'jenis_kelamin_anak_3' => 10,
+        'tempat_lahir' => 16,
+        'tanggal_lahir' => 14,
+        'jenis_kelamin' => 8,
+        'golongan_darah' => 8,
+        'agama' => 12,
+        'status_perkawinan' => 14,
+        'npwp' => 20,
+        'no_hp' => 18,
+        'no_whatsapp' => 18,
+        'nupy' => 16,
+        'jenis_gtk' => 20,
+        'jabatan' => 22,
+        'satuan_kerja' => 26,
+        'status_kepegawaian' => 16,
+        'tmt' => 14,
+        'nomor_sk' => 18,
+        'tanggal_sk' => 14,
+        'pangkat_golongan' => 16,
+        'jenjang_pendidikan' => 14,
+        'nama_sekolah' => 28,
+        'jurusan' => 20,
+        'tahun_lulus' => 12,
+        'alamat_jalan' => 28,
+        'alamat_rt_rw' => 12,
+        'alamat_desa' => 22,
+        'alamat_kecamatan' => 20,
+        'alamat_kota' => 18,
+        'alamat_provinsi' => 18,
+        'kode_pos' => 12,
+    ];
+
     public function collection(): Collection
     {
+        $example = [
+            'name' => 'Fulan bin Abu',
+            'email' => 'fulan.bin@example.com',
+            'nik' => '3201234567890123',
+            'no_kk' => '3201234567890001',
+            'nama_pasangan' => 'Fulanah binti Abu',
+            'nupy_pasangan' => 'GTK2024002',
+            'nama_anak_1' => 'Anak Pertama',
+            'tanggal_lahir_anak_1' => '2015-01-15',
+            'jenis_kelamin_anak_1' => 'P',
+            'nama_anak_2' => 'Anak Kedua',
+            'tanggal_lahir_anak_2' => '2018-06-10',
+            'jenis_kelamin_anak_2' => 'L',
+            'tempat_lahir' => 'Mataram',
+            'tanggal_lahir' => '1990-01-15',
+            'jenis_kelamin' => 'L',
+            'golongan_darah' => 'A',
+            'agama' => 'Islam',
+            'status_perkawinan' => 'Kawin',
+            'npwp' => '123456789012345',
+            'no_hp' => '081234567890',
+            'no_whatsapp' => '081234567890',
+            'nupy' => 'GTK2024001',
+            'jenis_gtk' => 'Pendidik / Guru',
+            'jabatan' => 'Guru Umum',
+            'satuan_kerja' => 'MTs Al-Hikmah',
+            'status_kepegawaian' => 'Tetap',
+            'tmt' => '2020-01-01',
+            'nomor_sk' => 'SK/001/2020',
+            'tanggal_sk' => '2020-01-01',
+            'pangkat_golongan' => 'III/a',
+            'jenjang_pendidikan' => 'S1',
+            'nama_sekolah' => 'Universitas Islam Negeri',
+            'jurusan' => 'Pendidikan Agama Islam',
+            'tahun_lulus' => '2015',
+            'alamat_jalan' => 'Jl. Contoh No. 123',
+            'alamat_rt_rw' => '001/002',
+            'alamat_desa' => 'Kelurahan Contoh',
+            'alamat_kecamatan' => 'Kecamatan Contoh',
+            'alamat_kota' => 'Kota Contoh',
+            'alamat_provinsi' => 'Provinsi Contoh',
+            'kode_pos' => '12345',
+        ];
+
         return collect([
-            // Header
-            [
-                'name', 'email', 'nik', 'no_kk',
-                'nama_pasangan', 'nupy_pasangan',
-                'nama_anak_1', 'tanggal_lahir_anak_1', 'jenis_kelamin_anak_1',
-                'nama_anak_2', 'tanggal_lahir_anak_2', 'jenis_kelamin_anak_2',
-                'nama_anak_3', 'tanggal_lahir_anak_3', 'jenis_kelamin_anak_3',
-                'tempat_lahir', 'tanggal_lahir',
-                'jenis_kelamin', 'golongan_darah', 'agama', 'status_perkawinan', 'npwp',
-                'no_hp', 'no_whatsapp',
-                'nupy', 'jenis_gtk', 'jabatan', 'status_kepegawaian', 'tmt', 'nomor_sk',
-                'tanggal_sk', 'pangkat_golongan',
-                'jenjang_pendidikan', 'nama_sekolah', 'jurusan', 'tahun_lulus',
-                'alamat_jalan', 'alamat_rt_rw', 'alamat_desa', 'alamat_kecamatan',
-                'alamat_kota', 'alamat_provinsi', 'kode_pos',
-            ],
-            // Contoh baris
-            [
-                'Fulan bin Abu', 'fulan.bin@example.com', '3201234567890123', '3201234567890001',
-                'Fulanah binti Abu', 'GTK2024002',
-                'Anak Pertama', '2015-01-15', 'P',
-                'Anak Kedua', '2018-06-10', 'L',
-                '', '', '',
-                'Mataram', '1990-01-15', 'L', 'A', 'Islam', 'Belum Kawin', '123456789012345',
-                '081234567890', '081234567890',
-                'GTK2024001', 'Pendidik / Guru', 'Guru Umum', 'Tetap', '2020-01-01',
-                'SK/001/2020', '2020-01-01', 'III/a',
-                'S1', 'Universitas Islam Negeri', 'Pendidikan Agama Islam', '2015',
-                'Jl. Contoh No. 123', '001/002', 'Kelurahan Contoh', 'Kecamatan Contoh',
-                'Kota Contoh', 'Provinsi Contoh', '12345',
-            ],
+            array_keys(self::COLUMNS),
+            array_map(fn ($column) => $example[$column] ?? '', array_keys(self::COLUMNS)),
         ]);
     }
 
@@ -93,18 +161,14 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
 
     public function columnWidths(): array
     {
-        return [
-            'A' => 22, 'B' => 26, 'C' => 20, 'D' => 20,
-            'E' => 22, 'F' => 16,
-            'G' => 20, 'H' => 16, 'I' => 10,
-            'J' => 20, 'K' => 16, 'L' => 10,
-            'M' => 20, 'N' => 16, 'O' => 10,
-            'P' => 16, 'Q' => 14, 'R' => 5, 'S' => 5, 'T' => 10, 'U' => 12, 'V' => 18,
-            'W' => 18, 'X' => 18, 'Y' => 14, 'Z' => 14, 'AA' => 14, 'AB' => 14,
-            'AC' => 10, 'AD' => 14, 'AE' => 14, 'AF' => 14, 'AG' => 12,
-            'AH' => 28, 'AI' => 12, 'AJ' => 22, 'AK' => 20, 'AL' => 18, 'AM' => 18,
-            'AN' => 16, 'AO' => 12,
-        ];
+        $widths = [];
+        $index = 1;
+
+        foreach (self::COLUMNS as $width) {
+            $widths[Coordinate::stringFromColumnIndex($index++)] = $width;
+        }
+
+        return $widths;
     }
 
     public function styles(Worksheet $sheet): array
@@ -118,7 +182,7 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
             2 => [
                 'font' => ['italic' => true, 'color' => ['argb' => 'FF888888']],
             ],
-            'A1:AO2' => [
+            'A1:'.Coordinate::stringFromColumnIndex(count(self::COLUMNS)).'2' => [
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             ],
         ];

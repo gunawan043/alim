@@ -140,10 +140,13 @@
                             <div class="step-number">1</div>
                             <div>
                                 <div class="fw-semibold mb-1">Unduh Template</div>
-                                <p class="text-muted small mb-2">Pilih unit kerja tujuan, lalu download template Excel yang sudah disesuaikan dengan kolom GTK versi Dapodik/EMIS.</p>
+                                <p class="text-muted small mb-2">
+                                    Satuan kerja <strong>opsional</strong>. Kalau dikosongkan, penempatan dibaca dari kolom
+                                    <code>satuan_kerja</code> di Excel — jadi satu file bisa memuat GTK dari beberapa satuan kerja.
+                                </p>
                                 <div class="mb-2">
                                     <select id="workUnitSelect" class="form-select form-select-sm">
-                                        <option value="">— Ketik nama unit kerja —</option>
+                                        <option value="">— Opsional: pilih satuan kerja —</option>
                                         @foreach($workUnits as $wu)
                                             <option value="{{ $wu->id }}"
                                                 data-name="{{ $wu->name }}"
@@ -181,7 +184,7 @@
                                         Jabatan: <strong id="selJabatanName">-</strong>
                                     </div>
                                 </div>
-                                <a id="btnTemplate" href="#" class="btn btn-sm btn-success disabled" onclick="return false;">
+                                <a id="btnTemplate" href="{{ route('user.gtk.import.template', ['userId' => $userId]) }}" class="btn btn-sm btn-success">
                                     <i class="ri-download-2-line me-1"></i> Download Template .xlsx
                                 </a>
                             </div>
@@ -197,7 +200,9 @@
                                     Baris 1 = header kolom.<br>
                                     Baris 2+ = data GTK.<br>
                                     <strong>Nama</strong>, <strong>Email</strong>, <strong>NIK</strong>, <strong>No HP</strong>, <strong>NUPY</strong> wajib diisi.<br>
-                                    <em>Pilih Jenis GTK dan Jabatan di dropdown atas sebelum download template untuk panduan.</em>
+                                    Isi <code>satuan_kerja</code> dengan nama satuan kerja persis seperti di sheet
+                                    <em>Referensi: Satuan Kerja</em> (boleh juga kode unitnya).<br>
+                                    NUPY yang sudah terdaftar akan <strong>diperbarui</strong>, bukan ditolak.
                                 </p>
                             </div>
                         </div>
@@ -207,9 +212,11 @@
                         <div class="d-flex align-items-start gap-3">
                             <div class="step-number">3</div>
                             <div>
-                                <div class="fw-semibold mb-1">Pastikan Unit Kerja Benar</div>
+                                <div class="fw-semibold mb-1">Satuan Kerja &amp; Jabatan Dicocokkan Otomatis</div>
                                 <p class="text-muted small mb-0">
-                                    Semua data GTK yang diimport akan ditempatkan ke unit kerja yang sudah dipilih di langkah 1. Pastikan unit kerja sudah sesuai sebelum mengupload file.
+                                    Tiap baris dicocokkan ke satuan kerja dari kolom <code>satuan_kerja</code>.
+                                    Kalau kolom itu kosong, dipakai satuan kerja yang dipilih di langkah 1.
+                                    Jabatan dicocokkan ke master jabatan (tanpa peduli huruf besar/kecil dan tanda baca).
                                 </p>
                             </div>
                         </div>
@@ -253,7 +260,8 @@
                                 ['status_perkawinan','Belum Kawin/Kawin',false],['npwp','NPWP',false],
                                 ['no_hp','No HP',true],['no_whatsapp','WhatsApp',false],
                                 ['nupy','NUPY (jd password awal)',true],['jenis_gtk','Jenis GTK',true],
-                                ['jabatan','Jabatan',true],['status_kepegawaian','PTT/PTY/GTT/GTY/Berhenti/Pensiun',true],
+                                ['jabatan','Jabatan',true],['satuan_kerja','Nama/kode satuan kerja (opsional bila dipilih di langkah 1)',false],
+                                ['status_kepegawaian','PTT/PTY/GTT/GTY/Berhenti/Pensiun',true],
                                 ['tmt','Tgl TMT (YYYY-MM-DD)',true],['nomor_sk','No SK',true],
                                 ['tanggal_sk','Tgl SK (YYYY-MM-DD)',true],
                                 ['pangkat_golongan','III/A dst',false],
@@ -368,8 +376,8 @@
         <div id="previewPlaceholder" class="card">
             <div class="card-body text-center py-5 text-muted">
                 <i class="ri-file-list-3-line" style="font-size:3rem;"></i>
-                <h6 class="mt-3">Pilih unit kerja dan upload file Excel</h6>
-                <p class="mb-0 small">Klik "Preview Data" untuk melihat isi file sebelum diimport.</p>
+                <h6 class="mt-3">Upload file Excel</h6>
+                <p class="mb-0 small">Satuan kerja boleh dipilih dulu, boleh juga diisi per baris di dalam file.</p>
             </div>
         </div>
 
@@ -401,7 +409,9 @@
         {{-- Note --}}
         <div class="alert alert-warning py-2 px-3 small mb-0 mt-4">
             <i class="ri-error-warning-line me-1"></i>
-            <strong>Catatan:</strong> NIK yang sudah terdaftar akan dilewati dan dilaporkan. Semua data akan masuk ke unit kerja yang sudah dipilih di langkah 1.
+            <strong>Catatan:</strong> Baris dengan NUPY yang sudah terdaftar akan <strong>diperbarui</strong> —
+            data wajib (nama, email, NIK, NUPY, No HP) tidak pernah ditimpa, dan sel kosong tidak menghapus data lama.
+            NIK atau email yang sudah dipakai GTK lain dengan NUPY berbeda tetap dilaporkan sebagai gagal.
         </div>
     </div>
 </div>
@@ -425,7 +435,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="{{ URL::asset('build/js/app.js') }}"></script>
 <script>
-const REQUIRED = ['name','email','nik','nupy','no_hp'];
+const REQUIRED = ['name','email','nik','nupy','no_hp','jabatan'];
 const COL_MAP = {
     'name':'name','nama':'name','nama_lengkap':'name','email':'email','nik':'nik',
     'no_kk':'no_kk',
@@ -437,35 +447,46 @@ const COL_MAP = {
     'tgl_lahir':'tanggal_lahir','jenis_kelamin':'jenis_kelamin','jk':'jenis_kelamin','golongan_darah':'golongan_darah',
     'agama':'agama','status_perkawinan':'status_perkawinan','npwp':'npwp',
     'no_hp':'no_hp','no_whatsapp':'no_whatsapp','nupy':'nupy','jenis_gtk':'jenis_gtk',
-    'jabatan':'jabatan','status_kepegawaian':'status_kepegawaian','tmt':'tmt',
+    'jabatan':'jabatan','satuan_kerja':'satuan_kerja','unit_kerja':'satuan_kerja','satuan_kerja_nama':'satuan_kerja',
+    'status_kepegawaian':'status_kepegawaian','tmt':'tmt',
     'nomor_sk':'nomor_sk','tanggal_sk':'tanggal_sk','pangkat_golongan':'pangkat_golongan',
     'jenjang_pendidikan':'jenjang_pendidikan','nama_sekolah':'nama_sekolah',
     'jurusan':'jurusan','tahun_lulus':'tahun_lulus',
 };
 let selectedWuId = '', selectedWuName = '';
+
+// Daftar satuan kerja untuk menandai baris yang namanya belum cocok (hanya penanda,
+// pencocokan final tetap di server karena di sana ada fallback nama parsial).
+const WORK_UNITS = @json($workUnits->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'code' => $w->code]));
+
+function normalizeUnitKey(s) { return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function matchWorkUnit(value) {
+    const target = normalizeUnitKey(value);
+    if (!target) return null;
+    return WORK_UNITS.find(u => normalizeUnitKey(u.name) === target || normalizeUnitKey(u.code) === target) || null;
+}
 let parsedRows = [], validRows = [];
 
 // Select2 work unit
-$('#workUnitSelect').select2({ placeholder: '— Ketik nama unit kerja —', allowClear: true })
+$('#workUnitSelect').select2({ placeholder: '— Opsional: pilih satuan kerja —', allowClear: true })
 .on('change', function () {
     const opt = $(this).find(':selected');
     selectedWuId   = $(this).val();
     selectedWuName = opt.data('name') || '';
     $('#workUnitId').val(selectedWuId);
+    $('#btnTemplate').attr('href', '{{ "/$userId" }}/gtk/import/template' + (selectedWuId ? '/' + selectedWuId : ''));
+
     if (selectedWuId) {
         $('#selUnitName').text(selectedWuName);
         $('#selUnitCode').text(opt.data('code') || '');
         $('#unitInfoBox').removeClass('d-none');
-        $('#btnTemplate').removeClass('disabled').attr('onclick', '').css('pointer-events','auto')
-            .off('click').on('click', () => {
-                window.location.href = '{{ "/$userId" }}/gtk/import/template/' + selectedWuId;
-            });
-        $('#importBtn').prop('disabled', !validRows.length);
     } else {
         $('#unitInfoBox').addClass('d-none');
-        $('#btnTemplate').addClass('disabled').attr('onclick','return false;').css('pointer-events','none');
-        $('#importBtn').prop('disabled', true);
     }
+
+    // Pilihan manual hanya cadangan untuk baris yang kolom satuan_kerja-nya kosong,
+    // jadi preview perlu diulang setiap kali pilihan berubah.
+    if (parsedRows.length) previewFile();
 });
 
 // Select2 jenis GTK — trigger jabatan fetch
@@ -525,7 +546,6 @@ function handleFileSelect(input) { if (input.files[0]) handleFile(input.files[0]
 function handleFile(file) {
     if (!file.name.match(/\.(xlsx|xls)$/i)) { Swal.fire({icon:'error',title:'Format Salah',text:'Hanya .xlsx/.xls'}); return; }
     if (file.size > 10*1024*1024) { Swal.fire({icon:'error',title:'File Besar',text:'Maks. 10MB'}); return; }
-    if (!selectedWuId) { Swal.fire({icon:'warning',title:'Pilih Unit Kerja',text:'Pilih unit kerja terlebih dahulu'}); fileInput.value=''; return; }
     document.getElementById('fileName').textContent = file.name;
     document.getElementById('fileSize').textContent = formatBytes(file.size);
     document.getElementById('fileInfo').style.display = 'flex';
@@ -544,7 +564,7 @@ function clearFile() {
     document.getElementById('previewPlaceholder').style.display = 'block';
     document.getElementById('importResultCard').style.display = 'none';
     parsedRows = []; validRows = [];
-    document.getElementById('importBtn').disabled = !selectedWuId;
+    document.getElementById('importBtn').disabled = true;
     document.getElementById('importCountLabel').textContent = '0';
 }
 
@@ -602,6 +622,10 @@ function previewFile() {
                     const lower = r.status_perkawinan.toLowerCase().trim();
                     if (statusKawinMap[lower] === undefined) r._errors.push('Status Perkawinan: tidak valid (Kawin/Belum Kawin/Cerai Hidup/Cerai Mati)');
                 }
+                // Satuan kerja wajib diketahui: dari kolom Excel atau pilihan manual.
+                if (!r.satuan_kerja && !selectedWuId) {
+                    r._errors.push('satuan_kerja: kosong — isi kolom ini atau pilih satuan kerja');
+                }
                 r._status = r._errors.length ? 'error' : 'ok';
             });
             validRows = parsedRows.filter(r => r._status !== 'error');
@@ -622,7 +646,8 @@ function renderTable(rows) {
         {k:'_rowNum',l:'#'}, {k:'name',l:'Nama'}, {k:'email',l:'Email'},
         {k:'nik',l:'NIK'}, {k:'nupy',l:'NUPY'}, {k:'jenis_kelamin',l:'JK'},
         {k:'tanggal_lahir',l:'Tgl Lahir'}, {k:'jenis_gtk',l:'Jenis GTK'},
-        {k:'jabatan',l:'Jabatan'}, {k:'_status',l:'Status'}
+        {k:'jabatan',l:'Jabatan'}, {k:'satuan_kerja',l:'Satuan Kerja'},
+        {k:'_status',l:'Status'}
     ];
     let html = '<table class="table table-hover align-middle"><thead><tr>';
     cols.forEach(c => { html += `<th>${c.l}</th>`; });
@@ -651,6 +676,17 @@ function renderTable(rows) {
                 }
             } else if (c.k === '_rowNum') {
                 html += `<td class="text-muted">${r[c.k]||''}</td>`;
+            } else if (c.k === 'satuan_kerja') {
+                const matched = r.satuan_kerja ? matchWorkUnit(r.satuan_kerja) : null;
+                const fromManual = !r.satuan_kerja && !!selectedWuId;
+                const label = r.satuan_kerja ? (matched ? matched.name : r.satuan_kerja) : selectedWuName;
+                let unitBadge = '';
+                if (fromManual) {
+                    unitBadge = ' <span class="badge bg-secondary-subtle text-secondary" style="font-size:10px;">dipilih</span>';
+                } else if (r.satuan_kerja && !matched) {
+                    unitBadge = ' <span class="badge bg-warning-subtle text-warning" style="font-size:10px;">cek nama</span>';
+                }
+                html += `<td class="text-nowrap">${label ? escHtml(label) : '<span class="text-danger">—</span>'}${unitBadge}</td>`;
             } else {
                 html += `<td class="text-nowrap">${escHtml(r[c.k]??'-')}</td>`;
             }
@@ -663,14 +699,14 @@ function renderTable(rows) {
 
 // Import
 async function startImport() {
-    if (!validRows.length || !selectedWuId) return;
+    if (!validRows.length) return;
     const c = await Swal.fire({icon:'question',title:`Import ${validRows.length} GTK?`,showCancelButton:true,confirmButtonText:'Ya, Import!',cancelButtonText:'Batal',confirmButtonColor:'#198754'});
     if (!c.isConfirmed) return;
     const ov = document.getElementById('importProgressOverlay');
     const bar = document.getElementById('importProgressBar');
     const txt = document.getElementById('importProgressText');
     ov.classList.add('show');
-    let imp = 0, fail = 0, failRows = [], warnings = [];
+    let created = 0, updated = 0, fail = 0, failRows = [], warnings = [];
     const BATCH = 10, total = validRows.length;
     for (let i = 0; i < total; i += BATCH) {
         const batch = validRows.slice(i, i + BATCH);
@@ -680,11 +716,12 @@ async function startImport() {
             const res = await fetch('/{{ $userId }}/gtk/import/store', {
                 method:'POST',
                 headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},
-                body: JSON.stringify({work_unit_id: selectedWuId, rows: batch})
+                body: JSON.stringify({work_unit_id: selectedWuId || null, rows: batch})
             });
             const d = await res.json();
             if (d.success) {
-                imp += d.imported ?? batch.length;
+                created += d.imported ?? 0;
+                updated += d.updated ?? 0;
                 if (d.failed?.length) {
                     fail += d.failed.length;
                     failRows = failRows.concat(d.failed.map(f => ({row: f.row, reason: f.reason})));
@@ -707,13 +744,14 @@ async function startImport() {
         } catch(e) { fail += batch.length; batch.forEach(r => failRows.push({row:r._rowNum, reason:'Network error'})); }
     }
     bar.style.width = '100%';
-    setTimeout(() => { ov.classList.remove('show'); showResult(total, imp, fail, failRows, warnings); }, 400);
+    setTimeout(() => { ov.classList.remove('show'); showResult(total, created, updated, fail, failRows, warnings); }, 400);
 }
-function showResult(total, imp, fail, failRows, warnings) {
+function showResult(total, created, updated, fail, failRows, warnings) {
     document.getElementById('importResultStats').innerHTML = `
-        <div class="col-4"><div class="card border-0 bg-primary-subtle p-3"><div class="fs-3 fw-bold text-primary">${total}</div><div class="small text-muted">Total</div></div></div>
-        <div class="col-4"><div class="card border-0 bg-success-subtle p-3"><div class="fs-3 fw-bold text-success">${imp}</div><div class="small text-muted">Berhasil</div></div></div>
-        <div class="col-4"><div class="card border-0 bg-danger-subtle p-3"><div class="fs-3 fw-bold text-danger">${fail}</div><div class="small text-muted">Gagal</div></div></div>`;
+        <div class="col-6 col-md-3"><div class="card border-0 bg-primary-subtle p-3"><div class="fs-3 fw-bold text-primary">${total}</div><div class="small text-muted">Total Baris</div></div></div>
+        <div class="col-6 col-md-3"><div class="card border-0 bg-success-subtle p-3"><div class="fs-3 fw-bold text-success">${created}</div><div class="small text-muted">GTK Baru</div></div></div>
+        <div class="col-6 col-md-3"><div class="card border-0 bg-info-subtle p-3"><div class="fs-3 fw-bold text-info">${updated}</div><div class="small text-muted">Diperbarui</div></div></div>
+        <div class="col-6 col-md-3"><div class="card border-0 bg-danger-subtle p-3"><div class="fs-3 fw-bold text-danger">${fail}</div><div class="small text-muted">Gagal</div></div></div>`;
     let detail = '';
     if (failRows.length) {
         detail = `<div class="alert alert-danger mb-0"><strong><i class="ri-error-warning-line me-1"></i>${failRows.length} Baris Gagal:</strong>
@@ -728,7 +766,7 @@ function showResult(total, imp, fail, failRows, warnings) {
             </div>
         </div>`;
     } else {
-        detail = `<div class="alert alert-success mb-0 py-2"><i class="ri-checkbox-circle-line me-1"></i>Semua <strong>${imp}</strong> baris berhasil diimport.</div>`;
+        detail = `<div class="alert alert-success mb-0 py-2"><i class="ri-checkbox-circle-line me-1"></i><strong>${created}</strong> GTK baru dan <strong>${updated}</strong> GTK diperbarui.</div>`;
     }
     document.getElementById('importResultDetail').innerHTML = detail;
 
@@ -745,8 +783,8 @@ function showResult(total, imp, fail, failRows, warnings) {
     document.getElementById('importResultCard').style.display = 'block';
     document.getElementById('previewCard').style.display = 'none';
     document.getElementById('previewPlaceholder').style.display = 'none';
-    if (imp > 0) {
-        Swal.fire({icon:'success',title:'Import Selesai!',html:`<strong>${imp}</strong> GTK berhasil diimport ke <strong>${escHtml(selectedWuName)}</strong>.`,confirmButtonColor:'#198754'});
+    if (created > 0 || updated > 0) {
+        Swal.fire({icon:'success',title:'Import Selesai!',html:`<strong>${created}</strong> GTK baru dan <strong>${updated}</strong> diperbarui.`,confirmButtonColor:'#198754'});
     }
 }
 function formatBytes(b) { return b < 1024*1024 ? (b/1024).toFixed(1)+' KB' : (b/(1024*1024)).toFixed(1)+' MB'; }

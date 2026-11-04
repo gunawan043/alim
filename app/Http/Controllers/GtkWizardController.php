@@ -40,6 +40,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class GtkWizardController extends Controller
 {
@@ -106,7 +107,7 @@ class GtkWizardController extends Controller
         $this->applyFilters($query, $request);
 
         if ($schoolId) {
-            $query->where(function ($q) use ($schoolId, $crossUnitUserIds) {
+            $query->where(function ($q) use ($crossUnitUserIds) {
                 $q->whereHas('employment')
                     ->orWhereIn('users.id', $crossUnitUserIds);
             });
@@ -780,7 +781,7 @@ class GtkWizardController extends Controller
                 'password' => $password,
                 'message' => 'Password berhasil direset ke default ('.$password.'). Pengguna wajib mengganti password saat login berikutnya.',
             ]);
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             throw $e;
         } catch (\Exception $e) {
             \Log::error('GtkWizardController@resetPassword failed', [
@@ -1539,13 +1540,15 @@ class GtkWizardController extends Controller
     {
         GtkWorkUnit::where('user_id', $userId)->update(['is_primary' => false]);
 
-        GtkWorkUnit::create([
-            'user_id' => $userId,
-            'work_unit_id' => $workUnitId,
-            'jabatan' => $jabatan,
-            'position_id' => $this->positionIdForName($jabatan),
-            'is_primary' => true,
-        ]);
+        // updateOrCreate supaya import ulang tidak menumpuk baris penempatan.
+        GtkWorkUnit::updateOrCreate(
+            ['user_id' => $userId, 'work_unit_id' => $workUnitId],
+            [
+                'jabatan' => $jabatan,
+                'position_id' => $this->positionIdForName($jabatan),
+                'is_primary' => true,
+            ]
+        );
 
         // Create StructuralAssignment so domain-based permissions work correctly.
         // Use the work unit's domain (not the position's seeder domain) so GTK placed
@@ -1946,11 +1949,13 @@ class GtkWizardController extends Controller
 
     /**
      * Accept UUID or name — return human-readable name.
+     * Kalau teks bebas tidak persis sama, pakai nama dari id hasil pencocokan
+     * supaya kolom teks tetap konsisten dengan foreign key-nya.
      */
-    private function resolveJabatanName(?string $value): ?string
+    private function resolveJabatanName(?string $value, ?string $resolvedId = null): ?string
     {
         if (! $value) {
-            return null;
+            return $resolvedId ? StructuralPosition::find($resolvedId)?->name : null;
         }
 
         if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
@@ -1958,9 +1963,15 @@ class GtkWizardController extends Controller
         }
 
         // Teks bebas dinormalkan ke nama jabatan master agar tidak menyimpang.
-        return StructuralPosition::query()
+        $name = StructuralPosition::query()
             ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower(trim($value))])
-            ->value('name') ?? $value;
+            ->value('name');
+
+        if ($name) {
+            return $name;
+        }
+
+        return $resolvedId ? (StructuralPosition::find($resolvedId)?->name ?? $value) : $value;
     }
 
     /**
@@ -2000,16 +2011,19 @@ class GtkWizardController extends Controller
         return view('gtk.import', compact('workUnits', 'jenisGtk'));
     }
 
-    public function importTemplate(string $userId, string $workUnitId)
+    public function importTemplate(string $userId, ?string $workUnitId = null)
     {
         $this->authorizeGtkMutation();
 
-        $workUnit = WorkUnit::findOrFail($workUnitId);
+        // Satuan kerja tidak wajib: template bisa dipakai untuk beberapa unit
+        // sekaligus karena kolom "satuan_kerja" dibaca per baris.
+        $workUnit = $workUnitId ? WorkUnit::find($workUnitId) : null;
 
-        $filename = 'template-import-gtk-'.Str::slug($workUnit->name).'-'.now()->format('Ymd').'.xlsx';
+        $slug = $workUnit ? Str::slug($workUnit->name) : 'semua-satuan-kerja';
+        $filename = 'template-import-gtk-'.$slug.'-'.now()->format('Ymd').'.xlsx';
 
         return Excel::download(
-            new GtkImportTemplateExport($workUnit->name),
+            new GtkImportTemplateExport($workUnit?->name ?? 'Semua Satuan Kerja'),
             $filename
         );
     }
@@ -2020,7 +2034,7 @@ class GtkWizardController extends Controller
 
         try {
             $validated = $request->validate([
-                'work_unit_id' => 'required|exists:work_units,id',
+                'work_unit_id' => 'nullable|exists:work_units,id',
                 'rows' => 'required|array|min:1',
                 'rows.*' => 'array',
             ]);
@@ -2032,10 +2046,12 @@ class GtkWizardController extends Controller
             ], 422);
         }
 
-        $workUnitId = $request->input('work_unit_id');
+        // Pilihan manual hanya jadi cadangan; kolom "satuan_kerja" per baris menang.
+        $workUnitId = $request->input('work_unit_id') ?: null;
         $rows = $request->input('rows');
 
         $imported = 0;
+        $updated = 0;
         $failed = [];
 
         foreach ($rows as $index => $row) {
@@ -2062,17 +2078,43 @@ class GtkWizardController extends Controller
                     throw new \InvalidArgumentException('Field wajib kosong: '.implode(', ', $missing));
                 }
 
-                if (User::where('email', $row['email'])->exists()) {
-                    throw new \InvalidArgumentException("Email '{$row['email']}' sudah terdaftar.");
+                if (empty($row['jabatan'])) {
+                    throw new \InvalidArgumentException(
+                        'Jabatan kosong. Isi dengan nama jabatan dari sheet "Referensi: Jabatan".'
+                    );
                 }
-                if (GtkProfile::where('nik', $row['nik'])->exists()) {
-                    throw new \InvalidArgumentException("NIK '{$row['nik']}' sudah terdaftar.");
-                }
-                if (GtkEmployment::where('nupy', $row['nupy'])->exists()) {
-                    throw new \InvalidArgumentException("NUPY '{$row['nupy']}' sudah terdaftar.");
+
+                // Satuan kerja: kolom Excel diutamakan, pilihan manual jadi cadangan.
+                $rowWorkUnitId = $this->resolveWorkUnitId($row['satuan_kerja'] ?? null) ?? $workUnitId;
+
+                if (! $rowWorkUnitId) {
+                    $satuanKerjaInput = trim((string) ($row['satuan_kerja'] ?? ''));
+
+                    throw new \InvalidArgumentException($satuanKerjaInput === ''
+                        ? 'Satuan kerja kosong. Isi kolom "satuan_kerja" di Excel atau pilih satuan kerja di langkah 1.'
+                        : "Satuan kerja '{$satuanKerjaInput}' tidak ditemukan. Samakan dengan nama/kode di sheet \"Referensi: Satuan Kerja\".");
                 }
 
                 $nupy = $row['nupy'];
+
+                // NUPY yang sudah terdaftar diperbarui, bukan ditolak.
+                // Data wajib (nama, email, NIK, NUPY, No HP) tidak pernah ditimpa.
+                $existing = GtkEmployment::where('nupy', $nupy)->first();
+
+                if ($existing) {
+                    $this->updateFromImportRow($existing, $row, $rowWorkUnitId);
+                    DB::commit();
+                    $updated++;
+
+                    continue;
+                }
+
+                if (User::where('email', $row['email'])->exists()) {
+                    throw new \InvalidArgumentException("Email '{$row['email']}' sudah terdaftar pada GTK lain (NUPY berbeda).");
+                }
+                if (GtkProfile::where('nik', $row['nik'])->exists()) {
+                    throw new \InvalidArgumentException("NIK '{$row['nik']}' sudah terdaftar pada GTK lain (NUPY berbeda).");
+                }
 
                 $user = User::create([
                     'name' => $row['name'],
@@ -2174,6 +2216,7 @@ class GtkWizardController extends Controller
                     'nomor_sk' => $row['nomor_sk'] ?? null,
                     'tanggal_sk' => $row['tanggal_sk'] ?? null,
                     'pangkat_golongan' => $row['pangkat_golongan'] ?? null,
+                    'satuan_kerja' => WorkUnit::where('id', $rowWorkUnitId)->value('name'),
                 ]);
 
                 if (! empty($row['jenjang_pendidikan']) && ! empty($row['nama_sekolah'])) {
@@ -2186,38 +2229,15 @@ class GtkWizardController extends Controller
                     ]]);
                 }
 
-                $this->assignWorkUnit($user->id, $workUnitId, $jabatan);
+                $this->assignWorkUnit($user->id, $rowWorkUnitId, $jabatan);
 
-                // Resolve role dari StructuralPosition
-                $roleName = null;
-
-                if (! empty($jabatanId)) {
-                    $sp = StructuralPosition::with('role')->find($jabatanId);
-                    if ($sp && $sp->role) {
-                        $roleName = $sp->role->name;
-                    }
-                }
-
-                if (! $roleName && ! empty($jabatan)) {
-                    $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
-                    $target = $normalize($jabatan);
-
-                    $sp = StructuralPosition::with('role')
-                        ->whereRaw(
-                            "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '') = ?",
-                            [$target]
-                        )
-                        ->first();
-
-                    if ($sp && $sp->role) {
-                        $roleName = $sp->role->name;
-                    }
-                }
+                $roleName = $this->roleNameForJabatan($jabatan, $jabatanId);
 
                 if (! $roleName) {
                     throw new \InvalidArgumentException(
                         "Role untuk jabatan '{$jabatan}' tidak ditemukan. "
                         ."Pastikan jabatan '{$jabatan}' sudah terdaftar di StructuralPosition dengan `role_id` yang benar."
+                        .$this->suggestPositions($jabatan, $jenisGtkId)
                     );
                 }
 
@@ -2241,10 +2261,11 @@ class GtkWizardController extends Controller
         }
 
         return response()->json([
-            'success' => $imported > 0,
+            'success' => ($imported + $updated) > 0,
             'imported' => $imported,
+            'updated' => $updated,
             'failed' => $failed,
-            'message' => $this->buildImportMessage($imported, count($failed)),
+            'message' => $this->buildImportMessage($imported, $updated, count($failed)),
         ]);
     }
 
@@ -2275,19 +2296,243 @@ class GtkWizardController extends Controller
         return $clean ?: $msg;
     }
 
-    private function buildImportMessage(int $imported, int $failed): string
+    private function buildImportMessage(int $created, int $updated, int $failed): string
     {
-        if ($imported === 0 && $failed === 0) {
+        if ($created === 0 && $updated === 0 && $failed === 0) {
             return 'Tidak ada data untuk diimport.';
         }
-        if ($imported === 0) {
+        if ($created === 0 && $updated === 0) {
             return 'Gagal mengimport semua data. Periksa pesan error pada setiap baris.';
         }
-        if ($failed === 0) {
-            return "Berhasil mengimport {$imported} data GTK.";
+
+        $parts = [];
+        if ($created > 0) {
+            $parts[] = "{$created} GTK baru";
+        }
+        if ($updated > 0) {
+            $parts[] = "{$updated} GTK diperbarui";
         }
 
-        return "Berhasil mengimport {$imported} data GTK, {$failed} gagal. Periksa detail error di bawah.";
+        $summary = implode(' dan ', $parts);
+
+        return $failed === 0
+            ? "Berhasil: {$summary}."
+            : "Berhasil: {$summary}, {$failed} gagal. Periksa detail error di bawah.";
+    }
+
+    /**
+     * Cocokkan teks satuan kerja dari Excel ke work_units.id.
+     * Menerima UUID, kode, atau nama — tidak peka huruf besar/kecil & tanda baca.
+     */
+    private function resolveWorkUnitId(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
+            return WorkUnit::where('id', $value)->value('id');
+        }
+
+        $byCode = WorkUnit::whereRaw('LOWER(TRIM(code)) = ?', [mb_strtolower($value)])->value('id');
+        if ($byCode) {
+            return $byCode;
+        }
+
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($value);
+        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '')";
+
+        $exact = WorkUnit::whereRaw("{$sqlExpr} = ?", [$target])->value('id');
+        if ($exact) {
+            return $exact;
+        }
+
+        // Nama parsial hanya dicoba kalau teksnya cukup panjang, supaya
+        // singkatan pendek tidak menempel ke satuan kerja yang salah.
+        if (mb_strlen($target) < 4) {
+            return null;
+        }
+
+        return WorkUnit::whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])->value('id');
+    }
+
+    /**
+     * Nama role yang menempel pada sebuah jabatan.
+     */
+    private function roleNameForJabatan(?string $jabatan, ?string $jabatanId): ?string
+    {
+        if (! empty($jabatanId)) {
+            $position = StructuralPosition::with('role')->find($jabatanId);
+            if ($position?->role) {
+                return $position->role->name;
+            }
+        }
+
+        if (empty($jabatan)) {
+            return null;
+        }
+
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($jabatan);
+
+        $position = StructuralPosition::with('role')
+            ->whereRaw(
+                "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '') = ?",
+                [$target]
+            )
+            ->first();
+
+        return $position?->role?->name;
+    }
+
+    /**
+     * Saran nama jabatan terdekat supaya pesan error memberi jalan keluar.
+     */
+    private function suggestPositions(?string $jabatan, ?string $jenisGtkId = null, int $limit = 3): string
+    {
+        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
+        $target = $normalize($jabatan ?? '');
+
+        if ($target === '') {
+            return '';
+        }
+
+        $names = StructuralPosition::query()
+            ->when($jenisGtkId, fn ($q) => $q->where('jenis_gtk_id', $jenisGtkId))
+            ->where('is_active', true)
+            ->pluck('name')
+            ->map(function ($name) use ($normalize, $target) {
+                similar_text($normalize($name), $target, $percent);
+
+                return ['name' => $name, 'score' => $percent];
+            })
+            ->sortByDesc('score')
+            ->take($limit)
+            ->pluck('name')
+            ->all();
+
+        return $names === [] ? '' : ' Mungkin maksud Anda: '.implode(', ', $names).'.';
+    }
+
+    /**
+     * Perbarui GTK yang sudah ada, dicocokkan lewat NUPY.
+     *
+     * Data wajib tidak pernah ditimpa: nama, email, NIK, NUPY, dan No HP.
+     * Kolom lain hanya diisi bila sel di Excel tidak kosong, supaya file
+     * parsial tidak menghapus data yang sudah benar.
+     */
+    private function updateFromImportRow(GtkEmployment $employment, array $row, string $workUnitId): void
+    {
+        $user = $employment->user;
+
+        if (! $user) {
+            throw new \InvalidArgumentException("NUPY '{$employment->nupy}' terdaftar tetapi akun user-nya tidak ditemukan.");
+        }
+
+        $profile = $user->gtkProfile;
+        $jenisGtk = $row['jenis_gtk'] ?? null;
+        $jabatan = $row['jabatan'] ?? null;
+
+        $jenisGtkId = $this->resolveJenisGtkId($jenisGtk, $jabatan) ?? $employment->jenis_gtk_id;
+        $jabatanId = $jabatan ? $this->resolveJabatanId($jabatan, $jenisGtkId) : $employment->jabatan_id;
+
+        if ($jabatan && ! $jabatanId) {
+            throw new \InvalidArgumentException(
+                "Jabatan '{$jabatan}' tidak ditemukan di master jabatan."
+                .$this->suggestPositions($jabatan, $jenisGtkId)
+            );
+        }
+
+        $previousJabatanId = $employment->jabatan_id;
+
+        $employment->update($this->onlyFilled([
+            'status_kepegawaian' => $row['status_kepegawaian'] ?? null,
+            'tmt' => $row['tmt'] ?? null,
+            'nomor_sk' => $row['nomor_sk'] ?? null,
+            'tanggal_sk' => $row['tanggal_sk'] ?? null,
+            'pangkat_golongan' => $row['pangkat_golongan'] ?? null,
+            'jenis_gtk' => $this->resolveJenisGtkName($jenisGtk, $jenisGtkId),
+            'jenis_gtk_id' => $jenisGtkId,
+            'jabatan' => $this->resolveJabatanName($jabatan, $jabatanId),
+            'jabatan_id' => $jabatanId,
+            'satuan_kerja' => WorkUnit::where('id', $workUnitId)->value('name'),
+        ]));
+
+        if ($profile) {
+            $profileData = $this->onlyFilled([
+                'no_kk' => $row['no_kk'] ?? null,
+                'tempat_lahir' => $row['tempat_lahir'] ?? null,
+                'tanggal_lahir' => $row['tanggal_lahir'] ?? null,
+                'jenis_kelamin' => $row['jenis_kelamin'] ?? null,
+                'golongan_darah' => $row['golongan_darah'] ?? null,
+                'agama' => $row['agama'] ?? null,
+                'status_perkawinan' => $row['status_perkawinan'] ?? null,
+                'npwp' => $row['npwp'] ?? null,
+            ]);
+
+            if ($profileData !== []) {
+                $profile->update($profileData);
+            }
+        }
+
+        // no_hp termasuk data wajib, jadi hanya WhatsApp yang disegarkan.
+        if (! empty($row['no_whatsapp'])) {
+            GtkContact::updateOrCreate(
+                ['user_id' => $user->id],
+                ['no_whatsapp' => $row['no_whatsapp']]
+            );
+        }
+
+        $address = $this->resolveAddressFromNames($row);
+        if ($profile && ! empty($address['province_code'])) {
+            $existingAddress = GtkAddress::where('gtk_profile_id', $profile->id)
+                ->where('type', 'domisili')
+                ->first();
+
+            if ($existingAddress) {
+                $existingAddress->update($address);
+            } else {
+                $this->createAddress($profile->id, array_merge($address, ['type' => 'domisili']), 'domisili');
+            }
+        }
+
+        if (! empty($row['jenjang_pendidikan']) && ! empty($row['nama_sekolah'])) {
+            GtkEducation::updateOrCreate(
+                ['user_id' => $user->id, 'jenjang_pendidikan' => $row['jenjang_pendidikan']],
+                [
+                    'nama_satuan_pendidikan' => $row['nama_sekolah'],
+                    'jurusan' => $row['jurusan'] ?? null,
+                    'tahun_lulus' => $row['tahun_lulus'] ?? null,
+                    'status' => 'LULUS',
+                ]
+            );
+        }
+
+        if ($profile) {
+            $family = $this->familyMembersFromImportRow($row, $profile);
+            if ($family !== []) {
+                app(GtkFamilyService::class)->sync($profile, $family);
+            }
+        }
+
+        $this->assignWorkUnit($user->id, $workUnitId, $jabatan ?? $employment->jabatan);
+
+        // Role hanya disinkronkan kalau jabatannya benar-benar berubah,
+        // supaya role tambahan yang diberikan manual tidak terhapus.
+        if ($jabatanId && $jabatanId !== $previousJabatanId) {
+            $roleName = $this->roleNameForJabatan($jabatan, $jabatanId);
+            if ($roleName) {
+                $user->syncRoles([$roleName]);
+            }
+        }
+    }
+
+    private function onlyFilled(array $data): array
+    {
+        return array_filter($data, fn ($value) => $value !== null && $value !== '');
     }
 
     private function familyMembersFromImportRow(array $row, GtkProfile $profile): array
@@ -2441,6 +2686,8 @@ class GtkWizardController extends Controller
             $villageCode = $village?->code;
         }
 
+        // Kolom teks ikut diisi karena gtk_addresses mewajibkannya (NOT NULL);
+        // kode wilayah tetap disimpan supaya relasi wilayah tetap presisi.
         return [
             'province_code' => $provinceCode,
             'city_code' => $cityCode,
@@ -2448,6 +2695,10 @@ class GtkWizardController extends Controller
             'village_code' => $villageCode,
             'jalan' => $row['alamat_jalan'] ?? null,
             'rt_rw' => $row['alamat_rt_rw'] ?? null,
+            'desa' => $row['alamat_desa'] ?? null,
+            'kecamatan' => $row['alamat_kecamatan'] ?? null,
+            'kab_kota' => $row['alamat_kota'] ?? null,
+            'provinsi' => $row['alamat_provinsi'] ?? null,
             'kode_pos' => $row['kode_pos'] ?? null,
         ];
     }
@@ -2627,7 +2878,7 @@ class GtkWizardController extends Controller
                 // Scope check — only allow update if user's school matches context
                 $schoolId = $request->attributes->get('schoolContextId');
                 if ($schoolId) {
-                    $schoolWorkUnitId = \App\Models\School::find($schoolId)?->work_unit_id;
+                    $schoolWorkUnitId = School::find($schoolId)?->work_unit_id;
                     $hasSchoolScope = (string) $user->employment?->school_id === (string) $schoolId
                         || ($schoolWorkUnitId && $user->gtkWorkUnits()->where('work_unit_id', $schoolWorkUnitId)->exists());
                     if (! $hasSchoolScope) {
