@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbsensiHarianController;
 use App\Http\Controllers\AcademicIntegrationController;
+use App\Http\Controllers\AcademicQualityController;
 use App\Http\Controllers\AcademicReportController;
 use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\AdminAsramaDashboardController;
@@ -154,6 +155,7 @@ use App\Http\Controllers\Kurikulum\CurriculumProjectBankController;
 use App\Http\Controllers\Kurikulum\CurriculumProjectController;
 use App\Http\Controllers\Kurikulum\KurikulumController;
 use App\Http\Controllers\Kurikulum\KurikulumEditGrantController;
+use App\Http\Controllers\Kurikulum\KurikulumImportController;
 use App\Http\Controllers\Kurikulum\PerangkatPembelajaranController;
 use App\Http\Controllers\Kurikulum\ProsemController;
 use App\Http\Controllers\Kurikulum\ProtaController;
@@ -1144,6 +1146,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── KURIKULUM & PERANGKAT PEMBELAJARAN ────────────────
             // Kalender → Pekan Efektif → JP Efektif → Kurikulum → CP → TP → ATP → Perangkat
             Route::prefix('kurikulum')->name('kurikulum.')->middleware('kurikulum.access')->group(function () {
+                Route::prefix('import')->name('import.')->group(function () {
+                    Route::get('/', [KurikulumImportController::class, 'form'])->name('form');
+                    Route::post('/', [KurikulumImportController::class, 'store'])->name('store');
+                    Route::get('/template', [KurikulumImportController::class, 'template'])->name('template');
+                });
+
                 Route::prefix('profil')->name('profil.')->group(function () {
                     Route::get('/', [CurriculumProfileController::class, 'index'])->name('index');
                     Route::post('/', [CurriculumProfileController::class, 'store'])->name('store');
@@ -3392,6 +3400,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             Route::get('/laporan/akademik/keterlaksanaan/pdf', [AcademicReportController::class, 'implementationPdf'])->name('laporan.akademik.keterlaksanaan.pdf');
             Route::get('/laporan/akademik/administrasi/export', [AcademicReportController::class, 'administrationExport'])->name('laporan.akademik.administrasi.export');
             Route::get('/laporan/akademik/administrasi/pdf', [AcademicReportController::class, 'administrationPdf'])->name('laporan.akademik.administrasi.pdf');
+            Route::get('/laporan/pendidikan/mutu', [AcademicQualityController::class, 'index'])->name('laporan.pendidikan.mutu');
             Route::get('/laporan/akademik/riwayat/{studentId}', [AcademicReportController::class, 'history'])->name('laporan.akademik.riwayat');
             Route::get('/laporan/populasi/mutasi', [StudentPopulationReportController::class, 'mutations'])->name('laporan.populasi.mutasi');
             Route::get('/laporan/populasi/pertumbuhan', [StudentPopulationReportController::class, 'growth'])->name('laporan.populasi.pertumbuhan');

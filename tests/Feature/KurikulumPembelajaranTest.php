@@ -1485,4 +1485,23 @@ class KurikulumPembelajaranTest extends TestCase
             'academic_year_id' => $this->ay->id,
         ]);
     }
+
+    public function test_halaman_import_kurikulum_dan_template_tersedia(): void
+    {
+        $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/import")
+            ->assertOk()
+            ->assertSee('Import Kurikulum')
+            ->assertSee('CP')
+            ->assertSee('ATP_ITEM');
+
+        $response = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/kurikulum/import/template?academic_year_id={$this->ay->id}&semester=ganjil");
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'spreadsheetml',
+            (string) $response->headers->get('content-type')
+        );
+    }
 }

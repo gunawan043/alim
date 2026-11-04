@@ -17,6 +17,12 @@
         @slot('title') Kurikulum Pembelajaran @endslot
     @endcomponent
 
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ route('user.kurikulum.import.form', ['userId' => $userId]) }}" class="btn btn-success">
+            <i class="ri-upload-cloud-2-line me-1"></i>Import Excel Kurikulum
+        </a>
+    </div>
+
     @if($isArchive ?? false)
         <div class="alert alert-warning py-2 px-3 small d-flex align-items-center gap-2" role="alert">
             <i class="ri-archive-line fs-5"></i>
