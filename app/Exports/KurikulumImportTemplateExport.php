@@ -95,15 +95,6 @@ class KurikulumImportTemplateExport
         $this->writeHeader($sheet, $headers, $widths);
         $sheet->freezePane('A2');
         $sheet->setAutoFilter('A1:'.$this->columnLetter(count($headers)).'1');
-
-        $sheet->mergeCells('A2:'.$this->columnLetter(count($headers)).'2');
-        $sheet->setCellValue('A2', $note);
-        $sheet->getStyle('A2')->applyFromArray([
-            'font' => ['italic' => true, 'size' => 9, 'color' => ['argb' => 'FF475569']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.self::LIGHT]],
-            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        ]);
-        $sheet->getRowDimension(2)->setRowHeight(30);
     }
 
     private function buildGuideSheet(Worksheet $sheet): void
