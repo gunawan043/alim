@@ -1903,48 +1903,11 @@ class GtkWizardController extends Controller
      */
     protected function resolveJabatanId(?string $jabatanName, ?string $jenisGtkId = null): ?string
     {
-        if (! $jabatanName) {
-            return null;
-        }
+        $match = $this->positionMatch($jabatanName, $jenisGtkId);
 
-        // UUID detection
-        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $jabatanName)) {
-            return StructuralPosition::where('id', $jabatanName)->value('id');
-        }
-
-        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
-        $target = $normalize($jabatanName);
-
-        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '')";
-
-        // Step 1: Exact + jenis filter
-        if ($jenisGtkId) {
-            $id = StructuralPosition::where('jenis_gtk_id', $jenisGtkId)
-                ->whereRaw("{$sqlExpr} = ?", [$target])
-                ->value('id');
-            if ($id) {
-                return $id;
-            }
-        }
-
-        // Step 2: Exact global
-        $id = StructuralPosition::whereRaw("{$sqlExpr} = ?", [$target])->value('id');
-        if ($id) {
-            return $id;
-        }
-
-        // Step 3: LIKE + jenis filter
-        if ($jenisGtkId) {
-            $id = StructuralPosition::where('jenis_gtk_id', $jenisGtkId)
-                ->whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])
-                ->value('id');
-            if ($id) {
-                return $id;
-            }
-        }
-
-        // Step 4: LIKE global
-        return StructuralPosition::whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])->value('id');
+        // Hanya kecocokan yang yakin yang dipakai; yang ragu harus dikonfirmasi
+        // lewat halaman import supaya tidak salah menempatkan jabatan.
+        return $match['status'] === 'auto' ? $match['match']['id'] : null;
     }
 
     /**
@@ -2028,6 +1991,43 @@ class GtkWizardController extends Controller
         );
     }
 
+    /**
+     * Cocokkan nilai teks dari file Excel sebelum diimport.
+     *
+     * Halaman preview memakai hasil ini untuk menandai baris yang sudah yakin
+     * dan baris yang perlu dikonfirmasi, sehingga tidak ada tebakan diam-diam.
+     */
+    public function resolveImportValues(Request $request, string $userId): JsonResponse
+    {
+        $this->authorizeGtkMutation();
+
+        $validated = $request->validate([
+            'satuan_kerja' => 'array',
+            'satuan_kerja.*' => 'string|max:150',
+            'jabatan' => 'array',
+            'jabatan.*' => 'string|max:150',
+            'jenis_gtk' => 'nullable|string|max:150',
+        ]);
+
+        $jenisGtkId = $this->resolveJenisGtkId($validated['jenis_gtk'] ?? null);
+
+        $workUnits = [];
+        foreach (array_unique($validated['satuan_kerja'] ?? []) as $value) {
+            $workUnits[$value] = $this->workUnitMatch($value);
+        }
+
+        $positions = [];
+        foreach (array_unique($validated['jabatan'] ?? []) as $value) {
+            $positions[$value] = $this->positionMatch($value, $jenisGtkId);
+        }
+
+        return response()->json([
+            'success' => true,
+            'satuan_kerja' => $workUnits,
+            'jabatan' => $positions,
+        ]);
+    }
+
     public function importStore(Request $request, string $userId): JsonResponse
     {
         $this->authorizeGtkMutation();
@@ -2084,16 +2084,9 @@ class GtkWizardController extends Controller
                     );
                 }
 
-                // Satuan kerja: kolom Excel diutamakan, pilihan manual jadi cadangan.
-                $rowWorkUnitId = $this->resolveWorkUnitId($row['satuan_kerja'] ?? null) ?? $workUnitId;
-
-                if (! $rowWorkUnitId) {
-                    $satuanKerjaInput = trim((string) ($row['satuan_kerja'] ?? ''));
-
-                    throw new \InvalidArgumentException($satuanKerjaInput === ''
-                        ? 'Satuan kerja kosong. Isi kolom "satuan_kerja" di Excel atau pilih satuan kerja di langkah 1.'
-                        : "Satuan kerja '{$satuanKerjaInput}' tidak ditemukan. Samakan dengan nama/kode di sheet \"Referensi: Satuan Kerja\".");
-                }
+                // Satuan kerja: hasil konfirmasi di preview menang, lalu kolom Excel,
+                // lalu pilihan manual. Yang ragu ditolak, bukan ditebak.
+                $rowWorkUnitId = $this->resolveImportWorkUnit($row, $workUnitId);
 
                 $nupy = $row['nupy'];
 
@@ -2159,7 +2152,7 @@ class GtkWizardController extends Controller
                 $jenisGtkId = $this->resolveJenisGtkId($jenisGtk, $jabatan);
 
                 // ── Resolve jabatan (setelah jenis GTK benar) ───────────────────────
-                $jabatanId = $jabatan ? $this->resolveJabatanId($jabatan, $jenisGtkId) : null;
+                $jabatanId = $this->resolveImportJabatan($row, $jenisGtkId);
 
                 // ── Validasi ────────────────────────────────────────────────────────
                 if (! $jenisGtkId) {
@@ -2324,39 +2317,266 @@ class GtkWizardController extends Controller
      * Cocokkan teks satuan kerja dari Excel ke work_units.id.
      * Menerima UUID, kode, atau nama — tidak peka huruf besar/kecil & tanda baca.
      */
-    private function resolveWorkUnitId(?string $value): ?string
+    /**
+     * Ambang keyakinan pencocokan: skor >= AUTO dipakai langsung,
+     * skor di antara AMBIGUOUS dan AUTO wajib dikonfirmasi manusia.
+     */
+    private const MATCH_AUTO = 90;
+
+    private const MATCH_AMBIGUOUS = 70;
+
+    private function normalizeMatchKey(?string $value): string
+    {
+        return preg_replace('/[^a-z0-9]/', '', strtolower(trim((string) $value))) ?? '';
+    }
+
+    /**
+     * Skor kemiripan 0–100 antara teks bebas dan satu kandidat master.
+     * Sengaja tidak pernah memberi 100 untuk selain kesamaan persis.
+     */
+    private function similarityScore(?string $input, ?string $candidate): int
+    {
+        $left = strtolower(trim((string) $input));
+        $right = strtolower(trim((string) $candidate));
+
+        $a = $this->normalizeMatchKey($left);
+        $b = $this->normalizeMatchKey($right);
+
+        if ($a === '' || $b === '') {
+            return 0;
+        }
+
+        if ($a === $b) {
+            return 100;
+        }
+
+        // Satu nama memuat yang lain, mis. "MTs Al-Hikmah Mataram" vs "MTs Al-Hikmah".
+        if (str_contains($a, $b) || str_contains($b, $a)) {
+            $shorter = min(strlen($a), strlen($b));
+            $longer = max(strlen($a), strlen($b));
+
+            return ($longer > 0 && $shorter / $longer >= 0.6) ? 92 : 80;
+        }
+
+        // Kesamaan kata: "Guru Umum" vs "Guru Mata Pelajaran Umum".
+        $tokensA = array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', $left) ?: [])));
+        $tokensB = array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', $right) ?: [])));
+
+        if ($tokensA !== [] && $tokensB !== []) {
+            $common = count(array_intersect($tokensA, $tokensB));
+            $union = count(array_unique(array_merge($tokensA, $tokensB)));
+            $jaccard = $union > 0 ? $common / $union : 0;
+
+            if ($jaccard >= 0.6) {
+                return (int) round(70 + 20 * $jaccard);
+            }
+        }
+
+        similar_text($a, $b, $percent);
+
+        // Dikali 0,9 supaya kemiripan huruf saja tidak pernah lolos sebagai yakin.
+        return (int) round($percent * 0.9);
+    }
+
+    /**
+     * Ubah daftar kandidat ber-skor menjadi keputusan: auto / ambiguous / unknown.
+     */
+    private function classifyMatch(array $scored): array
+    {
+        $scored = array_values(array_filter($scored, fn ($candidate) => ($candidate['score'] ?? 0) >= 40));
+
+        if ($scored === []) {
+            return ['status' => 'unknown', 'score' => 0, 'match' => null, 'candidates' => []];
+        }
+
+        usort($scored, fn ($a, $b) => $b['score'] <=> $a['score']);
+
+        $top = $scored[0];
+        $topCount = count(array_filter($scored, fn ($candidate) => $candidate['score'] === $top['score']));
+
+        $status = match (true) {
+            $topCount > 1 => 'ambiguous',
+            $top['score'] >= self::MATCH_AUTO => 'auto',
+            $top['score'] >= self::MATCH_AMBIGUOUS => 'ambiguous',
+            default => 'unknown',
+        };
+
+        return [
+            'status' => $status,
+            'score' => $top['score'],
+            'match' => $status === 'auto' ? ['id' => $top['id'], 'label' => $top['label']] : null,
+            'candidates' => array_slice($scored, 0, 5),
+        ];
+    }
+
+    /**
+     * Cocokkan teks satuan kerja ke work_units (nama atau kode).
+     */
+    private function workUnitMatch(?string $value): array
     {
         $value = trim((string) $value);
+
+        if ($value === '') {
+            return ['status' => 'empty', 'score' => 0, 'match' => null, 'candidates' => []];
+        }
+
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
+            $unit = WorkUnit::find($value);
+
+            return $unit
+                ? ['status' => 'auto', 'score' => 100, 'match' => ['id' => $unit->id, 'label' => $unit->name], 'candidates' => []]
+                : ['status' => 'unknown', 'score' => 0, 'match' => null, 'candidates' => []];
+        }
+
+        $scored = WorkUnit::query()
+            ->get(['id', 'name', 'code'])
+            ->map(fn (WorkUnit $unit) => [
+                'id' => $unit->id,
+                'label' => $unit->name,
+                'code' => $unit->code,
+                'score' => max(
+                    $this->similarityScore($value, $unit->name),
+                    $this->similarityScore($value, $unit->code),
+                ),
+            ])
+            ->all();
+
+        return $this->classifyMatch($scored);
+    }
+
+    /**
+     * Cocokkan teks jabatan ke structural_positions.
+     */
+    private function positionMatch(?string $value, ?string $jenisGtkId = null): array
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return ['status' => 'empty', 'score' => 0, 'match' => null, 'candidates' => []];
+        }
+
+        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
+            $position = StructuralPosition::find($value);
+
+            return $position
+                ? ['status' => 'auto', 'score' => 100, 'match' => ['id' => $position->id, 'label' => $position->name], 'candidates' => []]
+                : ['status' => 'unknown', 'score' => 0, 'match' => null, 'candidates' => []];
+        }
+
+        $positions = StructuralPosition::query()
+            ->where('is_active', true)
+            ->when($jenisGtkId, fn ($q) => $q->where('jenis_gtk_id', $jenisGtkId))
+            ->get(['id', 'name']);
+
+        // Kalau filter jenis GTK terlalu sempit, ulangi tanpa filter.
+        if ($positions->isEmpty() && $jenisGtkId) {
+            $positions = StructuralPosition::query()->where('is_active', true)->get(['id', 'name']);
+        }
+
+        $scored = $positions
+            ->map(fn (StructuralPosition $position) => [
+                'id' => $position->id,
+                'label' => $position->name,
+                'score' => $this->similarityScore($value, $position->name),
+            ])
+            ->all();
+
+        return $this->classifyMatch($scored);
+    }
+
+    private function resolveWorkUnitId(?string $value): ?string
+    {
+        $match = $this->workUnitMatch($value);
+
+        return $match['status'] === 'auto' ? $match['match']['id'] : null;
+    }
+
+    /**
+     * Satuan kerja untuk satu baris import.
+     * Urutan: konfirmasi pengguna > kolom Excel > pilihan manual.
+     */
+    private function resolveImportWorkUnit(array $row, ?string $fallbackId): string
+    {
+        $override = trim((string) ($row['work_unit_id'] ?? ''));
+
+        if ($override !== '') {
+            $id = WorkUnit::where('id', $override)->value('id');
+
+            if (! $id) {
+                throw new \InvalidArgumentException('Satuan kerja hasil konfirmasi tidak ditemukan di master.');
+            }
+
+            return $id;
+        }
+
+        $value = trim((string) ($row['satuan_kerja'] ?? ''));
+        $match = $this->workUnitMatch($value);
+
+        if ($match['status'] === 'empty') {
+            if ($fallbackId) {
+                return $fallbackId;
+            }
+
+            throw new \InvalidArgumentException(
+                'Satuan kerja kosong. Isi kolom "satuan_kerja" di Excel atau pilih satuan kerja di langkah 1.'
+            );
+        }
+
+        if ($match['status'] === 'auto') {
+            return $match['match']['id'];
+        }
+
+        throw new \InvalidArgumentException(
+            $this->matchFailureMessage('Satuan kerja', $value, $match, ' Samakan dengan nama/kode di sheet "Referensi: Satuan Kerja".')
+        );
+    }
+
+    /**
+     * Jabatan untuk satu baris import. Ragu = ditolak dengan daftar kandidat.
+     */
+    private function resolveImportJabatan(array $row, ?string $jenisGtkId): ?string
+    {
+        $override = trim((string) ($row['jabatan_id'] ?? ''));
+
+        if ($override !== '') {
+            $id = StructuralPosition::where('id', $override)->value('id');
+
+            if (! $id) {
+                throw new \InvalidArgumentException('Jabatan hasil konfirmasi tidak ditemukan di master.');
+            }
+
+            return $id;
+        }
+
+        $value = trim((string) ($row['jabatan'] ?? ''));
 
         if ($value === '') {
             return null;
         }
 
-        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $value)) {
-            return WorkUnit::where('id', $value)->value('id');
+        $match = $this->positionMatch($value, $jenisGtkId);
+
+        if ($match['status'] === 'auto') {
+            return $match['match']['id'];
         }
 
-        $byCode = WorkUnit::whereRaw('LOWER(TRIM(code)) = ?', [mb_strtolower($value)])->value('id');
-        if ($byCode) {
-            return $byCode;
-        }
+        throw new \InvalidArgumentException(
+            $this->matchFailureMessage('Jabatan', $value, $match, ' Samakan dengan nama di sheet "Referensi: Jabatan".')
+        );
+    }
 
-        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
-        $target = $normalize($value);
-        $sqlExpr = "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '')";
+    private function matchFailureMessage(string $label, string $value, array $match, string $hint = ''): string
+    {
+        $candidates = collect($match['candidates'])
+            ->take(3)
+            ->map(fn ($candidate) => "'{$candidate['label']}' ({$candidate['score']}%)")
+            ->implode(', ');
 
-        $exact = WorkUnit::whereRaw("{$sqlExpr} = ?", [$target])->value('id');
-        if ($exact) {
-            return $exact;
-        }
+        $problem = $match['status'] === 'ambiguous'
+            ? 'ambigu, perlu dikonfirmasi di preview.'
+            : 'tidak dikenali.';
 
-        // Nama parsial hanya dicoba kalau teksnya cukup panjang, supaya
-        // singkatan pendek tidak menempel ke satuan kerja yang salah.
-        if (mb_strlen($target) < 4) {
-            return null;
-        }
-
-        return WorkUnit::whereRaw("{$sqlExpr} LIKE ?", ['%'.$target.'%'])->value('id');
+        return "{$label} '{$value}' {$problem}{$hint} Kandidat terdekat: ".($candidates ?: '-').'.';
     }
 
     /**
@@ -2437,7 +2657,9 @@ class GtkWizardController extends Controller
         $jabatan = $row['jabatan'] ?? null;
 
         $jenisGtkId = $this->resolveJenisGtkId($jenisGtk, $jabatan) ?? $employment->jenis_gtk_id;
-        $jabatanId = $jabatan ? $this->resolveJabatanId($jabatan, $jenisGtkId) : $employment->jabatan_id;
+        $jabatanId = $jabatan
+            ? ($this->resolveImportJabatan($row, $jenisGtkId) ?? $employment->jabatan_id)
+            : $employment->jabatan_id;
 
         if ($jabatan && ! $jabatanId) {
             throw new \InvalidArgumentException(

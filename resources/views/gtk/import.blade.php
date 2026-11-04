@@ -214,9 +214,11 @@
                             <div>
                                 <div class="fw-semibold mb-1">Satuan Kerja &amp; Jabatan Dicocokkan Otomatis</div>
                                 <p class="text-muted small mb-0">
-                                    Tiap baris dicocokkan ke satuan kerja dari kolom <code>satuan_kerja</code>.
-                                    Kalau kolom itu kosong, dipakai satuan kerja yang dipilih di langkah 1.
-                                    Jabatan dicocokkan ke master jabatan (tanpa peduli huruf besar/kecil dan tanda baca).
+                                    Tiap baris dicocokkan ke master, tidak peduli huruf besar/kecil, tanda baca,
+                                    atau nama yang lebih panjang. Kalau kolom <code>satuan_kerja</code> kosong,
+                                    dipakai satuan kerja yang dipilih di langkah 1.
+                                    <strong>Kalau hasilnya meragukan, sistem tidak menebak</strong> — baris itu
+                                    ditandai dan Anda memilih sendiri dari daftar kandidat di preview.
                                 </p>
                             </div>
                         </div>
@@ -412,6 +414,9 @@
             <strong>Catatan:</strong> Baris dengan NUPY yang sudah terdaftar akan <strong>diperbarui</strong> —
             data wajib (nama, email, NIK, NUPY, No HP) tidak pernah ditimpa, dan sel kosong tidak menghapus data lama.
             NIK atau email yang sudah dipakai GTK lain dengan NUPY berbeda tetap dilaporkan sebagai gagal.
+            <br>
+            Pencocokan <strong>otomatis</strong> hanya dipakai kalau skornya ≥ 90%. Di bawah itu baris ditandai
+            <em>perlu konfirmasi</em> dan baru bisa diimport setelah Anda memilih dari daftar.
         </div>
     </div>
 </div>
@@ -455,16 +460,6 @@ const COL_MAP = {
 };
 let selectedWuId = '', selectedWuName = '';
 
-// Daftar satuan kerja untuk menandai baris yang namanya belum cocok (hanya penanda,
-// pencocokan final tetap di server karena di sana ada fallback nama parsial).
-const WORK_UNITS = @json($workUnits->map(fn ($w) => ['id' => $w->id, 'name' => $w->name, 'code' => $w->code]));
-
-function normalizeUnitKey(s) { return String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-function matchWorkUnit(value) {
-    const target = normalizeUnitKey(value);
-    if (!target) return null;
-    return WORK_UNITS.find(u => normalizeUnitKey(u.name) === target || normalizeUnitKey(u.code) === target) || null;
-}
 let parsedRows = [], validRows = [];
 
 // Select2 work unit
@@ -572,7 +567,7 @@ function clearFile() {
 function previewFile() {
     const file = fileInput.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = e => {
+    reader.onload = async e => {
         try {
             const wb = XLSX.read(e.target.result, {type:'array',cellDates:true});
             const ws = wb.Sheets[wb.SheetNames[0]];
@@ -628,19 +623,130 @@ function previewFile() {
                 }
                 r._status = r._errors.length ? 'error' : 'ok';
             });
-            validRows = parsedRows.filter(r => r._status !== 'error');
+            // Simpan error dasar dulu; error pencocokan ditambahkan setelah
+            // server selesai mencocokkan nilai dari file.
+            parsedRows.forEach(r => { r._baseErrors = r._errors.slice(); });
+            await resolveRowMatches();
+            applyMatchValidation();
             renderTable(parsedRows);
-            document.getElementById('countValid').textContent = parsedRows.filter(r=>r._status==='ok').length;
-            document.getElementById('countError').textContent = parsedRows.filter(r=>r._status==='error').length;
             document.getElementById('previewCount').textContent = parsedRows.length + ' baris';
             document.getElementById('previewCard').style.display = 'block';
             document.getElementById('previewPlaceholder').style.display = 'none';
-            document.getElementById('importBtn').disabled = !validRows.length;
-            document.getElementById('importCountLabel').textContent = validRows.length;
         } catch(err) { console.error(err); Swal.fire({icon:'error',title:'Gagal Baca File'}); }
     };
     reader.readAsArrayBuffer(file);
 }
+// ── Pencocokan otomatis: yakin dipakai, ragu minta konfirmasi ──────────────
+async function resolveRowMatches() {
+    const units = [...new Set(parsedRows.map(r => r.satuan_kerja).filter(Boolean))];
+    const jabatans = [...new Set(parsedRows.map(r => r.jabatan).filter(Boolean))];
+
+    parsedRows.forEach(r => { r._unit = null; r._jabatan = null; });
+
+    if (!units.length && !jabatans.length) return;
+
+    try {
+        const res = await fetch('{{ "/$userId" }}/gtk/import/resolve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ satuan_kerja: units, jabatan: jabatans })
+        });
+        const data = await res.json();
+
+        parsedRows.forEach(r => {
+            if (r.satuan_kerja && data.satuan_kerja && data.satuan_kerja[r.satuan_kerja]) {
+                r._unit = data.satuan_kerja[r.satuan_kerja];
+            }
+            if (r.jabatan && data.jabatan && data.jabatan[r.jabatan]) {
+                r._jabatan = data.jabatan[r.jabatan];
+            }
+        });
+    } catch (err) {
+        // Gagal mencocokkan bukan alasan memblokir: server tetap mencocokkan
+        // saat import dan menolak baris yang ragu.
+        console.error('Pencocokan otomatis gagal', err);
+    }
+}
+
+function applyMatchValidation() {
+    parsedRows.forEach(r => {
+        const errors = (r._baseErrors || []).slice();
+
+        if (r._unit && !r._unitChoice) {
+            if (r._unit.status === 'ambiguous') errors.push('satuan_kerja: perlu konfirmasi — pilih dari daftar');
+            if (r._unit.status === 'unknown') errors.push('satuan_kerja: tidak dikenali — pilih dari daftar');
+        }
+        if (r._jabatan && !r._jabatanChoice) {
+            if (r._jabatan.status === 'ambiguous') errors.push('jabatan: perlu konfirmasi — pilih dari daftar');
+            if (r._jabatan.status === 'unknown') errors.push('jabatan: tidak dikenali — pilih dari daftar');
+        }
+
+        r._errors = errors;
+        r._status = errors.length ? 'error' : 'ok';
+    });
+
+    validRows = parsedRows.filter(r => r._status !== 'error');
+    document.getElementById('countValid').textContent = validRows.length;
+    document.getElementById('countError').textContent = parsedRows.filter(r => r._status === 'error').length;
+    document.getElementById('importBtn').disabled = !validRows.length;
+    document.getElementById('importCountLabel').textContent = validRows.length;
+}
+
+function renderMatchCell(r, kind) {
+    const isUnit = kind === 'unit';
+    const value = isUnit ? r.satuan_kerja : r.jabatan;
+    const match = isUnit ? r._unit : r._jabatan;
+    const choice = isUnit ? r._unitChoice : r._jabatanChoice;
+
+    if (!value) {
+        const fallback = isUnit ? selectedWuName : '';
+        return fallback
+            ? escHtml(fallback) + ' <span class="badge bg-secondary-subtle text-secondary" style="font-size:10px;">dipilih</span>'
+            : '<span class="text-danger">—</span>';
+    }
+
+    if (choice) {
+        const picked = ((match && match.candidates) || []).find(c => c.id === choice);
+        return escHtml(picked ? picked.label : value) + ' <span class="badge bg-info-subtle text-info" style="font-size:10px;">dikonfirmasi</span>';
+    }
+
+    if (!match) return escHtml(value);
+
+    if (match.status === 'auto') {
+        return escHtml(match.match.label) + ` <span class="badge bg-success-subtle text-success" style="font-size:10px;">otomatis ${match.score}%</span>`;
+    }
+
+    const options = (match.candidates || [])
+        .map(c => `<option value="${c.id}">${escHtml(c.label)} (${c.score}%)</option>`)
+        .join('');
+
+    const label = match.status === 'ambiguous' ? 'perlu konfirmasi' : 'tidak dikenali';
+    const color = match.status === 'ambiguous' ? 'warning' : 'danger';
+
+    return `<div class="d-flex flex-column gap-1">` +
+        `<span class="badge bg-${color}-subtle text-${color}" style="font-size:10px;">${label}</span>` +
+        `<select class="form-select form-select-sm match-select" data-row="${r._rowNum}" data-kind="${kind}" style="min-width:190px">` +
+        `<option value="">— pilih —</option>${options}</select></div>`;
+}
+
+// Konfirmasi manual dari dropdown di dalam preview.
+document.getElementById('previewTableWrap').addEventListener('change', function (event) {
+    const select = event.target.closest('.match-select');
+    if (!select) return;
+
+    const row = parsedRows.find(r => r._rowNum === Number(select.dataset.row));
+    if (!row) return;
+
+    if (select.dataset.kind === 'unit') row._unitChoice = select.value;
+    else row._jabatanChoice = select.value;
+
+    applyMatchValidation();
+    renderTable(parsedRows);
+});
 function renderTable(rows) {
     const cols = [
         {k:'_rowNum',l:'#'}, {k:'name',l:'Nama'}, {k:'email',l:'Email'},
@@ -677,16 +783,9 @@ function renderTable(rows) {
             } else if (c.k === '_rowNum') {
                 html += `<td class="text-muted">${r[c.k]||''}</td>`;
             } else if (c.k === 'satuan_kerja') {
-                const matched = r.satuan_kerja ? matchWorkUnit(r.satuan_kerja) : null;
-                const fromManual = !r.satuan_kerja && !!selectedWuId;
-                const label = r.satuan_kerja ? (matched ? matched.name : r.satuan_kerja) : selectedWuName;
-                let unitBadge = '';
-                if (fromManual) {
-                    unitBadge = ' <span class="badge bg-secondary-subtle text-secondary" style="font-size:10px;">dipilih</span>';
-                } else if (r.satuan_kerja && !matched) {
-                    unitBadge = ' <span class="badge bg-warning-subtle text-warning" style="font-size:10px;">cek nama</span>';
-                }
-                html += `<td class="text-nowrap">${label ? escHtml(label) : '<span class="text-danger">—</span>'}${unitBadge}</td>`;
+                html += `<td class="text-nowrap">${renderMatchCell(r, 'unit')}</td>`;
+            } else if (c.k === 'jabatan') {
+                html += `<td class="text-nowrap">${renderMatchCell(r, 'jabatan')}</td>`;
             } else {
                 html += `<td class="text-nowrap">${escHtml(r[c.k]??'-')}</td>`;
             }
@@ -709,7 +808,11 @@ async function startImport() {
     let created = 0, updated = 0, fail = 0, failRows = [], warnings = [];
     const BATCH = 10, total = validRows.length;
     for (let i = 0; i < total; i += BATCH) {
-        const batch = validRows.slice(i, i + BATCH);
+        // Kirim id hasil konfirmasi/otomatis supaya server tidak menebak ulang.
+        const batch = validRows.slice(i, i + BATCH).map(r => Object.assign({}, r, {
+            work_unit_id: r._unitChoice || (r._unit && r._unit.match ? r._unit.match.id : null),
+            jabatan_id: r._jabatanChoice || (r._jabatan && r._jabatan.match ? r._jabatan.match.id : null),
+        }));
         bar.style.width = Math.round((i/total)*100) + '%';
         txt.textContent = `Baris ${i+1}–${Math.min(i+BATCH,total)} dari ${total}...`;
         try {

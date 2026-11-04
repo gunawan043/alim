@@ -1013,6 +1013,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [GtkWizardController::class, 'store'])->name('store');
                 Route::get('/import', [GtkWizardController::class, 'import'])->name('import');
                 Route::get('/import/template/{workUnitId?}', [GtkWizardController::class, 'importTemplate'])->name('import.template');
+                Route::post('/import/resolve', [GtkWizardController::class, 'resolveImportValues'])->name('import.resolve');
                 Route::post('/import/store', [GtkWizardController::class, 'importStore'])->name('import.store');
 
                 // ── IMPORT NAMA ARAB GTK (menu terpisah; match NUPY) ──

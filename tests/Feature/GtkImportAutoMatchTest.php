@@ -214,6 +214,85 @@ class GtkImportAutoMatchTest extends TestCase
         $this->assertStringContainsString('Satuan kerja kosong', $result['failed'][0]['reason']);
     }
 
+    public function test_nama_satuan_kerja_yang_lebih_panjang_tetap_cocok_otomatis(): void
+    {
+        $result = $this->import([$this->row(['satuan_kerja' => 'MTs Al Hikmah Mataram'])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+        $this->assertDatabaseHas('gtk_work_unit', [
+            'work_unit_id' => $this->unitAId,
+            'is_primary' => 1,
+        ]);
+    }
+
+    public function test_satuan_kerja_ambigu_ditolak_menunggu_konfirmasi(): void
+    {
+        // 'Al Hikmah' sama-sama mendekati MTs dan MA Al-Hikmah.
+        $result = $this->import([$this->row(['satuan_kerja' => 'Al Hikmah'])]);
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
+        $this->assertStringContainsString(WorkUnit::find($this->unitBId)->name, $result['failed'][0]['reason']);
+    }
+
+    public function test_konfirmasi_manual_mengalahkan_teks_ambigu(): void
+    {
+        $result = $this->import([
+            $this->row([
+                'satuan_kerja' => 'Al Hikmah',
+                'work_unit_id' => $this->unitBId,
+            ]),
+        ]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+        $this->assertDatabaseHas('gtk_work_unit', [
+            'work_unit_id' => $this->unitBId,
+            'is_primary' => 1,
+        ]);
+    }
+
+    public function test_jabatan_ambigu_ditolak_menunggu_konfirmasi(): void
+    {
+        $result = $this->import([
+            $this->row(['satuan_kerja' => 'MTs Al-Hikmah', 'jabatan' => 'Guru']),
+        ]);
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertStringContainsString('Jabatan', $result['failed'][0]['reason']);
+        $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
+    }
+
+    public function test_resolve_endpoint_mengembalikan_status_pencocokan(): void
+    {
+        $request = Request::create(
+            '/'.$this->admin->id.'/gtk/import/resolve',
+            'POST',
+            [
+                'satuan_kerja' => ['MTs Al-Hikmah', 'Al Hikmah', 'Unit Antah Berantah'],
+                'jabatan' => ['Guru Umum', 'Guru'],
+            ]
+        );
+        $request->setUserResolver(fn () => $this->admin);
+
+        $response = app(GtkWizardController::class)->resolveImportValues($request, $this->admin->id);
+        $payload = json_decode($response->getContent(), true);
+
+        $this->assertSame('auto', $payload['satuan_kerja']['MTs Al-Hikmah']['status']);
+        $this->assertSame($this->unitAId, $payload['satuan_kerja']['MTs Al-Hikmah']['match']['id']);
+
+        $this->assertSame('ambiguous', $payload['satuan_kerja']['Al Hikmah']['status']);
+        $this->assertNull($payload['satuan_kerja']['Al Hikmah']['match']);
+        $this->assertNotEmpty($payload['satuan_kerja']['Al Hikmah']['candidates']);
+
+        $this->assertContains(
+            $payload['satuan_kerja']['Unit Antah Berantah']['status'],
+            ['unknown', 'ambiguous']
+        );
+
+        $this->assertSame('auto', $payload['jabatan']['Guru Umum']['status']);
+        $this->assertSame('ambiguous', $payload['jabatan']['Guru']['status']);
+    }
+
     public function test_import_ulang_memperbarui_data_tanpa_menimpa_data_wajib(): void
     {
         $this->import([$this->row(['satuan_kerja' => 'MTs Al-Hikmah'])], $this->unitAId);
