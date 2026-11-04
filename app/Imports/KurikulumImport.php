@@ -14,6 +14,7 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
+use App\Services\Kurikulum\PerangkatFormatResolver;
 use App\Services\ProsemService;
 use App\Services\ProtaService;
 use App\Services\SchoolGroupService;
@@ -379,8 +380,12 @@ class KurikulumImport
                 $grade = $this->resolveGrade($row);
                 $atp = $this->findAtp($subject, $grade, $ay, $semester);
 
-                if (! $atp) {
+                if ($atp === null) {
                     throw new \RuntimeException('ATP belum ada untuk mapel/kelas/TA/semester ini.');
+                }
+
+                if (app(PerangkatFormatResolver::class)->resolve($subject) === PerangkatFormatResolver::TAHFIDZ) {
+                    throw new \RuntimeException('Perangkat mapel Tahfidz disusun melalui modul RPP Tahfizh, bukan import ini.');
                 }
 
                 $judul = trim((string) ($row['judul'] ?? ''));
