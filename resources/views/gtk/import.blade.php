@@ -679,17 +679,27 @@ async function resolveRowMatches() {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ satuan_kerja: units, jabatan: jabatans })
+            body: JSON.stringify({
+                satuan_kerja: units,
+                jabatan: jabatans,
+                // Konteks per baris: jabatan dinilai relatif ke satuan kerjanya.
+                rows: parsedRows.map(r => ({
+                    satuan_kerja: r.satuan_kerja || '',
+                    jabatan: r.jabatan || '',
+                    jenis_gtk: r.jenis_gtk || ''
+                }))
+            })
         });
         const data = await res.json();
 
-        parsedRows.forEach(r => {
-            if (r.satuan_kerja && data.satuan_kerja && data.satuan_kerja[r.satuan_kerja]) {
-                r._unit = data.satuan_kerja[r.satuan_kerja];
-            }
-            if (r.jabatan && data.jabatan && data.jabatan[r.jabatan]) {
-                r._jabatan = data.jabatan[r.jabatan];
-            }
+        parsedRows.forEach((r, i) => {
+            const perRow = Array.isArray(data.rows) ? data.rows[i] : null;
+
+            if (perRow && perRow.unit && r.satuan_kerja) r._unit = perRow.unit;
+            else if (r.satuan_kerja && data.satuan_kerja && data.satuan_kerja[r.satuan_kerja]) r._unit = data.satuan_kerja[r.satuan_kerja];
+
+            if (perRow && perRow.jabatan && r.jabatan) r._jabatan = perRow.jabatan;
+            else if (r.jabatan && data.jabatan && data.jabatan[r.jabatan]) r._jabatan = data.jabatan[r.jabatan];
         });
     } catch (err) {
         // Gagal mencocokkan bukan alasan memblokir: server tetap mencocokkan

@@ -10,11 +10,9 @@ use App\Models\GtkProfile;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkUnit;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -55,24 +53,8 @@ class GtkImportAutoMatchTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        // Migrasi merge sudah menghapus tabel legacy `positions`, tetapi SQLite
-        // masih menyimpan FK gtk_employments.jabatan_id ke tabel itu (MySQL
-        // menghapus FK-nya otomatis saat tabel di-drop). Dibuat ulang di tes
-        // supaya jalur import bisa diuji tanpa mengubah kode produksi.
-        if (! Schema::hasTable('positions')) {
-            Schema::create('positions', function (Blueprint $table) {
-                $table->uuid('id')->primary();
-                $table->string('nama', 150)->nullable();
-            });
-        }
-
         foreach (['Guru Umum', 'Guru Mata Pelajaran'] as $index => $name) {
             $positionId = (string) Str::uuid();
-
-            DB::table('positions')->insert([
-                'id' => $positionId,
-                'name' => $name,
-            ]);
 
             DB::table('structural_positions')->insert([
                 'id' => $positionId,
@@ -109,6 +91,27 @@ class GtkImportAutoMatchTest extends TestCase
             'id' => $id,
             'name' => $name,
             'code' => $code,
+            'is_active' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $id;
+    }
+
+    private function makePosition(string $name): string
+    {
+        $id = (string) Str::uuid();
+
+        DB::table('structural_positions')->insert([
+            'id' => $id,
+            'jenis_gtk_id' => DB::table('jenis_gtk')->value('id'),
+            'role_id' => Role::where('name', 'Guru')->value('id'),
+            'code' => Str::slug($name),
+            'name' => $name,
+            'level' => 'sekolah',
+            'hierarchy_level' => 5,
+            'urutan' => 5,
             'is_active' => 1,
             'created_at' => now(),
             'updated_at' => now(),
@@ -378,6 +381,66 @@ class GtkImportAutoMatchTest extends TestCase
 
         $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
         $this->assertNotNull($employment->jabatan_id, 'Jabatan ambigu tetap diisi dari kandidat teratas.');
+    }
+
+    public function test_jabatan_mengikuti_satuan_kerja(): void
+    {
+        $this->makeWorkUnit('Perpustakaan', 'DEP-PERPUS');
+        $this->makePosition('Kepala Asrama');
+        $perpusPositionId = $this->makePosition('Kepala Perpustakaan');
+
+        // GTK pertama menetapkan bahwa unit Perpustakaan memakai Kepala Perpustakaan.
+        $this->import([$this->row([
+            'nupy' => '2026009',
+            'email' => 'pustakawan@test.local',
+            'nik' => '3201234567890109',
+            'satuan_kerja' => 'Perpustakaan',
+            'jabatan' => 'Kepala Perpustakaan',
+        ])]);
+
+        // Baris berikutnya hanya menulis "KEPALA": konteks unit harus menang.
+        $result = $this->import([$this->row([
+            'nupy' => '2026010',
+            'email' => 'pustakawan2@test.local',
+            'nik' => '3201234567890110',
+            'satuan_kerja' => 'Perpustakaan',
+            'jabatan' => 'KEPALA',
+        ])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $employment = GtkEmployment::where('nupy', '2026010')->firstOrFail();
+        $this->assertSame($perpusPositionId, $employment->jabatan_id);
+    }
+
+    public function test_email_sudah_terdaftar_diperbarui_bukan_digagalkan(): void
+    {
+        $this->import([$this->row(['satuan_kerja' => 'MTs Contoh'])]);
+
+        $result = $this->import([$this->row([
+            'nupy' => '2026999',
+            'email' => 'fulan@test.local',
+            'satuan_kerja' => 'MTs Contoh',
+        ])]);
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertSame(1, $result['updated'], json_encode($result['failed']));
+        $this->assertSame(1, User::where('email', 'fulan@test.local')->count());
+        $this->assertSame(0, GtkEmployment::where('nupy', '2026999')->count());
+    }
+
+    public function test_jenis_gtk_tak_dikenal_tetap_diimport(): void
+    {
+        $result = $this->import([$this->row([
+            'jenis_gtk' => '',
+            'jabatan' => 'Jabatan Antah Berantah',
+            'satuan_kerja' => 'MTs Contoh',
+        ])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
+        $this->assertNull($employment->jenis_gtk_id);
     }
 
     public function test_resolve_endpoint_mengembalikan_status_pencocokan(): void

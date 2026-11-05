@@ -2007,6 +2007,10 @@ class GtkWizardController extends Controller
             'jabatan' => 'array',
             'jabatan.*' => 'string|max:150',
             'jenis_gtk' => 'nullable|string|max:150',
+            'rows' => 'array',
+            'rows.*.satuan_kerja' => 'nullable|string|max:150',
+            'rows.*.jabatan' => 'nullable|string|max:150',
+            'rows.*.jenis_gtk' => 'nullable|string|max:150',
         ]);
 
         $jenisGtkId = $this->resolveJenisGtkId($validated['jenis_gtk'] ?? null);
@@ -2021,10 +2025,25 @@ class GtkWizardController extends Controller
             $positions[$value] = $this->positionMatch($value, $jenisGtkId);
         }
 
+        // Pencocokan per baris: jabatan dinilai dengan konteks satuan kerjanya,
+        // supaya unit Perpustakaan tidak mendapat jabatan asrama.
+        $rowMatches = [];
+        foreach ($validated['rows'] ?? [] as $row) {
+            $unitMatch = $this->workUnitMatch($row['satuan_kerja'] ?? '');
+            $unitId = $unitMatch['match']['id'] ?? ($unitMatch['candidates'][0]['id'] ?? null);
+            $rowJenisGtkId = $this->resolveJenisGtkId($row['jenis_gtk'] ?? null) ?: $jenisGtkId;
+
+            $rowMatches[] = [
+                'unit' => $unitMatch,
+                'jabatan' => $this->positionMatch($row['jabatan'] ?? '', $rowJenisGtkId, $unitId),
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'satuan_kerja' => $workUnits,
             'jabatan' => $positions,
+            'rows' => $rowMatches,
         ]);
     }
 
@@ -2094,16 +2113,29 @@ class GtkWizardController extends Controller
                 // Data wajib (nama, email, NIK, NUPY, No HP) tidak pernah ditimpa.
                 $existing = GtkEmployment::where('nupy', $nupy)->first();
 
+                if (! $existing) {
+                    // NUPY baru tapi email sudah dipakai GTK lain: kemungkinan
+                    // orang yang sama dengan NUPY berbeda. Perbarui data yang ada
+                    // daripada menggagalkan baris.
+                    $emailOwner = User::where('email', $row['email'])->first();
+
+                    if ($emailOwner) {
+                        $existing = GtkEmployment::where('user_id', $emailOwner->id)->first();
+
+                        if (! $existing) {
+                            // Akun ada tanpa data kepegawaian: pakai email internal
+                            // supaya baris tetap bisa dibuat.
+                            $row['email'] = $this->generateImportEmail($nupy);
+                        }
+                    }
+                }
+
                 if ($existing) {
                     $this->updateFromImportRow($existing, $row, $rowWorkUnitId);
                     DB::commit();
                     $updated++;
 
                     continue;
-                }
-
-                if (User::where('email', $row['email'])->exists()) {
-                    throw new \InvalidArgumentException("Email '{$row['email']}' sudah terdaftar pada GTK lain (NUPY berbeda).");
                 }
                 if (! empty($row['nik']) && GtkProfile::where('nik', $row['nik'])->exists()) {
                     throw new \InvalidArgumentException("NIK '{$row['nik']}' sudah terdaftar pada GTK lain (NUPY berbeda).");
@@ -2152,28 +2184,10 @@ class GtkWizardController extends Controller
                 $jenisGtkId = $this->resolveJenisGtkId($jenisGtk, $jabatan);
 
                 // ── Resolve jabatan (setelah jenis GTK benar) ───────────────────────
-                $jabatanId = $this->resolveImportJabatan($row, $jenisGtkId);
+                $jabatanId = $this->resolveImportJabatan($row, $jenisGtkId, $rowWorkUnitId);
 
-                // ── Validasi ────────────────────────────────────────────────────────
-                if (! $jenisGtkId) {
-                    // Kalau benar-benar tidak ketemu (bahkan setelah fallback)
-                    if ($jenisGtk) {
-                        throw new \InvalidArgumentException(
-                            "Jenis GTK '{$jenisGtk}' tidak ditemukan, dan juga tidak bisa di-resolve "
-                            ."dari jabatan '{$jabatan}'. Cek data master `jenis_gtk` & `structural_positions`."
-                        );
-                    }
-                    throw new \InvalidArgumentException(
-                        "Jenis GTK kosong dan jabatan '{$jabatan}' juga tidak bisa di-resolve ke jenis GTK manapun."
-                    );
-                }
-
-                if ($jenisGtk && ! $jenisGtkId) {
-                    throw new \InvalidArgumentException(
-                        "Jenis GTK '{$jenisGtk}' tidak ditemukan di master data. "
-                        .'Cek: apakah nama jenis GTK di Excel sudah sesuai dengan tabel `jenis_gtk`?'
-                    );
-                }
+                // Jenis GTK tidak wajib: kalau tidak dikenali, data tetap disimpan
+                // dan bisa dilengkapi lewat halaman GTK.
 
                 $this->createEmployment($user->id, [
                     'nupy' => $nupy,
@@ -2201,18 +2215,12 @@ class GtkWizardController extends Controller
 
                 $this->assignWorkUnit($user->id, $rowWorkUnitId, $jabatan);
 
+                // Role hanya diberikan kalau jabatannya punya role_id. Jabatan
+                // yang belum terdaftar tidak menggagalkan import.
                 $roleName = $this->roleNameForJabatan($jabatan, $jabatanId);
 
                 if ($roleName) {
                     $user->syncRoles([$roleName]);
-                } elseif (! empty($jabatan)) {
-                    // Jabatan opsional: hanya jabatan yang diisi tapi tanpa role
-                    // yang dianggap masalah.
-                    throw new \InvalidArgumentException(
-                        "Role untuk jabatan '{$jabatan}' tidak ditemukan. "
-                        ."Pastikan jabatan '{$jabatan}' sudah terdaftar di StructuralPosition dengan `role_id` yang benar."
-                        .$this->suggestPositions($jabatan, $jenisGtkId)
-                    );
                 }
 
                 DB::commit();
@@ -2461,7 +2469,7 @@ class GtkWizardController extends Controller
     /**
      * Cocokkan teks jabatan ke structural_positions.
      */
-    private function positionMatch(?string $value, ?string $jenisGtkId = null): array
+    private function positionMatch(?string $value, ?string $jenisGtkId = null, ?string $workUnitId = null): array
     {
         $value = trim((string) $value);
 
@@ -2487,15 +2495,46 @@ class GtkWizardController extends Controller
             $positions = StructuralPosition::query()->where('is_active', true)->get(['id', 'name']);
         }
 
+        // Jabatan yang memang dipakai di satuan kerja ini diberi bobot lebih,
+        // supaya "KEPALA" di unit Perpustakaan tidak jatuh ke Kepala Asrama.
+        $positionsInUnit = $this->positionIdsUsedInWorkUnit($workUnitId);
+
         $scored = $positions
-            ->map(fn (StructuralPosition $position) => [
-                'id' => $position->id,
-                'label' => $position->name,
-                'score' => $this->similarityScore($value, $position->name),
-            ])
+            ->map(function (StructuralPosition $position) use ($value, $positionsInUnit) {
+                $score = $this->similarityScore($value, $position->name);
+
+                if ($positionsInUnit !== [] && in_array($position->id, $positionsInUnit, true)) {
+                    $score = min(99, $score + 10);
+                }
+
+                return [
+                    'id' => $position->id,
+                    'label' => $position->name,
+                    'score' => $score,
+                ];
+            })
             ->all();
 
         return $this->classifyMatch($scored);
+    }
+
+    /**
+     * Jabatan yang sudah dipakai GTK di satuan kerja tertentu.
+     * Dipakai sebagai konteks agar pencocokan jabatan relevan dengan unitnya.
+     */
+    private function positionIdsUsedInWorkUnit(?string $workUnitId): array
+    {
+        if (! $workUnitId) {
+            return [];
+        }
+
+        return DB::table('gtk_work_unit as gw')
+            ->join('gtk_employments as ge', 'ge.user_id', '=', 'gw.user_id')
+            ->where('gw.work_unit_id', $workUnitId)
+            ->whereNotNull('ge.jabatan_id')
+            ->distinct()
+            ->pluck('ge.jabatan_id')
+            ->all();
     }
 
     private function resolveWorkUnitId(?string $value): ?string
@@ -2554,7 +2593,7 @@ class GtkWizardController extends Controller
     /**
      * Jabatan untuk satu baris import. Ragu = ditolak dengan daftar kandidat.
      */
-    private function resolveImportJabatan(array $row, ?string $jenisGtkId): ?string
+    private function resolveImportJabatan(array $row, ?string $jenisGtkId, ?string $workUnitId = null): ?string
     {
         $override = trim((string) ($row['jabatan_id'] ?? ''));
 
@@ -2574,7 +2613,7 @@ class GtkWizardController extends Controller
             return null;
         }
 
-        $match = $this->positionMatch($value, $jenisGtkId);
+        $match = $this->positionMatch($value, $jenisGtkId, $workUnitId);
 
         if ($match['status'] === 'auto') {
             return $match['match']['id'];
