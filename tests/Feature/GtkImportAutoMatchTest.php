@@ -34,8 +34,8 @@ class GtkImportAutoMatchTest extends TestCase
     {
         parent::setUp();
 
-        $this->unitAId = $this->makeWorkUnit('MTs Al-Hikmah', 'MTS-A');
-        $this->unitBId = $this->makeWorkUnit('MA Al-Hikmah', 'MA-B');
+        $this->unitAId = $this->makeWorkUnit('MTs Contoh', 'MTS-A');
+        $this->unitBId = $this->makeWorkUnit('MA Contoh', 'MA-B');
 
         $adminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         $guruRole = Role::firstOrCreate(['name' => 'Guru', 'guard_name' => 'web']);
@@ -156,7 +156,7 @@ class GtkImportAutoMatchTest extends TestCase
 
     public function test_satuan_kerja_dicocokkan_dari_kolom_excel_tanpa_memilih_unit(): void
     {
-        $result = $this->import([$this->row(['satuan_kerja' => 'MA Al-Hikmah'])]);
+        $result = $this->import([$this->row(['satuan_kerja' => 'MA Contoh'])]);
 
         $this->assertSame([], $result['failed'], json_encode($result['failed']));
         $this->assertSame(1, $result['imported']);
@@ -216,7 +216,7 @@ class GtkImportAutoMatchTest extends TestCase
 
     public function test_nama_satuan_kerja_yang_lebih_panjang_tetap_cocok_otomatis(): void
     {
-        $result = $this->import([$this->row(['satuan_kerja' => 'MTs Al Hikmah Mataram'])]);
+        $result = $this->import([$this->row(['satuan_kerja' => 'MTs Contoh Kota'])]);
 
         $this->assertSame(1, $result['imported'], json_encode($result['failed']));
         $this->assertDatabaseHas('gtk_work_unit', [
@@ -227,8 +227,8 @@ class GtkImportAutoMatchTest extends TestCase
 
     public function test_satuan_kerja_ambigu_ditolak_menunggu_konfirmasi(): void
     {
-        // 'Al Hikmah' sama-sama mendekati MTs dan MA Al-Hikmah.
-        $result = $this->import([$this->row(['satuan_kerja' => 'Al Hikmah'])]);
+        // 'Contoh' sama-sama mendekati MTs Contoh dan MA Contoh.
+        $result = $this->import([$this->row(['satuan_kerja' => 'Contoh'])]);
 
         $this->assertSame(0, $result['imported']);
         $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
@@ -239,7 +239,7 @@ class GtkImportAutoMatchTest extends TestCase
     {
         $result = $this->import([
             $this->row([
-                'satuan_kerja' => 'Al Hikmah',
+                'satuan_kerja' => 'Contoh',
                 'work_unit_id' => $this->unitBId,
             ]),
         ]);
@@ -254,7 +254,7 @@ class GtkImportAutoMatchTest extends TestCase
     public function test_jabatan_ambigu_ditolak_menunggu_konfirmasi(): void
     {
         $result = $this->import([
-            $this->row(['satuan_kerja' => 'MTs Al-Hikmah', 'jabatan' => 'Guru']),
+            $this->row(['satuan_kerja' => 'MTs Contoh', 'jabatan' => 'Guru']),
         ]);
 
         $this->assertSame(0, $result['imported']);
@@ -268,7 +268,7 @@ class GtkImportAutoMatchTest extends TestCase
             '/'.$this->admin->id.'/gtk/import/resolve',
             'POST',
             [
-                'satuan_kerja' => ['MTs Al-Hikmah', 'Al Hikmah', 'Unit Antah Berantah'],
+                'satuan_kerja' => ['MTs Contoh', 'Contoh', 'Unit Antah Berantah'],
                 'jabatan' => ['Guru Umum', 'Guru'],
             ]
         );
@@ -277,12 +277,12 @@ class GtkImportAutoMatchTest extends TestCase
         $response = app(GtkWizardController::class)->resolveImportValues($request, $this->admin->id);
         $payload = json_decode($response->getContent(), true);
 
-        $this->assertSame('auto', $payload['satuan_kerja']['MTs Al-Hikmah']['status']);
-        $this->assertSame($this->unitAId, $payload['satuan_kerja']['MTs Al-Hikmah']['match']['id']);
+        $this->assertSame('auto', $payload['satuan_kerja']['MTs Contoh']['status']);
+        $this->assertSame($this->unitAId, $payload['satuan_kerja']['MTs Contoh']['match']['id']);
 
-        $this->assertSame('ambiguous', $payload['satuan_kerja']['Al Hikmah']['status']);
-        $this->assertNull($payload['satuan_kerja']['Al Hikmah']['match']);
-        $this->assertNotEmpty($payload['satuan_kerja']['Al Hikmah']['candidates']);
+        $this->assertSame('ambiguous', $payload['satuan_kerja']['Contoh']['status']);
+        $this->assertNull($payload['satuan_kerja']['Contoh']['match']);
+        $this->assertNotEmpty($payload['satuan_kerja']['Contoh']['candidates']);
 
         $this->assertContains(
             $payload['satuan_kerja']['Unit Antah Berantah']['status'],
@@ -295,7 +295,7 @@ class GtkImportAutoMatchTest extends TestCase
 
     public function test_import_ulang_memperbarui_data_tanpa_menimpa_data_wajib(): void
     {
-        $this->import([$this->row(['satuan_kerja' => 'MTs Al-Hikmah'])], $this->unitAId);
+        $this->import([$this->row(['satuan_kerja' => 'MTs Contoh'])], $this->unitAId);
 
         $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
         $userId = $employment->user_id;
@@ -308,7 +308,7 @@ class GtkImportAutoMatchTest extends TestCase
                 'no_hp' => '089999999999',
                 'jabatan' => 'Guru Mata Pelajaran',
                 'status_kepegawaian' => 'GTT',
-                'satuan_kerja' => 'MA Al-Hikmah',
+                'satuan_kerja' => 'MA Contoh',
             ]),
         ]);
 

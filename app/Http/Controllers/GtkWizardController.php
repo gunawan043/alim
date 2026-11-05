@@ -2350,7 +2350,7 @@ class GtkWizardController extends Controller
             return 100;
         }
 
-        // Satu nama memuat yang lain, mis. "MTs Al-Hikmah Mataram" vs "MTs Al-Hikmah".
+        // Satu nama memuat yang lain, mis. "MTs Contoh Kota" vs "MTs Contoh".
         if (str_contains($a, $b) || str_contains($b, $a)) {
             $shorter = min(strlen($a), strlen($b));
             $longer = max(strlen($a), strlen($b));

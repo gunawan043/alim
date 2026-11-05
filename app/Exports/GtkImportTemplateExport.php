@@ -124,7 +124,7 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
             'nupy' => 'GTK2024001',
             'jenis_gtk' => 'Pendidik / Guru',
             'jabatan' => 'Guru Umum',
-            'satuan_kerja' => 'MTs Al-Hikmah',
+            'satuan_kerja' => 'Satuan Kerja Contoh',
             'status_kepegawaian' => 'Tetap',
             'tmt' => '2020-01-01',
             'nomor_sk' => 'SK/001/2020',

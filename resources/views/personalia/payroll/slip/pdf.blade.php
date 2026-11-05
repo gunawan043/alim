@@ -25,7 +25,7 @@
 <body>
     <div class="header">
         <h1>SLIP GAJI GTK</h1>
-        <small>Pondok Pesantren Al-Imam</small>
+        <small>{{ $payroll->gtk?->latestEmployment?->school?->name ?? config('app.name') }}</small>
     </div>
 
     <div class="meta">
