@@ -51,21 +51,11 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
      * dari beberapa satuan kerja sekaligus.
      */
     public const COLUMNS = [
+        // ── 1. Informasi pribadi ──
         'name' => 22,
         'email' => 26,
         'nik' => 20,
         'no_kk' => 20,
-        'nama_pasangan' => 22,
-        'nupy_pasangan' => 16,
-        'nama_anak_1' => 20,
-        'tanggal_lahir_anak_1' => 16,
-        'jenis_kelamin_anak_1' => 10,
-        'nama_anak_2' => 20,
-        'tanggal_lahir_anak_2' => 16,
-        'jenis_kelamin_anak_2' => 10,
-        'nama_anak_3' => 20,
-        'tanggal_lahir_anak_3' => 16,
-        'jenis_kelamin_anak_3' => 10,
         'tempat_lahir' => 16,
         'tanggal_lahir' => 14,
         'jenis_kelamin' => 8,
@@ -75,6 +65,16 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
         'npwp' => 20,
         'no_hp' => 18,
         'no_whatsapp' => 18,
+        'alamat_jalan' => 28,
+        'alamat_rt_rw' => 12,
+        'alamat_desa' => 22,
+        'alamat_kecamatan' => 20,
+        'alamat_kota' => 18,
+        'alamat_provinsi' => 18,
+        'kode_pos' => 12,
+
+        // ── 2. Kepegawaian ──
+        // Pangkat/golongan sengaja tidak disertakan: lembaga swasta tidak memakainya.
         'nupy' => 16,
         'jenis_gtk' => 20,
         'jabatan' => 22,
@@ -83,35 +83,36 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
         'tmt' => 14,
         'nomor_sk' => 18,
         'tanggal_sk' => 14,
-        'pangkat_golongan' => 16,
+
+        // ── 3. Pendidikan ──
         'jenjang_pendidikan' => 14,
         'nama_sekolah' => 28,
         'jurusan' => 20,
         'tahun_lulus' => 12,
-        'alamat_jalan' => 28,
-        'alamat_rt_rw' => 12,
-        'alamat_desa' => 22,
-        'alamat_kecamatan' => 20,
-        'alamat_kota' => 18,
-        'alamat_provinsi' => 18,
-        'kode_pos' => 12,
+
+        // ── 4. Keluarga ──
+        // NUPY pasangan tidak perlu diisi: sistem menautkan otomatis bila
+        // nama pasangan cocok dengan GTK yang sudah terdaftar.
+        'nama_pasangan' => 22,
+        'nama_anak_1' => 20,
+        'tanggal_lahir_anak_1' => 16,
+        'jenis_kelamin_anak_1' => 10,
+        'nama_anak_2' => 20,
+        'tanggal_lahir_anak_2' => 16,
+        'jenis_kelamin_anak_2' => 10,
+        'nama_anak_3' => 20,
+        'tanggal_lahir_anak_3' => 16,
+        'jenis_kelamin_anak_3' => 10,
     ];
 
     public function collection(): Collection
     {
         $example = [
+            // 1. Informasi pribadi
             'name' => 'Fulan bin Abu',
             'email' => 'fulan.bin@example.com',
             'nik' => '3201234567890123',
             'no_kk' => '3201234567890001',
-            'nama_pasangan' => 'Fulanah binti Abu',
-            'nupy_pasangan' => 'GTK2024002',
-            'nama_anak_1' => 'Anak Pertama',
-            'tanggal_lahir_anak_1' => '2015-01-15',
-            'jenis_kelamin_anak_1' => 'P',
-            'nama_anak_2' => 'Anak Kedua',
-            'tanggal_lahir_anak_2' => '2018-06-10',
-            'jenis_kelamin_anak_2' => 'L',
             'tempat_lahir' => 'Mataram',
             'tanggal_lahir' => '1990-01-15',
             'jenis_kelamin' => 'L',
@@ -121,19 +122,6 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
             'npwp' => '123456789012345',
             'no_hp' => '081234567890',
             'no_whatsapp' => '081234567890',
-            'nupy' => 'GTK2024001',
-            'jenis_gtk' => 'Pendidik / Guru',
-            'jabatan' => 'Guru Umum',
-            'satuan_kerja' => 'Satuan Kerja Contoh',
-            'status_kepegawaian' => 'Tetap',
-            'tmt' => '2020-01-01',
-            'nomor_sk' => 'SK/001/2020',
-            'tanggal_sk' => '2020-01-01',
-            'pangkat_golongan' => 'III/a',
-            'jenjang_pendidikan' => 'S1',
-            'nama_sekolah' => 'Universitas Islam Negeri',
-            'jurusan' => 'Pendidikan Agama Islam',
-            'tahun_lulus' => '2015',
             'alamat_jalan' => 'Jl. Contoh No. 123',
             'alamat_rt_rw' => '001/002',
             'alamat_desa' => 'Kelurahan Contoh',
@@ -141,12 +129,52 @@ class DataSheet implements Export, FromCollection, WithColumnWidths, WithHeading
             'alamat_kota' => 'Kota Contoh',
             'alamat_provinsi' => 'Provinsi Contoh',
             'kode_pos' => '12345',
+
+            // 2. Kepegawaian
+            'nupy' => 'GTK2024001',
+            'jenis_gtk' => 'Pendidik / Guru',
+            'jabatan' => 'Guru Umum',
+            'satuan_kerja' => $this->exampleWorkUnitName(),
+            'status_kepegawaian' => 'Tetap',
+            'tmt' => '2020-01-01',
+            'nomor_sk' => 'SK/001/2020',
+            'tanggal_sk' => '2020-01-01',
+
+            // 3. Pendidikan
+            'jenjang_pendidikan' => 'S1',
+            'nama_sekolah' => 'Universitas Islam Negeri',
+            'jurusan' => 'Pendidikan Agama Islam',
+            'tahun_lulus' => '2015',
+
+            // 4. Keluarga
+            'nama_pasangan' => 'Fulanah binti Abu',
+            'nama_anak_1' => 'Anak Pertama',
+            'tanggal_lahir_anak_1' => '2015-01-15',
+            'jenis_kelamin_anak_1' => 'P',
+            'nama_anak_2' => 'Anak Kedua',
+            'tanggal_lahir_anak_2' => '2018-06-10',
+            'jenis_kelamin_anak_2' => 'L',
         ];
 
         return collect([
             array_keys(self::COLUMNS),
             array_map(fn ($column) => $example[$column] ?? '', array_keys(self::COLUMNS)),
         ]);
+    }
+
+    /**
+     * Contoh satuan kerja memakai unit nyata dari data seeder supaya pengguna
+     * melihat format nama yang benar, bukan nama lembaga karangan.
+     */
+    private function exampleWorkUnitName(): string
+    {
+        $name = WorkUnit::query()
+            ->where('is_active', true)
+            ->orderBy('code')
+            ->first()
+            ?->name;
+
+        return $name ?: 'Nama Satuan Kerja';
     }
 
     public function headings(): array

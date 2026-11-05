@@ -2766,6 +2766,12 @@ class GtkWizardController extends Controller
             ? GtkEmployment::where('nupy', $spouseNupy)->first()?->user?->gtkProfile
             : null;
 
+        // NUPY pasangan tidak wajib diisi: kalau namanya cocok dengan GTK lain,
+        // tautan dan NUPY-nya diisi otomatis.
+        if (! $linkedProfile && $spouseName !== '') {
+            $linkedProfile = $this->findGtkProfileByName($spouseName, $profile->user_id);
+        }
+
         if ($spouseName !== '' || $linkedProfile) {
             $members[] = [
                 'relationship' => $profile->jenis_kelamin === 'L' ? 'istri' : 'suami',
@@ -2773,7 +2779,7 @@ class GtkWizardController extends Controller
                 'jenis_kelamin' => $linkedProfile?->jenis_kelamin ?: ($profile->jenis_kelamin === 'L' ? 'P' : 'L'),
                 'tanggal_lahir' => $linkedProfile?->tanggal_lahir?->toDateString(),
                 'gtk_id' => $linkedProfile?->user_id,
-                'spouse_nupy' => $spouseNupy ?: null,
+                'spouse_nupy' => $spouseNupy ?: $linkedProfile?->latestEmployment?->nupy,
             ];
         }
 
@@ -2791,6 +2797,27 @@ class GtkWizardController extends Controller
         }
 
         return $members;
+    }
+
+    /**
+     * Cari GTK lain dengan nama yang sama (tanpa membedakan huruf besar/kecil).
+     * Hanya ditautkan bila kandidatnya tunggal, supaya nama kembar tidak salah pasang.
+     */
+    private function findGtkProfileByName(string $name, ?string $exceptUserId): ?GtkProfile
+    {
+        $needle = preg_replace('/\s+/', ' ', mb_strtolower(trim($name))) ?? '';
+
+        if ($needle === '') {
+            return null;
+        }
+
+        $candidates = User::query()
+            ->whereRaw('LOWER(name) = ?', [$needle])
+            ->when($exceptUserId, fn ($query) => $query->where('id', '!=', $exceptUserId))
+            ->limit(2)
+            ->get();
+
+        return $candidates->count() === 1 ? $candidates->first()->gtkProfile : null;
     }
 
     private function normalizeImportRow(array $row): array

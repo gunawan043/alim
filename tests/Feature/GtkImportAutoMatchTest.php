@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Exports\GtkImportTemplateExport;
 use App\Http\Controllers\GtkWizardController;
 use App\Models\GtkEmployment;
+use App\Models\GtkFamilyMember;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkUnit;
@@ -152,6 +153,64 @@ class GtkImportAutoMatchTest extends TestCase
         $this->assertCount(count($columns), $rows[0]);
         $this->assertCount(count($columns), $sheet->columnWidths());
         $this->assertCount(count($columns), $rows[1], 'Baris contoh harus sepanjang header.');
+    }
+
+    public function test_template_tidak_memuat_pangkat_golongan_dan_nupy_pasangan(): void
+    {
+        $sheet = (new GtkImportTemplateExport('Semua Satuan Kerja'))->sheets()[0];
+        $columns = array_keys($sheet::COLUMNS);
+
+        $this->assertNotContains('pangkat_golongan', $columns);
+        $this->assertNotContains('nupy_pasangan', $columns);
+
+        // Urutan kelompok: informasi pribadi → kepegawaian → pendidikan → keluarga.
+        $this->assertLessThan(array_search('nupy', $columns, true), array_search('name', $columns, true));
+        $this->assertLessThan(array_search('jenjang_pendidikan', $columns, true), array_search('nupy', $columns, true));
+        $this->assertLessThan(array_search('nama_pasangan', $columns, true), array_search('jenjang_pendidikan', $columns, true));
+    }
+
+    public function test_contoh_satuan_kerja_memakai_nama_unit_yang_ada(): void
+    {
+        $sheet = (new GtkImportTemplateExport('Semua Satuan Kerja'))->sheets()[0];
+        $rows = $sheet->collection();
+        $example = array_combine($rows[0], $rows[1]);
+
+        $this->assertContains($example['satuan_kerja'], [
+            WorkUnit::find($this->unitAId)->name,
+            WorkUnit::find($this->unitBId)->name,
+        ]);
+    }
+
+    public function test_pasangan_sesama_gtk_tertaut_otomatis_tanpa_kolom_nupy_pasangan(): void
+    {
+        $this->import([$this->row(['satuan_kerja' => 'MTs Contoh'])]);
+
+        $husband = GtkEmployment::where('nupy', '2026001')->firstOrFail();
+
+        $result = $this->import([
+            $this->row([
+                '_rowNum' => 3,
+                'name' => 'Fulanah binti Abu',
+                'email' => 'fulanah@test.local',
+                'nik' => '3201234567890124',
+                'nupy' => '2026002',
+                'no_hp' => '081234567891',
+                'jenis_kelamin' => 'P',
+                'nama_pasangan' => 'fulan bin abu',
+                'satuan_kerja' => 'MTs Contoh',
+            ]),
+        ]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $wife = GtkEmployment::where('nupy', '2026002')->firstOrFail();
+        $member = GtkFamilyMember::where('gtk_profile_id', $wife->user->gtkProfile->id)
+            ->where('relationship', 'suami')
+            ->first();
+
+        $this->assertNotNull($member, 'Pasangan harus tercatat sebagai anggota keluarga.');
+        $this->assertSame($husband->user->gtkProfile->id, $member->linked_gtk_profile_id);
+        $this->assertSame('2026001', $member->spouse_nupy);
     }
 
     public function test_satuan_kerja_dicocokkan_dari_kolom_excel_tanpa_memilih_unit(): void

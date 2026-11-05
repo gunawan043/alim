@@ -255,33 +255,56 @@
                         </thead>
                         <tbody class="small">
                             @foreach([
-                                ['name','Nama Lengkap',true],['email','Email',true],['nik','NIK (16 digit)',true],
-                                ['no_kk','Nomor KK',false],['tempat_lahir','Tempat Lahir',true],
-                                ['tanggal_lahir','Tgl Lahir (YYYY-MM-DD)',true],['jenis_kelamin','L atau P',true],
-                                ['golongan_darah','A/B/AB/O',false],['agama','Islam/Kristen/dst',false],
-                                ['status_perkawinan','Belum Kawin/Kawin',false],['npwp','NPWP',false],
-                                ['no_hp','No HP',true],['no_whatsapp','WhatsApp',false],
-                                ['nupy','NUPY (jd password awal)',true],['jenis_gtk','Jenis GTK',true],
-                                ['jabatan','Jabatan',true],['satuan_kerja','Nama/kode satuan kerja (opsional bila dipilih di langkah 1)',false],
-                                ['status_kepegawaian','PTT/PTY/GTT/GTY/Berhenti/Pensiun',true],
-                                ['tmt','Tgl TMT (YYYY-MM-DD)',true],['nomor_sk','No SK',true],
-                                ['tanggal_sk','Tgl SK (YYYY-MM-DD)',true],
-                                ['pangkat_golongan','III/A dst',false],
-                                ['jenjang_pendidikan','SD/SMP/SMA/S1/dst',false],
-                                ['nama_sekolah','Nama sekolah',false],['jurusan','Jurusan',false],
-                                ['tahun_lulus','Tahun lulus',false],
-                            ] as [$c,$k,$w])
-                                <tr>
-                                    <td><code>{{ $c }}</code></td>
-                                    <td>{{ $k }}</td>
-                                    <td class="text-center">
-                                        @if($w)
-                                            <span class="badge bg-danger-subtle text-danger">Wajib</span>
-                                        @else
-                                            <span class="badge bg-secondary-subtle text-secondary">Opsional</span>
-                                        @endif
-                                    </td>
+                                'Informasi pribadi' => [
+                                    ['name','Nama Lengkap',true],['email','Email',true],['nik','NIK (16 digit)',true],
+                                    ['no_kk','Nomor KK',false],['tempat_lahir','Tempat Lahir',true],
+                                    ['tanggal_lahir','Tgl Lahir (YYYY-MM-DD)',true],['jenis_kelamin','L atau P',true],
+                                    ['golongan_darah','A/B/AB/O',false],['agama','Islam/Kristen/dst',false],
+                                    ['status_perkawinan','Belum Kawin/Kawin',false],['npwp','NPWP',false],
+                                    ['no_hp','No HP',true],['no_whatsapp','WhatsApp',false],
+                                    ['alamat_jalan','Alamat jalan',false],['alamat_rt_rw','RT/RW',false],
+                                    ['alamat_desa','Desa/Kelurahan',false],['alamat_kecamatan','Kecamatan',false],
+                                    ['alamat_kota','Kab/Kota',false],['alamat_provinsi','Provinsi',false],
+                                    ['kode_pos','Kode pos',false],
+                                ],
+                                'Kepegawaian' => [
+                                    ['nupy','NUPY (jd password awal)',true],['jenis_gtk','Jenis GTK',true],
+                                    ['jabatan','Jabatan',true],['satuan_kerja','Nama/kode satuan kerja (opsional bila dipilih di langkah 1)',false],
+                                    ['status_kepegawaian','PTT/PTY/GTT/GTY/Berhenti/Pensiun',true],
+                                    ['tmt','Tgl TMT (YYYY-MM-DD)',true],['nomor_sk','No SK',true],
+                                    ['tanggal_sk','Tgl SK (YYYY-MM-DD)',true],
+                                ],
+                                'Pendidikan' => [
+                                    ['jenjang_pendidikan','SD/SMP/SMA/S1/dst',false],
+                                    ['nama_sekolah','Nama sekolah',false],['jurusan','Jurusan',false],
+                                    ['tahun_lulus','Tahun lulus',false],
+                                ],
+                                'Keluarga' => [
+                                    ['nama_pasangan','Nama pasangan (NUPY terisi otomatis bila pasangan sudah jadi GTK)',false],
+                                    ['nama_anak_1','Nama anak ke-1',false],['tanggal_lahir_anak_1','Tgl lahir anak ke-1',false],
+                                    ['jenis_kelamin_anak_1','L atau P',false],
+                                    ['nama_anak_2','Nama anak ke-2',false],['tanggal_lahir_anak_2','Tgl lahir anak ke-2',false],
+                                    ['jenis_kelamin_anak_2','L atau P',false],
+                                    ['nama_anak_3','Nama anak ke-3',false],['tanggal_lahir_anak_3','Tgl lahir anak ke-3',false],
+                                    ['jenis_kelamin_anak_3','L atau P',false],
+                                ],
+                            ] as $group => $columns)
+                                <tr class="table-light">
+                                    <td colspan="3" class="fw-semibold text-uppercase small">{{ $group }}</td>
                                 </tr>
+                                @foreach($columns as [$c,$k,$w])
+                                    <tr>
+                                        <td><code>{{ $c }}</code></td>
+                                        <td>{{ $k }}</td>
+                                        <td class="text-center">
+                                            @if($w)
+                                                <span class="badge bg-danger-subtle text-danger">Wajib</span>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary">Opsional</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
                             @endforeach
                         </tbody>
                     </table>
