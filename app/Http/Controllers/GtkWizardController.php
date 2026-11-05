@@ -2325,9 +2325,37 @@ class GtkWizardController extends Controller
 
     private const MATCH_AMBIGUOUS = 70;
 
+    /**
+     * Istilah yang dianggap sama saat mencocokkan satuan kerja.
+     * "Pengasuhan" adalah nama lain asrama di lingkungan pesantren.
+     */
+    private const MATCH_SYNONYMS = [
+        'pengasuhan' => 'asrama',
+        'pengasuh' => 'asrama',
+        'pengasramaan' => 'asrama',
+        'dormitori' => 'asrama',
+        'dormitory' => 'asrama',
+        'boarding' => 'asrama',
+    ];
+
     private function normalizeMatchKey(?string $value): string
     {
         return preg_replace('/[^a-z0-9]/', '', strtolower(trim((string) $value))) ?? '';
+    }
+
+    /**
+     * Samakan istilah sejenis sebelum dibandingkan, mis. "Pengasuhan SMP Putra"
+     * dibaca "Asrama SMP Putra" agar cocok dengan unit asrama yang ada.
+     */
+    private function canonicalizeMatchValue(?string $value): string
+    {
+        $text = strtolower(trim((string) $value));
+
+        foreach (self::MATCH_SYNONYMS as $from => $to) {
+            $text = preg_replace('/\b'.preg_quote($from, '/').'\b/', $to, $text) ?? $text;
+        }
+
+        return $text;
     }
 
     /**
@@ -2336,8 +2364,8 @@ class GtkWizardController extends Controller
      */
     private function similarityScore(?string $input, ?string $candidate): int
     {
-        $left = strtolower(trim((string) $input));
-        $right = strtolower(trim((string) $candidate));
+        $left = $this->canonicalizeMatchValue($input);
+        $right = $this->canonicalizeMatchValue($candidate);
 
         $a = $this->normalizeMatchKey($left);
         $b = $this->normalizeMatchKey($right);
@@ -2350,6 +2378,17 @@ class GtkWizardController extends Controller
             return 100;
         }
 
+        // Kesamaan kata: "Guru Umum" vs "Guru Mata Pelajaran Umum".
+        $tokensA = array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', $left) ?: [])));
+        $tokensB = array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', $right) ?: [])));
+
+        // Semua kata input ada di nama kandidat, mis. "Pengasuhan MA Plus" vs
+        // "Asrama MA Plus Abu Hurairah Mataram". Butuh minimal dua kata supaya
+        // satu kata umum seperti "Guru" atau "Asrama" tetap minta konfirmasi.
+        if (count($tokensA) >= 2 && $tokensB !== [] && array_diff($tokensA, $tokensB) === []) {
+            return self::MATCH_AUTO;
+        }
+
         // Satu nama memuat yang lain, mis. "MTs Contoh Kota" vs "MTs Contoh".
         if (str_contains($a, $b) || str_contains($b, $a)) {
             $shorter = min(strlen($a), strlen($b));
@@ -2357,10 +2396,6 @@ class GtkWizardController extends Controller
 
             return ($longer > 0 && $shorter / $longer >= 0.6) ? 92 : 80;
         }
-
-        // Kesamaan kata: "Guru Umum" vs "Guru Mata Pelajaran Umum".
-        $tokensA = array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', $left) ?: [])));
-        $tokensB = array_values(array_unique(array_filter(preg_split('/[^a-z0-9]+/', $right) ?: [])));
 
         if ($tokensA !== [] && $tokensB !== []) {
             $common = count(array_intersect($tokensA, $tokensB));

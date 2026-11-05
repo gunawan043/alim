@@ -31,12 +31,15 @@ class GtkImportAutoMatchTest extends TestCase
 
     private string $unitBId;
 
+    private string $asramaId;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->unitAId = $this->makeWorkUnit('MTs Contoh', 'MTS-A');
         $this->unitBId = $this->makeWorkUnit('MA Contoh', 'MA-B');
+        $this->asramaId = $this->makeWorkUnit('Asrama SMP IT Putra Abu Hurairah', 'ASR-001');
 
         $adminRole = Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
         $guruRole = Role::firstOrCreate(['name' => 'Guru', 'guard_name' => 'web']);
@@ -175,10 +178,7 @@ class GtkImportAutoMatchTest extends TestCase
         $rows = $sheet->collection();
         $example = array_combine($rows[0], $rows[1]);
 
-        $this->assertContains($example['satuan_kerja'], [
-            WorkUnit::find($this->unitAId)->name,
-            WorkUnit::find($this->unitBId)->name,
-        ]);
+        $this->assertContains($example['satuan_kerja'], WorkUnit::all()->pluck('name')->all());
     }
 
     public function test_pasangan_sesama_gtk_tertaut_otomatis_tanpa_kolom_nupy_pasangan(): void
@@ -282,6 +282,25 @@ class GtkImportAutoMatchTest extends TestCase
             'work_unit_id' => $this->unitAId,
             'is_primary' => 1,
         ]);
+    }
+
+    public function test_pengasuhan_dibaca_sebagai_asrama(): void
+    {
+        $result = $this->import([$this->row(['satuan_kerja' => 'Pengasuhan SMP Putra'])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+        $this->assertDatabaseHas('gtk_work_unit', [
+            'work_unit_id' => $this->asramaId,
+            'is_primary' => 1,
+        ]);
+    }
+
+    public function test_pengasuhan_tanpa_tingkat_minta_konfirmasi(): void
+    {
+        $result = $this->import([$this->row(['satuan_kerja' => 'Pengasuhan'])]);
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
     }
 
     public function test_satuan_kerja_ambigu_ditolak_menunggu_konfirmasi(): void
