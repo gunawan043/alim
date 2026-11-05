@@ -413,6 +413,23 @@ class GtkImportAutoMatchTest extends TestCase
         $this->assertSame($perpusPositionId, $employment->jabatan_id);
     }
 
+    public function test_jabatan_relevan_dengan_nama_unit_tanpa_data_lama(): void
+    {
+        $this->makeWorkUnit('Perpustakaan', 'DEP-PERPUS');
+        $this->makePosition('Kepala UKS');
+        $perpusPositionId = $this->makePosition('Kepala Perpustakaan');
+
+        $result = $this->import([$this->row([
+            'satuan_kerja' => 'Perpustakaan',
+            'jabatan' => 'KEPALA',
+        ])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
+        $this->assertSame($perpusPositionId, $employment->jabatan_id);
+    }
+
     public function test_email_sudah_terdaftar_diperbarui_bukan_digagalkan(): void
     {
         $this->import([$this->row(['satuan_kerja' => 'MTs Contoh'])]);

@@ -2380,8 +2380,15 @@ class GtkWizardController extends Controller
         if (str_contains($a, $b) || str_contains($b, $a)) {
             $shorter = min(strlen($a), strlen($b));
             $longer = max(strlen($a), strlen($b));
+            $score = ($longer > 0 && $shorter / $longer >= 0.6) ? 92 : 80;
 
-            return ($longer > 0 && $shorter / $longer >= 0.6) ? 92 : 80;
+            // Satu kata umum ("KEPALA") tidak boleh dianggap yakin hanya karena
+            // termuat di nama pendek seperti "Kepala UKS".
+            if (count($tokensA) === 1) {
+                $score = min($score, 88);
+            }
+
+            return $score;
         }
 
         if ($tokensA !== [] && $tokensB !== []) {
@@ -2498,13 +2505,24 @@ class GtkWizardController extends Controller
         // Jabatan yang memang dipakai di satuan kerja ini diberi bobot lebih,
         // supaya "KEPALA" di unit Perpustakaan tidak jatuh ke Kepala Asrama.
         $positionsInUnit = $this->positionIdsUsedInWorkUnit($workUnitId);
+        $unitTokens = $this->workUnitNameTokens($workUnitId);
 
         $scored = $positions
-            ->map(function (StructuralPosition $position) use ($value, $positionsInUnit) {
+            ->map(function (StructuralPosition $position) use ($value, $positionsInUnit, $unitTokens) {
                 $score = $this->similarityScore($value, $position->name);
 
                 if ($positionsInUnit !== [] && in_array($position->id, $positionsInUnit, true)) {
                     $score = min(99, $score + 10);
+                }
+
+                // Nama jabatan yang menyebut nama unitnya sendiri lebih relevan:
+                // "Kepala Perpustakaan" untuk unit Perpustakaan.
+                if ($unitTokens !== []) {
+                    $positionTokens = preg_split('/[^a-z0-9]+/', strtolower($position->name)) ?: [];
+
+                    if (array_intersect($unitTokens, $positionTokens) !== []) {
+                        $score = min(99, $score + 15);
+                    }
                 }
 
                 return [
@@ -2516,6 +2534,25 @@ class GtkWizardController extends Controller
             ->all();
 
         return $this->classifyMatch($scored);
+    }
+
+    /**
+     * Kata kunci nama satuan kerja untuk menilai relevansi jabatan.
+     * Kata pendek seperti "it" atau "smp" dibuang agar tidak jadi kebetulan.
+     */
+    private function workUnitNameTokens(?string $workUnitId): array
+    {
+        if (! $workUnitId) {
+            return [];
+        }
+
+        $name = (string) WorkUnit::where('id', $workUnitId)->value('name');
+
+        return collect(preg_split('/[^a-z0-9]+/', strtolower($name)) ?: [])
+            ->filter(fn ($token) => mb_strlen($token) >= 4)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
