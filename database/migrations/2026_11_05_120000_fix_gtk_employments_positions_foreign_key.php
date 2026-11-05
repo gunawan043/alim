@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -18,6 +19,14 @@ return new class extends Migration
     public function up(): void
     {
         if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
+        // Sisa percobaan yang gagal di tengah jalan: tabel sementara sudah ada
+        // tetapi tabel asli belum diganti.
+        if (! Schema::hasTable('gtk_employments') && Schema::hasTable('gtk_employments__rebuild')) {
+            DB::statement('ALTER TABLE gtk_employments__rebuild RENAME TO gtk_employments');
+
             return;
         }
 
@@ -63,10 +72,20 @@ return new class extends Migration
             ->pluck('name')
             ->implode(', ');
 
-        DB::statement($patchedSql);
-        DB::statement("INSERT INTO gtk_employments__rebuild ({$columns}) SELECT {$columns} FROM gtk_employments");
-        DB::statement('DROP TABLE gtk_employments');
-        DB::statement('ALTER TABLE gtk_employments__rebuild RENAME TO gtk_employments');
+        DB::statement('DROP TABLE IF EXISTS gtk_employments__rebuild');
+
+        // gtk_position_proposals.current_employment_id menunjuk ke tabel ini,
+        // jadi FK harus dimatikan saat tabel lama di-drop.
+        Schema::disableForeignKeyConstraints();
+
+        try {
+            DB::statement($patchedSql);
+            DB::statement("INSERT INTO gtk_employments__rebuild ({$columns}) SELECT {$columns} FROM gtk_employments");
+            DB::statement('DROP TABLE gtk_employments');
+            DB::statement('ALTER TABLE gtk_employments__rebuild RENAME TO gtk_employments');
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
 
         DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS gtk_employments_nupy_unique ON gtk_employments (nupy)');
         DB::statement('CREATE INDEX IF NOT EXISTS gtk_employments_school_id_index ON gtk_employments (school_id)');
