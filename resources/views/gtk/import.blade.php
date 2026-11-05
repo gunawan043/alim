@@ -256,12 +256,12 @@
                         <tbody class="small">
                             @foreach([
                                 'Informasi pribadi' => [
-                                    ['name','Nama Lengkap',true],['email','Email',true],['nik','NIK (16 digit)',true],
+                                    ['name','Nama Lengkap',true],['email','Email (kosong = dibuat otomatis)',false],['nik','NIK (16 digit)',false],
                                     ['no_kk','Nomor KK',false],['tempat_lahir','Tempat Lahir',true],
                                     ['tanggal_lahir','Tgl Lahir (YYYY-MM-DD)',true],['jenis_kelamin','L atau P',true],
                                     ['golongan_darah','A/B/AB/O',false],['agama','Islam/Kristen/dst',false],
                                     ['status_perkawinan','Belum Kawin/Kawin',false],['npwp','NPWP',false],
-                                    ['no_hp','No HP',true],['no_whatsapp','WhatsApp',false],
+                                    ['no_hp','No HP',false],['no_whatsapp','WhatsApp',false],
                                     ['alamat_jalan','Alamat jalan',false],['alamat_rt_rw','RT/RW',false],
                                     ['alamat_desa','Desa/Kelurahan',false],['alamat_kecamatan','Kecamatan',false],
                                     ['alamat_kota','Kab/Kota',false],['alamat_provinsi','Provinsi',false],
@@ -269,7 +269,7 @@
                                 ],
                                 'Kepegawaian' => [
                                     ['nupy','NUPY (jd password awal)',true],['jenis_gtk','Jenis GTK',true],
-                                    ['jabatan','Jabatan',true],['satuan_kerja','Nama/kode satuan kerja (opsional bila dipilih di langkah 1)',false],
+                                    ['jabatan','Jabatan (dianjurkan; terisi otomatis dari kandidat teratas)',false],['satuan_kerja','Nama/kode satuan kerja (terisi otomatis bila cocok)',false],
                                     ['status_kepegawaian','PTT/PTY/GTT/GTY/Berhenti/Pensiun',true],
                                     ['tmt','Tgl TMT (YYYY-MM-DD)',true],['nomor_sk','No SK',true],
                                     ['tanggal_sk','Tgl SK (YYYY-MM-DD)',true],
@@ -435,11 +435,14 @@
         <div class="alert alert-warning py-2 px-3 small mb-0 mt-4">
             <i class="ri-error-warning-line me-1"></i>
             <strong>Catatan:</strong> Baris dengan NUPY yang sudah terdaftar akan <strong>diperbarui</strong> —
-            data wajib (nama, email, NIK, NUPY, No HP) tidak pernah ditimpa, dan sel kosong tidak menghapus data lama.
+            nama dan NUPY tidak pernah ditimpa, dan sel kosong tidak menghapus data lama.
             NIK atau email yang sudah dipakai GTK lain dengan NUPY berbeda tetap dilaporkan sebagai gagal.
             <br>
-            Pencocokan <strong>otomatis</strong> hanya dipakai kalau skornya ≥ 90%. Di bawah itu baris ditandai
-            <em>perlu konfirmasi</em> dan baru bisa diimport setelah Anda memilih dari daftar.
+            Hanya <strong>nama</strong> dan <strong>NUPY</strong> yang wajib. Email dibuat otomatis
+            (<code>nupy@gtk.local</code>) bila kosong; NIK, No HP, dan jabatan boleh dikosongkan.
+            <br>
+            Jabatan dan satuan kerja diisi otomatis dari kandidat dengan persentase tertinggi —
+            termasuk saat skornya rendah. Periksa nilainya di preview dan ubah bila perlu.
         </div>
     </div>
 </div>
@@ -463,7 +466,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="{{ URL::asset('build/js/app.js') }}"></script>
 <script>
-const REQUIRED = ['name','email','nik','nupy','no_hp','jabatan'];
+const REQUIRED = ['name','nupy'];
 const COL_MAP = {
     'name':'name','nama':'name','nama_lengkap':'name','email':'email','nik':'nik',
     'no_kk':'no_kk',
@@ -699,13 +702,15 @@ function applyMatchValidation() {
     parsedRows.forEach(r => {
         const errors = (r._baseErrors || []).slice();
 
-        if (r._unit && !r._unitChoice) {
-            if (r._unit.status === 'ambiguous') errors.push('satuan_kerja: perlu konfirmasi — pilih dari daftar');
-            if (r._unit.status === 'unknown') errors.push('satuan_kerja: tidak dikenali — pilih dari daftar');
-        }
-        if (r._jabatan && !r._jabatanChoice) {
-            if (r._jabatan.status === 'ambiguous') errors.push('jabatan: perlu konfirmasi — pilih dari daftar');
-            if (r._jabatan.status === 'unknown') errors.push('jabatan: tidak dikenali — pilih dari daftar');
+        // Satuan kerja harus punya tujuan: pilihan di preview, hasil pencocokan,
+        // kolom Excel yang dikenali, atau unit yang dipilih di langkah 1.
+        // Jabatan tidak pernah memblokir — kalau ragu, kandidat teratas dipakai.
+        const unitResolved = !!r._unitChoice
+            || !!(r._unit && (r._unit.match || (r._unit.candidates || []).length))
+            || (!r.satuan_kerja && !!selectedWuName);
+
+        if (!unitResolved) {
+            errors.push('satuan_kerja: tidak dikenali — pilih dari daftar atau isi ulang kolomnya');
         }
 
         r._errors = errors;
@@ -743,17 +748,22 @@ function renderMatchCell(r, kind) {
         return escHtml(match.match.label) + ` <span class="badge bg-success-subtle text-success" style="font-size:10px;">otomatis ${match.score}%</span>`;
     }
 
-    const options = (match.candidates || [])
-        .map(c => `<option value="${c.id}">${escHtml(c.label)} (${c.score}%)</option>`)
+    const candidates = match.candidates || [];
+
+    if (!candidates.length) {
+        return escHtml(value) + ' <span class="badge bg-danger-subtle text-danger" style="font-size:10px;">tidak dikenali</span>';
+    }
+
+    // Kandidat dengan persentase tertinggi langsung terpilih; pengguna tetap
+    // bisa menggantinya lewat dropdown.
+    const options = candidates
+        .map((c, i) => `<option value="${c.id}"${i === 0 ? ' selected' : ''}>${escHtml(c.label)} (${c.score}%)</option>`)
         .join('');
 
-    const label = match.status === 'ambiguous' ? 'perlu konfirmasi' : 'tidak dikenali';
-    const color = match.status === 'ambiguous' ? 'warning' : 'danger';
-
     return `<div class="d-flex flex-column gap-1">` +
-        `<span class="badge bg-${color}-subtle text-${color}" style="font-size:10px;">${label}</span>` +
+        `<span class="badge bg-warning-subtle text-warning" style="font-size:10px;">dipilih otomatis ${match.score}% — bisa diubah</span>` +
         `<select class="form-select form-select-sm match-select" data-row="${r._rowNum}" data-kind="${kind}" style="min-width:190px">` +
-        `<option value="">— pilih —</option>${options}</select></div>`;
+        `${options}</select></div>`;
 }
 
 // Konfirmasi manual dari dropdown di dalam preview.
@@ -831,10 +841,12 @@ async function startImport() {
     let created = 0, updated = 0, fail = 0, failRows = [], warnings = [];
     const BATCH = 10, total = validRows.length;
     for (let i = 0; i < total; i += BATCH) {
-        // Kirim id hasil konfirmasi/otomatis supaya server tidak menebak ulang.
+        // Kirim id pilihan pengguna, atau kandidat teratas yang sudah tampil di
+        // dropdown, supaya server tidak menebak ulang.
+        const topId = m => (m && ((m.match && m.match.id) || (m.candidates && m.candidates[0] && m.candidates[0].id))) || null;
         const batch = validRows.slice(i, i + BATCH).map(r => Object.assign({}, r, {
-            work_unit_id: r._unitChoice || (r._unit && r._unit.match ? r._unit.match.id : null),
-            jabatan_id: r._jabatanChoice || (r._jabatan && r._jabatan.match ? r._jabatan.match.id : null),
+            work_unit_id: r._unitChoice || topId(r._unit),
+            jabatan_id: r._jabatanChoice || topId(r._jabatan),
         }));
         bar.style.width = Math.round((i/total)*100) + '%';
         txt.textContent = `Baris ${i+1}–${Math.min(i+BATCH,total)} dari ${total}...`;

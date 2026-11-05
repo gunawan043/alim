@@ -6,6 +6,7 @@ use App\Exports\GtkImportTemplateExport;
 use App\Http\Controllers\GtkWizardController;
 use App\Models\GtkEmployment;
 use App\Models\GtkFamilyMember;
+use App\Models\GtkProfile;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\WorkUnit;
@@ -295,22 +296,60 @@ class GtkImportAutoMatchTest extends TestCase
         ]);
     }
 
-    public function test_pengasuhan_tanpa_tingkat_minta_konfirmasi(): void
+    public function test_pengasuhan_tanpa_tingkat_memakai_kandidat_teratas(): void
     {
         $result = $this->import([$this->row(['satuan_kerja' => 'Pengasuhan'])]);
 
-        $this->assertSame(0, $result['imported']);
-        $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+        $this->assertDatabaseHas('gtk_work_unit', [
+            'work_unit_id' => $this->asramaId,
+            'is_primary' => 1,
+        ]);
     }
 
-    public function test_satuan_kerja_ambigu_ditolak_menunggu_konfirmasi(): void
+    public function test_email_dibuat_otomatis_bila_kosong(): void
     {
-        // 'Contoh' sama-sama mendekati MTs Contoh dan MA Contoh.
+        $result = $this->import([$this->row([
+            'email' => '',
+            'nik' => '',
+            'no_hp' => '',
+            'satuan_kerja' => 'MTs Contoh',
+        ])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $user = User::where('email', '2026001@gtk.local')->first();
+        $this->assertNotNull($user, 'Email internal harus dibuat dari NUPY.');
+        $this->assertSame('Fulan bin Abu', $user->name);
+        $this->assertNull(GtkProfile::where('user_id', $user->id)->value('nik'));
+        $this->assertDatabaseMissing('gtk_contacts', ['user_id' => $user->id]);
+    }
+
+    public function test_jabatan_kosong_tetap_diimport(): void
+    {
+        $result = $this->import([$this->row([
+            'jabatan' => '',
+            'satuan_kerja' => 'MTs Contoh',
+        ])]);
+
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
+        $this->assertNull($employment->jabatan_id);
+    }
+
+    public function test_satuan_kerja_ambigu_memakai_kandidat_teratas(): void
+    {
+        // 'Contoh' sama-sama mendekati MTs Contoh dan MA Contoh: tetap diimport
+        // dengan kandidat teratas, dan pengguna bisa mengubahnya di preview.
         $result = $this->import([$this->row(['satuan_kerja' => 'Contoh'])]);
 
-        $this->assertSame(0, $result['imported']);
-        $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
-        $this->assertStringContainsString(WorkUnit::find($this->unitBId)->name, $result['failed'][0]['reason']);
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
+        $placedUnit = DB::table('gtk_work_unit')->where('user_id', $employment->user_id)->value('work_unit_id');
+
+        $this->assertContains($placedUnit, [$this->unitAId, $this->unitBId]);
     }
 
     public function test_konfirmasi_manual_mengalahkan_teks_ambigu(): void
@@ -329,15 +368,16 @@ class GtkImportAutoMatchTest extends TestCase
         ]);
     }
 
-    public function test_jabatan_ambigu_ditolak_menunggu_konfirmasi(): void
+    public function test_jabatan_ambigu_memakai_kandidat_teratas(): void
     {
         $result = $this->import([
             $this->row(['satuan_kerja' => 'MTs Contoh', 'jabatan' => 'Guru']),
         ]);
 
-        $this->assertSame(0, $result['imported']);
-        $this->assertStringContainsString('Jabatan', $result['failed'][0]['reason']);
-        $this->assertStringContainsString('ambigu', $result['failed'][0]['reason']);
+        $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+
+        $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
+        $this->assertNotNull($employment->jabatan_id, 'Jabatan ambigu tetap diisi dari kandidat teratas.');
     }
 
     public function test_resolve_endpoint_mengembalikan_status_pencocokan(): void

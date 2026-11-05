@@ -2067,7 +2067,9 @@ class GtkWizardController extends Controller
 
             DB::beginTransaction();
             try {
-                $required = ['name', 'email', 'nik', 'nupy', 'no_hp'];
+                // Wajib hanya nama & NUPY (kunci pencocokan). NIK, No HP, dan
+                // jabatan opsional; email dibuat otomatis bila kosong.
+                $required = ['name', 'nupy'];
                 $missing = [];
                 foreach ($required as $field) {
                     if (empty($row[$field])) {
@@ -2078,17 +2080,15 @@ class GtkWizardController extends Controller
                     throw new \InvalidArgumentException('Field wajib kosong: '.implode(', ', $missing));
                 }
 
-                if (empty($row['jabatan'])) {
-                    throw new \InvalidArgumentException(
-                        'Jabatan kosong. Isi dengan nama jabatan dari sheet "Referensi: Jabatan".'
-                    );
+                $nupy = $row['nupy'];
+
+                if (empty($row['email'])) {
+                    $row['email'] = $this->generateImportEmail($nupy);
                 }
 
-                // Satuan kerja: hasil konfirmasi di preview menang, lalu kolom Excel,
-                // lalu pilihan manual. Yang ragu ditolak, bukan ditebak.
+                // Satuan kerja: pilihan di preview menang, lalu kolom Excel, lalu
+                // pilihan di langkah 1. Kandidat teratas dipakai bila ragu.
                 $rowWorkUnitId = $this->resolveImportWorkUnit($row, $workUnitId);
-
-                $nupy = $row['nupy'];
 
                 // NUPY yang sudah terdaftar diperbarui, bukan ditolak.
                 // Data wajib (nama, email, NIK, NUPY, No HP) tidak pernah ditimpa.
@@ -2105,7 +2105,7 @@ class GtkWizardController extends Controller
                 if (User::where('email', $row['email'])->exists()) {
                     throw new \InvalidArgumentException("Email '{$row['email']}' sudah terdaftar pada GTK lain (NUPY berbeda).");
                 }
-                if (GtkProfile::where('nik', $row['nik'])->exists()) {
+                if (! empty($row['nik']) && GtkProfile::where('nik', $row['nik'])->exists()) {
                     throw new \InvalidArgumentException("NIK '{$row['nik']}' sudah terdaftar pada GTK lain (NUPY berbeda).");
                 }
 
@@ -2168,33 +2168,10 @@ class GtkWizardController extends Controller
                     );
                 }
 
-                if ($jabatan && ! $jabatanId) {
-                    $debugInfo = $jenisGtkId
-                        ? " di jenis GTK ID '{$jenisGtkId}'"
-                        : ' (jenis GTK juga tidak ketemu)';
-
-                    throw new \InvalidArgumentException(
-                        "Jabatan '{$jabatan}' tidak ditemukan{$debugInfo}. "
-                        ."Cek: apakah jabatan '{$jabatan}' sudah ada di tabel `structural_positions`?"
-                    );
-                }
-
-                // Validasi
                 if ($jenisGtk && ! $jenisGtkId) {
                     throw new \InvalidArgumentException(
                         "Jenis GTK '{$jenisGtk}' tidak ditemukan di master data. "
                         .'Cek: apakah nama jenis GTK di Excel sudah sesuai dengan tabel `jenis_gtk`?'
-                    );
-                }
-
-                if ($jabatan && ! $jabatanId) {
-                    $debugInfo = $jenisGtkId
-                        ? " di jenis GTK ID '{$jenisGtkId}'"
-                        : ' (jenis GTK juga tidak ketemu)';
-
-                    throw new \InvalidArgumentException(
-                        "Jabatan '{$jabatan}' tidak ditemukan{$debugInfo}. "
-                        ."Cek: apakah jabatan '{$jabatan}' sudah ada di tabel `structural_positions`?"
                     );
                 }
 
@@ -2226,15 +2203,17 @@ class GtkWizardController extends Controller
 
                 $roleName = $this->roleNameForJabatan($jabatan, $jabatanId);
 
-                if (! $roleName) {
+                if ($roleName) {
+                    $user->syncRoles([$roleName]);
+                } elseif (! empty($jabatan)) {
+                    // Jabatan opsional: hanya jabatan yang diisi tapi tanpa role
+                    // yang dianggap masalah.
                     throw new \InvalidArgumentException(
                         "Role untuk jabatan '{$jabatan}' tidak ditemukan. "
                         ."Pastikan jabatan '{$jabatan}' sudah terdaftar di StructuralPosition dengan `role_id` yang benar."
                         .$this->suggestPositions($jabatan, $jenisGtkId)
                     );
                 }
-
-                $user->syncRoles([$roleName]);
 
                 DB::commit();
                 $imported++;
@@ -2561,6 +2540,12 @@ class GtkWizardController extends Controller
             return $match['match']['id'];
         }
 
+        // Ragu atau tidak dikenali: pakai kandidat teratas supaya baris tetap
+        // terisi, lalu pengguna bisa mengubahnya di preview.
+        if (! empty($match['candidates'][0]['id'])) {
+            return $match['candidates'][0]['id'];
+        }
+
         throw new \InvalidArgumentException(
             $this->matchFailureMessage('Satuan kerja', $value, $match, ' Samakan dengan nama/kode di sheet "Referensi: Satuan Kerja".')
         );
@@ -2595,9 +2580,9 @@ class GtkWizardController extends Controller
             return $match['match']['id'];
         }
 
-        throw new \InvalidArgumentException(
-            $this->matchFailureMessage('Jabatan', $value, $match, ' Samakan dengan nama di sheet "Referensi: Jabatan".')
-        );
+        // Jabatan opsional tapi dianjurkan: ambil kandidat teratas bila ada,
+        // biarkan kosong bila sama sekali tidak ada yang mirip.
+        return $match['candidates'][0]['id'] ?? null;
     }
 
     private function matchFailureMessage(string $label, string $value, array $match, string $hint = ''): string
@@ -2790,6 +2775,25 @@ class GtkWizardController extends Controller
     private function onlyFilled(array $data): array
     {
         return array_filter($data, fn ($value) => $value !== null && $value !== '');
+    }
+
+    /**
+     * Email internal untuk GTK yang tidak punya email. Dipakai sebagai username
+     * login; password awalnya tetap diturunkan dari NUPY.
+     */
+    private function generateImportEmail(string $nupy): string
+    {
+        $slug = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($nupy)), '-');
+        $slug = $slug !== '' ? $slug : 'gtk';
+
+        $email = $slug.'@gtk.local';
+        $counter = 1;
+
+        while (User::where('email', $email)->exists()) {
+            $email = $slug.'-'.(++$counter).'@gtk.local';
+        }
+
+        return $email;
     }
 
     private function familyMembersFromImportRow(array $row, GtkProfile $profile): array
