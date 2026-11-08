@@ -53,15 +53,17 @@ class ProtaController extends Controller
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
 
+        $broad = $this->access->isBroadScope($user, $request);
+
         $protaQuery = Prota::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'atp:id,total_jp,status', 'curriculumProfile:id,code,name,authority'])
             ->withCount('items')
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
-            ->when(! $this->access->isKurikulumTeam($user), function ($q) use ($user, $schoolId, $academicYearId) {
+            ->when(! $broad, function ($q) use ($user, $schoolId, $academicYearId) {
                 // Guru: hanya PROTA mapel yang diampu / serumpun.
-                $viewable = $this->access->viewableSubjectIds($user, $schoolId, $academicYearId);
+                $viewable = $this->access->personalSubjectIds($user, $schoolId, $academicYearId);
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
@@ -72,7 +74,6 @@ class ProtaController extends Controller
             ->get();
 
         // Sumber ATP yang bisa dijadikan PROTA (mapel yang diampu atau semua untuk editor kurikulum).
-        $isKurikulumTeam = $this->access->isKurikulumTeam($user);
         $isKurikulumEditor = $this->access->isKurikulumEditor($user);
 
         $atpQuery = AlurTujuanPembelajaran::query()
@@ -109,6 +110,10 @@ class ProtaController extends Controller
         $subjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
+            ->when(! $broad, function ($q) use ($user, $schoolId, $academicYearId) {
+                $viewable = $this->access->personalSubjectIds($user, $schoolId, $academicYearId);
+                $q->whereIn('id', $viewable ?: ['-']);
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 

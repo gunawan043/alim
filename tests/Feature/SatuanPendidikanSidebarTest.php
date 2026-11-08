@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\AcademicYear;
+use App\Models\GradeLevel;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\StudyGroup;
+use App\Models\Subject;
+use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -129,7 +134,9 @@ class SatuanPendidikanSidebarTest extends TestCase
 
         // Section utama harus tersedia sebagai grup collapsible...
         foreach ([
+            'sp_sec_rombel',
             'sp_sec_kesiswaan',
+            'sp_sec_nilai',
             'sp_sec_akademik',
             'sp_sec_gtk',
             'sp_sec_sarpras',
@@ -165,5 +172,96 @@ class SatuanPendidikanSidebarTest extends TestCase
         $response->assertOk();
         $response->assertSee('Pos Gerbang');
         $response->assertSee('Patroli & Ronda', false);
+    }
+
+    public function test_waka_yang_tetap_mengajar_mendapat_menu_guru_di_atas(): void
+    {
+        // Kasus nyata: menjabat Wakil Kepala tetapi jenis_gtk-nya "Tenaga
+        // Kependidikan" — dulu menu guru hilang karena hanya membaca teks jabatan.
+        $user = $this->makeUser('Satuan Pendidikan', 'WAKIL KEPALA SATUAN PENDIDIKAN');
+
+        $schoolId = DB::table('gtk_employments')->where('user_id', $user->id)->value('school_id');
+        $school = School::find($schoolId);
+
+        $ay = AcademicYear::create([
+            'name' => '2026/2027',
+            'semester' => 'ganjil',
+            'is_active' => true,
+            'start_date' => '2026-07-01',
+            'end_date' => '2027-06-30',
+        ]);
+
+        $grade = GradeLevel::create([
+            'school_id' => $school->id,
+            'level' => 7,
+            'name' => 'Kelas 7',
+            'code' => 'VII',
+            'fase' => 'D',
+            'is_active' => true,
+        ]);
+
+        $group = StudyGroup::create([
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'grade_level_id' => $grade->id,
+            'name' => '7A',
+            'code' => '7A',
+            'is_active' => true,
+        ]);
+
+        $subject = Subject::create([
+            'school_id' => $school->id,
+            'code' => 'ENG',
+            'name' => 'Bahasa Inggris',
+            'is_active' => true,
+        ]);
+
+        $decreeId = (string) Str::uuid();
+        DB::table('institution_decrees')->insert([
+            'id' => $decreeId,
+            'decree_number' => 'TEST/SIDEBAR/'.Str::random(6),
+            'decree_type' => 'teaching_assignment',
+            'title' => 'SK Pembagian Tugas Mengajar (Uji Sidebar)',
+            'academic_year_id' => $ay->id,
+            'issued_date' => now()->format('Y-m-d'),
+            'effective_date' => now()->format('Y-m-d'),
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        TeachingAssignment::create([
+            'decree_id' => $decreeId,
+            'teacher_id' => $user->id,
+            'school_id' => $school->id,
+            'academic_year_id' => $ay->id,
+            'study_group_id' => $group->id,
+            'subject_id' => $subject->id,
+            'weekly_hours' => 4,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user->fresh())
+            ->get('/'.$user->id.'/dashboard/satuan-pendidikan');
+
+        $response->assertOk();
+
+        // Menu guru harus muncul walau jabatannya struktural...
+        $response->assertSee('Menu Guru');
+        $response->assertSee('id="sp_sec_guru_absensi"', false);
+        $response->assertSee('id="sp_sec_guru_kurikulum"', false);
+        $response->assertSee('id="sp_sec_guru_nilai"', false);
+        $response->assertSee('id="sp_sec_guru_jurnal"', false);
+        $response->assertSee('Jadwal Mengajar Saya');
+        $response->assertSee('Buku Nilai Saya');
+        $response->assertSee('Jurnal Pembelajaran');
+
+        // ...dan berada di atas section Manajemen Sekolah (Rombel/Kesiswaan/Nilai).
+        $html = $response->getContent();
+        $this->assertLessThan(
+            strpos($html, 'sp_sec_rombel'),
+            strpos($html, 'sp_sec_guru_absensi'),
+            'Menu guru harus tampil sebelum menu manajemen.'
+        );
     }
 }

@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Imports\KurikulumImport;
 use App\Models\AcademicYear;
 use App\Models\School;
+use App\Models\Subject;
 use App\Services\KurikulumAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class KurikulumImportController extends Controller
 {
@@ -37,8 +39,23 @@ class KurikulumImportController extends Controller
             $selectedSemester = 'ganjil';
         }
 
+        // Guru mapel: import dibatasi ke mapel yang diampu (SK mengajar aktif).
+        // Tim kurikulum hanya mendapat lingkup penuh lewat menu jabatan.
+        $broad = $this->access->isBroadScope($request->user(), $request);
+        $taughtSubjectIds = $broad
+            ? null
+            : $this->access->taughtSubjectIds($request->user(), $selectedSchoolId, $selectedAyId);
+
+        $taughtSubjects = $broad
+            ? collect()
+            : Subject::query()
+                ->whereIn('id', $taughtSubjectIds ?? [])
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']);
+
         return view('kurikulum.import', compact(
-            'userId', 'schools', 'academicYears', 'selectedSchoolId', 'selectedAyId', 'selectedSemester', 'isGlobal'
+            'userId', 'schools', 'academicYears', 'selectedSchoolId', 'selectedAyId',
+            'selectedSemester', 'isGlobal', 'broad', 'taughtSubjects'
         ));
     }
 
@@ -58,7 +75,15 @@ class KurikulumImportController extends Controller
             $semester = 'ganjil';
         }
 
-        return (new KurikulumImportTemplateExport($school, $academicYear, $semester))->download();
+        $broad = $this->access->isBroadScope($request->user(), $request);
+
+        return (new KurikulumImportTemplateExport(
+            $school,
+            $academicYear,
+            $semester,
+            $broad ? null : $this->access->taughtSubjectIds($request->user(), $school->id, $academicYear?->id),
+            $broad ? null : $request->user()
+        ))->download();
     }
 
     public function store(Request $request, string $userId)
@@ -84,18 +109,29 @@ class KurikulumImportController extends Controller
 
         $academicYear = AcademicYear::findOrFail($request->input('academic_year_id'));
 
+        // Kembali ke menu asal: menu jabatan memakai lingkup penuh.
+        $formRoute = ['userId' => $userId] + ($this->access->isBroadScope($request->user(), $request) ? ['lingkup' => 'semua'] : []);
+
         try {
             $result = (new KurikulumImport(
                 $school,
                 $academicYear,
                 $request->input('semester'),
                 $request->boolean('update_existing', true),
-                $request->user()
+                $request->user(),
+                $this->allowedSubjectIds($request, $school->id, $academicYear->id)
             ))->import($request->file('file'));
         } catch (\Throwable $e) {
+            Log::error('Import kurikulum gagal', [
+                'user_id' => $request->user()?->id,
+                'school_id' => $school->id,
+                'academic_year_id' => $academicYear->id,
+                'exception' => $e,
+            ]);
+
             return redirect()
-                ->route('user.kurikulum.import.form', ['userId' => $userId])
-                ->with('error', 'Gagal membaca file: '.$e->getMessage());
+                ->route('user.kurikulum.import.form', $formRoute)
+                ->with('error', 'File tidak dapat dibaca. Periksa format template lalu coba lagi.');
         }
 
         $stats = $result['stats'];
@@ -108,7 +144,7 @@ class KurikulumImportController extends Controller
             : 'Tidak ada data yang berhasil diimport.';
 
         return redirect()
-            ->route('user.kurikulum.import.form', ['userId' => $userId])
+            ->route('user.kurikulum.import.form', $formRoute)
             ->with($total > 0 ? 'success' : 'error', $message)
             ->with('kurikulum_import_errors', $errors)
             ->with('kurikulum_import_warnings', $warnings)
@@ -118,10 +154,24 @@ class KurikulumImportController extends Controller
     private function authorizeImport(Request $request): void
     {
         abort_unless(
-            $this->access->isKurikulumTeam($request->user()),
+            $this->access->canAccessKurikulumModule($request->user()),
             403,
-            'Hanya tim kurikulum/kepala satuan pendidikan yang dapat mengimport data Kurikulum.'
+            'Anda tidak memiliki akses untuk mengimport data Kurikulum.'
         );
+    }
+
+    /**
+     * Mapel yang boleh diimport. null = tanpa batas (menu jabatan tim kurikulum).
+     *
+     * @return array<int, string>|null
+     */
+    private function allowedSubjectIds(Request $request, string $schoolId, ?string $academicYearId): ?array
+    {
+        if ($this->access->isBroadScope($request->user(), $request)) {
+            return null;
+        }
+
+        return $this->access->taughtSubjectIds($request->user(), $schoolId, $academicYearId);
     }
 
     private function resolveSchool(Request $request): ?School

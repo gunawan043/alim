@@ -42,6 +42,15 @@ class KurikulumImport
 
     private User $user;
 
+    /**
+     * Batas mapel yang boleh diimport. null = semua mapel (tim kurikulum).
+     * Guru mapel hanya boleh mengimport CP/TP/ATP/Perangkat untuk mapel
+     * yang benar-benar diampu (SK mengajar aktif).
+     *
+     * @var array<int, string>|null
+     */
+    private ?array $allowedSubjectIds = null;
+
     /** @var array<string, AcademicYear> */
     private array $academicYears = [];
 
@@ -87,13 +96,15 @@ class KurikulumImport
         ?AcademicYear $defaultAcademicYear,
         ?string $defaultSemester,
         bool $updateExisting,
-        User $user
+        User $user,
+        ?array $allowedSubjectIds = null
     ) {
         $this->school = $school;
         $this->defaultAcademicYear = $defaultAcademicYear;
         $this->defaultSemester = in_array($defaultSemester, ['ganjil', 'genap'], true) ? $defaultSemester : 'ganjil';
         $this->updateExisting = $updateExisting;
         $this->user = $user;
+        $this->allowedSubjectIds = $allowedSubjectIds;
 
         $this->buildReferences();
     }
@@ -634,13 +645,34 @@ class KurikulumImport
         }
 
         if (count($candidates) === 1) {
-            return $candidates[0];
+            return $this->guardSubject($candidates[0]);
         }
         if (count($candidates) > 1) {
             throw new \RuntimeException('mata pelajaran ambigu. Gunakan kolom kode_mapel.');
         }
 
         throw new \RuntimeException('mata pelajaran "'.($row['mapel'] ?? $row['kode_mapel'] ?? '-').'" tidak ditemukan.');
+    }
+
+    /**
+     * Pastikan mapel berada dalam kewenangan pengguna. Guru mapel hanya boleh
+     * mengunggah dokumen untuk mapel yang diampu; tim kurikulum tidak dibatasi.
+     */
+    private function guardSubject(Subject $subject): Subject
+    {
+        if ($this->allowedSubjectIds === null) {
+            return $subject;
+        }
+
+        $allowed = array_map('strval', $this->allowedSubjectIds);
+
+        if (! in_array((string) $subject->id, $allowed, true)) {
+            throw new \RuntimeException(
+                'Anda tidak mengampu mapel "'.$subject->name.'". Import hanya untuk mapel yang Anda ajar.'
+            );
+        }
+
+        return $subject;
     }
 
     private function resolveGrade(array $row): ?GradeLevel

@@ -3,12 +3,14 @@
     $seoTagline = 'Academic Learning & Information Management';
     $seoDefaultDescription = 'ALIM (Academic Learning & Information Management) adalah sistem informasi manajemen pendidikan untuk sekolah dan pesantren: data GTK, santri, akademik, keasramaan, dan administrasi dalam satu platform.';
 
-    $seoPageTitle = trim($__env->yieldContent('title'));
+    // @section('title', '...') sudah di-escape oleh Blade, jadi decode sekali
+    // di sini agar {{ $seoTitle }} tidak menghasilkan "&amp;amp;".
+    $seoPageTitle = trim(htmlspecialchars_decode($__env->yieldContent('title'), ENT_QUOTES));
     $seoTitle = $seoPageTitle !== ''
         ? $seoPageTitle.' — '.$seoName
         : $seoName.' — '.$seoTagline;
 
-    $seoDescription = trim($__env->yieldContent('meta_description')) ?: $seoDefaultDescription;
+    $seoDescription = trim(htmlspecialchars_decode($__env->yieldContent('meta_description'), ENT_QUOTES)) ?: $seoDefaultDescription;
     $seoDescription = trim(preg_replace('/[ \t\r\n]+/', ' ', $seoDescription));
     if (mb_strlen($seoDescription) > 160) {
         $seoDescription = rtrim(mb_substr($seoDescription, 0, 157)).'...';

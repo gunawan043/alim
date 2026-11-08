@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Authorization\ValueObjects\ScopeKey;
+use App\Exports\KurikulumImportTemplateExport;
+use App\Imports\KurikulumImport;
 use App\Models\AcademicYear;
 use App\Models\AlurTujuanPembelajaran;
 use App\Models\CapaianPembelajaran;
@@ -30,9 +32,12 @@ use App\Services\Ai\AiContentGenerator;
 use App\Services\PekanEfektifService;
 use App\Services\TeachingHoursResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use Tests\TestCase;
 
 /**
@@ -1420,14 +1425,15 @@ class KurikulumPembelajaranTest extends TestCase
             'is_active' => true,
         ]);
 
+        // Lingkup jabatan (bukan Menu Guru): tampilkan CP semua mapel sekolah.
         $this->actingAs($this->kurikulum)
-            ->get("/{$this->kurikulum->id}/kurikulum/cp?profile_scope=active")
+            ->get("/{$this->kurikulum->id}/kurikulum/cp?lingkup=semua&profile_scope=active")
             ->assertOk()
             ->assertSee('CP KBC Matematika')
             ->assertDontSee('CP Merdeka Fisika');
 
         $this->actingAs($this->kurikulum)
-            ->get("/{$this->kurikulum->id}/kurikulum/cp?profile_scope=all")
+            ->get("/{$this->kurikulum->id}/kurikulum/cp?lingkup=semua&profile_scope=all")
             ->assertOk()
             ->assertSee('CP KBC Matematika')
             ->assertSee('CP Merdeka Fisika');
@@ -1503,5 +1509,112 @@ class KurikulumPembelajaranTest extends TestCase
             'spreadsheetml',
             (string) $response->headers->get('content-type')
         );
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // IMPORT PER GURU MAPEL
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_import_kurikulum_guru_mapel_dibatasi_ke_mapel_yang_diamput(): void
+    {
+        $path = $this->makeCpWorkbook([
+            ['2026/2027', 'FIS', 'Fisika', 'D', 'Pemahaman', 'CP Fisika uji', 1, 1],
+            ['2026/2027', 'MAT', 'Matematika', 'D', 'Pemahaman', 'CP Matematika uji', 1, 1],
+        ]);
+
+        $result = (new KurikulumImport(
+            $this->school,
+            $this->ay,
+            'ganjil',
+            true,
+            $this->guru,
+            [$this->math->id]          // hanya Matematika yang diampu
+        ))->import(new UploadedFile($path, 'uji_import.xlsx', null, null, true));
+
+        $this->assertSame(1, $result['stats']['cp_created']);
+        $this->assertCount(1, $result['errors']);
+        $this->assertStringContainsString('tidak mengampu', $result['errors'][0]);
+
+        $this->assertDatabaseHas('capaian_pembelajaran', [
+            'subject_id' => $this->math->id,
+            'fase' => 'D',
+        ]);
+        $this->assertDatabaseMissing('capaian_pembelajaran', [
+            'subject_id' => $this->fisika->id,
+        ]);
+
+        @unlink($path);
+    }
+
+    public function test_import_kurikulum_tim_tetap_bisa_semua_mapel(): void
+    {
+        $path = $this->makeCpWorkbook([
+            ['2026/2027', 'FIS', 'Fisika', 'D', 'Pemahaman', 'CP Fisika uji', 1, 1],
+            ['2026/2027', 'MAT', 'Matematika', 'D', 'Pemahaman', 'CP Matematika uji', 1, 1],
+        ]);
+
+        // allowedSubjectIds = null → tim kurikulum (tanpa batas mapel).
+        $result = (new KurikulumImport($this->school, $this->ay, 'ganjil', true, $this->kurikulum, null))
+            ->import(new UploadedFile($path, 'uji_import.xlsx', null, null, true));
+
+        $this->assertSame(2, $result['stats']['cp_created']);
+        $this->assertSame([], $result['errors']);
+
+        @unlink($path);
+    }
+
+    public function test_template_import_guru_mapel_hanya_memuat_mapel_dan_guru_yang_diamput(): void
+    {
+        $filename = 'uji_template_per_mapel.xlsx';
+
+        (new KurikulumImportTemplateExport(
+            $this->school,
+            $this->ay,
+            'ganjil',
+            [$this->math->id],
+            $this->guru
+        ))->download($filename);
+
+        $path = storage_path("app/templates/{$filename}");
+        $this->assertFileExists($path);
+
+        $book = IOFactory::load($path);
+
+        $mapelSheet = $book->getSheetByName('REF_MAPEL');
+        $mapel = array_values(array_filter(array_map(
+            fn ($row) => trim((string) ($row[1] ?? '')),
+            $mapelSheet->rangeToArray('A2:B'.$mapelSheet->getHighestRow(), null, true, false, false)
+        )));
+        $this->assertContains('Matematika', $mapel);
+        $this->assertNotContains('Fisika', $mapel);
+
+        $guruSheet = $book->getSheetByName('REF_GURU');
+        $guru = array_values(array_filter(array_map(
+            fn ($row) => trim((string) ($row[0] ?? '')),
+            $guruSheet->rangeToArray('A2:A'.$guruSheet->getHighestRow(), null, true, false, false)
+        )));
+        $this->assertSame([$this->guru->name], $guru);
+
+        @unlink($path);
+    }
+
+    /**
+     * Workbook minimal berisi sheet CP untuk uji import.
+     *
+     * @param  array<int, array<int, mixed>>  $rows
+     */
+    private function makeCpWorkbook(array $rows): string
+    {
+        $book = new Spreadsheet;
+        $sheet = $book->getActiveSheet()->setTitle('CP');
+        $sheet->fromArray([
+            'Tahun Ajaran', 'Kode Mapel', 'Mapel', 'Fase', 'Elemen', 'Deskripsi', 'Urutan', 'Aktif',
+        ], null, 'A1');
+        $sheet->fromArray($rows, null, 'A2');
+
+        $path = tempnam(sys_get_temp_dir(), 'cp_import_').'.xlsx';
+        IOFactory::createWriter($book, 'Xlsx')->save($path);
+
+        return $path;
     }
 }

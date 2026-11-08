@@ -182,7 +182,7 @@
 {{-- Validasi Perangkat Ajar --}}
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
-       href="{{ $koorKurUrl('user.kurikulum.perangkat.index') }}">
+       href="{{ $koorKurUrl('user.kurikulum.perangkat.index', ['lingkup' => 'semua']) }}">
         <i class="ri-checkbox-circle-line"></i><span>Validasi Perangkat Ajar</span>
     </a>
 </li>

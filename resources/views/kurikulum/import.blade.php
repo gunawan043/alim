@@ -77,6 +77,19 @@
         </div>
     @endif
 
+    @if(! ($broad ?? true))
+        <div class="alert alert-info">
+            <i class="ri-information-line me-1"></i>
+            Import ini berlaku untuk <strong>mapel yang Anda ampu</strong>.
+            @if($taughtSubjects->isNotEmpty())
+                Mapel Anda: <strong>{{ $taughtSubjects->pluck('name')->join(', ') }}</strong>.
+            @else
+                <span class="text-danger fw-semibold">Belum ada penugasan mengajar aktif pada tahun ajaran ini — hubungi Kurikulum.</span>
+            @endif
+            Baris dengan mapel lain akan ditolak, dan template yang diunduh hanya memuat mapel Anda.
+        </div>
+    @endif
+
     <div class="row g-3">
         <div class="col-xl-7">
             <div class="card">
@@ -84,7 +97,7 @@
                     <h5 class="card-title mb-0"><i class="ri-upload-cloud-2-line me-1 text-primary"></i>Unggah File Import Kurikulum</h5>
                     <p class="text-muted mb-0 small">CP → TP → ATP → Perangkat → Prota → Prosem dalam satu workbook.</p>
                 </div>
-                <form method="POST" action="{{ route('user.kurikulum.import.store', ['userId' => $userId]) }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('user.kurikulum.import.store', ['userId' => $userId] + (($broad ?? false) ? ['lingkup' => 'semua'] : [])) }}" enctype="multipart/form-data">
                     @csrf
                     <div class="card-body">
                         @if($errors->any())
@@ -148,7 +161,7 @@
                         </div>
                     </div>
                     <div class="card-footer d-flex flex-wrap justify-content-between gap-2">
-                        <a href="{{ route('user.kurikulum.import.template', ['userId' => $userId, 'school_id' => $selectedSchoolId, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester]) }}" class="btn btn-soft-success">
+                        <a href="{{ route('user.kurikulum.import.template', ['userId' => $userId, 'school_id' => $selectedSchoolId, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester] + (($broad ?? false) ? ['lingkup' => 'semua'] : [])) }}" class="btn btn-soft-success">
                             <i class="ri-download-2-line me-1"></i>Unduh Template
                         </a>
                         <div class="d-flex gap-2">

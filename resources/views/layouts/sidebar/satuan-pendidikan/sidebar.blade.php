@@ -4,11 +4,12 @@
      Urutan menu mengikuti prioritas peran pengguna:
 
        1. Menu                 → Dashboard, Todo, Profil, Sekolah, Notifikasi, Approval
-       2. WALI KELAS           → hanya bila benar-benar wali kelas (prioritas utama)
-       3. ADMINISTRASI GURU    → guru mapel: Jadwal & Scan QR lebih dulu
-       4. JABATAN              → jabatan struktural (Kepala, Waka, TU, Bendahara)
-       5. TUGAS TAMBAHAN       → koordinator, tim, BK, pembina, supervisor
-       6. Modul per peran      → di-include dari partials/modul-*.blade.php
+       2. MENU GURU            → dipisah per topik: Absensi, Kurikulum, Nilai, Jurnal
+       3. WALI KELAS           → hanya bila benar-benar wali kelas
+       4. MANAJEMEN SEKOLAH    → rombel, kesiswaan, nilai, akademik, GTK, dst.
+
+     Setiap topik hanya dirender SEKALI walau user memegang beberapa jabatan,
+     dan menu guru selalu berada di atas menu jabatan/koordinator.
 
      Menu lintas divisi (Bahasa, Tahfidz) hanya untuk Koordinator Bahasa,
      Koordinator Tahfidz, Waka, dan Kepala Satuan Pendidikan — bukan TU.
@@ -101,9 +102,21 @@
     $isKoorEkskul   = $hasJabatan('Koordinator Ekstrakurikuler')
         || $hasTugas('Koordinator Ekstrakurikuler');
 
+    // Guru TIDAK hanya ditentukan dari teks jabatan: banyak GTK menjabat
+    // struktural (mis. Wakil Kepala) tetapi tetap mengajar. Karena itu data
+    // penugasan mengajar (SK aktif) juga dipakai sebagai bukti.
+    $hasTeachingAssignments = $userId
+        ? \App\Models\TeachingAssignment::query()
+            ->where('teacher_id', $userId)
+            ->where('status', 'active')
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
+            ->exists()
+        : false;
+
     // Semua varian jabatan guru (GURU KELAS, GURU PAUD, GURU MAPEL, ...) dihitung guru.
     $isGuru         = $isGuruUmum || $isGuruAgama || $isGuruHadits || $isGuruArab || $isGuruInggris || $isGuruTahfidz
-        || str_starts_with($jabatanNorm, 'guru');
+        || str_starts_with($jabatanNorm, 'guru')
+        || $hasTeachingAssignments;
     $isAdminTU      = $isKepalaTU || $isTU;
     $isStruktural   = $isKepala || $isWakil;
     $isKoordinator  = $isKoorKurik || $isKoorKesiswa || $isKoorEkskul;
@@ -176,16 +189,6 @@
             ->where('is_active', true)
             ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
             ->exists();
-
-    /* ── Absensi Kelas — wali kelas & kewenangan ─────────────────────── */
-    $canAbsensiAuthority = $isKepala || $isWakil || $isAdminTU
-        || $isKoorKurik || $isTimKurikulum
-        || $isKoorKesiswa || $isTimKesiswaan
-        || (function_exists('canPermission') && (
-            canPermission('absensi-admin-tu') || canPermission('absensi-tata-usaha')
-            || canPermission('absensi-wakil-kepala-sekolah') || canPermission('absensi-kepala-sekolah')
-            || canPermission('absensi-kepala-sekolah-pondok')
-        ));
 
     /* ── Absen Manual — restricted ───────────────────────────────────── */
     $canManualAbsen = ($isAdminTU || $isStruktural || $isKoordinator)
@@ -350,7 +353,155 @@
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     2. WALI KELAS — prioritas utama bila benar-benar mengampu kelas
+     FLAG SECTION — dihitung sekali di atas supaya urutan section di bawah
+     tinggal memakai variabel ini.
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@php
+    // Kepala/Wakil (dan Super Admin) memimpin satuan pendidikan; Tata Usaha
+    // hanya mengurus administrasi, jadi tidak otomatis mendapat menu
+    // akademik/kurikulum/lintas divisi.
+    $isSchoolLeader = $showAll || $isStruktural;
+    $manageSchool   = $isSchoolLeader || $isAdminTU;
+    // Menu Guru = topi pendidik. Pemegang jabatan struktural hanya melihatnya
+    // bila benar-benar punya penugasan mengajar aktif (bukan sekadar teks
+    // jabatan "Guru"), supaya tidak muncul menu kosong.
+    $showMengajar   = $showAll || $hasTeachingAssignments
+        || ($isGuru && ! $isStruktural && ! $isAdminTU && ! $isKoordinator);
+
+    $showKesiswaan = $manageSchool || $isKoorKesiswa || $isTimKesiswaan || $isGuruBK
+        || $isKoorEkskul || $isPembinaEkskul;
+    $showRombel    = $manageSchool || $isKoorKesiswa || $isTimKesiswaan;
+    $showNilai     = $manageSchool || $isKoorKurik || $isKoorMapel || $isKoorKesiswa
+        || $isTimKurikulum;
+    $showAkademik  = $manageSchool || $isKoorKurik || $isKoorMapel || $isTimKurikulum;
+    // Data induk akademik (tahun ajaran, mapel, jadwal) hanya untuk pengelola
+    // kurikulum — koordinator mapel cukup asesmen + modul kurikulum.
+    $showAkademikInduk = $manageSchool || $isKoorKurik || $isTimKurikulum;
+    $showGtk       = $manageSchool || $isKoorKurik || $isKoorMapel || $isConfiguredSupervisor;
+    $showKurikulum = $isSchoolLeader || $isKoorKurik || $isKoorMapel || $isTimKurikulum || $isKspSupervisor;
+    $showKehadiran = $manageSchool || $isKoorKurik || $isKoorKesiswa || $isTimKesiswaan;
+    // Monitoring kehadiran guru per jam hanya untuk pengelola, bukan koordinator kesiswaan.
+    $showMonitoring = $manageSchool || $isKoorKurik;
+    $showSarpras   = $isSchoolLeader || $isKepalaTU || $isKoorSarpras || $isKoorLab;
+    $showPerpus    = $isKoorPerpus;
+    $showBahasa    = $isSchoolLeader || $isKoorBahasa;
+    $showTahfidz   = $isSchoolLeader || $isKoorTahfidz;
+    $showEkskul    = $manageSchool || $isKoorEkskul || $isKoorKesiswa || $isPembinaEkskul;
+    $showLaporan   = $isSchoolLeader || $isKepalaTU;
+
+    $kesiswaanMode = $manageSchool
+        ? 'admin'
+        : ($isGuruBK && ! $isKoorKesiswa && ! $isTimKesiswaan ? 'bk' : 'koordinator');
+    // Guru BK saja (tanpa tugas kesiswaan lain) memakai label section sendiri.
+    $kesiswaanLabel = $kesiswaanMode === 'bk' ? 'Bimbingan Konseling' : 'Kesiswaan';
+
+    $kurikulumMode = ($manageSchool || $isKspSupervisor) ? 'supervisor' : 'manage';
+    $kurikulumAlsoManage = $isCurriculumManager;
+
+    $gtkMode = 'supervisi';
+    if ($isAdminTU && ! $isStruktural && ! $isKoorKurik) {
+        $gtkMode = 'admin';
+    } elseif ($isKoorMapel && ! $manageSchool && ! $isKoorKurik && ! $isConfiguredSupervisor) {
+        $gtkMode = 'mapel';
+    }
+
+    $absensiMode = ($isAdminTU && ! $isStruktural) ? 'admin' : 'koordinator';
+    $sarprasMode = ($isAdminTU && ! $isStruktural) ? 'aset' : 'full';
+
+    $hasManagementBlock = $showKesiswaan || $showRombel || $showNilai || $showAkademik
+        || $showGtk || $showKehadiran || $showSarpras || $manageSchool || $showPerpus
+        || $showBahasa || $showTahfidz || $isBendahara;
+@endphp
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     2. MENU GURU — dipisah per topik (Absensi, Kurikulum, Nilai, Jurnal) agar
+     satu dropdown tidak menumpuk puluhan tautan.
+     ═══════════════════════════════════════════════════════════════════════════ --}}
+@if($showMengajar)
+    <li class="menu-title"><span>Menu Guru</span></li>
+
+    @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
+        {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
+        <x-sidebar-section id="sp_sec_guru_tahfidz" label="Tahfidz" icon="ri-book-read-line"
+            :open="$sectionOpen(['user.tahfidz.workspace.', 'user.tahfidz.setoran.', 'user.tahfidz.monitoring.sheet.', 'user.tahfidz.gradebook.', 'user.tahfidz.reports.', 'user.tahfidz.attendance.', 'user.tahfidz.tasmi.', 'user.tahfidz.halaqah.', 'user.tahfidz.progress.', 'user.tahfidz.monitoring.', 'user.tahfidz.interventions.', 'user.tahfidz.targets.', 'user.tahfidz.muqorror.', 'user.tahfidz.rpp.', 'user.teacher-qr.'])">
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'self'])
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'teacher'])
+        </x-sidebar-section>
+    @endif
+
+    {{-- Guru Tahfidz yang juga memegang SK mengajar mapel tetap mendapat menu
+         pendidik lainnya; guru tahfidz murni tidak perlu section kosong. --}}
+    @if(! ($isGuruTahfidz && ! $isKoorGuruTahfidz) || $hasTeachingAssignments)
+        {{-- Absensi: jadwal mengajar, kehadiran guru, dan absensi kelas --}}
+        <x-sidebar-section id="sp_sec_guru_absensi" label="Absensi" icon="ri-calendar-check-line"
+            :open="$sectionOpen(['user.jadwal-kbm.for-teacher', 'user.teacher-qr.', 'user.absensi.harian.'])">
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
+                   href="{{ route('user.jadwal-kbm.for-teacher', ['userId' => $userId, 'teacherId' => $userId]) }}">
+                    <i class="ri-calendar-schedule-line"></i><span>Jadwal Mengajar Saya</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.scan']) ? ' active' : '' }}"
+                   href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}">
+                    <i class="ri-qr-scan-2-line"></i><span>Scan QR Kehadiran</span>
+                </a>
+            </li>
+
+            @if(canPermission('teacher-attendance_view'))
+                <li class="nav-item">
+                    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
+                       href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
+                        <i class="ri-history-line"></i><span>Riwayat Kehadiran Saya</span>
+                    </a>
+                </li>
+            @endif
+        </x-sidebar-section>
+
+        {{-- Kurikulum: perangkat ajar & perencanaan pekan --}}
+        <x-sidebar-section id="sp_sec_guru_kurikulum" label="Kurikulum" icon="ri-book-open-line"
+            :open="$sectionOpen(['user.pekan-efektif.', 'user.kurikulum.profil.', 'user.kurikulum.index', 'user.kurikulum.proyek.', 'user.kurikulum.cp.', 'user.kurikulum.tp.', 'user.kurikulum.atp.', 'user.kurikulum.prota.', 'user.kurikulum.prosem.', 'user.kurikulum.perangkat.', 'user.kurikulum.ai.', 'user.kurikulum.akses-edit.'])">
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
+                   href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
+                    <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
+                </a>
+            </li>
+
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', [
+                'kurikulumMode' => 'authoring',
+                'kurikulumAlsoManage' => false,
+            ])
+        </x-sidebar-section>
+
+        {{-- Nilai: buku nilai & asesmen --}}
+        <x-sidebar-section id="sp_sec_guru_nilai" label="Nilai" icon="ri-survey-line"
+            :open="$sectionOpen(['user.schools.guru-mapel.', 'user.asesmen.', 'user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.', 'user.ljk.'])">
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
+                   href="{{ route('user.schools.guru-mapel.index', ['userId' => $userId]) }}">
+                    <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
+            </li>
+
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+        </x-sidebar-section>
+
+        {{-- Jurnal: catatan pelaksanaan pembelajaran harian --}}
+        <x-sidebar-section id="sp_sec_guru_jurnal" label="Jurnal" icon="ri-article-line"
+            :open="$sectionOpen(['user.kurikulum.realisasi.'])">
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
+                   href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
+                    <i class="ri-article-line"></i><span>Jurnal Pembelajaran</span>
+                </a>
+            </li>
+        </x-sidebar-section>
+    @endif
+@endif
+
+{{-- ═══════════════════════════════════════════════════════════════════════════
+     3. WALI KELAS — prioritas utama bila benar-benar mengampu kelas
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($isWaliKelas)
     <li class="menu-title">
@@ -393,114 +544,173 @@
     @include('layouts.sidebar.satuan-pendidikan.partials.modul-prestasi')
 @endif
 
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     3. ADMINISTRASI GURU — guru mapel: Jadwal & Scan QR didahulukan
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isGuru)
-    <li class="menu-title"><span>Administrasi Guru</span></li>
+@if($hasManagementBlock)
+    <li class="menu-title"><span>Manajemen Sekolah</span></li>
+@endif
 
-    @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
-        {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'self'])
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'teacher'])
-    @else
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
-               href="{{ route('user.jadwal-kbm.for-teacher', ['userId' => $userId, 'teacherId' => $userId]) }}">
-                <i class="ri-calendar-schedule-line"></i><span>Jadwal Mengajar Saya</span>
-            </a>
-        </li>
+@if($showRombel)
+    <x-sidebar-section id="sp_sec_rombel" label="Rombel" icon="ri-layout-grid-line"
+        :open="$sectionOpen(['user.study-groups.', 'user.grade-levels.', 'user.teaching-assignments.', 'user.student-move.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-rombel', [
+            'rombelMode' => $manageSchool ? 'manage' : 'koordinator',
+        ])
+    </x-sidebar-section>
+@endif
 
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.scan']) ? ' active' : '' }}"
-               href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}">
-                <i class="ri-qr-scan-2-line"></i><span>Scan QR Kehadiran</span>
-            </a>
-        </li>
+@if($showKesiswaan)
+    <x-sidebar-section id="sp_sec_kesiswaan" :label="$kesiswaanLabel" icon="ri-group-line"
+        :open="$sectionOpen(['user.kesiswaan.', 'user.violation-points.', 'user.students.', 'user.alumni.', 'user.mutations-'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => $kesiswaanMode])
 
-        @if(canPermission('teacher-attendance_view'))
+        @if($showEkskul && menu_allowed('ekstrakurikuler'))
             <li class="nav-item">
-                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teacher-qr.history']) ? ' active' : '' }}"
-                   href="{{ route('user.teacher-qr.history', ['userId' => $userId]) }}">
-                    <i class="ri-history-line"></i><span>Riwayat Kehadiran Saya</span>
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
+                   href="{{ route('waka.ekstrakurikuler.index') }}">
+                    <i class="ri-basketball-line"></i><span>Ekstrakurikuler</span>
                 </a>
             </li>
         @endif
-
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
-               href="{{ route('user.schools.guru-mapel.index', ['userId' => $userId]) }}">
-                <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
-        </li>
-
-        @if(! $isWaliKelas && $canAbsensiAuthority)
-            <li class="nav-item">
-                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
-                   href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
-                    <i class="ri-calendar-check-line"></i><span>Absensi Kelas Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'absensi_all', 'title' => 'Kelas yang belum diabsen hari ini'])</a>
-            </li>
-        @endif
-
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
-               href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}">
-                <i class="ri-article-line"></i><span>Jurnal Pembelajaran</span>
-            </a>
-        </li>
-
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
-               href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
-                <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
-            </a>
-        </li>
-
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen', ['showDataNilai' => false])
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'authoring'])
-    @endif
+    </x-sidebar-section>
 @endif
 
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     4. JABATAN — menu sesuai jabatan struktural/fungsional
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isStruktural)
-    <li class="menu-title"><span>Jabatan · {{ $isKepala ? 'Kepala Satuan Pendidikan' : 'Wakil Kepala Satuan Pendidikan' }}</span></li>
-
-    <x-sidebar-section id="sp_sec_kesiswaan" label="Kesiswaan" icon="ri-group-line"
-        :open="$sectionOpen(['user.kesiswaan.', 'user.violation-points.', 'user.students.', 'user.study-groups.', 'user.alumni.', 'user.mutations-', 'user.student-move.', 'user.schools.nilai-kelas.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'admin'])
+@if($showNilai)
+    <x-sidebar-section id="sp_sec_nilai" label="Nilai & Rapor" icon="ri-survey-line"
+        :open="$sectionOpen(['user.schools.nilai.', 'user.schools.nilai-kelas.'])">
+        {{-- Guru memakai Asesmen & Buku Nilai Saya di section Mengajar, jadi
+             menu Asesmen di sini hanya untuk pengelola/koordinator. --}}
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-nilai', [
+            'nilaiMode' => $manageSchool ? 'manage' : 'read',
+        ])
+        @if(! $showMengajar)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+        @endif
     </x-sidebar-section>
+@endif
 
-    <x-sidebar-section id="sp_sec_akademik" label="Akademik & Asesmen" icon="ri-book-open-line"
-        :open="$sectionOpen(['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.jadwal-kbm.', 'user.jam-pelajaran.', 'user.pekan-efektif.', 'user.teaching-assignments.', 'user.institution-decrees.', 'user.asesmen.', 'user.kaldik.', 'user.kalender-kegiatan.', 'user.kurikulum.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'supervisor'])
+@if($showAkademik)
+    <x-sidebar-section id="sp_sec_akademik" label="Akademik" icon="ri-book-open-line"
+        :open="$sectionOpen(['user.academic-years.', 'user.subjects.', 'user.jadwal-kbm.', 'user.jam-pelajaran.', 'user.pekan-efektif.', 'user.institution-decrees.', 'user.kaldik.', 'user.kalender-kegiatan.', 'user.kurikulum.'])">
+        @if($showAkademikInduk)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik', [
+                'hidePekanEfektif' => $showMengajar,
+            ])
+        @endif
+        @if($showKurikulum)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', [
+                'kurikulumMode' => $kurikulumMode,
+                'kurikulumAlsoManage' => $kurikulumAlsoManage,
+                'kurikulumSkipCommon' => $showMengajar,
+                'kurikulumBroad' => true,
+                'perangkatLabel' => $showMengajar
+                    ? 'Dokumen Kurikulum (Semua Mapel)'
+                    : 'Perangkat & Bahan Ajar',
+            ])
+        @endif
+        @if($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isKspSupervisor)
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
+                   href="{{ route('user.kurikulum.realisasi.monitoring', ['userId' => $userId]) }}">
+                    <i class="ri-line-chart-line"></i><span>Monitoring Jurnal</span>
+                </a>
+            </li>
+        @endif
     </x-sidebar-section>
+@endif
 
+@if($showGtk)
     <x-sidebar-section id="sp_sec_gtk" label="GTK & Mutu" icon="ri-team-line"
         :open="$sectionOpen(['user.gtk.', 'user.gtk-requests.', 'user.kinerja.', 'user.other-teacher-tasks.', 'user.rapor-gtk.', 'user.wali-links.', 'waka.supervisi'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'supervisi'])
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => $gtkMode])
     </x-sidebar-section>
+@endif
 
+@if($showKehadiran)
+    <x-sidebar-section id="sp_sec_kehadiran" label="Kehadiran" icon="ri-calendar-check-line"
+        :open="$sectionOpen(['user.kehadiran.', 'user.teacher-qr.', 'user.absensi', 'user.qr.'])">
+        @if($showMonitoring)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
+        @endif
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => $absensiMode])
+    </x-sidebar-section>
+@endif
+
+@if($showSarpras)
     <x-sidebar-section id="sp_sec_sarpras" label="Sarpras" icon="ri-tools-line"
-        :open="$sectionOpen(['sarpras.', 'user.bump-orders.', 'user.institution-debts.', 'user.siplah.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'full'])
-    </x-sidebar-section>
+        :open="$sectionOpen(['sarpras.', 'user.bump-orders.', 'user.institution-debts.', 'user.siplah.', 'lab.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => $sarprasMode])
 
+        @if($showAll || $isKoorLab)
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['lab.index']) ? ' active' : '' }}"
+                   href="{{ route('lab.index') }}">
+                    <i class="ri-flask-line"></i><span>Dashboard Laboratorium</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['lab.request.']) ? ' active' : '' }}"
+                   href="{{ route('lab.request.index', ['userId' => $userId]) }}">
+                    <i class="ri-file-shield-2-line"></i><span>Ajukan Izin Laboratorium</span>
+                </a>
+            </li>
+        @endif
+    </x-sidebar-section>
+@endif
+
+@if($manageSchool)
     <x-sidebar-section id="sp_sec_administrasi" label="Administrasi" icon="ri-folder-3-line"
         :open="$sectionOpen(['user.arsip.', 'user.dokumen-iso.', 'waka.surat-'])">
         @include('layouts.sidebar.satuan-pendidikan.partials.modul-administrasi')
     </x-sidebar-section>
+@endif
 
-    <x-sidebar-section id="sp_sec_kehadiran" label="Kehadiran" icon="ri-calendar-check-line"
-        :open="$sectionOpen(['user.kehadiran.', 'user.teacher-qr.', 'user.absensi', 'user.qr.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'koordinator'])
+@if($showPerpus && menu_allowed('perpustakaan'))
+    <x-sidebar-section id="sp_sec_perpustakaan" label="Perpustakaan" icon="ri-book-2-line"
+        :open="$sectionOpen(['user.perpustakaan.', 'perpustakaan.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-perpustakaan')
     </x-sidebar-section>
+@endif
 
-    <li class="menu-title"><span>Informasi &amp; Broadcast</span></li>
-    @if($showAll || $isKepala || $isWakil)
+@if($showBahasa || $showTahfidz)
+    <x-sidebar-section id="sp_sec_lintas" label="Bahasa & Tahfidz" icon="ri-share-forward-line"
+        :open="$sectionOpen(['user.bahasa.', 'user.tahfidz.'])">
+        @if($showBahasa)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-bahasa')
+        @endif
+
+        @if($showTahfidz)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'manage'])
+        @endif
+    </x-sidebar-section>
+@endif
+
+@if($showAll || $isBendahara)
+    <x-sidebar-section id="sp_sec_keuangan" label="Keuangan" icon="ri-money-dollar-circle-line"
+        :open="$sectionOpen(['user.laporan.keuangan', 'user.payroll-slip.'])">
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.keuangan']) ? ' active' : '' }}"
+               href="{{ route('user.laporan.keuangan', ['userId' => $userId]) }}">
+                <i class="ri-file-chart-2-line"></i><span>Laporan Keuangan</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll-slip.']) ? ' active' : '' }}"
+               href="{{ route('user.payroll-slip.index', ['userId' => $userId]) }}">
+                <i class="ri-receipt-line"></i><span>Slip Gaji</span>
+            </a>
+        </li>
+    </x-sidebar-section>
+@endif
+
+@if($showLaporan && menu_allowed('laporan'))
+    <x-sidebar-section id="sp_sec_laporan" label="Laporan" icon="ri-file-chart-line"
+        :open="$sectionOpen(['user.laporan.'])">
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-laporan')
+    </x-sidebar-section>
+@endif
+
+@if($manageSchool)
+    <x-sidebar-section id="sp_sec_informasi" label="Informasi & Broadcast" icon="ri-megaphone-line"
+        :open="$sectionOpen(['user.announcements.', 'user.humas.announcements.', 'user.broadcasts.'])">
         <li class="nav-item">
             <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.announcements.']) ? ' active' : '' }}"
                href="{{ route('user.announcements.index', ['userId' => $userId]) }}">
@@ -519,242 +729,5 @@
                 <i class="ri-send-plane-2-line"></i><span>Broadcast</span>
             </a>
         </li>
-    @endif
-
-    @if(menu_allowed('laporan'))
-        <x-sidebar-section id="sp_sec_laporan" label="Laporan" icon="ri-file-chart-line"
-            :open="$sectionOpen(['user.laporan.'])">
-            @include('layouts.sidebar.satuan-pendidikan.partials.modul-laporan')
-        </x-sidebar-section>
-    @endif
-
-    {{-- Lintas divisi: boleh untuk KSP & Waka --}}
-    <x-sidebar-section id="sp_sec_lintas" label="Lintas Divisi" icon="ri-share-forward-line"
-        :open="$sectionOpen(['user.bahasa.', 'user.tahfidz.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-bahasa')
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'manage'])
     </x-sidebar-section>
-@endif
-
-@if($showAll || $isAdminTU)
-    <li class="menu-title"><span>Jabatan · {{ $isKepalaTU ? 'Kepala Tata Usaha' : 'Tata Usaha' }}</span></li>
-
-    <x-sidebar-section id="sp_tu_kesiswaan" label="Kesiswaan" icon="ri-group-line"
-        :open="$sectionOpen(['user.kesiswaan.', 'user.violation-points.', 'user.students.', 'user.study-groups.', 'user.alumni.', 'user.mutations-', 'user.student-move.', 'user.schools.nilai-kelas.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'admin'])
-    </x-sidebar-section>
-
-    <x-sidebar-section id="sp_tu_akademik" label="Akademik & Asesmen" icon="ri-book-open-line"
-        :open="$sectionOpen(['user.academic-years.', 'user.grade-levels.', 'user.subjects.', 'user.jadwal-kbm.', 'user.jam-pelajaran.', 'user.pekan-efektif.', 'user.teaching-assignments.', 'user.institution-decrees.', 'user.asesmen.', 'user.kaldik.', 'user.kalender-kegiatan.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
-    </x-sidebar-section>
-
-    <x-sidebar-section id="sp_tu_gtk" label="GTK" icon="ri-team-line"
-        :open="$sectionOpen(['user.gtk.', 'user.gtk-requests.', 'user.kinerja.', 'user.other-teacher-tasks.', 'user.rapor-gtk.', 'user.wali-links.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'admin'])
-    </x-sidebar-section>
-
-    @if($showAll || $isKepalaTU)
-        <x-sidebar-section id="sp_tu_sarpras" label="Sarpras" icon="ri-tools-line"
-            :open="$sectionOpen(['sarpras.', 'user.bump-orders.', 'user.institution-debts.', 'user.siplah.'])">
-            @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'aset'])
-        </x-sidebar-section>
-    @endif
-
-    <x-sidebar-section id="sp_tu_administrasi" label="Administrasi" icon="ri-folder-3-line"
-        :open="$sectionOpen(['user.arsip.', 'user.dokumen-iso.', 'waka.surat-'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-administrasi')
-    </x-sidebar-section>
-
-    <x-sidebar-section id="sp_tu_kehadiran" label="Kehadiran" icon="ri-calendar-check-line"
-        :open="$sectionOpen(['user.kehadiran.', 'user.teacher-qr.', 'user.absensi', 'user.qr.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'admin'])
-    </x-sidebar-section>
-
-    <li class="menu-title"><span>Informasi &amp; Broadcast</span></li>
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.announcements.']) ? ' active' : '' }}"
-           href="{{ route('user.announcements.index', ['userId' => $userId]) }}">
-            <i class="ri-newspaper-line"></i><span>Info Sekolah</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.humas.announcements.']) ? ' active' : '' }}"
-           href="{{ route('user.humas.announcements.index', ['userId' => $userId]) }}">
-            <i class="ri-megaphone-line"></i><span>Kelola Pengumuman</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.broadcasts.']) ? ' active' : '' }}"
-           href="{{ route('user.broadcasts.index', ['userId' => $userId]) }}">
-            <i class="ri-send-plane-2-line"></i><span>Broadcast</span>
-        </a>
-    </li>
-
-    @if(($showAll || $isKepalaTU) && menu_allowed('laporan'))
-        <li class="menu-title"><span>Laporan</span></li>
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-laporan')
-    @endif
-@endif
-
-@if($showAll || $isBendahara)
-    <li class="menu-title"><span>{{ $koorLabel('Bendahara Sekolah', $showAll || $jabBendahara) }}</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.keuangan']) ? ' active' : '' }}"
-           href="{{ route('user.laporan.keuangan', ['userId' => $userId]) }}">
-            <i class="ri-file-chart-2-line"></i><span>Laporan Keuangan</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.payroll-slip.']) ? ' active' : '' }}"
-           href="{{ route('user.payroll-slip.index', ['userId' => $userId]) }}">
-            <i class="ri-receipt-line"></i><span>Slip Gaji</span>
-        </a>
-    </li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'full'])
-@endif
-
-{{-- ═══════════════════════════════════════════════════════════════════════════
-     5. TUGAS TAMBAHAN — koordinator & penugasan di luar jabatan
-     (Wali Kelas sudah ditempatkan paling atas)
-     ═══════════════════════════════════════════════════════════════════════════ --}}
-@if($showAll || $isKoorKurik)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Kurikulum', $showAll || $jabKoorKurik) }}</span></li>
-
-    <li class="menu-title"><span>Kurikulum</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'manage'])
-
-    <li class="menu-title"><span>Akademik &amp; Asesmen</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-akademik')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
-
-    <li class="menu-title"><span>GTK &amp; Mutu</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'supervisi'])
-
-    <li class="menu-title"><span>Kehadiran</span></li>
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-monitoring')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'koordinator'])
-@endif
-
-@if($showAll || $isKoorKesiswa)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Kesiswaan', $showAll || $jabKoorKesiswa) }}</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'koordinator'])
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'koordinator'])
-
-    @if(menu_allowed('ekstrakurikuler'))
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
-               href="{{ route('waka.ekstrakurikuler.index') }}">
-                <i class="ri-basketball-line"></i><span>Daftar Ekstrakurikuler</span>
-            </a>
-        </li>
-    @endif
-@endif
-
-@if($showAll || $isKoorEkskul)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Ekstrakurikuler', $showAll || $jabKoorEkskul) }}</span></li>
-
-    @if(menu_allowed('ekstrakurikuler'))
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
-               href="{{ route('waka.ekstrakurikuler.index') }}">
-                <i class="ri-basketball-line"></i><span>Daftar Ekstrakurikuler</span>
-            </a>
-        </li>
-    @endif
-@endif
-
-@if($showAll || $isKoorMapel)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Mata Pelajaran', false) }}</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'manage'])
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'mapel'])
-@endif
-
-@if($showAll || $isKoorLab)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Laboratorium', false) }}</span></li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['lab.index']) ? ' active' : '' }}"
-           href="{{ route('lab.index') }}">
-            <i class="ri-flask-line"></i><span>Dashboard Laboratorium</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['lab.request.']) ? ' active' : '' }}"
-           href="{{ route('lab.request.index', ['userId' => $userId]) }}">
-            <i class="ri-file-shield-2-line"></i><span>Ajukan Izin Laboratorium</span>
-        </a>
-    </li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'full'])
-@endif
-
-@if($showAll || $isKoorSarpras)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Sarpras', false) }}</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => 'full'])
-@endif
-
-@if(($showAll || $isKoorPerpus) && menu_allowed('perpustakaan'))
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Perpustakaan', $showAll || $jabKoorPerpus) }}</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-perpustakaan')
-@endif
-
-@if($showAll || $isKoorBahasa)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Bahasa', $showAll || $jabKoorBahasa) }}</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-bahasa')
-@endif
-
-@if($showAll || $isKoorTahfidz)
-    <li class="menu-title"><span>{{ $koorLabel('Koordinator Tahfidz', $showAll || $jabKoorTahfidz) }}</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'manage'])
-@endif
-
-@if($showAll || $isTimKurikulum)
-    <li class="menu-title"><span>Tugas Tambahan · Tim Kurikulum</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kurikulum', ['kurikulumMode' => 'manage'])
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
-@endif
-
-@if($showAll || $isTimKesiswaan)
-    <li class="menu-title"><span>Tugas Tambahan · Tim Kesiswaan</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'koordinator'])
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'koordinator'])
-@endif
-
-@if($showAll || $isGuruBK)
-    <li class="menu-title"><span>Tugas Tambahan · Bimbingan Konseling</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-kesiswaan', ['kesiswaanMode' => 'bk'])
-@endif
-
-@if($showAll || $isPembinaEkskul)
-    <li class="menu-title"><span>Tugas Tambahan · Pembina Ekstrakurikuler</span></li>
-
-    @if(menu_allowed('ekstrakurikuler'))
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
-               href="{{ route('waka.ekstrakurikuler.index') }}">
-                <i class="ri-basketball-line"></i><span>Daftar Ekstrakurikuler</span>
-            </a>
-        </li>
-    @endif
-@endif
-
-@if($showAll || $isConfiguredSupervisor)
-    <li class="menu-title"><span>Tugas Tambahan · Supervisor Pembelajaran</span></li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.modul-gtk', ['gtkMode' => 'supervisor'])
 @endif

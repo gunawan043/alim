@@ -54,15 +54,17 @@ class ProsemController extends Controller
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
 
+        $broad = $this->access->isBroadScope($user, $request);
+
         $prosemQuery = Prosem::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'prota:id,total_jp,synced_at', 'curriculumProfile:id,code,name,authority'])
             ->withCount('items')
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
-            ->when(! $this->access->isKurikulumTeam($user), function ($q) use ($user, $schoolId, $academicYearId) {
+            ->when(! $broad, function ($q) use ($user, $schoolId, $academicYearId) {
                 // Guru: hanya PROSEM mapel yang diampu / serumpun.
-                $viewable = $this->access->viewableSubjectIds($user, $schoolId, $academicYearId);
+                $viewable = $this->access->personalSubjectIds($user, $schoolId, $academicYearId);
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
@@ -73,7 +75,6 @@ class ProsemController extends Controller
             ->get();
 
         // PROTA yang belum punya PROSEM (mapel diampu atau semua untuk editor kurikulum).
-        $isKurikulumTeam = $this->access->isKurikulumTeam($user);
         $isKurikulumEditor = $this->access->isKurikulumEditor($user);
 
         $protaQuery = Prota::query()

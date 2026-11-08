@@ -51,14 +51,16 @@ class PerangkatPembelajaranController extends Controller
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
 
+        $broad = $this->access->isBroadScope($user, $request);
+
         $perangkatQuery = PerangkatPembelajaran::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name', 'studyGroup:id,name', 'atp:id,total_jp,status', 'teacher:id,name', 'curriculumProfile:id,code,name,authority'])
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
-            ->when(! $this->access->isKurikulumTeam($user), function ($q) use ($user, $schoolId, $academicYearId) {
+            ->when(! $broad, function ($q) use ($user, $schoolId, $academicYearId) {
                 // Guru: hanya RPM mapel yang diampu / serumpun.
-                $viewable = $this->access->viewableSubjectIds($user, $schoolId, $academicYearId);
+                $viewable = $this->access->personalSubjectIds($user, $schoolId, $academicYearId);
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
@@ -68,8 +70,6 @@ class PerangkatPembelajaranController extends Controller
         $perangkatList = app(CurriculumProfileFilterService::class)
             ->apply($perangkatQuery, $curriculumProfile?->id, $profileScope)
             ->get();
-
-        $isKurikulumTeam = $this->access->isKurikulumTeam($user);
 
         // Mapel yang diampu user — untuk badge "serumpun" di daftar.
         $mySubjectIds = TeachingAssignment::query()
@@ -116,6 +116,10 @@ class PerangkatPembelajaranController extends Controller
         $subjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
+            ->when(! $broad, function ($q) use ($user, $schoolId, $academicYearId) {
+                $viewable = $this->access->personalSubjectIds($user, $schoolId, $academicYearId);
+                $q->whereIn('id', $viewable ?: ['-']);
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
@@ -131,7 +135,6 @@ class PerangkatPembelajaranController extends Controller
             'atpOptions',
             'studyGroups',
             'subjects',
-            'isKurikulumTeam',
             'mySubjectIds',
             'curriculumProfile',
             'curriculumLabels',

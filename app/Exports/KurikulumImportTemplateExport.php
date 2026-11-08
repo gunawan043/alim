@@ -29,10 +29,17 @@ class KurikulumImportTemplateExport
 
     private const BORDER = 'CBD5E1';
 
+    /**
+     * @param  array<int, string>|null  $subjectIds  Batas mapel pada sheet referensi
+     *                                               (null = semua mapel sekolah).
+     * @param  User|null  $onlyTeacher  Batasi REF_GURU ke satu guru (import per guru mapel).
+     */
     public function __construct(
         private readonly School $school,
         private readonly ?AcademicYear $academicYear,
-        private readonly string $semester = 'ganjil'
+        private readonly string $semester = 'ganjil',
+        private readonly ?array $subjectIds = null,
+        private readonly ?User $onlyTeacher = null,
     ) {}
 
     public function download(string $filename = 'template_import_kurikulum.xlsx')
@@ -159,7 +166,9 @@ class KurikulumImportTemplateExport
     {
         $this->writeHeader($sheet, ['Kode Mapel', 'Nama Mapel'], [18, 40]);
         $subjects = \App\Models\Subject::where('school_id', $this->school->id)
-            ->where('is_active', true)->orderBy('name')->get(['code', 'name']);
+            ->where('is_active', true)
+            ->when($this->subjectIds !== null, fn ($q) => $q->whereIn('id', $this->subjectIds))
+            ->orderBy('name')->get(['code', 'name']);
         $row = 2;
         foreach ($subjects as $subject) {
             $this->writeRow($sheet, $row++, [$subject->code, $subject->name]);
@@ -181,7 +190,9 @@ class KurikulumImportTemplateExport
     private function buildTeacherReference(Worksheet $sheet): void
     {
         $this->writeHeader($sheet, ['Nama Guru', 'Jabatan'], [40, 34]);
-        $ids = SchoolGroupService::userIdsForSchool($this->school->id);
+        $ids = $this->onlyTeacher
+            ? [$this->onlyTeacher->id]
+            : SchoolGroupService::userIdsForSchool($this->school->id);
         $users = User::whereIn('id', $ids)->orderBy('name')->get(['id', 'name']);
         $row = 2;
         foreach ($users as $user) {
@@ -198,6 +209,7 @@ class KurikulumImportTemplateExport
         $this->writeHeader($sheet, ['Mapel', 'Fase', 'Elemen', 'Deskripsi'], [28, 10, 24, 70]);
         $cps = CapaianPembelajaran::with('subject:id,name')
             ->where('school_id', $this->school->id)
+            ->when($this->subjectIds !== null, fn ($q) => $q->whereIn('subject_id', $this->subjectIds))
             ->when($this->academicYear, fn ($q) => $q->where('academic_year_id', $this->academicYear->id))
             ->orderBy('fase')->orderBy('urutan')->get();
         $row = 2;
@@ -217,6 +229,7 @@ class KurikulumImportTemplateExport
         $this->writeHeader($sheet, ['Mapel', 'Kelas', 'Kode TP', 'Deskripsi'], [28, 16, 14, 70]);
         $tps = TujuanPembelajaran::with(['subject:id,name', 'gradeLevel:id,name'])
             ->where('school_id', $this->school->id)
+            ->when($this->subjectIds !== null, fn ($q) => $q->whereIn('subject_id', $this->subjectIds))
             ->where('semester', $this->semester)
             ->when($this->academicYear, fn ($q) => $q->where('academic_year_id', $this->academicYear->id))
             ->orderBy('urutan')->orderBy('kode_tp')->get();
@@ -237,6 +250,7 @@ class KurikulumImportTemplateExport
         $this->writeHeader($sheet, ['Mapel', 'Kelas', 'Tahun Ajaran', 'Semester'], [28, 16, 16, 12]);
         $atps = AlurTujuanPembelajaran::with(['subject:id,name', 'gradeLevel:id,name'])
             ->where('school_id', $this->school->id)
+            ->when($this->subjectIds !== null, fn ($q) => $q->whereIn('subject_id', $this->subjectIds))
             ->where('semester', $this->semester)
             ->when($this->academicYear, fn ($q) => $q->where('academic_year_id', $this->academicYear->id))
             ->orderBy('subject_id')->get();

@@ -106,6 +106,35 @@ class TeacherAdminBook extends Model
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
     }
 
+    /**
+     * Batas data "Menu Guru": buku milik guru ini ditambah buku pada konteks
+     * mengajar yang sama (co-teacher), karena satu konteks mapel+rombel+TA
+     * hanya punya satu buku.
+     *
+     * Dipakai bersama oleh Buku Nilai dan Jurnal agar aturannya tidak
+     * bercabang antar halaman.
+     */
+    public function scopeForTeacherWorkspace($query, ?string $teacherId = null)
+    {
+        $teacherId ??= auth()->id();
+
+        $contexts = TeachingAssignment::query()
+            ->where('teacher_id', $teacherId)
+            ->where('status', 'active')
+            ->get(['subject_id', 'study_group_id', 'academic_year_id']);
+
+        return $query->where(function ($qq) use ($contexts, $teacherId) {
+            $qq->where('teacher_id', $teacherId);
+
+            foreach ($contexts as $c) {
+                $qq->orWhere(fn ($x) => $x
+                    ->where('subject_id', $c->subject_id)
+                    ->where('study_group_id', $c->study_group_id)
+                    ->where('academic_year_id', $c->academic_year_id));
+            }
+        });
+    }
+
     public function nilaiSumatifs(): HasMany
     {
         return $this->hasMany(NilaiSumatif::class, 'admin_book_id');

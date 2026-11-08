@@ -23,7 +23,29 @@ class RealisasiPembelajaranController extends Controller
 {
     public function __construct(private readonly KurikulumAccess $access) {}
 
+    /**
+     * Menu Guru — jurnal milik sendiri.
+     */
     public function index(Request $request, string $userId)
+    {
+        return $this->render($request, $userId, false);
+    }
+
+    /**
+     * Menu jabatan — monitoring jurnal seluruh guru (tim kurikulum/pimpinan).
+     */
+    public function monitoring(Request $request, string $userId)
+    {
+        abort_unless(
+            $this->access->isKurikulumTeam($request->user()),
+            403,
+            'Anda tidak memiliki akses ke monitoring jurnal.'
+        );
+
+        return $this->render($request, $userId, true);
+    }
+
+    private function render(Request $request, string $userId, bool $broad)
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $user = $request->user();
@@ -38,8 +60,6 @@ class RealisasiPembelajaranController extends Controller
             $semester = 'ganjil';
         }
 
-        $isTeam = $this->access->isKurikulumTeam($user);
-
         // Buku administrasi guru (KBM) — dasar jurnal & asesmen.
         $books = TeacherAdminBook::with([
             'subject:id,name,code',
@@ -52,7 +72,7 @@ class RealisasiPembelajaranController extends Controller
             ->where('academic_year_id', $academicYearId)
             ->where('semester', $semester)
             ->where('is_active', true)
-            ->when(! $isTeam, fn ($q) => $q->where('teacher_id', $user->id))
+            ->when(! $broad, fn ($q) => $q->forTeacherWorkspace($user->id))
             ->orderBy('subject_id')
             ->get();
 
@@ -138,6 +158,8 @@ class RealisasiPembelajaranController extends Controller
         ];
         $stats['progress'] = $stats['planned_tp'] > 0 ? (int) round($stats['realized_tp'] / $stats['planned_tp'] * 100) : 0;
 
+        $monitoring = $broad;
+
         return view('kurikulum.realisasi.index', compact(
             'userId',
             'academicYears',
@@ -146,7 +168,7 @@ class RealisasiPembelajaranController extends Controller
             'rows',
             'atpRows',
             'stats',
-            'isTeam'
+            'monitoring'
         ));
     }
 }

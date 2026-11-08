@@ -1288,7 +1288,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
                 // ── REALISASI PEMBELAJARAN (Jurnal → TP/ATP → Asesmen) ──
+                // index = jurnal milik sendiri (Menu Guru);
+                // monitoring = seluruh guru (menu jabatan/tim kurikulum).
                 Route::get('/realisasi', [RealisasiPembelajaranController::class, 'index'])->name('realisasi.index');
+                Route::get('/realisasi/monitoring', [RealisasiPembelajaranController::class, 'monitoring'])->name('realisasi.monitoring');
 
                 // ── CETAK PDF DOKUMEN KURIKULUM ───────────────────
                 Route::prefix('cetak')->name('cetak.')->group(function () {

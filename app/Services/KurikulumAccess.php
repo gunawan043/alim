@@ -6,6 +6,7 @@ use App\Models\KurikulumEditGrant;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 /**
  * Kewenangan modul Kurikulum & Perangkat Pembelajaran.
@@ -60,6 +61,19 @@ class KurikulumAccess
     public function isKurikulumTeam(User $user): bool
     {
         return $this->isKurikulumEditor($user) || $this->isKurikulumSupervisor($user);
+    }
+
+    /**
+     * Lingkup luas (semua mapel/dokumen sekolah).
+     *
+     * Hanya aktif bila pengguna memang tim kurikulum DAN memintanya dari menu
+     * jabatan (`lingkup=semua`). Menu Guru selalu memakai lingkup pribadi,
+     * sehingga Waka yang merangkap guru tidak melihat data guru lain.
+     */
+    public function isBroadScope(User $user, ?Request $request = null): bool
+    {
+        return $this->isKurikulumTeam($user)
+            && ($request ?? request())->query('lingkup') === 'semua';
     }
 
     /**
@@ -239,6 +253,19 @@ class KurikulumAccess
             return null;
         }
 
+        return $this->personalSubjectIds($user, $schoolId, $academicYearId);
+    }
+
+    /**
+     * ID mapel pribadi TANPA bypass jabatan: mapel diampu + serumpun.
+     *
+     * Dipakai Menu Guru, termasuk saat pengguna juga anggota tim kurikulum —
+     * di sana ia tetap berperan sebagai guru, bukan pengawas.
+     *
+     * @return array<int, string>
+     */
+    public function personalSubjectIds(User $user, ?string $schoolId = null, ?string $academicYearId = null): array
+    {
         $taught = TeachingAssignment::query()
             ->where('teacher_id', $user->id)
             ->where('status', 'active')

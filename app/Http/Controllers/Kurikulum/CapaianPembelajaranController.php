@@ -39,19 +39,22 @@ class CapaianPembelajaranController extends Controller
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
 
-        // Guru biasa hanya boleh memilih mapel yang benar-benar diampu.
-        $filterSubjectIds = $this->access->isKurikulumTeam($request->user())
+        // Menu Guru: hanya mapel yang diampu (plus serumpun untuk dibaca).
+        // Menu jabatan mengirim lingkup=semua untuk melihat seluruh mapel.
+        $broad = $this->access->isBroadScope($request->user(), $request);
+
+        $filterSubjectIds = $broad
             ? null
-            : ($this->access->taughtSubjectIds($request->user(), $schoolId, $academicYearId) ?? []);
+            : $this->access->personalSubjectIds($request->user(), $schoolId, $academicYearId);
 
         $query = CapaianPembelajaran::query()
             ->with(['subject:id,name,code', 'creator:id,name', 'curriculumProfile:id,code,name,authority'])
             ->forSchool($schoolId)
             ->forAcademicYear($academicYearId)
             ->orderByAcademicYearFirst()
-            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId) {
+            ->when(! $broad, function ($q) use ($request, $schoolId) {
                 // Guru: hanya CP mapel yang diampu / serumpun.
-                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId);
+                $viewable = $this->access->personalSubjectIds($request->user(), $schoolId);
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))

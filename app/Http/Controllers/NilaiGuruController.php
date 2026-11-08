@@ -22,7 +22,6 @@ use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Services\GuardianGradeColumnService;
-use App\Services\KurikulumAccess;
 use App\Services\NilaiPublishNotificationService;
 use App\Services\SumatifHarianService;
 use Carbon\Carbon;
@@ -40,17 +39,15 @@ class NilaiGuruController extends Controller
     public function index(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $authUser = auth()->user();
-        $isPrivileged = (bool) ($authUser?->hasAnyRole(['Kepala Sekolah'])
-            || app(KurikulumAccess::class)->isKurikulumTeam($authUser));
 
-        // Daftar mapel yang diampu guru ini
+        // Menu Guru selalu bekerja pada lingkup pribadi: hanya buku untuk
+        // mapel/rombel tempat guru ini ditugaskan. Akses lintas guru ada di
+        // menu jabatan (Data Nilai / Leger), bukan di sini.
         $baseQuery = $this->applyTeacherBookScope(
             TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel'])
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                 ->where('is_active', true)
-                ->orderBy('semester'),
-            $isPrivileged
+                ->orderBy('semester')
         );
 
         $adminBooks = $this->dedupeBooks((clone $baseQuery)->get())->groupBy('semester');
@@ -61,7 +58,7 @@ class NilaiGuruController extends Controller
             ->filter()->sortBy('name')->values();
 
         return view('nilai-guru.index', compact(
-            'userId', 'isPrivileged', 'adminBooks', 'subjects'
+            'userId', 'adminBooks', 'subjects'
         ));
     }
 
@@ -79,8 +76,7 @@ class NilaiGuruController extends Controller
                 $this->applyTeacherBookScope(
                     TeacherAdminBook::with(['subject', 'studyGroup'])
                         ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                        ->where('is_active', true),
-                    false
+                        ->where('is_active', true)
                 )->orderBy('semester')->get()
             )->first();
 
@@ -112,7 +108,6 @@ class NilaiGuruController extends Controller
                 TeacherAdminBook::with(['subject', 'studyGroup'])
                     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('is_active', true),
-                $book['isPrivileged']
             )->orderBy('semester')->get()
         );
 
@@ -323,7 +318,6 @@ class NilaiGuruController extends Controller
                 TeacherAdminBook::with(['subject', 'studyGroup'])
                     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('is_active', true),
-                $book['isPrivileged']
             )->orderBy('semester')->get()
         );
 
@@ -453,7 +447,6 @@ class NilaiGuruController extends Controller
                 TeacherAdminBook::with(['subject', 'studyGroup'])
                     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('is_active', true),
-                $book['isPrivileged']
             )->orderBy('semester')->get()
         );
 
@@ -788,7 +781,6 @@ class NilaiGuruController extends Controller
                 TeacherAdminBook::with(['subject', 'studyGroup'])
                     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('is_active', true),
-                $book['isPrivileged']
             )->orderBy('semester')->get()
         );
 
@@ -980,7 +972,6 @@ class NilaiGuruController extends Controller
                 TeacherAdminBook::with(['subject', 'studyGroup'])
                     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('is_active', true),
-                $book['isPrivileged']
             )->orderBy('semester')->get()
         );
 
@@ -1059,7 +1050,6 @@ class NilaiGuruController extends Controller
                 TeacherAdminBook::with(['subject', 'studyGroup'])
                     ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
                     ->where('is_active', true),
-                $book['isPrivileged']
             )->orderBy('semester')->get()
         );
 
@@ -1396,27 +1386,13 @@ class NilaiGuruController extends Controller
     /**
      * Scope buku untuk guru: buku sendiri + buku KONTEKS tempat ia mengajar
      * (co-teacher) — kebijakan satu buku per mapel+rombel+TA+semester.
+     *
+     * Tidak ada bypass jabatan: Waka/Kepala yang membuka Menu Guru tetap
+     * melihat buku yang ia ampu saja.
      */
-    private function applyTeacherBookScope($query, bool $isPrivileged)
+    private function applyTeacherBookScope($query)
     {
-        if ($isPrivileged) {
-            return $query;
-        }
-
-        $contexts = TeachingAssignment::query()
-            ->where('teacher_id', auth()->id())
-            ->where('status', 'active')
-            ->get(['subject_id', 'study_group_id', 'academic_year_id']);
-
-        return $query->where(function ($qq) use ($contexts) {
-            $qq->where('teacher_id', auth()->id());
-            foreach ($contexts as $c) {
-                $qq->orWhere(fn ($x) => $x
-                    ->where('subject_id', $c->subject_id)
-                    ->where('study_group_id', $c->study_group_id)
-                    ->where('academic_year_id', $c->academic_year_id));
-            }
-        });
+        return $query->forTeacherWorkspace(auth()->id());
     }
 
     /** Satu konteks = satu buku (dedupe tampilan bila data lama duplikat). */
@@ -1470,16 +1446,16 @@ class NilaiGuruController extends Controller
     private function loadAdminBook(string $userId, string $adminBookId, bool $forWrite = false): array
     {
         $schoolId = request()->attributes->get('schoolContextId');
-        $authUser = auth()->user();
-        $isPrivileged = (bool) ($authUser?->hasAnyRole(['Kepala Sekolah'])
-            || app(KurikulumAccess::class)->isKurikulumTeam($authUser));
 
         // Cast integer adminBookId
         $bookId = is_numeric($adminBookId) ? (int) $adminBookId : $adminBookId;
 
-        $adminBook = TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel', 'academicYear', 'teacher'])
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when(! $isPrivileged, fn ($q) => $this->applyTeacherBookScope($q, false))
+        // Buku harus berada dalam lingkup penugasan guru ini — jabatan tidak
+        // membuka akses ke buku guru lain di Menu Guru.
+        $adminBook = $this->applyTeacherBookScope(
+            TeacherAdminBook::with(['subject', 'studyGroup', 'studyGroup.gradeLevel', 'academicYear', 'teacher'])
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        )
             ->where('id', $bookId)
             ->firstOrFail();
 
@@ -1512,7 +1488,6 @@ class NilaiGuruController extends Controller
 
         return [
             'adminBook' => $adminBook,
-            'isPrivileged' => $isPrivileged,
             'userId' => $userId,
         ];
     }

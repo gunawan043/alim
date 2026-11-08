@@ -1,4 +1,7 @@
 {{-- Modul Akademik (pengaturan akademik satuan pendidikan) --}}
+@php $hidePekanEfektif = $hidePekanEfektif ?? false; @endphp
+@php $uid = $uid ?? '_'.substr(md5(uniqid('', true)), 0, 6); @endphp
+
 <li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.academic-years.']) ? ' active' : '' }}"
        href="{{ route('user.academic-years.index', ['userId' => $userId]) }}">
@@ -10,20 +13,6 @@
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.subjects.']) ? ' active' : '' }}"
        href="{{ route('user.subjects.index', ['userId' => $userId]) }}">
         <i class="ri-book-2-line"></i><span>Mata Pelajaran</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.grade-levels.']) ? ' active' : '' }}"
-       href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">
-        <i class="ri-layout-grid-fill"></i><span>Data Kelas &amp; Mapel</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.teaching-assignments.']) ? ' active' : '' }}"
-       href="{{ route('user.teaching-assignments.index', ['userId' => $userId]) }}">
-        <i class="ri-user-star-line"></i><span>Plotting Guru Mengajar</span>
     </a>
 </li>
 
@@ -48,9 +37,33 @@
     </a>
 </li>
 
+@if(! $hidePekanEfektif)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
+           href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
+            <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
+        </a>
+    </li>
+@endif
+
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
-       href="{{ route('user.pekan-efektif.index', ['userId' => $userId]) }}">
-        <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kaldik.', 'user.kalender-kegiatan.']) ? ' active' : '' }}"
+       href="#sp{{ $uid }}_kaldik" data-bs-toggle="collapse" role="button"
+       aria-expanded="{{ isActiveAny($currentRoute, ['user.kaldik.', 'user.kalender-kegiatan.']) ? 'true' : 'false' }}"
+       aria-controls="sp{{ $uid }}_kaldik">
+        <i class="ri-calendar-event-line"></i><span>Kalender Akademik</span><span class="menu-arrow"></span>
     </a>
+    <div class="collapse menu-dropdown{{ isActiveAny($currentRoute, ['user.kaldik.', 'user.kalender-kegiatan.']) ? ' show' : '' }}"
+         id="sp{{ $uid }}_kaldik">
+        <ul class="nav nav-sm flex-column">
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.kaldik.']) ? ' active' : '' }}"
+                   href="{{ route('user.kaldik.index', ['userId' => $userId]) }}">Kalender Pendidikan</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.kalender-kegiatan.']) ? ' active' : '' }}"
+                   href="{{ route('user.kalender-kegiatan.akademik', ['userId' => $userId]) }}">Agenda Kegiatan</a>
+            </li>
+        </ul>
+    </div>
 </li>

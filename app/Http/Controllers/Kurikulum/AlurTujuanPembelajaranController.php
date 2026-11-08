@@ -56,15 +56,17 @@ class AlurTujuanPembelajaranController extends Controller
         $curriculumProfile = $profileService->resolve($schoolId, $academicYearId);
         $profileScope = app(CurriculumProfileFilterService::class)->scope($request);
 
+        $broad = $this->access->isBroadScope($request->user(), $request);
+
         $atpQuery = AlurTujuanPembelajaran::query()
             ->with(['subject:id,name,code', 'gradeLevel:id,name,fase', 'teacher:id,name', 'curriculumProfile:id,code,name,authority'])
             ->withCount('items')
             ->bySchool($schoolId)
             ->byAcademicYear($academicYearId)
             ->bySemester($semester)
-            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
+            ->when(! $broad, function ($q) use ($request, $schoolId, $academicYearId) {
                 // Guru: hanya ATP mapel yang diampu / serumpun.
-                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
+                $viewable = $this->access->personalSubjectIds($request->user(), $schoolId, $academicYearId);
                 $q->whereIn('subject_id', $viewable ?: ['-']);
             })
             ->when($request->filled('subject_id'), fn ($q) => $q->where('subject_id', $request->subject_id))
@@ -79,8 +81,8 @@ class AlurTujuanPembelajaranController extends Controller
         $filterSubjects = Subject::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $this->access->isKurikulumTeam($request->user()), function ($q) use ($request, $schoolId, $academicYearId) {
-                $viewable = $this->access->viewableSubjectIds($request->user(), $schoolId, $academicYearId);
+            ->when(! $broad, function ($q) use ($request, $schoolId, $academicYearId) {
+                $viewable = $this->access->personalSubjectIds($request->user(), $schoolId, $academicYearId);
                 $q->whereIn('id', $viewable ?: ['-']);
             })
             ->orderBy('name')

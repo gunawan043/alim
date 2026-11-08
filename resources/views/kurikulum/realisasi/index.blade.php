@@ -88,13 +88,13 @@
                             <h5 class="card-title mb-0">Realisasi per Buku Administrasi (Kelas &amp; Mapel)</h5>
                             <p class="text-muted mb-0">
                                 <span class="badge bg-primary-subtle text-primary">{{ $rows->count() }} buku</span>
-                                @if($isTeam)
-                                    <span class="badge bg-info-subtle text-info ms-1"><i class="ri-team-line me-1"></i>Tim Kurikulum (semua kelas)</span>
+                                @if($monitoring)
+                                    <span class="badge bg-info-subtle text-info ms-1"><i class="ri-team-line me-1"></i>Monitoring semua guru</span>
                                 @endif
                             </p>
                         </div>
                         <div class="col-sm-auto">
-                            <form method="GET" action="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                            <form method="GET" action="{{ route($monitoring ? 'user.kurikulum.realisasi.monitoring' : 'user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
                                 <select name="academic_year_id" class="form-select form-select-sm" style="width:160px" onchange="this.form.submit()">
                                     @foreach($academicYears as $ay)
                                         <option value="{{ $ay->id }}" {{ $academicYearId == $ay->id ? 'selected' : '' }}>{{ $ay->name }}</option>
@@ -104,7 +104,7 @@
                                     <option value="ganjil" {{ $semester === 'ganjil' ? 'selected' : '' }}>Ganjil</option>
                                     <option value="genap" {{ $semester === 'genap' ? 'selected' : '' }}>Genap</option>
                                 </select>
-                                <a href="{{ route('user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm" title="Reset"><i class="ri-refresh-line"></i></a>
+                                <a href="{{ route($monitoring ? 'user.kurikulum.realisasi.monitoring' : 'user.kurikulum.realisasi.index', ['userId' => $userId]) }}" class="btn btn-light btn-sm" title="Reset"><i class="ri-refresh-line"></i></a>
                             </form>
                         </div>
                     </div>
@@ -153,15 +153,17 @@
                                 <span class="badge {{ $row->sumatif > 0 ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">{{ $row->sumatif }}</span>
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('user.schools.guru-mapel.w2', ['userId' => $userId, 'adminBookId' => $book->id]) }}" class="btn btn-sm btn-soft-primary" title="Jurnal">
-                                    <i class="ri-article-line"></i> Jurnal
-                                </a>
-                                <a href="{{ route('user.schools.guru-mapel.w4', ['userId' => $userId, 'adminBookId' => $book->id]) }}" class="btn btn-sm btn-soft-success" title="Asesmen Formatif">
-                                    <i class="ri-draft-line"></i>
-                                </a>
-                                <a href="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $book->id]) }}" class="btn btn-sm btn-soft-warning" title="Nilai Sumatif">
-                                    <i class="ri-file-list-3-line"></i>
-                                </a>
+                                @unless($monitoring)
+                                    <a href="{{ route('user.schools.guru-mapel.w2', ['userId' => $userId, 'adminBookId' => $book->id]) }}" class="btn btn-sm btn-soft-primary" title="Jurnal">
+                                        <i class="ri-article-line"></i> Jurnal
+                                    </a>
+                                    <a href="{{ route('user.schools.guru-mapel.w4', ['userId' => $userId, 'adminBookId' => $book->id]) }}" class="btn btn-sm btn-soft-success" title="Asesmen Formatif">
+                                        <i class="ri-draft-line"></i>
+                                    </a>
+                                    <a href="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $book->id]) }}" class="btn btn-sm btn-soft-warning" title="Nilai Sumatif">
+                                        <i class="ri-file-list-3-line"></i>
+                                    </a>
+                                @endunless
                             </td>
                         </tr>
                     @empty

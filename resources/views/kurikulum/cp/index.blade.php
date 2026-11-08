@@ -123,6 +123,9 @@
                         <div class="col-sm-auto">
                             <div class="d-flex flex-wrap align-items-center gap-2">
                                 <form method="GET" action="{{ route('user.kurikulum.cp.index', ['userId' => $userId]) }}" class="d-flex flex-wrap gap-2">
+                                    @if(request('lingkup') === 'semua')
+                                        <input type="hidden" name="lingkup" value="semua">
+                                    @endif
                                     <select name="academic_year_id" class="form-select" style="width:200px" onchange="this.form.submit()">
                                         @foreach($academicYears as $ay)
                                             <option value="{{ $ay->id }}" {{ (string) $academicYearId === (string) $ay->id ? 'selected' : '' }}>
