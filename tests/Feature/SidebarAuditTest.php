@@ -50,6 +50,17 @@ class SidebarAuditTest extends TestCase
         parent::setUp();
     }
 
+    /**
+     * Setelah kelas ini selesai, database :memory: milik kelas test berikutnya
+     * belum bermigrasi — jadi tandai ulang agar mereka memigrasi sendiri.
+     */
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        RefreshDatabaseState::$migrated = false;
+    }
+
     private School $school;
 
     private AcademicYear $ay;
