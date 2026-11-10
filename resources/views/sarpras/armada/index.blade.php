@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Unit Rumah Tangga @endslot
-        @slot('title') Armada &amp; Transportasi
+        @slot('title') Armada &amp; Transportasi @endslot
     @endcomponent
 
     <x-sarpras-stats :items="[

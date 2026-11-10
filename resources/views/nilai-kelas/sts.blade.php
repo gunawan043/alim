@@ -24,7 +24,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
         @slot('li_2') <a href="{{ route('user.schools.nilai.index', ['userId' => $userId]) }}">Data Nilai</a> @endslot
-        @slot('title') STS — {{ $studyGroup->name ?? '' }}</title>
+        @slot('title') STS — {{ $studyGroup->name ?? '' }} @endslot
     @endcomponent
 
     @if(session('success'))

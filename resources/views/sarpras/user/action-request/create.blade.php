@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
         @slot('li_2') <a href="{{ route('sarpras.user.kerusakan.index', ['userId' => $userId]) }}">Laporan Saya</a> @endslot
-        @slot('title') Permintaan Tindakan
+        @slot('title') Permintaan Tindakan @endslot
     @endcomponent
 
     @if($errors->any())

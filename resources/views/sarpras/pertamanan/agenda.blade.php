@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Agenda Harian Pertamanan
+        @slot('title') Agenda Harian Pertamanan @endslot
     @endcomponent
 
     @php

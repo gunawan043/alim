@@ -13,7 +13,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Scan QR Aset
+        @slot('title') Scan QR Aset @endslot
     @endcomponent
 
     <div class="row g-3">

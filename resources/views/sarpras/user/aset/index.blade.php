@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('title') Aset Saya
+        @slot('title') Aset Saya @endslot
     @endcomponent
 
     <x-sarpras-stats :items="[

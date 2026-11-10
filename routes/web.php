@@ -512,6 +512,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    // Token CSRF terbaru untuk form panjang (mis. SK). Dipakai agar form yang
+    // lama terbuka tidak mengirim token kedaluwarsa (HTTP 419).
+    Route::get('csrf-token', fn () => response()->json(['token' => csrf_token()]))
+        ->name('csrf-token');
+
     Route::get('verify-email', [EmailVerificationPromptController::class, '__invoke'])
         ->name('verification.notice');
     Route::get('verify-email/{id}/{hash}', [VerifyEmailController::class, '__invoke'])
@@ -1015,6 +1020,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/import/template/{workUnitId?}', [GtkWizardController::class, 'importTemplate'])->name('import.template');
                 Route::post('/import/resolve', [GtkWizardController::class, 'resolveImportValues'])->name('import.resolve');
                 Route::post('/import/store', [GtkWizardController::class, 'importStore'])->name('import.store');
+
 
                 // ── IMPORT NAMA ARAB GTK (menu terpisah; match NUPY) ──
                 Route::get('/import-nama-arab', [GtkArabicNameController::class, 'form'])->name('import-nama-arab-form');

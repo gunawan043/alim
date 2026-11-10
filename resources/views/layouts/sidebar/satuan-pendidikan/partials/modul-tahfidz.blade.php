@@ -1,6 +1,15 @@
 {{-- Modul Tahfidz — mode: teacher (guru tahfidz) | manage (koordinator/KSP/Waka) --}}
 @php $tahfidzMode = $tahfidzMode ?? 'manage'; @endphp
 @php $uid = $uid ?? '_'.substr(md5(uniqid('', true)), 0, 6); @endphp
+{{-- Menyusun RPP tahfizh hanya untuk pengelola kurikulum tahfidz / koordinator
+     tahfidz sekolah. KSP & Waka boleh melihat daftar, tetapi tidak menyusun. --}}
+@php
+    $tahfidzSidebarUser = auth()->user();
+    $canManageTahfidzRpp = ($showAll ?? false) || ($tahfidzSidebarUser && (
+        app(\App\Services\TahfidzAccess::class)->canManageCurriculum($tahfidzSidebarUser)
+        || app(\App\Services\TahfidzAccess::class)->isSchoolCoordinator($tahfidzSidebarUser, $sekolahId ?? null)
+    ));
+@endphp
 @if($tahfidzMode === 'teacher')
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.workspace.']) ? ' active' : '' }}"
@@ -199,9 +208,11 @@
                     <a class="nav-link{{ isActiveAny($currentRoute, ['user.tahfidz.rpp.']) && request('type') === 'iqro' ? ' active' : '' }}"
                        href="{{ route('user.tahfidz.rpp.index', ['userId' => $userId, 'type' => 'iqro']) }}">RPP Iqro’</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('user.tahfidz.rpp.create', ['userId' => $userId]) }}">Susun RPP Tahfizh</a>
-                </li>
+                @if($canManageTahfidzRpp)
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('user.tahfidz.rpp.create', ['userId' => $userId]) }}">Susun RPP Tahfizh</a>
+                    </li>
+                @endif
             </ul>
         </div>
     </li>

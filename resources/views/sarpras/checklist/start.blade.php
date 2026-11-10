@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.pemeliharaan.schedule.index') }}">Jadwal Pemeliharaan</a> @endslot
         @slot('li_2') <a href="{{ route('sarpras.pemeliharaan.schedule.show', ['id' => $schedule->id]) }}">Detail Jadwal</a> @endslot
-        @slot('title') Mulai Checklist
+        @slot('title') Mulai Checklist @endslot
     @endcomponent
 
     <div class="row g-3">

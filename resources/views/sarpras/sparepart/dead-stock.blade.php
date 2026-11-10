@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.sparepart.index') }}">Sparepart</a> @endslot
-        @slot('title') Stok Mati
+        @slot('title') Stok Mati @endslot
     @endcomponent
 
     <div class="card">

@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
         @slot('li_2') <a href="{{ route('sarpras.gedung.index') }}">Sarana Prasarana</a> @endslot
-        @slot('title') Ruang
+        @slot('title') Ruang @endslot
     @endcomponent
 
     @if(session('success'))

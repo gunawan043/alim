@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
         @slot('li_2') <a href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">Absensi Harian</a> @endslot
-        @slot('title') {{ $student->name }}</span>
+        @slot('title') {{ $student->name }} @endslot
     @endcomponent
 
     <div class="row">

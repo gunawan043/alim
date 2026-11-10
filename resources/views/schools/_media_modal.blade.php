@@ -1,4 +1,46 @@
     {{-- Modal Upload Kop, TTD & Stempel --}}
+    <style>
+        /* Modal ini tinggi (unggah berkas + pengaturan tampilan dokumen) dan
+           seluruh isinya dibungkus <form>. Tanpa batas tinggi eksplisit pada
+           form, rantai flex Bootstrap putus: .modal-body tidak pernah mendapat
+           tinggi terbatas sehingga isi terpotong dan tidak bisa di-scroll. */
+        #schoolMediaModal .modal-dialog {
+            max-height: calc(100vh - 1rem);
+            max-height: calc(100dvh - 1rem);
+        }
+        #schoolMediaModal .modal-content {
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 1rem);
+            max-height: calc(100dvh - 1rem);
+            overflow: hidden;
+        }
+        #schoolMediaModal .modal-content > form {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+        #schoolMediaModal .modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        #schoolMediaModal .modal-header,
+        #schoolMediaModal .modal-footer {
+            flex-shrink: 0;
+        }
+        @media (max-width: 575.98px) {
+            #schoolMediaModal .modal-dialog {
+                margin: .5rem;
+                max-height: calc(100vh - 1rem);
+                max-height: calc(100dvh - 1rem);
+            }
+        }
+    </style>
     <div class="modal fade" id="schoolMediaModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">

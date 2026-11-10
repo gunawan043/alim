@@ -711,7 +711,20 @@ class KurikulumMasterUiTest extends TestCase
             ->assertSee('Buat SK & Matriks Pembagian Tugas')
             ->assertSee('Nama')
             ->assertSee('Mapel')
-            ->assertSee('Tugas Tambahan');
+            ->assertSee('Tugas Tambahan')
+            // Draft lokal tidak boleh menyimpan/memulihkan token CSRF; jika ikut
+            // dipulihkan, form mengirim token kedaluwarsa dan simpan gagal 419.
+            ->assertSee("DRAFT_IGNORED_FIELDS = ['_token', '_method']", false);
+    }
+
+    public function test_token_csrf_segar_tersedia_untuk_form_panjang(): void
+    {
+        $response = $this->actingAs($this->kurikulum)
+            ->get('/csrf-token')
+            ->assertOk()
+            ->assertJsonStructure(['token']);
+
+        $this->assertNotEmpty($response->json('token'));
     }
 
     public function test_halaman_edit_sk_memakai_format_buat_sk(): void

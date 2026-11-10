@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.vendor.index') }}">Vendor</a> @endslot
-        @slot('title') Ranking Vendor
+        @slot('title') Ranking Vendor @endslot
     @endcomponent
 
     <div class="card">

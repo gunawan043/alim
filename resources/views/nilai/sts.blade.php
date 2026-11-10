@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
         @slot('li_2') <a href="{{ route('user.schools.nilai.index', ['userId' => $userId]) }}">Data Nilai</a> @endslot
-        @slot('title') Nilai STS — {{ $adminBook->studyGroup->name ?? '' }} / {{ $adminBook->subject->name ?? '' }}</title>
+        @slot('title') Nilai STS — {{ $adminBook->studyGroup->name ?? '' }} / {{ $adminBook->subject->name ?? '' }} @endslot
     @endcomponent
 
     @if(session('success'))

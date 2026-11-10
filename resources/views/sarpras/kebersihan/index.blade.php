@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Kebersihan & CS
+        @slot('title') Kebersihan & CS @endslot
     @endcomponent
 
     <div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-google-line fs-5"></i><span>Foto bukti dapat berupa <strong>tautan Google Drive</strong> atau upload/kamera langsung dengan watermark. Koordinator memantau; petugas mengerjakan area yang ditugaskan.</span></div>

@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.kebersihan.index') }}">Kebersihan</a> @endslot
-        @slot('title') Laporan Kebersihan
+        @slot('title') Laporan Kebersihan @endslot
     @endcomponent
 
     <div class="card mb-3"><div class="card-body"><form method="GET" action="{{ route('sarpras.kebersihan.reports') }}" class="row g-2 align-items-end">@if(request('area_type'))<input type="hidden" name="area_type" value="{{ request('area_type') }}">@endif

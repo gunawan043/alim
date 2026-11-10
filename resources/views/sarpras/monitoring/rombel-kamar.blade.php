@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Monitoring Rombel & Kamar
+        @slot('title') Monitoring Rombel & Kamar @endslot
     @endcomponent
 
     <div class="alert alert-info d-flex align-items-center gap-2">

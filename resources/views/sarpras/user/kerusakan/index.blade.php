@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
-        @slot('title') Laporan Kerusakan
+        @slot('title') Laporan Kerusakan @endslot
     @endcomponent
 
     <div class="row g-3 mb-3">

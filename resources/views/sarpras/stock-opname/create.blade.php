@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.stock-opname.index') }}">Stock Opname</a> @endslot
-        @slot('title') Buat Sesi
+        @slot('title') Buat Sesi @endslot
     @endcomponent
 
     @if($errors->any())

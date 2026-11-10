@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Unit Rumah Tangga @endslot
-        @slot('title') Pengaturan Item
+        @slot('title') Pengaturan Item @endslot
     @endcomponent
 
     <div class="card mb-3">

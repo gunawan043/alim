@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.kebersihan.index') }}">Kebersihan</a> @endslot
-        @slot('title') {{ $area->name }}
+        @slot('title') {{ $area->name }} @endslot
     @endcomponent
 
     <div class="card mb-3">

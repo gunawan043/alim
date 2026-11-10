@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Petugas Sarpras Satuan Kerja
+        @slot('title') Petugas Sarpras Satuan Kerja @endslot
     @endcomponent
 
     @if($isCentral ?? false)

@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Listrik & Token
+        @slot('title') Listrik & Token @endslot
     @endcomponent
 
     <div class="row g-3 mb-3">

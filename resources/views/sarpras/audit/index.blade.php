@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Audit Data
+        @slot('title') Audit Data @endslot
     @endcomponent
 
     <div class="alert alert-info d-flex align-items-center gap-2"><i class="ri-shield-check-line fs-5"></i><span>Halaman ini membantu memeriksa kualitas data sebelum dan sesudah import aset. Perbaiki temuan di bawah agar Buku Induk, KIR, QR, dan laporan akurat.</span></div>

@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Vendor &amp; Mitra
+        @slot('title') Vendor &amp; Mitra @endslot
     @endcomponent
 
     <x-sarpras-stats :items="[

@@ -16,6 +16,11 @@
     $isSupervisorDashboard = $isStrukturalDashboard
         || $tugas->contains(fn ($item) => str_contains($item, 'supervisor') || str_contains($item, 'kurikulum'));
 
+    // Jurnal Pembelajaran hanya untuk yang boleh membuka modul Kurikulum
+    // (guru pengajar / tim kurikulum). TU & jabatan non-pengajar tidak.
+    $canOpenJurnal = $dashboardUser
+        && app(\App\Services\KurikulumAccess::class)->canAccessKurikulumModule($dashboardUser);
+
     $links = [];
     $addLink = function (bool $condition, string $routeName, string $label, string $icon, string $color, array $params = []) use (&$links, $userId): void {
         if (! $condition || ! $userId || ! \Illuminate\Support\Facades\Route::has($routeName)) {
@@ -35,7 +40,7 @@
         $addLink(true, 'user.teacher-qr.history', 'Riwayat Kehadiran', 'ri-history-line', 'info');
         $addLink(true, 'user.schools.guru-mapel.index', 'Buku Nilai Saya', 'ri-book-3-line', 'success');
         $addLink(true, 'user.jadwal-kbm.for-teacher', 'Jadwal Mengajar', 'ri-time-line', 'warning', ['teacherId' => $userId]);
-        $addLink(! $isTahfidzDashboard, 'user.kurikulum.realisasi.index', 'Jurnal Pembelajaran', 'ri-article-line', 'secondary');
+        $addLink(! $isTahfidzDashboard && $canOpenJurnal, 'user.kurikulum.realisasi.index', 'Jurnal Pembelajaran', 'ri-article-line', 'secondary');
         $addLink(! $isTahfidzDashboard, 'user.bank-soal.index', 'Bank Soal', 'ri-file-edit-line', 'purple');
         $addLink($isTahfidzDashboard, 'user.tahfidz.setoran.create', 'Input Setoran', 'ri-add-box-line', 'success');
         $addLink($isTahfidzDashboard, 'user.tahfidz.monitoring.index', 'Monitoring Tahfidz', 'ri-line-chart-line', 'warning');
@@ -55,7 +60,7 @@
         $addLink(true, 'user.teacher-qr.scan', 'Scan QR Kehadiran', 'ri-qr-scan-2-line', 'primary');
         $addLink(true, 'user.schools.guru-mapel.index', 'Buku Nilai Saya', 'ri-book-3-line', 'success');
         $addLink(true, 'user.jadwal-kbm.for-teacher', 'Jadwal Mengajar', 'ri-time-line', 'warning', ['teacherId' => $userId]);
-        $addLink(true, 'user.kurikulum.realisasi.index', 'Jurnal Pembelajaran', 'ri-article-line', 'secondary');
+        $addLink($canOpenJurnal, 'user.kurikulum.realisasi.index', 'Jurnal Pembelajaran', 'ri-article-line', 'secondary');
     }
 
     $addLink(true, 'user.notifications.page', 'Notifikasi', 'ri-notification-3-line', 'secondary');

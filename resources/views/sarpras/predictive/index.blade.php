@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Prediksi Kerusakan
+        @slot('title') Prediksi Kerusakan @endslot
     @endcomponent
 
     @php

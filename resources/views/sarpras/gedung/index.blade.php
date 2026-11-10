@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') Pendukung @endslot
         @slot('li_2') Sarana Prasarana @endslot
-        @slot('title') Gedung
+        @slot('title') Gedung @endslot
     @endcomponent
 
     @if(session('success'))

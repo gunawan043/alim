@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.checklist.index') }}">Checklist</a> @endslot
-        @slot('title') {{ $instance->template?->name }}
+        @slot('title') {{ $instance->template?->name }} @endslot
     @endcomponent
 
     @php

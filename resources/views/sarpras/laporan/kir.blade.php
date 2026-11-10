@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.laporan.index') }}">Laporan</a> @endslot
-        @slot('title') Kartu Inventaris Ruangan (KIR)
+        @slot('title') Kartu Inventaris Ruangan (KIR) @endslot
     @endcomponent
 
     @php

@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Repair vs Replace Engine
+        @slot('title') Repair vs Replace Engine @endslot
     @endcomponent
 
     <x-sarpras-stats :items="[

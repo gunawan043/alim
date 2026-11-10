@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.movements.index') }}">Mutasi Aset</a> @endslot
-        @slot('title') Detail Mutasi
+        @slot('title') Detail Mutasi @endslot
     @endcomponent
 
     @php $tone = ['requested'=>'warning','approved'=>'info','in_transit'=>'primary','received'=>'info','verified'=>'success','completed'=>'success','rejected'=>'danger','cancelled'=>'secondary'][$movement->status] ?? 'secondary'; @endphp

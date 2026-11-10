@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Mutasi Aset
+        @slot('title') Mutasi Aset @endslot
     @endcomponent
 
     <div class="card">

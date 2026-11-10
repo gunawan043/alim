@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.waste.index') }}">Pengelolaan Sampah</a> @endslot
-        @slot('title') Laporan DLH
+        @slot('title') Laporan DLH @endslot
     @endcomponent
 
     @php $monthLabel = \Carbon\Carbon::createFromFormat('Y-m', $month)->translatedFormat('F Y'); @endphp

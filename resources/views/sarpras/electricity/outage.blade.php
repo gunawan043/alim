@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.electricity.index') }}">Listrik & Token</a> @endslot
-        @slot('title') Penanganan Padam
+        @slot('title') Penanganan Padam @endslot
     @endcomponent
 
     @php

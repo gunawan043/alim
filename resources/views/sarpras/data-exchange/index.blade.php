@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Import &amp; Export Data
+        @slot('title') Import &amp; Export Data @endslot
     @endcomponent
 
     @if(session('success'))

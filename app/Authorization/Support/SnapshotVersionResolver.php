@@ -97,12 +97,13 @@ final readonly class SnapshotVersionResolver
      */
     private function runSqlite(ScopeKey $scopeKey, int|string $userId, Closure $build): mixed
     {
-        return $this->connection->transaction(function () use ($scopeKey, $userId, $build) {
-            $lockKey = $this->lockKeyFor($scopeKey, $userId);
-            $this->connection->statement('BEGIN IMMEDIATE');
-
-            return $build();
-        });
+        // Jangan panggil "BEGIN IMMEDIATE" di dalam transaction(): SQLite
+        // menolak transaksi bersarang ("cannot start a transaction within a
+        // transaction"), sehingga snapshot izin selalu gagal dibangun dan
+        // SEMUA canPermission() bernilai false → 403 di halaman yang dijaga
+        // permission. SQLite sudah menyerialkan penulisan, jadi transaction()
+        // saja cukup.
+        return $this->connection->transaction(fn () => $build());
     }
 
     private function lockKeyFor(ScopeKey $scopeKey, int|string $userId): int

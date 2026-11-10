@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.teknisi.dashboard') }}">Workspace Teknisi</a> @endslot
-        @slot('title') {{ $order->order_number }}
+        @slot('title') {{ $order->order_number }} @endslot
     @endcomponent
 
     <div class="row g-3">

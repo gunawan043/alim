@@ -438,6 +438,11 @@ const taskTypeOptions    = {!! json_encode($taskTypeOptions) !!};
 const draftStorageKey    = {!! json_encode('institution-decree-draft:v2:'.$userId.':'.($selectedSchoolId ?? 'none').':'.($selectedAyId ?? 'none').':'.($isEdit ? $decree->id : 'new')) !!};
 const AUTOSAVE_DELAY     = 2500;
 
+// Field yang tidak boleh ikut draft: token CSRF & method hanya berlaku untuk
+// sesi/halaman saat draft dibuat. Memulihkannya membuat form mengirim token
+// kedaluwarsa → HTTP 419 saat menyimpan.
+const DRAFT_IGNORED_FIELDS = ['_token', '_method'];
+
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
 
 let activeSubjects = {};
@@ -447,6 +452,7 @@ let matrixTeacherOrder = [];
 let undoStack = [];
 let redoStack = [];
 let autosaveTimer = null;
+let isSubmitting = false;
 
 /* =====================================================================
    UTILITAS
@@ -1064,6 +1070,7 @@ function scheduleAutosave() {
 function collectDraftFields() {
     const fields = {};
     document.querySelectorAll('#decreeForm [name]').forEach(field => {
+        if (DRAFT_IGNORED_FIELDS.includes(field.name)) return;
         if (field.type === 'checkbox' || field.type === 'radio') { fields[field.name] = field.checked; }
         else { fields[field.name] = field.value; }
     });
@@ -1101,6 +1108,7 @@ function loadDraft() {
         const draft = JSON.parse(raw);
         if (!draft?.table) return;
         Object.entries(draft.form || {}).forEach(([name, value]) => {
+            if (DRAFT_IGNORED_FIELDS.includes(name)) return;
             const field = document.querySelector(`#decreeForm [name="${name}"]`);
             if (!field) return;
             if (field.type === 'checkbox' || field.type === 'radio') { field.checked = !!value; }
@@ -1195,6 +1203,12 @@ function updateInfoPreview() {
    SUBMIT
    ===================================================================== */
 document.getElementById('decreeForm').addEventListener('submit', function () {
+    // Hentikan autosave & buang draft agar sebelum-unload tidak menulis ulang
+    // data yang baru saja dikirim (dan agar form berikutnya mulai bersih).
+    isSubmitting = true;
+    clearTimeout(autosaveTimer);
+    try { localStorage.removeItem(draftStorageKey); } catch (_) {}
+
     const assignments = {};
 
     Object.entries(activeSubjects).forEach(([tid, subjectEntries]) => {
@@ -1230,6 +1244,37 @@ document.getElementById('decreeForm').addEventListener('submit', function () {
     });
     document.getElementById('otherTasksJson').value = JSON.stringify(tasksArr);
 });
+
+/* =====================================================================
+   KEEP-ALIVE SESI
+   Form SK bisa terbuka lama; tanpa aktivitas server sesi kedaluwarsa dan
+   token CSRF lama → simpan gagal 419. Ping ringan tiap 2 menit.
+   ===================================================================== */
+const SESSION_PING_INTERVAL = 2 * 60 * 1000;
+let lastSessionPing = Date.now();
+
+function refreshCsrfToken() {
+    if (isSubmitting) return;
+    lastSessionPing = Date.now();
+
+    fetch('{{ route('csrf-token', [], false) }}', {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+    })
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+            if (! data || ! data.token) return;
+            document.querySelectorAll('#decreeForm input[name="_token"]').forEach(el => { el.value = data.token; });
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.setAttribute('content', data.token);
+        })
+        .catch(() => {});
+}
+
+setInterval(function () {
+    if (isSubmitting || document.visibilityState === 'hidden') return;
+    if (Date.now() - lastSessionPing >= SESSION_PING_INTERVAL) refreshCsrfToken();
+}, 60 * 1000);
 
 /* =====================================================================
    INIT
@@ -1277,6 +1322,7 @@ document.addEventListener('DOMContentLoaded', function () {
     updateInfoPreview();
 
     window.addEventListener('beforeunload', function () {
+        if (isSubmitting) return;
         try { saveDraft(false); } catch (_) {}
     });
 });

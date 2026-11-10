@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.checklist.index') }}">Checklist</a> @endslot
         @slot('li_2') <a href="{{ route('sarpras.checklist.template', ['templateId' => $template->id]) }}">{{ $template->name }}</a> @endslot
-        @slot('title') Pilih Aset
+        @slot('title') Pilih Aset @endslot
     @endcomponent
 
     <div class="row g-3">

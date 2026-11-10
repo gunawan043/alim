@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Pengelolaan Sampah DLH
+        @slot('title') Pengelolaan Sampah DLH @endslot
     @endcomponent
 
     <div class="row g-3 mb-3">

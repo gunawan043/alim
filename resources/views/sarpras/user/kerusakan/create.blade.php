@@ -5,7 +5,7 @@
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.user.dashboard', ['userId' => $userId]) }}">Sarana Prasarana</a> @endslot
         @slot('li_2') <a href="{{ route('sarpras.user.kerusakan.index', ['userId' => $userId]) }}">Kerusakan</a> @endslot
-        @slot('title') Buat Laporan
+        @slot('title') Buat Laporan @endslot
     @endcomponent
 
     @if($errors->any())<div class="alert alert-danger alert-dismissible fade show"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul><button class="btn-close" data-bs-dismiss="alert"></button></div>@endif

@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.kebersihan.index') }}">Kebersihan</a> @endslot
-        @slot('title') Laporan {{ $report->report_date?->format('d/m/Y') }}
+        @slot('title') Laporan {{ $report->report_date?->format('d/m/Y') }} @endslot
     @endcomponent
 
     @php

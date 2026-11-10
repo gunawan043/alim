@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.repair.index') }}">Antrean Perbaikan</a> @endslot
-        @slot('title') {{ $repair->request_number }}
+        @slot('title') {{ $repair->request_number }} @endslot
     @endcomponent
 
     @php

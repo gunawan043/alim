@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.laporan.index') }}">Laporan</a> @endslot
-        @slot('title') Buku Induk Inventaris
+        @slot('title') Buku Induk Inventaris @endslot
     @endcomponent
 
     <x-sarpras-stats :items="[

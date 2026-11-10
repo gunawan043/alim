@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.kebersihan.index') }}">Kebersihan</a> @endslot
-        @slot('title') Checklist Pekerjaan
+        @slot('title') Checklist Pekerjaan @endslot
     @endcomponent
 
     <div class="card mb-3">

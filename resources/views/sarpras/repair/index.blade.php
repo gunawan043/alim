@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Sarana Prasarana @endslot
-        @slot('title') Antrean Perbaikan
+        @slot('title') Antrean Perbaikan @endslot
     @endcomponent
 
     <div class="row g-3 mb-3">

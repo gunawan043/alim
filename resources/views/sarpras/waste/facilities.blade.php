@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.waste.index') }}">Sampah DLH</a> @endslot
-        @slot('title') Fasilitas Sampah
+        @slot('title') Fasilitas Sampah @endslot
     @endcomponent
 
     <x-sarpras-stats :items="[

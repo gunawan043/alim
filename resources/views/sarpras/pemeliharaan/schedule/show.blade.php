@@ -4,7 +4,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('sarpras.pemeliharaan.schedule.index') }}">Jadwal Pemeliharaan</a> @endslot
-        @slot('title') Detail Jadwal
+        @slot('title') Detail Jadwal @endslot
     @endcomponent
 
     @php
