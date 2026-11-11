@@ -1,57 +1,19 @@
     {{-- Modal Upload Kop, TTD & Stempel --}}
-    <style>
-        /* Modal ini tinggi (unggah berkas + pengaturan tampilan dokumen) dan
-           seluruh isinya dibungkus <form>. Tanpa batas tinggi eksplisit pada
-           form, rantai flex Bootstrap putus: .modal-body tidak pernah mendapat
-           tinggi terbatas sehingga isi terpotong dan tidak bisa di-scroll. */
-        #schoolMediaModal .modal-dialog {
-            max-height: calc(100vh - 1rem);
-            max-height: calc(100dvh - 1rem);
-        }
-        #schoolMediaModal .modal-content {
-            display: flex;
-            flex-direction: column;
-            max-height: calc(100vh - 1rem);
-            max-height: calc(100dvh - 1rem);
-            overflow: hidden;
-        }
-        #schoolMediaModal .modal-content > form {
-            display: flex;
-            flex-direction: column;
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow: hidden;
-        }
-        #schoolMediaModal .modal-body {
-            flex: 1 1 auto;
-            min-height: 0;
-            overflow-y: auto !important;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
-        }
-        #schoolMediaModal .modal-header,
-        #schoolMediaModal .modal-footer {
-            flex-shrink: 0;
-        }
-        @media (max-width: 575.98px) {
-            #schoolMediaModal .modal-dialog {
-                margin: .5rem;
-                max-height: calc(100vh - 1rem);
-                max-height: calc(100dvh - 1rem);
-            }
-        }
-    </style>
+    {{-- Catatan: <form> sengaja diletakkan DI DALAM .modal-body. Bila form
+         membungkus .modal-header/.modal-body/.modal-footer, rantai flex
+         Bootstrap putus dan isi modal tidak bisa di-scroll. Tombol simpan di
+         footer mengirim form ini lewat atribut form="schoolMediaForm". --}}
     <div class="modal fade" id="schoolMediaModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
-                <form method="POST" enctype="multipart/form-data"
-                      action="{{ route('user.schools.media', ['userId' => $userId, 'schoolId' => $school->id]) }}">
-                    @csrf
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="ri-upload-cloud-2-line me-2 text-primary"></i>Upload Kop, TTD &amp; Stempel</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
-                    </div>
-                    <div class="modal-body">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-upload-cloud-2-line me-2 text-primary"></i>Upload Kop, TTD &amp; Stempel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="schoolMediaForm" method="POST" enctype="multipart/form-data"
+                          action="{{ route('user.schools.media', ['userId' => $userId, 'schoolId' => $school->id]) }}">
+                        @csrf
                         <div class="alert alert-info py-2 small">
                             <i class="ri-information-line me-1"></i>
                             Format gambar JPG/PNG. Logo dan kop maks. 2 MB; TTD/stempel maks. 1 MB. Centang hapus jika ingin menghapus file lama.
@@ -195,14 +157,14 @@
                                 </div>
                             @endforeach
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="ri-save-3-line me-1"></i>Simpan Dokumen
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" form="schoolMediaForm" class="btn btn-primary">
+                        <i class="ri-save-3-line me-1"></i>Simpan Dokumen
+                    </button>
+                </div>
             </div>
         </div>
     </div>

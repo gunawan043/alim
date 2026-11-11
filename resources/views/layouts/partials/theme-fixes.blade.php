@@ -36,6 +36,30 @@
     [data-bs-theme="dark"] .modal-footer {
         border-color: var(--bs-border-color);
     }
+    /* Banyak modal membungkus .modal-header/.modal-body/.modal-footer dengan
+       <form>. Itu memutus rantai flex Bootstrap: .modal-body tidak pernah
+       mendapat tinggi terbatas, sehingga isi modal terpotong dan tidak bisa
+       di-scroll (mis. modal upload kop/TTD/stempel). Form dibuat meneruskan
+       rantai flex tersebut. */
+    .modal-content > form {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .modal-content > form > .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .modal-content > form > .modal-header,
+    .modal-content > form > .modal-footer {
+        flex-shrink: 0;
+    }
 
     [data-bs-theme="dark"] .form-control,
     [data-bs-theme="dark"] .form-select {
