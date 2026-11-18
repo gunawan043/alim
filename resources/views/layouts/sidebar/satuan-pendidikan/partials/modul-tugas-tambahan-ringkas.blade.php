@@ -98,6 +98,33 @@
     </li>
 @endif
 
+@if($isKoorPerpus)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.perpustakaan.index']) ? ' active' : '' }}"
+           href="{{ $taskUrl('user.perpustakaan.index') }}">
+            <i class="ri-book-2-line"></i><span>Dashboard Perpustakaan</span>
+        </a>
+    </li>
+@endif
+
+@if($isKoorBahasa)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bahasa.mufradat.']) ? ' active' : '' }}"
+           href="{{ $taskUrl('user.bahasa.mufradat.index') }}">
+            <i class="ri-book-2-line"></i><span>Hafalan Mufradat</span>
+        </a>
+    </li>
+@endif
+
+@if($isKoorTahfidz)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.workspace.']) ? ' active' : '' }}"
+           href="{{ $taskUrl('user.tahfidz.workspace.index') }}">
+            <i class="ri-book-read-line"></i><span>Buku Kerja Tahfidz</span>
+        </a>
+    </li>
+@endif
+
 @if($isPembinaEkskul && menu_allowed('ekstrakurikuler'))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['waka.ekstrakurikuler.']) ? ' active' : '' }}"
