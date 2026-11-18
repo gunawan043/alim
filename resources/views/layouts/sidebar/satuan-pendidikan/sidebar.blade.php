@@ -126,10 +126,21 @@
             ->exists()
         : false;
 
+    // Buku nilai juga bukti mengajar — terutama untuk wali kelas/guru yang
+    // bukunya dibuat dari struktur tingkat tanpa SK mengajar terpisah.
+    $hasTeacherBooks = $userId
+        ? \App\Models\TeacherAdminBook::query()
+            ->forTeacherWorkspace($userId)
+            ->where('is_active', true)
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
+            ->exists()
+        : false;
+
     // Semua varian jabatan guru (GURU KELAS, GURU PAUD, GURU MAPEL, ...) dihitung guru.
     $isGuru         = $isGuruUmum || $isGuruAgama || $isGuruHadits || $isGuruArab || $isGuruInggris || $isGuruTahfidz
         || $hasJabatan('Guru')
-        || $hasTeachingAssignments;
+        || $hasTeachingAssignments
+        || $hasTeacherBooks;
     $isAdminTU      = $isKepalaTU || $isTU;
     $isStruktural   = $isKepala || $isWakil;
 
@@ -384,12 +395,12 @@
     // Menu Guru = topi pendidik. Pemegang jabatan struktural hanya melihatnya
     // bila benar-benar punya penugasan mengajar aktif (bukan sekadar teks
     // jabatan "Guru"), supaya tidak muncul menu kosong.
-    $showMengajar   = $showAll || $hasTeachingAssignments
+    $showMengajar   = $showAll || $hasTeachingAssignments || $hasTeacherBooks
         || ($isGuru && ! $isStruktural && ! $isAdminTU && ! $isKoordinator);
 
     // Label section mengikuti peran yang sedang dipakai, supaya GTK yang
     // merangkap Waka + Wali Kelas + Guru Mapel melihat batas yang jelas.
-    $mengajarLabel  = $hasTeachingAssignments ? 'Menu Guru Mapel' : 'Menu Guru';
+    $mengajarLabel  = ($hasTeachingAssignments || $hasTeacherBooks) ? 'Menu Guru Mapel' : 'Menu Guru';
     $managementLabel = $isWakil && ! $isKepala
         ? 'Jabatan · Wakil Kepala Satuan Pendidikan'
         : 'Manajemen Sekolah';
