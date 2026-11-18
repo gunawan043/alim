@@ -181,7 +181,8 @@ class StudentDapodikExportController extends Controller
             ->orderBy('name')
             ->get();
 
-        $filename = 'Dapodik-'.($year?->name ?? 'semua').'-'.now()->format('Ymd-His').'.csv';
+        $filename = 'Dapodik-'.str_replace(['/', '\\', ' '], '-', (string) ($year?->name ?? 'semua'))
+            .'-'.now()->format('Ymd-His').'.csv';
 
         return response()->streamDownload(function () use ($students, $mappings) {
             $handle = fopen('php://output', 'w');
