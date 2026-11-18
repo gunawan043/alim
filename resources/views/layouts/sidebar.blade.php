@@ -588,6 +588,40 @@
                         @endif
                     @endforeach
 
+                    {{-- 3a-bis. Menu Guru untuk role non-Satuan Pendidikan.
+                         Guru yang berperan sebagai Pimpinan/Asrama/Departemen
+                         tetap mendapat menu mengajar lengkap sampai daftar
+                         mapel/kelas yang diampu. Sidebar Satuan Pendidikan
+                         sudah memuat menu ini, jadi tidak diulang. --}}
+                    @php
+                        $hasSatuanRoleForGuruMenu = in_array('Satuan Pendidikan', $userRoles, true);
+                        $hasTeacherWorkspace = false;
+
+                        if (! $hasSatuanRoleForGuruMenu && $user && $userId) {
+                            $activeAyForGuruMenu = \App\Models\AcademicYear::query()
+                                ->where('is_active', true)
+                                ->first();
+
+                            if ($activeAyForGuruMenu) {
+                                $hasTeacherWorkspace = \App\Models\TeachingAssignment::query()
+                                    ->where('teacher_id', $userId)
+                                    ->where('status', 'active')
+                                    ->where('academic_year_id', $activeAyForGuruMenu->id)
+                                    ->exists()
+                                    || \App\Models\TeacherAdminBook::query()
+                                        ->forTeacherWorkspace($userId)
+                                        ->where('is_active', true)
+                                        ->where('academic_year_id', $activeAyForGuruMenu->id)
+                                        ->exists();
+                            }
+                        }
+                    @endphp
+
+                    @if($hasTeacherWorkspace)
+                        @include('layouts.sidebar.partials.menu-guru')
+                        @php $renderedCount++; @endphp
+                    @endif
+
                     {{-- 3b. Tugas tambahan.
                          Sidebar Satuan Pendidikan sudah memuat menu tugas
                          berikut secara terpadu. Jangan meng-include sidebar
