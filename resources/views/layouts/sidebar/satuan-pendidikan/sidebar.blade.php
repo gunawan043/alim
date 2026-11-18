@@ -194,15 +194,135 @@
         || $hasJabatan('Koordinator Tahfidz') || $hasJabatan('Koordinator Tahfidz Al-Qur\'an')
         || $tugasMatches('koordinator tahfidz');
 
-    /* ── Bedakan jabatan struktural vs tugas tambahan (untuk label menu) ─ */
-    $jabKoorKurik   = $hasJabatan('Koordinator Kurikulum');
-    $jabKoorKesiswa = $hasJabatan('Koordinator Kesiswaan');
-    $jabKoorEkskul  = $hasJabatan('Koordinator Ekstrakurikuler');
-    $jabKoorPerpus  = $hasJabatan('Koordinator Perpustakaan') || $hasJabatan('Kepala Perpustakaan');
-    $jabKoorBahasa  = $hasJabatan('Koordinator Bahasa') || $hasJabatan('Koordinator Bahasa Arab')
-        || $hasJabatan('Koordinator Bahasa Inggris');
-    $jabKoorTahfidz = $hasJabatan('Koordinator Tahfidz') || $hasJabatan('Koordinator Tahfidz Al-Qur\'an');
-    $jabBendahara   = $hasJabatan('Bendahara Sekolah');
+    /* ── Bedakan jabatan struktural vs tugas tambahan (untuk label menu) ─
+       PENTING: `$hasJabatan()` membaca juga tugas tambahan dari SK/penugasan
+       operasional. Untuk memisahkan topi "Jabatan" dan "Tugas Tambahan",
+       struktur jabatan harus dibaca dari kepegawaian/penempatan/penugasan
+       struktural saja — bukan dari daftar tugas. */
+    $structuralJabatanRows = collect();
+
+    if ($user) {
+        $structuralJabatanRows->push($user->employment?->jabatan);
+
+        try {
+            foreach ($user->employments as $row) {
+                $structuralJabatanRows->push($row?->jabatan);
+                $structuralJabatanRows->push($row?->jabatanRel?->nama);
+            }
+        } catch (\Throwable) {
+            // Relasi kepegawaian tidak tersedia.
+        }
+
+        try {
+            foreach (\App\Models\GtkWorkUnit::with('position')->where('user_id', $userId)->get() as $placement) {
+                $structuralJabatanRows->push($placement->jabatan);
+                $structuralJabatanRows->push($placement->position?->name);
+            }
+        } catch (\Throwable) {
+            // Tabel penempatan belum tersedia.
+        }
+
+        try {
+            foreach (\App\Models\StructuralAssignment::with('position')
+                ->where('user_id', $userId)
+                ->where('status', 'active')
+                ->get() as $assignment) {
+                $structuralJabatanRows->push($assignment->position?->name);
+            }
+        } catch (\Throwable) {
+            // Tabel penugasan struktural belum tersedia.
+        }
+    }
+
+    $structuralJabatanText = mb_strtolower($structuralJabatanRows->filter()->implode(' '));
+    $hasStructuralJabatan = static function (string $name) use ($structuralJabatanText): bool {
+        $needle = mb_strtolower(trim($name));
+
+        return $needle !== '' && str_contains($structuralJabatanText, $needle);
+    };
+
+    $jabKoorKurik   = $hasStructuralJabatan('koordinator kurikulum');
+    $jabKoorKesiswa = $hasStructuralJabatan('koordinator kesiswaan');
+    $jabKoorEkskul  = $hasStructuralJabatan('koordinator ekstrakurikuler');
+    $jabKoorPerpus  = $hasStructuralJabatan('koordinator perpustakaan') || $hasStructuralJabatan('kepala perpustakaan');
+    $jabKoorBahasa  = $hasStructuralJabatan('koordinator bahasa') || $hasStructuralJabatan('koordinator bahasa arab')
+        || $hasStructuralJabatan('koordinator bahasa inggris');
+    $jabKoorTahfidz = $hasStructuralJabatan('koordinator tahfidz') || $hasStructuralJabatan('koordinator tahfidz al-qur\'an');
+    $jabBendahara   = $hasStructuralJabatan('bendahara sekolah');
+
+    /*
+     * ── Topi peran (Mengajar / Walkes / Jabatan / Tugas Tambahan) ─────
+     * Dipakai untuk memisahkan menu agar tidak bertumpuk saat GTK merangkap.
+     * Waka/KTU/koordinator yang juga mengajar hanya melihat daftar mapelnya
+     * di bagian Mengajar; menu luasnya berada di Jabatan/Tugas Tambahan.
+     */
+    $hasStructuralPosition = $isKepala || $isWakil || $isKepalaTU || $isTU
+        || $jabKoorKurik || $jabKoorKesiswa || $jabKoorEkskul
+        || $jabKoorPerpus || $jabKoorBahasa || $jabKoorTahfidz
+        || $jabBendahara;
+
+    $hasNonTeachingPosition = $hasStructuralPosition || $isAdminTU
+        || $isKoordinator || $isBendahara;
+
+    $compactMengajar = $hasNonTeachingPosition
+        && ($hasTeachingAssignments || $hasTeacherBooks);
+
+    $structuralLabels = collect();
+    if ($isKepala) {
+        $structuralLabels->push('Kepala Satuan Pendidikan');
+    }
+    if ($isWakil) {
+        $structuralLabels->push('Wakil Kepala');
+    }
+    if ($isKepalaTU) {
+        $structuralLabels->push('Kepala Tata Usaha');
+    }
+    if ($isTU) {
+        $structuralLabels->push('Tata Usaha');
+    }
+    if ($jabBendahara) {
+        $structuralLabels->push('Bendahara Sekolah');
+    }
+    foreach ([
+        'Koordinator Kurikulum' => $jabKoorKurik,
+        'Koordinator Kesiswaan' => $jabKoorKesiswa,
+        'Koordinator Ekstrakurikuler' => $jabKoorEkskul,
+        'Koordinator Perpustakaan' => $jabKoorPerpus,
+        'Koordinator Bahasa' => $jabKoorBahasa,
+        'Koordinator Tahfidz' => $jabKoorTahfidz,
+    ] as $label => $active) {
+        if ($active) {
+            $structuralLabels->push($label);
+        }
+    }
+    $structuralLabel = $structuralLabels->unique()->take(3)->join(', ');
+
+    $additionalTaskLabels = collect();
+    foreach ([
+        'Koordinator Kurikulum' => $isKoorKurik && ! $jabKoorKurik,
+        'Koordinator Kesiswaan' => $isKoorKesiswa && ! $jabKoorKesiswa,
+        'Koordinator Ekstrakurikuler' => $isKoorEkskul && ! $jabKoorEkskul,
+        'Koordinator Mapel' => $isKoorMapel,
+        'Tim Kurikulum' => $isTimKurikulum,
+        'Tim Kesiswaan' => $isTimKesiswaan,
+        'Koordinator Laboratorium' => $isKoorLab,
+        'Koordinator Sarpras' => $isKoorSarpras,
+        'Guru BK' => $isGuruBK,
+        'Pembina Ekstrakurikuler' => $isPembinaEkskul,
+        'Koordinator Alumni' => $isKoorAlumni,
+        'Koordinator Perpustakaan' => $isKoorPerpus && ! $jabKoorPerpus,
+        'Koordinator Bahasa' => $isKoorBahasa && ! $jabKoorBahasa,
+        'Koordinator Tahfidz' => $isKoorTahfidz && ! $jabKoorTahfidz,
+        'Bendahara Sekolah' => $isBendahara && ! $jabBendahara,
+    ] as $label => $active) {
+        if ($active) {
+            $additionalTaskLabels->push($label);
+        }
+    }
+    $additionalTaskLabels = $additionalTaskLabels->unique()->values();
+    $hasAdditionalTask = $additionalTaskLabels->isNotEmpty();
+    $additionalTaskLabel = $additionalTaskLabels->take(3)->join(', ');
+
 
     $koorLabel = static function (string $nama, bool $isJabatan): string {
         return ($isJabatan ? 'Jabatan · ' : 'Tugas Tambahan · ').$nama;
@@ -401,9 +521,9 @@
     // Label section mengikuti peran yang sedang dipakai, supaya GTK yang
     // merangkap Waka + Wali Kelas + Guru Mapel melihat batas yang jelas.
     $mengajarLabel  = ($hasTeachingAssignments || $hasTeacherBooks) ? 'Menu Guru Mapel' : 'Menu Guru';
-    $managementLabel = $isWakil && ! $isKepala
-        ? 'Jabatan · Wakil Kepala Satuan Pendidikan'
-        : 'Manajemen Sekolah';
+    $managementLabel = $hasStructuralPosition
+        ? 'Jabatan'.($structuralLabel !== '' ? ' · '.$structuralLabel : '')
+        : 'Tugas Tambahan'.($additionalTaskLabel !== '' ? ' · '.$additionalTaskLabel : '');
 
     $showKesiswaan = $manageSchool || $isKoorKesiswa || $isTimKesiswaan || $isGuruBK
         || $isKoorEkskul || $isPembinaEkskul || $isKoorAlumni;
@@ -477,8 +597,24 @@
      satu dropdown tidak menumpuk puluhan tautan.
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($showMengajar)
-    <li class="menu-title"><span>{{ $mengajarLabel }}</span></li>
+    <li class="menu-title"><span>{{ $compactMengajar ? 'Mengajar · Guru Mapel' : $mengajarLabel }}</span></li>
 
+    @if($compactMengajar)
+        {{-- Topi Mengajar versi ringkas: hanya jadwal dan daftar mapel/kelas
+             milik GTK ini. Menu luas ada di Jabatan/Tugas Tambahan. --}}
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
+               href="{{ route('user.jadwal-kbm.for-teacher', ['userId' => $userId, 'teacherId' => $userId]) }}">
+                <i class="ri-calendar-schedule-line"></i><span>Jadwal Mengajar Saya</span>
+            </a>
+        </li>
+
+        @include('layouts.sidebar.satuan-pendidikan.partials.mapel-saya', [
+            'mapelSayaBooks' => $guruBooks,
+            'mapelSayaId' => 'sp_guru_books',
+            'mapelSayaUserId' => $userId,
+        ])
+    @else
     @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
         {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
         <x-sidebar-section id="sp_sec_guru_tahfidz" label="Tahfidz" icon="ri-book-read-line"
@@ -543,43 +679,11 @@
                     <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
             </li>
 
-            @if($guruBooks->isNotEmpty())
-                @php
-                    $guruBookActive = isActiveAny($currentRoute, ['user.schools.guru-mapel.wizard', 'user.schools.guru-mapel.w1', 'user.schools.guru-mapel.w2', 'user.schools.guru-mapel.w3', 'user.schools.guru-mapel.w4', 'user.schools.guru-mapel.w5', 'user.schools.guru-mapel.w6']);
-                @endphp
-                <li class="nav-item">
-                    <a class="nav-link menu-link{{ $guruBookActive ? ' active' : '' }}"
-                       href="#sp_guru_books" data-bs-toggle="collapse" role="button"
-                       aria-expanded="{{ $guruBookActive ? 'true' : 'false' }}"
-                       aria-controls="sp_guru_books">
-                        <i class="ri-booklet-line"></i>
-                        <span>Mapel Saya <span class="badge bg-primary-subtle text-primary ms-1">{{ $guruBooks->count() }}</span></span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <div class="collapse menu-dropdown{{ $guruBookActive ? ' show' : '' }}" id="sp_guru_books">
-                        <ul class="nav nav-sm flex-column">
-                            @foreach($guruBooks as $book)
-                                <li class="nav-item">
-                                    <div class="d-flex align-items-center">
-                                        <a class="nav-link flex-grow-1 text-truncate{{ (string) request()->route('adminBookId') === (string) $book->id ? ' active' : '' }}"
-                                           href="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $book->id]) }}"
-                                           title="Input nilai {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}"
-                                           style="max-width: 190px;">
-                                            {{ $book->subject?->name ?? 'Mapel' }} · {{ $book->studyGroup?->name ?? '-' }}
-                                        </a>
-                                        <a class="nav-link px-2 flex-shrink-0"
-                                           href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'subject_id' => $book->subject_id, 'study_group_id' => $book->study_group_id]) }}"
-                                           title="Perangkat ajar {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}"
-                                           aria-label="Perangkat ajar {{ $book->subject?->name }}">
-                                            <i class="ri-file-text-line"></i>
-                                        </a>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </li>
-            @endif
+            @include('layouts.sidebar.satuan-pendidikan.partials.mapel-saya', [
+                'mapelSayaBooks' => $guruBooks,
+                'mapelSayaId' => 'sp_guru_books',
+                'mapelSayaUserId' => $userId,
+            ])
 
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
         </x-sidebar-section>
@@ -595,55 +699,93 @@
             </li>
         </x-sidebar-section>
     @endif
+    @endif
 @endif
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
-     3. WALI KELAS — prioritas utama bila benar-benar mengampu kelas
+     3. MEN WALKES — hanya kelas yang diwalikan (bukan seluruh rombel sekolah)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($isWaliKelas)
     <li class="menu-title">
-        <span>Wali Kelas · {{ $waliKelasGroups->pluck('name')->join(', ') ?: '-' }}</span>
+        <span>Men Walkes · {{ $waliKelasGroups->pluck('name')->join(', ') ?: '-' }}</span>
     </li>
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ $currentRoute === 'user.dashboard.wali-kelas' ? ' active' : '' }}"
            href="{{ route('user.dashboard.wali-kelas', ['userId' => $userId]) }}">
-            <i class="ri-parent-line"></i><span>Dashboard Wali Kelas</span>
+            <i class="ri-parent-line"></i><span>Dashboard Walkes</span>
         </a>
     </li>
 
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.index', 'user.students.show']) ? ' active' : '' }}"
-           href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $waliKelasGroups->first()->id]) }}">
-            <i class="ri-team-line"></i><span>Data Santri Kelas</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) ? ' active' : '' }}"
-           href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
-            <i class="ri-shield-user-line"></i><span>Data Mahrom Kelas</span>
-        </a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
-           href="{{ route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $waliKelasGroups->first()->id]) }}">
-            <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap atau belum dipublikasikan'])</a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.']) ? ' active' : '' }}"
-           href="{{ route('user.absensi.harian.index', ['userId' => $userId]) }}">
-            <i class="ri-calendar-check-line"></i><span>Absensi Kelas Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'absensi_wali', 'title' => 'Kelas Anda belum diabsen hari ini'])</a>
-    </li>
-
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.absensi.harian.recap']) ? ' active' : '' }}"
-           href="{{ route('user.absensi.harian.recap', ['userId' => $userId]) }}">
-            <i class="ri-bar-chart-2-line"></i><span>Rekap Absensi Kelas</span>
-        </a>
-    </li>
+    @foreach($waliKelasGroups as $walkesGroup)
+        @php
+            $walkesOpen = (string) request('study_group_id') === (string) $walkesGroup->id
+                || (string) request()->route('studyGroupId') === (string) $walkesGroup->id;
+            $walkesId = 'sp_walkes_'.$loop->index;
+        @endphp
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ $walkesOpen ? ' active' : '' }}"
+               href="#{{ $walkesId }}" data-bs-toggle="collapse" role="button"
+               aria-expanded="{{ $walkesOpen ? 'true' : 'false' }}"
+               aria-controls="{{ $walkesId }}">
+                <i class="ri-parent-line"></i>
+                <span>{{ $walkesGroup->name }}</span>
+                <span class="menu-arrow"></span>
+            </a>
+            <div class="collapse menu-dropdown{{ $walkesOpen ? ' show' : '' }}" id="{{ $walkesId }}">
+                <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.index', 'user.students.show']) && (string) request('study_group_id') === (string) $walkesGroup->id ? ' active' : '' }}"
+                           href="{{ route('user.students.index', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Data Santri Kelas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) && (string) request('study_group_id') === (string) $walkesGroup->id ? ' active' : '' }}"
+                           href="{{ route('user.students.mahroms.global', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Data Mahrom Kelas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) && (string) request()->route('studyGroupId') === (string) $walkesGroup->id ? ' active' : '' }}"
+                           href="{{ route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $walkesGroup->id]) }}">
+                            Leger &amp; Cetak Rapor
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ route('user.absensi.harian.index', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Absensi Kelas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ route('user.absensi.harian.recap', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Rekap Absensi Kelas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           href="{{ route('user.student-move.index', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Pindahkan Santri
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.user.aset.']) && (string) request('study_group_id') === (string) $walkesGroup->id ? ' active' : '' }}"
+                           href="{{ route('sarpras.user.aset.index', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Inventaris Kelas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['sarpras.user.ruang.']) && (string) request('study_group_id') === (string) $walkesGroup->id ? ' active' : '' }}"
+                           href="{{ route('sarpras.user.ruang.index', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Ruang Kelas
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    @endforeach
 
     @include('layouts.sidebar.satuan-pendidikan.partials.modul-prestasi')
 @endif
@@ -839,4 +981,11 @@
             </a>
         </li>
     </x-sidebar-section>
+@endif
+
+{{-- Tugas tambahan tetap punya “topi” sendiri saat GTK juga memegang
+     jabatan struktural, agar menu tidak bercampur dengan menu jabatan. --}}
+@if($hasStructuralPosition && $hasAdditionalTask)
+    <li class="menu-title"><span>Tugas Tambahan · {{ $additionalTaskLabel }}</span></li>
+    @include('layouts.sidebar.satuan-pendidikan.partials.modul-tugas-tambahan-ringkas')
 @endif

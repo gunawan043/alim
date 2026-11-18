@@ -466,7 +466,7 @@ class SidebarAuditTest extends TestCase
             // ── Kesiswaan ────────────────────────────────────────────────
             'Wali Kelas' => [
                 'tugas' => ['Wali Kelas'],
-                'expect' => ['Wali Kelas ·'],
+                'expect' => ['Men Walkes'],
                 'options' => ['homeroom' => true],
             ],
             'Koordinator Kesiswaan' => [
@@ -641,7 +641,7 @@ class SidebarAuditTest extends TestCase
             ],
             'Wali Kelas + Wali Kamar + Pembina Ekskul' => [
                 'tugas' => ['Wali Kelas', 'Wali Kamar', 'Pembina Ekstrakurikuler'],
-                'expect' => ['Wali Kelas ·', 'Wali Kamar', 'Ekstrakurikuler'],
+                'expect' => ['Men Walkes', 'Wali Kamar', 'Ekstrakurikuler'],
                 'options' => ['homeroom' => true, 'room' => true],
             ],
             'Admin UKS + Wali Kamar' => [
@@ -688,6 +688,60 @@ class SidebarAuditTest extends TestCase
         );
     }
 
+
+
+    /**
+     * Pemisahan topi: Mengajar, Men Walkes, Jabatan, Tugas Tambahan.
+     */
+    public function test_topi_mengajar_walkes_dan_jabatan_terpisah(): void
+    {
+        $this->bootSchool();
+
+        $waka = $this->makeUser(
+            'GURU UMUM',
+            ['Waka Kurikulum', 'Wali Kelas'],
+            true,
+            ['homeroom' => true],
+        );
+
+        $page = $this->actingAs($waka)->get('/'.$waka->id.'/dashboard/satuan-pendidikan');
+        $page->assertOk();
+        $html = $page->getContent();
+
+        $this->assertStringContainsString('Mengajar · Guru Mapel', $html);
+        $this->assertStringContainsString('Men Walkes', $html);
+        $this->assertStringContainsString('Jabatan ·', $html);
+        $this->assertStringNotContainsString('Menu Guru Mapel', $html);
+
+        $guru = $this->makeUser('GURU UMUM', [], true);
+        $guruPage = $this->actingAs($guru)->get('/'.$guru->id.'/dashboard/satuan-pendidikan');
+        $guruPage->assertOk();
+        $this->assertStringContainsString('Menu Guru Mapel', $guruPage->getContent());
+    }
+
+
+    /**
+     * Rangkap jabatan + tugas tambahan: dua topi tampil, tidak saling menutup.
+     */
+    public function test_jabatan_dan_tugas_tambahan_punya_topi_sendiri(): void
+    {
+        $this->bootSchool();
+
+        $dual = $this->makeUser('GURU UMUM', ['Waka Kurikulum', 'Koordinator Kesiswaan'], false);
+        $dualPage = $this->actingAs($dual)->get('/'.$dual->id.'/dashboard/satuan-pendidikan');
+        $dualPage->assertOk();
+        $dualHtml = $dualPage->getContent();
+        $this->assertStringContainsString('Jabatan ·', $dualHtml);
+        $this->assertStringContainsString('Tugas Tambahan · Koordinator Kesiswaan', $dualHtml);
+        $this->assertStringContainsString('Dashboard Kesiswaan', $dualHtml);
+
+        $taskOnly = $this->makeUser('GURU UMUM', ['Koordinator Kesiswaan'], false);
+        $taskPage = $this->actingAs($taskOnly)->get('/'.$taskOnly->id.'/dashboard/satuan-pendidikan');
+        $taskPage->assertOk();
+        $taskHtml = $taskPage->getContent();
+        $this->assertStringContainsString('Tugas Tambahan · Koordinator Kesiswaan', $taskHtml);
+        $this->assertStringNotContainsString('Jabatan ·', $taskHtml);
+    }
 
     public function test_tmp_probe(): void
     {

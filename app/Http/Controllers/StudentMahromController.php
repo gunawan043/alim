@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AcademicYear;
 use App\Models\Student;
+use App\Models\StudentClassHistory;
 use App\Models\StudentMahrom;
 use Illuminate\Http\Request;
 
@@ -16,16 +18,52 @@ class StudentMahromController extends Controller
     {
         $schoolContextId = $request->attributes->get('schoolContextId');
         $isGlobalView = $request->attributes->get('isGlobalView') === true;
+        $user = $request->user();
 
-        $scopeSchool = function ($q) use ($schoolContextId) {
+        // Scope sekolah + scope peran (wali kelas → kelasnya, user asrama →
+        // penghuni asrama yang dapat diakses).
+        $applyScope = function ($q) use ($schoolContextId, $user) {
             if ($schoolContextId && ! request()->boolean('isGlobalView')) {
                 $q->whereHas('student', fn ($sq) => $sq->where('school_id', $schoolContextId));
             }
+
+            if (! $user) {
+                return;
+            }
+
+            if ($user->isSystemAdmin() || $user->isSuperAdmin() || canPermission('student-all-access')) {
+                return;
+            }
+
+            if ($user->hasAnyRole(['Pimpinan', 'Humas Personalia', 'Keuangan'])) {
+                return;
+            }
+
+            if ($user->isHomeroomTeacher()) {
+                $q->whereIn('student_id', $this->homeroomStudentIds($user));
+
+                return;
+            }
+
+            if ($user->isDormitoryUser()) {
+                $dormitoryIds = $user->accessibleDormitoryIds();
+                $q->whereHas('student.activeDormitoryResident', fn ($sq) => $sq->whereIn('dormitory_id', $dormitoryIds));
+            }
         };
 
-        $query = StudentMahrom::query()
-            ->with(['student'])
-            ->where($scopeSchool);
+        $query = StudentMahrom::query()->with(['student']);
+        $applyScope($query);
+
+        // Filter kelas untuk topi "Men Walkes" (satu kelas per menu).
+        $applyStudyGroup = function ($q) use ($request) {
+            if ($request->filled('study_group_id')) {
+                $q->whereIn('student_id', StudentClassHistory::query()
+                    ->where('study_group_id', $request->study_group_id)
+                    ->where('is_active', true)
+                    ->select('student_id'));
+            }
+        };
+        $applyStudyGroup($query);
 
         // Search by mahrom name / phone / id_number
         if ($search = trim((string) $request->query('q', ''))) {
@@ -52,11 +90,19 @@ class StudentMahromController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $statsBase = function () use ($applyScope, $applyStudyGroup) {
+            $q = StudentMahrom::query();
+            $applyScope($q);
+            $applyStudyGroup($q);
+
+            return $q;
+        };
+
         $stats = [
-            'total' => StudentMahrom::query()->where($scopeSchool)->count(),
-            'primary' => StudentMahrom::query()->where($scopeSchool)->where('is_primary', true)->count(),
-            'active' => StudentMahrom::query()->where($scopeSchool)->where('is_active', true)->count(),
-            'students_with_mahrom' => StudentMahrom::query()->where($scopeSchool)->distinct()->count('student_id'),
+            'total' => $statsBase()->count(),
+            'primary' => $statsBase()->where('is_primary', true)->count(),
+            'active' => $statsBase()->where('is_active', true)->count(),
+            'students_with_mahrom' => $statsBase()->distinct()->count('student_id'),
         ];
 
         $relationships = [
@@ -85,6 +131,7 @@ class StudentMahromController extends Controller
     public function index(Request $request, string $userId, string $santriUuid)
     {
         $student = Student::findOrFail($santriUuid);
+        $this->authorizeMahromAccess($student);
 
         $mahroms = StudentMahrom::where('student_id', $santriUuid)
             ->orderByDesc('is_primary')
@@ -108,6 +155,7 @@ class StudentMahromController extends Controller
     public function create(Request $request, string $userId, string $santriUuid)
     {
         $student = Student::findOrFail($santriUuid);
+        $this->authorizeMahromAccess($student);
         $existingCount = StudentMahrom::where('student_id', $santriUuid)->count();
         $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
 
@@ -125,6 +173,7 @@ class StudentMahromController extends Controller
     public function store(Request $request, string $userId, string $santriUuid)
     {
         $student = Student::findOrFail($santriUuid);
+        $this->authorizeMahromAccess($student);
         $existingCount = StudentMahrom::where('student_id', $santriUuid)->count();
         $maxMahrom = (int) config('alim.max_mahrom', StudentMahrom::MAX_PER_STUDENT);
 
@@ -178,6 +227,8 @@ class StudentMahromController extends Controller
             'village',
         ])->findOrFail($santriUuid);
 
+        $this->authorizeMahromAccess($student);
+
         $mahrom = StudentMahrom::where('student_id', $santriUuid)->findOrFail($mahromUuid);
 
         // Daftar mahrom lain milik Santri yang sama (di luar $mahrom)
@@ -197,6 +248,8 @@ class StudentMahromController extends Controller
     public function edit(Request $request, string $userId, string $santriUuid, string $mahromUuid)
     {
         $student = Student::findOrFail($santriUuid);
+        $this->authorizeMahromAccess($student);
+
         $mahrom = StudentMahrom::where('student_id', $santriUuid)->findOrFail($mahromUuid);
 
         return view('students.mahroms.edit', compact('student', 'mahrom', 'userId'));
@@ -207,6 +260,8 @@ class StudentMahromController extends Controller
      */
     public function update(Request $request, string $userId, string $santriUuid, string $mahromUuid)
     {
+        $this->authorizeMahromAccess(Student::findOrFail($santriUuid));
+
         $mahrom = StudentMahrom::where('student_id', $santriUuid)->findOrFail($mahromUuid);
 
         $data = $request->validate([
@@ -243,6 +298,8 @@ class StudentMahromController extends Controller
      */
     public function destroy(Request $request, string $userId, string $santriUuid, string $mahromUuid)
     {
+        $this->authorizeMahromAccess(Student::findOrFail($santriUuid));
+
         $mahrom = StudentMahrom::where('student_id', $santriUuid)->findOrFail($mahromUuid);
         $mahrom->delete();
 
@@ -325,15 +382,81 @@ class StudentMahromController extends Controller
         if (! $student) {
             return false;
         }
+
         if (request()->boolean('isGlobalView')) {
             return true;
         }
+
         $ctx = request()->schoolContextId;
-        if (! $ctx) {
-            return true; // tanpa school context (mis. super admin), ijinkan
+        if ($ctx && $student->school_id !== $ctx) {
+            return false;
         }
 
-        return $student->school_id === $ctx;
+        $user = auth()->user();
+
+        if (! $user) {
+            return true;
+        }
+
+        if ($user->isSystemAdmin() || $user->isSuperAdmin() || canPermission('student-all-access')) {
+            return true;
+        }
+
+        if ($user->hasAnyRole(['Pimpinan', 'Humas Personalia', 'Keuangan'])) {
+            return true;
+        }
+
+        // Wali kelas: hanya santri di rombel yang diwalikan.
+        if ($user->isHomeroomTeacher()) {
+            return $user->isHomeroomTeacherOf($student);
+        }
+
+        // User asrama: hanya santri yang mondok di asrama yang dapat diakses.
+        if ($user->isDormitoryUser()) {
+            $dormitoryIds = $user->accessibleDormitoryIds();
+
+            return $student->activeDormitoryResident()
+                ->whereIn('dormitory_id', $dormitoryIds)
+                ->exists();
+        }
+
+        return true;
+    }
+
+    /**
+     * ID santri pada rombel yang diwalikan user (TA aktif).
+     *
+     * @return array<int, string>
+     */
+    protected function homeroomStudentIds($user): array
+    {
+        $groupIds = $user->homeroomStudyGroupIds();
+
+        if ($groupIds === []) {
+            return [];
+        }
+
+        $yearId = AcademicYear::where('is_active', true)->value('id');
+
+        return StudentClassHistory::query()
+            ->whereIn('study_group_id', $groupIds)
+            ->when($yearId, fn ($q) => $q->where('academic_year_id', $yearId))
+            ->pluck('student_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Pastikan user boleh mengelola mahrom santri ini.
+     */
+    protected function authorizeMahromAccess(Student $student): void
+    {
+        abort_unless(
+            $this->canAccessStudent($student),
+            404,
+            'Data santri tidak ditemukan pada akun ini.'
+        );
     }
 
     /**
@@ -465,6 +588,18 @@ class StudentMahromController extends Controller
         $schoolId = request()->attributes->get('schoolContextId');
         if ($schoolId && request()->attributes->get('isGlobalView') !== true) {
             $query->where('school_id', $schoolId);
+        }
+
+        // Scope peran: wali kelas hanya kelasnya, user asrama hanya penghuninya.
+        if ($auth && ! $auth->isSystemAdmin() && ! $auth->isSuperAdmin()
+            && ! canPermission('student-all-access')
+            && ! $auth->hasAnyRole(['Pimpinan', 'Humas Personalia', 'Keuangan'])) {
+            if ($auth->isHomeroomTeacher()) {
+                $query->whereIn('id', $this->homeroomStudentIds($auth));
+            } elseif ($auth->isDormitoryUser()) {
+                $dormitoryIds = $auth->accessibleDormitoryIds();
+                $query->whereHas('activeDormitoryResident', fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds));
+            }
         }
 
         // Filter by user_id if column populated, else fall back to school_id.

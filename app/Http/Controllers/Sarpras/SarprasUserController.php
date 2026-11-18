@@ -156,6 +156,7 @@ class SarprasUserController extends SarprasBaseController
         $schoolId = $request->attributes->get('schoolContextId');
         $userId = $request->route('userId');
         $rooms = AssetRoom::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($request->filled('study_group_id'), fn ($q) => $q->where('study_group_id', $request->study_group_id))
             ->where('is_active', true)->with('building')->orderBy('room_name')->get();
         $buildings = AssetBuilding::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderBy('building_name')->get();
 
@@ -329,6 +330,11 @@ class SarprasUserController extends SarprasBaseController
             $query = $this->scopeToResponsibility($query, $request);
         } elseif ($schoolId) {
             $query->where('school_id', $schoolId);
+        }
+
+        // Walkes: inventaris kelas hanya untuk rombel yang dipilih.
+        if ($request->filled('study_group_id')) {
+            $query->whereHas('room', fn ($q) => $q->where('study_group_id', $request->study_group_id));
         }
 
         $stats = [

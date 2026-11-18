@@ -113,51 +113,11 @@
         </a>
     </li>
 
-    @if($guruMenuBooks->isNotEmpty())
-        @php
-            $guruMenuBookActive = isActiveAny($currentRoute, [
-                'user.schools.guru-mapel.wizard',
-                'user.schools.guru-mapel.w1',
-                'user.schools.guru-mapel.w2',
-                'user.schools.guru-mapel.w3',
-                'user.schools.guru-mapel.w4',
-                'user.schools.guru-mapel.w5',
-                'user.schools.guru-mapel.w6',
-            ]);
-        @endphp
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ $guruMenuBookActive ? ' active' : '' }}"
-               href="#guru_menu_books" data-bs-toggle="collapse" role="button"
-               aria-expanded="{{ $guruMenuBookActive ? 'true' : 'false' }}"
-               aria-controls="guru_menu_books">
-                <i class="ri-booklet-line"></i>
-                <span>Mapel Saya <span class="badge bg-primary-subtle text-primary ms-1">{{ $guruMenuBooks->count() }}</span></span>
-                <span class="menu-arrow"></span>
-            </a>
-            <div class="collapse menu-dropdown{{ $guruMenuBookActive ? ' show' : '' }}" id="guru_menu_books">
-                <ul class="nav nav-sm flex-column">
-                    @foreach($guruMenuBooks as $book)
-                        <li class="nav-item">
-                            <div class="d-flex align-items-center">
-                                <a class="nav-link flex-grow-1 text-truncate{{ (string) request()->route('adminBookId') === (string) $book->id ? ' active' : '' }}"
-                                   href="{{ $guruMenuUrl('user.schools.guru-mapel.w3', ['adminBookId' => $book->id]) }}"
-                                   title="Input nilai {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}"
-                                   style="max-width: 190px;">
-                                    {{ $book->subject?->name ?? 'Mapel' }} · {{ $book->studyGroup?->name ?? '-' }}
-                                </a>
-                                <a class="nav-link px-2 flex-shrink-0"
-                                   href="{{ $guruMenuUrl('user.kurikulum.perangkat.index', ['subject_id' => $book->subject_id, 'study_group_id' => $book->study_group_id]) }}"
-                                   title="Perangkat ajar {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}"
-                                   aria-label="Perangkat ajar {{ $book->subject?->name }}">
-                                    <i class="ri-file-text-line"></i>
-                                </a>
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        </li>
-    @endif
+    @include('layouts.sidebar.satuan-pendidikan.partials.mapel-saya', [
+        'mapelSayaBooks' => $guruMenuBooks,
+        'mapelSayaId' => 'guru_menu_books',
+        'mapelSayaUserId' => $guruMenuUserId,
+    ])
 
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.']) ? ' active' : '' }}"
