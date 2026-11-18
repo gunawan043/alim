@@ -4,26 +4,37 @@ namespace App\Observers;
 
 use App\Models\AssetRoom;
 use App\Models\StudyGroup;
+use App\Services\Academic\RombelSubjectProvisioner;
 use App\Services\Academic\StudyGroupRoomService;
 
 class StudyGroupObserver
 {
-    public function __construct(private readonly StudyGroupRoomService $roomService)
-    {
+    public function __construct(
+        private readonly StudyGroupRoomService $roomService,
+        private readonly RombelSubjectProvisioner $subjects,
+    ) {
     }
 
     /**
-     * Setiap rombel baru langsung membuat ruang kelas di Sarpras.
+     * Setiap rombel baru langsung membuat ruang kelas di Sarpras dan
+     * menyalin struktur mapel dari tingkatnya.
      * Tidak lagi bergantung pada kolom `room` karena nama ruang mengikuti
      * nama rombel.
      */
     public function created(StudyGroup $studyGroup): void
     {
         $this->roomService->sync($studyGroup);
+        $this->subjects->provision($studyGroup);
     }
 
     public function updated(StudyGroup $studyGroup): void
     {
+        if ($studyGroup->wasChanged(['grade_level_id', 'academic_year_id'])) {
+            // Rombel berpindah tingkat/TA: susun ulang mapel & buku nilai
+            // mengikuti struktur tingkat pada TA barunya.
+            $this->subjects->provision($studyGroup);
+        }
+
         if (! $studyGroup->wasChanged([
             'school_id',
             'name',

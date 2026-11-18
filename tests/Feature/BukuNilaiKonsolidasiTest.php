@@ -7,6 +7,7 @@ use App\Jobs\ProvisionStudyGroupSubjectAcademicStructureJob;
 use App\Models\AcademicYear;
 use App\Models\AuditLog;
 use App\Models\GradeLevel;
+use App\Models\GradeLevelSubject;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\School;
@@ -515,6 +516,50 @@ class BukuNilaiKonsolidasiTest extends TestCase
         $archive->assertSee('SANTRI PERIODE ROMBEL');
         $archive->assertSee('2025/2026');
         $archive->assertSee('Matematika');
+    }
+
+
+    /**
+     * Rombel baru / rombel tanpa mapel otomatis mengikuti struktur mapel
+     * tingkatnya, lalu buku nilai ikut dibuat.
+     */
+    public function test_rombel_baru_otomatis_mengikuti_mapel_tingkat(): void
+    {
+        $this->studyGroup->update(['homeroom_teacher_id' => $this->guruA->id]);
+
+        GradeLevelSubject::create([
+            'academic_year_id' => $this->ay->id,
+            'grade_level_id' => $this->grade->id,
+            'subject_id' => $this->subject->id,
+            'allocation_hours' => 4,
+            'is_active' => true,
+        ]);
+
+        foreach ([$this->studyGroup, StudyGroup::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'grade_level_id' => $this->grade->id,
+            'homeroom_teacher_id' => $this->guruB->id,
+            'name' => '7B',
+            'code' => '7B',
+            'capacity' => 30,
+            'is_active' => true,
+        ])] as $group) {
+            $this->assertDatabaseHas('study_group_subjects', [
+                'study_group_id' => $group->id,
+                'subject_id' => $this->subject->id,
+                'academic_year_id' => $this->ay->id,
+                'is_active' => 1,
+            ]);
+
+            $this->assertDatabaseHas('teacher_admin_books', [
+                'study_group_id' => $group->id,
+                'subject_id' => $this->subject->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'is_active' => 1,
+            ]);
+        }
     }
 
     private function seedSnapshot(User $user): void
