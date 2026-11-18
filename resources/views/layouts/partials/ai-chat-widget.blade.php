@@ -14,32 +14,44 @@
 
         .ai-chat-fab {
             position: fixed;
-            right: 24px;
-            bottom: 24px;
+            right: 18px;
+            bottom: 84px;
             z-index: 1085;
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            min-height: 52px;
-            padding: 0 18px 0 14px;
+            justify-content: center;
+            gap: 0;
+            width: 48px;
+            height: 48px;
+            min-height: 48px;
+            padding: 0;
             border: 1px solid rgba(255, 255, 255, .28);
-            border-radius: 999px;
+            border-radius: 50%;
             color: #fff;
             background: linear-gradient(135deg, var(--ai-brand) 0%, #2f6f8f 55%, var(--ai-brand-2) 100%);
             box-shadow: 0 12px 28px rgba(31, 42, 68, .28), 0 2px 6px rgba(31, 42, 68, .16);
             font-size: 13px;
             font-weight: 600;
             letter-spacing: .01em;
-            transition-property: transform, box-shadow, filter;
+            transition-property: transform, box-shadow, filter, width, border-radius;
             transition-duration: 160ms;
             transition-timing-function: ease-out;
         }
+        .ai-chat-fab-label {
+            display: none;
+            white-space: nowrap;
+        }
         .ai-chat-fab:hover {
+            width: auto;
+            padding: 0 18px 0 14px;
+            border-radius: 999px;
+            gap: 10px;
             color: #fff;
             transform: translateY(-2px);
             box-shadow: 0 16px 34px rgba(31, 42, 68, .32), 0 3px 8px rgba(31, 42, 68, .18);
             filter: saturate(1.05);
         }
+        .ai-chat-fab:hover .ai-chat-fab-label { display: inline; }
         .ai-chat-fab:active { transform: scale(.97); }
         .ai-chat-fab:focus-visible {
             outline: 3px solid rgba(8, 168, 138, .35);
@@ -606,12 +618,13 @@
 
         @media (max-width: 575.98px) {
             .ai-chat-fab {
-                right: 16px;
-                bottom: 16px;
-                padding: 0 14px 0 10px;
-                min-height: 48px;
+                right: 12px;
+                bottom: 76px;
+                width: 46px;
+                height: 46px;
+                padding: 0;
             }
-            .ai-chat-fab-label { display: none; }
+            .ai-chat-fab-label { display: none !important; }
             .ai-chat-panel {
                 right: 8px;
                 bottom: 8px;
@@ -667,6 +680,9 @@
                 <button type="button" class="ai-chat-icon-btn" id="aiChatClose" title="Tutup" aria-label="Tutup chat">
                     <i class="ri-close-line"></i>
                 </button>
+                <button type="button" class="ai-chat-icon-btn" id="aiChatHideFab" title="Sembunyikan tombol mengambang" aria-label="Sembunyikan tombol mengambang ALIM AI">
+                    <i class="ri-eye-off-line"></i>
+                </button>
             </div>
         </div>
 
@@ -721,6 +737,13 @@
             const input = document.getElementById('aiChatInput');
             const sendBtn = document.getElementById('aiChatSend');
             const closeBtn = document.getElementById('aiChatClose');
+            const hideFabBtn = document.getElementById('aiChatHideFab');
+            const fabHiddenKey = 'alimAiFabHidden';
+            const applyFabVisibility = function () {
+                const hidden = localStorage.getItem(fabHiddenKey) === '1';
+                fab.style.display = hidden ? 'none' : '';
+            };
+            applyFabVisibility();
             const newBtn = document.getElementById('aiChatNew');
             const historyBtn = document.getElementById('aiChatHistoryBtn');
             const themeBtn = document.getElementById('aiChatThemeToggle');
@@ -1196,6 +1219,11 @@
 
             fab.addEventListener('click', openPanel);
             closeBtn.addEventListener('click', closePanel);
+            hideFabBtn?.addEventListener('click', function () {
+                localStorage.setItem(fabHiddenKey, '1');
+                closePanel();
+                fab.style.display = 'none';
+            });
             newBtn.addEventListener('click', resetChat);
             historyBtn.addEventListener('click', function () {
                 if (historyOpen) hideHistory(); else showHistory();

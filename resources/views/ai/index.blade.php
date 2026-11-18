@@ -614,6 +614,10 @@
                     <p>{{ $feedbackReport ? 'Kritik & Saran / Bug · diskusi dua arah' : $scopeLabel.' · jawaban otomatis dari data aplikasi' }}</p>
                 </div>
                 <div class="ai-topbar-spacer"></div>
+                <button type="button" class="btn btn-sm btn-light" title="Tampilkan tombol mengambang ALIM AI"
+                        onclick="localStorage.removeItem('alimAiFabHidden');window.location.reload();">
+                    <i class="ri-sparkling-2-line me-1"></i>Tampilkan Tombol AI
+                </button>
                 <button type="button" class="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle light-dark-mode" title="Mode gelap / terang" aria-label="Mode gelap / terang">
                     <i class="bx bx-moon fs-18"></i>
                 </button>

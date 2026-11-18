@@ -28,8 +28,15 @@
     }
 
     [data-bs-theme="dark"] .modal-content {
-        background-color: var(--bs-modal-bg);
+        background-color: var(--vz-secondary-bg, #212529) !important;
         color: var(--bs-body-color);
+        opacity: 1;
+    }
+
+    [data-bs-theme="dark"] .modal-header,
+    [data-bs-theme="dark"] .modal-body,
+    [data-bs-theme="dark"] .modal-footer {
+        background-color: var(--vz-secondary-bg, #212529);
     }
 
     [data-bs-theme="dark"] .modal-header,
@@ -105,9 +112,18 @@
     }
 
     /* ── Komponen umum daftar/kartu ───────────────────────────────── */
-    [data-bs-theme="dark"] .card { background-color: var(--bs-body-bg); border-color: var(--bs-border-color); }
+    /* Dark mode: kartu memakai kaca gelap (glassmorphism) yang tetap
+       terbaca, bukan transparan penuh. Utility bg-* tetap menimpa aturan ini
+       karena memakai !important. */
+    [data-bs-theme="dark"] .card {
+        background-color: rgba(27, 35, 49, .82);
+        border-color: rgba(255, 255, 255, .10);
+        -webkit-backdrop-filter: blur(18px) saturate(135%);
+        backdrop-filter: blur(18px) saturate(135%);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .035);
+    }
     [data-bs-theme="dark"] .card-header,
-    [data-bs-theme="dark"] .card-footer { background-color: transparent; border-color: var(--bs-border-color); }
+    [data-bs-theme="dark"] .card-footer { background-color: transparent; border-color: rgba(255, 255, 255, .08); }
 
     [data-bs-theme="dark"] .table {
         --bs-table-color: var(--bs-body-color);

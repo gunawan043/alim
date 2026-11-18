@@ -434,6 +434,28 @@
     $absensiMode = ($isAdminTU && ! $isStruktural) ? 'admin' : 'koordinator';
     $sarprasMode = ($isAdminTU && ! $isStruktural) ? 'aset' : 'full';
 
+    /*
+     * Daftar buku mapel milik guru untuk TA aktif — ditampilkan langsung di
+     * sidebar agar guru dapat membuka input nilai mapel/kelasnya tanpa harus
+     * melewati halaman daftar buku terlebih dahulu.
+     */
+    $guruBooks = collect();
+    if ($showMengajar && $userId) {
+        $activeSidebarAy = \App\Models\AcademicYear::query()->where('is_active', true)->first();
+        if ($activeSidebarAy) {
+            $guruBooks = \App\Models\TeacherAdminBook::query()
+                ->with(['subject:id,name', 'studyGroup:id,name'])
+                ->forTeacherWorkspace($userId)
+                ->where('is_active', true)
+                ->where('academic_year_id', $activeSidebarAy->id)
+                ->where('semester', $activeSidebarAy->semester)
+                ->get()
+                ->unique(fn ($book) => $book->subject_id.'|'.$book->study_group_id.'|'.$book->academic_year_id.'|'.$book->semester)
+                ->sortBy(fn ($book) => ($book->subject?->name ?? '').'|'.($book->studyGroup?->name ?? ''))
+                ->values();
+        }
+    }
+
     $hasManagementBlock = $showKesiswaan || $showRombel || $showNilai || $showAkademik
         || $showGtk || $showKehadiran || $showSarpras || $manageSchool || $showPerpus
         || $showBahasa || $showTahfidz || $isBendahara;
@@ -509,6 +531,37 @@
                    href="{{ route('user.schools.guru-mapel.index', ['userId' => $userId]) }}">
                     <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
             </li>
+
+            @if($guruBooks->isNotEmpty())
+                @php
+                    $guruBookActive = isActiveAny($currentRoute, ['user.schools.guru-mapel.wizard', 'user.schools.guru-mapel.w1', 'user.schools.guru-mapel.w2', 'user.schools.guru-mapel.w3', 'user.schools.guru-mapel.w4', 'user.schools.guru-mapel.w5', 'user.schools.guru-mapel.w6']);
+                @endphp
+                <li class="nav-item">
+                    <a class="nav-link menu-link{{ $guruBookActive ? ' active' : '' }}"
+                       href="#sp_guru_books" data-bs-toggle="collapse" role="button"
+                       aria-expanded="{{ $guruBookActive ? 'true' : 'false' }}"
+                       aria-controls="sp_guru_books">
+                        <i class="ri-booklet-line"></i>
+                        <span>Mapel Saya <span class="badge bg-primary-subtle text-primary ms-1">{{ $guruBooks->count() }}</span></span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <div class="collapse menu-dropdown{{ $guruBookActive ? ' show' : '' }}" id="sp_guru_books">
+                        <ul class="nav nav-sm flex-column">
+                            @foreach($guruBooks as $book)
+                                <li class="nav-item">
+                                    <a class="nav-link{{ (string) request()->route('adminBookId') === (string) $book->id ? ' active' : '' }}"
+                                       href="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $book->id]) }}"
+                                       title="Input nilai {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}">
+                                        <span class="text-truncate d-inline-block" style="max-width: 190px;">
+                                            {{ $book->subject?->name ?? 'Mapel' }} · {{ $book->studyGroup?->name ?? '-' }}
+                                        </span>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </li>
+            @endif
 
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
         </x-sidebar-section>

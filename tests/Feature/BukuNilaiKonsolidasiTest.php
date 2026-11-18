@@ -562,6 +562,34 @@ class BukuNilaiKonsolidasiTest extends TestCase
         }
     }
 
+
+    /**
+     * Wali kelas hanya boleh membuka leger kelasnya sendiri.
+     */
+    public function test_wali_kelas_hanya_bisa_membuka_kelasnya_sendiri(): void
+    {
+        $wali = $this->makeUser('Guru Wali', 'wali.kelas@nilai.test', 'Guru Mapel');
+        $this->studyGroup->update(['homeroom_teacher_id' => $wali->id]);
+
+        $otherGroup = StudyGroup::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'grade_level_id' => $this->grade->id,
+            'name' => '7C',
+            'code' => '7C',
+            'capacity' => 30,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($wali)
+            ->get("/{$wali->id}/schools/nilai-kelas/{$this->studyGroup->id}/sts")
+            ->assertOk();
+
+        $this->actingAs($wali)
+            ->get("/{$wali->id}/schools/nilai-kelas/{$otherGroup->id}/sts")
+            ->assertStatus(403);
+    }
+
     private function seedSnapshot(User $user): void
     {
         $roleDimension = implode(',', $user->fresh()->effectiveRoles()) ?: 'default';
