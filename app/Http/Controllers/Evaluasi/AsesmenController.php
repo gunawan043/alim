@@ -11,6 +11,7 @@ use App\Models\PaketSoal;
 use App\Models\Soal;
 use App\Models\Subject;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AsesmenController extends Controller
 {
@@ -53,25 +54,52 @@ class AsesmenController extends Controller
             ->withQueryString();
 
         // Dokumen terakhir per kisi/paket untuk tombol aksi di tabel pusat.
+        // Modul paket/LJK dapat belum tersedia pada instalasi yang belum
+        // menjalankan migrasi evaluasi — jangan sampai membuat pusat asesmen 500.
         $assessmentIds = $assessments->getCollection()->pluck('id');
-        $latestPakets = PaketSoal::query()
-            ->whereIn('kisi_kisi_soal_id', $assessmentIds)
-            ->withCount('items')
-            ->orderByDesc('updated_at')
-            ->get()
-            ->unique('kisi_kisi_soal_id')
-            ->keyBy('kisi_kisi_soal_id');
+        $latestPakets = collect();
+        $latestLjks = collect();
 
-        $latestLjks = LjkExam::query()
-            ->whereIn('paket_soal_id', $latestPakets->pluck('id'))
-            ->orderByDesc('created_at')
-            ->get()
-            ->unique('paket_soal_id')
-            ->keyBy('paket_soal_id');
+        try {
+            $latestPakets = PaketSoal::query()
+                ->whereIn('kisi_kisi_soal_id', $assessmentIds)
+                ->withCount('items')
+                ->orderByDesc('updated_at')
+                ->get()
+                ->unique('kisi_kisi_soal_id')
+                ->keyBy('kisi_kisi_soal_id');
+
+            $latestLjks = LjkExam::query()
+                ->whereIn('paket_soal_id', $latestPakets->pluck('id'))
+                ->orderByDesc('created_at')
+                ->get()
+                ->unique('paket_soal_id')
+                ->keyBy('paket_soal_id');
+        } catch (\Throwable $e) {
+            Log::warning('Pusat asesmen: modul paket/LJK tidak dapat dibaca', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $states = [];
         foreach ($assessments as $assessment) {
-            $states[$assessment->id] = $this->assessmentState($assessment, $userId, $schoolId);
+            try {
+                $states[$assessment->id] = $this->assessmentState($assessment, $userId, $schoolId);
+            } catch (\Throwable $e) {
+                // Satu baris bermasalah tidak boleh menjatuhkan seluruh halaman.
+                Log::warning('Pusat asesmen: gagal menghitung status asesmen', [
+                    'kisi_id' => $assessment->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $states[$assessment->id] = $this->state(
+                    'soal',
+                    'Periksa Data',
+                    'user.asesmen.show',
+                    ['userId' => $userId, 'kisiUuid' => $assessment->id],
+                    'warning',
+                );
+            }
         }
 
         $bankBase = BankSoal::query()->accessibleBy($userId, $schoolId);
@@ -82,32 +110,53 @@ class AsesmenController extends Controller
 
         $stats = [
             'total' => (clone $base)->count(),
-            'banks' => (clone $bankBase)->count(),
-            'pakets' => (clone $paketBase)->count(),
-            'ljk' => (clone $ljkBase)->count(),
-            'final' => (clone $base)->whereHas('pakets', fn ($q) => $q->where('is_published', true))->count(),
+            'banks' => 0,
+            'pakets' => 0,
+            'ljk' => 0,
+            'final' => 0,
         ];
 
-        $banks = (clone $bankBase)
-            ->with(['subject:id,name', 'gradeLevel:id,name', 'academicYear:id,name'])
-            ->withCount(['soal', 'soalApproved as approved_soal_count'])
-            ->orderByDesc('updated_at')
-            ->limit(10)
-            ->get();
+        try {
+            $stats['banks'] = (clone $bankBase)->count();
+            $stats['pakets'] = (clone $paketBase)->count();
+            $stats['ljk'] = (clone $ljkBase)->count();
+            $stats['final'] = (clone $base)->whereHas('pakets', fn ($q) => $q->where('is_published', true))->count();
+        } catch (\Throwable $e) {
+            Log::warning('Pusat asesmen: statistik opsional gagal dihitung', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
-        $pakets = (clone $paketBase)
-            ->with(['kisiKisi.subject:id,name', 'kisiKisi.gradeLevel:id,name'])
-            ->withCount('items')
-            ->orderByDesc('updated_at')
-            ->limit(10)
-            ->get();
+        $banks = collect();
+        $pakets = collect();
+        $ljkExams = collect();
 
-        $ljkExams = (clone $ljkBase)
-            ->with(['paketSoal:id,judul,kode_paket', 'subject:id,name', 'studyGroup:id,name'])
-            ->withCount(['participants', 'sheets'])
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get();
+        try {
+            $banks = (clone $bankBase)
+                ->with(['subject:id,name', 'gradeLevel:id,name', 'academicYear:id,name'])
+                ->withCount(['soal', 'soalApproved as approved_soal_count'])
+                ->orderByDesc('updated_at')
+                ->limit(10)
+                ->get();
+
+            $pakets = (clone $paketBase)
+                ->with(['kisiKisi.subject:id,name', 'kisiKisi.gradeLevel:id,name'])
+                ->withCount('items')
+                ->orderByDesc('updated_at')
+                ->limit(10)
+                ->get();
+
+            $ljkExams = (clone $ljkBase)
+                ->with(['paketSoal:id,judul,kode_paket', 'subject:id,name', 'studyGroup:id,name'])
+                ->withCount(['participants', 'sheets'])
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get();
+        } catch (\Throwable $e) {
+            Log::warning('Pusat asesmen: daftar dokumen opsional gagal dibaca', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
 

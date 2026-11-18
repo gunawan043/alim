@@ -97,24 +97,44 @@
      * menjadi sumber kebenaran, jadi kedua sidebar tetap ditampilkan
      * meskipun role Spatie hanya menyimpan salah satunya.
      */
-    $isDualUnitHead = false;
+    $isDormHead = false;
+    $isSchoolHead = false;
+
     if ($user && ! $isSystemAdmin) {
         try {
-            $isDualUnitHead = \App\Models\Dormitory::query()
+            $isDormHead = \App\Models\Dormitory::query()
                 ->where('head_id', $user->id)
                 ->where('is_active', true)
-                ->exists()
-                && \App\Models\School::query()
-                    ->where('principal_user_id', $user->id)
-                    ->where('is_active', true)
-                    ->exists();
+                ->exists();
+
+            $isSchoolHead = \App\Models\School::query()
+                ->where('principal_user_id', $user->id)
+                ->where('is_active', true)
+                ->exists();
         } catch (\Throwable) {
-            $isDualUnitHead = false;
+            $isDormHead = false;
+            $isSchoolHead = false;
         }
     }
 
-    if ($isDualUnitHead) {
-        $userRoles = array_values(array_unique(array_merge($userRoles, ['Asrama', 'Satuan Pendidikan'])));
+    $isDualUnitHead = $isDormHead && $isSchoolHead;
+
+    // Kepala unit adalah bukti peran yang lebih kuat daripada role Spatie:
+    // akun lama bisa belum punya role yang sesuai, atau role-nya tertimpa
+    // saat penetapan kepala yang lain. Tambahkan (jangan ganti) agar sidebar
+    // kedua area tetap muncul untuk peran rangkap.
+    $impliedRoles = [];
+
+    if ($isDormHead) {
+        $impliedRoles[] = 'Asrama';
+    }
+
+    if ($isSchoolHead) {
+        $impliedRoles[] = 'Satuan Pendidikan';
+    }
+
+    if ($impliedRoles !== []) {
+        $userRoles = array_values(array_unique(array_merge($userRoles, $impliedRoles)));
     }
 
     // ── Jabatan: PRIORITAS dari employment.jabatan ────────────────────────
@@ -164,8 +184,7 @@
         ->toArray();
 
     // ── Helper: cek role / jabatan / tugas ────────────────────────────────
-    $hasRole  = fn ($role)  => in_array($role, $userRoles, true);
-    $hasTugas = fn ($tugas) => in_array($tugas, $userTugas, true);
+    $hasRole = fn ($role) => in_array($role, $userRoles, true);
 
     /**
      * Normalisasi nama jabatan agar varian data hasil import tetap terbaca:
@@ -188,22 +207,70 @@
         return trim($v);
     };
 
+    /*
+     * Satu GTK dapat merangkap: Waka (struktural), Wali Kelas (tugas), dan
+     * Guru Mapel (SK mengajar). Jabatan bisa tersimpan di kepegawaian,
+     * penempatan satuan kerja, penugasan struktural, atau tugas tambahan —
+     * jadi semua sumber dibaca lewat UserJabatan, bukan hanya satu kolom.
+     */
+    $userJabatanCandidates = \App\Support\UserJabatan::candidates($user);
+
+    $jabatanNorms = collect($userJabatanCandidates)
+        ->map(fn ($j) => $normalizeJabatan($j))
+        ->filter()
+        ->unique()
+        ->values()
+        ->all();
+
+    // Teks jabatan utama tetap dipakai untuk label dashboard.
     $jabatanNorm = $normalizeJabatan($userJabatan);
 
     /**
      * Cocokkan jabatan user dengan nama jabatan baku.
-     * Cocok bila sama persis ATAU jabatan user diawali nama baku + spasi
+     * Cocok bila salah satu sumber sama persis ATAU diawali nama baku + spasi
      * (mis. "staf tata usaha pengasuhan putra" cocok dengan "Staf Tata Usaha").
      * Aturan "diawali" mencegah "Wakil Kepala Satuan Pendidikan" dianggap
      * sebagai "Kepala Satuan Pendidikan".
      */
-    $hasJabatan = static function ($jab) use ($jabatanNorm, $normalizeJabatan): bool {
+    $hasJabatan = static function ($jab) use ($jabatanNorms, $normalizeJabatan): bool {
         $target = $normalizeJabatan($jab);
-        if ($target === '' || $jabatanNorm === '') {
+
+        if ($target === '' || $jabatanNorms === []) {
             return false;
         }
 
-        return $jabatanNorm === $target || str_starts_with($jabatanNorm, $target.' ');
+        foreach ($jabatanNorms as $candidate) {
+            if ($candidate === $target || str_starts_with($candidate, $target.' ')) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    /**
+     * Tugas tambahan sering ditulis dengan tambahan nama rombel/unit, mis.
+     * "Wali Kelas 7A" atau "Waka Kurikulum". Cocokkan sebagai frasa, bukan
+     * kesamaan persis, supaya varian itu tetap dikenali.
+     */
+    $hasTugas = static function ($tugas) use ($userTugas, $normalizeJabatan): bool {
+        $target = $normalizeJabatan($tugas);
+
+        if ($target === '') {
+            return false;
+        }
+
+        foreach ($userTugas as $owned) {
+            $ownedNorm = $normalizeJabatan($owned);
+
+            if ($ownedNorm === $target
+                || str_starts_with($ownedNorm, $target.' ')
+                || str_contains($ownedNorm, $target)) {
+                return true;
+            }
+        }
+
+        return false;
     };
 
     // ── Helper: context route ─────────────────────────────────────────────
@@ -278,12 +345,64 @@
         'Koordinator Guru Hadits'               => 'koordinator-guru-hadits',
         'Koordinator Guru Bahasa Arab'          => 'koordinator-guru-bahasa-arab',
         'Koordinator Guru Tahfidz'              => 'koordinator-guru-tahfidz',
-        'Tim Kurikulum'                         => 'tim-kurikulum',
+        // Tim Kurikulum memakai modul Kurikulum yang sama dengan koordinator.
+        // Sebelumnya dipetakan ke file yang tidak ada sehingga menu hilang.
+        'Tim Kurikulum'                         => 'koordinator-kurikulum',
         'Tim Kesiswaan'                         => 'tim-kesiswaan',
         'Pembina Ekstrakurikuler'               => 'pembina-ekskul',
         'Admin UKS Putra'                       => 'admin-uks-putra',
         'Admin UKS Putri'                       => 'admin-uks-putri',
+
+        // ── Tugas tambahan lain di luar tiga tugas utama ─────────────
+        'Koordinator Alumni'                    => 'koordinator-alumni',
+        'Staf Penitipan Barang'                 => 'staf-penitipan-barang',
+        'Bendahara Sekolah'                     => 'bendahara-sekolah',
+
+        // Varian "Waka <bidang>" yang sering tersimpan sebagai tugas tambahan.
+        'Waka Kurikulum'                        => 'koordinator-kurikulum',
+        'Wakil Kurikulum'                       => 'koordinator-kurikulum',
+        'Waka Kesiswaan'                        => 'koordinator-kesiswaan',
+        'Wakil Kesiswaan'                       => 'koordinator-kesiswaan',
+        'Waka Sarpras'                          => 'koordinator-sarpras',
+        'Waka Sarana Prasarana'                 => 'koordinator-sarpras',
+        'Waka Pengasuhan'                       => 'waka-pengasuhan',
+        'Jam Kajian & Waka Pengasuhan'          => 'waka-pengasuhan',
+        'Kepala Sekolah'                        => 'kepala-satuan-pendidikan',
+        'Kepala Satuan Pendidikan'              => 'kepala-satuan-pendidikan',
     ];
+
+    /*
+     * Nama tugas tambahan di data nyata tidak selalu sama persis dengan
+     * katalog. Contoh: "Wali Kelas 7A", "Waka Kurikulum (SK 2026)".
+     * Resolver ini mencocokkan nama terpanjang yang menjadi awalan/terkandung
+     * dalam nama tugas, sehingga seluruh varian tetap mendapat menu.
+     */
+    $resolveTugasSlug = static function (?string $tugasName) use ($tugasFileMap): ?string {
+        $name = strtolower(trim((string) $tugasName));
+
+        if ($name === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^a-z0-9]+/', ' ', $name);
+        $normalized = trim(preg_replace('/\s+/', ' ', (string) $normalized));
+
+        $candidates = $tugasFileMap;
+        uksort($candidates, fn ($a, $b) => strlen($b) <=> strlen($a));
+
+        foreach ($candidates as $key => $slug) {
+            $needle = strtolower(trim((string) $key));
+            $needleNorm = trim(preg_replace('/\s+/', ' ', (string) preg_replace('/[^a-z0-9]+/', ' ', $needle)));
+
+            if ($normalized === $needleNorm
+                || str_starts_with($normalized, $needleNorm.' ')
+                || str_contains($normalized, $needleNorm)) {
+                return $slug;
+            }
+        }
+
+        return null;
+    };
 
     /* ═══════════════════════════════════════════════════════════════════════
        PEMETAAN DASHBOARD PER JABATAN
@@ -369,6 +488,19 @@
             if (isset($tugasDashboardMap[$tugas])) {
                 $myDashboardRoute = $tugasDashboardMap[$tugas];
                 break;
+            }
+
+            // Varian nama tugas (mis. "Wali Kelas 7A") tetap dipetakan
+            // ke dashboard tugas yang sama.
+            $normalized = strtolower(trim((string) $tugas));
+            foreach ($tugasDashboardMap as $key => $routeName) {
+                $needle = strtolower(trim((string) $key));
+                if ($normalized === $needle
+                    || str_starts_with($normalized, $needle.' ')
+                    || str_contains($normalized, $needle)) {
+                    $myDashboardRoute = $routeName;
+                    break 2;
+                }
             }
         }
     }
@@ -478,19 +610,34 @@
                             'koordinator-guru-tahfidz',
                             'tim-kesiswaan',
                             'pembina-ekskul',
+                            // Modul berikut sudah menyatu di sidebar Satuan
+                            // Pendidikan (Kesiswaan → Alumni, Keuangan →
+                            // Bendahara). Jangan di-include ulang.
+                            'koordinator-alumni',
+                            'bendahara-sekolah',
+                            'kepala-satuan-pendidikan',
+                            'waka-pengasuhan',
                         ];
                         $hasSatuanRole = in_array('Satuan Pendidikan', $userRoles, true);
+                        $renderedTugasSlugs = [];
                     @endphp
                     @foreach($userTugas as $tugasName)
                         @php
-                            $slug = $tugasFileMap[$tugasName] ?? null;
+                            // Resolusi toleran terhadap varian nama ("Wali Kelas 7A").
+                            $slug = $resolveTugasSlug($tugasName);
                             $viewPath = $slug ? 'layouts.sidebar.tugas-tambahan.' . $slug : null;
                             $alreadyIntegrated = $hasSatuanRole
                                 && in_array($slug, $satuanIntegratedTugasSlugs, true);
+                            // Satu file sidebar hanya dirender sekali walau user
+                            // memegang beberapa tugas yang memakai modul sama.
+                            $alreadyRendered = $slug && in_array($slug, $renderedTugasSlugs, true);
                         @endphp
-                        @if($viewPath && ! $alreadyIntegrated && view()->exists($viewPath))
+                        @if($viewPath && ! $alreadyIntegrated && ! $alreadyRendered && view()->exists($viewPath))
                             @include($viewPath)
-                            @php $renderedCount++; @endphp
+                            @php
+                                $renderedTugasSlugs[] = $slug;
+                                $renderedCount++;
+                            @endphp
                         @endif
                     @endforeach
 

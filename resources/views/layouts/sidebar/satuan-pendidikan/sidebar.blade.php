@@ -85,20 +85,33 @@
         : collect();
 
     /* ── Jabatan ─────────────────────────────────────────────────────── */
-    $isKepala       = $hasJabatan('Kepala Satuan Pendidikan') || $headedSchool !== null;
-    $isWakil        = $hasJabatan('Wakil Kepala Satuan Pendidikan');
+    $isKepala       = $hasJabatan('Kepala Satuan Pendidikan')
+        || $hasTugas('Kepala Satuan Pendidikan')
+        || $headedSchool !== null;
+    // "Waka Kurikulum", "Waka Kesiswaan", "Waka Sarpras" adalah wakil kepala;
+    // jabatan ini sering tersimpan sebagai tugas tambahan, bukan jabatan utama.
+    $isWakil        = $hasJabatan('Wakil Kepala Satuan Pendidikan')
+        || $hasTugas('Wakil Kepala Satuan Pendidikan')
+        || $hasTugas('Waka');
     $isGuruUmum     = $hasJabatan('Guru Umum');
     $isGuruAgama    = $hasJabatan('Guru Agama');
     $isGuruHadits   = $hasJabatan('Guru Hadits');
     $isGuruArab     = $hasJabatan('Guru Bahasa Arab');
     $isGuruInggris  = $hasJabatan('Guru Bahasa Inggris');
     $isGuruTahfidz  = $hasJabatan('Guru Tahfidz');
-    $isKepalaTU     = $hasJabatan('Kepala Tata Usaha') || $hasJabatan('Kepala Staf Tata Usaha');
-    $isTU           = $hasJabatan('Tata Usaha') || $hasJabatan('Staf Tata Usaha');
+    $isKepalaTU     = $hasJabatan('Kepala Tata Usaha')
+        || $hasJabatan('Kepala Staf Tata Usaha')
+        || $hasTugas('Kepala Tata Usaha')
+        || $hasTugas('Kepala Staf Tata Usaha');
+    $isTU           = $hasJabatan('Tata Usaha')
+        || $hasJabatan('Staf Tata Usaha')
+        || (! $isKepalaTU && ($hasTugas('Staf Tata Usaha') || $hasTugas('Tata Usaha')));
     // Bendahara Sekolah dapat berupa jabatan struktural maupun tugas tambahan.
     $isBendahara    = $hasJabatan('Bendahara Sekolah') || $hasTugas('Bendahara Sekolah');
     $isKoorKurik    = $hasJabatan('Koordinator Kurikulum') || $hasTugas('Koordinator Kurikulum');
     $isKoorKesiswa  = $hasJabatan('Koordinator Kesiswaan') || $hasTugas('Koordinator Kesiswaan');
+    // Koordinator Alumni mengurus data kelulusan/alumni, bukan kesiswaan harian.
+    $isKoorAlumni   = $hasJabatan('Koordinator Alumni') || $hasTugas('Koordinator Alumni');
     $isKoorEkskul   = $hasJabatan('Koordinator Ekstrakurikuler')
         || $hasTugas('Koordinator Ekstrakurikuler');
 
@@ -115,11 +128,10 @@
 
     // Semua varian jabatan guru (GURU KELAS, GURU PAUD, GURU MAPEL, ...) dihitung guru.
     $isGuru         = $isGuruUmum || $isGuruAgama || $isGuruHadits || $isGuruArab || $isGuruInggris || $isGuruTahfidz
-        || str_starts_with($jabatanNorm, 'guru')
+        || $hasJabatan('Guru')
         || $hasTeachingAssignments;
     $isAdminTU      = $isKepalaTU || $isTU;
     $isStruktural   = $isKepala || $isWakil;
-    $isKoordinator  = $isKoorKurik || $isKoorKesiswa || $isKoorEkskul;
 
     /* ── Pencocokan tugas tambahan (nama bebas, mis. "Wali Kelas 7A") ── */
     $tugasList = $userTugas ?? [];
@@ -151,6 +163,13 @@
     $isKoorGuruTahfidz = $hasTugas('Koordinator Guru Tahfidz');
 
     $isKoorMapel       = $isKoorGuruUmum || $isKoorGuruAgama || $isKoorGuruHadits || $isKoorGuruArab || $isKoorGuruTahfidz;
+
+    // Koordinator/tim bukan "guru murni": menu manajerial mereka tidak boleh
+    // tertutup oleh section Menu Guru. Sebelumnya hanya tiga tugas utama yang
+    // dihitung sehingga koordinator mapel/lab/sarpras diperlakukan sebagai guru.
+    $isKoordinator  = $isKoorKurik || $isKoorKesiswa || $isKoorEkskul
+        || $isKoorMapel || $isKoorLab || $isKoorSarpras
+        || $isTimKurikulum || $isTimKesiswaan;
 
     /* ── Koordinator lintas divisi ───────────────────────────────────── */
     $isKoorPerpus = $hasJabatan('Koordinator Perpustakaan') || $hasJabatan('Kepala Perpustakaan')
@@ -368,8 +387,15 @@
     $showMengajar   = $showAll || $hasTeachingAssignments
         || ($isGuru && ! $isStruktural && ! $isAdminTU && ! $isKoordinator);
 
+    // Label section mengikuti peran yang sedang dipakai, supaya GTK yang
+    // merangkap Waka + Wali Kelas + Guru Mapel melihat batas yang jelas.
+    $mengajarLabel  = $hasTeachingAssignments ? 'Menu Guru Mapel' : 'Menu Guru';
+    $managementLabel = $isWakil && ! $isKepala
+        ? 'Jabatan · Wakil Kepala Satuan Pendidikan'
+        : 'Manajemen Sekolah';
+
     $showKesiswaan = $manageSchool || $isKoorKesiswa || $isTimKesiswaan || $isGuruBK
-        || $isKoorEkskul || $isPembinaEkskul;
+        || $isKoorEkskul || $isPembinaEkskul || $isKoorAlumni;
     $showRombel    = $manageSchool || $isKoorKesiswa || $isTimKesiswaan;
     $showNilai     = $manageSchool || $isKoorKurik || $isKoorMapel || $isKoorKesiswa
         || $isTimKurikulum;
@@ -418,7 +444,7 @@
      satu dropdown tidak menumpuk puluhan tautan.
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($showMengajar)
-    <li class="menu-title"><span>Menu Guru</span></li>
+    <li class="menu-title"><span>{{ $mengajarLabel }}</span></li>
 
     @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
         {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
@@ -523,6 +549,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) ? ' active' : '' }}"
+           href="{{ route('user.students.mahroms.global', ['userId' => $userId]) }}">
+            <i class="ri-shield-user-line"></i><span>Data Mahrom Kelas</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.nilai-kelas.']) ? ' active' : '' }}"
            href="{{ route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $waliKelasGroups->first()->id]) }}">
             <i class="ri-table-line"></i><span>Leger &amp; Cetak Rapor</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_kelas', 'title' => 'Kelas yang nilainya belum lengkap atau belum dipublikasikan'])</a>
@@ -545,7 +578,7 @@
 @endif
 
 @if($hasManagementBlock)
-    <li class="menu-title"><span>Manajemen Sekolah</span></li>
+    <li class="menu-title"><span>{{ $managementLabel }}</span></li>
 @endif
 
 @if($showRombel)
@@ -637,7 +670,12 @@
 @if($showSarpras)
     <x-sidebar-section id="sp_sec_sarpras" label="Sarpras" icon="ri-tools-line"
         :open="$sectionOpen(['sarpras.', 'user.bump-orders.', 'user.institution-debts.', 'user.siplah.', 'lab.'])">
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => $sarprasMode])
+        {{-- Koordinator Laboratorium hanya mengelola lab; modul Sarpras penuh
+             bukan kewenangannya. Tampilkan modul Sarpras hanya untuk
+             pengelola sekolah atau Koordinator Sarpras. --}}
+        @if($manageSchool || $isKoorSarpras || $isKepalaTU)
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-sarpras', ['sarprasMode' => $sarprasMode])
+        @endif
 
         @if($showAll || $isKoorLab)
             <li class="nav-item">

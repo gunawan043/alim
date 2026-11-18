@@ -11,6 +11,7 @@ use App\Models\SubjectGroup;
 use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Rumpun Mata Pelajaran — sumber data RESMI.
@@ -42,9 +43,36 @@ class SubjectGroupResolver
 
     private ?Collection $groupsCache = null;
 
+    /** Cache hasil pemeriksaan skema per resolver (hindari query berulang). */
+    private ?bool $schemaReady = null;
+
+    /**
+     * Fitur rumpun mapel hanya aktif bila tabel & kolom penopangnya ada.
+     * Instalasi yang belum menjalankan migrasi rumpun tidak boleh 500 —
+     * cukup berperilaku seperti "tanpa rumpun".
+     */
+    private function schemaReady(): bool
+    {
+        if ($this->schemaReady !== null) {
+            return $this->schemaReady;
+        }
+
+        try {
+            return $this->schemaReady = Schema::hasTable('subject_groups')
+                && Schema::hasTable('subjects')
+                && Schema::hasColumn('subjects', 'subject_group_id');
+        } catch (\Throwable) {
+            return $this->schemaReady = false;
+        }
+    }
+
     /** @return Collection<int, SubjectGroup> */
     public function groups(): Collection
     {
+        if (! $this->schemaReady()) {
+            return collect();
+        }
+
         return $this->groupsCache ??= SubjectGroup::query()
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -63,6 +91,10 @@ class SubjectGroupResolver
      */
     public function groupForSubject(Subject|string|null $subject): ?SubjectGroup
     {
+        if (! $this->schemaReady()) {
+            return null;
+        }
+
         if (! $subject instanceof Subject) {
             $subject = $subject ? Subject::find($subject) : null;
         }
@@ -133,6 +165,10 @@ class SubjectGroupResolver
      */
     public function groupsForTeacher(User|string $user): Collection
     {
+        if (! $this->schemaReady()) {
+            return collect();
+        }
+
         $userId = $user instanceof User ? $user->id : $user;
 
         $groupIds = TeachingAssignment::query()
@@ -173,6 +209,10 @@ class SubjectGroupResolver
     /** @return array<int, string> */
     public function subjectIdsInGroup(SubjectGroup|string $group): array
     {
+        if (! $this->schemaReady()) {
+            return [];
+        }
+
         $groupId = $group instanceof SubjectGroup ? $group->id : $group;
 
         return Subject::query()->where('subject_group_id', $groupId)->pluck('id')->all();

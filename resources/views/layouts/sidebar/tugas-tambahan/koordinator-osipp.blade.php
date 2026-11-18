@@ -3,6 +3,14 @@
     $osippUserId = request()->route('userId') ?? auth()->id();
     $osippUrl = fn (string $name, array $extra = []) => route($name, array_merge(['userId' => $osippUserId], $extra));
     $osippActive = fn (string $name) => isActiveAny($currentRoute ?? '', [$name]);
+
+    // Tanpa periode kepengurusan, halaman anggota/qism/program dll. memang
+    // belum dapat dibuka (404). Sembunyikan tautannya agar sidebar tidak
+    // menampilkan menu yang berujung halaman kosong.
+    $osippSchoolId = request()->attributes->get('schoolContextId');
+    $osippHasPeriod = $osippSchoolId
+        && class_exists(\App\Models\Osipp\OsippPeriod::class)
+        && \App\Models\Osipp\OsippPeriod::query()->where('school_id', $osippSchoolId)->exists();
 @endphp
 
 <li class="menu-title"><span>OSIPP</span></li>
@@ -19,6 +27,8 @@
         <i class="ri-calendar-event-line"></i><span>Periode Kepengurusan</span>
     </a>
 </li>
+
+@if($osippHasPeriod)
 <li class="nav-item">
     <a class="nav-link menu-link{{ $osippActive('osipp.anggota.') ? ' active' : '' }}"
        href="{{ $osippUrl('osipp.anggota.index') }}">
@@ -61,4 +71,5 @@
         <i class="ri-award-line"></i><span>Evaluasi Kepengurusan</span>
     </a>
 </li>
+@endif
 @endmenuallowed

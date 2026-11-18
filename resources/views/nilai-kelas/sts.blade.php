@@ -283,6 +283,20 @@
             </div>
         @endif
 
+        @if(! empty($periodNotice))
+            <div class="alert alert-warning border-0 rounded-0 mb-0 d-flex align-items-center gap-2" style="font-size:12px;">
+                <i class="ri-calendar-sync-line fs-16"></i>
+                <span>{{ $periodNotice }}</span>
+            </div>
+        @endif
+
+        @if(($subjectSource ?? 'admin_book') === 'rombel_assignment')
+            <div class="alert alert-info border-0 rounded-0 mb-0 d-flex align-items-center gap-2" style="font-size:12px;">
+                <i class="ri-information-line fs-16"></i>
+                <span>Buku nilai belum tersedia untuk periode ini. Kolom mapel diambil dari <strong>struktur rombel</strong>; nilai akan muncul setelah guru mengisi buku nilai.</span>
+            </div>
+        @endif
+
         {{-- Wizard Tabs --}}
         <ul class="nav nav-tabs px-4 pt-3" role="tablist" style="overflow-x:auto;flex-wrap:nowrap;white-space:nowrap;">
             <li class="nav-item">

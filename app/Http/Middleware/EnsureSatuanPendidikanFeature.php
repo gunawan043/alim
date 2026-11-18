@@ -7,7 +7,9 @@ namespace App\Http\Middleware;
 use App\Models\AcademicYear;
 use App\Models\GtkProfile;
 use App\Models\OtherTeacherTask;
+use App\Models\School;
 use App\Models\SupervisiPengaturan;
+use App\Support\UserJabatan;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,8 +35,6 @@ class EnsureSatuanPendidikanFeature
             return $next($request);
         }
 
-        $jabatan = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
-
         $tugas = collect();
         if (method_exists($user, 'tugasTambahan')) {
             $tugas = $tugas->merge($user->tugasTambahan()->pluck('nama_tugas'));
@@ -54,16 +54,33 @@ class EnsureSatuanPendidikanFeature
             ->unique()
             ->values();
 
-        $hasJabatan = fn (string $needle): bool => str_contains($jabatan, strtoupper($needle));
-        $hasTugas = fn (string $needle): bool => $tugas->contains(strtoupper($needle));
+        $hasTugas = fn (string $needle): bool => $tugas->contains(
+            fn ($name) => str_contains($name, strtoupper($needle))
+        );
 
-        $isKepala = $hasJabatan('KEPALA SATUAN PENDIDIKAN');
-        $isWakil = $hasJabatan('WAKIL KEPALA SATUAN PENDIDIKAN');
-        $isKepalaTu = $hasJabatan('KEPALA TATA USAHA');
-        $isTu = $hasJabatan('TATA USAHA');
-        $isKoorKurikulum = $hasJabatan('KOORDINATOR KURIKULUM') || $hasTugas('KOORDINATOR KURIKULUM');
+        // Jabatan dibaca dari SEMUA sumber (kepegawaian, penempatan unit,
+        // penugasan struktural, tugas tambahan) + alias "Waka". Tanpa ini,
+        // Waka yang tercatat sebagai tugas tambahan selalu ditolak 403.
+        $isKepala = UserJabatan::hasAnyLoose($user, ['kepala satuan pendidikan', 'kepala sekolah'])
+            || School::where('principal_user_id', $user->id)->where('is_active', true)->exists();
+        $isWakil = UserJabatan::hasAnyLoose($user, [
+            'wakil kepala satuan pendidikan',
+            'wakil kepala sekolah',
+            'waka',
+        ]);
+        $isKepalaTu = UserJabatan::hasAnyLoose($user, [
+            'kepala tata usaha',
+            'kepala staf tata usaha',
+            'kepala tu sekolah',
+        ]);
+        $isTu = UserJabatan::hasAnyLoose($user, ['tata usaha', 'staf tata usaha', 'tu sekolah']);
+        $isKoorKurikulum = UserJabatan::hasAnyLoose($user, ['koordinator kurikulum'])
+            || $hasTugas('KOORDINATOR KURIKULUM');
         $isTimKurikulum = $hasTugas('TIM KURIKULUM');
-        $isKoorEkskul = $hasJabatan('KOORDINATOR EKSTRAKURIKULER') || $hasTugas('KOORDINATOR EKSTRAKURIKULER');
+        $isKoorEkskul = UserJabatan::hasAnyLoose($user, ['koordinator ekstrakurikuler'])
+            || $hasTugas('KOORDINATOR EKSTRAKURIKULER');
+        $isKoorKesiswaan = UserJabatan::hasAnyLoose($user, ['koordinator kesiswaan'])
+            || $hasTugas('KOORDINATOR KESISWAAN');
         $isPembinaEkskul = $hasTugas('PEMBINA EKSTRAKURIKULER');
 
         $schoolId = $request->attributes->get('schoolContextId');
@@ -82,7 +99,7 @@ class EnsureSatuanPendidikanFeature
         $allowed = match ($feature) {
             'supervisi' => $supervisiAdmin || $isConfiguredSupervisor,
             'supervisi-admin' => $supervisiAdmin,
-            'ekstrakurikuler' => $isKepala || $isWakil || $isKoorEkskul || $isPembinaEkskul || $isKepalaTu || $isTu,
+            'ekstrakurikuler' => $isKepala || $isWakil || $isKoorEkskul || $isKoorKesiswaan || $isPembinaEkskul || $isKepalaTu || $isTu,
             'surat' => $isKepala || $isWakil || $isKepalaTu || $isTu,
             default => false,
         };

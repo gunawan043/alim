@@ -832,6 +832,41 @@ class User extends Authenticatable
             return true;
         }
 
+        // Wali Asrama ditetapkan sebagai supervisor gedung (wing), bukan
+        // selalu tercatat sebagai staf asrama. Akses mengikuti gedungnya.
+        if (\App\Models\DormitoryWing::query()
+            ->where('supervisor_user_id', $this->id)
+            ->where('dormitory_id', $dormitoryId)
+            ->exists()) {
+            return true;
+        }
+
+        // Tugas tambahan Staf Asrama (SK/penugasan operasional) memberi akses
+        // ke asrama pada satuan pendidikan yang sama. Tanpa ini, sidebar
+        // Staf Asrama tampil tetapi seluruh tautannya 403.
+        $duties = collect();
+        if (method_exists($this, 'tugasTambahan')) {
+            $duties = $duties->merge($this->tugasTambahan()->pluck('nama_tugas'));
+        }
+        if (class_exists(\App\Models\OtherTeacherTask::class)) {
+            $duties = $duties->merge(
+                \App\Models\OtherTeacherTask::query()
+                    ->where('teacher_id', $this->id)
+                    ->where('is_active', 1)
+                    ->pluck('task_name')
+            );
+        }
+        $isStafAsrama = $duties->filter()->contains(
+            fn ($duty) => str_contains(mb_strtolower((string) $duty), 'staf asrama')
+        );
+
+        if ($isStafAsrama && $dormitory !== null) {
+            $schoolId = request()->attributes->get('schoolContextId');
+            if (! $schoolId || (string) $dormitory->school_id === (string) $schoolId) {
+                return true;
+            }
+        }
+
         // Staf Perizinan: akses lintas asrama SESUAI GENDER (saling backup).
         $scope = $this->perizinanGenderScope();
 

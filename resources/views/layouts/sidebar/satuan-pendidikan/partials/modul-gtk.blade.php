@@ -74,7 +74,7 @@
     </li>
 @endif
 
-@if($gtkMode === 'mapel')
+@if($gtkMode === 'mapel' && canPermission('kinerja_view'))
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kinerja.']) ? ' active' : '' }}"
            href="{{ route('user.kinerja.index', ['userId' => $userId]) }}">
@@ -83,16 +83,17 @@
     </li>
 @endif
 
-@if(in_array($gtkMode, ['supervisi', 'supervisor'], true))
-    @php
-        $supervisiAdmin = $gtkMode === 'supervisi' && ($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU);
-        $supervisiActive = isActiveAny($currentRoute, [
-            'waka.supervisi.',
-            'waka.supervisi-instrumen.',
-            'waka.supervisi-pengaturan.',
-            'waka.supervisi-sk.',
-        ]);
-    @endphp
+@php
+    $supervisiAdmin = $gtkMode === 'supervisi' && ($showAll || $isStruktural || $isKoorKurik || $isTimKurikulum || $isAdminTU);
+    $supervisiActive = isActiveAny($currentRoute, [
+        'waka.supervisi.',
+        'waka.supervisi-instrumen.',
+        'waka.supervisi-pengaturan.',
+        'waka.supervisi-sk.',
+    ]);
+@endphp
+
+@if(in_array($gtkMode, ['supervisi', 'supervisor'], true) && ($supervisiAdmin || ($isConfiguredSupervisor ?? false)))
     <li class="nav-item">
         <a class="nav-link menu-link{{ $supervisiActive ? ' active' : '' }}"
            href="#sp{{ $uid }}_supervisi" data-bs-toggle="collapse" role="button"

@@ -139,34 +139,53 @@ class BankSoal extends Model
      */
     public function scopeAccessibleBy($query, string $userId, ?string $schoolId = null)
     {
+        // Jaga kompatibilitas instalasi yang belum menjalankan migrasi
+        // repositori soal terpusat: kolom baru tidak boleh membuat 500.
+        // Cache daftar kolom agar pemanggilan berulang (per baris asesmen)
+        // tidak melakukan introspeksi skema berkali-kali.
+        static $columnCache = null;
+        $columns = $columnCache ??= \Illuminate\Support\Facades\Schema::getColumnListing($this->getTable());
+        $has = static fn (string $column): bool => in_array($column, $columns, true);
+
         // Rumpun mapel yang menjadi kewenangan guru (dari tugas mengajar aktif).
-        $groupIds = app(\App\Services\SubjectGroupResolver::class)
-            ->groupsForTeacher($userId)
-            ->pluck('id')
-            ->all();
+        $groupIds = $has('shared_scope') && $has('is_central')
+            ? app(\App\Services\SubjectGroupResolver::class)
+                ->groupsForTeacher($userId)
+                ->pluck('id')
+                ->all()
+            : [];
 
-        return $query->where(function ($q) use ($userId, $schoolId, $groupIds) {
-            $q->where('owner_user_id', $userId)
-                ->orWhere('is_public', true)
-                ->orWhere('is_central', true)
-                ->orWhere('shared_scope', 'public_pool')
-                ->orWhere(function ($q2) use ($schoolId) {
-                    $q2->where('shared_scope', 'internal_school');
+        return $query->where(function ($q) use ($userId, $schoolId, $groupIds, $has) {
+            $q->where('owner_user_id', $userId);
 
-                    if ($schoolId) {
-                        $q2->where('school_id', $schoolId);
-                    }
-                });
+            if ($has('is_public')) {
+                $q->orWhere('is_public', true);
+            }
+            if ($has('is_central')) {
+                $q->orWhere('is_central', true);
+            }
+            if ($has('shared_scope')) {
+                $q->orWhere('shared_scope', 'public_pool')
+                    ->orWhere(function ($q2) use ($schoolId) {
+                        $q2->where('shared_scope', 'internal_school');
+
+                        if ($schoolId) {
+                            $q2->where('school_id', $schoolId);
+                        }
+                    });
+            }
 
             // Soal bersama dalam rumpun yang menjadi kewenangan guru:
             // satu satuan pendidikan (school context) atau repositori lintas
             // satuan yang memang diizinkan (central/public_pool).
-            if ($groupIds !== []) {
-                $q->orWhere(function ($q2) use ($groupIds, $schoolId) {
+            if ($groupIds !== [] && $has('shared_scope')) {
+                $q->orWhere(function ($q2) use ($groupIds, $schoolId, $has) {
                     $q2->whereHas('subject', fn ($s) => $s->whereIn('subject_group_id', $groupIds))
-                        ->where(function ($q3) use ($schoolId) {
-                            $q3->where('is_central', true)
-                                ->orWhere('shared_scope', 'public_pool');
+                        ->where(function ($q3) use ($schoolId, $has) {
+                            if ($has('is_central')) {
+                                $q3->where('is_central', true);
+                            }
+                            $q3->orWhere('shared_scope', 'public_pool');
 
                             if ($schoolId) {
                                 $q3->orWhere(fn ($q4) => $q4->whereNotNull('school_id')->where('school_id', $schoolId));

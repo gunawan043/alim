@@ -92,13 +92,8 @@
 </li>
 @endif
 
-{{-- 3. Verifikasi Izin --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.verify']) ? ' active' : '' }}"
-       href="{{ $spUrl('user.asrama.permits.verify') }}">
-        <i class="ri-shield-check-line"></i><span>Verifikasi Izin</span>
-    </a>
-</li>
+{{-- 3. Verifikasi Izin — halaman ini hanya dibuka dari QR bertanda
+     tangan (signed URL), jadi tidak ditampilkan sebagai menu. --}}
 
 {{-- 4. Cetak Kartu Izin --}}
 @if($scanAsramaId)
@@ -134,13 +129,7 @@
 </li>
 @endif
 
-{{-- 7. Verifikasi Kunjungan --}}
-<li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.visits.verify']) ? ' active' : '' }}"
-       href="{{ $spUrl('user.asrama.visits.verify') }}">
-        <i class="ri-shield-check-line"></i><span>Verifikasi Kunjungan</span>
-    </a>
-</li>
+{{-- 7. Verifikasi Kunjungan — dibuka dari QR bertanda tangan, bukan menu. --}}
 
 {{-- ═══════════════════════════════════════════════════════════════════════════
      KEDATANGAN SANTRI
@@ -197,13 +186,6 @@
            href="{{ $spAsramaUrl('user.asrama.daily-tasks.index') }}">
             <i class="ri-checkbox-multiple-line"></i>
             <span>Tugas Harian</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.task-assignments.']) ? ' active' : '' }}"
-           href="{{ $spAsramaUrl('user.asrama.task-assignments.index') }}">
-            <i class="ri-user-settings-line"></i>
-            <span>Pembagian Tugas</span>
         </a>
     </li>
     @endif

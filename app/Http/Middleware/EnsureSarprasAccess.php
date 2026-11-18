@@ -3,7 +3,6 @@
 namespace App\Http\Middleware;
 
 use App\Models\Dormitory;
-use App\Models\GtkWorkUnit;
 use App\Models\OtherTeacherTask;
 use App\Models\RoomSupervisor;
 use App\Models\StudyGroup;
@@ -36,13 +35,30 @@ class EnsureSarprasAccess
             return $next($request);
         }
 
+        // Kepala/Wakil Satuan Pendidikan memimpin unit dan berwenang penuh
+        // atas sarpras sekolah. Waka sering tercatat sebagai tugas tambahan,
+        // jadi jabatan dibaca dari semua sumber.
+        if (\App\Support\UserJabatan::hasAnyLoose($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala sekolah',
+            'wakil kepala sekolah',
+            'waka',
+        ])) {
+            return $next($request);
+        }
+
         $routeName = (string) $request->route()?->getName();
 
-        // Kepala Tata Usaha sekolah: HANYA data aset dan ruang.
-        $jabatanAktif = strtoupper(trim((string) ($user->employment?->jabatan ?? '')));
-        if ($jabatanAktif === '') {
-            $jabatanAktif = strtoupper(GtkWorkUnit::query()->where('user_id', $user->id)->pluck('jabatan')->implode(' '));
+        // Koordinator Sarpras Satuan Pendidikan ditetapkan lewat tugas
+        // tambahan (SK/penugasan operasional), bukan role. Beri akses penuh
+        // ke modul sarpras agar menu sidebar tidak berujung 403.
+        if ($this->isSarprasCoordinator($user)) {
+            return $next($request);
         }
+
+        // Kepala Tata Usaha sekolah: HANYA data aset dan ruang.
+        $jabatanAktif = strtoupper(implode(' ', \App\Support\UserJabatan::candidates($user)));
 
         if (str_contains($jabatanAktif, 'KEPALA TATA USAHA')) {
             foreach ([

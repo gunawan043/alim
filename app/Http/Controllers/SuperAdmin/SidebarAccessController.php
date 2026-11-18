@@ -74,6 +74,11 @@ class SidebarAccessController extends Controller
         'tugas-koordinator-sarpras'   => 'Tugas: Koordinator Sarpras',
         'tugas-pembina-ekskul'        => 'Tugas: Pembina Ekskul',
         'tugas-tim-kesiswaan'         => 'Tugas: Tim Kesiswaan',
+        'tugas-koordinator-alumni'    => 'Tugas: Koordinator Alumni',
+        'tugas-staf-penitipan-barang' => 'Tugas: Staf Penitipan Barang',
+        'tugas-bendahara-sekolah'     => 'Tugas: Bendahara Sekolah',
+        'tugas-waka-pengasuhan'       => 'Tugas: Waka Pengasuhan',
+        'tugas-kepala-satuan-pendidikan' => 'Tugas: Kepala Sekolah / Kepala Satuan Pendidikan',
     ];
 
     public function index(Request $request): View

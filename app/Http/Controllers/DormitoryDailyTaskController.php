@@ -310,6 +310,23 @@ class DormitoryDailyTaskController extends Controller
             return true;
         }
 
+        // Tugas tambahan Staf Asrama memberi hak mengisi checklist piket.
+        $duties = collect();
+        if (method_exists($user, 'tugasTambahan')) {
+            $duties = $duties->merge($user->tugasTambahan()->pluck('nama_tugas'));
+        }
+        if (class_exists(\App\Models\OtherTeacherTask::class)) {
+            $duties = $duties->merge(
+                \App\Models\OtherTeacherTask::query()
+                    ->where('teacher_id', $user->id)
+                    ->where('is_active', 1)
+                    ->pluck('task_name')
+            );
+        }
+        if ($duties->filter()->contains(fn ($duty) => str_contains(mb_strtolower((string) $duty), 'staf asrama'))) {
+            return true;
+        }
+
         return RoomSupervisor::active()
             ->where('user_id', $user->id)
             ->where('dormitory_id', $dormitory->id)

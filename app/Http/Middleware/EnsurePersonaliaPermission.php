@@ -69,6 +69,26 @@ class EnsurePersonaliaPermission
             }
         }
 
+        // Pimpinan satuan pendidikan & koordinator kurikulum juga berwenang
+        // membuka pengaturan toleransi/geolokasi (selaras dengan
+        // AbsensiGtkController::canManageQrSettings). Tanpa ini menu sidebar
+        // tampil tetapi halaman menolak akses (403).
+        if ($module === 'absensi'
+            && str_starts_with($route, 'user.absensi-gtk.settings')
+            && $request->isMethod('GET')
+            && \App\Support\UserJabatan::hasAnyLoose($user, [
+                'kepala satuan pendidikan',
+                'kepala sekolah',
+                'wakil kepala satuan pendidikan',
+                'wakil kepala sekolah',
+                'koordinator kurikulum',
+                'koordinator kesiswaan',
+                'tim kesiswaan',
+                'kepala tata usaha',
+            ])) {
+            return $next($request);
+        }
+
         if ($module === 'cuti' && str_contains($route, 'approve') || ($module === 'cuti' && str_contains($route, 'reject'))) {
             if ($user->hasRole('Pimpinan')) {
                 return $next($request);

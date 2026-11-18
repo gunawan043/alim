@@ -72,7 +72,22 @@ class NilaiController extends Controller
 
         $tugas = method_exists($user, 'tugasTambahan') ? $user->tugasTambahan->pluck('nama')->all() : [];
 
-        return in_array('Tim Kurikulum', $tugas, true);
+        if (in_array('Tim Kurikulum', $tugas, true)) {
+            return true;
+        }
+
+        // Sidebar menampilkan "Nilai & Rapor" untuk tim kurikulum, koordinator
+        // kesiswaan, dan koordinator mapel. Hak akses di controller harus
+        // mengikuti menu yang tampil agar tidak berujung 403.
+        return UserJabatan::hasAnyLoose($user, [
+            'tim kurikulum',
+            'koordinator kesiswaan',
+            'koordinator guru umum',
+            'koordinator guru agama',
+            'koordinator guru hadits',
+            'koordinator guru bahasa arab',
+            'koordinator guru tahfidz',
+        ]);
     }
 
     public function index(Request $request, string $userId)

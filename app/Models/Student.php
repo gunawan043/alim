@@ -169,6 +169,11 @@ class Student extends Model
         return $this->hasMany(StudentClassHistory::class);
     }
 
+    public function dapodikMappings(): HasMany
+    {
+        return $this->hasMany(StudentDapodikMapping::class);
+    }
+
     public function studyGroups(): HasMany
     {
         return $this->hasMany(StudentClassHistory::class)->with('studyGroup');

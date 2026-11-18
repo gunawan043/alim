@@ -14,7 +14,7 @@
        role="button"
        aria-expanded="{{ $open ? 'true' : 'false' }}"
        aria-controls="{{ $id }}">
-        <i class="{{ $icon }}"></i><span>{{ $label }}</span><span class="menu-arrow"></span>
+        <i class="{{ $icon }}"></i><span>{!! $label !!}</span><span class="menu-arrow"></span>
     </a>
     <div class="collapse menu-dropdown{{ $open ? ' show' : '' }}" id="{{ $id }}">
         <ul class="nav nav-sm flex-column">

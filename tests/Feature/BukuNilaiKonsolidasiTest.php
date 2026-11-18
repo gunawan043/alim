@@ -10,6 +10,8 @@ use App\Models\GradeLevel;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeacherAdminBook;
@@ -452,6 +454,67 @@ class BukuNilaiKonsolidasiTest extends TestCase
                 'status' => 'active',
             ]);
         }
+    }
+
+
+    /**
+     * Regresi: TA aktif global (2026/2027 ganjil) berbeda dengan TA rombel
+     * (2025/2026 genap). Halaman STS tanpa parameter harus mengikuti periode
+     * rombel, bukan TA aktif, agar leger tidak kosong.
+     */
+    public function test_sts_default_memakai_ta_aktif_dan_arsip_dapat_dipilih(): void
+    {
+        $oldYear = AcademicYear::create([
+            'name' => '2025/2026',
+            'semester' => 'genap',
+            'is_active' => false,
+            'start_date' => '2026-01-05',
+            'end_date' => '2026-06-05',
+        ]);
+
+        $this->studyGroup->update(['academic_year_id' => $oldYear->id]);
+
+        TeacherAdminBook::create([
+            'teacher_id' => $this->guruA->id,
+            'subject_id' => $this->subject->id,
+            'study_group_id' => $this->studyGroup->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $oldYear->id,
+            'semester' => 'genap',
+            'is_active' => true,
+        ]);
+
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'SANTRI PERIODE ROMBEL',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        StudentClassHistory::create([
+            'student_id' => $student->id,
+            'study_group_id' => $this->studyGroup->id,
+            'academic_year_id' => $oldYear->id,
+            'attendance_number' => 1,
+            'is_active' => true,
+        ]);
+
+        // Default wajib TA aktif (2026/2027 ganjil), bukan TA rombel lama.
+        $default = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/schools/nilai-kelas/{$this->studyGroup->id}/sts");
+
+        $default->assertOk();
+        $default->assertSee('2026/2027');
+        $default->assertDontSee('SANTRI PERIODE ROMBEL');
+
+        // Arsip tetap dapat dibuka bila dipilih eksplisit.
+        $archive = $this->actingAs($this->kurikulum)
+            ->get("/{$this->kurikulum->id}/schools/nilai-kelas/{$this->studyGroup->id}/sts?academic_year_id={$oldYear->id}&semester=genap");
+
+        $archive->assertOk();
+        $archive->assertSee('SANTRI PERIODE ROMBEL');
+        $archive->assertSee('2025/2026');
+        $archive->assertSee('Matematika');
     }
 
     private function seedSnapshot(User $user): void

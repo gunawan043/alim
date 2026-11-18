@@ -78,6 +78,12 @@ class NilaiKelasController extends Controller
             if ($group) {
                 return redirect()->route('user.schools.nilai-kelas.sts', ['userId' => $userId, 'studyGroupId' => $group->id]);
             }
+
+            // Berhak penuh tetapi belum ada rombel: jangan 403 — beri jalan
+            // keluar ke halaman rombel agar pengelola tahu langkah berikutnya.
+            return redirect()
+                ->route('user.schools.index', ['userId' => $userId])
+                ->with('warning', 'Belum ada rombel aktif pada tahun ajaran ini. Tambahkan rombel terlebih dahulu agar leger dan rapor dapat dibuka.');
         }
 
         abort(403, 'Leger hanya untuk wali kelas, KSP, Waka, Kurikulum, dan TU.');
@@ -103,20 +109,44 @@ class NilaiKelasController extends Controller
         $legerAccess = $this->assertLegerAccess($userId, $studyGroup);
         $isPrivileged = $legerAccess === 'full';
 
-        // ARSIP PERIODE: seluruh tahun ajaran dapat dipilih — TA aktif menjadi default.
-        // Data TA lama tetap dapat dibaca; input nilai TA lama diblokir di stsStore().
+        // PERIODE AKTIF — satu sumber kebenaran.
+        // TA aktif (2026/2027 ganjil) selalu menjadi default untuk rombel,
+        // mapel, dan leger. Pilihan TA lain hanya terjadi bila pengguna
+        // memilihnya secara eksplisit (mode arsip).
         $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
-        $activeAyId = $academicYears->firstWhere('is_active', true)?->id;
-        $selectedAyId = $request->filled('academic_year_id')
-            ? $request->academic_year_id
-            : ($activeAyId ?? $academicYears->first()?->id);
+        $activeAy = $academicYears->firstWhere('is_active', true);
+        $activeAyId = $activeAy?->id;
+        $groupAyId = $studyGroup->academic_year_id;
+        $requestedAyId = $request->filled('academic_year_id')
+            ? (string) $request->academic_year_id
+            : null;
+        $requestedSemester = in_array($request->input('semester'), ['ganjil', 'genap'], true)
+            ? $request->input('semester')
+            : null;
+
+        $selectedAyId = $requestedAyId
+            ?: ($activeAyId ?? $groupAyId ?? $academicYears->first()?->id);
+
+        $activeSemester = in_array($activeAy?->semester, ['ganjil', 'genap'], true)
+            ? $activeAy->semester
+            : 'ganjil';
+        $selectedSemester = $requestedSemester ?: $activeSemester;
+
         $isArchiveAy = $selectedAyId && $activeAyId
             && (string) $selectedAyId !== (string) $activeAyId;
 
-        // Semester — default mengikuti semester TA terpilih (perilaku periode).
-        $selectedSemester = $request->filled('semester')
-            ? $request->semester
-            : ($academicYears->firstWhere('id', $selectedAyId)?->semester === 'genap' ? 'genap' : 'ganjil');
+        // Pesan transparan: bila rombel masih tercatat pada TA lain, jelaskan
+        // bahwa halaman tetap memakai TA aktif. Data arsip tetap dapat dibuka
+        // dengan memilih TA tersebut pada filter.
+        $periodNotice = null;
+        if (! $requestedAyId && $groupAyId && $activeAyId
+            && (string) $groupAyId !== (string) $activeAyId) {
+            $periodNotice = 'Rombel ini masih tercatat pada tahun ajaran '
+                .($academicYears->firstWhere('id', $groupAyId)?->name ?? '-')
+                .', sedangkan halaman memakai tahun ajaran aktif '
+                .($activeAy?->name ?? '-').' semester '.ucfirst($activeSemester).'. '
+                .'Pilih tahun ajaran rombel pada filter untuk melihat arsipnya.';
+        }
 
         // Wizard leger: sheet STS (default) atau SAS.
         $legerMode = in_array($request->input('leger'), ['sts', 'sas'], true) ? $request->input('leger') : 'sts';
@@ -142,6 +172,26 @@ class NilaiKelasController extends Controller
             ->filter()
             ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
+
+        // FALLBACK MAPEL: buku admin belum dibuat, tetapi rombel sudah punya
+        // assignment mapel (study_group_subjects). Tampilkan kolom mapel agar
+        // leger tidak kosong; nilai tetap kosong sampai buku admin tersedia.
+        $subjectSource = 'admin_book';
+        if ($subjectMap->isEmpty()) {
+            $subjectMap = \App\Models\StudyGroupSubject::with('subject')
+                ->where('study_group_id', $studyGroupId)
+                ->when($selectedAyId, fn ($q) => $q->where('academic_year_id', $selectedAyId))
+                ->where('is_active', true)
+                ->get()
+                ->pluck('subject')
+                ->filter()
+                ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
+                ->values();
+
+            if ($subjectMap->isNotEmpty()) {
+                $subjectSource = 'rombel_assignment';
+            }
+        }
 
         // Jumlah mapel grup AGAMA (kategori 1–3: Agama/Arab/Hadits) untuk header grup di leger
         $agamaCount = $subjectMap->filter(fn ($s) => $this->subjectGroup((string) $s->name) <= 3)->count();
@@ -382,7 +432,7 @@ class NilaiKelasController extends Controller
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'isArchiveAy', 'activeAyId'
+            'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId'
         ));
     }
 
@@ -684,7 +734,7 @@ class NilaiKelasController extends Controller
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
 
-        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+        $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
 
         // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
         $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
@@ -725,7 +775,7 @@ class NilaiKelasController extends Controller
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
 
-        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+        $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
 
         // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
         $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
@@ -872,7 +922,7 @@ class NilaiKelasController extends Controller
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
 
-        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+        $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
 
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $selectedAy = $academicYears->firstWhere('id', $selectedAyId);
@@ -1742,7 +1792,7 @@ class NilaiKelasController extends Controller
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
             : AcademicYear::where('is_active', true)->first()?->id;
-        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
+        $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
 
         $this->assertNotArchivedAcademicYear($selectedAyId);
         $this->assertStudentInGroup($studentId, $studyGroup->id, $selectedAyId);
@@ -1772,18 +1822,19 @@ class NilaiKelasController extends Controller
     public function raporCetak(Request $request, string $userId, string $studyGroupId, string $studentId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $selectedAyId = $request->filled('academic_year_id')
-            ? $request->academic_year_id
-            : AcademicYear::where('is_active', true)->first()?->id;
-        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
-
-        // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
-        $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
-        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
+
+        $selectedAyId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : AcademicYear::where('is_active', true)->first()?->id;
+        $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
+
+        // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
+        $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
+        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
 
         $this->assertLegerAccess($userId, $studyGroup);
 
@@ -1912,16 +1963,17 @@ class NilaiKelasController extends Controller
     public function raporCetakMassal(Request $request, string $userId, string $studyGroupId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
-        $selectedAyId = $request->filled('academic_year_id')
-            ? $request->academic_year_id
-            : AcademicYear::where('is_active', true)->first()?->id;
-        $selectedSem = $request->filled('semester') ? $request->semester : 'ganjil';
-        $jenis = $request->input('jenis') === 'sts' ? 'sts' : 'sas';
-        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
 
         $studyGroup = StudyGroup::with('gradeLevel', 'homeroomTeacher', 'school')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->findOrFail($studyGroupId);
+
+        $selectedAyId = $request->filled('academic_year_id')
+            ? $request->academic_year_id
+            : AcademicYear::where('is_active', true)->first()?->id;
+        $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
+        $jenis = $request->input('jenis') === 'sts' ? 'sts' : 'sas';
+        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
 
         $this->assertLegerAccess($userId, $studyGroup);
 
@@ -2026,6 +2078,21 @@ class NilaiKelasController extends Controller
             ? $user->tugasTambahan->pluck('nama')->all()
             : [];
         if (in_array('Tim Kurikulum', $tugas, true) || in_array('Koordinator Kurikulum', $tugas, true)) {
+            return 'full';
+        }
+
+        // Sidebar menampilkan "Nilai & Rapor" untuk tim kurikulum, koordinator
+        // kesiswaan, dan koordinator mapel. Hak akses harus mengikuti menu
+        // yang tampil, bukan hanya jabatan struktural.
+        if (UserJabatan::hasAnyLoose($user, [
+            'tim kurikulum',
+            'koordinator kesiswaan',
+            'koordinator guru umum',
+            'koordinator guru agama',
+            'koordinator guru hadits',
+            'koordinator guru bahasa arab',
+            'koordinator guru tahfidz',
+        ])) {
             return 'full';
         }
 

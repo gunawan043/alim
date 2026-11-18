@@ -11,6 +11,14 @@
 @endsection
 
 @section('content')
+    @php
+        // Kelas akhir per jenjang — dipakai untuk menu SKL dan kelulusan.
+        $gradeLevel = $studyGroup?->gradeLevel;
+        $level = (int) ($gradeLevel?->level ?? 0);
+        $isFinalGrade = $studyGroup?->school
+            ? $studyGroup->school->isFinalLevel($level)
+            : in_array($level, [6, 9, 12], true);
+    @endphp
     @component('components.breadcrumb')
         @slot('li_1')
             Akademik
@@ -334,70 +342,103 @@
                             <p class="text-muted mb-0">Total {{ number_format($totalAll) }} data.</p>
                         </div>
                         <div class="col-sm-auto">
-                            <div class="d-flex gap-2">
-                                {{-- <a href="{{ route('user.mutations-out.index', ['userId' => $userId]) }}" class="btn btn-outline-primary">
-                                    <i class="ri-logout-box-line align-bottom me-1"></i>Mutasi Keluar
-                                </a>
-                                <a href="{{ route('user.mutations-in.index', ['userId' => $userId]) }}" class="btn btn-outline-success">
-                                    <i class="ri-login-box-line align-bottom me-1"></i>Mutasi Masuk
-                                </a> --}}
-                                @php
-                                    $gradeLevel = $studyGroup?->gradeLevel;
-                                    $level = $gradeLevel?->level ?? 0;
-                                    $schoolType = $studyGroup?->school?->school_type;
-                                    // Tentukan grade akhir per jenjang
-                                    $finalLevels = match ($schoolType) {
-                                        'smp' => [9],
-                                        'sd' => [6],
-                                        default => [6, 9, 12],
-                                    };
-                                    $isFinalGrade = in_array($level, $finalLevels);
-                                @endphp
+                            <div class="d-flex flex-wrap gap-2">
                                 @if ($studyGroup && !($isDormitoryUser ?? false))
                                     <button type="button" class="btn btn-outline-info" onclick="openBulkModal()">
                                         <i class="ri-user-add-line align-bottom me-1"></i>Tarik Santri
                                     </button>
-                                    <a href="{{ route('user.student-move.index', ['userId' => $userId, 'study_group_id' => $studyGroup->id]) }}"
-                                        class="btn btn-outline-primary">
-                                        <i class="ri-arrow-left-right-line align-bottom me-1"></i>Pindahkan Santri
-                                    </a>
-                                    @if ($isFinalGrade)
-                                        <a href="{{ route('user.bulk-graduation.index', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
-                                            class="btn btn-outline-warning">
-                                            <i class="ri-graduation-cap-line align-bottom me-1"></i>Kelulusan Massal
-                                        </a>
-                                    @else
-                                        <a href="{{ route('user.bulk-promotion.index', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
-                                            class="btn btn-outline-warning">
-                                            <i class="ri-arrow-up-line align-bottom me-1"></i>Kenaikan Kelas
-                                        </a>
-                                    @endif
                                 @endif
+
                                 @unless($isDormitoryUser ?? false)
                                     <a href="{{ route('user.students.create', ['userId' => $userId]) }}"
                                         class="btn btn-success">
                                         <i class="ri-add-line align-bottom me-1"></i> Tambah Santri
                                     </a>
-                                    <a href="{{ route('user.students.import-form', ['userId' => $userId]) }}"
-                                        class="btn btn-outline-secondary">
-                                        <i class="ri-file-upload-line align-bottom me-1"></i> Import Excel
-                                    </a>
-                                    <a href="{{ route('user.students.import-nama-arab-form', ['userId' => $userId]) }}"
-                                        class="btn btn-outline-dark">
-                                        <i class="ri-translate-2 align-bottom me-1"></i> Import Nama Arab
-                                    </a>
-                                    <a href="{{ route('user.students.review-nama-arab', ['userId' => $userId]) }}"
-                                        class="btn btn-outline-success">
-                                        <i class="ri-check-double-line align-bottom me-1"></i> Review Nama Arab
-                                    </a>
-                                    <a href="{{ route('user.students.graduation-certificate.settings', ['userId' => $userId]) }}"
-                                        class="btn btn-outline-primary" title="Atur format dan mata pelajaran Surat Keterangan Lulus">
-                                        <i class="ri-file-paper-2-line align-bottom me-1"></i> Format SKL
-                                    </a>
-                                    <a href="{{ route('user.students.reconciliation', ['userId' => $userId]) }}"
-                                        class="btn btn-outline-warning" title="Periksa data santri yang tidak konsisten">
-                                        <i class="ri-error-warning-line align-bottom me-1"></i> Rekonsiliasi
-                                    </a>
+
+                                    <div class="dropdown d-inline-block">
+                                        <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="ri-more-2-line align-bottom me-1"></i> Aksi
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 240px;">
+                                            @if ($studyGroup)
+                                                <li><h6 class="dropdown-header">Rombel</h6></li>
+                                                <li>
+                                                    <a class="dropdown-item"
+                                                       href="{{ route('user.student-move.index', ['userId' => $userId, 'study_group_id' => $studyGroup->id]) }}">
+                                                        <i class="ri-arrow-left-right-line me-1"></i>Pindahkan Santri
+                                                    </a>
+                                                </li>
+                                                @if ($isFinalGrade)
+                                                    <li>
+                                                        <a class="dropdown-item"
+                                                           href="{{ route('user.bulk-graduation.index', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                                                            <i class="ri-graduation-cap-line me-1"></i>Kelulusan Massal
+                                                        </a>
+                                                    </li>
+                                                @else
+                                                    <li>
+                                                        <a class="dropdown-item"
+                                                           href="{{ route('user.bulk-promotion.index', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                                                            <i class="ri-arrow-up-line me-1"></i>Kenaikan Kelas
+                                                        </a>
+                                                    </li>
+                                                @endif
+                                                <li><hr class="dropdown-divider"></li>
+                                            @endif
+
+                                            <li><h6 class="dropdown-header">Data &amp; Impor</h6></li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   href="{{ route('user.students.import-form', ['userId' => $userId]) }}">
+                                                    <i class="ri-file-upload-line me-1"></i>Import Excel
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   href="{{ route('user.students.import-nama-arab-form', ['userId' => $userId]) }}">
+                                                    <i class="ri-translate-2 me-1"></i>Import Nama Arab
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   href="{{ route('user.students.review-nama-arab', ['userId' => $userId]) }}">
+                                                    <i class="ri-check-double-line me-1"></i>Review Nama Arab
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   href="{{ route('user.students.reconciliation', ['userId' => $userId]) }}">
+                                                    <i class="ri-error-warning-line me-1"></i>Rekonsiliasi Data
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+
+                                            <li><h6 class="dropdown-header">Dapodik</h6></li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   href="{{ route('user.students.dapodik-mapping', ['userId' => $userId]) }}">
+                                                    <i class="ri-link-m me-1"></i>Mapping Dapodik
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item"
+                                                   href="{{ route('user.students.dapodik-export', ['userId' => $userId]) }}">
+                                                    <i class="ri-file-download-line me-1"></i>Export Dapodik
+                                                </a>
+                                            </li>
+
+                                            @if (! $studyGroup || $isFinalGrade)
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item"
+                                                       href="{{ route('user.students.graduation-certificate.settings', ['userId' => $userId]) }}">
+                                                        <i class="ri-file-paper-2-line me-1"></i>Format SKL
+                                                    </a>
+                                                </li>
+                                            @endif
+                                        </ul>
+                                    </div>
                                 @else
                                     <span class="badge bg-info-subtle text-info">
                                         <i class="ri-information-line me-1"></i>
@@ -839,7 +880,7 @@
                                                         <i class="ri-login-box-line me-2 text-success"></i>Mutasi Masuk
                                                     </a>
                                                 </li>
-                                                @if ($s->status === 'graduate')
+                                                @if ($s->status === 'graduate' && (! $studyGroup || $isFinalGrade))
                                                     <li>
                                                         <hr class="dropdown-divider">
                                                     </li>

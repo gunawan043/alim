@@ -10,7 +10,8 @@
         || $tugas->contains(fn ($item) => str_contains($item, 'tahfidz'));
     $isWaliDashboard = $tugas->contains(fn ($item) => str_contains($item, 'wali kelas'));
     $isStrukturalDashboard = str_contains($jabatanKey, 'kepala')
-        || str_contains($jabatanKey, 'wakil')
+        || str_contains($jabatanKey, 'wakil');
+    $isManagerDashboard = $isStrukturalDashboard
         || $tugas->contains(fn ($item) => str_contains($item, 'kurikulum') || str_contains($item, 'kesiswaan'));
     $isTuDashboard = str_contains($jabatanKey, 'tata_usaha') || str_contains($jabatanKey, 'tu_sekolah');
     $isSupervisorDashboard = $isStrukturalDashboard
@@ -47,16 +48,16 @@
         $addLink($isWaliDashboard, 'user.absensi.harian.index', 'Absensi Kelas', 'ri-calendar-check-line', 'secondary');
         $addLink($isWaliDashboard, 'user.students.index', 'Data Santri Kelas', 'ri-group-line', 'info');
     } else {
-        $addLink($isStrukturalDashboard || $isTuDashboard, 'user.teacher-qr.waka-dashboard', 'Kehadiran Guru', 'ri-live-line', 'primary');
-        $addLink($isStrukturalDashboard || $isTuDashboard, 'user.approvals.index', 'Approval Center', 'ri-check-double-line', 'warning');
-        $addLink($isStrukturalDashboard || $isTuDashboard || $isWaliDashboard, 'user.students.index', 'Data Santri', 'ri-group-line', 'success');
-        $addLink($isStrukturalDashboard || $isTuDashboard, 'user.gtk.indexguru', 'Data GTK', 'ri-team-line', 'info');
+        $addLink($isManagerDashboard || $isTuDashboard, 'user.teacher-qr.waka-dashboard', 'Kehadiran Guru', 'ri-live-line', 'primary');
+        $addLink($isManagerDashboard || $isTuDashboard, 'user.approvals.index', 'Approval Center', 'ri-check-double-line', 'warning');
+        $addLink($isManagerDashboard || $isTuDashboard || $isWaliDashboard, 'user.students.index', 'Data Santri', 'ri-group-line', 'success');
+        $addLink($isManagerDashboard || $isTuDashboard, 'user.gtk.indexguru', 'Data GTK', 'ri-team-line', 'info');
         $addLink($isSupervisorDashboard, 'waka.supervisi.index', 'Supervisi', 'ri-file-excel-2-line', 'purple');
-        $addLink($isStrukturalDashboard || $isWaliDashboard, 'user.absensi.harian.index', 'Absensi Peserta Didik', 'ri-calendar-check-line', 'secondary');
+        $addLink($isManagerDashboard || $isWaliDashboard, 'user.absensi.harian.index', 'Absensi Peserta Didik', 'ri-calendar-check-line', 'secondary');
         $addLink($isWaliDashboard, 'user.study-groups.index', 'Rombel & Santri', 'ri-layout-grid-line', 'primary');
     }
 
-    if (! $isGuruDashboard && ! $isStrukturalDashboard && ! $isTuDashboard && ! $isWaliDashboard) {
+    if (! $isGuruDashboard && ! $isManagerDashboard && ! $isTuDashboard && ! $isWaliDashboard) {
         $addLink(true, 'user.teacher-qr.scan', 'Scan QR Kehadiran', 'ri-qr-scan-2-line', 'primary');
         $addLink(true, 'user.schools.guru-mapel.index', 'Buku Nilai Saya', 'ri-book-3-line', 'success');
         $addLink(true, 'user.jadwal-kbm.for-teacher', 'Jadwal Mengajar', 'ri-time-line', 'warning', ['teacherId' => $userId]);
