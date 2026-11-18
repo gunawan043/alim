@@ -120,18 +120,29 @@ class PersonaliaDashboardController extends Controller
         $notifMonths = (int) PensionSetting::get('notification_months', '6');
         $bupAge = (int) PensionSetting::get('bup_age', '58');
 
-        return User::where('users.is_active', true)
+        $query = User::where('users.is_active', true)
             ->join('gtk_profiles', 'users.id', '=', 'gtk_profiles.user_id')
             ->leftJoin('gtk_pensions', function ($join) {
                 $join->on('users.id', '=', 'gtk_pensions.user_id')
                     ->whereIn('gtk_pensions.pension_status', ['completed', 'cancelled']);
             })
             ->whereNull('gtk_pensions.id')
-            ->whereNotNull('gtk_profiles.tanggal_lahir')
-            ->whereRaw('DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR) <= DATE_ADD(NOW(), INTERVAL ? MONTH)',
-                [$bupAge, $notifMonths])
+            ->whereNotNull('gtk_profiles.tanggal_lahir');
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            // SQLite tidak mendukung DATE_ADD/INTERVAL MySQL.
+            $query
+                ->whereRaw("date(gtk_profiles.tanggal_lahir, '+{$bupAge} years') <= date('now', '+{$notifMonths} months')")
+                ->orderByRaw("date(gtk_profiles.tanggal_lahir, '+{$bupAge} years')");
+        } else {
+            $query
+                ->whereRaw('DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR) <= DATE_ADD(NOW(), INTERVAL ? MONTH)',
+                    [$bupAge, $notifMonths])
+                ->orderByRaw('DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR)', [$bupAge]);
+        }
+
+        return $query
             ->select('users.id', 'users.name', 'gtk_profiles.tanggal_lahir')
-            ->orderByRaw('DATE_ADD(gtk_profiles.tanggal_lahir, INTERVAL ? YEAR)', [$bupAge])
             ->limit(10)
             ->get();
     }
