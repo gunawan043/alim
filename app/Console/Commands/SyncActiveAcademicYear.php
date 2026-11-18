@@ -347,16 +347,28 @@ class SyncActiveAcademicYear extends Command
                     ->first();
 
                 if ($book) {
-                    if (! $dryRun) {
-                        $book->forceFill([
-                            'teacher_id' => $book->teacher_id ?: $teacherId,
-                            'school_id' => $group->school_id,
-                            'kktp_id' => $book->kktp_id ?: $kktpId,
-                            'is_active' => true,
-                        ])->save();
+                    $changes = [];
+
+                    if (! $book->teacher_id && $teacherId) {
+                        $changes['teacher_id'] = $teacherId;
+                    }
+                    if ((string) $book->school_id !== (string) $group->school_id) {
+                        $changes['school_id'] = $group->school_id;
+                    }
+                    if (! $book->kktp_id && $kktpId) {
+                        $changes['kktp_id'] = $kktpId;
+                    }
+                    if (! $book->is_active) {
+                        $changes['is_active'] = true;
                     }
 
-                    $this->stats['books_updated']++;
+                    if ($changes !== []) {
+                        if (! $dryRun) {
+                            $book->forceFill($changes)->save();
+                        }
+
+                        $this->stats['books_updated']++;
+                    }
 
                     continue;
                 }
