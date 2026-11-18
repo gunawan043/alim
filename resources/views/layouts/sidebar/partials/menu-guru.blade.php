@@ -32,12 +32,22 @@
             return '#';
         }
     };
+
+    $guruSectionOpen = static function (array $prefixes) use ($currentRoute): bool {
+        foreach ($prefixes as $prefix) {
+            if ($prefix !== '' && str_starts_with((string) $currentRoute, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
 @endphp
 
 <li class="menu-title"><span>Menu Guru</span></li>
 
 <x-sidebar-section id="guru_menu_absensi" label="Absensi" icon="ri-calendar-check-line"
-    :open="$sectionOpen(['user.jadwal-kbm.for-teacher', 'user.teacher-qr.', 'user.absensi.harian.'])">
+    :open="$guruSectionOpen(['user.jadwal-kbm.for-teacher', 'user.teacher-qr.', 'user.absensi.harian.'])">
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.jadwal-kbm.for-teacher', ['teacherId' => $guruMenuUserId]) }}">
@@ -67,7 +77,7 @@
 </x-sidebar-section>
 
 <x-sidebar-section id="guru_menu_kurikulum" label="Kurikulum" icon="ri-book-open-line"
-    :open="$sectionOpen(['user.kurikulum.perangkat.', 'user.kurikulum.prota.', 'user.kurikulum.prosem.', 'user.kurikulum.realisasi.'])">
+    :open="$guruSectionOpen(['user.kurikulum.perangkat.', 'user.kurikulum.prota.', 'user.kurikulum.prosem.', 'user.kurikulum.realisasi.'])">
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.kurikulum.perangkat.index') }}">
@@ -95,7 +105,7 @@
 </x-sidebar-section>
 
 <x-sidebar-section id="guru_menu_nilai" label="Nilai" icon="ri-survey-line"
-    :open="$sectionOpen(['user.schools.guru-mapel.', 'user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.'])">
+    :open="$guruSectionOpen(['user.schools.guru-mapel.', 'user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.'])">
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.schools.guru-mapel.index') }}">
