@@ -549,13 +549,20 @@
                         <ul class="nav nav-sm flex-column">
                             @foreach($guruBooks as $book)
                                 <li class="nav-item">
-                                    <a class="nav-link{{ (string) request()->route('adminBookId') === (string) $book->id ? ' active' : '' }}"
-                                       href="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $book->id]) }}"
-                                       title="Input nilai {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}">
-                                        <span class="text-truncate d-inline-block" style="max-width: 190px;">
+                                    <div class="d-flex align-items-center">
+                                        <a class="nav-link flex-grow-1 text-truncate{{ (string) request()->route('adminBookId') === (string) $book->id ? ' active' : '' }}"
+                                           href="{{ route('user.schools.guru-mapel.w3', ['userId' => $userId, 'adminBookId' => $book->id]) }}"
+                                           title="Input nilai {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}"
+                                           style="max-width: 190px;">
                                             {{ $book->subject?->name ?? 'Mapel' }} · {{ $book->studyGroup?->name ?? '-' }}
-                                        </span>
-                                    </a>
+                                        </a>
+                                        <a class="nav-link px-2 flex-shrink-0"
+                                           href="{{ route('user.kurikulum.perangkat.index', ['userId' => $userId, 'subject_id' => $book->subject_id, 'study_group_id' => $book->study_group_id]) }}"
+                                           title="Perangkat ajar {{ $book->subject?->name }} — {{ $book->studyGroup?->name }}"
+                                           aria-label="Perangkat ajar {{ $book->subject?->name }}">
+                                            <i class="ri-file-text-line"></i>
+                                        </a>
+                                    </div>
                                 </li>
                             @endforeach
                         </ul>
