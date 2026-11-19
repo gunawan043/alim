@@ -1,11 +1,11 @@
 @extends('layouts.master')
-@section('title') Buku Admin Guru @endsection
+@section('title') Mapel Saya @endsection
 @php $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null); @endphp
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('title') Buku Admin Guru @endslot
+        @slot('title') Mapel Saya @endslot
     @endcomponent
 
     @if(session('success'))
@@ -76,8 +76,8 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Buku Admin Guru</h5>
-                            <p class="text-muted mb-0 small">Pilih mapel &amp; kelas untuk membuka buku administrasi.</p>
+                            <h5 class="card-title mb-0">Mapel Saya</h5>
+                            <p class="text-muted mb-0 small">Daftar mapel &amp; kelas yang Anda ampu. Pilih salah satu untuk membuka nilai dan perangkat ajar.</p>
                         </div>
                     </div>
                 </div>

@@ -261,12 +261,6 @@
         || $jabKoorPerpus || $jabKoorBahasa || $jabKoorTahfidz
         || $jabBendahara;
 
-    $hasNonTeachingPosition = $hasStructuralPosition || $isAdminTU
-        || $isKoordinator || $isBendahara;
-
-    $compactMengajar = $hasNonTeachingPosition
-        && ($hasTeachingAssignments || $hasTeacherBooks);
-
     $structuralLabels = collect();
     if ($isKepala) {
         $structuralLabels->push('Kepala Satuan Pendidikan');
@@ -565,28 +559,6 @@
     $absensiMode = ($isAdminTU && ! $isStruktural) ? 'admin' : 'koordinator';
     $sarprasMode = ($isAdminTU && ! $isStruktural) ? 'aset' : 'full';
 
-    /*
-     * Daftar buku mapel milik guru untuk TA aktif — ditampilkan langsung di
-     * sidebar agar guru dapat membuka input nilai mapel/kelasnya tanpa harus
-     * melewati halaman daftar buku terlebih dahulu.
-     */
-    $guruBooks = collect();
-    if ($showMengajar && $userId) {
-        $activeSidebarAy = \App\Models\AcademicYear::query()->where('is_active', true)->first();
-        if ($activeSidebarAy) {
-            $guruBooks = \App\Models\TeacherAdminBook::query()
-                ->with(['subject:id,name', 'studyGroup:id,name'])
-                ->forTeacherWorkspace($userId)
-                ->where('is_active', true)
-                ->where('academic_year_id', $activeSidebarAy->id)
-                ->where('semester', $activeSidebarAy->semester)
-                ->get()
-                ->unique(fn ($book) => $book->subject_id.'|'.$book->study_group_id.'|'.$book->academic_year_id.'|'.$book->semester)
-                ->sortBy(fn ($book) => ($book->subject?->name ?? '').'|'.($book->studyGroup?->name ?? ''))
-                ->values();
-        }
-    }
-
     $hasManagementBlock = $showKesiswaan || $showRombel || $showNilai || $showAkademik
         || $showGtk || $showKehadiran || $showSarpras || $manageSchool || $showPerpus
         || $showBahasa || $showTahfidz || $isBendahara;
@@ -597,24 +569,8 @@
      satu dropdown tidak menumpuk puluhan tautan.
      ═══════════════════════════════════════════════════════════════════════════ --}}
 @if($showMengajar)
-    <li class="menu-title"><span>{{ $compactMengajar ? 'Mengajar · Guru Mapel' : $mengajarLabel }}</span></li>
+    <li class="menu-title"><span>{{ $mengajarLabel }}</span></li>
 
-    @if($compactMengajar)
-        {{-- Topi Mengajar versi ringkas: hanya jadwal dan daftar mapel/kelas
-             milik GTK ini. Menu luas ada di Jabatan/Tugas Tambahan. --}}
-        <li class="nav-item">
-            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.jadwal-kbm.for-teacher']) ? ' active' : '' }}"
-               href="{{ route('user.jadwal-kbm.for-teacher', ['userId' => $userId, 'teacherId' => $userId]) }}">
-                <i class="ri-calendar-schedule-line"></i><span>Jadwal Mengajar Saya</span>
-            </a>
-        </li>
-
-        @include('layouts.sidebar.satuan-pendidikan.partials.mapel-saya', [
-            'mapelSayaBooks' => $guruBooks,
-            'mapelSayaId' => 'sp_guru_books',
-            'mapelSayaUserId' => $userId,
-        ])
-    @else
     @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
         {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
         <x-sidebar-section id="sp_sec_guru_tahfidz" label="Tahfidz" icon="ri-book-read-line"
@@ -676,14 +632,8 @@
             <li class="nav-item">
                 <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
                    href="{{ route('user.schools.guru-mapel.index', ['userId' => $userId]) }}">
-                    <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
+                    <i class="ri-book-3-line"></i><span>Mapel Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
             </li>
-
-            @include('layouts.sidebar.satuan-pendidikan.partials.mapel-saya', [
-                'mapelSayaBooks' => $guruBooks,
-                'mapelSayaId' => 'sp_guru_books',
-                'mapelSayaUserId' => $userId,
-            ])
 
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
         </x-sidebar-section>
@@ -698,7 +648,6 @@
                 </a>
             </li>
         </x-sidebar-section>
-    @endif
     @endif
 @endif
 

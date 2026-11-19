@@ -77,7 +77,31 @@
 </x-sidebar-section>
 
 <x-sidebar-section id="guru_menu_kurikulum" label="Kurikulum" icon="ri-book-open-line"
-    :open="$guruSectionOpen(['user.kurikulum.perangkat.', 'user.kurikulum.prota.', 'user.kurikulum.prosem.', 'user.kurikulum.realisasi.'])">
+    :open="$guruSectionOpen(['user.pekan-efektif.', 'user.kurikulum.cp.', 'user.kurikulum.tp.', 'user.kurikulum.atp.', 'user.kurikulum.perangkat.', 'user.kurikulum.prota.', 'user.kurikulum.prosem.', 'user.kurikulum.ai.', 'user.kurikulum.realisasi.'])">
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.pekan-efektif.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.pekan-efektif.index') }}">
+            <i class="ri-calendar-todo-line"></i><span>Pekan Efektif</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.cp.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.kurikulum.cp.index') }}">
+            <i class="ri-file-list-line"></i><span>Capaian Pembelajaran</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.tp.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.kurikulum.tp.index') }}">
+            <i class="ri-list-check-2"></i><span>Tujuan Pembelajaran</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.atp.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.kurikulum.atp.index') }}">
+            <i class="ri-flow-chart"></i><span>ATP</span>
+        </a>
+    </li>
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.perangkat.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.kurikulum.perangkat.index') }}">
@@ -97,6 +121,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.ai.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.kurikulum.ai.index') }}">
+            <i class="ri-sparkling-2-line"></i><span>AI Assistant (RPM &amp; Soal)</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.kurikulum.realisasi.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.kurikulum.realisasi.index') }}">
             <i class="ri-article-line"></i><span>Jurnal Pembelajaran</span>
@@ -104,21 +134,14 @@
     </li>
 </x-sidebar-section>
 
-<x-sidebar-section id="guru_menu_nilai" label="Nilai" icon="ri-survey-line"
-    :open="$guruSectionOpen(['user.schools.guru-mapel.', 'user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.'])">
+<x-sidebar-section id="guru_menu_nilai" label="Nilai &amp; Asesmen" icon="ri-survey-line"
+    :open="$guruSectionOpen(['user.schools.guru-mapel.', 'user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.', 'user.ljk.'])">
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.schools.guru-mapel.index') }}">
-            <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>
+            <i class="ri-book-3-line"></i><span>Mapel Saya</span>
         </a>
     </li>
-
-    @include('layouts.sidebar.satuan-pendidikan.partials.mapel-saya', [
-        'mapelSayaBooks' => $guruMenuBooks,
-        'mapelSayaId' => 'guru_menu_books',
-        'mapelSayaUserId' => $guruMenuUserId,
-    ])
-
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.asesmen.index') }}">
@@ -129,6 +152,18 @@
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.bank-soal.index') }}">
             <i class="ri-archive-2-line"></i><span>Bank Soal</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.paket-soal.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.paket-soal.index') }}">
+            <i class="ri-stack-line"></i><span>Paket Soal</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.ljk.']) ? ' active' : '' }}"
+           href="{{ $guruMenuUrl('user.ljk.index') }}">
+            <i class="ri-scan-2-line"></i><span>LJK</span>
         </a>
     </li>
 </x-sidebar-section>

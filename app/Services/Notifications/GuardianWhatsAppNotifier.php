@@ -49,7 +49,7 @@ class GuardianWhatsAppNotifier
             'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
         ]);
 
-        return $this->sendToTargets($student, $message, 'permit_picked_up', $permit->id);
+        return $this->sendPermitToTargets($permit, $message, 'permit_picked_up', $permit->id);
     }
 
     public function notifyReturned(DormitoryPermit $permit): bool
@@ -69,7 +69,7 @@ class GuardianWhatsAppNotifier
             'waktu' => $permit->actual_return_datetime?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i'),
         ]);
 
-        return $this->sendToTargets($student, $message, 'permit_returned', $permit->id);
+        return $this->sendPermitToTargets($permit, $message, 'permit_returned', $permit->id);
     }
 
     public function notifyPermitApproved(DormitoryPermit $permit): bool
@@ -86,7 +86,7 @@ class GuardianWhatsAppNotifier
             'penjemput' => trim((string) ($permit->companion_name ?: '-')),
         ]);
 
-        return $this->sendToTargets($permit->student, $message, 'permit_approved', $permit->id);
+        return $this->sendPermitToTargets($permit, $message, 'permit_approved', $permit->id);
     }
 
     public function notifyPermitRejected(DormitoryPermit $permit, ?string $note = null): bool
@@ -101,7 +101,7 @@ class GuardianWhatsAppNotifier
             'catatan' => $note ?: '-',
         ]);
 
-        return $this->sendToTargets($permit->student, $message, 'permit_rejected', $permit->id);
+        return $this->sendPermitToTargets($permit, $message, 'permit_rejected', $permit->id);
     }
 
     public function notifyViolation(Student $student, string $kasus, ?string $tanggal = null, ?string $catatan = null): bool
@@ -172,7 +172,7 @@ class GuardianWhatsAppNotifier
             'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
         ]);
 
-        return $this->sendToTargets($permit->student, $message, 'overdue', $permit->id);
+        return $this->sendPermitToTargets($permit, $message, 'overdue', $permit->id);
     }
 
     public function notifyVisit(DormitoryVisitLog $visit, string $stage = 'approved'): bool
@@ -203,7 +203,7 @@ class GuardianWhatsAppNotifier
             'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
         ]);
 
-        return $this->sendToTargets($permit->student, $message, 'permit_reminder', (string) $permit->id);
+        return $this->sendPermitToTargets($permit, $message, 'permit_reminder', (string) $permit->id);
     }
 
     public function notifySick(Student $student, ?string $note = null, string $source = 'uks'): bool
@@ -288,6 +288,149 @@ class GuardianWhatsAppNotifier
         }
 
         return $ok;
+    }
+
+    /**
+     * Notifikasi izin asrama: wali (semua nomor mahrom aktif) + kepala asrama.
+     * Mode central tetap dihormati, tetapi wali dan kepala asrama selalu
+     * dimasukkan agar informasi izin tidak hanya berhenti di admin.
+     */
+    private function sendPermitToTargets(DormitoryPermit $permit, string $message, string $event, string $refId): bool
+    {
+        $student = $permit->student;
+
+        if (! $student) {
+            return false;
+        }
+
+        $targets = $this->resolveTargets($student);
+        $seen = [];
+
+        foreach ($targets as $target) {
+            $digits = preg_replace('/\D+/', '', (string) $target['phone']);
+            if ($digits !== '') {
+                $seen[$digits] = true;
+            }
+        }
+
+        foreach ($this->guardianPhones($student) as $phone) {
+            $digits = preg_replace('/\D+/', '', (string) $phone);
+            if ($digits === '' || isset($seen[$digits])) {
+                continue;
+            }
+
+            $seen[$digits] = true;
+            $targets[] = ['phone' => $phone, 'central' => false, 'head' => false];
+        }
+
+        foreach ($this->dormitoryHeadPhones($permit->dormitory_id) as $phone) {
+            $digits = preg_replace('/\D+/', '', (string) $phone);
+            if ($digits === '' || isset($seen[$digits])) {
+                continue;
+            }
+
+            $seen[$digits] = true;
+            $targets[] = ['phone' => $phone, 'central' => false, 'head' => true];
+        }
+
+        if ($targets === []) {
+            return false;
+        }
+
+        $guardianName = $this->guardianName($student);
+        $guardianPhone = $this->guardianPhone($student);
+        $ok = false;
+
+        foreach ($targets as $target) {
+            $body = $message;
+
+            if (! empty($target['head'])) {
+                $body = 'Untuk Kepala Asrama — santri: '.$student->name."\n\n".$message;
+            } elseif (! empty($target['central'])) {
+                $body = 'Untuk wali: '.($guardianName ?: 'Wali '.$student->name)
+                    .($guardianPhone ? " ({$guardianPhone})" : '')
+                    ." — santri: {$student->name}\n\n".$message;
+            }
+
+            $ok = $this->send((string) $target['phone'], $this->withBrandFooter($body), $event, $refId) || $ok;
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Semua nomor wali/mahrom aktif, ditambah nomor santri sebagai fallback.
+     *
+     * @return array<int, string>
+     */
+    private function guardianPhones(Student $student): array
+    {
+        $phones = DB::table('student_mahroms')
+            ->where('student_id', $student->id)
+            ->where('is_active', true)
+            ->orderByDesc('is_primary')
+            ->pluck('phone')
+            ->filter()
+            ->map(fn ($phone) => trim((string) $phone))
+            ->filter()
+            ->values()
+            ->all();
+
+        foreach ([$student->mobile_phone, $student->phone] as $fallback) {
+            if (filled($fallback)) {
+                $phones[] = trim((string) $fallback);
+            }
+        }
+
+        return array_values(array_unique(array_filter($phones)));
+    }
+
+    /**
+     * Nomor Kepala Asrama (dan wakil yang tercatat aktif) untuk izin terkait.
+     *
+     * @return array<int, string>
+     */
+    private function dormitoryHeadPhones(?string $dormitoryId): array
+    {
+        if (! $dormitoryId) {
+            return [];
+        }
+
+        $phones = [];
+
+        try {
+            $dormitory = \App\Models\Dormitory::with('head')->find($dormitoryId);
+
+            if ($dormitory) {
+                foreach ([$dormitory->head?->no_hp, $dormitory->head?->phone, $dormitory->phone] as $phone) {
+                    if (filled($phone)) {
+                        $phones[] = trim((string) $phone);
+                    }
+                }
+            }
+
+            $assignments = \App\Models\DormitoryStaffAssignment::query()
+                ->with('user')
+                ->where('dormitory_id', $dormitoryId)
+                ->where('status', 'active')
+                ->whereIn('position', [\App\Support\DormitoryPosition::KEPALA, \App\Support\DormitoryPosition::WAKIL])
+                ->get();
+
+            foreach ($assignments as $assignment) {
+                foreach ([$assignment->user?->no_hp, $assignment->user?->phone] as $phone) {
+                    if (filled($phone)) {
+                        $phones[] = trim((string) $phone);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengambil nomor kepala asrama untuk notifikasi izin', [
+                'dormitory_id' => $dormitoryId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return array_values(array_unique(array_filter($phones)));
     }
 
     private function sendCentralOnly(string $message, string $event, string $refId): bool

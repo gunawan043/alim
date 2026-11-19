@@ -447,6 +447,43 @@ class WhatsAppGuardianNotificationTest extends TestCase
         });
     }
 
+
+    public function test_notifikasi_izin_terkirim_ke_wali_dan_kepala_asrama(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'guardian');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $school = School::firstOrFail();
+        $head = User::create([
+            'name' => 'Kepala Asrama Uji',
+            'email' => 'kepala.asrama.wa@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'no_hp' => '0813-1111-2222',
+        ]);
+
+        $dormitory = \App\Models\Dormitory::create([
+            'work_unit_id' => $school->work_unit_id,
+            'school_id' => $school->id,
+            'code' => 'PUTRA-WA-01',
+            'name' => 'Asrama Notif',
+            'gender' => 'putra',
+            'head_id' => $head->id,
+            'is_active' => true,
+        ]);
+
+        $permit = $this->makePermit([
+            'dormitory_id' => $dormitory->id,
+            'status' => 'approved',
+        ]);
+
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyPermitApproved($permit));
+
+        Http::assertSent(fn ($request) => $request['target'] === '6281234567890');
+        Http::assertSent(fn ($request) => $request['target'] === '6281311112222'
+            && str_contains($request['message'], 'Kepala Asrama'));
+    }
+
     private function makePermit(array $overrides = []): DormitoryPermit
     {
         $permit = new DormitoryPermit;

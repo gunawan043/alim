@@ -708,10 +708,12 @@ class SidebarAuditTest extends TestCase
         $page->assertOk();
         $html = $page->getContent();
 
-        $this->assertStringContainsString('Mengajar · Guru Mapel', $html);
+        $this->assertStringContainsString('Menu Guru Mapel', $html);
+        $this->assertStringContainsString('Mapel Saya', $html);
+        $this->assertStringContainsString('Kurikulum', $html);
+        $this->assertStringContainsString('Asesmen', $html);
         $this->assertStringContainsString('Men Walkes', $html);
         $this->assertStringContainsString('Jabatan ·', $html);
-        $this->assertStringNotContainsString('Menu Guru Mapel', $html);
 
         $guru = $this->makeUser('GURU UMUM', [], true);
         $guruPage = $this->actingAs($guru)->get('/'.$guru->id.'/dashboard/satuan-pendidikan');
