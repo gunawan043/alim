@@ -11,7 +11,6 @@ use App\Http\Controllers\Api\Mobile\V1\DormitoryVisitController;
 use App\Http\Controllers\Api\Mobile\V1\ForgotPasswordController;
 use App\Http\Controllers\Api\Mobile\V1\JadwalController;
 use App\Http\Controllers\Api\Mobile\V1\KalenderController;
-use App\Http\Controllers\Api\Mobile\V1\LjkController as MobileLjkController;
 use App\Http\Controllers\Api\Mobile\V1\MobileMahromController;
 use App\Http\Controllers\Api\Mobile\V1\NotificationController;
 use App\Http\Controllers\Api\Mobile\V1\PermitController;
@@ -31,6 +30,7 @@ use App\Http\Controllers\Api\Mobile\V1\WaliLinkAdminController;
 use App\Http\Controllers\Api\Mobile\V1\WaliLinkController;
 use App\Http\Controllers\Api\Mobile\V1\WaliReportController;
 use App\Http\Controllers\Api\Mobile\V1\WaliSantriController;
+use App\Http\Controllers\Api\Mobile\V1\WaliSchoolController;
 use App\Http\Controllers\Api\Mobile\V1\WaliSurveyController;
 use App\Http\Controllers\Api\Pos\V1\DivisiController as PosDivisiController;
 use App\Http\Controllers\Api\Pos\V1\JabatanController as PosJabatanController;
@@ -108,7 +108,7 @@ Route::prefix('mobile/v1')->group(function () {
 
         // Authenticated routes
         Route::middleware('auth:sanctum')->group(function () {
-            Route::get('me', [AuthController::class, 'me']);
+            Route::get('me', [AuthController::class, 'me'])->middleware('wali.school.context');
             Route::put('me', [AuthController::class, 'updateProfile']);
 
             // ── SESSION MANAGEMENT (Sprint 2) ────────────────────────────────
@@ -120,7 +120,11 @@ Route::prefix('mobile/v1')->group(function () {
 
     // ── WALI API (user-scoped) ─────────────────────────────────────────────
     // Semua endpoint memakai {userId} UUID dan divalidasi api.user-scope.
-    Route::prefix('{userId}/wali')->middleware(['auth:sanctum', 'api.user-scope'])->group(function () {
+    Route::prefix('{userId}/wali')->middleware(['auth:sanctum', 'api.user-scope', 'wali.mobile'])->group(function () {
+        // Pilihan sekolah untuk wali multi-sekolah.
+        Route::get('schools', [WaliSchoolController::class, 'index'])
+            ->middleware('wali.school.context');
+
         // Penghubungan wali–santri
         Route::prefix('links')->group(function () {
             Route::post('preview', [WaliLinkController::class, 'preview'])->middleware('throttle:wali-link');
@@ -165,7 +169,7 @@ Route::prefix('mobile/v1')->group(function () {
     });
 
     // ── SANTRI ───────────────────────────────────────────────��────────────────
-    Route::middleware(['auth:sanctum', 'wali.school.context', 'organization.context'])->group(function () {
+    Route::middleware(['auth:sanctum', 'wali.mobile', 'wali.school.context', 'organization.context'])->group(function () {
         Route::get('santri', [StudentController::class, 'index']);
         Route::get('santri/verify-nik', [StudentController::class, 'verifyNik']);
         Route::get('santri/{id}', [StudentController::class, 'show']);
@@ -272,15 +276,6 @@ Route::prefix('mobile/v1')->group(function () {
 // ── AUTHENTICATED ─────────────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'organization.context'])->get('/user', function (Request $request) {
     return $request->user();
-});
-
-// ── LJK SMART SCANNER (mobile guru) ─────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'organization.context'])->prefix('mobile/v1/ljk')->name('mobile.ljk.')->group(function () {
-    Route::get('exams', [MobileLjkController::class, 'exams'])->name('exams');
-    Route::get('exams/{exam}', [MobileLjkController::class, 'examDetail'])->name('exam.detail');
-    Route::post('exams/{exam}/scans', [MobileLjkController::class, 'scan'])->name('scan');
-    Route::get('scans/{scan}', [MobileLjkController::class, 'scanDetail'])->name('scan.detail');
-    Route::patch('scans/{scan}/answers/{answer}', [MobileLjkController::class, 'correct'])->name('correct');
 });
 
 // ── SARPRAS / ASSET MOBILE API v1 ────────────────────────────────────────────

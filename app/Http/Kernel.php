@@ -25,6 +25,7 @@ use App\Http\Middleware\EnsureSatuanPendidikanFeature;
 use App\Http\Middleware\EnsureSecurityAccess;
 use App\Http\Middleware\EnsureStudentPasswordChanged;
 use App\Http\Middleware\EnsureSuperAdminOrSystemAdmin;
+use App\Http\Middleware\EnsureWaliMobile;
 use App\Http\Middleware\Localization;
 use App\Http\Middleware\MinRoleLevel;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -146,6 +147,7 @@ class Kernel extends HttpKernel
         'super.or.system' => EnsureSuperAdminOrSystemAdmin::class,
         'school.context' => SchoolContextMiddleware::class,
         'wali.school.context' => WaliSchoolContextMiddleware::class,
+        'wali.mobile' => EnsureWaliMobile::class,
         'ip.blocked' => CheckIpBlocked::class,
         'employee.access' => EnsureEmployeeAccess::class,
         'organization.context' => BindOrganizationContext::class,

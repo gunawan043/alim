@@ -22,6 +22,7 @@
                         <th>Rombel</th>
                         <th class="text-center">Terpasang</th>
                         <th class="text-center">JP Diminta</th>
+                        <th class="text-center">Tahfidz</th>
                         <th>Kekurangan JP</th>
                         <th>Catatan</th>
                     </tr>
@@ -36,6 +37,24 @@
                                 </span>
                             </td>
                             <td class="text-center">{{ $group['requested'] }}</td>
+                            <td class="text-center small">
+                                @php $tahfidz = $group['tahfidz'] ?? null; @endphp
+                                @if($tahfidz && ($tahfidz['total'] ?? 0) > 0)
+                                    <span class="badge {{ ($tahfidz['placed'] ?? 0) >= $tahfidz['total'] ? 'bg-success' : 'bg-warning text-dark' }}">
+                                        {{ $tahfidz['placed'] ?? 0 }}/{{ $tahfidz['total'] }} JP
+                                    </span>
+                                    @if(! empty($tahfidz['days']))
+                                        <div class="text-muted">
+                                            {{ collect($tahfidz['days'])->map(fn ($d) => ($report['day_names'][$d['day']] ?? 'Hari '.$d['day']).' '.$d['jp'].' JP')->implode(', ') }}
+                                        </div>
+                                    @endif
+                                    @if(! empty($tahfidz['message']))
+                                        <div class="text-danger">{{ $tahfidz['message'] }}</div>
+                                    @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
                                 @forelse($group['shortages'] as $shortage)
                                     <span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1 mb-1">

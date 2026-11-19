@@ -22,7 +22,7 @@ class TahfidzGroup extends Model
     }
 
     protected $fillable = [
-        'work_unit_id', 'school_id', 'study_group_id', 'academic_year_id',
+        'work_unit_id', 'school_id', 'study_group_id', 'grade_level_id', 'academic_year_id',
         'tahfidz_package_id', 'curriculum_id', 'name', 'code', 'gender',
         'teacher_id', 'coordinator_id', 'max_members', 'room', 'is_active', 'notes',
     ];
@@ -45,6 +45,15 @@ class TahfidzGroup extends Model
     public function studyGroup(): BelongsTo
     {
         return $this->belongsTo(StudyGroup::class, 'study_group_id');
+    }
+
+    /**
+     * Tingkat kelas halaqah. Satu halaqah boleh berisi santri dari beberapa
+     * rombel, tetapi seluruhnya harus satu tingkat.
+     */
+    public function gradeLevel(): BelongsTo
+    {
+        return $this->belongsTo(GradeLevel::class, 'grade_level_id');
     }
 
     public function academicYear(): BelongsTo

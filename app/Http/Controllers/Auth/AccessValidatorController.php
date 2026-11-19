@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\WaliSantri;
+use App\Support\GtkRoleResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -71,47 +73,78 @@ class AccessValidatorController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        // Assign default employee role if verification succeeds
-        // This is configurable — you may want to instead just flag the account
+        // Setelah identitas terbukti, beri role supaya tidak terlempar lagi
+        // ke halaman verifikasi saat membuka dashboard.
+        if ($user->roles()->doesntExist()) {
+            $role = GtkRoleResolver::resolve(
+                $user->employment?->jabatan,
+                $user->employment?->jabatan_id,
+                $user->gtkWorkUnits()->where('is_primary', true)->value('work_unit_id'),
+            );
+
+            if ($role && Role::where('name', $role)->exists()) {
+                $user->syncRoles([$role]);
+            }
+        }
+
         return redirect('/')->with('success', 'Identitas berhasil diverifikasi. Selamat datang di ALIM.');
     }
 
     private function checkVerificationData($user, string $type, string $value): bool
     {
+        $value = trim($value);
+
         switch ($type) {
             case 'nik':
-                // Check against NIK in users table or wali_santri table
-                $userNik = $user->getAttribute('nik') ?? $user->getAttribute('no_ktp');
-                if ($userNik && Hash::check($value, $userNik)) {
-                    return true;
+                // NIK tersimpan sebagai teks biasa (users / gtk_profiles / wali),
+                // jadi dibandingkan langsung — bukan lewat Hash::check.
+                $niks = array_filter([
+                    $user->getAttribute('nik'),
+                    $user->getAttribute('no_ktp'),
+                    $user->nik_wali,
+                    $user->gtkProfile?->nik,
+                ]);
+
+                foreach ($niks as $nik) {
+                    if (hash_equals((string) $nik, $value)) {
+                        return true;
+                    }
                 }
-                // Also check wali_santri table
-                $waliSantri = WaliSantri::where('user_id', $user->id)
+
+                return WaliSantri::where('user_id', $user->id)
                     ->where('nik_wali', $value)
                     ->exists();
 
-                return $waliSantri;
-
             case 'employee_id':
-                // Check against employee_id field if exists
-                $employeeId = $user->getAttribute('employee_id');
-                if ($employeeId && strcasecmp($employeeId, $value) === 0) {
-                    return true;
+                $ids = array_filter([
+                    $user->getAttribute('employee_id'),
+                    $user->employment?->nupy,
+                ]);
+
+                foreach ($ids as $id) {
+                    if (strcasecmp((string) $id, $value) === 0) {
+                        return true;
+                    }
                 }
 
                 return false;
 
             case 'phone':
-                // Check against phone number in user or wali_santri table
-                $phone = $user->getAttribute('no_hp') ?? $user->getAttribute('phone');
-                if ($phone && preg_match('/'.preg_quote($value, '/').'$/', $phone)) {
-                    return true;
+                $phones = array_filter([
+                    $user->getAttribute('no_hp'),
+                    $user->getAttribute('phone'),
+                    $user->gtkContact?->no_hp,
+                ]);
+
+                foreach ($phones as $phone) {
+                    if (preg_match('/'.preg_quote($value, '/').'$/', (string) $phone)) {
+                        return true;
+                    }
                 }
-                $waliSantri = WaliSantri::where('user_id', $user->id)
+
+                return WaliSantri::where('user_id', $user->id)
                     ->where('no_hp', 'like', '%'.$value)
                     ->exists();
-
-                return $waliSantri;
 
             default:
                 return false;

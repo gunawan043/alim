@@ -25,6 +25,8 @@ class CurriculumStructureController extends Controller
         'SD' => ['levels' => [1, 2, 3, 4, 5, 6], 'labels' => ['I', 'II', 'III', 'IV', 'V', 'VI']],
         'SMP' => ['levels' => [7, 8, 9], 'labels' => ['VII', 'VIII', 'IX']],
         'SMA' => ['levels' => [10, 11, 11, 12, 12], 'labels' => ['X', 'XI (BHS)', 'XI (IPA)', 'XII (BHS)', 'XII (IPA)'], 'tracks' => [null, 'bahasa', 'ipa', 'bahasa', 'ipa']],
+        // PPS Diniyah: 6 tahun — Wustho kelas 7–9, Ulya kelas 10–12.
+        'PPS' => ['levels' => [7, 8, 9, 10, 11, 12], 'labels' => ['VII', 'VIII', 'IX', 'X', 'XI', 'XII']],
     ];
 
     /**

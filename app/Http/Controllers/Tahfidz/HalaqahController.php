@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Tahfidz;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\GradeLevel;
+use App\Models\GtkEmployment;
 use App\Models\School;
 use App\Models\Student;
+use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\TahfidzCurriculum;
 use App\Models\TahfidzGroup;
@@ -21,10 +24,14 @@ use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
 use App\Services\TahfidzTargetService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class HalaqahController extends Controller
 {
+    /** True bila daftar guru halaqah jatuh ke fallback seluruh GTK sekolah. */
+    private bool $teacherFallback = false;
+
     public function __construct(
         private readonly TahfidzAccess $access,
         private readonly TahfidzProgressService $progress,
@@ -80,6 +87,7 @@ class HalaqahController extends Controller
             'work_unit_id' => $school->work_unit_id,
             'school_id' => $school->id,
             'study_group_id' => $validated['study_group_id'] ?? null,
+            'grade_level_id' => $this->resolveGradeLevelId($validated),
             'academic_year_id' => $validated['academic_year_id'],
             'tahfidz_package_id' => $validated['tahfidz_package_id'] ?? null,
             'curriculum_id' => $validated['curriculum_id'] ?? null,
@@ -112,8 +120,10 @@ class HalaqahController extends Controller
             ]);
         }
 
+        $members = $this->attachMembers($group, $validated['member_ids'] ?? []);
+
         return redirect()->route('user.tahfidz.halaqah.show', ['userId' => $userId, 'id' => $group->id])
-            ->with('success', 'Halaqah berhasil dibuat.');
+            ->with('success', 'Halaqah berhasil dibuat.'.$this->memberSummary($members));
     }
 
     public function show(Request $request, string $userId, string $id)
@@ -126,16 +136,19 @@ class HalaqahController extends Controller
         ]);
 
         $activeStudentIds = TahfidzGroupMember::query()
+            ->where('tahfidz_group_id', $group->id)
             ->where('academic_year_id', $group->academic_year_id)
             ->where('status', 'aktif')
             ->pluck('student_id');
 
+        // Santri tinggal ditarik dari daftar santri sekolah. Santri yang sudah
+        // punya halaqah lain tetap ditampilkan; saat ditambahkan ia dipindahkan.
         $availableStudents = Student::query()
             ->where('school_id', $group->school_id)
             ->where('status', 'active')
             ->whereNotIn('id', $activeStudentIds)
             ->orderBy('name')
-            ->limit(300)
+            ->limit(500)
             ->get(['id', 'name', 'nis']);
 
         $canManage = $this->access->canManageGroup($request->user(), $group);
@@ -182,13 +195,14 @@ class HalaqahController extends Controller
     {
         $group = TahfidzGroup::findOrFail($id);
         $this->authorizeGroupManage($request, $group);
-        $validated = $this->validateGroup($request);
+        $validated = $this->validateGroup($request, $group);
         $school = School::findOrFail($validated['school_id']);
 
         $group->update([
             'work_unit_id' => $school->work_unit_id,
             'school_id' => $school->id,
             'study_group_id' => $validated['study_group_id'] ?? null,
+            'grade_level_id' => $this->resolveGradeLevelId($validated),
             'academic_year_id' => $validated['academic_year_id'],
             'tahfidz_package_id' => $validated['tahfidz_package_id'] ?? null,
             'curriculum_id' => $validated['curriculum_id'] ?? null,
@@ -203,8 +217,10 @@ class HalaqahController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
+        $members = $this->attachMembers($group, $validated['member_ids'] ?? []);
+
         return redirect()->route('user.tahfidz.halaqah.show', ['userId' => $userId, 'id' => $group->id])
-            ->with('success', 'Halaqah diperbarui.');
+            ->with('success', 'Halaqah diperbarui.'.$this->memberSummary($members));
     }
 
     public function addMembers(Request $request, string $userId, string $id)
@@ -216,25 +232,96 @@ class HalaqahController extends Controller
             'student_ids.*' => 'exists:students,id',
         ]);
 
+        $result = $this->attachMembers($group, $request->input('student_ids', []));
+
+        if ($result['added'] === 0 && $result['moved'] === 0) {
+            $reason = ($result['grade_mismatch'] ?? 0) > 0
+                ? 'Semua santri yang dipilih berasal dari tingkat berbeda. Halaqah hanya boleh berisi satu tingkat; ubah Tingkat halaqah atau pilih santri lain.'
+                : 'Tidak ada santri baru yang ditambahkan.'.$this->memberSummary($result);
+
+            return back()->with('error', $reason);
+        }
+
+        return back()->with('success', 'Santri ditambahkan ke halaqah.'.$this->memberSummary($result));
+    }
+
+    /**
+     * Tarik santri ke halaqah. Santri yang sudah aktif di halaqah lain pada
+     * tahun ajaran yang sama dipindahkan (bukan ditolak), sesuai alur
+     * "santri halaqah tinggal ditarik".
+     *
+     * @param  array<int, string>  $studentIds
+     * @return array{added: int, moved: int, skipped: int}
+     */
+    private function attachMembers(TahfidzGroup $group, array $studentIds): array
+    {
         $added = 0;
+        $moved = 0;
         $skipped = 0;
-        foreach ($request->input('student_ids') as $studentId) {
+        $gradeMismatch = 0;
+
+        $studentIds = array_values(array_unique($studentIds));
+
+        // Satu halaqah hanya boleh berisi santri dari satu tingkat. Rombel boleh
+        // berbeda (halaqah lintas rombel), tetapi tingkatnya harus sama.
+        $gradeByStudent = collect();
+
+        if ($group->grade_level_id && $studentIds !== []) {
+            $gradeByStudent = StudentClassHistory::query()
+                ->whereIn('student_id', $studentIds)
+                ->where('is_active', true)
+                ->with('studyGroup:id,grade_level_id')
+                ->get()
+                ->groupBy('student_id')
+                ->map(fn ($rows) => $rows->firstWhere('academic_year_id', $group->academic_year_id)?->studyGroup?->grade_level_id
+                    ?? $rows->sortByDesc('created_at')->first()?->studyGroup?->grade_level_id);
+        }
+
+        foreach ($studentIds as $studentId) {
             $student = Student::where('school_id', $group->school_id)->find($studentId);
+
             if (! $student) {
                 $skipped++;
 
                 continue;
             }
 
-            $active = TahfidzGroupMember::where('student_id', $studentId)
+            if ($group->grade_level_id) {
+                $studentGrade = $gradeByStudent[$studentId] ?? null;
+
+                if ($studentGrade !== null && (string) $studentGrade !== (string) $group->grade_level_id) {
+                    $gradeMismatch++;
+
+                    continue;
+                }
+            }
+
+            $alreadyHere = TahfidzGroupMember::query()
+                ->where('tahfidz_group_id', $group->id)
+                ->where('student_id', $studentId)
                 ->where('academic_year_id', $group->academic_year_id)
                 ->where('status', 'aktif')
                 ->exists();
 
-            if ($active) {
+            if ($alreadyHere) {
                 $skipped++;
 
                 continue;
+            }
+
+            $otherMemberships = TahfidzGroupMember::query()
+                ->where('student_id', $studentId)
+                ->where('academic_year_id', $group->academic_year_id)
+                ->where('status', 'aktif')
+                ->where('tahfidz_group_id', '!=', $group->id)
+                ->get();
+
+            foreach ($otherMemberships as $membership) {
+                $membership->update([
+                    'status' => 'pindah_halaqah',
+                    'leave_date' => now()->toDateString(),
+                ]);
+                $moved++;
             }
 
             TahfidzGroupMember::create([
@@ -247,7 +334,56 @@ class HalaqahController extends Controller
             $added++;
         }
 
-        return back()->with('success', $added.' santri ditambahkan'.($skipped ? ', '.$skipped.' dilewati karena sudah punya halaqah aktif.' : '.'));
+        return [
+            'added' => $added,
+            'moved' => $moved,
+            'skipped' => $skipped,
+            'grade_mismatch' => $gradeMismatch,
+        ];
+    }
+
+    /**
+     * Tingkat halaqah: ikut rombel bila dipilih, atau dari pilihan eksplisit.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveGradeLevelId(array $validated): ?string
+    {
+        if (! empty($validated['grade_level_id'])) {
+            return $validated['grade_level_id'];
+        }
+
+        if (empty($validated['study_group_id'])) {
+            return null;
+        }
+
+        return StudyGroup::whereKey($validated['study_group_id'])->value('grade_level_id');
+    }
+
+    /**
+     * @param  array{added: int, moved: int, skipped: int}  $result
+     */
+    private function memberSummary(array $result): string
+    {
+        if ($result['added'] === 0 && $result['moved'] === 0 && $result['skipped'] === 0 && ($result['grade_mismatch'] ?? 0) === 0) {
+            return '';
+        }
+
+        $parts = [];
+        if ($result['added'] > 0) {
+            $parts[] = $result['added'].' santri ditambahkan';
+        }
+        if ($result['moved'] > 0) {
+            $parts[] = $result['moved'].' dipindahkan dari halaqah lain';
+        }
+        if ($result['skipped'] > 0) {
+            $parts[] = $result['skipped'].' dilewati (sudah di halaqah ini / bukan santri sekolah ini)';
+        }
+        if (($result['grade_mismatch'] ?? 0) > 0) {
+            $parts[] = $result['grade_mismatch'].' ditolak karena beda tingkat dengan halaqah ini';
+        }
+
+        return ' '.implode(', ', $parts).'.';
     }
 
     public function removeMember(Request $request, string $userId, string $id, string $memberId)
@@ -495,17 +631,27 @@ class HalaqahController extends Controller
         $schoolId = $group?->school_id ?? $this->schoolId($request);
         $academicYears = AcademicYear::orderByDesc('start_date')->get();
         $schools = $this->access->canViewAllSchools($request->user()) ? School::orderBy('name')->get(['id', 'name']) : School::whereKey($schoolId)->get(['id', 'name']);
-        $studyGroups = StudyGroup::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get(['id', 'name', 'academic_year_id']);
+        $studyGroups = StudyGroup::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get(['id', 'name', 'academic_year_id', 'grade_level_id']);
+        $gradeLevels = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->orderBy('level')
+            ->get(['id', 'name', 'level']);
         $packages = TahfidzPackage::where('is_active', true)->orderBy('name')->get(['id', 'name']);
         $curricula = TahfidzCurriculum::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderByDesc('created_at')->get(['id', 'grade_level_id', 'academic_year_id', 'semester']);
-        $teachers = User::query()
-            ->when($schoolId, fn ($q) => $q->whereHas('employment', fn ($e) => $e->where('school_id', $schoolId)))
-            ->orderBy('name')
-            ->get(['id', 'name']);
 
-        if ($teachers->isEmpty()) {
-            $teachers = User::orderBy('name')->limit(300)->get(['id', 'name']);
-        }
+        // Guru halaqah hanya Guru Tahfidz pada satuan pendidikan tersebut.
+        $teachers = $this->tahfidzTeachers($schoolId, $group);
+
+        // Santri tinggal ditarik dari daftar santri sekolah. Kelasnya ikut dimuat
+        // agar form dapat menandai tingkat/rombel setiap santri.
+        $students = Student::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('status', 'active')
+            ->with(['currentClassHistory.studyGroup.gradeLevel'])
+            ->orderBy('name')
+            ->limit(500)
+            ->get(['id', 'name', 'nis', 'school_id']);
 
         return [
             'userId' => $request->route('userId'),
@@ -513,19 +659,96 @@ class HalaqahController extends Controller
             'academicYears' => $academicYears,
             'schools' => $schools,
             'studyGroups' => $studyGroups,
+            'gradeLevels' => $gradeLevels,
             'packages' => $packages,
             'curricula' => $curricula,
             'teachers' => $teachers,
+            'teacherFallback' => $this->teacherFallback,
+            'students' => $students,
             'schoolId' => $schoolId,
         ];
     }
 
-    private function validateGroup(Request $request): array
+    /**
+     * Guru yang boleh mengampu halaqah: Guru Tahfidz di satuan pendidikan
+     * tersebut (dari jabatan, role, tugas tambahan, atau penugasan halaqah
+     * yang sudah ada). Bila belum ada yang terdaftar, seluruh GTK sekolah
+     * ditampilkan agar halaqah tetap dapat dibuat.
+     *
+     * @return Collection<int, User>
+     */
+    private function tahfidzTeachers(?string $schoolId, ?TahfidzGroup $group = null): Collection
     {
-        return $request->validate([
+        $this->teacherFallback = false;
+
+        if (! $schoolId) {
+            return collect();
+        }
+
+        $ids = collect();
+
+        // 1) Jabatan kepegawaian di sekolah ini bernuansa tahfidz.
+        $ids = $ids->merge(
+            GtkEmployment::query()
+                ->where('school_id', $schoolId)
+                ->where(function ($q) {
+                    $q->where('jabatan', 'like', '%tahfidz%')
+                        ->orWhere('jabatan', 'like', '%tahfiz%')
+                        ->orWhere('jabatan', 'like', '%musyrif%');
+                })
+                ->pluck('user_id')
+        );
+
+        // 2) Role / tugas tambahan tahfidz, tetap dibatasi pada GTK sekolah ini.
+        $ids = $ids->merge(
+            User::query()
+                ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+                ->where(function ($q) {
+                    $q->whereHas('roles', fn ($r) => $r->where('name', 'like', '%Tahfidz%')->orWhere('name', 'like', '%Tahfiz%')->orWhere('name', 'like', '%Musyrif%'))
+                        ->orWhereHas('tugasTambahan', fn ($t) => $t->where('nama_tugas', 'like', '%Tahfidz%')->orWhere('nama_tugas', 'like', '%Tahfiz%')->orWhere('nama_tugas', 'like', '%Musyrif%'));
+                })
+                ->pluck('id')
+        );
+
+        // 3) Sudah mengampu halaqah di sekolah ini.
+        $ids = $ids->merge(
+            TahfidzGroupTeacher::query()
+                ->where('is_active', true)
+                ->whereHas('group', fn ($q) => $q->where('school_id', $schoolId))
+                ->pluck('user_id')
+        );
+
+        // 4) Pengampu halaqah saat ini tetap muncul ketika mengedit.
+        if ($group) {
+            $ids->push($group->teacher_id, $group->coordinator_id);
+        }
+
+        $teachers = User::query()
+            ->whereIn('id', $ids->filter()->unique()->values())
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        if ($teachers->isEmpty()) {
+            $this->teacherFallback = true;
+
+            $teachers = User::query()
+                ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        }
+
+        return $teachers;
+    }
+
+    private function validateGroup(Request $request, ?TahfidzGroup $group = null): array
+    {
+        $validated = $request->validate([
             'school_id' => 'required|exists:schools,id',
             'academic_year_id' => 'required|exists:academic_years,id',
             'study_group_id' => 'nullable|exists:study_groups,id',
+            'grade_level_id' => 'nullable|exists:grade_levels,id',
             'tahfidz_package_id' => 'nullable|exists:tahfidz_packages,id',
             'curriculum_id' => 'nullable|exists:tahfidz_curriculums,id',
             'name' => 'required|string|max:100',
@@ -536,7 +759,24 @@ class HalaqahController extends Controller
             'max_members' => 'nullable|integer|min:1|max:100',
             'room' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:2000',
+            'member_ids' => 'nullable|array',
+            'member_ids.*' => 'exists:students,id',
         ]);
+
+        $this->assertTeacherIsTahfidz($validated['teacher_id'], $validated['school_id'], $group);
+
+        return $validated;
+    }
+
+    private function assertTeacherIsTahfidz(string $teacherId, string $schoolId, ?TahfidzGroup $group = null): void
+    {
+        $allowed = $this->tahfidzTeachers($schoolId, $group)->pluck('id')->all();
+
+        if ($allowed !== [] && ! in_array($teacherId, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'teacher_id' => 'Guru halaqah harus Guru Tahfidz pada satuan pendidikan ini.',
+            ]);
+        }
     }
 
     private function scopeGroups($query, Request $request, ?string $schoolId, ?string $academicYearId): void

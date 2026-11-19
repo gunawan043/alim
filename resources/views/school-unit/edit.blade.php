@@ -61,6 +61,7 @@
                                     <option value="smp"   {{ $school->school_level === 'smp'  ? 'selected' : '' }}>SMP</option>
                                     <option value="sma"   {{ $school->school_level === 'sma'  ? 'selected' : '' }}>SMA</option>
                                     <option value="smk"   {{ $school->school_level === 'smk'  ? 'selected' : '' }}>SMK</option>
+                                    <option value="pps"   {{ $school->school_level === 'pps'  ? 'selected' : '' }}>PPS Diniyah (Wustho &amp; Ulya)</option>
                                 </select>
                             </div>
                             <div class="col-md-4">

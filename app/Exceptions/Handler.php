@@ -58,12 +58,14 @@ class Handler extends ExceptionHandler
                 'success' => false,
                 'request_id' => $requestId,
                 'error' => [
+                    'code' => $this->resolveErrorCode($e, $status),
                     'message' => $this->safeMessage($e),
                     'type' => class_basename($e),
                 ],
             ];
 
             if ($e instanceof ValidationException) {
+                $payload['error']['code'] = 'VALIDATION_ERROR';
                 $payload['error']['message'] = 'Validasi gagal.';
                 $payload['error']['errors'] = $e->errors();
                 // Kompatibilitas klien yang membaca errors di root response.
@@ -72,6 +74,7 @@ class Handler extends ExceptionHandler
             }
 
             if ($e instanceof AuthenticationException) {
+                $payload['error']['code'] = 'UNAUTHENTICATED';
                 $payload['error']['message'] = 'Tidak terautentikasi.';
                 $status = 401;
             }
@@ -162,6 +165,20 @@ class Handler extends ExceptionHandler
         }
 
         return 500;
+    }
+
+    protected function resolveErrorCode(Throwable $e, int $status): string
+    {
+        return match (true) {
+            $e instanceof ValidationException => 'VALIDATION_ERROR',
+            $e instanceof AuthenticationException => 'UNAUTHENTICATED',
+            $status === 403 => 'FORBIDDEN',
+            $status === 404 => 'NOT_FOUND',
+            $status === 409 => 'CONFLICT',
+            $status === 429 => 'TOO_MANY_REQUESTS',
+            $status >= 500 => 'SERVER_ERROR',
+            default => 'REQUEST_ERROR',
+        };
     }
 
     protected function safeMessage(Throwable $e): string

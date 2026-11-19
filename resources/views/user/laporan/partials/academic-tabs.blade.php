@@ -5,6 +5,7 @@
         ['route' => 'user.laporan.akademik.kehadiran', 'label' => 'Kehadiran Santri', 'icon' => 'ri-calendar-check-line'],
         ['route' => 'user.laporan.akademik.keterlaksanaan', 'label' => 'Keterlaksanaan', 'icon' => 'ri-book-open-line'],
         ['route' => 'user.laporan.akademik.administrasi', 'label' => 'Administrasi', 'icon' => 'ri-folder-check-line'],
+        ['route' => 'user.laporan.pendidikan.mutu', 'label' => 'Mutu Pendidikan', 'icon' => 'ri-shield-check-line'],
     ];
     $academicQuery = request()->query();
     unset($academicQuery['page']);

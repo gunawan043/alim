@@ -50,7 +50,8 @@ class SchoolSeeder extends Seeder
             'UAK-008' => [
                 'name' => 'PPS Diniyah Abu Hurairah Mataram',
                 'npsn' => '52010408', 'nss' => '527104001',
-                'level' => 'sma', 'gender' => 'putra',
+                // PPS Diniyah: 6 tahun — Wustho kelas 7–9, Ulya kelas 10–12.
+                'level' => 'pps', 'gender' => 'putra',
             ],
         ];
 

@@ -21,7 +21,7 @@
         <div class="card-body py-3">
             <div class="row align-items-center g-3">
                 <div class="col-md">
-                    <h5 class="card-title mb-2"><i class="ri-map-2-line me-1 text-primary"></i>Dashboard & Pemetaan Profil Kurikulum</h5>
+                    <h5 class="card-title mb-2"><i class="ri-map-2-line me-1 text-primary"></i>Dashboard &amp; Pemetaan Profil Kurikulum</h5>
                     <p class="text-muted mb-0 small">Tetapkan profil per sekolah dan tahun ajaran. Sekolah yang dikunci tidak akan berubah.</p>
                 </div>
                 <div class="col-md-auto">

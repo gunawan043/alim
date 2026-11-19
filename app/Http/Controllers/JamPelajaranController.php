@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\School;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -69,7 +71,42 @@ class JamPelajaranController extends Controller
             'schools' => $schools,
             'schoolId' => $schoolId,
             'canManage' => $this->canManage($request),
+            'tahfidz' => [
+                'jp_per_day' => (int) setting('tahfidz.jp_per_day', 4),
+                'start_slot' => (int) setting('tahfidz.start_slot', 1),
+                'preferred_days' => array_filter(array_map('intval', explode(',', (string) setting('tahfidz.preferred_days', '')))),
+                'subject_ids' => array_filter(explode(',', (string) setting('tahfidz.subject_ids', ''))),
+            ],
+            'subjects' => $schoolId
+                ? DB::table('subjects')->where('school_id', $schoolId)->where('is_active', 1)->orderBy('name')->get(['id', 'name', 'code'])
+                : collect(),
         ]);
+    }
+
+    /**
+     * Simpan pengaturan blok TIM TAHFIDZ untuk generator jadwal.
+     */
+    public function saveTahfidz(Request $request, string $userId)
+    {
+        $this->authorizeManage($request);
+
+        $data = $request->validate([
+            'jp_per_day' => 'required|integer|min:1|max:12',
+            'start_slot' => 'required|integer|min:1|max:12',
+            'preferred_days' => 'nullable|array',
+            'preferred_days.*' => 'integer|between:1,7',
+            'subject_ids' => 'nullable|array',
+            'subject_ids.*' => 'exists:subjects,id',
+        ]);
+
+        SystemSetting::set('tahfidz.jp_per_day', (string) $data['jp_per_day'], 'tahfidz');
+        SystemSetting::set('tahfidz.start_slot', (string) $data['start_slot'], 'tahfidz');
+        SystemSetting::set('tahfidz.preferred_days', implode(',', $data['preferred_days'] ?? []), 'tahfidz');
+        SystemSetting::set('tahfidz.subject_ids', implode(',', $data['subject_ids'] ?? []), 'tahfidz');
+
+        Cache::forget('system_settings_map');
+
+        return back()->with('success', 'Pengaturan blok tahfidz disimpan.');
     }
 
     /**

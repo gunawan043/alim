@@ -159,6 +159,71 @@
         </div>
     </div>
 
+    @if($canManage && $schoolId)
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h6 class="mb-0 fw-semibold"><i class="ri-book-read-line text-primary me-1"></i>Blok Tahfidz (TIM TAHFIDZ)</h6>
+                <span class="badge bg-info-subtle text-info">Dipakai generator jadwal otomatis</span>
+            </div>
+            <form method="POST" action="{{ route('user.jam-pelajaran.tahfidz', ['userId' => $userId]) }}">
+                @csrf
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">JP maksimal per hari</label>
+                            <input type="number" name="jp_per_day" class="form-control" min="1" max="12"
+                                value="{{ old('jp_per_day', $tahfidz['jp_per_day']) }}">
+                            <div class="form-text">Total JP tahfidz dibagi ke beberapa hari, maksimal sebanyak ini per hari.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Slot awal blok</label>
+                            <input type="number" name="start_slot" class="form-control" min="1" max="12"
+                                value="{{ old('start_slot', $tahfidz['start_slot']) }}">
+                            <div class="form-text">Blok tahfidz dimulai dari jam ke berapa.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label d-block">Hari yang dipakai</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach($days as $dayNumber => $dayName)
+                                    @if($dayNumber <= 6)
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="preferred_days[]"
+                                                id="tahfidzDay{{ $dayNumber }}" value="{{ $dayNumber }}"
+                                                @checked(in_array($dayNumber, old('preferred_days', $tahfidz['preferred_days']), true))>
+                                            <label class="form-check-label" for="tahfidzDay{{ $dayNumber }}">{{ $dayName }}</label>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                            <div class="form-text">Kosongkan untuk membiarkan generator memilih hari.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Mapel tahfidz</label>
+                            <select name="subject_ids[]" class="form-select" multiple size="4" data-searchable
+                                data-placeholder="Kosongkan untuk deteksi otomatis dari rumpun Tahfidz…">
+                                @foreach($subjects as $subject)
+                                    <option value="{{ $subject->id }}"
+                                        @selected(in_array($subject->id, old('subject_ids', $tahfidz['subject_ids']), true))>
+                                        {{ $subject->name }}{{ $subject->code ? ' ('.$subject->code.')' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">
+                                Biarkan kosong agar sistem mendeteksi sendiri mapel dari rumpun <strong>Tahfidz</strong>.
+                                Isi hanya bila sekolah memakai nama rumpun lain.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="ri-save-line me-1"></i>Simpan pengaturan tahfidz
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-header">
             <ul class="nav nav-tabs nav-tabs-custom card-header-tabs border-bottom-0" role="tablist">

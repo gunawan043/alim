@@ -23,7 +23,7 @@ class StudyGroup extends Model
     }
 
     protected $fillable = [
-        'school_id', 'academic_year_id', 'grade_level_id',
+        'school_id', 'unit_type', 'data_owner_school_id', 'academic_year_id', 'grade_level_id',
         'homeroom_teacher_id', 'name', 'code',
         'capacity', 'room', 'curriculum_type', 'shift',
         'is_active', 'notes',
@@ -32,6 +32,7 @@ class StudyGroup extends Model
     protected $casts = [
         'capacity' => 'integer',
         'is_active' => 'boolean',
+        'unit_type' => 'string',
     ];
 
     // ── Relationships ────────────────────────────────────────────
@@ -39,6 +40,11 @@ class StudyGroup extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function dataOwnerSchool(): BelongsTo
+    {
+        return $this->belongsTo(School::class, 'data_owner_school_id');
     }
 
     public function academicYear(): BelongsTo

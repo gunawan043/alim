@@ -56,7 +56,7 @@ class OtherTeacherTaskController extends Controller
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
             ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
-            ->when($scopeSchoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($scopeSchoolId)))
+            ->when($scopeSchoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::gtkUserIdsForSchool($scopeSchoolId)))
             ->orderBy('name')
             ->get();
 

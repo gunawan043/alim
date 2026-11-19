@@ -95,10 +95,17 @@
                                     @endif
                                     <td class="text-center">{{ $jadwal->slot_index }}</td>
                                     <td class="time-cell">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
-                                    <td class="fw-medium">{{ $jadwal->subject?->name ?? '-' }}</td>
+                                    <td class="fw-medium">
+                                        {{ $jadwal->subject?->name ?? '-' }}
+                                        @if(! $jadwal->teacher_id)
+                                            <span class="badge bg-primary-subtle text-primary ms-1">TIM TAHFIDZ</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $jadwal->studyGroup?->full_name ?? $jadwal->studyGroup?->name ?? '-' }}</td>
                                     <td>
-                                        @if(($dayNumber ?? null) === ($todayDay ?? null))
+                                        @if(! $jadwal->teacher_id)
+                                            <span class="text-muted">—</span>
+                                        @elseif(($dayNumber ?? null) === ($todayDay ?? null))
                                             @php $attendance = ($attendanceToday ?? collect())->get($jadwal->id); @endphp
                                             @if($attendance?->actual_time_out)
                                                 <span class="badge bg-success-subtle text-success">

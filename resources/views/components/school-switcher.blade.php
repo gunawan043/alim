@@ -20,6 +20,7 @@ $grouped = $allSchools->groupBy('school_level')->map(function ($group, $level) {
         'smp' => 'SMP IT',
         'sma' => 'SMA IT / MA',
         'smk' => 'SMA IT / MA',
+        'pps' => 'PPS Diniyah',
         default => strtoupper($level),
     };
     return [

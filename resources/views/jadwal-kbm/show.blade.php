@@ -133,7 +133,7 @@
                                         <span class="fst-italic text-muted" style="font-size:12px">{{ $ms->label ?: 'Istirahat' }}</span>
                                     @elseif($cell)
                                         <div class="fw-medium" style="font-size:12px">{{ $cell->subject?->name ?? '-' }}</div>
-                                        <div class="text-muted" style="font-size:11px">{{ $cell->teacher?->name ?? '' }}</div>
+                                        <div class="text-muted" style="font-size:11px">{{ $cell->teacher?->name ?? ($cell->teacher_id ? '' : 'TIM TAHFIDZ') }}</div>
                                     @elseif($ms)
                                         <span class="text-light">–</span>
                                     @else

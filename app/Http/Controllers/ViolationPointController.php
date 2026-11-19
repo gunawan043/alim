@@ -184,10 +184,20 @@ class ViolationPointController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        // Monthly trend (current year) — MySQL compatible
+        // Monthly trend (current year). Ekspresi tanggal mengikuti driver:
+        // produksi memakai SQLite, pengembangan MySQL — DATE_FORMAT tidak ada
+        // di SQLite sehingga halaman ini gagal 500 bila ditulis khusus MySQL.
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthExpr = $isSqlite
+            ? "strftime('%m', violation_date)"
+            : "DATE_FORMAT(violation_date, '%m')";
+        $yearCondition = $isSqlite
+            ? "strftime('%Y', violation_date) = ?"
+            : "DATE_FORMAT(violation_date, '%Y') = ?";
+
         $monthlyTrend = ViolationPoint::when($schoolId, fn ($q) => $q->whereHas('student', fn ($s) => $s->where('school_id', $schoolId)))
-            ->selectRaw("DATE_FORMAT(violation_date, '%m') as month, COUNT(*) as total, SUM(points) as total_points")
-            ->whereRaw("DATE_FORMAT(violation_date, '%Y') = ?", [now()->year])
+            ->selectRaw("{$monthExpr} as month, COUNT(*) as total, SUM(points) as total_points")
+            ->whereRaw($yearCondition, [(string) now()->year])
             ->groupBy('month')
             ->orderBy('month')
             ->get()
@@ -214,12 +224,14 @@ class ViolationPointController extends Controller
             : StudyGroup::orderBy('name')->get();
 
         // Ringkasan per santri (top 5) — query dipindahkan dari view agar rapi & efisien.
+        // `having()` atas alias agregat tidak didukung SQLite (produksi), jadi
+        // penyaringan memakai has() yang portabel.
         $topStudents = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('status', 'active')
             ->with(['studyGroups' => fn ($q) => $q->limit(1), 'studyGroups.studyGroup'])
+            ->has('violationPoints')
             ->withCount('violationPoints')
             ->withSum('violationPoints', 'points')
-            ->having('violation_points_count', '>', 0)
             ->orderByDesc('violation_points_sum_points')
             ->limit(5)
             ->get();

@@ -383,41 +383,53 @@ class GtkImportAutoMatchTest extends TestCase
         $this->assertNotNull($employment->jabatan_id, 'Jabatan ambigu tetap diisi dari kandidat teratas.');
     }
 
-    public function test_jabatan_mengikuti_satuan_kerja(): void
+    public function test_nik_dan_no_kk_bisa_dikoreksi_lewat_import(): void
+    {
+        $this->import([$this->row(['satuan_kerja' => 'MTs Contoh'])]);
+
+        $result = $this->import([$this->row([
+            'satuan_kerja' => 'MTs Contoh',
+            'nik' => '3201234567890999',
+            'no_kk' => '3201234567890888',
+        ])]);
+
+        $this->assertSame(1, $result['updated'], json_encode($result['failed']));
+
+        $profile = GtkProfile::where(
+            'user_id',
+            GtkEmployment::where('nupy', '2026001')->value('user_id')
+        )->firstOrFail();
+
+        $this->assertSame('3201234567890999', $profile->nik);
+        $this->assertSame('3201234567890888', $profile->no_kk);
+    }
+
+    public function test_jabatan_kepala_tidak_ditetapkan_lewat_import(): void
     {
         $this->makeWorkUnit('Perpustakaan', 'DEP-PERPUS');
         $this->makePosition('Kepala Asrama');
-        $perpusPositionId = $this->makePosition('Kepala Perpustakaan');
+        $this->makePosition('Kepala Perpustakaan');
 
-        // GTK pertama menetapkan bahwa unit Perpustakaan memakai Kepala Perpustakaan.
-        $this->import([$this->row([
-            'nupy' => '2026009',
-            'email' => 'pustakawan@test.local',
-            'nik' => '3201234567890109',
-            'satuan_kerja' => 'Perpustakaan',
-            'jabatan' => 'Kepala Perpustakaan',
-        ])]);
-
-        // Baris berikutnya hanya menulis "KEPALA": konteks unit harus menang.
         $result = $this->import([$this->row([
             'nupy' => '2026010',
             'email' => 'pustakawan2@test.local',
             'nik' => '3201234567890110',
             'satuan_kerja' => 'Perpustakaan',
-            'jabatan' => 'KEPALA',
+            'jabatan' => 'Kepala Perpustakaan',
         ])]);
 
         $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+        $this->assertNotEmpty($result['skipped'] ?? [], 'Baris kepala harus dilaporkan sebagai peringatan.');
 
         $employment = GtkEmployment::where('nupy', '2026010')->firstOrFail();
-        $this->assertSame($perpusPositionId, $employment->jabatan_id);
+        $this->assertNull($employment->jabatan_id, 'Jabatan kepala tidak boleh ditetapkan lewat import.');
     }
 
-    public function test_jabatan_relevan_dengan_nama_unit_tanpa_data_lama(): void
+    public function test_jabatan_kepala_generik_tidak_ditetapkan_lewat_import(): void
     {
         $this->makeWorkUnit('Perpustakaan', 'DEP-PERPUS');
         $this->makePosition('Kepala UKS');
-        $perpusPositionId = $this->makePosition('Kepala Perpustakaan');
+        $this->makePosition('Kepala Perpustakaan');
 
         $result = $this->import([$this->row([
             'satuan_kerja' => 'Perpustakaan',
@@ -425,9 +437,44 @@ class GtkImportAutoMatchTest extends TestCase
         ])]);
 
         $this->assertSame(1, $result['imported'], json_encode($result['failed']));
+        $this->assertNotEmpty($result['skipped'] ?? []);
 
         $employment = GtkEmployment::where('nupy', '2026001')->firstOrFail();
-        $this->assertSame($perpusPositionId, $employment->jabatan_id);
+        $this->assertNull($employment->jabatan_id);
+    }
+
+    public function test_data_kepala_yang_sudah_ada_dilewati_saat_import(): void
+    {
+        $this->makeWorkUnit('Perpustakaan', 'DEP-PERPUS');
+        $headPositionId = $this->makePosition('Kepala Perpustakaan');
+
+        $this->import([$this->row([
+            'nupy' => '2026011',
+            'email' => 'kepala@test.local',
+            'nik' => '3201234567890111',
+            'satuan_kerja' => 'Perpustakaan',
+            'jabatan' => 'Kepala Perpustakaan',
+        ])]);
+
+        $employment = GtkEmployment::where('nupy', '2026011')->firstOrFail();
+        $employment->update([
+            'jabatan' => 'Kepala Perpustakaan',
+            'jabatan_id' => $headPositionId,
+        ]);
+
+        $result = $this->import([$this->row([
+            'nupy' => '2026011',
+            'email' => 'kepala@test.local',
+            'nik' => '3201234567890111',
+            'no_hp' => '089999999999',
+            'satuan_kerja' => 'Perpustakaan',
+            'jabatan' => 'Guru Umum',
+        ])]);
+
+        $this->assertSame(0, $result['updated'], 'Kepala satuan kerja tidak boleh diperbarui lewat upload.');
+        $this->assertNotEmpty($result['skipped'] ?? []);
+        $this->assertSame('081234567890', $employment->fresh()->user->contact?->no_hp);
+        $this->assertSame($headPositionId, $employment->fresh()->jabatan_id);
     }
 
     public function test_email_sudah_terdaftar_diperbarui_bukan_digagalkan(): void
@@ -518,7 +565,9 @@ class GtkImportAutoMatchTest extends TestCase
         $this->assertSame('fulan@test.local', $user->email);
 
         $employment->refresh();
-        $this->assertSame('3201234567890123', $employment->user->gtkProfile->nik);
+        // NIK boleh dikoreksi lewat import/preview; nama, email, NUPY, dan
+        // No HP tetap tidak ditimpa.
+        $this->assertSame('3201234567899999', $employment->user->gtkProfile->nik);
         $this->assertSame('081234567890', $employment->user->contact->no_hp);
 
         // Kolom non-wajib tetap diperbarui.

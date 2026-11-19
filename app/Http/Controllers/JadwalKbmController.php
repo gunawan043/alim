@@ -984,8 +984,35 @@ class JadwalKbmController extends Controller
             ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
             ->orderBy('day_of_week')
             ->orderBy('slot_index')
-            ->get()
-            ->groupBy('day_of_week');
+            ->get();
+
+        // Guru anggota TIM TAHFIDZ juga harus melihat blok tahfidz rombelnya,
+        // meskipun baris blok disimpan tanpa teacher_id.
+        $tahfidzGroupIds = TeachingAssignment::query()
+            ->where('teacher_id', $teacherId)
+            ->where('status', 'active')
+            ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
+            ->whereHas('subject.subjectGroup', fn ($q) => $q->where('name', 'like', '%ahfi%'))
+            ->pluck('study_group_id')
+            ->unique()
+            ->values();
+
+        if ($tahfidzGroupIds->isNotEmpty()) {
+            $blocks = JadwalKbm::with(['studyGroup.gradeLevel', 'subject'])
+                ->whereNull('teacher_id')
+                ->where('notes', JadwalGeneratorService::TAHFIDZ_NOTE)
+                ->whereIn('study_group_id', $tahfidzGroupIds)
+                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+                ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
+                ->get();
+
+            $jadwals = $jadwals->concat($blocks)->sortBy([
+                ['day_of_week', 'asc'],
+                ['slot_index', 'asc'],
+            ])->values();
+        }
+
+        $jadwals = $jadwals->groupBy('day_of_week');
 
         $tahfidzSchedules = TahfidzSchedule::with(['group:id,name,study_group_id,teacher_id,coordinator_id', 'group.studyGroup:id,name'])
             ->where('is_active', true)
@@ -1055,6 +1082,7 @@ class JadwalKbmController extends Controller
                 'shortages' => $result['shortages'] ?? [],
                 'conflicts' => $result['conflicts'] ?? [],
                 'has_assignments' => (bool) ($result['has_assignments'] ?? true),
+                'tahfidz' => $result['tahfidz'] ?? null,
             ];
 
             $totalGenerated += (int) ($result['generated'] ?? 0);
@@ -1068,6 +1096,7 @@ class JadwalKbmController extends Controller
 
         return [
             'groups' => $groups,
+            'day_names' => $this->days(),
             'total_generated' => $totalGenerated,
             'total_requested' => $totalRequested,
             'total_missing' => $totalMissing,

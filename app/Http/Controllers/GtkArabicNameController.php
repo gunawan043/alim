@@ -41,7 +41,7 @@ class GtkArabicNameController extends Controller
         $this->authorizeGtkImport();
 
         $schoolId = $request->attributes->get('schoolContextId');
-        $allowedIds = $schoolId ? SchoolGroupService::userIdsForSchool($schoolId) : null;
+        $allowedIds = $schoolId ? SchoolGroupService::gtkUserIdsForSchool($schoolId) : null;
 
         $status = in_array($request->input('status'), ['pending', 'approved', 'missing', 'all'], true)
             ? $request->input('status')
@@ -88,7 +88,7 @@ class GtkArabicNameController extends Controller
         $this->authorizeGtkImport();
 
         $schoolId = $request->attributes->get('schoolContextId');
-        $allowedIds = $schoolId ? SchoolGroupService::userIdsForSchool($schoolId) : null;
+        $allowedIds = $schoolId ? SchoolGroupService::gtkUserIdsForSchool($schoolId) : null;
 
         $user = User::query()
             ->whereHas('employment')
@@ -114,7 +114,7 @@ class GtkArabicNameController extends Controller
         $this->authorizeGtkImport();
 
         $schoolId = $request->attributes->get('schoolContextId');
-        $allowedIds = $schoolId ? SchoolGroupService::userIdsForSchool($schoolId) : null;
+        $allowedIds = $schoolId ? SchoolGroupService::gtkUserIdsForSchool($schoolId) : null;
 
         $count = User::query()
             ->whereHas('employment')

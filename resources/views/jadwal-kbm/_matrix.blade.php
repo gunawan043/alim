@@ -76,6 +76,8 @@
                                                         <span class="subject-code">{{ $entry->subject?->code ?: ($entry->subject?->name ?? '-') }}</span>
                                                         @if($entry->teacher_id)
                                                             <span class="teacher-code">{{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}</span>
+                                                        @else
+                                                            <span class="teacher-code">TIM TAHFIDZ</span>
                                                         @endif
                                                     @else
                                                         <span class="matrix-cell-empty">+</span>
@@ -89,6 +91,8 @@
                                                     <span class="teacher-code" title="{{ $entry->teacher?->name }}">
                                                         {{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}
                                                     </span>
+                                                @else
+                                                    <span class="teacher-code" title="Blok tahfidz (tim guru tahfidz)">TIM TAHFIDZ</span>
                                                 @endif
                                             @else
                                                 <span class="text-muted">—</span>

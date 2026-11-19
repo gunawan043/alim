@@ -45,6 +45,7 @@ rsync -az --partial --delete \
     --exclude='storage/' \
     --exclude='database/database.sqlite' \
     --exclude='public/storage' \
+    --exclude='public/bump' \
     --exclude='bootstrap/cache/' \
     --exclude='.claude/' \
     --exclude='phpbrew/' \

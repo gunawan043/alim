@@ -67,7 +67,7 @@ class WakaController extends Controller
 
         if ($schoolId) {
             $studentQuery->where('school_id', $schoolId);
-            $gtkQuery->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $gtkQuery->whereIn('users.id', \App\Services\SchoolGroupService::gtkUserIdsForSchool($schoolId));
         }
 
         $totalStudents = (clone $studentQuery)->count();
@@ -192,7 +192,7 @@ class WakaController extends Controller
     {
         $query = User::query();
         if ($schoolId) {
-            $query->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', \App\Services\SchoolGroupService::gtkUserIdsForSchool($schoolId));
         }
 
         $total = (clone $query)

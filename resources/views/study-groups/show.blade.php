@@ -140,9 +140,11 @@
                        class="btn btn-warning">
                         <i class="ri-arrow-up-line me-1"></i> Promosi Santri
                     </a>
-                    <a href="{{ route('user.study-groups.edit', ['userId' => $userId, 'id' => $studyGroup->id]) }}" class="btn btn-primary">
-                        <i class="ri-pencil-line me-1"></i> Edit
-                    </a>
+                    @unless($readOnly ?? false)
+                        <a href="{{ route('user.study-groups.edit', ['userId' => $userId, 'id' => $studyGroup->id]) }}" class="btn btn-primary">
+                            <i class="ri-pencil-line me-1"></i> Edit
+                        </a>
+                    @endunless
                     <a href="{{ route('user.study-groups.index', ['userId' => $userId]) }}" class="btn btn-light">Kembali</a>
                 </div>
             </div>

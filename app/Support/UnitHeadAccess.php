@@ -82,4 +82,25 @@ class UnitHeadAccess
             // Pemberian role tidak boleh menggagalkan penyimpanan data kepala.
         }
     }
+
+    /**
+     * Pastikan Kepala Satuan Pendidikan memiliki role "Satuan Pendidikan"
+     * tanpa menghapus role lain (mis. Asrama saat merangkap kepala asrama).
+     *
+     * Role ini dibutuhkan route `role:Satuan Pendidikan` dan permission
+     * sekolah. Tanpa penambahan, akun yang semula role Asrama akan 403
+     * walaupun sudah ditetapkan sebagai kepala sekolah.
+     */
+    public static function ensureSatuanPendidikanRole(User $user): void
+    {
+        try {
+            $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web']);
+
+            if (! $user->hasRole($role)) {
+                $user->assignRole($role);
+            }
+        } catch (\Throwable) {
+            // Pemberian role tidak boleh menggagalkan penyimpanan data kepala.
+        }
+    }
 }

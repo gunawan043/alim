@@ -245,8 +245,10 @@ class DormitoryMasterController extends Controller
                 // Pendidikan. Cukup tambahkan akses operasional Asrama.
                 if (School::where('principal_user_id', $head->id)->exists()) {
                     UnitHeadAccess::ensureAsramaRole($head);
+                    UnitHeadAccess::ensureSatuanPendidikanRole($head);
                 } else {
                     $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+                    UnitHeadAccess::ensureAsramaRole($head);
                 }
             }
         }
@@ -353,8 +355,10 @@ class DormitoryMasterController extends Controller
             if ($head) {
                 if (School::where('principal_user_id', $head->id)->exists()) {
                     UnitHeadAccess::ensureAsramaRole($head);
+                    UnitHeadAccess::ensureSatuanPendidikanRole($head);
                 } else {
                     $assignments->assign($head, $dormitory->workUnit, 'Kepala Asrama', 'tendik');
+                    UnitHeadAccess::ensureAsramaRole($head);
                 }
             }
         }

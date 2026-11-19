@@ -29,6 +29,7 @@ use App\Models\WorkUnit;
 use App\Services\GtkFamilyService;
 use App\Services\SchoolGroupService;
 use App\Support\GtkAccess;
+use App\Support\GtkRoleResolver;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+                $query->whereIn('users.id', SchoolGroupService::gtkUserIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -153,7 +154,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+                $query->whereIn('users.id', SchoolGroupService::gtkUserIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -206,7 +207,7 @@ class GtkWizardController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
             $crossUnitUserIds = collect($request->attributes->get('crossUnitUserIds', []));
-            $query->whereIn('users.id', collect(SchoolGroupService::userIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
+            $query->whereIn('users.id', collect(SchoolGroupService::gtkUserIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -247,7 +248,7 @@ class GtkWizardController extends Controller
             // Scoped filter: only GTK belonging to the user's school context
             $schoolId = $request->attributes->get('schoolContextId');
             if ($schoolId) {
-                $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+                $query->whereIn('users.id', SchoolGroupService::gtkUserIdsForSchool($schoolId));
             }
 
             if ($request->filled('search')) {
@@ -299,7 +300,7 @@ class GtkWizardController extends Controller
         // Scoped filter: only GTK belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::gtkUserIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');
@@ -633,7 +634,7 @@ class GtkWizardController extends Controller
 
             $query->where(function ($q) use ($crossUnitUserIds) {
                 $q->whereHas('employment')->orWhereIn('users.id', $crossUnitUserIds);
-            })->whereIn('users.id', collect(SchoolGroupService::userIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
+            })->whereIn('users.id', collect(SchoolGroupService::gtkUserIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
         } else {
             $query->whereHas('employment');
         }
@@ -1077,7 +1078,7 @@ class GtkWizardController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
             $crossUnitUserIds = collect($request->attributes->get('crossUnitUserIds', []));
-            $query->whereIn('users.id', collect(SchoolGroupService::userIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
+            $query->whereIn('users.id', collect(SchoolGroupService::gtkUserIdsForSchool($schoolId))->merge($crossUnitUserIds)->unique());
         }
 
         if ($request->filled('search')) {
@@ -1214,7 +1215,7 @@ class GtkWizardController extends Controller
                 // Scope ke school context (work unit / kepegawaian)
                 $scopedSchoolId = $schoolId ?: optional(SchoolGroupService::getUserSchool(Auth::user()))->id;
                 if ($scopedSchoolId) {
-                    $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($scopedSchoolId));
+                    $query->whereIn('users.id', SchoolGroupService::gtkUserIdsForSchool($scopedSchoolId));
                 }
             }
 
@@ -2072,6 +2073,8 @@ class GtkWizardController extends Controller
         $imported = 0;
         $updated = 0;
         $failed = [];
+        $skipped = [];
+        $headMenuUrl = route('user.gtk.kepala-wakil.index', ['userId' => $userId]);
 
         foreach ($rows as $index => $row) {
             $rowNum = $row['_rowNum'] ?? ($index + 2);
@@ -2083,6 +2086,18 @@ class GtkWizardController extends Controller
                 continue;
             }
             $row = $norm['row'];
+
+            // Kepala/wakil tidak pernah ditetapkan lewat upload: penetapan
+            // hanya boleh dari halaman khusus supaya tidak salah orang.
+            // Data pribadinya tetap diimport, hanya jabatan kepala/wakil
+            // yang diabaikan.
+            if ($this->isHeadOrViceJabatan($row['jabatan'] ?? null)) {
+                $row['jabatan'] = null;
+                $skipped[] = [
+                    'row' => $rowNum,
+                    'reason' => "Jabatan kepala/wakil tidak diisi lewat upload. Tetapkan lewat menu Kepala & Wakil Satuan Kerja: {$headMenuUrl}",
+                ];
+            }
 
             DB::beginTransaction();
             try {
@@ -2131,6 +2146,18 @@ class GtkWizardController extends Controller
                 }
 
                 if ($existing) {
+                    // Data kepala/wakil tidak boleh berubah karena upload.
+                    $existingUser = $existing->user;
+                    if ($existingUser && $this->isUnitHeadOrVice($existingUser)) {
+                        DB::rollBack();
+                        $skipped[] = [
+                            'row' => $rowNum,
+                            'reason' => "Kepala/Wakil satuan kerja dilewati (tidak diubah lewat upload). Perbarui di menu Kepala & Wakil Satuan Kerja: {$headMenuUrl}",
+                        ];
+
+                        continue;
+                    }
+
                     $this->updateFromImportRow($existing, $row, $rowWorkUnitId);
                     DB::commit();
                     $updated++;
@@ -2157,7 +2184,7 @@ class GtkWizardController extends Controller
                     'jenis_kelamin' => $row['jenis_kelamin'] ?? null,
                     'golongan_darah' => $row['golongan_darah'] ?? null,
                     'agama' => $row['agama'] ?? null,
-                    'status_perkawinan' => $row['status_perkawinan'] ?? 'belum_kawin',
+                    'status_perkawinan' => ($row['status_perkawinan'] ?? null) ?: 'belum_kawin',
                     'npwp' => $row['npwp'] ?? null,
                 ]);
 
@@ -2215,9 +2242,9 @@ class GtkWizardController extends Controller
 
                 $this->assignWorkUnit($user->id, $rowWorkUnitId, $jabatan);
 
-                // Role hanya diberikan kalau jabatannya punya role_id. Jabatan
-                // yang belum terdaftar tidak menggagalkan import.
-                $roleName = $this->roleNameForJabatan($jabatan, $jabatanId);
+                // Setiap GTK wajib punya role resmi. Tanpa role, akun akan
+                // dianggap belum terverifikasi saat pertama login.
+                $roleName = GtkRoleResolver::resolve($jabatan, $jabatanId, $rowWorkUnitId);
 
                 if ($roleName) {
                     $user->syncRoles([$roleName]);
@@ -2241,12 +2268,66 @@ class GtkWizardController extends Controller
         }
 
         return response()->json([
-            'success' => ($imported + $updated) > 0,
+            'success' => ($imported + $updated + count($skipped)) > 0 || $failed === [],
             'imported' => $imported,
             'updated' => $updated,
             'failed' => $failed,
+            'skipped' => $skipped,
             'message' => $this->buildImportMessage($imported, $updated, count($failed)),
         ]);
+    }
+
+    /**
+     * Jabatan yang menandakan pimpinan satuan kerja (kepala/wakil).
+     */
+    private function isHeadOrViceJabatan(?string $jabatan): bool
+    {
+        $name = strtolower(trim((string) $jabatan));
+        if ($name === '') {
+            return false;
+        }
+
+        $name = preg_replace('/\s+/', ' ', $name);
+
+        return $name === 'kepala' || str_starts_with($name, 'kepala ')
+            || $name === 'wakil' || str_starts_with($name, 'wakil ');
+    }
+
+    /**
+     * Apakah user saat ini menjabat kepala/wakil satuan kerja.
+     *
+     * Dicek dari metadata work unit, sekolah/asrama, jabatan kepegawaian,
+     * dan penempatan pada satuan kerja.
+     */
+    private array $unitHeadCache = [];
+
+    private function isUnitHeadOrVice(User $user): bool
+    {
+        $userId = (string) $user->id;
+
+        if (array_key_exists($userId, $this->unitHeadCache)) {
+            return $this->unitHeadCache[$userId];
+        }
+
+        if ($user->isWorkUnitHead()
+            || WorkUnit::where('metadata->vice_head_user_id', $user->id)->exists()) {
+            return $this->unitHeadCache[$userId] = true;
+        }
+
+        $employment = $user->employment;
+        if ($this->isHeadOrViceJabatan($employment?->jabatan)
+            || $this->isHeadOrViceJabatan($employment?->jabatanRel?->name)) {
+            return $this->unitHeadCache[$userId] = true;
+        }
+
+        foreach ($user->gtkWorkUnits()->with('position')->get() as $placement) {
+            if ($this->isHeadOrViceJabatan($placement->jabatan)
+                || $this->isHeadOrViceJabatan($placement->position?->name)) {
+                return $this->unitHeadCache[$userId] = true;
+            }
+        }
+
+        return $this->unitHeadCache[$userId] = false;
     }
 
     private function parseDatabaseError(\Exception $e): string
@@ -2316,6 +2397,14 @@ class GtkWizardController extends Controller
      * Istilah yang dianggap sama saat mencocokkan satuan kerja.
      * "Pengasuhan" adalah nama lain asrama di lingkungan pesantren.
      */
+    /**
+     * Nama satuan kerja yang dianggap sama meski ditulis berbeda di Excel.
+     * Semua nama dalam satu grup dipetakan ke unit yang sama.
+     */
+    private const WORK_UNIT_ALIAS_GROUPS = [
+        ['unit pelayanan gizi', 'pelayanan gizi', 'unit gizi dan logistik', 'gizi dan logistik'],
+    ];
+
     private const MATCH_SYNONYMS = [
         'pengasuhan' => 'asrama',
         'pengasuh' => 'asrama',
@@ -2328,6 +2417,38 @@ class GtkWizardController extends Controller
     private function normalizeMatchKey(?string $value): string
     {
         return preg_replace('/[^a-z0-9]/', '', strtolower(trim((string) $value))) ?? '';
+    }
+
+    /**
+     * Kunci pembanding nama (tanpa tanda baca dan sinonim).
+     */
+    private function matchKeyOf(?string $value): string
+    {
+        return $this->normalizeMatchKey($this->canonicalizeMatchValue($value));
+    }
+
+    /**
+     * Semua nama dalam grup alias yang cocok dengan teks input.
+     *
+     * @return array<int, string>
+     */
+    private function workUnitAliasKeys(?string $value): array
+    {
+        $key = $this->matchKeyOf($value);
+
+        if ($key === '') {
+            return [];
+        }
+
+        foreach (self::WORK_UNIT_ALIAS_GROUPS as $group) {
+            $keys = array_map(fn (string $name) => $this->matchKeyOf($name), $group);
+
+            if (in_array($key, $keys, true)) {
+                return $keys;
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -2457,17 +2578,29 @@ class GtkWizardController extends Controller
                 : ['status' => 'unknown', 'score' => 0, 'match' => null, 'candidates' => []];
         }
 
+        $aliasKeys = $this->workUnitAliasKeys($value);
+
         $scored = WorkUnit::query()
             ->get(['id', 'name', 'code'])
-            ->map(fn (WorkUnit $unit) => [
-                'id' => $unit->id,
-                'label' => $unit->name,
-                'code' => $unit->code,
-                'score' => max(
+            ->map(function (WorkUnit $unit) use ($value, $aliasKeys) {
+                $score = max(
                     $this->similarityScore($value, $unit->name),
                     $this->similarityScore($value, $unit->code),
-                ),
-            ])
+                );
+
+                // Nama yang sudah dipadankan lewat alias dianggap pasti cocok,
+                // mis. "Unit Gizi dan Logistik" untuk master "Unit Pelayanan Gizi".
+                if ($aliasKeys !== [] && in_array($this->matchKeyOf($unit->name), $aliasKeys, true)) {
+                    $score = 100;
+                }
+
+                return [
+                    'id' => $unit->id,
+                    'label' => $unit->name,
+                    'code' => $unit->code,
+                    'score' => $score,
+                ];
+            })
             ->all();
 
         return $this->classifyMatch($scored);
@@ -2678,32 +2811,6 @@ class GtkWizardController extends Controller
     /**
      * Nama role yang menempel pada sebuah jabatan.
      */
-    private function roleNameForJabatan(?string $jabatan, ?string $jabatanId): ?string
-    {
-        if (! empty($jabatanId)) {
-            $position = StructuralPosition::with('role')->find($jabatanId);
-            if ($position?->role) {
-                return $position->role->name;
-            }
-        }
-
-        if (empty($jabatan)) {
-            return null;
-        }
-
-        $normalize = fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower((string) $s));
-        $target = $normalize($jabatan);
-
-        $position = StructuralPosition::with('role')
-            ->whereRaw(
-                "REPLACE(REPLACE(REPLACE(REPLACE(LOWER(name), ' ', ''), '/', ''), '-', ''), '.', '') = ?",
-                [$target]
-            )
-            ->first();
-
-        return $position?->role?->name;
-    }
-
     /**
      * Saran nama jabatan terdekat supaya pesan error memberi jalan keluar.
      */
@@ -2736,7 +2843,8 @@ class GtkWizardController extends Controller
     /**
      * Perbarui GTK yang sudah ada, dicocokkan lewat NUPY.
      *
-     * Data wajib tidak pernah ditimpa: nama, email, NIK, NUPY, dan No HP.
+     * Nama, email, NUPY, dan No HP tidak pernah ditimpa. NIK dan No KK boleh
+     * dikoreksi lewat preview, tetapi sel kosong tidak menghapus data lama.
      * Kolom lain hanya diisi bila sel di Excel tidak kosong, supaya file
      * parsial tidak menghapus data yang sudah benar.
      */
@@ -2781,6 +2889,7 @@ class GtkWizardController extends Controller
 
         if ($profile) {
             $profileData = $this->onlyFilled([
+                'nik' => $row['nik'] ?? null,
                 'no_kk' => $row['no_kk'] ?? null,
                 'tempat_lahir' => $row['tempat_lahir'] ?? null,
                 'tanggal_lahir' => $row['tanggal_lahir'] ?? null,
@@ -2790,6 +2899,11 @@ class GtkWizardController extends Controller
                 'status_perkawinan' => $row['status_perkawinan'] ?? null,
                 'npwp' => $row['npwp'] ?? null,
             ]);
+
+            if (isset($profileData['nik'])
+                && GtkProfile::where('nik', $profileData['nik'])->where('id', '!=', $profile->id)->exists()) {
+                throw new \InvalidArgumentException("NIK '{$profileData['nik']}' sudah terdaftar pada GTK lain.");
+            }
 
             if ($profileData !== []) {
                 $profile->update($profileData);
@@ -2838,10 +2952,18 @@ class GtkWizardController extends Controller
 
         $this->assignWorkUnit($user->id, $workUnitId, $jabatan ?? $employment->jabatan);
 
-        // Role hanya disinkronkan kalau jabatannya benar-benar berubah,
-        // supaya role tambahan yang diberikan manual tidak terhapus.
-        if ($jabatanId && $jabatanId !== $previousJabatanId) {
-            $roleName = $this->roleNameForJabatan($jabatan, $jabatanId);
+        // Role disinkronkan kalau jabatannya berubah, atau kalau akun belum
+        // punya role sama sekali (akun lama hasil import sebelumnya).
+        $needsRole = $user->roles()->doesntExist()
+            || ($jabatanId && $jabatanId !== $previousJabatanId);
+
+        if ($needsRole) {
+            $roleName = GtkRoleResolver::resolve(
+                $jabatan ?? $employment->jabatan,
+                $jabatanId,
+                $workUnitId,
+            );
+
             if ($roleName) {
                 $user->syncRoles([$roleName]);
             }
@@ -2937,11 +3059,22 @@ class GtkWizardController extends Controller
 
     private function normalizeImportRow(array $row): array
     {
-        // Numeric ID fields from Excel may come as scientific notation floats — coerce to clean digit strings.
-        // Use number_format() to avoid PHP float precision loss on large integers (> 15 digits).
+        // ID fields from Excel may arrive as floats/scientific notation. Keep
+        // strings as-is (only strip separators) so 16-digit NIK is not rounded
+        // through float conversion.
         foreach (['nik', 'no_kk', 'nupy', 'npwp'] as $field) {
-            if (isset($row[$field]) && $row[$field] !== null && $row[$field] !== '') {
-                $row[$field] = preg_replace('/[^\d]/', '', number_format((float) $row[$field], 0, '.', ''));
+            if (! isset($row[$field]) || $row[$field] === null || $row[$field] === '') {
+                continue;
+            }
+
+            $value = $row[$field];
+
+            if (is_int($value)) {
+                $row[$field] = (string) $value;
+            } elseif (is_float($value) || (is_string($value) && preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', trim($value)))) {
+                $row[$field] = number_format((float) $value, 0, '.', '');
+            } else {
+                $row[$field] = preg_replace('/[^\d]/', '', (string) $value);
             }
         }
 
@@ -2957,18 +3090,47 @@ class GtkWizardController extends Controller
             }
         }
 
-        // Normalize status_perkawinan to DB enum values.
+        // Normalize status_perkawinan to DB enum values. Variasi penulisan
+        // dari Excel (termasuk Janda/Duda/Cerai) dipetakan, bukan ditolak.
         if (! empty($row['status_perkawinan'])) {
-            $s = strtolower(trim($row['status_perkawinan']));
+            $s = strtolower(trim((string) $row['status_perkawinan']));
+            $s = preg_replace('/[_\/]+/', ' ', $s);
+            $s = preg_replace('/[^a-z0-9 ]/', ' ', $s);
+            $s = preg_replace('/\s+/', ' ', trim($s));
+
             $map = [
                 'kawin' => 'kawin',
                 'menikah' => 'kawin',
+                'married' => 'kawin',
                 'belum kawin' => 'belum_kawin',
                 'belum menikah' => 'belum_kawin',
+                'single' => 'belum_kawin',
+                'lajang' => 'belum_kawin',
                 'cerai hidup' => 'cerai_hidup',
+                'cerai' => 'cerai_hidup',
+                'janda' => 'cerai_hidup',
+                'duda' => 'cerai_hidup',
+                'janda cerai' => 'cerai_hidup',
+                'duda cerai' => 'cerai_hidup',
                 'cerai mati' => 'cerai_mati',
+                'mati' => 'cerai_mati',
             ];
-            $row['status_perkawinan'] = $map[$s] ?? null;
+            $value = $map[$s] ?? null;
+
+            // Variasi panjang seperti "Kawin (Menikah)" / "Cerai Hidup (Janda)".
+            if ($value === null) {
+                if (str_starts_with($s, 'kawin')) {
+                    $value = 'kawin';
+                } elseif (str_starts_with($s, 'belum')) {
+                    $value = 'belum_kawin';
+                } elseif (str_contains($s, 'cerai mati') || $s === 'mati') {
+                    $value = 'cerai_mati';
+                } elseif (str_contains($s, 'cerai') || str_contains($s, 'janda') || str_contains($s, 'duda')) {
+                    $value = 'cerai_hidup';
+                }
+            }
+
+            $row['status_perkawinan'] = $value;
         }
 
         // Normalize status_kepegawaian to DB enum values.
@@ -3357,7 +3519,7 @@ class GtkWizardController extends Controller
 
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
-            $query->whereIn('users.id', SchoolGroupService::userIdsForSchool($schoolId));
+            $query->whereIn('users.id', SchoolGroupService::gtkUserIdsForSchool($schoolId));
         }
 
         $orderBy = $request->get('order_by', 'created_at');

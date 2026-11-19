@@ -82,6 +82,28 @@ class GtkImportNormalizationTest extends TestCase
     }
 
     /**
+     * Variasi status perkawinan dari Excel dipetakan otomatis.
+     */
+    public function test_status_perkawinan_variants_normalized(): void
+    {
+        $cases = [
+            'Cerai Hidup' => 'cerai_hidup',
+            'Cerai Mati' => 'cerai_mati',
+            'Janda/Cerai' => 'cerai_hidup',
+            'Duda/Cerai' => 'cerai_hidup',
+            'Kawin (Menikah)' => 'kawin',
+            'Belum Menikah' => 'belum_kawin',
+        ];
+
+        foreach ($cases as $input => $expected) {
+            $row = ['status_perkawinan' => $input, 'name' => 'Test', 'email' => 't@test.com'];
+            $result = $this->callPrivateMethod('normalizeImportRow', $row);
+
+            $this->assertSame($expected, $result['row']['status_perkawinan'], "Gagal untuk: {$input}");
+        }
+    }
+
+    /**
      * Test that 'Tetap' status_kepegawaian maps to 'PTY'.
      */
     public function test_status_kepegawaian_tetap_normalized_to_pty(): void

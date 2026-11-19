@@ -47,7 +47,20 @@ class JabatanRoleMapper
      */
     public static function resolve(string $jabatan): string
     {
+        return self::resolveSpecific($jabatan) ?? 'Satuan Pendidikan';
+    }
+
+    /**
+     * Sama seperti resolve(), tetapi mengembalikan null bila jabatan tidak
+     * dikenali — supaya pemanggil bisa memakai sumber lain (mis. satuan kerja)
+     * sebelum jatuh ke role default.
+     */
+    public static function resolveSpecific(string $jabatan): ?string
+    {
         $normalized = self::normalize($jabatan);
+
+        // "Wakil Kepala X" satu unit dengan "Kepala X", jadi diperlakukan sama.
+        $normalized = preg_replace('/^wakil\s+/', '', $normalized) ?? $normalized;
 
         // ── Super Admin ───────────────────────────────────────────────────
         if ($normalized === 'system administrator') {
@@ -55,7 +68,8 @@ class JabatanRoleMapper
         }
 
         // ── Pimpinan ──────────────────────────────────────────────────────
-        if (in_array($normalized, ['mudir', 'wadir 1', 'wadir 2'], true)) {
+        if (in_array($normalized, ['mudir', 'wadir 1', 'wadir 2'], true)
+            || str_starts_with($normalized, 'mudir ')) {
             return 'Pimpinan';
         }
         if (str_starts_with($normalized, 'kepala satuan pendidikan')
@@ -171,7 +185,7 @@ class JabatanRoleMapper
             return 'Asrama';
         }
 
-        return 'Satuan Pendidikan';
+        return null;
     }
 
     /**

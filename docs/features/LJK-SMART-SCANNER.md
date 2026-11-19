@@ -1,6 +1,6 @@
 # LJK Smart Scanner — Fitur Pemindai Lembar Jawaban Berbasis Kamera HP
 
-> Status: **implementasi + teruji (backend, web, API mobile, aplikasi Expo)**.
+> Status: **implementasi + teruji untuk web GTK; surface mobile wali tidak memuat LJK**.
 > Tanggal: 15 Oktober 2026 · Engine: `omr-v1.0.0`
 
 Fitur ini menambahkan alur lengkap: **Paket Soal ALIM → LJK siap cetak → santri
@@ -391,87 +391,20 @@ Catatan kejujuran:
 
 ---
 
-## 9. API mobile (Sanctum)
+## 9. Surface LJK
 
-| Endpoint | Fungsi |
-|---|---|
-| `GET /api/mobile/v1/ljk/exams` | Ujian yang boleh dipindai oleh user. |
-| `GET /api/mobile/v1/ljk/exams/{exam}` | Detail + daftar peserta/lembar. |
-| `POST /api/mobile/v1/ljk/exams/{exam}/scans` | Unggah gambar (multipart) → hasil OMR. |
-| `GET /api/mobile/v1/ljk/scans/{scan}` | Detail hasil pemindaian. |
-| `PATCH /api/mobile/v1/ljk/scans/{scan}/answers/{answer}` | Koreksi guru (ber-audit). |
+LJK Smart Scanner tetap tersedia melalui **web GTK** (guru/kurikulum/TU),
+tetapi **tidak disediakan di aplikasi mobile wali**. Aplikasi mobile ALIM
+hanya digunakan oleh wali santri untuk informasi peserta didik.
 
-Halaman web guru: daftar, terbitkan, detail, **Lihat Soal**, PDF lembar
-(+`?master=1&copies=N` untuk master fotokopi), halaman kamera, hasil &
-verifikasi, periksa peserta.
+Konsekuensinya:
 
-- Format respons mengikuti konvensi mobile ALIM
-  (`{ success, request_id, data }` / `{ success, request_id, error }`).
-- `POST /auth/login` & `/auth/me` kini menambahkan `role` dan
-  `capabilities.ljk_scan` (aditif; `is_wali` tidak berubah) sehingga aplikasi
-  dapat menampilkan menu pemindai untuk guru tanpa memutus klien lama.
-- Ability `ljk.read` / `ljk.scan` / `ljk.review` ditambahkan ke katalog
-  `config/sanctum.php` (peran `guru` & `admin`).
-
----
-
-## 10. Aplikasi Expo (`Alim-Mobile`)
-
-- Fitur baru `src/features/ljk/` + route `src/app/ljk/`:
-  daftar ujian → detail peserta → **Pindai** (kamera) → **hasil & koreksi**.
-- Kamera memakai **`expo-image-picker`** (`launchCameraAsync`) yang sudah
-  terpasang & dikonfigurasi; **tidak menambah dependensi native**, sehingga
-  tetap kompatibel dengan Expo Go dan build EAS saat ini.
-- Pemrosesan OMR di **server**: ponsel hanya mengambil/mengompres foto dan
-  mengunggah; hasil deterministik dan dapat diaudit, ukuran unggahan wajar.
-- Menu "Pindai LJK" ditambahkan pada sidebar peran guru (satuan pendidikan).
-- `npm run typecheck` lulus; tidak ada error lint pada berkas baru.
-
----
-
-### Setelan lembar soal (ringkas)
-
-| Kunci `config/ljk.php` | Default | Arti |
-|---|---|---|
-| `soal.font_size` | `12.0` | Ukuran font dasar (pt), Cambria |
-| `soal.font_size_fallback_scale` | `0.80` | Kompensasi ukuran bila Cambria/Caladea belum dipasang (DejaVu Serif tampil lebih besar pada pt yang sama → efektif ±9,6 pt) |
-| `soal.line_height` | `1.0` | Jarak antar baris (single) |
-| `soal.question_gap` | `1.5` | Jarak antar soal (kelipatan satu baris) |
-| `soal.margin_in` | `0.20 / 0.10 / 0.59 / 0.63` | Margin atas/bawah/kiri/kanan (inci) |
-| `soal.paper.default` / `paper.fallback` | `a4` / `f4` | Kertas & cadangan otomatis |
-| `soal.huruf_arab` | `ا، ب، ج، د، هـ` | Huruf pilihan soal Arab |
-| `soal.identitas_baris_maks` | `3` | Baris maksimum tabel identitas |
-| `soal.instruksi_ljk` | teks | Petunjuk pengisian khusus lembar jawaban (termasuk aturan X=) |
-| `detection.cancel_long_run_ratio` | `0.55` | Panjang minimum garis horizontal untuk mendeteksi "=" |
-| `detection.cancel_min_lines` | `2` | Jumlah garis horizontal minimum (tanda "=") |
-| `template.header_height_mm` | `88.0` | Tinggi area header template baru (mm) |
-| `template.max_kop_height_mm` | `20.0` | Batas tinggi kop di lembar soal (LJK memakai 22 mm) |
-
-### Font PDF (Cambria)
-
-Seluruh PDF LJK memakai **Cambria** melalui resolver `LjkPdfFonts`:
-
-1. **Cambria** — bila berkas `Cambria*.ttf` tersedia;
-2. **Caladea** — font metrik-kompatibel Cambria (lisensi terbuka) di
-   `storage/app/fonts/`, paket sistem (`fonts-crosextra-caladea`, Linux) atau
-   `/Library/Fonts` (macOS);
-3. **DejaVu Serif** — bawaan Dompdf, dipakai otomatis bila Cambria/Caladea
-   belum dipasang (tampilan tetap serif dan konsisten).
-
-Pemasangan Cambria resmi cukup dengan menaruh berkasnya:
-`storage/app/fonts/Cambria.ttf` (+ `-Bold`, `-Italic`, `-BoldItalic`) — tidak
-perlu instalasi sistem. Status font aktif ditampilkan di halaman **Lihat Soal**.
-Cache metrik font ditulis ke `storage/app/dompdf/fonts` (pastikan writable).
-
-Untuk teks Arab: shaping & urutan RTL dihitung di PHP, lalu dirender dengan
-font yang memuat *bentuk presentasi* Arab. **Amiri (OFL) sudah dibundel** di
-`resources/fonts/` (Regular + Bold + lisensi `Amiri-OFL.txt`) sehingga tampilan
-Arab langsung memakai naskh Amiri tanpa instalasi tambahan. Urutan preferensi:
-**Sakkal Majalla → XB (Shafigh/Zar/Niloofar/Riyaz) → Amiri → Scheherazade →
-KFGQPC/Noto Naskh → DejaVu Sans** (bawaan Dompdf); letakkan TTF tambahan di
-`storage/app/fonts/` bila sekolah punya font sendiri. Hanya font yang memuat
-blok FE70–FEFC yang dipakai (Dompdf tanpa mesin OpenType). Status font Arab
-aktif tampil di halaman *Lihat Soal*.
+- Route `/api/mobile/v1/ljk/*` sudah dihapus.
+- `capabilities.ljk_scan` sudah dihapus dari respons auth mobile.
+- Ability `ljk.read`, `ljk.scan`, dan `ljk.review` sudah dihapus dari katalog
+  ability mobile.
+- Login mobile hanya menerima akun wali; akun GTK ditolak.
+- Pemindaian LJK dilakukan melalui halaman web LJK yang sudah ada.
 
 ## 11. Deployment & operasional
 
@@ -536,10 +469,9 @@ contoh tidak ikut ter-seed di produksi.
 | `tests/Feature/Ljk/LjkOmrEngineTest.php` | X hitam/biru, tipis/tebal/miring/tidak simetris, menyentuh garis, kosong, ganda, centang/miring/coretan/hapus, foto miring+bayangan+blur, tolak buram/gelap/terpotong, **grid 4 soal sebaris**, **dua tanda kuat selalu ganda tanpa auto-pilih** |
 | `tests/Feature/Ljk/LjkFlowTest.php` | **koreksi ganti jawaban → nilai memakai jawaban baru**,  Paket → ujian → peserta → lembar → pindai → nilai → koreksi (audit) → sinkron resmi → idempotensi → tolak saat masih review |
 | `tests/Feature/Ljk/LjkWebFlowTest.php` | HTTP guru: index/create/terbit/PDF/scan/koreksi/final/sinkron + 403 guru lain + **kepatuhan UI pola gtk/index** pada semua halaman (termasuk varian filter) |
-| `tests/Feature/Ljk/LjkMobileApiTest.php` | API mobile: daftar, detail, unggah, koreksi, penolakan tanpa identitas |
 | Tambahan | tata letak **4 kolom column-major** (5 opsi → 3 kolom; nomor berurut ke bawah 1–6, 7–12, …), master tanpa nama/QR/strip, auto-sync nilai ke kolom resmi, kunci tersembunyi di halaman *Lihat Soal*, lembar soal PDF (kop gambar, penanaman karakter, opsi kolom sejajar, hanging indent, tanpa bobot) + font Cambria, wacana/soal cerita + legenda lembar jawaban, shaping teks Arab, unduh PDF (`?download=1`), setelan cetak Word (12 pt, spasi 1.0/1.15, margin inci, tabel identitas 3 baris), pemilihan kertas otomatis A4→F4, **mode bahasa tingkat ujian (Latin/Gabungan LTR vs Arab RTL), digit Arab ١/٢/٣, penanda opsi `.ج` setelah teks, huruf pilihan ا/ب/ج/د, kop hanya gambar**, regresi route `paket-soal` (parameter `userId`) |
 
-Hasil terakhir: **30 tes, 420 asersi — lulus** (PHP 8.5 + SQLite in-memory;
+Hasil terakhir: **29 tes, 420 asersi — lulus** (PHP 8.5 + SQLite in-memory;
 peringatan `PDO::MYSQL_ATTR_*` berasal dari lingkungan PHP 8.5, bukan fitur).
 
 Regresi terkait yang dijalankan: `BukuNilaiKonsolidasiTest`,

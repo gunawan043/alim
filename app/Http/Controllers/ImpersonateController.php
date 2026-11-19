@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\ViewAsService;
 use App\Support\GtkAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,12 +70,23 @@ final class ImpersonateController extends Controller
             'user_agent' => substr((string) $request->userAgent(), 0, 255),
         ]);
 
-        Auth::login($targetUser);
-        $request->session()->regenerate();
-
+        /*
+         * Tandai sesi impersonate SEBELUM Auth::login() agar listener
+         * SendLoginNotification tahu bahwa ini bukan login pengguna biasa
+         * dan tidak mengirim notifikasi "Login baru terdeteksi" ke GTK.
+         */
         $request->session()->put('impersonate.actor_id', $originalActorId);
         $request->session()->put('impersonate.actor_name', $originalActorName);
-        $request->session()->flash('impersonate.active', true);
+
+        // View-As role sebelumnya tidak boleh terbawa ke identitas GTK.
+        $request->session()->forget([
+            ViewAsService::SESSION_ROLE,
+            ViewAsService::SESSION_CONTEXT,
+            ViewAsService::SESSION_USER_ID,
+        ]);
+
+        Auth::login($targetUser);
+        $request->session()->regenerate();
 
         return redirect()->route('root')
             ->with('warning', "Anda sekarang masuk sebagai {$targetUser->name}. Klik 'Kembali ke Akun Saya' untuk kembali ke akun asal.");

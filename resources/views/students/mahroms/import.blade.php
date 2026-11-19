@@ -74,12 +74,24 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted small mb-3">
-                        Gunakan template resmi agar nama kolom sesuai. Sheet <strong>PETUNJUK</strong> berisi
-                        penjelasan tiap kolom dan contoh pengisian.
+                        Format baru: <strong>satu baris = satu santri</strong>. Informasi santri terisi
+                        otomatis, lalu data <strong>Mahrom 1 s/d Mahrom terakhir</strong> di kolom samping —
+                        tidak ada baris santri berulang.
                     </p>
-                    <a href="{{ route('user.students.mahroms.import.template', ['userId' => $userId]) }}" class="btn btn-outline-primary">
-                        <i class="ri-file-excel-2-line me-1"></i>Download Template Excel
-                    </a>
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('user.students.mahroms.import.template-filled', ['userId' => $userId]) }}"
+                           class="btn btn-primary">
+                            <i class="ri-file-excel-2-line me-1"></i>Unduh Data Mahrom (Terisi Otomatis)
+                        </a>
+                        <a href="{{ route('user.students.mahroms.import.template', ['userId' => $userId]) }}"
+                           class="btn btn-outline-primary">
+                            <i class="ri-file-download-line me-1"></i>Template Kosong
+                        </a>
+                    </div>
+                    <div class="form-text mt-2">
+                        Template terisi memuat seluruh santri dalam akses Anda beserta mahrom yang sudah ada.
+                        Cukup lengkapi/ubah kolom mahrom lalu unggah kembali.
+                    </div>
                 </div>
             </div>
         </div>
@@ -126,21 +138,22 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>NISN</code></td><td>Wajib salah satu (<code>NISN</code> atau <code>NIS</code>). Harus cocok dengan santri pada akses Anda.</td></tr>
-                        <tr><td><code>NIS</code></td><td>Alternatif pencocokan jika NISN kosong.</td></tr>
-                        <tr><td><code>Nama Mahrom</code></td><td>Wajib diisi.</td></tr>
-                        <tr><td><code>Hubungan</code></td><td>ayah, ibu, wali, kakak, adik, paman, bibi, kakek, nenek, suami, istri, sepupu, anak, lainnya.</td></tr>
-                        <tr><td><code>No. HP</code></td><td>Nomor WhatsApp wali (8–20 digit). Boleh diawali <code>+62</code>.</td></tr>
-                        <tr><td><code>NIK</code></td><td>Opsional, maks. 30 karakter. NIK yang sudah dipakai mahrom lain diabaikan.</td></tr>
-                        <tr><td><code>Utama</code></td><td>ya / tidak. Hanya satu mahrom utama per santri.</td></tr>
-                        <tr><td><code>Aktif</code></td><td>ya / tidak. Kosong dianggap ya.</td></tr>
+                        <tr><td><code>NISN / NIS</code></td><td>Identitas santri — <strong>sudah terisi otomatis</strong> pada template terisi. Wajib salah satu.</td></tr>
+                        <tr><td><code>Nama Santri / Kelas / Kamar / Asrama</code></td><td>Terisi otomatis dari sistem; diabaikan saat import.</td></tr>
+                        <tr><td><code>Mahrom 1 - Nama … Mahrom N - Nama</code></td><td>Nama mahrom. Kosongkan slot jika tidak ada.</td></tr>
+                        <tr><td><code>Mahrom N - Hubungan</code></td><td>ayah, ibu, wali, kakak, adik, paman, bibi, kakek, nenek, suami, istri, sepupu, anak, lainnya.</td></tr>
+                        <tr><td><code>Mahrom N - No. HP</code></td><td>Nomor WhatsApp wali (8–20 digit). Boleh diawali <code>+62</code>.</td></tr>
+                        <tr><td><code>Mahrom N - NIK</code></td><td>Opsional, maks. 30 karakter. NIK yang sudah dipakai mahrom lain diabaikan.</td></tr>
+                        <tr><td><code>Mahrom N - Utama</code></td><td>ya / tidak. Hanya satu mahrom utama per santri.</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <ul class="mb-0 text-muted">
+                <li><strong>Satu baris = satu santri.</strong> Tambahkan mahrom ke-2/ke-3 pada kolom <code>Mahrom 2</code>, <code>Mahrom 3</code>, dst. — bukan baris baru.</li>
                 <li>Peran yang sudah ada (mis. <code>ayah</code>) akan <strong>diperbarui</strong>, bukan diduplikasi.</li>
                 <li>Kolom No. HP/alamat yang dikosongkan <strong>tidak menghapus</strong> data lama.</li>
+                <li>Format file lama (satu baris per mahrom) tetap didukung.</li>
                 <li>Perubahan langsung sinkron ke modul asrama, kartu izin, dan notifikasi wali.</li>
                 <li>Baris tidak valid dilewati dan dilaporkan tanpa membatalkan baris lainnya.</li>
             </ul>

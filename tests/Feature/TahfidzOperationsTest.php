@@ -17,6 +17,8 @@ use App\Models\User;
 use App\Models\WorkUnit;
 use Database\Seeders\TahfidzFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TahfidzOperationsTest extends TestCase
@@ -59,6 +61,17 @@ class TahfidzOperationsTest extends TestCase
         $this->teacher = User::create([
             'name' => 'Guru Halaqah', 'email' => 'guru.halaqah.ops@test.local',
             'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+        // Guru halaqah harus Guru Tahfidz pada satuan pendidikan terkait.
+        DB::table('gtk_employments')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $this->teacher->id,
+            'school_id' => $this->school->id,
+            'status_kepegawaian' => 'GTY',
+            'jenis_gtk' => 'Pendidik / Guru',
+            'jabatan' => 'Guru Tahfidz',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
         $this->admin = User::create([
             'name' => 'Super Admin Ops', 'email' => 'superadmin.ops.tahfidz@test.local',

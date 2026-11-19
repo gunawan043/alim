@@ -848,6 +848,11 @@
                                             @else
                                                 <span class="badge bg-danger-subtle text-danger"><i class="ri-close-circle-fill me-1"></i>Nonaktif</span>
                                             @endif
+                                            @if ($gtk->isLocked())
+                                                <span class="badge bg-danger-subtle text-danger" title="Terkunci sampai {{ $gtk->locked_until?->format('d/m/Y H:i') }}">
+                                                    <i class="ri-lock-2-line me-1"></i>Akun terkunci
+                                                </span>
+                                            @endif
                                         </td>
 
                                         {{-- SELALU TAMPIL --}}
@@ -885,6 +890,16 @@
                                                                     <i class="ri-login-box-line text-success me-2"></i> Masuk sebagai GTK
                                                                 </button>
                                                             </form>
+                                                        </li>
+                                                    @endif
+                                                    @if ($gtk->isLocked() && canPermission('super-admin-only'))
+                                                        <li>
+                                                            <button class="dropdown-item unlock-account"
+                                                                    data-id="{{ $gtk->id }}"
+                                                                    data-name="{{ $gtk->name }}"
+                                                                    data-url="{{ route('user.sa.users.unlock', ['userId' => $userId, 'user' => $gtk->id]) }}">
+                                                                <i class="ri-lock-unlock-line text-success me-2"></i> Buka Akun Terkunci
+                                                            </button>
                                                         </li>
                                                     @endif
                                                     @if (canPermission('super-admin-only') || canPermission('gtk-update'))
@@ -1586,11 +1601,49 @@
         }
     }
 
+    // ── BUKA AKUN TERKUNCI ────────────────────────────────────────
+    function setupUnlockListeners() {
+        document.querySelectorAll('.unlock-account').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const name = this.dataset.name;
+                const url  = this.dataset.url;
+
+                const confirm = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Buka akun terkunci?',
+                    html: `Akun <strong>${name}</strong> bisa login lagi setelah dibuka.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Buka Akun',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                });
+                if (!confirm.isConfirmed) return;
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                    });
+
+                    if (response.ok) {
+                        Swal.fire({ icon: 'success', title: 'Akun dibuka', text: `${name} sudah bisa login kembali.`, timer: 1800, showConfirmButton: false })
+                            .then(() => window.location.reload());
+                    } else {
+                        Swal.fire('Gagal', 'Akun tidak dapat dibuka. Coba lagi.', 'error');
+                    }
+                } catch (error) {
+                    Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+                }
+            });
+        });
+    }
+
     // ── SETUP EVENT LISTENERS ─────────────────────────────────────
     function setupEventListeners() {
         document.querySelectorAll('.toggle-status').forEach(btn => btn.addEventListener('click', handleToggleStatus));
         setupDeleteListeners();
         setupResetPasswordListeners();
+        setupUnlockListeners();
 
         const searchInput = document.getElementById('globalSearch');
         if (searchInput) {

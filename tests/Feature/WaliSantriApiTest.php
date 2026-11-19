@@ -7,10 +7,10 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\WaliSantri;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class WaliSantriApiTest extends TestCase
@@ -90,6 +90,7 @@ class WaliSantriApiTest extends TestCase
         WaliSantri::create([
             'user_id' => $wali->id,
             'student_id' => $student->id,
+            'school_id' => $student->school_id,
             'role' => 'ayah',
             'is_primary' => true,
             'status' => WaliSantri::STATUS_ACTIVE,

@@ -191,6 +191,7 @@
                         </thead>
                         <tbody>
                             @forelse($studyGroups as $sg)
+                                @php $readOnly = in_array($sg->school_id, $readOnlySchoolIds ?? [], true); @endphp
                                 <tr>
                                     <td class="text-muted">{{ $loop->iteration + ($studyGroups->currentPage() - 1) * $studyGroups->perPage() }}</td>
                                     @if($isGlobalView)
@@ -204,6 +205,9 @@
                                         <a href="{{ route('user.study-groups.show', ['userId' => $userId, 'id' => $sg->id]) }}" class="fw-medium link-primary">
                                             {{ $sg->full_name }}
                                         </a>
+                                        @if($readOnly)
+                                            <span class="badge bg-info-subtle text-info ms-1" style="font-size:10px;">Operasional · read-only</span>
+                                        @endif
                                     </td>
                                     <td>
                                         <span class="badge bg-{{ $sg->academicYear?->semester === 'ganjil' ? 'primary' : 'info' }}-subtle text-{{ $sg->academicYear?->semester === 'ganjil' ? 'primary' : 'info' }}">
@@ -262,18 +266,20 @@
                                                         <i class="ri-user-search-line me-2 text-info"></i>Lihat Santri
                                                     </a>
                                                 </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('user.study-groups.edit', ['userId' => $userId, 'id' => $sg->id]) }}">
-                                                        <i class="ri-pencil-line me-2"></i>Edit
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger delete-sg" href="javascript:void(0)"
-                                                        data-id="{{ $sg->id }}" data-name="{{ $sg->full_name }}">
-                                                        <i class="ri-delete-bin-line me-2"></i>Hapus
-                                                    </a>
-                                                </li>
+                                                @unless($readOnly)
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('user.study-groups.edit', ['userId' => $userId, 'id' => $sg->id]) }}">
+                                                            <i class="ri-pencil-line me-2"></i>Edit
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger delete-sg" href="javascript:void(0)"
+                                                            data-id="{{ $sg->id }}" data-name="{{ $sg->full_name }}">
+                                                            <i class="ri-delete-bin-line me-2"></i>Hapus
+                                                        </a>
+                                                    </li>
+                                                @endunless
                                             </ul>
                                         </div>
                                     </td>

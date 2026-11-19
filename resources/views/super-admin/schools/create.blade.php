@@ -49,6 +49,7 @@
                                     <option value="smp">SMP</option>
                                     <option value="sma">SMA</option>
                                     <option value="smk">SMK</option>
+                                    <option value="pps">PPS Diniyah (Wustho &amp; Ulya)</option>
                                 </select>
                             </div>
                             <div class="col-md-3">

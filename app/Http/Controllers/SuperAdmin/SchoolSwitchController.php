@@ -76,6 +76,7 @@ class SchoolSwitchController extends Controller
                         'smp' => 'SMP IT',
                         'sma' => 'SMA IT / MA',
                         'smk' => 'SMA IT / MA',
+                        'pps' => 'PPS Diniyah',
                         default => strtoupper($level),
                     },
                     'schools' => $group->map(fn ($s) => [

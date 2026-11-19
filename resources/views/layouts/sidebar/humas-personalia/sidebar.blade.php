@@ -180,6 +180,15 @@
         </a>
     </li>
 
+    @if(\App\Support\UnitHeadAccess::canManage(auth()->user()))
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.kepala-wakil.']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.gtk.kepala-wakil.index') }}">
+            <i class="ri-user-star-line"></i><span>Kepala &amp; Wakil</span>
+        </a>
+    </li>
+    @endif
+
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.gtk.export']) ? ' active' : '' }}"
            href="{{ $humasUrl('user.gtk.export') }}">

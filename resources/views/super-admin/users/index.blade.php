@@ -43,6 +43,19 @@
         </div>
     @endif
 
+    @if(($lockedCount ?? 0) > 0)
+        <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <i class="ri-lock-2-line me-1"></i>
+                <strong>{{ $lockedCount }} akun terkunci</strong> karena terlalu banyak percobaan login gagal.
+            </div>
+            <a href="{{ route('user.sa.users.index', ['userId' => $userId, 'status' => 'locked']) }}"
+               class="btn btn-sm btn-warning">
+                Lihat akun terkunci
+            </a>
+        </div>
+    @endif
+
     <div class="row">
         <div class="col-lg-12">
             <div class="card">
@@ -79,6 +92,7 @@
                                 <option value="">Semua Status</option>
                                 <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Aktif</option>
                                 <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Nonaktif</option>
+                                <option value="locked" {{ request('status') === 'locked' ? 'selected' : '' }}>Terkunci</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -124,7 +138,10 @@
                                             @endforelse
                                         </td>
                                         <td>
-                                            @if($user->is_active)
+                                            @if($user->isLocked())
+                                                <span class="badge bg-danger-subtle text-danger"><i class="ri-lock-2-line me-1"></i>Terkunci</span>
+                                                <div><small class="text-muted">s.d. {{ $user->locked_until->format('d/m/Y H:i') }}</small></div>
+                                            @elseif($user->is_active)
                                                 <span class="badge bg-success-subtle text-success"><i class="ri-checkbox-circle-fill me-1"></i>Aktif</span>
                                             @else
                                                 <span class="badge bg-danger-subtle text-danger"><i class="ri-close-circle-fill me-1"></i>Nonaktif</span>
@@ -151,6 +168,13 @@
                                                             <i class="ri-shield-check-line text-info me-2"></i>Atur Roles
                                                         </button>
                                                     </li>
+                                                    @if($user->isLocked())
+                                                        <li>
+                                                            <button class="dropdown-item unlock-user" data-id="{{ $user->id }}" data-name="{{ $user->name }}">
+                                                                <i class="ri-lock-unlock-line text-success me-2"></i>Buka Akun
+                                                            </button>
+                                                        </li>
+                                                    @endif
                                                     @if(auth()->id() !== $user->id)
                                                         <li>
                                                             <button class="dropdown-item reset-password" data-id="{{ $user->id }}" data-name="{{ $user->name }}" data-email="{{ $user->email }}" data-nupy="{{ $user->employment?->nupy }}">
@@ -439,6 +463,27 @@
                         .then(() => location.reload());
                 } else {
                     Swal.fire('Error', data.message, 'error');
+                }
+            });
+        });
+
+        // ── Buka akun terkunci ────────────────────────────────────────
+        document.querySelectorAll('.unlock-user').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+                if (!confirm(`Buka akun ${name}? Semua percobaan login gagal akan direset.`)) return;
+
+                const res = await fetch(`/{{ $userId }}/sa/users/${id}/unlock`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                });
+
+                if (res.ok) {
+                    Swal.fire({ icon: 'success', title: 'Akun dibuka', text: `${name} sudah bisa login kembali.`, timer: 1800, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Gagal', 'Akun tidak dapat dibuka. Coba lagi.', 'error');
                 }
             });
         });

@@ -48,7 +48,6 @@
 @show
     <!-- Begin page -->
     <div id="layout-wrapper">
-        @include('components.impersonate-banner')
         @include('layouts.topbar')
         @include('layouts.sidebar')
         <!-- ============================================================== -->
@@ -56,6 +55,7 @@
         <!-- ============================================================== -->
         <div class="main-content">
             <div class="page-content">
+                @include('components.impersonate-banner')
                 <div class="container-fluid @if(request()->routeIs('user.asrama.*')) asrama-page @endif">
                     @yield('content')
                     @include('components.delete-modal')

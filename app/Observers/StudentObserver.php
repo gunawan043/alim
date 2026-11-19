@@ -5,12 +5,14 @@ namespace App\Observers;
 use App\Models\Student;
 use App\Models\WaliSantri;
 use App\Services\NotificationUniversalService;
+use App\Services\StudentLookupService;
 use Illuminate\Support\Facades\Log;
 
 class StudentObserver
 {
     public function __construct(
         private readonly NotificationUniversalService $notifier,
+        private readonly StudentLookupService $lookup,
     ) {}
 
     /**
@@ -51,6 +53,9 @@ class StudentObserver
         if (empty($student->getDirty())) {
             return;
         }
+
+        // Data santri berubah → segarkan cache agar modul asrama ikut terbarui.
+        $this->lookup->invalidateCache($student->id);
 
         // Name change → cascade to Walisantri
         $nameChanged = in_array('name', $student->getDirty());

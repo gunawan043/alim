@@ -11,12 +11,9 @@ use App\Http\Services\WaliSantriService;
 use App\Mail\LoginOtpMail;
 use App\Models\AuditLog;
 use App\Models\LoginOtp;
-use App\Models\TeacherAdminBook;
-use App\Models\TeachingAssignment;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
 use App\Models\WaliSantri;
-use App\Services\Ljk\LjkAccess;
 use App\Services\MobileSessionIntrospector;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
@@ -117,6 +114,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if (! $this->isWaliAccount($user)) {
+            throw ValidationException::withMessages([
+                'email' => ['Aplikasi mobile ini hanya untuk akun wali santri.'],
+            ]);
+        }
+
         $user->resetFailedLoginAttempts();
 
         if ($this->shouldUseMobileTwoFactor($user)) {
@@ -186,6 +189,12 @@ class AuthController extends Controller
         if (! $user) {
             throw ValidationException::withMessages([
                 'challenge_token' => 'Akun tidak ditemukan atau tidak aktif.',
+            ]);
+        }
+
+        if (! $this->isWaliAccount($user)) {
+            throw ValidationException::withMessages([
+                'challenge_token' => 'Aplikasi mobile ini hanya untuk akun wali santri.',
             ]);
         }
 
@@ -430,6 +439,12 @@ class AuthController extends Controller
             ]);
         }
 
+        if (! $this->isWaliAccount($user)) {
+            throw ValidationException::withMessages([
+                'email' => ['Aplikasi mobile ini hanya untuk akun wali santri.'],
+            ]);
+        }
+
         if ($this->shouldUseMobileTwoFactor($user)) {
             return $this->startMobileTwoFactor($user, $request);
         }
@@ -598,6 +613,7 @@ class AuthController extends Controller
             ->where('user_id', $user->id)
             ->active()
             ->get()
+            ->filter(fn ($link) => $link->student !== null)
             ->map(fn ($link) => [
                 'id' => $link->student->id,
                 'name' => $link->student->name,
@@ -607,11 +623,17 @@ class AuthController extends Controller
                 'school' => $link->student->school?->name,
             ]);
 
+        $schools = $this->schoolsFor($user);
+        $activeSchoolId = $request->attributes->get('schoolContextId');
+
         return response()->json([
             'success' => true,
             'data' => [
                 'user' => $this->formatUser($user),
                 'students' => $students,
+                'schools' => $schools,
+                'active_school_id' => $activeSchoolId,
+                'requires_school_selection' => count($schools) > 0 && $activeSchoolId === null,
             ],
         ]);
     }
@@ -728,8 +750,43 @@ class AuthController extends Controller
     // ── User formatting ──────────────────────────────────────────────────────
 
     /**
-     * Peran utama untuk klien mobile (aditif — is_wali tetap dipertahankan).
+     * Akun yang boleh memakai surface mobile wali. Relasi aktif tetap
+     * diterima untuk kompatibilitas akun wali lama yang flag-nya belum diisi.
      */
+    private function isWaliAccount(User $user): bool
+    {
+        return (bool) $user->is_wali || $user->activeWaliSantri()->exists();
+    }
+
+    /**
+     * Sekolah yang dapat dipilih wali pada aplikasi mobile.
+     *
+     * @return array<int, array{id: string, name: string, school_code: ?string, is_active: bool, students_count: int}>
+     */
+    private function schoolsFor(User $user): array
+    {
+        return WaliSantri::with(['school:id,name,school_code,is_active'])
+            ->where('user_id', $user->id)
+            ->where('status', WaliSantri::STATUS_ACTIVE)
+            ->whereNotNull('school_id')
+            ->get()
+            ->groupBy('school_id')
+            ->map(function ($links, string $schoolId) {
+                $school = $links->first()?->school;
+
+                return [
+                    'id' => $schoolId,
+                    'name' => $school?->name ?? 'Satuan Pendidikan',
+                    'school_code' => $school?->school_code,
+                    'is_active' => (bool) ($school?->is_active ?? true),
+                    'students_count' => $links->count(),
+                ];
+            })
+            ->sortBy('name')
+            ->values()
+            ->all();
+    }
+
     private function primaryRole(User $user): string
     {
         if ($user->is_wali) {
@@ -749,34 +806,6 @@ class AuthController extends Controller
         return 'guru';
     }
 
-    /**
-     * Apakah akun ini berpotensi memakai pemindai LJK (guru pengampu /
-     * kurikulum / TU). Otorisasi detail tetap dilakukan per-ujian di server.
-     */
-    private function canUseLjkScanner(User $user): bool
-    {
-        if ($user->is_wali) {
-            return false;
-        }
-
-        try {
-            if (app(LjkAccess::class)->isOfficer($user)) {
-                return true;
-            }
-
-            return TeacherAdminBook::query()
-                ->where('teacher_id', $user->id)
-                ->where('is_active', true)
-                ->exists()
-                || TeachingAssignment::query()
-                    ->where('teacher_id', $user->id)
-                    ->where('status', 'active')
-                    ->exists();
-        } catch (\Throwable) {
-            return false;
-        }
-    }
-
     private function formatUser(User $user): array
     {
         return [
@@ -786,10 +815,8 @@ class AuthController extends Controller
             // Peran efektif (aditif): 'wali' untuk akun wali santri,
             // 'guru' untuk staf pengajar, 'admin' untuk admin sistem.
             'role' => $this->primaryRole($user),
-            // Kapabilitas aditif yang dipakai klien untuk menampilkan menu.
-            'capabilities' => [
-                'ljk_scan' => $this->canUseLjkScanner($user),
-            ],
+            // Surface mobile khusus wali; tidak ada fitur pemindai LJK.
+            'capabilities' => [],
             'no_kk' => $user->no_kk ? WaliSantri::maskNoKk($user->no_kk) : null,
             'nik_wali' => $user->nik_wali ? substr($user->nik_wali, 0, 6).'••••••••'.substr($user->nik_wali, -2) : null,
             'no_hp' => $user->no_hp,

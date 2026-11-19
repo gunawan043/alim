@@ -1,15 +1,19 @@
-@if (session('impersonate.active') && auth()->check())
-    <div class="alert alert-warning rounded-0 mb-0 py-2 px-3 d-flex align-items-center justify-content-between"
+@php
+    $impersonateActorName = session('impersonate.actor_name');
+    $isImpersonating = session()->has('impersonate.actor_id') && auth()->check();
+@endphp
+@if ($isImpersonating)
+    <div class="alert alert-warning border-0 rounded-0 mb-3 py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 impersonate-banner"
          role="alert"
          data-impersonate-banner>
         <div class="d-flex align-items-center gap-2">
             <i class="ri-mask-line fs-20"></i>
             <span>
-                Anda sedang login sebagai
+                Anda sedang masuk sebagai
                 <strong>{{ auth()->user()->name }}</strong>
                 ({{ implode(', ', auth()->user()->effectiveRoles() ?: ['(tanpa role)']) }}).<br>
                 Akun asal:
-                <strong>{{ session('impersonate.actor_name', 'Unknown') }}</strong>
+                <strong>{{ $impersonateActorName ?: 'Unknown' }}</strong>
                 — klik 'Kembali ke Akun Saya' untuk kembali tanpa perlu login ulang.
             </span>
         </div>
@@ -22,4 +26,14 @@
             </button>
         </form>
     </div>
+
+    <style>
+        /* Tetap terlihat saat halaman di-scroll, tepat di bawah topbar. */
+        .impersonate-banner {
+            position: sticky;
+            top: 70px;
+            z-index: 1001;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+        }
+    </style>
 @endif

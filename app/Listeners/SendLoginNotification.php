@@ -15,6 +15,15 @@ class SendLoginNotification
 
     public function handle(Login $event): void
     {
+        /*
+         * Impersonate (Super Admin masuk sebagai GTK) bukan login pengguna.
+         * Jangan kirim notifikasi "Login baru terdeteksi" ke akun yang
+         * sedang dimasuki maupun ke akun asal saat sesi diakhiri.
+         */
+        if (session()->has('impersonate.actor_id')) {
+            return;
+        }
+
         try {
             $user = $event->user;
             $agent = (string) request()->userAgent();

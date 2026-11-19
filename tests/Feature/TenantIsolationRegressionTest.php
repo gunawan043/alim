@@ -188,7 +188,7 @@ class TenantIsolationRegressionTest extends TestCase
         // Verify student B's ID never appears in response
         $this->assertStringNotContainsString(
             Str::afterLast($studentB->id, '-'),
-            $response->toJson()
+            $response->getContent()
         );
     }
 

@@ -1950,6 +1950,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [JamPelajaranController::class, 'index'])->name('index');
                 Route::post('/', [JamPelajaranController::class, 'store'])->name('store');
                 Route::post('/template', [JamPelajaranController::class, 'template'])->name('template');
+                Route::post('/tahfidz', [JamPelajaranController::class, 'saveTahfidz'])->name('tahfidz');
                 Route::put('/{slotId}', [JamPelajaranController::class, 'update'])->name('update');
                 Route::delete('/{slotId}', [JamPelajaranController::class, 'destroy'])->name('destroy');
             });
@@ -2151,6 +2152,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 // Import mahrom (harus di atas route /mahroms/{mahromUuid}).
                 Route::get('/mahroms/import', [StudentMahromImportController::class, 'index'])->name('mahroms.import');
                 Route::get('/mahroms/import/template', [StudentMahromImportController::class, 'template'])->name('mahroms.import.template');
+                Route::get('/mahroms/import/template-terisi', [StudentMahromImportController::class, 'templateFilled'])->name('mahroms.import.template-filled');
                 Route::post('/mahroms/import', [StudentMahromImportController::class, 'store'])->name('mahroms.import.store');
                 Route::get('/mahroms/{mahromUuid}', [StudentMahromController::class, 'globalShow'])->name('mahroms.globalShow');
                 Route::get('/mahroms/{mahromUuid}/edit', [StudentMahromController::class, 'globalEdit'])->name('mahroms.globalEdit');

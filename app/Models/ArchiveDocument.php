@@ -36,6 +36,8 @@ class ArchiveDocument extends Model
         'file_path',
         'file_hash',
         'file_size',
+        'version',
+        'supersedes_id',
         'record_type',
         'record_id',
         'student_id',
@@ -46,6 +48,7 @@ class ArchiveDocument extends Model
 
     protected $casts = [
         'file_size' => 'integer',
+        'version' => 'integer',
     ];
 
     public function school(): BelongsTo

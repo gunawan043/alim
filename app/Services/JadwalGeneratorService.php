@@ -4,13 +4,36 @@ namespace App\Services;
 
 use App\Models\JadwalKbm;
 use App\Models\StudyGroup;
+use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class JadwalGeneratorService
 {
     public function __construct(private TeacherAvailabilityService $availability) {}
+
+    /** Catatan penanda baris blok tahfidz (bukan guru tunggal). */
+    public const TAHFIDZ_NOTE = 'TIM TAHFIDZ';
+
+    /** @var array<string, bool> "teacherId|day|slot" yang terkunci blok tahfidz */
+    private array $tahfidzBusy = [];
+
+    /** @var array<string, bool> subject_id => true untuk mapel tahfidz */
+    private array $tahfidzSubjectIds = [];
+
+    /** Apakah daftar mapel tahfidz ditentukan manual lewat setting (bukan deteksi nama). */
+    private bool $tahfidzOverride = false;
+
+    /** @var array<string, array<string, mixed>> konteks tim tahfidz per tingkat */
+    private array $tahfidzTeams = [];
+
+    /** @var array<string, array{days: array<int, array{day:int, slots:array<int,int>}>, error:?string}> */
+    private array $tahfidzWindows = [];
+
+    /** @var array<int, bool> hari yang sudah dipakai blok tahfidz tingkat lain */
+    private array $tahfidzUsedDays = [];
 
     /** Jumlah slot maksimum pada grid fallback (jika sekolah belum punya master slot). */
     public const MAX_PERIODS_PER_DAY = 12;
@@ -31,26 +54,90 @@ class JadwalGeneratorService
     /**
      * Generate jadwal untuk beberapa rombel.
      *
+     * Blok TIM TAHFIDZ ditempatkan lebih dulu untuk seluruh rombel, baru mapel
+     * lain, supaya slot tahfidz tidak didahului mapel dan guru tim tidak bentrok.
+     *
      * @return Collection<int, array<string, mixed>>
      */
     public function generateBulk(array $studyGroupIds, string $academicYearId, string $semester, bool $overwrite = false): Collection
     {
+        $this->resetTahfidzContext();
+        $this->loadTahfidzContext($academicYearId, null);
+
+        $groups = StudyGroup::with('gradeLevel')
+            ->whereIn('id', $studyGroupIds)
+            ->get()
+            ->keyBy('id');
+
+        $assignments = [];
+        $blocks = [];
+
+        // Fase 0 — muat SK dan kosongkan jadwal lama lebih dulu, agar jendela
+        // blok tahfidz dihitung tanpa terganggu baris rombel lain di tingkat yang sama.
+        foreach ($studyGroupIds as $sgId) {
+            $group = $groups->get($sgId);
+
+            if (! $group) {
+                continue;
+            }
+
+            try {
+                $assignments[$sgId] = $this->activeAssignments($sgId, $academicYearId);
+
+                if ($overwrite) {
+                    $this->clearSchedule($sgId, $academicYearId);
+                }
+            } catch (\Throwable $e) {
+                $assignments[$sgId] = collect();
+            }
+        }
+
+        // Fase 1 — blok TIM TAHFIDZ untuk semua rombel.
+        // Blok tingkat lain yang tidak ikut dihapus tetap dikunci lebih dulu.
+        $this->seedTahfidzBusyFromExisting(
+            $academicYearId,
+            $this->siblingStudyGroupIds($studyGroupIds, $academicYearId)
+        );
+
+        foreach ($studyGroupIds as $sgId) {
+            $group = $groups->get($sgId);
+
+            if (! $group) {
+                continue;
+            }
+
+            try {
+                $blocks[$sgId] = $this->placeTahfidzBlock(
+                    $group,
+                    $academicYearId,
+                    $this->tahfidzAssignments($assignments[$sgId])
+                );
+            } catch (\Throwable $e) {
+                $blocks[$sgId] = ['total' => 0, 'placed' => 0, 'error' => $e->getMessage()];
+            }
+        }
+
+        // Fase 2 — mapel lain per rombel.
         $results = collect();
 
         foreach ($studyGroupIds as $sgId) {
+            $group = $groups->get($sgId);
+
+            if (! $group) {
+                $results->push($this->emptySummary($sgId, null, 'Rombel tidak ditemukan.'));
+
+                continue;
+            }
+
             try {
-                $results->push($this->generateForStudyGroup($sgId, $academicYearId, $semester, $overwrite));
+                $results->push($this->buildSummary(
+                    $group,
+                    $academicYearId,
+                    $assignments[$sgId] ?? $this->activeAssignments($sgId, $academicYearId),
+                    $blocks[$sgId] ?? null
+                ));
             } catch (\Throwable $e) {
-                $sg = StudyGroup::find($sgId);
-                $results->push([
-                    'study_group_id' => $sgId,
-                    'study_group_name' => $sg->full_name ?? $sg?->name ?? $sgId,
-                    'generated' => 0,
-                    'requested' => 0,
-                    'has_assignments' => false,
-                    'shortages' => [],
-                    'conflicts' => [$e->getMessage()],
-                ]);
+                $results->push($this->emptySummary($sgId, $group, $e->getMessage()));
             }
         }
 
@@ -68,26 +155,634 @@ class JadwalGeneratorService
     {
         $studyGroup = StudyGroup::with('gradeLevel')->findOrFail($studyGroupId);
 
-        $assignments = TeachingAssignment::with(['subject', 'teacher'])
+        $this->resetTahfidzContext();
+        $this->loadTahfidzContext($academicYearId, $studyGroup->school_id);
+
+        $assignments = $this->activeAssignments($studyGroupId, $academicYearId);
+
+        if ($overwrite) {
+            $this->clearSchedule($studyGroupId, $academicYearId);
+        }
+
+        $this->seedTahfidzBusyFromExisting(
+            $academicYearId,
+            $this->siblingStudyGroupIds([$studyGroupId], $academicYearId)
+        );
+
+        $block = $this->placeTahfidzBlock(
+            $studyGroup,
+            $academicYearId,
+            $this->tahfidzAssignments($assignments)
+        );
+
+        return $this->buildSummary($studyGroup, $academicYearId, $assignments, $block);
+    }
+
+    /**
+     * @return Collection<int, TeachingAssignment>
+     */
+    private function activeAssignments(string $studyGroupId, string $academicYearId): Collection
+    {
+        return TeachingAssignment::with(['subject.subjectGroup', 'teacher'])
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $academicYearId)
             ->where('status', 'active')
             ->get();
+    }
 
-        if ($overwrite) {
-            JadwalKbm::where('study_group_id', $studyGroupId)
-                ->where('academic_year_id', $academicYearId)
-                ->delete();
+    private function tahfidzAssignments(Collection $assignments): Collection
+    {
+        return $assignments->filter(fn ($a) => $this->isTahfidzSubject($a->subject_id))->values();
+    }
+
+    private function regularAssignments(Collection $assignments): Collection
+    {
+        return $assignments->reject(fn ($a) => $this->isTahfidzSubject($a->subject_id))->values();
+    }
+
+    private function clearSchedule(string $studyGroupId, string $academicYearId): void
+    {
+        JadwalKbm::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $academicYearId)
+            ->delete();
+    }
+
+    /**
+     * Bersihkan cache konteks tahfidz sebelum satu proses generate.
+     */
+    private function resetTahfidzContext(): void
+    {
+        $this->tahfidzBusy = [];
+        $this->tahfidzSubjectIds = [];
+        $this->tahfidzOverride = false;
+        $this->tahfidzTeams = [];
+        $this->tahfidzWindows = [];
+        $this->tahfidzUsedDays = [];
+    }
+
+    /**
+     * Muat daftar mapel tahfidz dan tim guru per tingkat untuk satu tahun ajaran.
+     *
+     * Tim per tingkat dipakai agar seluruh rombel dalam satu tingkat memperoleh
+     * hari & slot blok yang sama — syarat halaqah lintas rombel.
+     */
+    private function loadTahfidzContext(string $academicYearId, ?string $schoolId): void
+    {
+        $override = setting('tahfidz.subject_ids');
+
+        if (is_string($override) && trim($override) !== '') {
+            $this->tahfidzOverride = true;
+
+            foreach (preg_split('/[\s,;]+/', $override) ?: [] as $subjectId) {
+                if ($subjectId !== '') {
+                    $this->tahfidzSubjectIds[$subjectId] = true;
+                }
+            }
         }
 
+        if (empty($this->tahfidzSubjectIds)) {
+            $query = Subject::query()->where('is_active', true);
+
+            if ($schoolId) {
+                $query->where('school_id', $schoolId);
+            }
+
+            foreach ($query->with('subjectGroup')->get() as $subject) {
+                if ($this->subjectLooksLikeTahfidz($subject)) {
+                    $this->tahfidzSubjectIds[$subject->id] = true;
+                }
+            }
+        }
+
+        if (empty($this->tahfidzSubjectIds)) {
+            return;
+        }
+
+        $assignments = TeachingAssignment::query()
+            ->where('academic_year_id', $academicYearId)
+            ->where('status', 'active')
+            ->whereIn('subject_id', array_keys($this->tahfidzSubjectIds))
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->with([
+                'studyGroup:id,school_id,grade_level_id,name',
+                'subject:id,name,code,subject_group_id',
+            ])
+            ->get();
+
+        foreach ($assignments as $assignment) {
+            $group = $assignment->studyGroup;
+
+            if (! $group) {
+                continue;
+            }
+
+            $key = $group->grade_level_id ?: 'rombel:'.$group->id;
+
+            $this->tahfidzTeams[$key] ??= [
+                'teachers' => [],
+                'subject_id' => null,
+                'rombel_totals' => [],
+                'school_id' => $group->school_id,
+                'grade_level_id' => $group->grade_level_id,
+            ];
+
+            if ($assignment->teacher_id) {
+                $this->tahfidzTeams[$key]['teachers'][$assignment->teacher_id] = $assignment->teacher_id;
+            }
+
+            $this->tahfidzTeams[$key]['subject_id'] ??= $assignment->subject_id;
+
+            $hours = $this->resolveWeeklyHours($assignment, $group);
+            $previous = $this->tahfidzTeams[$key]['rombel_totals'][$group->id] ?? 0;
+            $this->tahfidzTeams[$key]['rombel_totals'][$group->id] = max($previous, $hours);
+        }
+    }
+
+    /**
+     * ID seluruh rombel satu tingkat, termasuk yang tidak ikut di-generate.
+     *
+     * Dipakai saat menyemai kunci blok tahfidz: rombel sekelas tidak boleh
+     * dianggap "blok tingkat lain", karena blok satu tingkat harus memakai
+     * hari & slot yang sama agar halaqah lintas rombel tetap berjalan.
+     *
+     * @param  array<int, string>  $studyGroupIds
+     * @return array<int, string>
+     */
+    private function siblingStudyGroupIds(array $studyGroupIds, string $academicYearId): array
+    {
+        $gradeIds = StudyGroup::query()
+            ->whereIn('id', $studyGroupIds)
+            ->whereNotNull('grade_level_id')
+            ->pluck('grade_level_id')
+            ->unique()
+            ->values();
+
+        if ($gradeIds->isEmpty()) {
+            return $studyGroupIds;
+        }
+
+        $siblings = StudyGroup::query()
+            ->whereIn('grade_level_id', $gradeIds)
+            ->where('academic_year_id', $academicYearId)
+            ->pluck('id')
+            ->all();
+
+        return array_values(array_unique(array_merge($studyGroupIds, $siblings)));
+    }
+
+    /**
+     * Kunci guru tim pada blok tahfidz yang sudah ada di database.
+     *
+     * Dipakai saat generate sebagian rombel: blok tingkat lain yang tidak ikut
+     * dihapus harus tetap dianggap sibuk agar tidak terjadi bentrok guru.
+     *
+     * @param  array<int, string>  $excludeStudyGroupIds
+     */
+    private function seedTahfidzBusyFromExisting(string $academicYearId, array $excludeStudyGroupIds = []): void
+    {
+        $rows = JadwalKbm::query()
+            ->where('academic_year_id', $academicYearId)
+            ->whereNull('teacher_id')
+            ->where('notes', self::TAHFIDZ_NOTE)
+            ->where('is_active', true)
+            ->when($excludeStudyGroupIds, fn ($q) => $q->whereNotIn('study_group_id', $excludeStudyGroupIds))
+            ->get(['study_group_id', 'day_of_week', 'slot_index']);
+
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        $gradeByGroup = StudyGroup::query()
+            ->whereIn('id', $rows->pluck('study_group_id')->unique()->values())
+            ->pluck('grade_level_id', 'id');
+
+        foreach ($rows as $row) {
+            $gradeId = $gradeByGroup[$row->study_group_id] ?? null;
+            $key = $gradeId ?: 'rombel:'.$row->study_group_id;
+            $teachers = array_keys($this->tahfidzTeams[$key]['teachers'] ?? []);
+
+            foreach ($teachers as $teacherId) {
+                $this->tahfidzBusy[$teacherId.'|'.$row->day_of_week.'|'.$row->slot_index] = true;
+            }
+
+            $this->tahfidzUsedDays[(int) $row->day_of_week] = true;
+        }
+    }
+
+    /**
+     * Apakah mapel ini termasuk rumpun tahfidz?
+     * Sumber utama: `subject_groups.name` mengandung "tahfidz"/"tahfiz".
+     * Setting `tahfidz.subject_ids` (dipisah koma) menimpa deteksi ini.
+     */
+    private function isTahfidzSubject(?string $subjectId): bool
+    {
+        if (! $subjectId) {
+            return false;
+        }
+
+        if (array_key_exists($subjectId, $this->tahfidzSubjectIds)) {
+            return $this->tahfidzSubjectIds[$subjectId];
+        }
+
+        if ($this->tahfidzOverride) {
+            return $this->tahfidzSubjectIds[$subjectId] = false;
+        }
+
+        $subject = Subject::with('subjectGroup')->find($subjectId);
+
+        return $this->tahfidzSubjectIds[$subjectId] = $subject
+            ? $this->subjectLooksLikeTahfidz($subject)
+            : false;
+    }
+
+    private function subjectLooksLikeTahfidz(Subject $subject): bool
+    {
+        $group = mb_strtolower($subject->subjectGroup?->name ?? '');
+        $name = mb_strtolower($subject->name ?? '');
+        $code = mb_strtolower($subject->code ?? '');
+
+        return str_contains($group, 'tahfidz')
+            || str_contains($group, 'tahfiz')
+            || str_contains($name, 'tahfidz')
+            || str_contains($name, 'tahfiz')
+            || $code === 'thf';
+    }
+
+    /**
+     * Tempatkan blok TIM TAHFIDZ untuk satu rombel.
+     *
+     * Blok ditulis satu baris per slot dengan `teacher_id = NULL` dan
+     * `notes = 'TIM TAHFIDZ'`, lalu seluruh guru tim ditandai sibuk pada slot
+     * tersebut agar mapel lain tidak menempati jam yang sama.
+     *
+     * @param  Collection<int, TeachingAssignment>  $tahfidzAssignments
+     * @return array<string, mixed>
+     */
+    private function placeTahfidzBlock(StudyGroup $group, string $academicYearId, Collection $tahfidzAssignments): array
+    {
+        $result = [
+            'total' => 0,
+            'placed' => 0,
+            'days' => [],
+            'team' => [],
+            'subject_id' => null,
+            'status' => 'kosong',
+            'message' => null,
+        ];
+
+        if ($tahfidzAssignments->isEmpty()) {
+            $result['message'] = 'Rombel ini tidak punya mapel tahfidz di SK. Tambahkan mapel Tahfidz pada SK penugasan guru rombel ini.';
+
+            return $result;
+        }
+
+        $key = $group->grade_level_id ?: 'rombel:'.$group->id;
+        $context = $this->tahfidzTeams[$key] ?? null;
+
+        // Mode satu rombel: konteks tingkat belum dimuat, susun dari SK rombel ini.
+        if (! $context) {
+            $teachers = [];
+
+            foreach ($tahfidzAssignments as $assignment) {
+                if ($assignment->teacher_id) {
+                    $teachers[$assignment->teacher_id] = $assignment->teacher_id;
+                }
+            }
+
+            $context = [
+                'teachers' => $teachers,
+                'subject_id' => $tahfidzAssignments->first()->subject_id,
+                'rombel_totals' => [$group->id => (int) $tahfidzAssignments->max(fn ($a) => $this->resolveWeeklyHours($a, $group))],
+                'school_id' => $group->school_id,
+                'grade_level_id' => $group->grade_level_id,
+            ];
+        }
+
+        // Pastikan guru rombel ini ikut terkunci meski konteks berasal dari rombel lain.
+        foreach ($tahfidzAssignments as $assignment) {
+            if ($assignment->teacher_id) {
+                $context['teachers'][$assignment->teacher_id] = $assignment->teacher_id;
+            }
+        }
+
+        $this->tahfidzTeams[$key] = $context;
+
+        $total = (int) ($context['rombel_totals'][$group->id]
+            ?? $tahfidzAssignments->max(fn ($a) => $this->resolveWeeklyHours($a, $group)));
+
+        $result['total'] = $total;
+        $result['subject_id'] = $context['subject_id'] ?? $tahfidzAssignments->first()->subject_id;
+        $result['team'] = array_values($context['teachers']);
+
+        if ($total <= 0) {
+            $result['message'] = 'JP tahfidz pada SK guru masih 0. Isi JP mapel tahfidz di SK penugasan.';
+
+            return $result;
+        }
+
+        $window = $this->tahfidzWindow($key, $group, $context, $total, $academicYearId);
+
+        if ($window['error'] !== null) {
+            $result['status'] = 'gagal';
+            $result['message'] = $window['error'];
+
+            return $result;
+        }
+
+        $placed = 0;
+        $days = [];
+
+        foreach ($window['days'] as $plan) {
+            $written = 0;
+
+            foreach ($plan['slots'] as $slotIndex) {
+                if ($this->isStudyGroupBusy($group->id, $plan['day'], $slotIndex, $academicYearId)) {
+                    continue;
+                }
+
+                $times = $this->resolveSlotTimesPublic($slotIndex, $plan['day'], $group->school_id);
+
+                JadwalKbm::create([
+                    'school_id' => $group->school_id,
+                    'academic_year_id' => $academicYearId,
+                    'study_group_id' => $group->id,
+                    'subject_id' => $result['subject_id'],
+                    'teacher_id' => null,
+                    'day_of_week' => $plan['day'],
+                    'slot_index' => $slotIndex,
+                    'start_time' => $times['start'],
+                    'end_time' => $times['end'],
+                    'room' => $group->room,
+                    'is_active' => true,
+                    'notes' => self::TAHFIDZ_NOTE,
+                ]);
+
+                $placed++;
+                $written++;
+            }
+
+            if ($written > 0) {
+                $days[] = ['day' => $plan['day'], 'jp' => $written];
+            }
+        }
+
+        $result['placed'] = $placed;
+        $result['days'] = $days;
+        $result['status'] = $placed >= $total
+            ? 'penuh'
+            : ($placed > 0 ? 'sebagian' : 'gagal');
+
+        if ($placed < $total) {
+            $result['message'] = "Blok tahfidz hanya tertempat {$placed} dari {$total} JP.";
+        }
+
+        return $result;
+    }
+
+    /**
+     * Hitung hari & slot blok tahfidz untuk satu tingkat.
+     * Hasil di-cache agar semua rombel dalam tingkat memakai jendela yang sama.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array{days: array<int, array{day:int, slots:array<int,int>}>, error:?string}
+     */
+    private function tahfidzWindow(string $key, StudyGroup $group, array $context, int $total, string $academicYearId): array
+    {
+        if (isset($this->tahfidzWindows[$key])) {
+            return $this->tahfidzWindows[$key];
+        }
+
+        $schoolId = $context['school_id'] ?? $group->school_id;
+        $masterDays = $this->masterSlotsByDay($schoolId);
+        $teachers = array_values($context['teachers'] ?? []);
+
+        if (empty($teachers)) {
+            return $this->tahfidzWindows[$key] = [
+                'days' => [],
+                'error' => 'Tidak ada guru tahfidz pada SK untuk tingkat ini.',
+            ];
+        }
+
+        if (empty($masterDays)) {
+            return $this->tahfidzWindows[$key] = [
+                'days' => [],
+                'error' => 'Master jam pelajaran belum diatur. Atur dulu di halaman Jam Pelajaran sebelum generate.',
+            ];
+        }
+
+        $perDay = max(1, (int) $this->tahfidzSetting('jp_per_day', $schoolId, 4));
+        $startSlot = max(1, (int) $this->tahfidzSetting('start_slot', $schoolId, 1));
+        $preferredDays = $this->tahfidzPreferredDays($schoolId);
+
+        $dayCount = max(1, (int) ceil($total / $perDay));
+        $base = intdiv($total, $dayCount);
+        $rest = $total % $dayCount;
+
+        $plans = [];
+        $availableDays = $preferredDays;
+        $applied = [];
+        $usedDays = [];
+
+        for ($i = 0; $i < $dayCount; $i++) {
+            $need = $base + ($i < $rest ? 1 : 0);
+
+            if ($need <= 0) {
+                continue;
+            }
+
+            $found = null;
+
+            // Satu hari dipakai sekali agar JP per hari tidak melebihi batas.
+            // Hari yang belum dipakai tingkat lain dicoba lebih dulu supaya blok
+            // tahfidz tetap di jam pagi dan tidak menumpuk di hari yang sama.
+            $passes = [
+                array_filter($availableDays, fn ($day) => empty($this->tahfidzUsedDays[$day])),
+                $availableDays,
+            ];
+
+            foreach ($passes as $candidates) {
+                foreach ($candidates as $position => $day) {
+                    $slots = $this->findTahfidzRun(
+                        $masterDays[$day] ?? [],
+                        $day,
+                        $startSlot,
+                        $need,
+                        $teachers,
+                        $schoolId,
+                        $academicYearId
+                    );
+
+                    if ($slots === null) {
+                        continue;
+                    }
+
+                    $found = ['day' => $day, 'slots' => $slots];
+                    unset($availableDays[$position]);
+
+                    break 2;
+                }
+            }
+
+            if ($found === null) {
+                // Kembalikan kunci yang sempat dipasang agar percobaan lain bersih.
+                foreach ($applied as $lock) {
+                    unset($this->tahfidzBusy[$lock]);
+                }
+
+                foreach ($usedDays as $day) {
+                    unset($this->tahfidzUsedDays[$day]);
+                }
+
+                return $this->tahfidzWindows[$key] = [
+                    'days' => [],
+                    'error' => "Slot tahfidz tidak cukup: butuh {$total} JP per pekan dengan pembagian maksimal "
+                        ."{$perDay} JP/hari. Tambahkan hari yang dipakai atau naikkan JP maksimal per hari "
+                        .'di halaman Jam Pelajaran.',
+                ];
+            }
+
+            foreach ($found['slots'] as $slotIndex) {
+                foreach ($teachers as $teacherId) {
+                    $lock = $teacherId.'|'.$found['day'].'|'.$slotIndex;
+                    $this->tahfidzBusy[$lock] = true;
+                    $applied[] = $lock;
+                }
+            }
+
+            $this->tahfidzUsedDays[$found['day']] = true;
+            $usedDays[] = $found['day'];
+            $plans[] = $found;
+        }
+
+        return $this->tahfidzWindows[$key] = ['days' => $plans, 'error' => null];
+    }
+
+    /**
+     * Cari deretan slot mengajar berurutan yang bebas untuk seluruh guru tim.
+     *
+     * @param  array<int, array{slot:int, start:string, end:string, is_break:bool}>  $slots
+     * @param  array<int, string>  $teacherIds
+     * @return array<int, int>|null
+     */
+    private function findTahfidzRun(
+        array $slots,
+        int $day,
+        int $startSlot,
+        int $need,
+        array $teacherIds,
+        string $schoolId,
+        string $academicYearId
+    ): ?array {
+        $teaching = array_values(array_filter($slots, fn ($s) => ! $s['is_break']));
+
+        if (count($teaching) < $need) {
+            return null;
+        }
+
+        usort($teaching, fn ($a, $b) => $a['slot'] <=> $b['slot']);
+
+        $startIndex = 0;
+
+        foreach ($teaching as $index => $slot) {
+            if ($slot['slot'] >= $startSlot) {
+                $startIndex = $index;
+
+                break;
+            }
+        }
+
+        foreach (array_unique([$startIndex, 0]) as $from) {
+            for ($i = $from; $i + $need <= count($teaching); $i++) {
+                $run = array_slice($teaching, $i, $need);
+
+                if ($this->tahfidzRunIsFree($run, $day, $teacherIds, $schoolId, $academicYearId)) {
+                    return array_map(fn ($slot) => $slot['slot'], $run);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, array{slot:int, start:string, end:string, is_break:bool}>  $run
+     * @param  array<int, string>  $teacherIds
+     */
+    private function tahfidzRunIsFree(array $run, int $day, array $teacherIds, string $schoolId, string $academicYearId): bool
+    {
+        foreach ($run as $slot) {
+            foreach ($teacherIds as $teacherId) {
+                if (! $this->availability->isAllowed($teacherId, $schoolId, $day, $slot['slot'])) {
+                    return false;
+                }
+
+                if (isset($this->tahfidzBusy[$teacherId.'|'.$day.'|'.$slot['slot']])) {
+                    return false;
+                }
+
+                if ($this->isTeacherBusy($teacherId, $day, $slot['slot'], $academicYearId)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Baca setting tahfidz: kunci per sekolah lebih dulu, lalu global.
+     */
+    private function tahfidzSetting(string $key, ?string $schoolId, mixed $default): mixed
+    {
+        if ($schoolId) {
+            $scoped = setting("tahfidz.{$key}.{$schoolId}");
+
+            if ($scoped !== null && $scoped !== '') {
+                return $scoped;
+            }
+        }
+
+        $value = setting("tahfidz.{$key}");
+
+        return $value === null || $value === '' ? $default : $value;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function tahfidzPreferredDays(string $schoolId): array
+    {
+        $raw = $this->tahfidzSetting('preferred_days', $schoolId, '');
+        $days = [];
+
+        if (is_string($raw) && trim($raw) !== '') {
+            foreach (preg_split('/[\s,;]+/', $raw) ?: [] as $value) {
+                if (is_numeric($value) && (int) $value >= 1 && (int) $value <= 7) {
+                    $days[] = (int) $value;
+                }
+            }
+        }
+
+        $days = array_values(array_unique($days));
+
+        return empty($days) ? self::DAYS_OF_WEEK : $days;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $block
+     * @return array<string, mixed>
+     */
+    private function buildSummary(StudyGroup $studyGroup, string $academicYearId, Collection $assignments, ?array $block): array
+    {
         $summary = [
-            'study_group_id' => $studyGroupId,
+            'study_group_id' => $studyGroup->id,
             'study_group_name' => $studyGroup->full_name ?? $studyGroup->name,
             'generated' => 0,
             'requested' => 0,
             'has_assignments' => $assignments->isNotEmpty(),
             'shortages' => [],
             'conflicts' => [],
+            'tahfidz' => $block,
         ];
 
         if ($assignments->isEmpty()) {
@@ -96,11 +791,11 @@ class JadwalGeneratorService
             return $summary;
         }
 
-        $plans = $this->resolvePlans($assignments, $studyGroup);
+        $plans = $this->resolvePlans($this->regularAssignments($assignments), $studyGroup);
         $masterDays = $this->masterSlotsByDay($studyGroup->school_id);
-        $summary['requested'] = (int) array_sum(array_column($plans, 'hours'));
+        $summary['requested'] = (int) array_sum(array_column($plans, 'hours')) + (int) ($block['total'] ?? 0);
 
-        $generated = 0;
+        $generated = (int) ($block['placed'] ?? 0);
 
         foreach ($plans as $plan) {
             $placed = $this->placePlan($studyGroup, $academicYearId, $plan, $masterDays);
@@ -118,9 +813,26 @@ class JadwalGeneratorService
         }
 
         $summary['generated'] = $generated;
-        $summary['conflicts'] = $this->verifyConflicts([$studyGroupId], $academicYearId);
+        $summary['conflicts'] = $this->verifyConflicts([$studyGroup->id], $academicYearId);
 
         return $summary;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emptySummary(string $studyGroupId, ?StudyGroup $group, string $error): array
+    {
+        return [
+            'study_group_id' => $studyGroupId,
+            'study_group_name' => $group?->full_name ?? $group?->name ?? $studyGroupId,
+            'generated' => 0,
+            'requested' => 0,
+            'has_assignments' => false,
+            'shortages' => [],
+            'conflicts' => [$error],
+            'tahfidz' => null,
+        ];
     }
 
     /**
@@ -441,6 +1153,11 @@ class JadwalGeneratorService
 
         foreach ($teaching as $slot) {
             if (! $this->availability->isAllowed($teacherId, $schoolId, $day, $slot['slot'])) {
+                continue;
+            }
+
+            // Guru tim tahfidz terkunci pada jam blok (baris jadwalnya tanpa teacher_id).
+            if ($teacherId && isset($this->tahfidzBusy[$teacherId.'|'.$day.'|'.$slot['slot']])) {
                 continue;
             }
 

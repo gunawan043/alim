@@ -10,8 +10,8 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\WaliSantri;
-use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -427,14 +427,15 @@ class MultiSchoolGuardianContextTest extends TestCase
         $studentA = $this->createStudentAt($schoolA);
         $this->linkActive($wali, $studentA, $schoolA->id);
 
-        // School exists in DB. User has NO wali_santri row for it. Header
-        // pointing at it must be ignored. With exactly 1 active link (School A),
-        // fallthrough picks School A.
+        // School exists in DB. User has NO wali_santri row for it. An explicit
+        // header pointing at a school outside the wali scope must not fall
+        // through to another school: the request stays without a tenant until
+        // the client selects a valid school.
         $schoolForeign = $this->createSchool('Foreign');
 
         $request = $this->runWaliMiddleware($wali, $schoolForeign->id);
 
-        $this->assertResolvedScope($request, $schoolA->id);
+        $this->assertResolvedScope($request, null);
     }
 
     public function test_empty_header_value_is_ignored(): void

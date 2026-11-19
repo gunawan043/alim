@@ -244,6 +244,20 @@
                         </span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end">
+                        @if (session()->has('impersonate.actor_id'))
+                            <div class="dropdown-header text-warning">
+                                <i class="ri-mask-line align-middle me-1"></i> Mode masuk sebagai GTK
+                            </div>
+                            <form method="POST" action="{{ route('impersonate.stop') }}" class="px-3 pb-2">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-warning w-100">
+                                    <i class="ri-logout-box-r-line align-bottom me-1"></i>
+                                    Kembali ke Akun Saya
+                                    ({{ session('impersonate.actor_name', 'Unknown') }})
+                                </button>
+                            </form>
+                            <div class="dropdown-divider"></div>
+                        @endif
                         @php
                             $topbarUser = Auth::user();
                             $canManageSecurity = (method_exists($topbarUser, 'isSystemAdmin') && $topbarUser->isSystemAdmin())

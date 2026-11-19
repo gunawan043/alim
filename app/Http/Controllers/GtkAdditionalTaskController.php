@@ -29,7 +29,7 @@ class GtkAdditionalTaskController extends Controller
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
             ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
-            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId)))
+            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::gtkUserIdsForSchool($schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
@@ -50,7 +50,7 @@ class GtkAdditionalTaskController extends Controller
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
             ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
-            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId)))
+            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::gtkUserIdsForSchool($schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')
@@ -137,7 +137,7 @@ class GtkAdditionalTaskController extends Controller
         $nonTeachingIds = usersHavingPermission('general_staff.ineligible');
         $teachers = User::query()
             ->when(! empty($nonTeachingIds), fn ($q) => $q->whereNotIn('users.id', $nonTeachingIds))
-            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::userIdsForSchool($schoolId)))
+            ->when($schoolId, fn ($q) => $q->whereIn('users.id', \App\Services\SchoolGroupService::gtkUserIdsForSchool($schoolId)))
             ->orderBy('name')->get();
 
         $decrees = InstitutionDecree::where('decree_type', 'SK Pembagian Tugas')

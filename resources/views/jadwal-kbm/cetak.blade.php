@@ -63,7 +63,7 @@
                             <td class="center">{{ $jadwal->slot_index }}</td>
                             <td class="center">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
                             <td>{{ $jadwal->subject?->name ?? '-' }}</td>
-                            <td>{{ $jadwal->teacher?->name ?? '-' }}</td>
+                            <td>{{ $jadwal->teacher?->name ?? ($jadwal->teacher_id ? '-' : 'TIM TAHFIDZ') }}</td>
                             <td class="center">{{ $jadwal->room ?? '-' }}</td>
                         </tr>
                     @endforeach

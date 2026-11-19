@@ -22,6 +22,15 @@ class SecurityNotificationService
 
     public function login(User $user, Request $request): void
     {
+        /*
+         * Sesi impersonate (Super Admin masuk sebagai GTK) bukan login
+         * pengguna. Jangan kirim notifikasi "Login Berhasil" ke akun GTK
+         * yang sedang dimasuki.
+         */
+        if ($request->hasSession() && $request->session()->has('impersonate.actor_id')) {
+            return;
+        }
+
         if ((string) setting('security_login_notify_mode', 'all') === 'new_device') {
             try {
                 $fingerprint = hash('sha256', (string) $request->ip().'|'.(string) $request->userAgent());

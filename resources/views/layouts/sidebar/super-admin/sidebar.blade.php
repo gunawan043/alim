@@ -171,6 +171,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk.kepala-wakil.']) ? ' active' : '' }}"
+                   href="{{ route('user.gtk.kepala-wakil.index', ['userId' => $userId]) }}">
+                    <i class="ri-user-star-line me-1"></i> Kepala &amp; Wakil
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.gtk.massal', 'user.gtk-positions.']) ? ' active' : '' }}"
                    href="{{ route('user.gtk.massal', ['userId' => $userId]) }}">
                     <i class="ri-team-settings-line me-1"></i> Manajemen GTK

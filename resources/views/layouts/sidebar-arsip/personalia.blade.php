@@ -66,6 +66,7 @@ $p_approaching = DB::table('users')
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.indexguru' ? ' active' : '' }}" href="{{ route('user.gtk.indexguru', ['userId' => $userId]) }}">Guru</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.indextendik' ? ' active' : '' }}" href="{{ route('user.gtk.indextendik', ['userId' => $userId]) }}">Tendik</a></li>
             <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.import' ? ' active' : '' }}" href="{{ route('user.gtk.import', ['userId' => $userId]) }}">Import / Export</a></li>
+            <li class="nav-item"><a class="nav-link{{ $currentRoute === 'user.gtk.kepala-wakil.index' ? ' active' : '' }}" href="{{ route('user.gtk.kepala-wakil.index', ['userId' => $userId]) }}">Kepala &amp; Wakil</a></li>
         </ul>
     </div>
 </li>

@@ -27,9 +27,11 @@ class UserController extends Controller
         $query = User::with(['roles', 'employment']);
 
         if ($request->has('search') && $request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->search}%")
-                    ->orWhere('email', 'like', "%{$request->search}%");
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhereHas('employment', fn ($e) => $e->where('nupy', 'like', "%{$search}%"));
             });
         }
 
@@ -38,13 +40,22 @@ class UserController extends Controller
         }
 
         if ($request->has('status') && $request->status !== '') {
-            $query->where('is_active', $request->status);
+            if ($request->status === 'locked') {
+                $query->whereNotNull('locked_until')->where('locked_until', '>', now());
+            } else {
+                $query->where('is_active', $request->status);
+            }
         }
 
-        $users = $query->orderBy('name')->paginate(20);
+        $lockedCount = User::query()
+            ->whereNotNull('locked_until')
+            ->where('locked_until', '>', now())
+            ->count();
+
+        $users = $query->orderBy('name')->paginate(20)->withQueryString();
         $roles = Role::orderBy('name')->get();
 
-        return view('super-admin.users.index', compact('users', 'roles', 'userId'));
+        return view('super-admin.users.index', compact('users', 'roles', 'userId', 'lockedCount'));
     }
 
     public function create(Request $request)

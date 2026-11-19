@@ -26,6 +26,19 @@ class DocumentArchiveService
         Storage::disk(self::DISK)->makeDirectory(dirname($path));
         Storage::disk(self::DISK)->put($path, $contents);
 
+        $previous = ArchiveDocument::query()
+            ->where('type', $meta['type'])
+            ->where('academic_year_id', $meta['academic_year_id'] ?? null)
+            ->where('semester', $meta['semester'] ?? null)
+            ->where('jenis', $meta['jenis'] ?? null)
+            ->where('language', $meta['language'] ?? null)
+            ->where('record_type', $meta['record_type'] ?? null)
+            ->where('record_id', $meta['record_id'] ?? null)
+            ->where('student_id', $meta['student_id'] ?? null)
+            ->where('study_group_id', $meta['study_group_id'] ?? null)
+            ->latest('version')
+            ->first();
+
         return ArchiveDocument::create([
             'school_id' => $meta['school_id'] ?? null,
             'academic_year_id' => $meta['academic_year_id'] ?? null,
@@ -37,6 +50,8 @@ class DocumentArchiveService
             'file_path' => $path,
             'file_hash' => hash('sha256', $contents),
             'file_size' => strlen($contents),
+            'version' => ($previous?->version ?? 0) + 1,
+            'supersedes_id' => $previous?->id,
             'record_type' => $meta['record_type'] ?? null,
             'record_id' => $meta['record_id'] ?? null,
             'student_id' => $meta['student_id'] ?? null,

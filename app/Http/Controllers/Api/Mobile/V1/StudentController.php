@@ -229,6 +229,10 @@ class StudentController extends Controller
             'birth_date' => $student->birth_date?->format('Y-m-d'),
             'birth_place' => $student->birth_place,
             'status' => $student->status,
+            'school' => $student->school ? [
+                'id' => $student->school->id,
+                'name' => $student->school->name,
+            ] : null,
         ];
     }
 

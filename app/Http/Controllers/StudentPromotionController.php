@@ -303,14 +303,12 @@ class StudentPromotionController extends Controller
                 if ($detail->action === 'graduate' || ($detail->action === 'promote' && $promotion->skip_graduate)) {
                     // Cek apakah siswa di tingkat akhir
                     $fromLevel = $promotion->fromStudyGroup?->gradeLevel?->level ?? 0;
-                    $schoolType = $promotion->fromStudyGroup?->school?->school_type ?? 'smp';
-                    $finalLevels = match ($schoolType) {
-                        'smp' => [9],
-                        'sd' => [6],
-                        default => [6, 9, 12],
-                    };
+                    $fromSchool = $promotion->fromStudyGroup?->school;
+                    $isFinalLevel = $fromSchool
+                        ? $fromSchool->isFinalLevel($fromLevel)
+                        : in_array($fromLevel, [6, 9, 12], true);
 
-                    if (in_array($fromLevel, $finalLevels)) {
+                    if ($isFinalLevel) {
                         StudentGraduated::dispatch(
                             $student,
                             $promotion->fromStudyGroup,

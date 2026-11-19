@@ -14,7 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
  * The authoritative tenant source is the wali_santri relation, NEVER users.school_id.
  *
  * Resolution priority:
- *   1. X-Active-School-Id header (client hint → server validates against wali_santri)
+ *   1. X-Active-School-Id header (client hint → server validates against wali_santri).
+ *      If the hint is present but invalid, the context stays null.
  *   2. Distinct active school_ids from WaliSantri where user_id = request user
  *   3. null (registration / bootstrap / multi-school — never guess)
  *
@@ -33,23 +34,27 @@ class WaliSchoolContextMiddleware
         }
 
         $schoolId = null;
+        $hasHint = false;
 
         // --- Priority 1: Client hint (X-Active-School-Id) ---
         // NEVER trust the client alone — validate it against the actual relation.
         $hint = $request->headers->get('X-Active-School-Id');
         if (is_string($hint) && $hint !== '') {
+            $hasHint = true;
             $valid = WaliSantri::where('user_id', $user->id)
                 ->where('school_id', $hint)
+                ->where('status', WaliSantri::STATUS_ACTIVE)
                 ->exists();
 
             if ($valid) {
                 $schoolId = $hint;
             }
-            // Invalid hint → ignore, fall through to Priority 2
+            // Invalid hint → stay null. Do NOT silently fall back to another
+            // school: the client explicitly requested a tenant it cannot access.
         }
 
         // --- Priority 2: Derive from wali_santri relation ---
-        if ($schoolId === null) {
+        if (! $hasHint) {
             $activeSchoolIds = WaliSantri::where('user_id', $user->id)
                 ->where('status', WaliSantri::STATUS_ACTIVE)
                 ->whereNotNull('school_id')

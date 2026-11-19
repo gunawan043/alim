@@ -27,8 +27,19 @@ class WaliLinkAccess
             return false;
         }
 
-        $jabatan = mb_strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+        $jabatan = implode(' ', self::candidates($user));
 
         return $jabatan !== '' && str_contains($jabatan, 'tata usaha');
+    }
+
+    /**
+     * Semua sumber jabatan/tugas, bukan hanya kepegawaian utama. Kepala TU
+     * yang tercatat sebagai tugas tambahan tetap dapat mengelola link wali.
+     *
+     * @return list<string>
+     */
+    private static function candidates(User $user): array
+    {
+        return UserJabatan::candidates($user);
     }
 }

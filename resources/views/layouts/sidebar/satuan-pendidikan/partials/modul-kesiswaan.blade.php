@@ -40,6 +40,17 @@
     </li>
 @endif
 
+{{-- Koordinator Alumni: tidak memegang kesiswaan penuh, tetapi tetap
+     mengelola data kelulusan/alumni. --}}
+@if($kesiswaanMode !== 'admin' && ($isKoorAlumni ?? false))
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.alumni.']) ? ' active' : '' }}"
+           href="{{ route('user.alumni.index', ['userId' => $userId]) }}">
+            <i class="ri-group-2-line"></i><span>Data Alumni</span>
+        </a>
+    </li>
+@endif
+
 @if($kesiswaanMode === 'admin')
     <li class="nav-item">
         <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-do.', 'user.mutations-lulus.']) ? ' active' : '' }}"

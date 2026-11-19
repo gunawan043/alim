@@ -6,6 +6,58 @@ Base URL: `https://alim.sekolah.sch.id/api/mobile/v1`
 
 Semua endpoint membutuhkan auth header: `Authorization: Bearer {sanctum_token}`
 
+### Batas surface mobile
+
+`/api/mobile/v1/*` untuk data wali santri. Login mobile hanya menerima akun
+wali (`is_wali = true` atau memiliki relasi `wali_santri` aktif). Akun GTK
+tanpa relasi wali ditolak dengan HTTP 422 dan kode validasi pada field `email`.
+
+Endpoint wali juga dilindungi middleware `wali.mobile`; token GTK tidak dapat
+membaca data anak meskipun token tersebut masih valid.
+
+### Konteks sekolah untuk wali multi-sekolah
+
+Daftar sekolah yang dapat dipilih:
+
+```http
+GET /{userId}/wali/schools
+```
+
+Response menyertakan `schools`, `active_school_id`, dan `requires_selection`.
+Setelah wali memilih sekolah, kirim header berikut pada request data:
+
+```http
+X-Active-School-Id: {school_id}
+```
+
+Header divalidasi terhadap relasi `wali_santri` aktif. Header yang menunjuk
+sekolah di luar relasi wali tidak akan fallback ke sekolah lain; request
+tersebut diproses tanpa konteks sekolah sampai klien memilih sekolah yang sah.
+
+`GET /auth/me` juga mengembalikan daftar `schools`, `active_school_id`, dan
+`requires_school_selection` untuk bootstrap aplikasi.
+
+### Format error API
+
+Error dari framework memakai envelope:
+
+```json
+{
+  "success": false,
+  "request_id": "uuid",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validasi gagal.",
+    "type": "ValidationException",
+    "errors": {}
+  },
+  "errors": {}
+}
+```
+
+Kode umum: `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATION_ERROR`,
+`CONFLICT`, `TOO_MANY_REQUESTS`, `SERVER_ERROR`.
+
 ---
 
 ## 1. Profil User (users)

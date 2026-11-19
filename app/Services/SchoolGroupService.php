@@ -34,6 +34,7 @@ class SchoolGroupService
         'smp' => 'SMP IT',
         'sma' => 'SMA IT / MA',
         'smk' => 'SMA IT / MA',
+        'pps' => 'PPS Diniyah',
     ];
 
     /**
@@ -176,6 +177,7 @@ class SchoolGroupService
             'SD IT' => 'ri-football-line',
             'SMP IT' => 'ri-book-open-line',
             'SMA IT / MA' => 'ri-bachelor-line',
+            'PPS Diniyah' => 'ri-government-line',
             'PPS' => 'ri-government-line',
             default => 'ri-government-line',
         };
@@ -219,6 +221,44 @@ class SchoolGroupService
         $ids = $ids->merge(
             GtkEmployment::where('school_id', $schoolId)->pluck('user_id')
         );
+
+        return $ids->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
+    }
+
+    /**
+     * ID GTK untuk tampilan Data GTK satu satuan pendidikan, termasuk GTK
+     * asrama yang terhubung ke sekolah tersebut.
+     *
+     * Asrama boarding adalah bagian dari satuan pendidikan yang sama. Tanpa
+     * penggabungan ini, GTK yang hanya tercatat di satuan kerja asrama
+     * (mis. Kepala Asrama yang juga Kepala Satuan Pendidikan) tidak muncul
+     * di daftar GTK sekolah dan terlihat seperti data ganda/terpisah.
+     *
+     * Daftar ini khusus untuk master GTK; daftar guru pengampu (SK mengajar,
+     * rombel, mapel) tetap memakai userIdsForSchool() agar musyrif tidak
+     * otomatis dianggap guru mapel.
+     *
+     * @return array<int, string>
+     */
+    public static function gtkUserIdsForSchool(?string $schoolId): array
+    {
+        if (! $schoolId) {
+            return [];
+        }
+
+        $ids = collect(self::userIdsForSchool($schoolId));
+
+        $dormWorkUnitIds = \App\Models\Dormitory::query()
+            ->where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->whereNotNull('work_unit_id')
+            ->pluck('work_unit_id');
+
+        if ($dormWorkUnitIds->isNotEmpty()) {
+            $ids = $ids->merge(
+                GtkWorkUnit::whereIn('work_unit_id', $dormWorkUnitIds)->pluck('user_id')
+            );
+        }
 
         return $ids->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
     }

@@ -424,7 +424,7 @@
                         <tr>
                             <td>
                                 <div class="fw-medium small">{{ $document->title }}</div>
-                                <div class="text-muted" style="font-size:11px;">hash: {{ $document->short_hash }}… · {{ number_format($document->file_size / 1024, 1) }} KB</div>
+                                <div class="text-muted" style="font-size:11px;">v{{ $document->version ?? 1 }} · hash: {{ $document->short_hash }}… · {{ number_format($document->file_size / 1024, 1) }} KB</div>
                             </td>
                             <td><span class="badge bg-primary-subtle text-primary">{{ $typeLabels[$document->type] ?? $document->type }}</span></td>
                             <td class="small text-muted">

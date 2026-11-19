@@ -17,11 +17,19 @@
     background: #f0f7ff;
     transform: translateY(-2px);
 }
-.preview-table-wrap { max-height: 420px; overflow: auto; border-radius: 10px; border: 1px solid #dee2e6; }
-.preview-table-wrap table { margin-bottom: 0; font-size: 12.5px; }
+.preview-table-wrap { max-height: calc(100vh - 300px); min-height: 340px; overflow: auto; border-radius: 10px; border: 1px solid #dee2e6; }
+.preview-table-wrap table { margin-bottom: 0; font-size: 12.5px; min-width: 1180px; }
 .preview-table-wrap thead th { position: sticky; top: 0; z-index: 10; background: #f8f9fa; font-size: 11px; white-space: nowrap; padding: 8px 12px; }
 .preview-table-wrap tbody td { padding: 6px 12px; vertical-align: middle; }
 .row-status-error td { background: #fff5f5 !important; }
+.cell-edit { min-width: 138px; font-size: 12.5px; }
+#previewCard.preview-fullscreen {
+    position: fixed; inset: 0; z-index: 2050; margin: 0; border-radius: 0;
+    display: flex; flex-direction: column; background: #fff;
+}
+#previewCard.preview-fullscreen .card-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+#previewCard.preview-fullscreen .preview-table-wrap { max-height: none; height: 100%; border: 0; border-radius: 0; }
+#previewCard.preview-fullscreen .card-footer { flex: 0 0 auto; }
 .step-card {
     border: 1px solid #e9ecef;
     border-radius: 12px;
@@ -53,6 +61,18 @@
     @slot('li_1') GTK @endslot
     @slot('title') Import GTK via Excel @endslot
 @endcomponent
+
+{{-- Penetapan kepala/wakil dipisahkan dari import --}}
+<div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 px-3 small">
+    <div>
+        <i class="ri-information-line me-1"></i>
+        <strong>Kepala &amp; wakil satuan kerja tidak diubah lewat import.</strong>
+        Baris mereka akan dilewati agar data tidak salah.
+    </div>
+    <a href="{{ route('user.gtk.kepala-wakil.index', ['userId' => $userId]) }}" class="btn btn-sm btn-primary">
+        <i class="ri-user-star-line me-1"></i>Atur Kepala &amp; Wakil
+    </a>
+</div>
 
 {{-- Feedback Session --}}
 @if(session('import_result'))
@@ -199,7 +219,8 @@
                                 <p class="text-muted small mb-0">
                                     Baris 1 = header kolom.<br>
                                     Baris 2+ = data GTK.<br>
-                                    <strong>Nama</strong>, <strong>Email</strong>, <strong>NIK</strong>, <strong>No HP</strong>, <strong>NUPY</strong> wajib diisi.<br>
+                                    Hanya <strong>Nama</strong> dan <strong>NUPY</strong> yang wajib. NIK, No KK,
+                                    email, dan No HP boleh dikosongkan.<br>
                                     Isi <code>satuan_kerja</code> dengan nama satuan kerja persis seperti di sheet
                                     <em>Referensi: Satuan Kerja</em> (boleh juga kode unitnya).<br>
                                     NUPY yang sudah terdaftar akan <strong>diperbarui</strong>, bukan ditolak.
@@ -260,7 +281,7 @@
                                     ['no_kk','Nomor KK',false],['tempat_lahir','Tempat Lahir',true],
                                     ['tanggal_lahir','Tgl Lahir (YYYY-MM-DD)',true],['jenis_kelamin','L atau P',true],
                                     ['golongan_darah','A/B/AB/O',false],['agama','Islam/Kristen/dst',false],
-                                    ['status_perkawinan','Belum Kawin/Kawin',false],['npwp','NPWP',false],
+                                    ['status_perkawinan','Belum Kawin/Kawin/Cerai Hidup/Cerai Mati (otomatis dari Excel)',false],['npwp','NPWP',false],
                                     ['no_hp','No HP',false],['no_whatsapp','WhatsApp',false],
                                     ['alamat_jalan','Alamat jalan',false],['alamat_rt_rw','RT/RW',false],
                                     ['alamat_desa','Desa/Kelurahan',false],['alamat_kecamatan','Kecamatan',false],
@@ -365,38 +386,6 @@
             </div>
         </div>
 
-        {{-- Preview Card (hidden until file selected) --}}
-        <div class="card" id="previewCard" style="display:none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="ri-table-line me-1 text-primary"></i>
-                    Preview Data <span id="previewCount" class="badge bg-primary ms-2">0</span>
-                </h5>
-                <div class="d-flex gap-2">
-                    <span class="badge bg-success-subtle text-success">
-                        <i class="ri-checkbox-circle-line me-1"></i><span id="countValid">0</span> Valid
-                    </span>
-                    <span class="badge bg-danger-subtle text-danger">
-                        <i class="ri-close-circle-line me-1"></i><span id="countError">0</span> Error
-                    </span>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="preview-table-wrap" id="previewTableWrap"></div>
-            </div>
-            <div class="card-footer d-flex justify-content-between align-items-center">
-                <small class="text-muted">Baris valid akan diimport langsung ke unit kerja yang dipilih.</small>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-light" onclick="clearFile()">
-                        <i class="ri-refresh-line me-1"></i> Reset
-                    </button>
-                    <button class="btn btn-success" id="importBtn" onclick="startImport()" disabled>
-                        <i class="ri-upload-cloud-2-line me-1"></i> Import <span id="importCountLabel">0</span> GTK
-                    </button>
-                </div>
-            </div>
-        </div>
-
         {{-- Placeholder --}}
         <div id="previewPlaceholder" class="card">
             <div class="card-body text-center py-5 text-muted">
@@ -439,10 +428,56 @@
             NIK atau email yang sudah dipakai GTK lain dengan NUPY berbeda tetap dilaporkan sebagai gagal.
             <br>
             Hanya <strong>nama</strong> dan <strong>NUPY</strong> yang wajib. Email dibuat otomatis
-            (<code>nupy@gtk.local</code>) bila kosong; NIK, No HP, dan jabatan boleh dikosongkan.
+            (<code>nupy@gtk.local</code>) bila kosong; NIK, No KK, No HP, dan jabatan boleh dikosongkan.
             <br>
             Jabatan dan satuan kerja diisi otomatis dari kandidat dengan persentase tertinggi —
             termasuk saat skornya rendah. Periksa nilainya di preview dan ubah bila perlu.
+            <br>
+            <strong>Kepala dan wakil satuan kerja tidak dapat diubah lewat upload.</strong>
+            Data mereka dikelola di menu
+            <a href="{{ route('user.gtk.kepala-wakil.index', ['userId' => $userId]) }}" class="fw-semibold">Kepala &amp; Wakil Satuan Kerja</a>.
+        </div>
+    </div>
+</div>
+
+{{-- Preview Card — full width supaya data terlihat maksimal --}}
+<div class="row mt-4" id="previewRow" style="display:none;">
+    <div class="col-12">
+        <div class="card" id="previewCard">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="card-title mb-0">
+                    <i class="ri-table-line me-1 text-primary"></i>
+                    Preview Data <span id="previewCount" class="badge bg-primary ms-2">0</span>
+                </h5>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge bg-success-subtle text-success">
+                        <i class="ri-checkbox-circle-line me-1"></i><span id="countValid">0</span> Valid
+                    </span>
+                    <span class="badge bg-danger-subtle text-danger">
+                        <i class="ri-close-circle-line me-1"></i><span id="countError">0</span> Error
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="fullscreenBtn" onclick="togglePreviewFullscreen()">
+                        <i class="ri-fullscreen-line me-1"></i>Layar Penuh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="preview-table-wrap" id="previewTableWrap"></div>
+            </div>
+            <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <small class="text-muted">
+                    NIK, No KK, dan Status Perkawinan bisa langsung diubah di tabel ini.
+                    Baris valid akan diimport ke satuan kerja yang dipilih.
+                </small>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-light" onclick="clearFile()">
+                        <i class="ri-refresh-line me-1"></i> Reset
+                    </button>
+                    <button class="btn btn-success" id="importBtn" onclick="startImport()" disabled>
+                        <i class="ri-upload-cloud-2-line me-1"></i> Import <span id="importCountLabel">0</span> GTK
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -573,20 +608,93 @@ function handleFile(file) {
     document.getElementById('dropZoneText').textContent = file.name;
     document.getElementById('previewBtn').disabled = false;
     parsedRows = []; validRows = [];
-    document.getElementById('previewCard').style.display = 'none';
+    document.getElementById('previewRow').style.display = 'none';
     document.getElementById('previewPlaceholder').style.display = 'block';
 }
 function clearFile() {
+    togglePreviewFullscreen(false);
     fileInput.value = '';
     document.getElementById('fileInfo').style.display = 'none';
     document.getElementById('dropZoneText').textContent = 'Klik atau seret file Excel ke sini';
     document.getElementById('previewBtn').disabled = true;
-    document.getElementById('previewCard').style.display = 'none';
+    document.getElementById('previewRow').style.display = 'none';
     document.getElementById('previewPlaceholder').style.display = 'block';
     document.getElementById('importResultCard').style.display = 'none';
     parsedRows = []; validRows = [];
     document.getElementById('importBtn').disabled = true;
     document.getElementById('importCountLabel').textContent = '0';
+}
+
+// ── Normalisasi nilai dari Excel ──────────────────────────────────────────
+function normalizeKey(v) {
+    return String(v ?? '').toLowerCase().replace(/[_\/]+/g, ' ').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function normalizeStatusKawin(v) {
+    const k = normalizeKey(v);
+    if (!k) return '';
+    const map = {
+        'kawin': 'kawin', 'menikah': 'kawin', 'married': 'kawin',
+        'belum kawin': 'belum_kawin', 'belum menikah': 'belum_kawin', 'single': 'belum_kawin', 'lajang': 'belum_kawin',
+        'cerai hidup': 'cerai_hidup', 'cerai': 'cerai_hidup', 'janda': 'cerai_hidup', 'duda': 'cerai_hidup',
+        'janda cerai': 'cerai_hidup', 'duda cerai': 'cerai_hidup',
+        'cerai mati': 'cerai_mati', 'mati': 'cerai_mati',
+    };
+    if (map[k]) return map[k];
+    // Variasi panjang seperti "Kawin (Menikah)" atau "Cerai Hidup (Janda)".
+    if (k.startsWith('kawin')) return 'kawin';
+    if (k.startsWith('belum')) return 'belum_kawin';
+    if (k.includes('cerai mati') || k === 'mati') return 'cerai_mati';
+    if (k.includes('cerai') || k.includes('janda') || k.includes('duda')) return 'cerai_hidup';
+    return '';
+}
+function normalizeStatusKepegawaian(v) {
+    const k = normalizeKey(v);
+    if (!k) return '';
+    const map = {
+        'ptt': 'PTT', 'pty': 'PTY', 'percobaan': 'Percobaan', 'magang': 'Magang',
+        'gtt': 'GTT', 'gty': 'GTY', 'kontrak': 'KONTRAK', 'tetap': 'PTY',
+        'pensiun': 'Pensiun', 'wafat': 'Wafat', 'berhenti': 'Berhenti',
+    };
+    return map[k] || '';
+}
+function normalizeJenisKelamin(v) {
+    const k = normalizeKey(v);
+    if (!k) return '';
+    if (['l', 'laki laki', 'lakilaki', 'pria', 'male'].includes(k)) return 'L';
+    if (['p', 'perempuan', 'wanita', 'female'].includes(k)) return 'P';
+    return String(v).trim();
+}
+function isHeadOrViceName(v) {
+    const k = normalizeKey(v);
+    return k === 'kepala' || k.startsWith('kepala ') || k === 'wakil' || k.startsWith('wakil ');
+}
+function statusKawinOptions(selected) {
+    const opts = [
+        ['', '— Pilih —'],
+        ['belum_kawin', 'Belum Kawin'],
+        ['kawin', 'Kawin'],
+        ['cerai_hidup', 'Cerai Hidup'],
+        ['cerai_mati', 'Cerai Mati'],
+    ];
+    return opts.map(([v, l]) => `<option value="${v}"${v === (selected || '') ? ' selected' : ''}>${l}</option>`).join('');
+}
+// Validasi dasar — dipakai ulang setiap kali sel di preview diubah.
+function baseErrorsFor(r) {
+    const errors = [];
+    REQUIRED.forEach(c => { if (!r[c]) errors.push(`${c}: wajib diisi`); });
+    if (r.nik && !/^\d{16}$/.test(r.nik)) errors.push('NIK: harus 16 digit angka (boleh dikosongkan)');
+    if (r.no_kk && !/^\d{16}$/.test(r.no_kk)) errors.push('No KK: harus 16 digit angka (boleh dikosongkan)');
+    if (r.nupy && !/^\d{10,20}$/.test(r.nupy)) errors.push('NUPY: harus 10-20 digit angka');
+    if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) errors.push('Email: tidak valid');
+    if (r.jenis_kelamin && !['L', 'P'].includes(r.jenis_kelamin)) errors.push('JK: harus L atau P');
+    if (r.status_kepegawaian && !['PTT', 'PTY', 'GTT', 'GTY', 'KONTRAK', 'Percobaan', 'Magang', 'Pensiun', 'Wafat', 'Berhenti'].includes(r.status_kepegawaian)) {
+        errors.push('Status Kepegawaian: tidak valid (PTT/PTY/GTT/GTY/KONTRAK/Magang/Percobaan)');
+    }
+    // Satuan kerja wajib diketahui: dari kolom Excel atau pilihan manual.
+    if (!r.satuan_kerja && !selectedWuId) {
+        errors.push('satuan_kerja: kosong — isi kolom ini atau pilih satuan kerja');
+    }
+    return errors;
 }
 
 // Preview
@@ -620,44 +728,22 @@ function previewFile() {
                 });
                 return m;
             });
-            // Status normalization map for frontend validation hints.
-            const statusKawinMap = { 'kawin':'kawin', 'menikah':'kawin', 'belum kawin':'belum_kawin', 'belum menikah':'belum_kawin', 'cerai hidup':'cerai_hidup', 'cerai mati':'cerai_mati', 'Janda/Cerai':'janda_cerai', 'Duda/Cerai':'duda_cerai' };
-            const statusKepegawaianMap = { 'ptt':'PTT', 'pty':'PTY', 'percobaan':'Percobaan', 'magang':'Magang', 'gtt':'GTT', 'gty':'GTY', 'kontrak':'KONTRAK', 'tetap':'PTY', 'pensiun':'Pensiun', 'wafat':'Wafat', 'berhenti':'Berhenti' };
-            const jkMap = { 'l':'L', 'laki-laki':'L', 'laki laki':'L', 'p':'P', 'perempuan':'P' };
-
+            // Normalisasi nilai supaya cocok dengan master/DB, bukan menolak
+            // variasi penulisan dari Excel.
             parsedRows.forEach(r => {
-                r._errors = [];
-                REQUIRED.forEach(c => { if (!r[c]) r._errors.push(`${c}: wajib diisi`); });
-                if (r.nik && !/^\d{16}$/.test(r.nik)) r._errors.push('NIK: harus 16 digit angka');
-                if (r.nupy && !/^\d{10,20}$/.test(r.nupy)) r._errors.push('NUPY: harus 10-20 digit angka');
-                if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) r._errors.push('Email: tidak valid');
-                if (r.jenis_kelamin) {
-                    const upper = r.jenis_kelamin.toUpperCase().trim();
-                    if (upper !== 'L' && upper !== 'P') r._errors.push('JK: harus L atau P');
-                }
-                if (r.status_kepegawaian) {
-                    const lower = r.status_kepegawaian.toLowerCase().trim();
-                    if (statusKepegawaianMap[lower] === undefined) r._errors.push('Status Kepegawaian: tidak valid (PTT/PTY/GTT/GTY/KONTRAK/Magang/Percobaan)');
-                }
-                if (r.status_perkawinan) {
-                    const lower = r.status_perkawinan.toLowerCase().trim();
-                    if (statusKawinMap[lower] === undefined) r._errors.push('Status Perkawinan: tidak valid (Kawin/Belum Kawin/Cerai Hidup/Cerai Mati)');
-                }
-                // Satuan kerja wajib diketahui: dari kolom Excel atau pilihan manual.
-                if (!r.satuan_kerja && !selectedWuId) {
-                    r._errors.push('satuan_kerja: kosong — isi kolom ini atau pilih satuan kerja');
-                }
-                r._status = r._errors.length ? 'error' : 'ok';
+                r.nik = String(r.nik || '').replace(/\D/g, '');
+                r.no_kk = String(r.no_kk || '').replace(/\D/g, '');
+                r.status_perkawinan = normalizeStatusKawin(r.status_perkawinan);
+                r.status_kepegawaian = normalizeStatusKepegawaian(r.status_kepegawaian);
+                r.jenis_kelamin = normalizeJenisKelamin(r.jenis_kelamin);
             });
-            // Simpan error dasar dulu; error pencocokan ditambahkan setelah
-            // server selesai mencocokkan nilai dari file.
-            parsedRows.forEach(r => { r._baseErrors = r._errors.slice(); });
             await resolveRowMatches();
             applyMatchValidation();
             renderTable(parsedRows);
             document.getElementById('previewCount').textContent = parsedRows.length + ' baris';
-            document.getElementById('previewCard').style.display = 'block';
+            document.getElementById('previewRow').style.display = 'block';
             document.getElementById('previewPlaceholder').style.display = 'none';
+            setTimeout(() => document.getElementById('previewRow').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
         } catch(err) { console.error(err); Swal.fire({icon:'error',title:'Gagal Baca File'}); }
     };
     reader.readAsArrayBuffer(file);
@@ -710,7 +796,7 @@ async function resolveRowMatches() {
 
 function applyMatchValidation() {
     parsedRows.forEach(r => {
-        const errors = (r._baseErrors || []).slice();
+        const errors = baseErrorsFor(r);
 
         // Satuan kerja harus punya tujuan: pilihan di preview, hasil pencocokan,
         // kolom Excel yang dikenali, atau unit yang dipilih di langkah 1.
@@ -747,6 +833,11 @@ function renderMatchCell(r, kind) {
             : '<span class="text-danger">—</span>';
     }
 
+    // Jabatan kepala/wakil tidak diisi lewat import.
+    if (!isUnit && isHeadOrViceName(value)) {
+        return escHtml(value) + ' <span class="badge bg-warning-subtle text-warning" style="font-size:10px;">diatur di menu Kepala &amp; Wakil</span>';
+    }
+
     if (choice) {
         const picked = ((match && match.candidates) || []).find(c => c.id === choice);
         return escHtml(picked ? picked.label : value) + ' <span class="badge bg-info-subtle text-info" style="font-size:10px;">dikonfirmasi</span>';
@@ -776,26 +867,42 @@ function renderMatchCell(r, kind) {
         `${options}</select></div>`;
 }
 
-// Konfirmasi manual dari dropdown di dalam preview.
+// Perubahan manual dari preview: konfirmasi unit/jabatan atau edit sel.
 document.getElementById('previewTableWrap').addEventListener('change', function (event) {
     const select = event.target.closest('.match-select');
-    if (!select) return;
+    const edit = event.target.closest('.cell-edit');
+    const el = select || edit;
+    if (!el) return;
 
-    const row = parsedRows.find(r => r._rowNum === Number(select.dataset.row));
+    const row = parsedRows.find(r => r._rowNum === Number(el.dataset.row));
     if (!row) return;
 
-    if (select.dataset.kind === 'unit') row._unitChoice = select.value;
-    else row._jabatanChoice = select.value;
+    if (select) {
+        if (select.dataset.kind === 'unit') row._unitChoice = select.value;
+        else row._jabatanChoice = select.value;
+    } else {
+        const field = edit.dataset.field;
+        let value = edit.value;
+        if (field === 'nik' || field === 'no_kk') value = String(value).replace(/\D/g, '');
+        if (field === 'status_perkawinan') value = normalizeStatusKawin(value);
+        row[field] = value;
+    }
 
     applyMatchValidation();
     renderTable(parsedRows);
 });
 function renderTable(rows) {
+    const wrap = document.getElementById('previewTableWrap');
+    const scrollTop = wrap.scrollTop;
+    // Nama, jabatan, dan satuan kerja diletakkan berdampingan supaya mudah
+    // diperiksa sekaligus saat mencocokkan hasil import.
     const cols = [
-        {k:'_rowNum',l:'#'}, {k:'name',l:'Nama'}, {k:'email',l:'Email'},
-        {k:'nik',l:'NIK'}, {k:'nupy',l:'NUPY'}, {k:'jenis_kelamin',l:'JK'},
-        {k:'tanggal_lahir',l:'Tgl Lahir'}, {k:'jenis_gtk',l:'Jenis GTK'},
+        {k:'_rowNum',l:'#'}, {k:'name',l:'Nama'},
         {k:'jabatan',l:'Jabatan'}, {k:'satuan_kerja',l:'Satuan Kerja'},
+        {k:'nupy',l:'NUPY'}, {k:'email',l:'Email'},
+        {k:'nik',l:'NIK'}, {k:'no_kk',l:'No KK'},
+        {k:'jenis_kelamin',l:'JK'}, {k:'status_perkawinan',l:'Status Perkawinan'},
+        {k:'tanggal_lahir',l:'Tgl Lahir'}, {k:'jenis_gtk',l:'Jenis GTK'},
         {k:'_status',l:'Status'}
     ];
     let html = '<table class="table table-hover align-middle"><thead><tr>';
@@ -825,6 +932,15 @@ function renderTable(rows) {
                 }
             } else if (c.k === '_rowNum') {
                 html += `<td class="text-muted">${r[c.k]||''}</td>`;
+            } else if (c.k === 'nik' || c.k === 'no_kk') {
+                html += `<td><input type="text" inputmode="numeric" maxlength="16"
+                    class="form-control form-control-sm cell-edit"
+                    data-row="${r._rowNum}" data-field="${c.k}"
+                    value="${escHtml(r[c.k] || '')}" placeholder="Opsional"></td>`;
+            } else if (c.k === 'status_perkawinan') {
+                html += `<td><select class="form-select form-select-sm cell-edit"
+                    data-row="${r._rowNum}" data-field="status_perkawinan">
+                    ${statusKawinOptions(r.status_perkawinan)}</select></td>`;
             } else if (c.k === 'satuan_kerja') {
                 html += `<td class="text-nowrap">${renderMatchCell(r, 'unit')}</td>`;
             } else if (c.k === 'jabatan') {
@@ -836,12 +952,14 @@ function renderTable(rows) {
         html += '</tr>';
     });
     html += '</tbody></table>';
-    document.getElementById('previewTableWrap').innerHTML = html;
+    wrap.innerHTML = html;
+    wrap.scrollTop = scrollTop;
 }
 
 // Import
 async function startImport() {
     if (!validRows.length) return;
+    togglePreviewFullscreen(false);
     const c = await Swal.fire({icon:'question',title:`Import ${validRows.length} GTK?`,showCancelButton:true,confirmButtonText:'Ya, Import!',cancelButtonText:'Batal',confirmButtonColor:'#198754'});
     if (!c.isConfirmed) return;
     const ov = document.getElementById('importProgressOverlay');
@@ -928,13 +1046,32 @@ function showResult(total, created, updated, fail, failRows, warnings) {
         warnContainer.classList.add('d-none');
     }
 
+    togglePreviewFullscreen(false);
     document.getElementById('importResultCard').style.display = 'block';
-    document.getElementById('previewCard').style.display = 'none';
+    document.getElementById('previewRow').style.display = 'none';
     document.getElementById('previewPlaceholder').style.display = 'none';
+    setTimeout(() => document.getElementById('importResultCard').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     if (created > 0 || updated > 0) {
         Swal.fire({icon:'success',title:'Import Selesai!',html:`<strong>${created}</strong> GTK baru dan <strong>${updated}</strong> diperbarui.`,confirmButtonColor:'#198754'});
     }
 }
+// Layar penuh untuk preview — data lebar tetap terbaca tanpa scroll halaman.
+function togglePreviewFullscreen(force) {
+    const card = document.getElementById('previewCard');
+    if (!card) return;
+    const on = force === undefined ? !card.classList.contains('preview-fullscreen') : !!force;
+    card.classList.toggle('preview-fullscreen', on);
+    document.body.classList.toggle('overflow-hidden', on);
+    const btn = document.getElementById('fullscreenBtn');
+    if (btn) {
+        btn.innerHTML = on
+            ? '<i class="ri-fullscreen-exit-line me-1"></i>Tutup Layar Penuh'
+            : '<i class="ri-fullscreen-line me-1"></i>Layar Penuh';
+    }
+}
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') togglePreviewFullscreen(false);
+});
 function formatBytes(b) { return b < 1024*1024 ? (b/1024).toFixed(1)+' KB' : (b/(1024*1024)).toFixed(1)+' MB'; }
 function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 </script>

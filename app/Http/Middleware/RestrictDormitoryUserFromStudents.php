@@ -34,6 +34,20 @@ class RestrictDormitoryUserFromStudents
             return $next($request);
         }
 
+        // Wali kelas (termasuk yang juga ber-role asrama) tetap boleh mengelola
+        // data santri di kelasnya. Scope kelas ditegakkan di controller.
+        if (method_exists($user, 'isHomeroomTeacher') && $user->isHomeroomTeacher()) {
+            return $next($request);
+        }
+
+        // Kepala satuan pendidikan yang merangkap kepala asrama tetap boleh
+        // mengelola data santri sekolahnya. Tanpa pengecualian ini, satu GTK
+        // yang memegang dua jabatan justru kehilangan akses ke menu yang
+        // tampil di sidebar-nya.
+        if (\App\Support\UserJabatan::isSchoolLeader($user)) {
+            return $next($request);
+        }
+
         // Kecualikan aksi terkait Mahrom (CRUD + read Mahrom tetap diizinkan).
         $path = $request->path();
         if (str_contains($path, '/mahrom')) {

@@ -111,6 +111,46 @@ class GtkAccountControlTest extends TestCase
         $this->assertAuthenticatedAs($this->ksp);
     }
 
+    public function test_banner_kembali_ke_akun_tetap_tampil_setelah_navigasi(): void
+    {
+        $this->actingAs($this->ksp)
+            ->post("/impersonate/{$this->teacherA->id}")
+            ->assertRedirect();
+
+        // Sesi impersonate bukan flash message: banner harus tetap tampil
+        // pada request berikutnya agar akun asal selalu bisa dipulihkan.
+        $this->get("/{$this->teacherA->id}/notifications/page")
+            ->assertOk()
+            ->assertSee('data-impersonate-banner', false)
+            ->assertSee('Kembali ke Akun Saya');
+    }
+
+    public function test_masuk_sebagai_gtk_tidak_mengirim_notifikasi_login(): void
+    {
+        $this->actingAs($this->ksp)
+            ->post("/impersonate/{$this->teacherA->id}")
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('notifications_universal', [
+            'user_id' => $this->teacherA->id,
+            'action' => 'login',
+        ]);
+    }
+
+    public function test_notifikasi_keamanan_login_dilewati_saat_impersonate(): void
+    {
+        $this->actingAs($this->ksp)
+            ->post("/impersonate/{$this->teacherA->id}");
+
+        app(\App\Services\SecurityNotificationService::class)
+            ->login($this->teacherA, app('request'));
+
+        $this->assertDatabaseMissing('notifications_universal', [
+            'user_id' => $this->teacherA->id,
+            'action' => 'login',
+        ]);
+    }
+
     private function makeSchool(string $name, string $npsn): School
     {
         $workUnitId = (string) Str::uuid();

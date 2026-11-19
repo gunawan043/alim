@@ -21,7 +21,7 @@ return [
     'items' => [
         $item('Ambil Absensi', 'ri-user-follow-line', 'primary', 'user.absensi.harian.create'),
         $item('Input Nilai', 'ri-edit-circle-line', 'success', 'user.schools.nilai-kelas.index'),
-        $item('Catat Pelanggaran', 'ri-alert-line', 'warning', 'user.peraturan.violation'),
+        $item('Catat Pelanggaran', 'ri-alert-line', 'warning', 'user.violation-points.create'),
         $item('Data Santri', 'ri-group-line', 'info', 'user.students.index'),
     ],
 ];

@@ -19,6 +19,8 @@ class GradeLevelSeeder extends Seeder
                 'smp' => [7, 8, 9],
                 'sma' => [10, 11, 12],
                 'smk' => [10, 11, 12],
+                // PPS Diniyah: Wustho 7–9 lalu Ulya 10–12.
+                'pps' => [7, 8, 9, 10, 11, 12],
                 default => [],
             };
 

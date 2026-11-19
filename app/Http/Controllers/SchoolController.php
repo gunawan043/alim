@@ -195,7 +195,7 @@ class SchoolController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
             'website' => 'nullable|string|max:100',
-            'school_level' => 'required|in:sd,smp,sma,smk',
+            'school_level' => 'required|in:sd,smp,sma,smk,pps',
             'school_status' => 'required|in:negeri,swasta',
             'boarding_type' => 'nullable|in:boarding,non_boarding,both',
             'accreditation' => 'nullable|string|max:10',
@@ -405,7 +405,7 @@ class SchoolController extends Controller
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
             'website' => 'nullable|string|max:100',
-            'school_level' => 'required|in:sd,smp,sma,smk',
+            'school_level' => 'required|in:sd,smp,sma,smk,pps',
             'school_status' => 'required|in:negeri,swasta',
             'accreditation' => 'nullable|string|max:10',
             'accreditation_year' => 'nullable|integer|min:2000|max:2099',
@@ -473,6 +473,9 @@ class SchoolController extends Controller
 
             if ($principal) {
                 $assignments->assign($principal, $school->workUnit, 'Kepala Satuan Pendidikan', 'kepala_sekolah');
+
+                // Pastikan role Satuan Pendidikan ditambahkan (bukan mengganti).
+                UnitHeadAccess::ensureSatuanPendidikanRole($principal);
 
                 // Rangkap jabatan: pertahankan akses Asrama jika user juga
                 // tercatat sebagai Kepala Asrama.

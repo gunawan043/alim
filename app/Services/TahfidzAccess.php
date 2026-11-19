@@ -83,13 +83,14 @@ class TahfidzAccess
 
     public function isSchoolLeader(User $user): bool
     {
-        $jabatan = $this->jabatan($user);
-
-        return str_contains($jabatan, 'kepala satuan pendidikan')
-            || str_contains($jabatan, 'wakil kepala satuan pendidikan')
-            || str_contains($jabatan, 'kepala sekolah')
-            || str_contains($jabatan, 'wakil kepala sekolah')
-            || str_contains($jabatan, 'kurikulum');
+        return \App\Support\UserJabatan::hasAnyLoose($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala sekolah',
+            'wakil kepala sekolah',
+            'waka',
+            'koordinator kurikulum',
+        ]);
     }
 
     public function canViewAllSchools(User $user): bool
@@ -240,6 +241,9 @@ class TahfidzAccess
 
     private function jabatan(User $user): string
     {
-        return strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+        // Gabungkan semua sumber jabatan/tugas: kepegawaian, penempatan unit,
+        // penugasan struktural, dan tugas tambahan. Waka yang tercatat sebagai
+        // tugas tambahan tetap dikenali sebagai pimpinan sekolah.
+        return implode(' ', \App\Support\UserJabatan::candidates($user));
     }
 }

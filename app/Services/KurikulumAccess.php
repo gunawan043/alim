@@ -305,7 +305,10 @@ class KurikulumAccess
 
     private function jabatan(User $user): string
     {
-        return strtolower(trim((string) ($user->employment?->jabatan ?? '')));
+        // Gabungkan semua sumber: kepegawaian, penempatan unit, penugasan
+        // struktural, dan tugas tambahan. Waka/Koordinator yang tercatat
+        // sebagai tugas tambahan tetap dikenali.
+        return implode(' ', \App\Support\UserJabatan::candidates($user));
     }
 
     /**

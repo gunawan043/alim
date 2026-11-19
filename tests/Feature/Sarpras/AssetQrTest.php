@@ -63,7 +63,7 @@ class AssetQrTest extends TestCase
         $this->actingAs($admin)
             ->get("/{$admin->id}/sarpras/qr/image/{$asset->id}")
             ->assertOk()
-            ->assertHeader('Content-Type', 'image/svg+xml');
+            ->assertHeader('Content-Type', 'image/png');
     }
 
     /** @test */

@@ -213,10 +213,16 @@ class DormitoryMahromImportTest extends TestCase
             ->get($url)
             ->assertOk()
             ->assertSee('Import Data Mahrom')
-            ->assertSee('Download Template Excel');
+            ->assertSee('Unduh Data Mahrom (Terisi Otomatis)')
+            ->assertSee('Template Kosong');
 
         $this->actingAs($this->admin)
             ->get(route('user.students.mahroms.import.template', ['userId' => $this->admin->id]))
+            ->assertOk()
+            ->assertDownload();
+
+        $this->actingAs($this->admin)
+            ->get(route('user.students.mahroms.import.template-filled', ['userId' => $this->admin->id]))
             ->assertOk()
             ->assertDownload();
     }
@@ -259,5 +265,128 @@ class DormitoryMahromImportTest extends TestCase
             ->get(route('user.students.mahroms.global', ['userId' => $this->admin->id]))
             ->assertOk()
             ->assertSee('Import Mahrom');
+    }
+
+    public function test_import_format_lebar_satu_baris_untuk_banyak_mahrom(): void
+    {
+        $import = $this->runImport([
+            collect([
+                'nisn' => $this->student->nisn,
+                'nis' => '',
+                'nama_santri' => $this->student->name,
+                'kelas' => 'Kelas 7 A',
+                'kamar' => 'Kamar 1',
+                'asrama' => 'Asrama Uji',
+                'mahrom_1_nama' => 'Bapak Lebar',
+                'mahrom_1_hubungan' => 'ayah',
+                'mahrom_1_no_hp' => '081211112222',
+                'mahrom_1_nik' => '',
+                'mahrom_1_alamat' => 'Jl. Lebar',
+                'mahrom_1_utama' => 'ya',
+                'mahrom_2_nama' => 'Ibu Lebar',
+                'mahrom_2_hubungan' => 'ibu',
+                'mahrom_2_no_hp' => '081233334444',
+                'mahrom_2_nik' => '',
+                'mahrom_2_alamat' => '',
+                'mahrom_2_utama' => 'tidak',
+                'mahrom_3_nama' => '',
+                'mahrom_3_hubungan' => '',
+            ]),
+        ]);
+
+        $this->assertSame(2, $import->created);
+        $this->assertSame(0, $import->updated);
+        $this->assertSame(1, \App\Models\Student::where('id', $this->student->id)->count(), 'Santri tidak terduplikasi.');
+        $this->assertSame(2, StudentMahrom::where('student_id', $this->student->id)->count());
+
+        $ayah = StudentMahrom::where('student_id', $this->student->id)->where('relationship', 'ayah')->firstOrFail();
+        $ibu = StudentMahrom::where('student_id', $this->student->id)->where('relationship', 'ibu')->firstOrFail();
+
+        $this->assertSame('Bapak Lebar', $ayah->name);
+        $this->assertSame('081211112222', $ayah->phone);
+        $this->assertTrue((bool) $ayah->is_primary);
+        $this->assertSame('Ibu Lebar', $ibu->name);
+        $this->assertSame('081233334444', $ibu->phone);
+        $this->assertFalse((bool) $ibu->is_primary);
+    }
+
+    public function test_import_format_lebar_memperbarui_mahrom_lama_tanpa_duplikasi(): void
+    {
+        StudentMahrom::create([
+            'id' => (string) Str::uuid(),
+            'student_id' => $this->student->id,
+            'name' => 'Nama Lama',
+            'relationship' => 'ayah',
+            'phone' => '081200000000',
+            'is_active' => true,
+            'is_primary' => true,
+        ]);
+
+        $import = $this->runImport([
+            collect([
+                'nisn' => $this->student->nisn,
+                'nis' => '',
+                'mahrom_1_nama' => 'Nama Baru',
+                'mahrom_1_hubungan' => 'ayah',
+                'mahrom_1_no_hp' => '081255556666',
+                'mahrom_1_nik' => '',
+                'mahrom_1_alamat' => '',
+                'mahrom_1_utama' => 'ya',
+                'mahrom_2_nama' => 'Ibu Baru',
+                'mahrom_2_hubungan' => 'ibu',
+                'mahrom_2_no_hp' => '081277778888',
+                'mahrom_2_nik' => '',
+                'mahrom_2_alamat' => '',
+                'mahrom_2_utama' => 'tidak',
+            ]),
+        ]);
+
+        $this->assertSame(1, $import->updated);
+        $this->assertSame(1, $import->created);
+        $this->assertSame(2, StudentMahrom::where('student_id', $this->student->id)->count());
+
+        $ayah = StudentMahrom::where('student_id', $this->student->id)->where('relationship', 'ayah')->firstOrFail();
+        $this->assertSame('Nama Baru', $ayah->name);
+        $this->assertSame('081255556666', $ayah->phone);
+    }
+
+    public function test_template_terisi_memuat_informasi_santri_dan_mahrom(): void
+    {
+        StudentMahrom::create([
+            'id' => (string) Str::uuid(),
+            'student_id' => $this->student->id,
+            'name' => 'Bapak Template',
+            'relationship' => 'ayah',
+            'phone' => '081299990000',
+            'is_active' => true,
+            'is_primary' => true,
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(
+            route('user.students.mahroms.import.template-filled', ['userId' => $this->admin->id])
+        );
+
+        $response->assertOk()->assertDownload();
+
+        $path = $response->baseResponse->getFile()->getPathname();
+        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($path)->getSheet(0);
+
+        $this->assertSame('NISN', $sheet->getCell('A1')->getValue());
+        $this->assertSame('Mahrom 1 - Nama', $sheet->getCell('G1')->getValue());
+
+        $row = null;
+        foreach ($sheet->toArray(null, true, true, true) as $candidate) {
+            if ((string) ($candidate['A'] ?? '') === $this->student->nisn) {
+                $row = $candidate;
+                break;
+            }
+        }
+
+        $this->assertNotNull($row, 'Baris santri harus terisi otomatis.');
+        $this->assertSame($this->student->name, $row['C']);
+        $this->assertSame('Bapak Template', $row['G']);
+        $this->assertSame('ayah', strtolower((string) $row['H']));
+        $this->assertSame('081299990000', $row['I']);
+        $this->assertSame('ya', $row['L']);
     }
 }

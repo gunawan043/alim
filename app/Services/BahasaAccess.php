@@ -87,19 +87,20 @@ class BahasaAccess
 
     public function isSchoolLeader(User $user): bool
     {
-        $jabatan = $this->jabatan($user);
-
-        return str_contains($jabatan, 'kepala satuan pendidikan')
-            || str_contains($jabatan, 'wakil kepala satuan pendidikan')
-            || str_contains($jabatan, 'kepala sekolah')
-            || str_contains($jabatan, 'kurikulum');
+        return \App\Support\UserJabatan::hasAnyLoose($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala sekolah',
+            'wakil kepala sekolah',
+            'waka',
+            'koordinator kurikulum',
+        ]);
     }
 
     public function jabatan(User $user): string
     {
-        $employment = $user->employment;
-
-        return strtolower(trim((string) ($employment?->jabatan ?? '')));
+        // Semua sumber jabatan/tugas, bukan hanya kepegawaian utama.
+        return implode(' ', \App\Support\UserJabatan::candidates($user));
     }
 
     public function schoolId(User $user): ?string
