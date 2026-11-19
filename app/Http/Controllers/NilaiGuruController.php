@@ -1392,7 +1392,16 @@ class NilaiGuruController extends Controller
      */
     private function applyTeacherBookScope($query)
     {
-        return $query->forTeacherWorkspace(auth()->id());
+        $query = $query->forTeacherWorkspace(auth()->id());
+
+        // Menu Guru hanya menampilkan buku periode aktif. Tanpa filter ini,
+        // buku TA/semester lampau (mis. Genap 2025/2026) ikut tampil dan
+        // terbuka kosong karena riwayat kelasnya sudah tidak aktif.
+        if ($activeYearId = AcademicYear::where('is_active', true)->value('id')) {
+            $query->where('academic_year_id', $activeYearId);
+        }
+
+        return $query;
     }
 
     /** Satu konteks = satu buku (dedupe tampilan bila data lama duplikat). */
