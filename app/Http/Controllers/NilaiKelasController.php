@@ -1481,6 +1481,7 @@ class NilaiKelasController extends Controller
             'show_ttd_ksp' => 'nullable|boolean',
             'show_ttd_wali' => 'nullable|boolean',
             'show_stamp' => 'nullable|boolean',
+            'show_qr' => 'nullable|boolean',
             'kop_height' => 'nullable|numeric|min:5|max:80',
             'ttd_ksp_width' => 'nullable|numeric|min:5|max:100',
             'ttd_ksp_height' => 'nullable|numeric|min:5|max:60',
@@ -1526,7 +1527,7 @@ class NilaiKelasController extends Controller
             }
         }
 
-        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp'] as $key) {
+        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr'] as $key) {
             if ($request->has($key)) {
                 $values[$key] = $request->boolean($key);
             }
@@ -1587,6 +1588,7 @@ class NilaiKelasController extends Controller
             'show_ttd_ksp' => 'nullable|boolean',
             'show_ttd_wali' => 'nullable|boolean',
             'show_stamp' => 'nullable|boolean',
+            'show_qr' => 'nullable|boolean',
             'kop_height' => 'required|numeric|min:5|max:80',
             'ttd_ksp_width' => 'required|numeric|min:5|max:100',
             'ttd_ksp_height' => 'required|numeric|min:5|max:60',
@@ -1628,7 +1630,7 @@ class NilaiKelasController extends Controller
                 $values[$key] = $validated[$key];
             }
         }
-        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp'] as $key) {
+        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr'] as $key) {
             $values[$key] = $request->boolean($key);
         }
 

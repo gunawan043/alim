@@ -741,6 +741,7 @@
                                 'show_ttd_ksp' => 'Tampilkan TTD KSP',
                                 'show_ttd_wali' => 'Tampilkan TTD wali',
                                 'show_stamp' => 'Tampilkan stempel',
+                                'show_qr' => 'Tampilkan QR verifikasi',
                             ] as $field => $label)
                                 <div class="col-6 col-md-3">
                                     <div class="form-check form-switch">
@@ -752,6 +753,10 @@
                                     </div>
                                 </div>
                             @endforeach
+                        </div>
+                        <div class="form-text mb-3">
+                            QR verifikasi hanya tercetak bila dokumen memiliki verifikasi digital (mode QR/PAdES).
+                            Matikan switch ini untuk rapor bertanda tangan basah.
                         </div>
 
                         @php
@@ -972,7 +977,7 @@ renumberSubjectRows();
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
             'footer_font_size', 'line_height', 'paper_size',
-            'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp',
+            'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
             'ttd_ksp_margin', 'ttd_wali_margin', 'stamp_margin',

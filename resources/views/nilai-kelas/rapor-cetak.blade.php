@@ -168,20 +168,25 @@
         }
         .info-grid td {
             border: none;
-            padding: 2px 4px;
+            padding: 3px 4px;
             font-size: {{ $layout['info_font_size'] }}pt;
+            line-height: {{ $layout['line_height'] }};
+            vertical-align: middle;
         }
         .info-grid td.lbl {
             font-weight: bold;
-            width: 12%;
+            width: 13%;
+            white-space: nowrap;
         }
         .info-grid td.colon {
             width: 2%;
             font-weight: bold;
+            text-align: center;
         }
         .info-grid td.val {
-            width: 36%;
+            width: 35%;
             font-weight: bold;
+            white-space: nowrap;
         }
 
         /* ── Tabel Nilai ── */
@@ -295,16 +300,33 @@
             vertical-align: bottom;
             padding: 4px 8px;
         }
-        .ttd-grid td.with-gap {
-            padding-top: 60px;
+        .ttd-grid td.ttd-date {
+            text-align: right;
+            padding: 0 8px 14px 8px;
+            font-size: {{ $layout['footer_font_size'] + 1 }}pt;
         }
-        .ttd-grid td.center-col {
+        .ttd-grid td.ttd-col {
+            width: 33.33%;
             text-align: center;
+            vertical-align: top;
         }
-        .ttd-grid td.ks-row {
-            border: none;
-            text-align: center;
-            padding-top: 20px;
+        .ttd-title {
+            font-size: {{ $layout['footer_font_size'] + 1 }}pt;
+            line-height: 1.3;
+            min-height: 1.3em;
+        }
+        .ttd-sig-area {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .ttd-name {
+            font-size: {{ $layout['footer_font_size'] + 1 }}pt;
+            line-height: 1.4;
+        }
+        .ttd-nip {
+            font-size: {{ $layout['footer_font_size'] + 1 }}pt;
+            line-height: 1.4;
         }
 
         /* ── Footer bar ── */
@@ -482,60 +504,69 @@
         </tr>
     </table>
 
-    {{-- TTD --}}
+    {{-- TTD: Orang Tua/Wali, Wali Kelas, Kepala Sekolah sejajar dalam satu baris --}}
+    @php
+        $sigAreaHeight = max(
+            (float) ($layout['ttd_wali_height'] ?? 0),
+            (float) ($layout['ttd_ksp_height'] ?? 0),
+            (float) ($layout['stamp_height'] ?? 0),
+        );
+    @endphp
     <table class="ttd-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
-            <td class="with-gap" style="width:30%;">
-                <br><br><br><br><br>
-                ________________________
-                <br>{!! $text($label('orang_tua')) !!}
+            <td colspan="3" class="ttd-date" style="text-align: {{ $isArabic ? 'left' : 'right' }};">
+                {!! $text($printCity) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
+                @if($isArabic && $hijriDate)
+                    <br><span style="font-size:8pt;">{{ $hijriDate }}</span>
+                @endif
             </td>
-            <td class="with-gap" style="width:30%;">
-                <div class="signature-block" style="min-height: {{ $layout['ttd_wali_height'] }}mm; margin-top: {{ $layout['ttd_wali_margin'] ?? 2 }}mm;">
+        </tr>
+        <tr>
+            <td class="ttd-col">
+                <div class="ttd-title">{!! $text($label('orang_tua')) !!}</div>
+                <div class="ttd-sig-area" style="height: {{ $sigAreaHeight }}mm;"></div>
+                <div class="signature-line">____________________</div>
+                <div class="ttd-name">&nbsp;</div>
+            </td>
+            <td class="ttd-col">
+                <div class="ttd-title">{!! $text($label('wali_kelas')) !!}</div>
+                <div class="ttd-sig-area" style="height: {{ $sigAreaHeight }}mm;">
                     @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_wali'] ?? true) && ! empty($ttdWaliBase64))
                         <img src="{{ $ttdWaliBase64 }}" class="signature-image"
                              style="width: {{ $layout['ttd_wali_width'] }}mm; height: {{ $layout['ttd_wali_height'] }}mm;"
                              alt="TTD Wali Kelas">
                     @endif
                 </div>
-                <div class="signature-line">________________________</div>
-                <br>{!! $text($label('wali_kelas')) !!}
+                <div class="signature-line">____________________</div>
+                <div class="ttd-name"><strong>{!! $text(($isArabic && ! empty($waliNameAr)) ? $waliNameAr : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong></div>
             </td>
-            <td class="with-gap center-col" style="width:40%;">
-                {!! $text($printCity) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
-                @if($isArabic && $hijriDate)
-                    <br><span style="font-size:8pt;">{{ $hijriDate }}</span>
-                @endif
-                <br><br><br><br><br>
-                ________________________
-                <br><strong>{!! $text(($isArabic && ! empty($waliNameAr)) ? $waliNameAr : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" class="ks-row">
-                <br>
-                {!! $text($label('mengetahui_kepala')) !!}
-                <div class="signature-stack"
-                     style="width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm; margin-top: {{ max((float) ($layout['ttd_ksp_margin'] ?? 2), (float) ($layout['stamp_margin'] ?? 2)) }}mm;">
-                    @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? true) && ! empty($stampBase64))
-                        <img src="{{ $stampBase64 }}" class="stamp-image"
-                             style="width: {{ $layout['stamp_width'] }}mm; height: {{ $layout['stamp_height'] }}mm;"
-                             alt="Stempel Sekolah">
-                    @endif
-                    @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
-                        <img src="{{ $ttdKspBase64 }}" class="ttd-image"
-                             style="width: {{ $layout['ttd_ksp_width'] }}mm; height: {{ $layout['ttd_ksp_height'] }}mm;"
-                             alt="TTD Kepala Sekolah">
-                    @endif
+            <td class="ttd-col">
+                <div class="ttd-title">{!! $text($label('mengetahui_kepala')) !!}</div>
+                <div class="ttd-sig-area" style="height: {{ $sigAreaHeight }}mm;">
+                    <div class="signature-stack"
+                         style="width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm;">
+                        @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? true) && ! empty($stampBase64))
+                            <img src="{{ $stampBase64 }}" class="stamp-image"
+                                 style="width: {{ $layout['stamp_width'] }}mm; height: {{ $layout['stamp_height'] }}mm;"
+                                 alt="Stempel Sekolah">
+                        @endif
+                        @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
+                            <img src="{{ $ttdKspBase64 }}" class="ttd-image"
+                                 style="width: {{ $layout['ttd_ksp_width'] }}mm; height: {{ $layout['ttd_ksp_height'] }}mm;"
+                                 alt="TTD Kepala Sekolah">
+                        @endif
+                    </div>
                 </div>
-                <div class="signature-line">________________________</div>
-                <br><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($principal['display_name'] ?? $studyGroup->school?->principal_full_name ?? '................................')) !!}</strong>
-                <br>{!! $text($label('nip')) !!} {{ $principal['nupy'] ?? $studyGroup->school?->principal_nupy_display ?? '...................' }}
+                <div class="signature-line">____________________</div>
+                <div class="ttd-name"><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($principal['display_name'] ?? $studyGroup->school?->principal_full_name ?? '................................')) !!}</strong></div>
+                <div class="ttd-nip">{!! $text($label('nip')) !!} {{ $principal['nupy'] ?? $studyGroup->school?->principal_nupy_display ?? '...................' }}</div>
             </td>
         </tr>
     </table>
 
-    @include('documents._qr-footer', ['verification' => $verificationByStudent[$key] ?? null])
+    @if($layout['show_qr'] ?? true)
+        @include('documents._qr-footer', ['verification' => $verificationByStudent[$key] ?? null])
+    @endif
 
 </div>
 @endforeach
