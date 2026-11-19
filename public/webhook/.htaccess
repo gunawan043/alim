@@ -1,0 +1,11 @@
+# Direktori ini hanya untuk skrip cron Hostinger.
+# Jangan pernah dilayani lewat web.
+Options -Indexes
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
