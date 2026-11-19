@@ -589,28 +589,45 @@
 
     {{-- Catatan --}}
     <table class="catatan-box" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
-        <tr>
-            <td class="hdr lbl-col">{!! $text($label('catatan_kehadiran')) !!}</td>
-            <td class="hdr">{!! $text($label('catatan_wali')) !!}</td>
-        </tr>
-        <tr>
-            <td class="lbl-col">
-                1.&nbsp; {!! $text($label('sakit')) !!} &nbsp;: {{ $num($data['Sakit'] ?? '-') }} {!! $text($label('hari')) !!}<br>
-                2.&nbsp; {!! $text($label('izin')) !!} &nbsp;&nbsp;: {{ $num($data['Izin'] ?? '-') }} {!! $text($label('hari')) !!}<br>
-                3.&nbsp; {!! $text($label('alpa')) !!} &nbsp;&nbsp;: {{ $num($data['Alpa'] ?? '-') }} {!! $text($label('hari')) !!}
-            </td>
-            <td>
-                @if(! empty($data['CatatanWali']))
-                    @if($isArabic)
+        @if($isArabic)
+            <tr>
+                <td class="hdr">{!! $text($label('catatan_wali')) !!}</td>
+                <td class="hdr lbl-col">{!! $text($label('catatan_kehadiran')) !!}</td>
+            </tr>
+            <tr>
+                <td>
+                    @if(! empty($data['CatatanWali']))
                         {!! \App\Support\ArabicText::toHtml($data['CatatanWali']) !!}
                     @else
-                        {!! nl2br(e($data['CatatanWali'])) !!}
+                        <span style="color:#94a3b8;">—</span>
                     @endif
-                @else
-                    <span style="color:#94a3b8;">—</span>
-                @endif
-            </td>
-        </tr>
+                </td>
+                <td class="lbl-col">
+                    {!! $num(1) !!}.&nbsp; {!! $text($label('sakit')) !!} &nbsp;: {{ $num($data['Sakit'] ?? '-') }} {!! $text($label('hari')) !!}<br>
+                    {!! $num(2) !!}.&nbsp; {!! $text($label('izin')) !!} &nbsp;&nbsp;: {{ $num($data['Izin'] ?? '-') }} {!! $text($label('hari')) !!}<br>
+                    {!! $num(3) !!}.&nbsp; {!! $text($label('alpa')) !!} &nbsp;&nbsp;: {{ $num($data['Alpa'] ?? '-') }} {!! $text($label('hari')) !!}
+                </td>
+            </tr>
+        @else
+            <tr>
+                <td class="hdr lbl-col">{!! $text($label('catatan_kehadiran')) !!}</td>
+                <td class="hdr">{!! $text($label('catatan_wali')) !!}</td>
+            </tr>
+            <tr>
+                <td class="lbl-col">
+                    1.&nbsp; {!! $text($label('sakit')) !!} &nbsp;: {{ $num($data['Sakit'] ?? '-') }} {!! $text($label('hari')) !!}<br>
+                    2.&nbsp; {!! $text($label('izin')) !!} &nbsp;&nbsp;: {{ $num($data['Izin'] ?? '-') }} {!! $text($label('hari')) !!}<br>
+                    3.&nbsp; {!! $text($label('alpa')) !!} &nbsp;&nbsp;: {{ $num($data['Alpa'] ?? '-') }} {!! $text($label('hari')) !!}
+                </td>
+                <td>
+                    @if(! empty($data['CatatanWali']))
+                        {!! nl2br(e($data['CatatanWali'])) !!}
+                    @else
+                        <span style="color:#94a3b8;">—</span>
+                    @endif
+                </td>
+            </tr>
+        @endif
     </table>
 
     {{-- TTD: Orang Tua/Wali, Wali Kelas, Kepala Sekolah sejajar dalam satu baris --}}

@@ -305,8 +305,16 @@ final class ArabicText
         }
 
         $out = '';
+        $segments = self::splitSegments($line);
 
-        foreach (self::splitSegments($line) as ['text' => $segment, 'arabic' => $isArabic]) {
+        // Dompdf menggambar kiri→kanan. Untuk baris Arab, urutan kata juga
+        // harus dibalik (bukan hanya huruf per kata), agar frasa seperti
+        // "ملاحظات الحضور" tidak tampil terbalik menjadi "الحضور ملاحظات".
+        if (self::hasArabic($line)) {
+            $segments = array_reverse($segments);
+        }
+
+        foreach ($segments as ['text' => $segment, 'arabic' => $isArabic]) {
             if ($segment === '') {
                 continue;
             }
@@ -355,7 +363,22 @@ final class ArabicText
     {
         $code = mb_ord($char, 'UTF-8');
 
-        return ($code >= 0x0600 && $code <= 0x06FF)
+        // Angka Arab-Indik (٠–٩ / ۰–۹) BUKAN huruf Arab: jangan di-shape
+        // dan jangan dibalik urutannya. Angka tetap dibaca kiri→kanan.
+        if (($code >= 0x0660 && $code <= 0x0669) || ($code >= 0x06F0 && $code <= 0x06F9)) {
+            return false;
+        }
+
+        // Tanda baca Arab juga netral; biarkan di posisinya.
+        if (in_array($code, [0x060C, 0x061B, 0x061F, 0x066A, 0x066B, 0x066C, 0x066D, 0x06D4], true)) {
+            return false;
+        }
+
+        return ($code >= 0x0620 && $code <= 0x064A)
+            || ($code >= 0x066E && $code <= 0x06D3)
+            || $code === 0x06D5
+            || ($code >= 0x06EE && $code <= 0x06EF)
+            || ($code >= 0x06FA && $code <= 0x06FF)
             || ($code >= 0x0750 && $code <= 0x077F)
             || ($code >= 0xFB50 && $code <= 0xFDFF)
             || ($code >= 0xFE70 && $code <= 0xFEFF);
