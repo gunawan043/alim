@@ -294,6 +294,7 @@ use App\Http\Controllers\StudentHealthMetricController;
 use App\Http\Controllers\StudentHealthPermitController;
 use App\Http\Controllers\StudentImmunizationController;
 use App\Http\Controllers\StudentMahromController;
+use App\Http\Controllers\StudentMahromImportController;
 use App\Http\Controllers\StudentMedicineInventoryController;
 use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
@@ -2145,6 +2146,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 // Global CRUD for mahrom (cross-student): tambah/edit/hapus dari halaman Data Mahrom.
                 Route::get('/mahroms/tambah', [StudentMahromController::class, 'globalCreate'])->name('mahroms.globalCreate');
                 Route::post('/mahroms', [StudentMahromController::class, 'globalStore'])->name('mahroms.globalStore');
+                // Import mahrom (harus di atas route /mahroms/{mahromUuid}).
+                Route::get('/mahroms/import', [StudentMahromImportController::class, 'index'])->name('mahroms.import');
+                Route::get('/mahroms/import/template', [StudentMahromImportController::class, 'template'])->name('mahroms.import.template');
+                Route::post('/mahroms/import', [StudentMahromImportController::class, 'store'])->name('mahroms.import.store');
                 Route::get('/mahroms/{mahromUuid}', [StudentMahromController::class, 'globalShow'])->name('mahroms.globalShow');
                 Route::get('/mahroms/{mahromUuid}/edit', [StudentMahromController::class, 'globalEdit'])->name('mahroms.globalEdit');
                 Route::put('/mahroms/{mahromUuid}', [StudentMahromController::class, 'globalUpdate'])->name('mahroms.globalUpdate');

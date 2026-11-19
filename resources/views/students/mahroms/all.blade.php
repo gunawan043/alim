@@ -119,7 +119,11 @@
                             <h5 class="card-title mb-0">Daftar Mahrom (Semua Santri)</h5>
                             <p class="text-muted mb-0">Kelola data orang tua / mahrom lintas seluruh santri.</p>
                         </div>
-                        <div class="col-sm-auto">
+                        <div class="col-sm-auto d-flex gap-2">
+                            <a href="{{ route('user.students.mahroms.import', ['userId' => $userId]) }}"
+                               class="btn btn-outline-primary">
+                                <i class="ri-upload-2-line align-bottom me-1"></i> Import Mahrom
+                            </a>
                             <a href="{{ route('user.students.mahroms.globalCreate', ['userId' => $userId]) }}"
                                class="btn btn-success">
                                 <i class="ri-add-line align-bottom me-1"></i> Tambah Mahrom

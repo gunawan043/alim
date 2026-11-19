@@ -100,4 +100,19 @@
         <i class="ri-user-heart-line"></i><span>Santri Kelas Saya</span>
     </a>
 </li>
+
+{{-- Data Mahrom Kelas --}}
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) ? ' active' : '' }}"
+       href="{{ $waliUrl('user.students.mahroms.global') }}">
+        <i class="ri-shield-user-line"></i><span>Data Mahrom Kelas</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.import']) ? ' active' : '' }}"
+       href="{{ $waliUrl('user.students.mahroms.import') }}">
+        <i class="ri-upload-2-line"></i><span>Import Mahrom Kelas</span>
+    </a>
+</li>
 @endmenuallowed

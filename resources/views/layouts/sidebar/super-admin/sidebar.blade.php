@@ -367,6 +367,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.mahroms.import']) ? ' active' : '' }}"
+                   href="{{ route('user.students.mahroms.import', ['userId' => $userId]) }}">
+                    <i class="ri-upload-2-line me-1"></i> Import Mahrom
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{{ isActiveAny($currentRoute, ['user.mutations-in.']) ? ' active' : '' }}"
                    href="{{ route('user.mutations-in.index', ['userId' => $userId]) }}">
                     <i class="ri-login-box-line me-1"></i> Mutasi Masuk

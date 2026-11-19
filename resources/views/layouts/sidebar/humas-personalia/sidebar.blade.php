@@ -634,6 +634,13 @@
         </a>
     </li>
 
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.import']) ? ' active' : '' }}"
+           href="{{ $humasUrl('user.students.mahroms.import') }}">
+            <i class="ri-upload-2-line"></i><span>Import Data Wali</span>
+        </a>
+    </li>
+
     {{-- ✅ AKTIF: Kebijakan Asrama (view — untuk info ke wali) --}}
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.boarding-policies.']) ? ' active' : '' }}"

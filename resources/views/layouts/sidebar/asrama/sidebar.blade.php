@@ -833,6 +833,14 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
     </a>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.import']) ? ' active' : '' }}"
+       href="{{ route('user.students.mahroms.import', ['userId' => $userId]) }}">
+        <i class="ri-upload-2-line"></i>
+        <span>Import Mahrom</span>
+    </a>
+</li>
+
 
 {{-- ================================================================
      ADMINISTRASI

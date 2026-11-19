@@ -121,6 +121,13 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.mahroms.import']) ? ' active' : '' }}"
+           href="{{ $keuanganUrl('user.students.mahroms.import') }}">
+            <i class="ri-upload-2-line"></i><span>Import Data Wali</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-lulus.', 'user.mutations-do.']) ? ' active' : '' }}"
            href="#keuangan_mutasi" data-bs-toggle="collapse" role="button"
            aria-expanded="{{ isActiveAny($currentRoute, ['user.mutations-in.', 'user.mutations-out.', 'user.mutations-lulus.', 'user.mutations-do.']) ? 'true' : 'false' }}"
