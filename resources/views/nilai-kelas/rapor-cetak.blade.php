@@ -33,7 +33,9 @@
         : (string) $value;
     $printDate = $distributionDate ?? now();
     $printCity = $distributionCity ?: ($studyGroup->school?->city ?? 'Mataram');
-    $hijriDate = $isArabic ? \App\Support\ArabicText::formatHijriDate($printDate) : '';
+    $hijriDate = $isArabic
+        ? (\App\Support\ArabicText::formatHijriDate($printDate) ?: \App\Support\ArabicText::formatDate($printDate))
+        : '';
     $layout = array_merge(\App\Models\RaporDistributionSetting::defaultLayout(), $layout ?? []);
     $paperSize = $layout['paper_size'] ?? 'a4';
     $paperCss = match ($paperSize) {
@@ -425,11 +427,15 @@
         }
         .ttd-name {
             font-size: {{ $layout['footer_font_size'] + 1 }}pt;
-            line-height: 1.4;
+            line-height: 1.15;
         }
         .ttd-nip {
             font-size: {{ $layout['footer_font_size'] + 1 }}pt;
-            line-height: 1.4;
+            line-height: 1.15;
+            margin-top: 0;
+        }
+        .ttd-name + .ttd-nip {
+            margin-top: -0.5mm;
         }
 
         /* ── Footer bar ── */
@@ -491,7 +497,7 @@
                 <td class="lbl">{!! $text($label('kelas')) !!}</td>
             </tr>
             <tr>
-                <td class="val" colspan="3">{{ $num($data['NIS'] ?? '-') }} / {{ $num($data['NISN'] ?? '-') }}</td>
+                <td class="val" colspan="4">{{ $num($data['NIS'] ?? '-') }} / {{ $num($data['NISN'] ?? '-') }}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
             </tr>
@@ -515,7 +521,7 @@
             <tr>
                 <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
                 <td class="colon">:</td>
-                <td class="val" colspan="3">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
+                <td class="val" colspan="4">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
             </tr>
         @endif
     </table>
@@ -619,10 +625,11 @@
     @endphp
     <table class="ttd-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
-            <td colspan="3" class="ttd-date" style="text-align: {{ $isArabic ? 'left' : 'right' }};">
-                {!! $text($cityText($printCity)) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
-                @if($isArabic && $hijriDate)
-                    <br><span style="font-size:8pt;">{{ $hijriDate }}</span>
+            <td colspan="3" class="ttd-date" style="text-align: {{ $isArabic ? 'center' : 'right' }};">
+                @if($isArabic)
+                    {!! $text($cityText($printCity)) !!}, {!! $text($hijriDate) !!}
+                @else
+                    {!! $text($cityText($printCity)) !!}, {{ $printDate->translatedFormat('d F Y') }}
                 @endif
             </td>
         </tr>
