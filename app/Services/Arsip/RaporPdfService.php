@@ -13,6 +13,7 @@ use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
 use App\Services\ArabicName\ArabicNameResolver;
+use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
 use App\Services\Documents\DocumentSigningService;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
@@ -373,7 +374,8 @@ class RaporPdfService
                 'Nama' => $student->name,
                 'NamaAr' => filled($student->name_ar)
                     ? $student->name_ar
-                    : app(ArabicNameResolver::class)->studentName($student),
+                    : (app(ArabicNameResolver::class)->studentName($student)
+                        ?? app(ArabicNameGeneratorContract::class)->generate($student->name)),
                 'NIS' => $student->nis ?? '-',
                 'NISN' => $student->nisn ?? '-',
                 'Kelas' => $studyGroup->name,
@@ -391,6 +393,22 @@ class RaporPdfService
                 'CatatanWali' => $catatanWali,
             ],
         ];
+    }
+
+    /**
+     * Nama Arab dari field tersimpan, atau transliterasi best-effort dari nama Latin.
+     */
+    private function arabicName(?string $stored, ?string $latin): ?string
+    {
+        if (filled($stored)) {
+            return $stored;
+        }
+
+        if (! filled($latin)) {
+            return null;
+        }
+
+        return app(ArabicNameGeneratorContract::class)->generate($latin);
     }
 
     /**
@@ -429,10 +447,15 @@ class RaporPdfService
             'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
             'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
-            'waliNameAr' => filled($studyGroup->homeroomTeacher?->name_ar)
-                ? $studyGroup->homeroomTeacher->name_ar
-                : $resolver->userName($studyGroup->homeroomTeacher),
-            'kspNameAr' => $resolver->principalName($ownerSchool),
+            'waliNameAr' => $this->arabicName(
+                $studyGroup->homeroomTeacher?->name_ar,
+                $studyGroup->homeroomTeacher?->name
+            ),
+            'kspNameAr' => $this->arabicName(
+                $ownerSchool?->principal_name_ar,
+                app(SchoolLeaderService::class)->forSchool($ownerSchool)['display_name']
+                    ?? $ownerSchool?->principal_full_name
+            ),
             'verificationByStudent' => $verificationByStudent,
             'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
             'hideTtdStamp' => ($layout['show_qr'] ?? false)
@@ -526,10 +549,15 @@ class RaporPdfService
             'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
             'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
-            'waliNameAr' => filled($studyGroup->homeroomTeacher?->name_ar)
-                ? $studyGroup->homeroomTeacher->name_ar
-                : $resolver->userName($studyGroup->homeroomTeacher),
-            'kspNameAr' => $resolver->principalName($ownerSchool),
+            'waliNameAr' => $this->arabicName(
+                $studyGroup->homeroomTeacher?->name_ar,
+                $studyGroup->homeroomTeacher?->name
+            ),
+            'kspNameAr' => $this->arabicName(
+                $ownerSchool?->principal_name_ar,
+                app(SchoolLeaderService::class)->forSchool($ownerSchool)['display_name']
+                    ?? $ownerSchool?->principal_full_name
+            ),
             'verificationByStudent' => $verificationByStudent,
             'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
             'hideTtdStamp' => ($layout['show_qr'] ?? false)
