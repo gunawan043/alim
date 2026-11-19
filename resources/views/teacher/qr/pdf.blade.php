@@ -58,7 +58,7 @@
 
         .header {
             position: absolute;
-            top: 20mm;
+            top: 40mm;
             left: 15mm;
             width: 180mm;
 
@@ -66,7 +66,7 @@
         }
 
         .document-title {
-            font-size: 22pt;
+            font-size: 50pt;
             font-weight: bold;
             line-height: 1.3;
             letter-spacing: 1px;
@@ -80,12 +80,13 @@
 
         .school-name {
             position: absolute;
-            top: 42mm;
+            top: 20mm;
             left: 20mm;
             width: 170mm;
+            text-transform: uppercase;
 
             text-align: center;
-            font-size: 14pt;
+            font-size: 30pt;
             font-weight: bold;
             line-height: 1.3;
             color: #e0e7ff;
@@ -102,8 +103,9 @@
             width: 126mm;
 
             border-collapse: collapse;
-            font-size: 11pt;
+            font-size: 18pt;
             font-weight: bold;
+            line-height: 0.9;
             color: #ffffff;
         }
 
@@ -170,8 +172,8 @@
 
         .qr-panel img {
             display: block;
-            width: 144mm;
-            height: 144mm;
+            width: 170mm;
+            height: 170mm;
         }
 
         /* =====================================
