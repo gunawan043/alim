@@ -52,6 +52,8 @@ class RaporPdfService
                 'title_sas' => 'تقرير نتائج التعلم لنهاية الفصل الدراسي',
                 'nama' => 'الاسم',
                 'semester' => 'الفصل الدراسي',
+                'semester_ganjil' => 'الفصل الأول',
+                'semester_genap' => 'الفصل الثاني',
                 'kelas' => 'الفصل',
                 'tahun_ajaran' => 'السنة الدراسية',
                 'nis_nisn' => 'رقم الطالب / رقم الهوية',
@@ -84,6 +86,8 @@ class RaporPdfService
             'title_sas' => 'Laporan Hasil Belajar Akhir Semester',
             'nama' => 'Nama',
             'semester' => 'Semester',
+            'semester_ganjil' => 'Ganjil',
+            'semester_genap' => 'Genap',
             'kelas' => 'Kelas',
             'tahun_ajaran' => 'Tahun Ajaran',
             'nis_nisn' => 'NIS / NISN',
@@ -367,10 +371,13 @@ class RaporPdfService
         return [
             $studentId => [
                 'Nama' => $student->name,
-                'NamaAr' => app(ArabicNameResolver::class)->studentName($student),
+                'NamaAr' => filled($student->name_ar)
+                    ? $student->name_ar
+                    : app(ArabicNameResolver::class)->studentName($student),
                 'NIS' => $student->nis ?? '-',
                 'NISN' => $student->nisn ?? '-',
                 'Kelas' => $studyGroup->name,
+                'KelasAr' => \App\Support\ArabicText::className($studyGroup->name),
                 'Semester' => ucfirst($selectedSem),
                 'TahunAjaran' => $selectedAy?->name ?? '-',
                 'Jenis' => $jenis,
@@ -422,7 +429,9 @@ class RaporPdfService
             'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
             'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
-            'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
+            'waliNameAr' => filled($studyGroup->homeroomTeacher?->name_ar)
+                ? $studyGroup->homeroomTeacher->name_ar
+                : $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($ownerSchool),
             'verificationByStudent' => $verificationByStudent,
             'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
@@ -517,7 +526,9 @@ class RaporPdfService
             'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
             'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
-            'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
+            'waliNameAr' => filled($studyGroup->homeroomTeacher?->name_ar)
+                ? $studyGroup->homeroomTeacher->name_ar
+                : $resolver->userName($studyGroup->homeroomTeacher),
             'kspNameAr' => $resolver->principalName($ownerSchool),
             'verificationByStudent' => $verificationByStudent,
             'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),

@@ -119,6 +119,104 @@ final class ArabicText
     }
 
     /**
+     * Nama kelas dalam bahasa Arab, mis. "10A" → "الصف العاشر أ".
+     * Nama non-standar dikembalikan apa adanya.
+     */
+    public static function className(?string $name): string
+    {
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            return '';
+        }
+
+        $ordinals = [
+            1 => 'الأول', 2 => 'الثاني', 3 => 'الثالث', 4 => 'الرابع',
+            5 => 'الخامس', 6 => 'السادس', 7 => 'السابع', 8 => 'الثامن',
+            9 => 'التاسع', 10 => 'العاشر', 11 => 'الحادي عشر', 12 => 'الثاني عشر',
+        ];
+
+        $letters = [
+            'A' => 'أ', 'B' => 'ب', 'C' => 'ج', 'D' => 'د', 'E' => 'هـ',
+            'F' => 'و', 'G' => 'ز', 'H' => 'ح', 'I' => 'ط', 'J' => 'ي',
+            'K' => 'ك', 'L' => 'ل', 'M' => 'م', 'N' => 'ن', 'O' => 'س',
+            'P' => 'ع', 'Q' => 'ف', 'R' => 'ص', 'S' => 'ق', 'T' => 'ر',
+            'U' => 'ش', 'V' => 'ت', 'W' => 'ث', 'X' => 'خ', 'Y' => 'ذ',
+            'Z' => 'ض',
+        ];
+
+        if (preg_match('/^(?:kelas\s*)?(\d{1,2})\s*([a-z])?$/iu', $name, $match)) {
+            $level = (int) $match[1];
+            $grade = $ordinals[$level] ?? self::digits((string) $level);
+            $suffix = '';
+
+            if (! empty($match[2])) {
+                $letter = strtoupper($match[2]);
+                $suffix = ' '.($letters[$letter] ?? $letter);
+            }
+
+            return 'الصف '.$grade.$suffix;
+        }
+
+        // Nama rombel lama memakai angka Romawi: "X A", "XI B", "XII C".
+        $roman = [
+            'I' => 1, 'II' => 2, 'III' => 3, 'IV' => 4, 'V' => 5, 'VI' => 6,
+            'VII' => 7, 'VIII' => 8, 'IX' => 9, 'X' => 10, 'XI' => 11, 'XII' => 12,
+        ];
+
+        if (preg_match('/^(?:kelas\s*)?(XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)\s*([a-z])?$/iu', $name, $match)) {
+            $level = $roman[strtoupper($match[1])] ?? null;
+            $suffix = '';
+
+            if ($level !== null) {
+                $grade = $ordinals[$level] ?? self::digits((string) $level);
+
+                if (! empty($match[2])) {
+                    $letter = strtoupper($match[2]);
+                    $suffix = ' '.($letters[$letter] ?? $letter);
+                }
+
+                return 'الصف '.$grade.$suffix;
+            }
+        }
+
+        return $name;
+    }
+
+    /**
+     * Nama kota umum dalam bahasa Arab; fallback ke nama asli.
+     */
+    public static function cityName(?string $city): string
+    {
+        $city = trim((string) $city);
+
+        if ($city === '') {
+            return '';
+        }
+
+        $map = [
+            'mataram' => 'ماتارام',
+            'lombok' => 'لومبوك',
+            'lombok barat' => 'لومبوك الغربية',
+            'lombok timur' => 'لومبوك الشرقية',
+            'lombok tengah' => 'لومبوك الوسطى',
+            'lombok utara' => 'لومبوك الشمالية',
+            'sumbawa' => 'سومباوا',
+            'bima' => 'بيما',
+            'dompu' => 'دومبو',
+            'jakarta' => 'جاكرتا',
+            'bandung' => 'باندونغ',
+            'surabaya' => 'سورابايا',
+            'yogyakarta' => 'يوغياكارتا',
+            'semarang' => 'سيمارانغ',
+            'bali' => 'بالي',
+            'denpasar' => 'دنباسار',
+        ];
+
+        return $map[mb_strtolower($city)] ?? $city;
+    }
+
+    /**
      * Tanggal Hijriah berbahasa Arab (contoh: "٥ ربيع الآخر ١٤٤٨ هـ").
      * Memakai paket pharaonic/laravel-hijri; kosong bila konversi gagal.
      */

@@ -25,6 +25,12 @@
         : $value;
     // Angka (nilai, KKTP, rata-rata, tanggal, dsb.) otomatis jadi angka Arab-Indik.
     $num = fn ($value) => $isArabic ? \App\Support\ArabicText::digits((string) $value) : (string) $value;
+    $semesterText = fn (?string $value) => $isArabic
+        ? $label(strtolower((string) $value) === 'genap' ? 'semester_genap' : 'semester_ganjil')
+        : ucfirst((string) $value);
+    $cityText = fn (?string $value) => $isArabic
+        ? \App\Support\ArabicText::cityName((string) $value)
+        : (string) $value;
     $printDate = $distributionDate ?? now();
     $printCity = $distributionCity ?: ($studyGroup->school?->city ?? 'Mataram');
     $hijriDate = $isArabic ? \App\Support\ArabicText::formatHijriDate($printDate) : '';
@@ -40,7 +46,7 @@
 <html lang="{{ $isArabic ? 'ar' : 'id' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
-    <title>Rapor — {{ $santri[array_key_first($santri)]['Nama'] ?? '' }}</title>
+    <title>Rapor — {{ $santri[array_key_first($santri)]['NamaAr'] ?? $santri[array_key_first($santri)]['Nama'] ?? '' }}</title>
     <style>
         {!! \App\Services\Ljk\LjkPdfFonts::arabicFaceCss() !!}
 
@@ -65,6 +71,103 @@
         body.ar {
             font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
             direction: rtl;
+            /* Layout Arab dibuat lebih padat agar STS/SAS muat satu halaman. */
+            font-size: 9pt;
+            line-height: 1.18;
+        }
+
+        body.ar .page {
+            padding-top: 7mm;
+            padding-bottom: 10mm;
+        }
+
+        body.ar .kop-surat {
+            height: 20mm !important;
+        }
+
+        body.ar .judul {
+            font-size: 12pt;
+            line-height: 1.15;
+            margin: 4px 0 6px;
+        }
+
+        body.ar .info-grid td {
+            padding: 1px 3px;
+            font-size: 8.5pt;
+            line-height: 1.18;
+        }
+
+        body.ar table.nilai {
+            margin-top: 4px;
+        }
+
+        body.ar table.nilai th,
+        body.ar table.nilai td {
+            padding: 1.5px 4px;
+            font-size: 8.5pt;
+            line-height: 1.15;
+        }
+
+        body.ar .ringkasan-box {
+            margin-top: 4px;
+        }
+
+        body.ar .ringkasan-box td {
+            padding: 2px 5px;
+            font-size: 8.5pt;
+            line-height: 1.18;
+        }
+
+        body.ar .ringkasan-box td.pred-val {
+            font-size: 12pt;
+        }
+
+        body.ar .catatan-box {
+            margin-top: 4px;
+        }
+
+        body.ar .catatan-box td {
+            padding: 3px 5px;
+            font-size: 8.5pt;
+            line-height: 1.2;
+        }
+
+        body.ar .ttd-grid {
+            margin-top: 8px;
+        }
+
+        body.ar .ttd-grid td {
+            padding: 2px 4px;
+            font-size: 8pt;
+            line-height: 1.18;
+        }
+
+        body.ar .ttd-sig-area {
+            height: 9mm !important;
+        }
+
+        body.ar .signature-stack {
+            width: 20mm !important;
+            height: 9mm !important;
+        }
+
+        body.ar .signature-stack .stamp-image,
+        body.ar .signature-stack .ttd-image,
+        body.ar .signature-image {
+            max-width: 20mm;
+            max-height: 9mm;
+        }
+
+        body.ar .ttd-title,
+        body.ar .ttd-name,
+        body.ar .ttd-nip {
+            font-size: 8pt;
+            line-height: 1.2;
+        }
+
+        body.ar .footer-bar {
+            padding-top: 2px;
+            padding-bottom: 2px;
         }
 
         /* RTL: tabel, urutan kolom, dan perataan teks mengikuti arah Arab. */
@@ -373,7 +476,7 @@
     <table class="info-grid">
         @if($isArabic)
             <tr>
-                <td class="val">{{ ucfirst((string) ($data['Semester'] ?? '-')) }}</td>
+                <td class="val">{!! $text($semesterText($data['Semester'] ?? '-')) !!}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('semester')) !!}</td>
                 <td class="val">{!! $text(($isArabic && ! empty($data['NamaAr'])) ? $data['NamaAr'] : ($data['Nama'] ?? '-')) !!}</td>
@@ -381,15 +484,15 @@
                 <td class="lbl">{!! $text($label('nama')) !!}</td>
             </tr>
             <tr>
-                <td class="val">{{ $data['TahunAjaran'] ?? '-' }}</td>
+                <td class="val">{{ $num($data['TahunAjaran'] ?? '-') }}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('tahun_ajaran')) !!}</td>
-                <td class="val">{!! $text($data['Kelas'] ?? '-') !!}</td>
+                <td class="val">{!! $text($data['KelasAr'] ?? $data['Kelas'] ?? '-') !!}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('kelas')) !!}</td>
             </tr>
             <tr>
-                <td class="val" colspan="3">{{ $data['NIS'] ?? '-' }} / {{ $data['NISN'] ?? '-' }}</td>
+                <td class="val" colspan="3">{{ $num($data['NIS'] ?? '-') }} / {{ $num($data['NISN'] ?? '-') }}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('nis_nisn')) !!}</td>
             </tr>
@@ -516,7 +619,7 @@
     <table class="ttd-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
             <td colspan="3" class="ttd-date" style="text-align: {{ $isArabic ? 'left' : 'right' }};">
-                {!! $text($printCity) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
+                {!! $text($cityText($printCity)) !!}, {{ $isArabic ? \App\Support\ArabicText::formatDate($printDate) : $printDate->translatedFormat('d F Y') }}
                 @if($isArabic && $hijriDate)
                     <br><span style="font-size:8pt;">{{ $hijriDate }}</span>
                 @endif
@@ -560,7 +663,7 @@
                 </div>
                 <div class="signature-line">____________________</div>
                 <div class="ttd-name"><strong>{!! $text(($isArabic && ! empty($kspNameAr)) ? $kspNameAr : ($principal['display_name'] ?? $studyGroup->school?->principal_full_name ?? '................................')) !!}</strong></div>
-                <div class="ttd-nip">{!! $text($label('nip')) !!} {{ $principal['nupy'] ?? $studyGroup->school?->principal_nupy_display ?? '...................' }}</div>
+                <div class="ttd-nip">{!! $text($label('nip')) !!} {{ $num($principal['nupy'] ?? $studyGroup->school?->principal_nupy_display ?? '...................') }}</div>
             </td>
         </tr>
     </table>
