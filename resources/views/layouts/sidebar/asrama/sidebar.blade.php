@@ -62,7 +62,24 @@ if (!$hasAsramaContext) {
         }
     }
 
-    $firstAsrama = $preferredAsrama ?? \App\Models\Dormitory::where('is_active', true)->first();
+    // Jangan pernah memilih asrama yang tidak dapat diakses user (penyebab 403).
+    if ($preferredAsrama && ! $currentUser->canAccessDormitory($preferredAsrama->id)) {
+        $preferredAsrama = null;
+    }
+
+    if (!$preferredAsrama) {
+        $preferredAsrama = \App\Models\Dormitory::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->first(fn ($dormitory) => $currentUser->canAccessDormitory($dormitory->id));
+    }
+
+    $firstAsrama = $preferredAsrama ?? \App\Models\Dormitory::query()
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get()
+        ->first(fn ($dormitory) => $currentUser->canAccessDormitory($dormitory->id));
 
     if ($firstAsrama) {
         $asramaUuid = $firstAsrama->id;
@@ -273,6 +290,16 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.permits.create') ? ' active' : '' }}"
+       href="{{ $hasAsramaContext
+            ? route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
+            : $asramaProfileFallback }}">
+        <i class="ri-add-circle-line"></i>
+        <span>Ajukan Izin</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAsr($currentRoute, 'user.asrama.notifications.') ? ' active' : '' }}"
        href="{{ $hasAsramaContext
             ? route('user.asrama.notifications.edit', ['userId' => $userId, 'asramaUuid' => $asramaUuid])
@@ -372,13 +399,24 @@ $pendingRewardApprovals = ($canApproveRewards && $asramaUuid)
         </span>
     </li>
 
-    {{-- Semua perizinan (lintas asrama) — via system.permits --}}
+    {{-- Perizinan asrama (bukan halaman system-wide yang khusus admin) --}}
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.permits.']) ? ' active' : '' }}"
-           href="{{ route('system.permits.index') }}">
-            <i class="ri-pass-valid-line"></i><span>Semua Perizinan</span>
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.index', 'user.asrama.permits.show']) ? ' active' : '' }}"
+           href="{{ ($scanAsramaId ?? null)
+                ? route('user.asrama.permits.index', ['userId' => $userId, 'asramaUuid' => $scanAsramaId])
+                : $asramaProfileFallback }}">
+            <i class="ri-pass-valid-line"></i><span>Perizinan Asrama</span>
         </a>
     </li>
+
+    @if($scanAsramaId ?? null)
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.create']) ? ' active' : '' }}"
+           href="{{ route('user.asrama.permits.create', ['userId' => $userId, 'asramaUuid' => $scanAsramaId]) }}">
+            <i class="ri-add-circle-line"></i><span>Ajukan Izin</span>
+        </a>
+    </li>
+    @endif
 
     {{-- Scan & Verifikasi (per-asrama, pakai fallback) --}}
     @if($scanAsramaId ?? null)

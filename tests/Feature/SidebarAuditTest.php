@@ -802,6 +802,40 @@ class SidebarAuditTest extends TestCase
         $this->assertSame([], $failures, "Tautan sidebar tugas asrama bermasalah:\n".implode("\n", $failures));
     }
 
+
+    /**
+     * Role Asrama boleh membuka form pengajuan izin untuk asrama pada
+     * satuan kerja/satuan pendidikan yang sama.
+     */
+    public function test_role_asrama_dapat_mengajukan_izin(): void
+    {
+        $this->bootSchool();
+
+        $asramaRole = Role::firstOrCreate(
+            ['name' => 'Asrama'],
+            ['id' => (string) Str::uuid(), 'guard_name' => 'web', 'level' => 3],
+        );
+
+        $user = $this->makeUser('GURU UMUM');
+        $user->assignRole($asramaRole);
+
+        $this->school->update(['boarding_type' => 'boarding']);
+
+        $dormitory = Dormitory::create([
+            'work_unit_id' => $this->school->work_unit_id,
+            'school_id' => $this->school->id,
+            'name' => 'Asrama Role Uji',
+            'gender' => 'putra',
+            'is_active' => true,
+        ]);
+
+        $this->assertTrue($user->fresh()->canAccessDormitory($dormitory->id));
+
+        $this->actingAs($user)
+            ->get("/{$user->id}/asrama/{$dormitory->id}/izin/aju")
+            ->assertOk();
+    }
+
     public function test_tmp_probe(): void
     {
         $this->withoutExceptionHandling();

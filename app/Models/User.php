@@ -841,6 +841,45 @@ class User extends Authenticatable
             return true;
         }
 
+        // Role Asrama (Kepala/Admin/Staf/Wali/Operator) mengakses asrama pada
+        // satuan kerja atau satuan pendidikan yang sama. Sebelumnya sidebar
+        // asrama tampil tetapi halaman izin menolak dengan 403.
+        if (method_exists($this, 'hasAnyRole')
+            && $this->hasAnyRole(['Asrama', 'Kepala Asrama', 'Admin Asrama', 'Wali Asrama', 'Operator Asrama Santri'])) {
+            if ($dormitory) {
+                $workUnitIds = \App\Models\GtkWorkUnit::query()
+                    ->where('user_id', $this->id)
+                    ->pluck('work_unit_id')
+                    ->filter()
+                    ->all();
+
+                if ($dormitory->work_unit_id && in_array((string) $dormitory->work_unit_id, array_map('strval', $workUnitIds), true)) {
+                    return true;
+                }
+
+                // Satuan kerja PPS Diniyah dan unit Asrama PPS berbeda,
+                // tetapi still satu satuan pendidikan. Cocokkan lewat sekolah
+                // dari satuan kerja user.
+                $workUnitSchoolIds = \App\Models\GtkWorkUnit::query()
+                    ->where('user_id', $this->id)
+                    ->with('workUnit.school')
+                    ->get()
+                    ->map(fn ($placement) => (string) ($placement->workUnit?->school?->id ?? ''))
+                    ->filter()
+                    ->all();
+
+                if ($dormitory->school_id && in_array((string) $dormitory->school_id, $workUnitSchoolIds, true)) {
+                    return true;
+                }
+
+                if ($dormitory->school_id
+                    && $this->employment?->school_id
+                    && (string) $dormitory->school_id === (string) $this->employment->school_id) {
+                    return true;
+                }
+            }
+        }
+
         // Tugas tambahan Staf Asrama (SK/penugasan operasional) memberi akses
         // ke asrama pada satuan pendidikan yang sama. Tanpa ini, sidebar
         // Staf Asrama tampil tetapi seluruh tautannya 403.
