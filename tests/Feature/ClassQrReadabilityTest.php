@@ -19,6 +19,70 @@ class ClassQrReadabilityTest extends TestCase
 
     public function test_qr_kelas_memakai_payload_pendek_dan_png(): void
     {
+        [$school, $year, $grade, $group, $user] = $this->makeFixtures();
+
+        $token = app(QrTokenService::class)->findOrCreate($group, $year->id);
+        $payload = json_encode(app(QrTokenService::class)->buildQrPayload($token));
+
+        $this->assertLessThan(120, strlen($payload), 'Payload QR kelas harus pendek agar tidak terlalu padat.');
+
+        $response = $this->actingAs($user)->get(route('user.qr.image', [
+            'userId' => $user->id,
+            'study_group_id' => $group->id,
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'image/png');
+        $this->assertGreaterThan(500, strlen($response->getContent()));
+
+        $print = $this->actingAs($user)->get(route('user.qr.print', [
+            'userId' => $user->id,
+            'study_group_id' => $group->id,
+        ]));
+
+        $print->assertOk();
+        $print->assertHeader('Content-Type', 'application/pdf');
+        $pdfContent = (string) $print->getContent();
+        $this->assertStringStartsWith('%PDF', $pdfContent);
+        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*297\.?[0-9]*\s+419\.?[0-9]*\]?/', $pdfContent);
+    }
+
+    public function test_cetak_massal_membuat_satu_halaman_a6_untuk_setiap_rombel(): void
+    {
+        [$school, $year, $grade, $group, $user] = $this->makeFixtures();
+
+        StudyGroup::create([
+            'school_id' => $school->id,
+            'academic_year_id' => $year->id,
+            'grade_level_id' => $grade->id,
+            'name' => '7B',
+            'code' => '7B',
+            'capacity' => 30,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('user.qr.print-all', [
+            'userId' => $user->id,
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        $pdf = (string) $response->getContent();
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertSame(
+            2,
+            preg_match_all('/\/Type\s*\/Page\b/', $pdf),
+            'Cetak massal harus menghasilkan tepat satu halaman untuk setiap rombel.'
+        );
+        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*297\.?[0-9]*\s+419\.?[0-9]*\]?/', $pdf);
+    }
+
+    /**
+     * @return array{0: School, 1: AcademicYear, 2: GradeLevel, 3: StudyGroup, 4: User}
+     */
+    private function makeFixtures(): array
+    {
         $workUnitId = (string) Str::uuid();
         DB::table('work_units')->insert([
             'id' => $workUnitId, 'name' => 'Unit QR', 'code' => 'UQR',
@@ -49,29 +113,6 @@ class ClassQrReadabilityTest extends TestCase
             'status_kepegawaian' => 'PTT', 'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        $token = app(QrTokenService::class)->findOrCreate($group, $year->id);
-        $payload = json_encode(app(QrTokenService::class)->buildQrPayload($token));
-
-        $this->assertLessThan(120, strlen($payload), 'Payload QR kelas harus pendek agar tidak terlalu padat.');
-
-        $response = $this->actingAs($user)->get(route('user.qr.image', [
-            'userId' => $user->id,
-            'study_group_id' => $group->id,
-        ]));
-
-        $response->assertOk();
-        $response->assertHeader('Content-Type', 'image/png');
-        $this->assertGreaterThan(500, strlen($response->getContent()));
-
-        $print = $this->actingAs($user)->get(route('user.qr.print', [
-            'userId' => $user->id,
-            'study_group_id' => $group->id,
-        ]));
-
-        $print->assertOk();
-        $print->assertHeader('Content-Type', 'application/pdf');
-        $pdfContent = (string) $print->getContent();
-        $this->assertStringStartsWith('%PDF', $pdfContent);
-        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*297\.?[0-9]*\s+419\.?[0-9]*\]?/', $pdfContent);
+        return [$school, $year, $grade, $group, $user];
     }
 }

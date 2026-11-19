@@ -140,8 +140,65 @@ class ClassQrController extends Controller
 
         return app(DocumentPdfService::class)->fromView(
             'teacher.qr.pdf',
-            compact('studyGroup', 'token', 'qrData', 'backgroundData'),
+            [
+                'cards' => [[
+                    'studyGroup' => $studyGroup,
+                    'token' => $token,
+                    'qrData' => $qrData,
+                ]],
+                'backgroundData' => $backgroundData,
+                'title' => 'QR Kelas — '.($studyGroup->full_name ?? $studyGroup->name),
+            ],
             'QR-Kelas-'.($studyGroup->full_name ?? $studyGroup->name),
+            'portrait',
+            'A6',
+        );
+    }
+
+    /**
+     * Cetak massal QR untuk seluruh rombel aktif.
+     * GET /qr/print-all
+     */
+    public function printAll(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $academicYear = AcademicYear::where('is_active', true)->first();
+
+        $studyGroups = StudyGroup::with(['school', 'gradeLevel', 'homeroomTeacher:id,name'])
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->orderBy('grade_level_id')
+            ->orderBy('name')
+            ->get();
+
+        if ($studyGroups->isEmpty()) {
+            return redirect()
+                ->route('user.qr.index', ['userId' => $userId])
+                ->with('error', 'Belum ada rombel aktif yang bisa dicetak.');
+        }
+
+        $backgroundData = $this->imageDataUri(null, storage_path('app/public/templates/qr-template-a6.png'));
+
+        $cards = $studyGroups->map(function (StudyGroup $studyGroup) use ($academicYear) {
+            $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
+
+            return [
+                'studyGroup' => $studyGroup,
+                'token' => $token,
+                'qrData' => LjkQrRenderer::pngDataUri(
+                    json_encode($this->qrTokenService->buildQrPayload($token)), 520, 5, 'Q'
+                ),
+            ];
+        })->all();
+
+        return app(DocumentPdfService::class)->fromView(
+            'teacher.qr.pdf',
+            [
+                'cards' => $cards,
+                'backgroundData' => $backgroundData,
+                'title' => 'QR Semua Rombel',
+            ],
+            'QR-Semua-Rombel',
             'portrait',
             'A6',
         );

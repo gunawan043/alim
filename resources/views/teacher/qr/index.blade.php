@@ -30,14 +30,27 @@
     </div>
 @endif
 
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="ri-error-warning-line me-1"></i>{{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
     <p class="text-muted small mb-0">
         Setiap kelas memiliki satu QR untuk absensi masuk/keluar guru
         @if($activeAy) • Tahun Ajaran {{ $activeAy->name }} @endif
     </p>
-    <a href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
-        <i class="ri-qr-scan-2-line me-1"></i>Halaman Scan Guru
-    </a>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('user.qr.print-all', ['userId' => $userId]) }}"
+           target="_blank" class="btn btn-dark btn-sm">
+            <i class="ri-printer-line me-1"></i>Cetak Semua Rombel
+        </a>
+        <a href="{{ route('user.teacher-qr.scan', ['userId' => $userId]) }}" class="btn btn-outline-primary btn-sm">
+            <i class="ri-qr-scan-2-line me-1"></i>Halaman Scan Guru
+        </a>
+    </div>
 </div>
 
 {{-- STATISTIK --}}

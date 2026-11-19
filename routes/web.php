@@ -1485,6 +1485,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // QR kelas (untuk cetak / bagi ke guru) — public signed URL
             Route::get('/qr', [ClassQrController::class, 'index'])
                 ->name('qr.index');
+            Route::get('/qr/print-all', [ClassQrController::class, 'printAll'])
+                ->name('qr.print-all');
             Route::get('/qr/{study_group_id}/image', [ClassQrController::class, 'qrImage'])
                 ->name('qr.image');
             Route::get('/qr/{study_group_id}', [ClassQrController::class, 'show'])

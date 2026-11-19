@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>QR Kelas — {{ $studyGroup->full_name ?? $studyGroup->name }}</title>
+    <title>{{ $title ?? 'QR Kelas' }}</title>
     <style>
         @page { size: A6 portrait; margin: 0; }
         * { box-sizing: border-box; }
@@ -11,8 +11,9 @@
             width: 105mm; height: 148mm;
         }
         body {
-            font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
-            color: #0f172a;
+            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
+            font-weight: bold;
+            color: #ffffff;
         }
         .page {
             position: relative;
@@ -23,86 +24,109 @@
             background-position: top left;
             background-repeat: no-repeat;
             overflow: hidden;
+            page-break-after: always;
         }
+        .page.last { page-break-after: auto; }
 
-        /* Area putih pada template: ± 12mm–93mm, 53mm–128mm */
-        .qr {
+        /* Kotak putih pada template hanya untuk QR. */
+        .qr-panel {
             position: absolute;
-            top: 54mm;
-            left: 31.5mm;
-            width: 42mm;
-            height: 42mm;
+            top: 59.5mm;
+            left: 23.5mm;
+            width: 58mm;
+            height: 58mm;
         }
-        .qr img { width: 42mm; height: 42mm; display: block; }
+        .qr-panel img { width: 58mm; height: 58mm; display: block; }
 
+        /* Seluruh teks berada di area biru, di luar kotak putih. */
         .class-name {
             position: absolute;
-            top: 97.5mm;
-            left: 12mm;
-            width: 81mm;
+            top: 15mm;
+            left: 10mm;
+            width: 85mm;
             text-align: center;
-            font-size: 13pt;
-            font-weight: 700;
-            line-height: 1.15;
-            color: #0f172a;
+            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
+            font-size: 15pt;
+            font-weight: bold;
+            line-height: 1.08;
+            text-transform: uppercase;
+            color: #ffffff;
         }
         .school-name {
             position: absolute;
-            top: 102.5mm;
-            left: 12mm;
-            width: 81mm;
+            top: 27mm;
+            left: 10mm;
+            width: 85mm;
             text-align: center;
-            font-size: 7pt;
-            color: #475569;
+            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
+            font-size: 8pt;
+            font-weight: bold;
+            line-height: 1.2;
+            color: #e0e7ff;
         }
         .meta {
             position: absolute;
-            top: 106.5mm;
-            left: 17mm;
-            width: 71mm;
+            top: 33mm;
+            left: 12mm;
+            width: 81mm;
             border-collapse: collapse;
-            font-size: 6.5pt;
-            color: #334155;
+            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
+            font-size: 7.4pt;
+            font-weight: bold;
+            color: #ffffff;
         }
-        .meta td { padding: .45mm 0; text-align: left; }
-        .meta td:last-child { text-align: right; font-weight: 700; color: #0f172a; }
+        .meta td { padding: .35mm 0; vertical-align: top; }
+        .meta td:first-child { width: 48%; color: #dbeafe; }
+        .meta td:last-child { text-align: right; }
+
+        /* Pengecualian: kalimat petunjuk tidak memakai Cambria Bold. */
         .instruction {
             position: absolute;
-            top: 115.2mm;
-            left: 17mm;
-            width: 71mm;
+            top: 43mm;
+            left: 12mm;
+            width: 81mm;
             text-align: center;
-            font-size: 5.8pt;
+            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
+            font-size: 6.3pt;
+            font-style: italic;
+            font-weight: normal;
             line-height: 1.3;
-            color: #475569;
+            color: #e0e7ff;
         }
-        .instruction strong { color: #0b46f5; }
     </style>
 </head>
 <body>
-<div class="page">
-    <div class="qr">
-        <img src="{{ $qrData }}" alt="QR Code {{ $studyGroup->full_name ?? $studyGroup->name }}">
+@foreach($cards as $card)
+    @php
+        $studyGroup = $card['studyGroup'];
+        $token = $card['token'];
+        $qrData = $card['qrData'];
+        $className = strtoupper($studyGroup->full_name ?? $studyGroup->name);
+    @endphp
+    <div class="page {{ $loop->last ? 'last' : '' }}">
+        <div class="qr-panel">
+            <img src="{{ $qrData }}" alt="QR Code {{ $className }}">
+        </div>
+
+        <div class="class-name">{{ $className }}</div>
+        <div class="school-name">{{ $studyGroup->school?->name ?? '' }}</div>
+
+        <table class="meta">
+            <tr>
+                <td>WALI KELAS</td>
+                <td>{{ $studyGroup->homeroomTeacher?->name ?? '—' }}</td>
+            </tr>
+            <tr>
+                <td>TAHUN AJARAN</td>
+                <td>{{ $token->academicYear?->name ?? '—' }}</td>
+            </tr>
+        </table>
+
+        <div class="instruction">
+            Pindai QR melalui menu Scan QR Kehadiran<br>
+            untuk mencatat absensi masuk dan keluar kelas.
+        </div>
     </div>
-
-    <div class="class-name">{{ $studyGroup->full_name ?? $studyGroup->name }}</div>
-    <div class="school-name">{{ $studyGroup->school?->name ?? '' }}</div>
-
-    <table class="meta">
-        <tr>
-            <td>Wali Kelas</td>
-            <td>{{ $studyGroup->homeroomTeacher?->name ?? '—' }}</td>
-        </tr>
-        <tr>
-            <td>Tahun Ajaran</td>
-            <td>{{ $token->academicYear?->name ?? '—' }}</td>
-        </tr>
-    </table>
-
-    <div class="instruction">
-        Pindai QR melalui menu <strong>Scan QR Kehadiran</strong><br>
-        untuk mencatat absensi masuk dan keluar kelas.
-    </div>
-</div>
+@endforeach
 </body>
 </html>
