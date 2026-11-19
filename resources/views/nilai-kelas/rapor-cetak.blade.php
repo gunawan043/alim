@@ -644,7 +644,7 @@
         <tr>
             <td colspan="3" class="ttd-date" style="text-align: {{ $isArabic ? 'center' : 'right' }};">
                 @if($isArabic)
-                    {!! $text($cityText($printCity)) !!}, {!! $text($hijriDate) !!}
+                    {!! $text($hijriDate) !!}، {!! $text($cityText($printCity)) !!}
                 @else
                     {!! $text($cityText($printCity)) !!}, {{ $printDate->translatedFormat('d F Y') }}
                 @endif
