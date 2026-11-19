@@ -684,7 +684,7 @@ final class UksClinicService
         if ($patient->student && ! in_array($oldStatus, self::NOTIFIABLE_STATUSES, true) && in_array($newStatus, self::NOTIFIABLE_STATUSES, true)) {
             try {
                 app(GuardianWhatsAppNotifier::class)
-                    ->notifySick($patient->student, $reason, 'uks');
+                    ->notifySick($patient->student, $reason, 'uks', $actorId, $patient->dormitory_id);
             } catch (\Throwable $e) {
                 Log::warning('UKS WA notif gagal: '.$e->getMessage());
             }

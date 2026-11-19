@@ -448,6 +448,105 @@ class WhatsAppGuardianNotificationTest extends TestCase
     }
 
 
+    public function test_notifikasi_kunjungan_terkirim_ke_kepala_asrama(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'guardian');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $school = School::firstOrFail();
+        $head = User::create([
+            'name' => 'Kepala Asrama Kunjungan',
+            'email' => 'kepala.kunjungan@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'no_hp' => '0813-4444-5555',
+        ]);
+
+        $dormitory = \App\Models\Dormitory::create([
+            'work_unit_id' => $school->work_unit_id,
+            'school_id' => $school->id,
+            'code' => 'PUTRA-WA-02',
+            'name' => 'Asrama Kunjungan',
+            'gender' => 'putra',
+            'head_id' => $head->id,
+            'is_active' => true,
+        ]);
+
+        $visit = new DormitoryVisitLog([
+            'dormitory_id' => $dormitory->id,
+            'visitor_name' => 'Ayah Santri',
+            'expected_arrival_datetime' => now()->addDay(),
+        ]);
+        $visit->id = (string) Str::uuid();
+        $visit->setRelation('student', $this->student);
+
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyVisit($visit));
+
+        Http::assertSent(fn ($request) => $request['target'] === '6281344445555'
+            && str_contains($request['message'], 'Kepala Asrama'));
+    }
+
+    public function test_notifikasi_sakit_terkirim_ke_kepala_asrama(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'guardian');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $school = School::firstOrFail();
+        $head = User::create([
+            'name' => 'Kepala Asrama UKS',
+            'email' => 'kepala.uks@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+            'no_hp' => '0813-6666-7777',
+        ]);
+
+        $dormitory = \App\Models\Dormitory::create([
+            'work_unit_id' => $school->work_unit_id,
+            'school_id' => $school->id,
+            'code' => 'PUTRA-WA-03',
+            'name' => 'Asrama UKS',
+            'gender' => 'putra',
+            'head_id' => $head->id,
+            'is_active' => true,
+        ]);
+
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifySick(
+            $this->student,
+            'Demam tinggi',
+            'uks',
+            null,
+            $dormitory->id,
+        ));
+
+        Http::assertSent(fn ($request) => $request['target'] === '6281366667777'
+            && str_contains($request['message'], 'Kepala Asrama'));
+    }
+
+    public function test_pesan_izin_mencantumkan_nama_petugas_pencatat(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'guardian');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $petugas = User::create([
+            'name' => 'Ust. Petugas Perizinan',
+            'email' => 'petugas.izin@test.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+
+        $permit = $this->makePermit([
+            'created_by' => $petugas->id,
+            'status' => 'pending',
+        ]);
+
+        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyPermitSubmitted($permit));
+
+        Http::assertSent(fn ($request) => str_contains(
+            $request['message'],
+            'Dicatat oleh: Ust. Petugas Perizinan'
+        ));
+    }
+
     public function test_notifikasi_izin_terkirim_ke_wali_dan_kepala_asrama(): void
     {
         config()->set('whatsapp.delivery_mode', 'guardian');

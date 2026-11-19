@@ -49,6 +49,8 @@ class GuardianWhatsAppNotifier
             'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
         ]);
 
+        $message = $this->withRecorder($message, $this->staffName($permit->created_by));
+
         return $this->sendPermitToTargets($permit, $message, 'permit_picked_up', $permit->id);
     }
 
@@ -69,6 +71,8 @@ class GuardianWhatsAppNotifier
             'waktu' => $permit->actual_return_datetime?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i'),
         ]);
 
+        $message = $this->withRecorder($message, $this->staffName($permit->created_by));
+
         return $this->sendPermitToTargets($permit, $message, 'permit_returned', $permit->id);
     }
 
@@ -85,6 +89,8 @@ class GuardianWhatsAppNotifier
             'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
             'penjemput' => trim((string) ($permit->companion_name ?: '-')),
         ]);
+
+        $message = $this->withRecorder($message, $this->staffName($permit->created_by));
 
         return $this->sendPermitToTargets($permit, $message, 'permit_submitted', $permit->id);
     }
@@ -103,6 +109,8 @@ class GuardianWhatsAppNotifier
             'penjemput' => trim((string) ($permit->companion_name ?: '-')),
         ]);
 
+        $message = $this->withRecorder($message, $this->staffName($permit->created_by));
+
         return $this->sendPermitToTargets($permit, $message, 'permit_approved', $permit->id);
     }
 
@@ -117,6 +125,8 @@ class GuardianWhatsAppNotifier
             'jenis' => ucfirst(str_replace('_', ' ', (string) $permit->permit_type)),
             'catatan' => $note ?: '-',
         ]);
+
+        $message = $this->withRecorder($message, $this->staffName($permit->created_by));
 
         return $this->sendPermitToTargets($permit, $message, 'permit_rejected', $permit->id);
     }
@@ -189,6 +199,8 @@ class GuardianWhatsAppNotifier
             'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
         ]);
 
+        $message = $this->withRecorder($message, $this->staffName($permit->created_by));
+
         return $this->sendPermitToTargets($permit, $message, 'overdue', $permit->id);
     }
 
@@ -206,7 +218,9 @@ class GuardianWhatsAppNotifier
             'catatan' => $visit->approval_note ?: '-',
         ]);
 
-        return $this->sendToTargets($visit->student, $message, 'visit', (string) $visit->id);
+        $message = $this->withRecorder($message, $this->staffName($visit->created_by));
+
+        return $this->sendToTargets($visit->student, $message, 'visit', (string) $visit->id, $visit->dormitory_id);
     }
 
     public function notifyReturnReminder(DormitoryPermit $permit): bool
@@ -223,8 +237,13 @@ class GuardianWhatsAppNotifier
         return $this->sendPermitToTargets($permit, $message, 'permit_reminder', (string) $permit->id);
     }
 
-    public function notifySick(Student $student, ?string $note = null, string $source = 'uks'): bool
-    {
+    public function notifySick(
+        Student $student,
+        ?string $note = null,
+        string $source = 'uks',
+        ?string $recordedBy = null,
+        ?string $dormitoryId = null,
+    ): bool {
         if (! $this->eventEnabled('student_sick')) {
             return false;
         }
@@ -235,7 +254,9 @@ class GuardianWhatsAppNotifier
             'catatan' => $note ? '• Catatan: '.$note."\n" : '',
         ]);
 
-        return $this->sendToTargets($student, $message, 'student_sick', $student->id);
+        $message = $this->withRecorder($message, $this->staffName($recordedBy));
+
+        return $this->sendToTargets($student, $message, 'student_sick', $student->id, $dormitoryId);
     }
 
     /**
@@ -282,44 +303,17 @@ class GuardianWhatsAppNotifier
 
     // ── Penerima & pengiriman ───────────────────────────────────────
 
-    private function sendToTargets(Student $student, string $message, string $event, string $refId): bool
-    {
-        $targets = $this->resolveTargets($student);
-
-        if ($targets === []) {
-            return false;
-        }
-
-        $guardianName = $this->guardianName($student);
-        $guardianPhone = $this->guardianPhone($student);
-        $ok = false;
-
-        foreach ($targets as $target) {
-            $body = $target['central']
-                ? 'Untuk wali: '.($guardianName ?: 'Wali '.$student->name)
-                    .($guardianPhone ? " ({$guardianPhone})" : '')
-                    ." — santri: {$student->name}\n\n".$message
-                : $message;
-
-            $ok = $this->send($target['phone'], $this->withBrandFooter($body), $event, $refId) || $ok;
-        }
-
-        return $ok;
-    }
-
     /**
-     * Notifikasi izin asrama: wali (semua nomor mahrom aktif) + kepala asrama.
-     * Mode central tetap dihormati, tetapi wali dan kepala asrama selalu
-     * dimasukkan agar informasi izin tidak hanya berhenti di admin.
+     * Kirim pesan ke wali. Bila `$dormitoryId` diberikan dan santri mondok,
+     * Kepala Asrama (serta wakil aktif) ikut menerima salinan.
      */
-    private function sendPermitToTargets(DormitoryPermit $permit, string $message, string $event, string $refId): bool
-    {
-        $student = $permit->student;
-
-        if (! $student) {
-            return false;
-        }
-
+    private function sendToTargets(
+        Student $student,
+        string $message,
+        string $event,
+        string $refId,
+        ?string $dormitoryId = null,
+    ): bool {
         $targets = $this->resolveTargets($student);
         $seen = [];
 
@@ -340,14 +334,16 @@ class GuardianWhatsAppNotifier
             $targets[] = ['phone' => $phone, 'central' => false, 'head' => false];
         }
 
-        foreach ($this->dormitoryHeadPhones($permit->dormitory_id) as $phone) {
-            $digits = preg_replace('/\D+/', '', (string) $phone);
-            if ($digits === '' || isset($seen[$digits])) {
-                continue;
-            }
+        if ($dormitoryId) {
+            foreach ($this->dormitoryHeadPhones($dormitoryId) as $phone) {
+                $digits = preg_replace('/\D+/', '', (string) $phone);
+                if ($digits === '' || isset($seen[$digits])) {
+                    continue;
+                }
 
-            $seen[$digits] = true;
-            $targets[] = ['phone' => $phone, 'central' => false, 'head' => true];
+                $seen[$digits] = true;
+                $targets[] = ['phone' => $phone, 'central' => false, 'head' => true];
+            }
         }
 
         if ($targets === []) {
@@ -373,6 +369,22 @@ class GuardianWhatsAppNotifier
         }
 
         return $ok;
+    }
+
+    /**
+     * Notifikasi izin asrama: wali (semua nomor mahrom aktif) + kepala asrama.
+     * Mode central tetap dihormati, tetapi wali dan kepala asrama selalu
+     * dimasukkan agar informasi izin tidak hanya berhenti di admin.
+     */
+    private function sendPermitToTargets(DormitoryPermit $permit, string $message, string $event, string $refId): bool
+    {
+        $student = $permit->student;
+
+        if (! $student) {
+            return false;
+        }
+
+        return $this->sendToTargets($student, $message, $event, $refId, $permit->dormitory_id);
     }
 
     /**
@@ -591,6 +603,38 @@ class GuardianWhatsAppNotifier
             ->where('is_active', true)
             ->orderByDesc('is_primary')
             ->value('name');
+    }
+
+    /**
+     * Tambahkan nama petugas pencatat pada pesan.
+     */
+    private function withRecorder(string $message, ?string $name): string
+    {
+        $name = trim((string) $name);
+
+        if ($name === '' || str_contains($message, 'Dicatat oleh: '.$name)) {
+            return $message;
+        }
+
+        return rtrim($message)."\n\n• Dicatat oleh: ".$name;
+    }
+
+    private function staffName(?string $userId): ?string
+    {
+        if (! $userId) {
+            return null;
+        }
+
+        try {
+            return \App\Models\User::whereKey($userId)->value('name');
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengambil nama petugas pencatat', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     private function send(string $phone, string $message, string $event, string $refId): bool
