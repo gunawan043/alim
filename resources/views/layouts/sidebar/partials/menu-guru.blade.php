@@ -44,7 +44,7 @@
     };
 @endphp
 
-<li class="menu-title"><span>Menu Guru</span></li>
+<li class="menu-title"><span>Mengajar · Guru Mapel</span></li>
 
 <x-sidebar-section id="guru_menu_absensi" label="Absensi" icon="ri-calendar-check-line"
     :open="$guruSectionOpen(['user.jadwal-kbm.for-teacher', 'user.teacher-qr.', 'user.absensi.harian.'])">

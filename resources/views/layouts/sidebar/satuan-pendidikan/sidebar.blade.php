@@ -514,7 +514,7 @@
 
     // Label section mengikuti peran yang sedang dipakai, supaya GTK yang
     // merangkap Waka + Wali Kelas + Guru Mapel melihat batas yang jelas.
-    $mengajarLabel  = ($hasTeachingAssignments || $hasTeacherBooks) ? 'Menu Guru Mapel' : 'Menu Guru';
+    $mengajarLabel  = ($hasTeachingAssignments || $hasTeacherBooks) ? 'Mengajar · Guru Mapel' : 'Mengajar · Guru';
     $managementLabel = $hasStructuralPosition
         ? 'Jabatan'.($structuralLabel !== '' ? ' · '.$structuralLabel : '')
         : 'Tugas Tambahan'.($additionalTaskLabel !== '' ? ' · '.$additionalTaskLabel : '');
@@ -635,7 +635,7 @@
                     <i class="ri-book-3-line"></i><span>Mapel Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
             </li>
 
-            @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen', ['asesmenFull' => true])
         </x-sidebar-section>
 
         {{-- Jurnal: catatan pelaksanaan pembelajaran harian --}}

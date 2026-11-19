@@ -165,7 +165,7 @@ class SidebarAuditTest extends TestCase
 
         $user = User::create([
             'name' => 'Uji '.$jabatan,
-            'email' => Str::slug($jabatan).'-'.random_int(1000, 9999).'@test.local',
+            'email' => Str::slug($jabatan).'-'.Str::uuid().'@test.local',
             'password' => bcrypt('password'),
             'is_active' => true,
             'is_system_admin' => false,
@@ -708,7 +708,7 @@ class SidebarAuditTest extends TestCase
         $page->assertOk();
         $html = $page->getContent();
 
-        $this->assertStringContainsString('Menu Guru Mapel', $html);
+        $this->assertStringContainsString('Mengajar · Guru Mapel', $html);
         $this->assertStringContainsString('Mapel Saya', $html);
         $this->assertStringContainsString('Kurikulum', $html);
         $this->assertStringContainsString('Asesmen', $html);
@@ -718,7 +718,7 @@ class SidebarAuditTest extends TestCase
         $guru = $this->makeUser('GURU UMUM', [], true);
         $guruPage = $this->actingAs($guru)->get('/'.$guru->id.'/dashboard/satuan-pendidikan');
         $guruPage->assertOk();
-        $this->assertStringContainsString('Menu Guru Mapel', $guruPage->getContent());
+        $this->assertStringContainsString('Mengajar · Guru Mapel', $guruPage->getContent());
     }
 
 
