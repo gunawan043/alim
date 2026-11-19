@@ -3,6 +3,30 @@
 
 @section('css')
     @include('kurikulum._styles')
+    <style>
+        /* Pastikan modal pengaturan rapor selalu bisa di-scroll sampai tombol simpan. */
+        #layoutSettingsModal .modal-content,
+        #signatureSettingsModal .modal-content {
+            max-height: calc(100vh - 2rem);
+        }
+        #layoutSettingsModal .modal-body,
+        #signatureSettingsModal .modal-body {
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+        #layoutSettingsModal form {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+        #layoutSettingsModal form > .modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+        }
+    </style>
 @endsection
 
 @section('content')
@@ -450,6 +474,10 @@
                             </div>
                         </div>
                         <div class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    data-bs-toggle="modal" data-bs-target="#layoutSettingsModal">
+                                <i class="ri-layout-line me-1"></i>Margin, Font &amp; Kertas
+                            </button>
                             <button type="button" class="btn btn-outline-primary btn-sm"
                                     data-bs-toggle="modal" data-bs-target="#signatureSettingsModal">
                                 <i class="ri-image-line me-1"></i>Kop, TTD &amp; Stempel
