@@ -57,16 +57,16 @@
             text-align: center;
             text-transform: uppercase;
             font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 14pt;
+            font-size: 20pt;
             font-weight: bold;
-            line-height: 1.2;
+            line-height: 1.15;
             letter-spacing: .4px;
             color: #e0e7ff;
         }
 
         .document-title {
             position: absolute;
-            top: 42mm;
+            top: 40mm;
             left: 10mm;
             width: 190mm;
 
@@ -82,25 +82,38 @@
 
         .academic-year {
             position: absolute;
-            top: 68mm;
-            left: 20mm;
-            width: 170mm;
+            top: 56.5mm;
+            left: 15mm;
+            width: 180mm;
 
             text-align: center;
             font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 14pt;
+            font-size: 15pt;
             font-weight: bold;
-            line-height: 1.2;
-            color: #ffffff;
+            line-height: 1.15;
+        }
+
+        .academic-year-pill {
+            display: inline-block;
+            padding: 1.7mm 8mm;
+            background-color: #ffffff;
+            border: 0.4mm solid #dbeafe;
+            border-radius: 4mm;
+            white-space: nowrap;
+            color: #0b2a7a;
         }
 
         .academic-year .label {
-            color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .academic-year .value {
+            color: #0b2a7a;
         }
 
         .instruction {
             position: absolute;
-            top: 84mm;
+            top: 71mm;
             left: 15mm;
             width: 180mm;
 
@@ -183,8 +196,10 @@
         </div>
 
         <div class="academic-year">
-            <span class="label">TAHUN AJARAN</span> :
-            <span class="value">{{ $token->academicYear?->name ?? '—' }}</span>
+            <span class="academic-year-pill">
+                <span class="label">TAHUN AJARAN</span> :
+                <span class="value">{{ $token->academicYear?->name ?? '—' }}</span>
+            </span>
         </div>
 
         <div class="instruction">
