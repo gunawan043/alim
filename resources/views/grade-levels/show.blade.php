@@ -308,8 +308,11 @@
                             </table>
                         </div>
 
-                        {{-- TOMBOL ATUR KKTP ────────────────────── --}}
-                        <div class="p-3 border-top bg-light">
+                        {{-- TOMBOL ATUR KKTP / JP ────────────────────── --}}
+                        <div class="p-3 border-top bg-light d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#jpModal">
+                                <i class="ri-time-line me-1"></i>Atur JP
+                            </button>
                             <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#kktpModal">
                                 <i class="ri-bar-chart-line me-1"></i>Atur KKTP
                             </button>
@@ -482,6 +485,79 @@
             </div>
         </div>
     </div>
+    {{-- MODAL: ATUR JP PER MAPEL ─────────────────────── --}}
+    <div class="modal fade" id="jpModal" tabindex="-1" aria-labelledby="jpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="jpModalLabel">
+                        <i class="ri-time-line me-1 text-primary"></i>
+                        Atur JP per Mapel — {{ $gradeLevel->name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ route('user.grade-levels.subjects.hours', ['userId' => $userId, 'id' => $gradeLevel->id]) }}">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-body">
+                        <div class="alert alert-light border mb-3">
+                            <i class="ri-information-line me-1 text-muted"></i>
+                            <small class="text-muted">
+                                JP adalah alokasi jam pelajaran per minggu. Perubahan di sini juga
+                                diterapkan ke mapel rombel agar leger, jadwal, dan perangkat memakai angka yang sama.
+                            </small>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light text-muted" style="font-size:0.75rem">
+                                    <tr>
+                                        <th class="text-uppercase">Mata Pelajaran</th>
+                                        <th class="text-center text-uppercase">Kategori</th>
+                                        <th class="text-center text-uppercase" style="width:120px">JP / Minggu</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($gradeLevelSubjects as $gls)
+                                        @php $cat = $gls->subject->category ?? 'nasional'; @endphp
+                                        <tr>
+                                            <td>
+                                                <span class="fw-semibold" style="font-size:0.88rem">{{ $gls->subject->name }}</span>
+                                                <br><code class="text-muted" style="font-size:0.75rem">{{ $gls->subject->code ?? '-' }}</code>
+                                            </td>
+                                            <td class="text-center">
+                                                @if($cat === 'nasional')
+                                                    <span class="badge bg-primary-subtle text-primary">Nasional</span>
+                                                @else
+                                                    <span class="badge bg-warning-subtle text-warning">Muatan Lokal</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" name="hours[{{ $gls->id }}]"
+                                                           class="form-control text-center"
+                                                           value="{{ $gls->allocation_hours }}"
+                                                           min="0" max="40" step="1">
+                                                    <span class="input-group-text bg-light">JP</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-save-line me-1"></i>Simpan JP
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal konfirmasi hapus mapel — template lord-icon/zoomIn --}}
     <form id="removeSubjectForm" method="POST" action="" class="d-none">
         @csrf

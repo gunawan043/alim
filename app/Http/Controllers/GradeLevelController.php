@@ -244,6 +244,59 @@ class GradeLevelController extends Controller
         return $count;
     }
 
+    /**
+     * Simpan penyesuaian JP per mapel untuk satu tingkat.
+     * JP disimpan pada grade_level_subjects dan disebar ke mapel rombel
+     * (study_group_subjects) agar leger/jadwal memakai angka yang sama.
+     */
+    public function updateSubjectHours(Request $request, string $userId, string $id)
+    {
+        $gradeLevel = GradeLevel::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $gradeLevel->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $validated = $request->validate([
+            'hours' => 'required|array',
+            'hours.*' => 'nullable|integer|min:0|max:40',
+        ]);
+
+        $groupIds = StudyGroup::query()
+            ->where('grade_level_id', $gradeLevel->id)
+            ->where('school_id', $gradeLevel->school_id)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        $updated = 0;
+
+        foreach ($validated['hours'] as $gradeLevelSubjectId => $hours) {
+            $row = GradeLevelSubject::query()
+                ->where('grade_level_id', $gradeLevel->id)
+                ->whereKey($gradeLevelSubjectId)
+                ->first();
+
+            if (! $row) {
+                continue;
+            }
+
+            $hours = (int) $hours;
+            $row->update(['allocation_hours' => $hours]);
+
+            if ($groupIds->isNotEmpty()) {
+                StudyGroupSubject::query()
+                    ->whereIn('study_group_id', $groupIds)
+                    ->where('subject_id', $row->subject_id)
+                    ->update(['weekly_hours' => $hours]);
+            }
+
+            $updated++;
+        }
+
+        return back()->with('success', "JP berhasil diperbarui untuk {$updated} mapel.");
+    }
+
     public function removeSubject(Request $request, string $userId, string $id)
     {
         $gradeLevel = GradeLevel::findOrFail($id);

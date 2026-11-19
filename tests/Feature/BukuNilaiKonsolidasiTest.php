@@ -590,6 +590,33 @@ class BukuNilaiKonsolidasiTest extends TestCase
             ->assertStatus(403);
     }
 
+
+    public function test_penyesuaian_jp_tingkat_menyebar_ke_mapel_rombel(): void
+    {
+        $gls = GradeLevelSubject::create([
+            'academic_year_id' => $this->ay->id,
+            'grade_level_id' => $this->grade->id,
+            'subject_id' => $this->subject->id,
+            'allocation_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        $sgs = \App\Models\StudyGroupSubject::query()
+            ->where('study_group_id', $this->studyGroup->id)
+            ->where('subject_id', $this->subject->id)
+            ->where('academic_year_id', $this->ay->id)
+            ->firstOrFail();
+
+        $this->actingAs($this->kurikulum)
+            ->put("/{$this->kurikulum->id}/grade-levels/{$this->grade->id}/subjects/hours", [
+                'hours' => [$gls->id => 6],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(6, (int) $gls->fresh()->allocation_hours);
+        $this->assertSame(6.0, (float) $sgs->fresh()->weekly_hours);
+    }
+
     private function seedSnapshot(User $user): void
     {
         $roleDimension = implode(',', $user->fresh()->effectiveRoles()) ?: 'default';

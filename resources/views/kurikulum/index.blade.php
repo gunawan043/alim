@@ -18,6 +18,12 @@
     @endcomponent
 
     <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+        <a href="{{ route('user.subjects.index', ['userId' => $userId]) }}" class="btn btn-soft-secondary">
+            <i class="ri-book-2-line me-1"></i>Master Mapel
+        </a>
+        <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}" class="btn btn-soft-secondary">
+            <i class="ri-stack-line me-1"></i>Struktur &amp; JP
+        </a>
         <a href="{{ route('user.schools.nilai.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
            class="btn btn-soft-primary">
             <i class="ri-table-line me-1"></i>Leger &amp; Rapor

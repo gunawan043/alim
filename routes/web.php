@@ -125,6 +125,7 @@ use App\Http\Controllers\GTKEducationController;
 use App\Http\Controllers\GtkPositionController;
 use App\Http\Controllers\GtkRecruitmentController;
 use App\Http\Controllers\GtkRequestController;
+use App\Http\Controllers\GtkUnitHeadController;
 use App\Http\Controllers\GtkWizardController;
 use App\Http\Controllers\GuardianPortalController;
 use App\Http\Controllers\HomeController;
@@ -1021,6 +1022,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/import/resolve', [GtkWizardController::class, 'resolveImportValues'])->name('import.resolve');
                 Route::post('/import/store', [GtkWizardController::class, 'importStore'])->name('import.store');
 
+                // ── KEPALA & WAKIL SATUAN KERJA (bukan lewat import) ──
+                Route::get('/kepala-wakil', [GtkUnitHeadController::class, 'index'])->name('kepala-wakil.index');
+                Route::put('/kepala-wakil/{workUnitId}', [GtkUnitHeadController::class, 'update'])->name('kepala-wakil.update');
 
                 // ── IMPORT NAMA ARAB GTK (menu terpisah; match NUPY) ──
                 Route::get('/import-nama-arab', [GtkArabicNameController::class, 'form'])->name('import-nama-arab-form');
@@ -1768,6 +1772,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{id}', [GradeLevelController::class, 'update'])->name('update');
                 Route::delete('/{id}', [GradeLevelController::class, 'destroy'])->name('destroy');
                 Route::post('/{id}/subjects/add', [GradeLevelController::class, 'addSubject'])->name('subjects.add');
+                Route::put('/{id}/subjects/hours', [GradeLevelController::class, 'updateSubjectHours'])->name('subjects.hours');
                 Route::delete('/{id}/subjects/remove', [GradeLevelController::class, 'removeSubject'])->name('subjects.remove');
                 Route::post('/{id}/kktp', [GradeLevelController::class, 'saveKktp'])->name('kktp.save');
             });
