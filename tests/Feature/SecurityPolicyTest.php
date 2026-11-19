@@ -48,6 +48,21 @@ class SecurityPolicyTest extends TestCase
         $this->assertTrue($user->locked_until->between(now()->addMinutes(4), now()->addMinutes(6)));
     }
 
+    public function test_login_lockout_tidak_500_saat_daftar_super_admin_kosong(): void
+    {
+        $this->setSetting('max_login_attempts', '1');
+        $this->setSetting('lockout_duration_minutes', '5');
+
+        $user = User::factory()->create(['is_active' => true]);
+
+        $this->post('/login', [
+            'identity' => $user->email,
+            'password' => 'wrong-password',
+        ])->assertSessionHasErrors('account_locked');
+
+        $this->assertNotNull($user->fresh()->locked_until);
+    }
+
     public function test_otp_expiry_uses_security_setting(): void
     {
         Mail::fake();

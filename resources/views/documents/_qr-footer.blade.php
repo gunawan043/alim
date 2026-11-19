@@ -8,7 +8,7 @@
 @if(! empty($verification) && empty($verification['preview']))
     <div style="margin-top:8mm;border-top:1px dashed #94a3b8;padding-top:3mm;display:flex;align-items:center;gap:4mm;font-family:Arial,sans-serif;">
         @if(! empty($verification['qr_data_uri']))
-            <img src="{{ $verification['qr_data_uri'] }}" alt="QR Verifikasi" style="width:22mm;height:22mm;flex-shrink:0;">
+            <img src="{{ $verification['qr_data_uri'] }}" alt="QR Verifikasi" style="width:26mm;height:26mm;flex-shrink:0;">
         @endif
         <div style="font-size:8pt;color:#334155;line-height:1.45;">
             <strong>Verifikasi Dokumen — QR ini terpisah dari blok tanda tangan.</strong><br>

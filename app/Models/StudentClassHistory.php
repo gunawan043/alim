@@ -18,6 +18,31 @@ class StudentClassHistory extends Model
     {
         parent::boot();
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+
+        // Satu santri hanya boleh punya satu riwayat kelas aktif per tahun ajaran.
+        // Tahun ajaran dapat tersimpan sebagai dua baris semester, jadi cocokkan
+        // berdasarkan nama tahun ajaran.
+        static::saving(function (StudentClassHistory $model) {
+            if (! $model->is_active || ! $model->student_id || ! $model->academic_year_id) {
+                return;
+            }
+
+            $year = AcademicYear::find($model->academic_year_id);
+            $yearIds = $year
+                ? AcademicYear::where('name', $year->name)->pluck('id')->all()
+                : [$model->academic_year_id];
+
+            $query = static::query()
+                ->where('student_id', $model->student_id)
+                ->whereIn('academic_year_id', $yearIds)
+                ->where('is_active', true);
+
+            if ($model->exists) {
+                $query->where('id', '!=', $model->id);
+            }
+
+            $query->update(['is_active' => false]);
+        });
     }
 
     protected $fillable = [

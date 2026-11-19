@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
+use App\Models\GradeLevelSubject;
 use App\Models\School;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\User;
 use App\Services\SchoolGroupService;
+use App\Services\SchoolUnitService;
 use App\Services\StudyGroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -38,8 +41,10 @@ class StudyGroupController extends Controller
             $query->where('academic_year_id', $request->academic_year_id);
         }
 
+        $unitService = app(SchoolUnitService::class);
         if ($schoolId) {
-            $query->where('school_id', $schoolId);
+            $readable = array_merge([$schoolId], $unitService->operationalSchoolIds($schoolId));
+            $query->whereIn('school_id', $readable);
         } elseif ($request->filled('school_id')) {
             $query->where('school_id', $request->school_id);
         }
@@ -100,7 +105,11 @@ class StudyGroupController extends Controller
         $academicYears = AcademicYear::orderBy('name', 'desc')->get();
         $isGlobalView = $request->attributes->get('isGlobalView') === true;
 
-        return view('study-groups.index', compact('studyGroups', 'schools', 'academicYears', 'stats', 'userId', 'isGlobalView'));
+        $readOnlySchoolIds = $schoolId ? $unitService->operationalSchoolIds($schoolId) : [];
+
+        return view('study-groups.index', compact(
+            'studyGroups', 'schools', 'academicYears', 'stats', 'userId', 'isGlobalView', 'readOnlySchoolIds'
+        ));
     }
 
     public function create(Request $request, string $userId)
@@ -157,6 +166,10 @@ class StudyGroupController extends Controller
             $data['school_id'] = $schoolId;
         }
 
+        $unitService = app(SchoolUnitService::class);
+        $data['unit_type'] = $unitService->isOperational($data['school_id']) ? 'operational' : 'primary';
+        $data['data_owner_school_id'] = $unitService->primarySchoolId($data['school_id']) ?: $data['school_id'];
+
         $exists = StudyGroup::where('school_id', $data['school_id'])
             ->where('academic_year_id', $data['academic_year_id'])
             ->where('grade_level_id', $data['grade_level_id'] ?? null)
@@ -167,6 +180,7 @@ class StudyGroupController extends Controller
         }
 
         $studyGroup = StudyGroup::create($data);
+        $this->provisionSubjectsFromGradeLevel($studyGroup);
 
         return redirect()->route('user.study-groups.show', ['userId' => $userId, 'id' => $studyGroup->id])
             ->with('success', 'Rombel berhasil disimpan.');
@@ -181,7 +195,7 @@ class StudyGroupController extends Controller
         ])->findOrFail($id);
 
         $schoolId = request()->attributes->get('schoolContextId');
-        if ($schoolId && $studyGroup->school_id !== $schoolId) {
+        if ($schoolId && ! app(SchoolUnitService::class)->canReadSchool($schoolId, $studyGroup->school_id)) {
             abort(403, 'Akses ditolak.');
         }
 
@@ -199,7 +213,13 @@ class StudyGroupController extends Controller
         $isArchiveGroup = $activeAcademicYear
             && (string) $studyGroup->academic_year_id !== (string) $activeAcademicYear->id;
 
-        return view('study-groups.show', compact('studyGroup', 'userId', 'activeHistories', 'activeAcademicYear', 'isArchiveGroup'));
+        $readOnly = $schoolId
+            && app(SchoolUnitService::class)->canReadSchool($schoolId, $studyGroup->school_id)
+            && ! app(SchoolUnitService::class)->canManageSchool($schoolId, $studyGroup->school_id);
+
+        return view('study-groups.show', compact(
+            'studyGroup', 'userId', 'activeHistories', 'activeAcademicYear', 'isArchiveGroup', 'readOnly'
+        ));
     }
 
     public function edit(string $userId, string $id)
@@ -207,8 +227,8 @@ class StudyGroupController extends Controller
         $studyGroup = StudyGroup::findOrFail($id);
         $schoolId = request()->attributes->get('schoolContextId');
 
-        if ($schoolId && $studyGroup->school_id !== $schoolId) {
-            abort(403, 'Akses ditolak.');
+        if ($schoolId && ! app(SchoolUnitService::class)->canManageSchool($schoolId, $studyGroup->school_id)) {
+            abort(403, 'Rombel unit operasional hanya dapat diubah oleh unit operasional.');
         }
 
         $schools = School::orderBy('name')->get();
@@ -232,8 +252,8 @@ class StudyGroupController extends Controller
         $studyGroup = StudyGroup::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
-        if ($schoolId && $studyGroup->school_id !== $schoolId) {
-            abort(403, 'Akses ditolak.');
+        if ($schoolId && ! app(SchoolUnitService::class)->canManageSchool($schoolId, $studyGroup->school_id)) {
+            abort(403, 'Rombel unit operasional hanya dapat diubah oleh unit operasional.');
         }
 
         $rules = [
@@ -280,8 +300,8 @@ class StudyGroupController extends Controller
         $studyGroup = StudyGroup::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
-        if ($schoolId && $studyGroup->school_id !== $schoolId) {
-            abort(403, 'Akses ditolak.');
+        if ($schoolId && ! app(SchoolUnitService::class)->canManageSchool($schoolId, $studyGroup->school_id)) {
+            abort(403, 'Rombel unit operasional hanya dapat diubah oleh unit operasional.');
         }
 
         try {
@@ -297,5 +317,33 @@ class StudyGroupController extends Controller
 
         return redirect()->route('user.study-groups.index', ['userId' => $userId])
             ->with('success', 'Rombel berhasil dihapus.');
+    }
+
+    /**
+     * Salin mapel + alokasi JP dari tingkat ke rombel baru.
+     * Tanpa ini, JP kosong di SK karena study_group_subjects belum ada.
+     */
+    private function provisionSubjectsFromGradeLevel(StudyGroup $studyGroup): void
+    {
+        $subjects = GradeLevelSubject::query()
+            ->forAcademicYear($studyGroup->academic_year_id)
+            ->where('grade_level_id', $studyGroup->grade_level_id)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($subjects as $subject) {
+            StudyGroupSubject::updateOrCreate(
+                [
+                    'study_group_id' => $studyGroup->id,
+                    'subject_id' => $subject->subject_id,
+                ],
+                [
+                    'school_id' => $studyGroup->school_id,
+                    'academic_year_id' => $studyGroup->academic_year_id,
+                    'weekly_hours' => (float) ($subject->allocation_hours ?: 2),
+                    'is_active' => true,
+                ],
+            );
+        }
     }
 }

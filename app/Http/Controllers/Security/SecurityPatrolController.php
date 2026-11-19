@@ -9,11 +9,11 @@ use App\Models\Security\SecurityPatrolSchedule;
 use App\Models\Security\SecurityPost;
 use App\Models\Security\SecurityShift;
 use App\Models\Security\SecurityTeam;
+use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Security\SecurityCodeService;
 use App\Support\SecurityAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SecurityPatrolController extends Controller
 {
@@ -284,15 +284,11 @@ class SecurityPatrolController extends Controller
     public function checkpointQr(Request $request, string $userId, string $checkpoint)
     {
         $checkpoint = SecurityCheckpoint::query()->findOrFail($checkpoint);
-        $size = (int) $request->query('size', 240);
+        $size = max(240, min(800, (int) $request->query('size', 480)));
+        $png = LjkQrRenderer::png($checkpoint->scanUrl(), $size, 5, 'Q');
 
-        $svg = QrCode::format('svg')
-            ->size(max(80, min(600, $size)))
-            ->margin(1)
-            ->generate($checkpoint->scanUrl());
-
-        return response($svg, 200, [
-            'Content-Type' => 'image/svg+xml',
+        return response($png, 200, [
+            'Content-Type' => 'image/png',
             'Cache-Control' => 'private, max-age=3600',
         ]);
     }

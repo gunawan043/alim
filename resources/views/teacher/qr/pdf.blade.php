@@ -4,46 +4,105 @@
     <meta charset="utf-8">
     <title>QR Kelas — {{ $studyGroup->full_name ?? $studyGroup->name }}</title>
     <style>
-        @page { size: A4 portrait; margin: 18mm; }
+        @page { size: A6 portrait; margin: 0; }
         * { box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; text-align: center; }
-        .card { border: 2px solid #111; border-radius: 10px; padding: 22px 26px; }
-        .school { font-size: 17pt; font-weight: bold; text-transform: uppercase; margin: 0; }
-        .sub { font-size: 10pt; color: #444; margin: 3px 0 0; }
-        .class-name { font-size: 20pt; font-weight: bold; margin: 22px 0 4px; }
-        .meta { font-size: 10.5pt; color: #333; margin: 0 0 18px; }
-        .qr { width: 300px; height: 300px; margin: 0 auto 16px; }
-        .qr img { width: 300px; height: 300px; }
-        .instruction { font-size: 10.5pt; line-height: 1.5; margin: 0 auto; max-width: 430px; }
-        .footer { margin-top: 24px; font-size: 9pt; color: #555; }
+        html, body {
+            margin: 0; padding: 0;
+            width: 105mm; height: 148mm;
+        }
+        body {
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+            color: #0f172a;
+        }
+        .page {
+            position: relative;
+            width: 105mm;
+            height: 148mm;
+            background-image: url('{{ $backgroundData }}');
+            background-size: 105mm 148mm;
+            background-position: top left;
+            background-repeat: no-repeat;
+            overflow: hidden;
+        }
+
+        /* Area putih pada template: ± 12mm–93mm, 53mm–128mm */
+        .qr {
+            position: absolute;
+            top: 54mm;
+            left: 31.5mm;
+            width: 42mm;
+            height: 42mm;
+        }
+        .qr img { width: 42mm; height: 42mm; display: block; }
+
+        .class-name {
+            position: absolute;
+            top: 97.5mm;
+            left: 12mm;
+            width: 81mm;
+            text-align: center;
+            font-size: 13pt;
+            font-weight: 700;
+            line-height: 1.15;
+            color: #0f172a;
+        }
+        .school-name {
+            position: absolute;
+            top: 102.5mm;
+            left: 12mm;
+            width: 81mm;
+            text-align: center;
+            font-size: 7pt;
+            color: #475569;
+        }
+        .meta {
+            position: absolute;
+            top: 106.5mm;
+            left: 17mm;
+            width: 71mm;
+            border-collapse: collapse;
+            font-size: 6.5pt;
+            color: #334155;
+        }
+        .meta td { padding: .45mm 0; text-align: left; }
+        .meta td:last-child { text-align: right; font-weight: 700; color: #0f172a; }
+        .instruction {
+            position: absolute;
+            top: 115.2mm;
+            left: 17mm;
+            width: 71mm;
+            text-align: center;
+            font-size: 5.8pt;
+            line-height: 1.3;
+            color: #475569;
+        }
+        .instruction strong { color: #0b46f5; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1 class="school">{{ $studyGroup->school?->name ?? config('app.name') }}</h1>
-        <p class="sub">
-            {{ $studyGroup->school?->address ?? '' }}
-            @if($studyGroup->school?->phone) · Telp. {{ $studyGroup->school->phone }} @endif
-        </p>
-
-        <div class="class-name">{{ $studyGroup->full_name ?? $studyGroup->name }}</div>
-        <p class="meta">
-            Wali Kelas: <strong>{{ $studyGroup->homeroomTeacher?->name ?? '—' }}</strong>
-            &nbsp;|&nbsp; Tahun Ajaran: <strong>{{ $token->academicYear?->name ?? '—' }}</strong>
-        </p>
-
-        <div class="qr">
-            <img src="{{ $qrData }}" alt="QR Code {{ $studyGroup->full_name ?? $studyGroup->name }}">
-        </div>
-
-        <p class="instruction">
-            Pindai QR ini melalui menu <strong>Scan QR Kehadiran</strong> untuk mencatat
-            absensi masuk dan keluar kelas sesuai jadwal mengajar.
-        </p>
-
-        <div class="footer">
-            Dicetak {{ now()->translatedFormat('d F Y H:i') }}
-        </div>
+<div class="page">
+    <div class="qr">
+        <img src="{{ $qrData }}" alt="QR Code {{ $studyGroup->full_name ?? $studyGroup->name }}">
     </div>
+
+    <div class="class-name">{{ $studyGroup->full_name ?? $studyGroup->name }}</div>
+    <div class="school-name">{{ $studyGroup->school?->name ?? '' }}</div>
+
+    <table class="meta">
+        <tr>
+            <td>Wali Kelas</td>
+            <td>{{ $studyGroup->homeroomTeacher?->name ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td>Tahun Ajaran</td>
+            <td>{{ $token->academicYear?->name ?? '—' }}</td>
+        </tr>
+    </table>
+
+    <div class="instruction">
+        Pindai QR melalui menu <strong>Scan QR Kehadiran</strong><br>
+        untuk mencatat absensi masuk dan keluar kelas.
+    </div>
+</div>
 </body>
 </html>

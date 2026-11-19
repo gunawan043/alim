@@ -26,6 +26,7 @@ use App\Services\Dormitory\CardPdfRenderer;
 use App\Services\Dormitory\DormitoryAudit;
 use App\Services\Dormitory\DormitoryQrAudit;
 use App\Services\DormitoryService;
+use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\NotificationUniversalService;
 use App\Support\AsramaConfig;
@@ -34,7 +35,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Symfony\Component\HttpFoundation\Response;
 
 class DormitoryPermitController extends Controller
@@ -515,11 +515,7 @@ class DormitoryPermitController extends Controller
             $permit->getOrCreateScanToken();
         }
 
-        $qrPayload = json_encode($permit->qrPayload());
-        $qrImage = QrCode::format('png')
-            ->size(280)
-            ->margin(2)
-            ->generate($qrPayload);
+        $qrImage = LjkQrRenderer::png(json_encode($permit->qrPayload()), 520, 5, 'Q');
 
         return response($qrImage, 200, [
             'Content-Type' => 'image/png',

@@ -250,12 +250,9 @@
                 @php
                     $token = $permit->scan_token ?: $permit->getOrCreateScanToken();
                     $qrPayload = json_encode($permit->qrPayload() ?? ['token' => $token]);
-                    $qrImage = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
-                        ->size(200)
-                        ->margin(2)
-                        ->generate($qrPayload);
+                    $qrImage = \App\Services\Ljk\LjkQrRenderer::pngDataUri($qrPayload, 420, 5, 'Q');
                 @endphp
-                <img src="data:image/svg+xml;base64,{{ base64_encode((string) $qrImage) }}" alt="QR">
+                <img src="{{ $qrImage }}" alt="QR">
             </div>
 
             <hr class="section-divider" style="margin:2mm 1mm">

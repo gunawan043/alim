@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\QrClassToken;
 use App\Models\StudyGroup;
+use App\Services\Ljk\LjkQrRenderer;
+use App\Services\Pdf\DocumentPdfService;
 use App\Services\QrTokenService;
 use Illuminate\Http\Request;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Facades\Storage;
 
 class ClassQrController extends Controller
 {
@@ -74,14 +76,10 @@ class ClassQrController extends Controller
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
         $payload = $this->qrTokenService->buildQrPayload($token);
 
-        // SVG dipakai agar tidak bergantung pada ekstensi imagick.
-        $qrImage = QrCode::format('svg')
-            ->size(320)
-            ->margin(2)
-            ->generate(json_encode($payload));
+        $qrImage = LjkQrRenderer::png(json_encode($payload), 520, 5, 'Q');
 
         return response($qrImage, 200, [
-            'Content-Type' => 'image/svg+xml',
+            'Content-Type' => 'image/png',
             'Cache-Control' => 'public, max-age=3600',
         ]);
     }
@@ -135,16 +133,32 @@ class ClassQrController extends Controller
 
         $academicYear = AcademicYear::where('is_active', true)->first();
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
-        $qrSvg = QrCode::format('svg')
-            ->size(320)
-            ->margin(2)
-            ->generate(json_encode($this->qrTokenService->buildQrPayload($token)));
-        $qrData = 'data:image/svg+xml;base64,'.base64_encode((string) $qrSvg);
-
-        return app(\App\Services\Pdf\DocumentPdfService::class)->fromView(
-            'teacher.qr.pdf',
-            compact('studyGroup', 'token', 'qrData'),
-            'QR-Kelas-'.($studyGroup->full_name ?? $studyGroup->name),
+        $qrData = LjkQrRenderer::pngDataUri(
+            json_encode($this->qrTokenService->buildQrPayload($token)), 520, 5, 'Q'
         );
+        $backgroundData = $this->imageDataUri(null, storage_path('app/public/templates/qr-template-a6.png'));
+
+        return app(DocumentPdfService::class)->fromView(
+            'teacher.qr.pdf',
+            compact('studyGroup', 'token', 'qrData', 'backgroundData'),
+            'QR-Kelas-'.($studyGroup->full_name ?? $studyGroup->name),
+            'portrait',
+            'A6',
+        );
+    }
+
+    private function imageDataUri(?string $storagePath, ?string $absolutePath = null): ?string
+    {
+        if ($storagePath) {
+            $absolutePath = Storage::disk('public')->path($storagePath);
+        }
+
+        if (! $absolutePath || ! is_file($absolutePath)) {
+            return null;
+        }
+
+        $mime = mime_content_type($absolutePath) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($absolutePath));
     }
 }

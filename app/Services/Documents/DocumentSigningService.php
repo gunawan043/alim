@@ -40,7 +40,7 @@ class DocumentSigningService
             );
         }
 
-        $token = bin2hex(random_bytes(32));
+        $token = bin2hex(random_bytes(16)); // 128-bit, cukup untuk token publik dan QR lebih ringkas
         $issuedAt = isset($data['issued_at'])
             ? Carbon::parse($data['issued_at'])
             : now();
@@ -201,7 +201,7 @@ class DocumentSigningService
     public function qrDataUri(string $url): string
     {
         // Dompdf tidak merender SVG data-URI dengan andal; gunakan PNG via GD.
-        return LjkQrRenderer::pngDataUri($url, 300, 3);
+        return LjkQrRenderer::pngDataUri($url, 480, 5, 'Q');
     }
 
     /**

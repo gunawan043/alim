@@ -13,10 +13,12 @@ use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudentMutationIn;
 use App\Models\StudentMutationOut;
-use App\Models\User;
 use App\Models\StudyGroup;
+use App\Models\User;
+use App\Services\SchoolUnitService;
 use App\Services\StudentEnrollmentService;
 use App\Services\Uks\StudentHealthSyncService;
+use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -43,10 +45,11 @@ class StudentController extends Controller
 
         // Scoped filter: only students belonging to the user's school context
         $schoolId = $request->attributes->get('schoolContextId');
+        $unitService = app(SchoolUnitService::class);
         if ($schoolId) {
-            $query->where('school_id', $schoolId);
+            $unitService->scopeStudents($query, $schoolId);
         } elseif ($request->filled('school_id')) {
-            $query->where('school_id', $request->school_id);
+            $unitService->scopeStudents($query, $request->school_id);
         }
         // ARSIP PERIODE: filter tahun ajaran opsional + konteks rombel per periode.
         $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('name')->get();
@@ -160,9 +163,9 @@ class StudentController extends Controller
 
         $statsQuery = $showArchived ? Student::onlyTrashed() : Student::query();
         if ($schoolId) {
-            $statsQuery->where('school_id', $schoolId);
+            $unitService->scopeStudents($statsQuery, $schoolId);
         } elseif ($request->filled('school_id')) {
-            $statsQuery->where('school_id', $request->school_id);
+            $unitService->scopeStudents($statsQuery, $request->school_id);
         }
         if ($request->filled('study_group_id')) {
             $statsQuery->whereHas('classHistories', fn ($q) => $q
@@ -319,9 +322,24 @@ class StudentController extends Controller
         ))->with('isDormitoryUser', optional($request->user())->isDormitoryUser() && ! optional($request->user())->isHomeroomTeacher());
     }
 
+    /**
+     * Wali kelas (tanpa akses administratif penuh) tidak boleh melakukan
+     * aksi struktural: tambah santri, arsip/pulihkan, ubah status lifecycle.
+     */
+    private function abortIfLimitedHomeroom(Request $request): void
+    {
+        $user = $request->user();
+
+        if ($user && ! $this->hasBroadStudentAccess($user) && $user->isHomeroomTeacher()) {
+            abort(403, 'Wali kelas hanya dapat memperbarui data santri di kelasnya.');
+        }
+    }
+
     public function create(Request $request)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfLimitedHomeroom($request);
+        $this->abortIfOperationalMasterEdit($request);
         $userId = request()->route('userId');
         $schoolId = $request->attributes->get('schoolContextId');
 
@@ -337,6 +355,8 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfLimitedHomeroom($request);
+        $this->abortIfOperationalMasterEdit($request);
         // Scoped: enforce school_id from context
         $schoolId = $request->attributes->get('schoolContextId');
 
@@ -495,6 +515,7 @@ class StudentController extends Controller
     public function edit(Request $request, string $userId, string $santriUuid)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfOperationalMasterEdit($request);
         \Log::info("STUDENT_EDIT_CONTROLLER: uuid={$santriUuid}");
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
@@ -510,6 +531,7 @@ class StudentController extends Controller
     public function update(Request $request, string $userId, string $santriUuid)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfOperationalMasterEdit($request);
         $schoolId = $request->attributes->get('schoolContextId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
         $this->authorizeStudentAccess($request, $student);
@@ -616,6 +638,12 @@ class StudentController extends Controller
 
         $previousStatus = $student->getOriginal('status');
 
+        // Wali kelas (tanpa akses administratif) tidak boleh mengubah status lifecycle.
+        if (! $this->hasBroadStudentAccess($request->user()) && $request->user()?->isHomeroomTeacher()) {
+            $data['status'] = $student->status;
+            unset($data['graduation_year'], $data['graduation_date']);
+        }
+
         $student->update($data);
 
         if ($request->hasAny(['height', 'weight', 'head_circumference'])) {
@@ -648,6 +676,7 @@ class StudentController extends Controller
     public function destroy(Request $request, string $santriUuid)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfLimitedHomeroom($request);
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->findOrFail($santriUuid);
         $this->authorizeStudentAccess($request, $student);
@@ -664,6 +693,7 @@ class StudentController extends Controller
     public function restore(Request $request, string $santriUuid)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfLimitedHomeroom($request);
         $userId = $request->route('userId');
         $student = Student::withoutGlobalScope('school_context')->withTrashed()->findOrFail($santriUuid);
         $this->authorizeStudentAccess($request, $student);
@@ -683,6 +713,7 @@ class StudentController extends Controller
 
     public function importForm(Request $request, string $userId)
     {
+        $this->abortIfLimitedHomeroom($request);
         $this->abortIfDormitoryUser($request);
         $currentUser = $request->user();
         if (! $currentUser || (int) $currentUser->id !== (int) $userId) {
@@ -727,6 +758,7 @@ class StudentController extends Controller
     public function importProcess(Request $request, string $userId)
     {
         $this->abortIfDormitoryUser($request);
+        $this->abortIfLimitedHomeroom($request);
         // Auth check
         $currentUser = $request->user();
         \Log::info('[IMPORT-PROCESS] START userId='.$userId.' currentUser='.($currentUser?->id ?? 'NULL'));
@@ -897,13 +929,35 @@ class StudentController extends Controller
     /**
      * Batasi akses data santri ke satuan pendidikan pengguna (kecuali global view).
      */
+    /**
+     * Unit operasional tidak boleh mengubah data induk santri.
+     */
+    private function abortIfOperationalMasterEdit(Request $request): void
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && app(SchoolUnitService::class)->isOperational($schoolId)) {
+            abort(403, 'Data induk santri hanya dapat diubah oleh satuan pendidikan induk.');
+        }
+    }
+
     private function authorizeStudentAccess(Request $request, Student $student): void
     {
         $schoolContextId = $request->attributes->get('schoolContextId');
         $isGlobalView = $request->attributes->get('isGlobalView') === true;
 
-        if ($schoolContextId && ! $isGlobalView && $student->school_id !== $schoolContextId) {
-            abort(404, 'Data santri tidak ditemukan pada satuan pendidikan Anda.');
+        if ($schoolContextId && ! $isGlobalView) {
+            $unitService = app(SchoolUnitService::class);
+            $isOwner = (string) $student->school_id === (string) $schoolContextId;
+            $hasOperationalPlacement = $unitService->isOperational($schoolContextId)
+                && $student->classHistories()
+                    ->where('is_active', true)
+                    ->whereHas('studyGroup', fn ($q) => $q->where('school_id', $schoolContextId))
+                    ->exists();
+
+            if (! $isOwner && ! $hasOperationalPlacement) {
+                abort(404, 'Data santri tidak ditemukan pada satuan pendidikan Anda.');
+            }
         }
 
         $user = $request->user();
@@ -937,7 +991,23 @@ class StudentController extends Controller
             return true;
         }
 
-        return $user->hasAnyRole(['Pimpinan', 'Humas Personalia', 'Keuangan']);
+        if ($user->hasAnyRole(['Pimpinan', 'Humas Personalia', 'Keuangan'])) {
+            return true;
+        }
+
+        // Pimpinan satuan pendidikan dan TU mengelola data induk santri
+        // (termasuk impor). Tanpa ini, Waka yang merangkap wali kelas
+        // diperlakukan sebagai wali kelas terbatas dan impor ditolak 403.
+        return UserJabatan::hasAnyLoose($user, [
+            'kepala satuan pendidikan',
+            'wakil kepala satuan pendidikan',
+            'kepala sekolah',
+            'wakil kepala sekolah',
+            'waka',
+            'kepala tata usaha',
+            'tata usaha',
+            'koordinator kesiswaan',
+        ]);
     }
 
     private function abortIfDormitoryUser(Request $request): void
@@ -946,7 +1016,11 @@ class StudentController extends Controller
 
         // Wali kelas yang juga memegang role asrama tetap boleh mengelola
         // data santri di kelasnya (scope ditegakkan di authorizeStudentAccess).
-        if ($user && method_exists($user, 'isDormitoryUser') && $user->isDormitoryUser() && ! $user->isHomeroomTeacher()) {
+        // Pimpinan satuan pendidikan yang merangkap kepala asrama juga tetap
+        // boleh — jabatan sekolahnya yang menjadi acuan, bukan role asrama.
+        if ($user && method_exists($user, 'isDormitoryUser') && $user->isDormitoryUser()
+            && ! $user->isHomeroomTeacher()
+            && ! \App\Support\UserJabatan::isSchoolLeader($user)) {
             abort(403, 'Akun asrama tidak diizinkan mengelola data Santri. Hanya data Mahrom yang dapat diubah.');
         }
     }

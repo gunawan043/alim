@@ -6,20 +6,29 @@ use App\Mail\AccountUnlockedMail;
 use App\Models\FailedLoginAttempt;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class UserSecurityController extends Controller
 {
     public function unlock(User $user)
     {
-        $user->update([
+        $user->forceFill([
             'failed_login_attempts' => 0,
             'locked_at' => null,
             'locked_until' => null,
-            'locked_reason' => null,
-        ]);
+        ])->save();
 
-        Mail::to($user->email)->queue(new AccountUnlockedMail($user->name, $user->email));
+        try {
+            if (is_string($user->email) && filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+                Mail::to($user->email)->queue(new AccountUnlockedMail($user->name, $user->email));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Email pemberitahuan buka akun gagal dikirim.', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return back()->with('success', 'Akun berhasil dibuka.');
     }

@@ -10,6 +10,7 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Services\SchoolUnitService;
 use App\Services\StudentExitLetterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ class BulkPromotionController extends Controller
 {
     public function index(Request $request, string $userId, ?string $studyGroupId = null)
     {
+        $this->abortIfOperationalUnit();
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $studyGroup = null;
@@ -83,13 +85,9 @@ class BulkPromotionController extends Controller
                 ->get(['id', 'name', 'nisn', 'gender', 'birth_place', 'birth_date', 'school_id']);
 
             $level = $studyGroup->gradeLevel?->level ?? 0;
-            $schoolType = $studyGroup->school?->school_type ?? null;
-            $finalLevels = match ($schoolType) {
-                'smp' => [9],
-                'sd' => [6],
-                default => [6, 9, 12],
-            };
-            $isFinalGrade = in_array($level, $finalLevels);
+            $isFinalGrade = $studyGroup->school
+                ? $studyGroup->school->isFinalLevel($level)
+                : in_array($level, [6, 9, 12], true);
         }
 
         return view('bulk-promotion.index', compact(
@@ -105,6 +103,7 @@ class BulkPromotionController extends Controller
 
     public function store(Request $request, string $userId, string $studyGroupId)
     {
+        $this->abortIfOperationalUnit();
         $studyGroup = StudyGroup::with(['gradeLevel', 'school'])->findOrFail($studyGroupId);
         $schoolContextId = $request->attributes->get('schoolContextId');
 
@@ -277,6 +276,15 @@ class BulkPromotionController extends Controller
     /**
      * ── GET ROMBEL BY ACADEMIC YEAR (AJAX) ─────────────────────
      */
+    private function abortIfOperationalUnit(): void
+    {
+        $schoolId = request()->attributes->get('schoolContextId');
+
+        if ($schoolId && app(SchoolUnitService::class)->isOperational($schoolId)) {
+            abort(403, 'Kenaikan kelas dan kelulusan hanya diproses oleh satuan pendidikan induk.');
+        }
+    }
+
     public function getStudyGroups(Request $request, string $userId)
     {
         $schoolContextId = $request->attributes->get('schoolContextId');
@@ -315,6 +323,7 @@ class BulkPromotionController extends Controller
      */
     public function promote(Request $request, string $userId)
     {
+        $this->abortIfOperationalUnit();
         $schoolContextId = $request->attributes->get('schoolContextId');
 
         $validated = $request->validate([
@@ -360,7 +369,7 @@ class BulkPromotionController extends Controller
 
         $results = ['success' => 0, 'failed' => 0, 'skipped' => 0];
 
-        DB::transaction(function () use ($validated, $fromStudyGroup, $fromAyId, $toAyId, $promotionDate, $studentActions, $gradeShift, $toStudyGroupId, $isSameYear, &$results) {
+        DB::transaction(function () use ($validated, $fromStudyGroup, $fromAyId, $toAyId, $promotionDate, $studentActions, $gradeShift, $toStudyGroupId, &$results) {
             foreach ($validated['student_ids'] as $studentId) {
                 $action = $studentActions[$studentId] ?? 'promote';
 

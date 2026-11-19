@@ -1200,7 +1200,7 @@
                                                         <tr><th>Endpoint</th><th>Isi</th></tr>
                                                     </thead>
                                                     <tbody>
-                                                        @foreach($posEndpoints as [$path, $label, $hint])
+                                                        @foreach($posProcEndpoints as [$path, $label, $hint])
                                                             <tr>
                                                                 <td class="font-monospace small">GET /{{ $path }}</td>
                                                                 <td class="small">

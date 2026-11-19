@@ -14,6 +14,13 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.pendidikan.mutu']) ? ' active' : '' }}"
+       href="{{ route('user.laporan.pendidikan.mutu', ['userId' => $userId]) }}">
+        <i class="ri-shield-check-line"></i><span>Mutu Pendidikan</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.laporan.presensi']) ? ' active' : '' }}"
        href="{{ route('user.laporan.presensi', ['userId' => $userId]) }}">
         <i class="ri-calendar-check-line"></i><span>Laporan Presensi</span>

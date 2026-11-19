@@ -55,9 +55,10 @@
                             <i class="ri-refresh-line me-1"></i>Buat Ulang
                         </button>
                     </form>
-                    <button type="button" class="btn btn-sm btn-dark no-print" onclick="window.print()">
-                        <i class="ri-printer-line me-1"></i>Cetak
-                    </button>
+                    <a href="{{ route('user.qr.print', ['userId' => $userId, 'study_group_id' => $studyGroup->id]) }}"
+                       target="_blank" class="btn btn-sm btn-dark no-print">
+                        <i class="ri-printer-line me-1"></i>Cetak A6
+                    </a>
                 </div>
             </div>
             <div class="card-body">

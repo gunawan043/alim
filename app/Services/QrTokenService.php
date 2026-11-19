@@ -51,17 +51,12 @@ class QrTokenService
      */
     public function buildQrPayload(QrClassToken $token): array
     {
-        $signedUrl = $this->generateSignedUrl($token);
-        $studyGroup = $token->studyGroup()->first();
-
+        // Payload sengaja pendek agar QR tidak terlalu padat saat dicetak.
+        // Scanner hanya membutuhkan study_group_id; URL bertanda tangan
+        // dibuat ulang dari sesi guru yang sedang login.
         return [
-            'url' => $signedUrl,
             'study_group_id' => $token->study_group_id,
-            'token_id' => $token->id,
-            'token_hash' => $token->token_hash,
-            'expires_at' => $token->qr_url_expires_at?->toISOString() ?? null,
-            'class_name' => $studyGroup?->name ?? '',
-            'class_code' => $studyGroup?->code ?? '',
+            'v' => 2,
         ];
     }
 

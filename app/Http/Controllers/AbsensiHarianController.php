@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Exports\AbsensiRecapExport;
 use App\Exports\AbsensiSemesterFullExport;
+use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\SchoolUnitService;
+use App\Support\UserJabatan;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -67,7 +70,7 @@ class AbsensiHarianController extends Controller
             return true;
         }
 
-        if (\App\Support\UserJabatan::hasAny($user, [
+        if (UserJabatan::hasAny($user, [
             'kepala satuan pendidikan',
             'wakil kepala satuan pendidikan',
             'kepala tata usaha',
@@ -304,8 +307,8 @@ class AbsensiHarianController extends Controller
             'userId', 'studyGroups', 'students', 'existingRecords',
             'selectedDate', 'selectedStudyGroupId', 'selectedSemester',
             'activeYear', 'academicYears', 'inputMode',
-        
-            'canFilterRombel',));
+
+            'canFilterRombel', ));
     }
 
     // ── STORE — Simpan Absensi ───────────────────────────────────
@@ -373,11 +376,11 @@ class AbsensiHarianController extends Controller
             }
         });
 
-                if ($request->wantsJson() || $request->ajax()) {
+        if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['saved' => true, 'message' => 'Absensi tersimpan.']);
         }
 
-return redirect()
+        return redirect()
             ->route('user.absensi.harian.create', [
                 'userId' => $userId,
                 'study_group_id' => $validated['study_group_id'],
@@ -912,8 +915,11 @@ return redirect()
         $schoolId = $this->getSchoolId($request);
         $activeYear = $this->getActiveAcademicYear();
 
-        $student = Student::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->findOrFail($studentUuid);
+        $studentQuery = Student::query();
+        if ($schoolId) {
+            app(SchoolUnitService::class)->scopeStudents($studentQuery, $schoolId);
+        }
+        $student = $studentQuery->findOrFail($studentUuid);
 
         $selectedAyId = $request->filled('academic_year_id')
             ? $request->academic_year_id
@@ -1032,7 +1038,7 @@ return redirect()
             'verified_by' => $request->user()?->id,
         ])->save();
 
-        app(\App\Services\Evaluasi\ReviewWorkflowService::class)->audit($record, 'attendance_verified', $request->user());
+        app(ReviewWorkflowService::class)->audit($record, 'attendance_verified', $request->user());
 
         return back()->with('success', 'Kesesuaian presensi ditandai terverifikasi.');
     }

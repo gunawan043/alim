@@ -143,6 +143,16 @@ class School extends Model
         return $this->belongsTo(Village::class, 'village_code', 'code');
     }
 
+    public function operationalLinks()
+    {
+        return $this->hasMany(SchoolUnitLink::class, 'primary_school_id');
+    }
+
+    public function primaryLinks()
+    {
+        return $this->hasMany(SchoolUnitLink::class, 'operational_school_id');
+    }
+
     // ── Accessors ─────────────────────────────────────────────────
 
     public function getLevelTextAttribute(): string
@@ -152,8 +162,33 @@ class School extends Model
             'smp' => 'Sekolah Menengah Pertama (SMP)',
             'sma' => 'Sekolah Menengah Atas (SMA)',
             'smk' => 'Sekolah Menengah Kejuruan (SMK)',
+            'pps' => 'PPS Diniyah (Wustho & Ulya)',
             default => ucfirst($this->school_level ?? ''),
         };
+    }
+
+    /**
+     * Tingkat akhir (kelas yang diluluskan) menurut jenjang satuan pendidikan.
+     *
+     * PPS Diniyah menempuh 6 tahun: Wustho kelas 7–9 lalu Ulya kelas 10–12.
+     * Kelas 9 BUKAN akhir jenjang — santri naik ke Ulya, bukan lulus.
+     *
+     * @return array<int, int>
+     */
+    public static function finalLevelsFor(?string $schoolLevel): array
+    {
+        return match ($schoolLevel) {
+            'sd' => [6],
+            'smp' => [9],
+            'sma', 'smk' => [12],
+            'pps' => [12],
+            default => [6, 9, 12],
+        };
+    }
+
+    public function isFinalLevel(int $level): bool
+    {
+        return in_array($level, self::finalLevelsFor($this->school_level), true);
     }
 
     public function getStatusTextAttribute(): string

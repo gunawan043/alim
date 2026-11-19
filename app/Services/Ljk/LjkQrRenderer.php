@@ -17,16 +17,22 @@ use RuntimeException;
  */
 final class LjkQrRenderer
 {
-    public static function pngDataUri(string $payload, int $targetPx = 420, int $quietZoneModules = 4): string
+    public static function pngDataUri(string $payload, int $targetPx = 480, int $quietZoneModules = 4, string $errorCorrection = 'Q'): string
     {
-        $png = self::png($payload, $targetPx, $quietZoneModules);
+        $png = self::png($payload, $targetPx, $quietZoneModules, $errorCorrection);
 
         return 'data:image/png;base64,'.base64_encode($png);
     }
 
-    public static function png(string $payload, int $targetPx = 420, int $quietZoneModules = 4): string
+    public static function png(string $payload, int $targetPx = 480, int $quietZoneModules = 4, string $errorCorrection = 'Q'): string
     {
-        $qr = Encoder::encode($payload, ErrorCorrectionLevel::M());
+        $level = match (strtoupper($errorCorrection)) {
+            'L' => ErrorCorrectionLevel::L(),
+            'H' => ErrorCorrectionLevel::H(),
+            'Q' => ErrorCorrectionLevel::Q(),
+            default => ErrorCorrectionLevel::M(),
+        };
+        $qr = Encoder::encode($payload, $level);
         $matrix = $qr->getMatrix();
         $moduleCount = $matrix->getWidth();
         $totalModules = $moduleCount + 2 * $quietZoneModules;

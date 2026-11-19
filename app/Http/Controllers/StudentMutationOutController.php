@@ -11,6 +11,7 @@ use App\Models\StudentMutationSetting;
 use App\Services\Documents\DocumentSigningService;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
+use App\Services\SchoolUnitService;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
@@ -86,6 +87,7 @@ class StudentMutationOutController extends Controller
 
     public function create(Request $request)
     {
+        $this->abortIfOperationalUnit();
         $userId = request()->route('userId');
         $schools = School::orderBy('name')->get();
 
@@ -198,6 +200,7 @@ class StudentMutationOutController extends Controller
 
     public function store(Request $request)
     {
+        $this->abortIfOperationalUnit();
         $userId = request()->route('userId');
         $schoolContextId = $request->attributes->get('schoolContextId');
 
@@ -296,6 +299,7 @@ class StudentMutationOutController extends Controller
 
     public function submit(string $userId, string $mutationUuid)
     {
+        $this->abortIfOperationalUnit();
         $mutation = $this->findScopedMutation($mutationUuid);
 
         if ($mutation->status !== 'draft') {
@@ -309,6 +313,7 @@ class StudentMutationOutController extends Controller
 
     public function approve(Request $request, string $userId, string $mutationUuid)
     {
+        $this->abortIfOperationalUnit();
         $mutation = $this->findScopedMutation($mutationUuid)->load('student');
 
         if (in_array($mutation->status, ['approved', 'rejected'], true)) {
@@ -566,6 +571,7 @@ class StudentMutationOutController extends Controller
 
     public function print(string $userId, string $mutationUuid)
     {
+        $this->abortIfOperationalUnit();
         $mutation = $this->findScopedMutation($mutationUuid)->load(['student', 'school']);
         $school = $mutation->school;
         $principal = app(SchoolLeaderService::class)->forSchool($school);
@@ -652,6 +658,15 @@ class StudentMutationOutController extends Controller
             Log::warning('Gagal menerbitkan registry surat mutasi keluar: '.$e->getMessage());
 
             return null;
+        }
+    }
+
+    private function abortIfOperationalUnit(): void
+    {
+        $schoolId = request()->attributes->get('schoolContextId');
+
+        if ($schoolId && app(SchoolUnitService::class)->isOperational($schoolId)) {
+            abort(403, 'Mutasi hanya dapat diproses oleh satuan pendidikan induk.');
         }
     }
 

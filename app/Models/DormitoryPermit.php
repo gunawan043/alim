@@ -295,18 +295,16 @@ class DormitoryPermit extends Model
             return $this->scan_token;
         }
 
-        $token = (string) Str::ulid();
-        // Sign it so it can't be forged.
-        $signature = hash_hmac('sha256', $token, config('app.key'));
-        $signed = base64_encode($token.'::'.$signature);
+        // Token opaque 128-bit: cukup aman, jauh lebih ringkas untuk QR cetak.
+        $token = bin2hex(random_bytes(16));
 
         $this->update([
-            'scan_token' => $signed,
+            'scan_token' => $token,
             'scan_token_expires_at' => $this->defaultScanTokenExpiry(),
             'scan_token_revoked_at' => null,
         ]);
 
-        return $signed;
+        return $token;
     }
 
     public function isScanTokenExpired(): bool
@@ -397,17 +395,8 @@ class DormitoryPermit extends Model
             $this->getOrCreateScanToken();
         }
 
-        return [
-            'token' => $this->scan_token,
-            'student_id' => $this->student_id,
-            'student_name' => $this->student?->name,
-            'permit_id' => $this->id,
-            'permit_type' => $this->permit_type,
-            'is_emergency' => (bool) $this->is_emergency,
-            'status' => $this->status,
-            'dormitory_id' => $this->dormitory_id,
-            'expires_at' => $this->scan_token_expires_at?->toIso8601String(),
-        ];
+        // Hanya token yang dibutuhkan scanner; metadata diambil dari server.
+        return ['token' => $this->scan_token];
     }
 
     /**

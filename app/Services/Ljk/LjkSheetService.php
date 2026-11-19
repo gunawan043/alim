@@ -128,7 +128,7 @@ class LjkSheetService
 
         $payload = $this->buildQrPayload($exam, $participant, $sheet, $page);
 
-        return LjkQrRenderer::pngDataUri($payload, 420);
+        return LjkQrRenderer::pngDataUri($payload, 520, 5, 'Q');
     }
 
     /**

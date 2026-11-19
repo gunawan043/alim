@@ -155,6 +155,8 @@ class LegerExport implements Export, FromCollection, ShouldAutoSize, WithHeading
                 'border' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
             ]);
         }
+
+        return [];
     }
 
     private function predikatText(?float $avg): string

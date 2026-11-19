@@ -30,6 +30,16 @@ class PosApiSettingsTest extends TestCase
         return "/{$admin->id}/sa/system-settings";
     }
 
+    public function test_pos_api_tab_renders_without_undefined_variable(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->get(route('user.sa.system-settings.index', ['userId' => $admin->id, 'tab' => 'pos-api']))
+            ->assertOk()
+            ->assertSee('Integrasi POS');
+    }
+
     public function test_saving_pos_tab_stores_settings_and_generates_token(): void
     {
         $admin = $this->admin();

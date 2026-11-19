@@ -122,9 +122,9 @@ class LoginController extends Controller
         $user->passwordOtps()->latest()->delete();
 
         if ($user->failed_login_attempts + 1 == SecurityPolicy::compromisedThreshold()) {
-            Mail::to($user->email)->queue(new AccountCompromisedMail(
+            $this->sendMailSafely($user->email, new AccountCompromisedMail(
                 $user->name, $user->email, $user->failed_login_attempts + 1, $ip
-            ));
+            ), true);
             Log::warning('Account compromised threshold reached', [
                 'user_id' => $user->id, 'identity' => $identity, 'ip' => $ip,
                 'attempts' => $user->failed_login_attempts + 1,
@@ -135,13 +135,13 @@ class LoginController extends Controller
         $this->trackIpAttempt($ip, $user->failed_login_attempts, $identity);
 
         if ($user->failed_login_attempts >= SecurityPolicy::maxLoginAttempts()) {
-            Mail::to($user->email)->send(new AccountLockedMail(
+            $this->sendMailSafely($user->email, new AccountLockedMail(
                 $user->name, $user->email, $user->failed_login_attempts, $ip
             ));
 
             $superAdminIds = usersHavingPermission('general_admin.administrable');
-            $superAdmins = User::whereIn('id', $superAdminIds)->pluck('email');
-            Mail::to($superAdmins)->send(new AccountLockedMail(
+            $superAdmins = User::whereIn('id', $superAdminIds)->pluck('email')->all();
+            $this->sendMailSafely($superAdmins, new AccountLockedMail(
                 $user->name, $user->email, $user->failed_login_attempts, $ip
             ));
 
@@ -178,14 +178,50 @@ class LoginController extends Controller
         if ($record->isLockedByIp()) {
             $superAdminIds = usersHavingPermission('general_admin.administrable');
             $superAdmins = User::whereIn('id', $superAdminIds)->pluck('email');
-            Mail::to($superAdmins)->queue(new IpBlockedMail(
+            $this->sendMailSafely($superAdmins->all(), new IpBlockedMail(
                 $ip, $record->locked_until->diffForHumans(), $record->attempts
-            ));
+            ), true);
 
             Log::warning('IP blocked due to failed login attempts', [
                 'ip' => $ip, 'email' => $email,
                 'attempts' => $record->attempts, 'locked_until' => $record->locked_until,
             ]);
+        }
+    }
+
+    /**
+     * Kirim email hanya jika ada penerima valid. Login tidak boleh 500
+     * hanya karena daftar penerima kosong atau email kosong.
+     */
+    private function sendMailSafely(mixed $recipients, mixed $mailable, bool $queue = false): bool
+    {
+        $emails = collect(is_array($recipients) ? $recipients : [$recipients])
+            ->filter(fn ($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($emails === []) {
+            Log::warning('Email login tidak dikirim: penerima kosong/tidak valid.', [
+                'mailable' => is_object($mailable) ? $mailable::class : gettype($mailable),
+            ]);
+
+            return false;
+        }
+
+        try {
+            $pending = Mail::to($emails);
+            $queue ? $pending->queue($mailable) : $pending->send($mailable);
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Email login gagal dikirim.', [
+                'recipients' => $emails,
+                'mailable' => is_object($mailable) ? $mailable::class : gettype($mailable),
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
     }
 
@@ -242,7 +278,9 @@ class LoginController extends Controller
 
         try {
             [$record, $otp] = LoginOtp::issue($user, $expiryMinutes);
-            Mail::to($user->email)->send(new LoginOtpMail($otp, $user->name, $expiryMinutes));
+            if (! $this->sendMailSafely($user->email, new LoginOtpMail($otp, $user->name, $expiryMinutes))) {
+                throw new \RuntimeException('Kode OTP tidak dapat dikirim ke email pengguna.');
+            }
         } catch (\Throwable $e) {
             $record?->delete();
 

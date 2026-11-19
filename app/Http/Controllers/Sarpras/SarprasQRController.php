@@ -8,6 +8,7 @@ use App\Http\Requests\Sarpras\QrAuditSubmitRequest;
 use App\Models\Asset;
 use App\Models\AssetPhoto;
 use App\Models\QrScanHistory;
+use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\PhotoProofService;
 use Carbon\Carbon;
@@ -15,7 +16,6 @@ use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class SarprasQRController extends SarprasBaseController
 {
@@ -178,8 +178,7 @@ class SarprasQRController extends SarprasBaseController
         }
 
         foreach ($labels as $index => $label) {
-            $svg = QrCode::format('svg')->size(120)->margin(1)->generate($label['url']);
-            $labels[$index]['qr'] = 'data:image/svg+xml;base64,'.base64_encode((string) $svg);
+            $labels[$index]['qr'] = LjkQrRenderer::pngDataUri($label['url'], 480, 5, 'Q');
         }
 
         return $labels;
@@ -193,11 +192,11 @@ class SarprasQRController extends SarprasBaseController
         $asset = Asset::findOrFail($id);
         $this->authorizeAssetAccess($asset, $request);
 
-        $size = max(80, min(600, (int) $request->query('size', 240)));
-        $svg = QrCode::format('svg')->size($size)->margin(1)->generate($asset->qrScanUrl());
+        $size = max(240, min(800, (int) $request->query('size', 480)));
+        $png = LjkQrRenderer::png($asset->qrScanUrl(), $size, 5, 'Q');
 
-        return response((string) $svg, 200, [
-            'Content-Type' => 'image/svg+xml',
+        return response($png, 200, [
+            'Content-Type' => 'image/png',
             'Cache-Control' => 'private, max-age=86400',
         ]);
     }
