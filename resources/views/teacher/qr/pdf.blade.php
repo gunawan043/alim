@@ -50,9 +50,9 @@
         /* Area biru di atas kotak putih: y = 0–103,6 mm */
         .school-name {
             position: absolute;
-            top: 30mm;
-            left: 15mm;
-            width: 180mm;
+            top: 29mm;
+            left: 10mm;
+            width: 190mm;
 
             text-align: center;
             text-transform: uppercase;
@@ -64,101 +64,74 @@
             color: #e0e7ff;
         }
 
-        .header {
+        .document-title {
             position: absolute;
-            top: 40mm;
+            top: 42mm;
             left: 10mm;
             width: 190mm;
 
             text-align: center;
-        }
-
-        .document-title {
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 19pt;
-            font-weight: bold;
-            line-height: 1.2;
-            letter-spacing: 1px;
             text-transform: uppercase;
-            color: #ffffff;
-        }
-
-        .class-name {
-            margin-top: 2.5mm;
-
+            white-space: nowrap;
             font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 28pt;
             font-weight: bold;
             line-height: 1.05;
-            text-transform: uppercase;
-            color: #ffffff;
-            word-wrap: break-word;
-        }
-
-        .meta {
-            position: absolute;
-            top: 72mm;
-            left: 25mm;
-            width: 160mm;
-
-            border-collapse: collapse;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 11.5pt;
-            font-weight: bold;
-            line-height: 1.3;
+            letter-spacing: .5px;
             color: #ffffff;
         }
 
-        .meta td {
-            padding: 1mm 0;
-            vertical-align: middle;
-        }
-
-        .meta td:first-child {
-            width: 42%;
-            color: #dbeafe;
-        }
-
-        .meta td:nth-child(2) {
-            width: 5%;
-            text-align: center;
-            color: #dbeafe;
-        }
-
-        .meta td:last-child {
-            width: 53%;
-            text-align: left;
-        }
-
-        .instruction {
+        .academic-year {
             position: absolute;
-            top: 90.5mm;
+            top: 68mm;
             left: 20mm;
             width: 170mm;
 
             text-align: center;
+            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
+            font-size: 14pt;
+            font-weight: bold;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+
+        .academic-year .label {
+            color: #dbeafe;
+        }
+
+        .instruction {
+            position: absolute;
+            top: 84mm;
+            left: 15mm;
+            width: 180mm;
+
+            text-align: center;
             font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
-            font-size: 8.5pt;
+            font-size: 12pt;
             font-style: italic;
             font-weight: normal;
-            line-height: 1.4;
+            line-height: 1.15;
             color: #e0e7ff;
+        }
+
+        .instruction strong {
+            font-weight: bold;
+            color: #ffffff;
         }
 
         /* Kotak putih template: x = 22,6–187,3 mm; y = 103,7–257,8 mm */
         .qr-panel {
             position: absolute;
-            top: 114.7mm;
-            left: 39mm;
+            top: 108.2mm;
+            left: 32.5mm;
 
-            width: 132mm;
-            height: 132mm;
+            width: 145mm;
+            height: 145mm;
         }
 
         .qr-panel img {
             display: block;
-            width: 132mm;
-            height: 132mm;
+            width: 145mm;
+            height: 145mm;
         }
 
         @media print {
@@ -195,6 +168,9 @@
         $token = $card['token'];
         $qrData = $card['qrData'];
         $className = strtoupper($studyGroup->full_name ?? $studyGroup->name);
+        $titleText = 'QR CODE KELAS '.$className;
+        $titleLength = strlen($titleText);
+        $titleSize = $titleLength <= 20 ? 36 : ($titleLength <= 28 ? 30 : ($titleLength <= 36 ? 26 : 22));
     @endphp
 
     <div class="page {{ $loop->last ? 'last' : '' }}">
@@ -202,23 +178,14 @@
             {{ $studyGroup->school?->name ?? '' }}
         </div>
 
-        <div class="header">
-            <div class="document-title">QR Code Kehadiran Kelas</div>
-            <div class="class-name">{{ $className }}</div>
+        <div class="document-title" style="font-size: {{ $titleSize }}pt;">
+            {{ $titleText }}
         </div>
 
-        <table class="meta">
-            <tr>
-                <td>WALI KELAS</td>
-                <td>:</td>
-                <td>{{ $studyGroup->homeroomTeacher?->name ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td>TAHUN AJARAN</td>
-                <td>:</td>
-                <td>{{ $token->academicYear?->name ?? '—' }}</td>
-            </tr>
-        </table>
+        <div class="academic-year">
+            <span class="label">TAHUN AJARAN</span> :
+            <span class="value">{{ $token->academicYear?->name ?? '—' }}</span>
+        </div>
 
         <div class="instruction">
             Pindai QR melalui menu <strong>Scan QR Kehadiran</strong><br>
