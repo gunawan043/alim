@@ -30,8 +30,18 @@
         default                => 'Semua',
     };
 
-    /* ── Fallback asrama untuk scan ──────────────────────────────────── */
-    $scanAsramaId = \App\Models\Dormitory::where('is_active', true)->value('id');
+    /* ── Asrama yang dapat diakses user (bukan asrama pertama global) ── */
+    // Sebelumnya memakai asrama pertama di database, sehingga Staf Asrama/
+    // Perizinan bisa diarahkan ke asrama yang bukan kewenangannya → 403.
+    $accessibleDormitories = \App\Models\Dormitory::query()
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get()
+        ->filter(fn ($dormitory) => $user && $user->canAccessDormitory($dormitory->id))
+        ->values();
+
+    $scanAsrama = $accessibleDormitories->first();
+    $scanAsramaId = $scanAsrama?->id;
 
     /* ── Helper URL ──────────────────────────────────────────────────── */
     $spUrl = function (string $routeName, array $extra = []) {
@@ -74,13 +84,21 @@
      PERIZINAN (LINTAS ASRAMA)
      ═══════════════════════════════════════════════════════════════════════════ --}}
 
-{{-- 1. Semua Perizinan (lintas asrama) --}}
+{{-- 1. Perizinan asrama yang dapat diakses + ajukan izin baru --}}
+@if($scanAsramaId)
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['system.permits.']) ? ' active' : '' }}"
-       href="{{ route('system.permits.index') }}">
-        <i class="ri-pass-valid-line"></i><span>Semua Perizinan</span>
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.index', 'user.asrama.permits.show']) ? ' active' : '' }}"
+       href="{{ $spAsramaUrl('user.asrama.permits.index') }}">
+        <i class="ri-pass-valid-line"></i><span>Perizinan Asrama</span>
     </a>
 </li>
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asrama.permits.create', 'user.asrama.permits.store']) ? ' active' : '' }}"
+       href="{{ $spAsramaUrl('user.asrama.permits.create') }}">
+        <i class="ri-add-circle-line"></i><span>Ajukan Izin</span>
+    </a>
+</li>
+@endif
 
 {{-- 2. Scan QR Izin --}}
 @if($scanAsramaId)

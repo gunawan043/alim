@@ -16,6 +16,7 @@ use App\Services\ArabicName\ArabicNameResolver;
 use App\Services\Documents\DocumentSigningService;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
+use App\Services\SchoolUnitService;
 use App\Services\Ljk\LjkPdfFonts;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
@@ -70,7 +71,7 @@ class RaporPdfService
                 'hari' => 'يوم',
                 'orang_tua' => 'الوالد / الولي',
                 'wali_kelas' => 'ولي الفصل',
-                'mengetahui_kepala' => 'يعلم، مدير المدرسة',
+                'mengetahui_kepala' => 'مدير المدرسة',
                 'nip' => 'رقم الموظف',
                 'halaman' => 'الصفحة',
                 'dari' => 'من',
@@ -102,7 +103,7 @@ class RaporPdfService
             'hari' => 'Hari',
             'orang_tua' => 'Orang Tua / Wali',
             'wali_kelas' => 'Wali Kelas',
-            'mengetahui_kepala' => 'Mengetahui, Kepala Sekolah',
+            'mengetahui_kepala' => 'Kepala Sekolah',
             'nip' => 'NUPY.',
             'halaman' => 'Halaman',
             'dari' => 'dari',
@@ -407,23 +408,24 @@ class RaporPdfService
         $layout = $layout ?? ($setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout());
 
         $resolver = app(ArabicNameResolver::class);
+        $ownerSchool = app(SchoolUnitService::class)->dataOwnerSchool($studyGroup->school_id) ?? $studyGroup->school;
 
         return view('nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
-            'kopBase64' => $this->schoolKopBase64($studyGroup->school),
+            'kopBase64' => $this->schoolKopBase64($ownerSchool),
             'bahasa' => $bahasa,
             'labels' => $this->labels($bahasa),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
             'layout' => $layout,
-            'ttdKspBase64' => $this->imageDataUri($studyGroup->school?->ttd_ksp_path),
-            'stampBase64' => $this->imageDataUri($studyGroup->school?->stamp_path),
+            'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
+            'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
-            'kspNameAr' => $resolver->principalName($studyGroup->school),
+            'kspNameAr' => $resolver->principalName($ownerSchool),
             'verificationByStudent' => $verificationByStudent,
-            'principal' => app(SchoolLeaderService::class)->forSchool($studyGroup->school),
+            'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
             'hideTtdStamp' => in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
         ])->render();
     }
@@ -500,23 +502,24 @@ class RaporPdfService
         }
 
         $resolver = app(ArabicNameResolver::class);
+        $ownerSchool = app(SchoolUnitService::class)->dataOwnerSchool($studyGroup->school_id) ?? $studyGroup->school;
 
         $html = view('nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
-            'kopBase64' => $this->schoolKopBase64($studyGroup->school),
+            'kopBase64' => $this->schoolKopBase64($ownerSchool),
             'bahasa' => $bahasa,
             'labels' => $this->labels($bahasa),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
             'layout' => $layout,
-            'ttdKspBase64' => $this->imageDataUri($studyGroup->school?->ttd_ksp_path),
-            'stampBase64' => $this->imageDataUri($studyGroup->school?->stamp_path),
+            'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
+            'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
             'waliNameAr' => $resolver->userName($studyGroup->homeroomTeacher),
-            'kspNameAr' => $resolver->principalName($studyGroup->school),
+            'kspNameAr' => $resolver->principalName($ownerSchool),
             'verificationByStudent' => $verificationByStudent,
-            'principal' => app(SchoolLeaderService::class)->forSchool($studyGroup->school),
+            'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
             'hideTtdStamp' => in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
         ])->render();
 
@@ -540,17 +543,19 @@ class RaporPdfService
         Student $student,
     ): ?array {
         try {
+            $ownerSchool = app(SchoolUnitService::class)->dataOwnerSchool($studyGroup->school_id) ?? $studyGroup->school;
             $mode = app(DocumentVisualService::class)->modeForPrinting($studyGroup->school, 'rapor');
 
             if ($mode === 'visual') {
                 return null;
             }
 
+            $leader = app(SchoolLeaderService::class)->forSchool($ownerSchool);
             $signers = [];
 
-            if ($studyGroup->school?->principal_name) {
+            if (! empty($leader['display_name'])) {
                 $signers[] = [
-                    'name' => $studyGroup->school->principal_name,
+                    'name' => $leader['display_name'],
                     'role' => 'Kepala Satuan Pendidikan',
                     'signer_order' => 1,
                 ];
@@ -569,7 +574,7 @@ class RaporPdfService
                 'document_type' => 'rapor',
                 'document_number' => 'RAPOR-'.strtoupper(substr(hash('sha256', $student->id.$selectedAyId.$selectedSem.$jenis), 0, 12)),
                 'title' => 'Laporan Hasil Belajar Santri',
-                'school_id' => $studyGroup->school_id,
+                'school_id' => $ownerSchool?->id ?? $studyGroup->school_id,
                 'academic_year_id' => $selectedAyId,
                 'semester' => $selectedSem,
                 'subject_type' => 'student',

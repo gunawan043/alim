@@ -290,6 +290,7 @@
         /* ── TTD ── */
         .ttd-grid {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             margin-top: 20px;
         }

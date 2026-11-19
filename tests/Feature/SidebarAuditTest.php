@@ -745,6 +745,63 @@ class SidebarAuditTest extends TestCase
         $this->assertStringNotContainsString('Jabatan ·', $taskHtml);
     }
 
+
+    /**
+     * Audit menyeluruh sidebar Staf Asrama: seluruh tautan (termasuk tautan
+     * lintas modul tanpa userId) harus dapat dibuka, bukan 403.
+     */
+    public function test_sidebar_tugas_asrama_semua_tautan_dapat_dibuka(): void
+    {
+        $this->bootSchool();
+
+        $cases = [
+            'Staf Asrama' => ['Staf Asrama', ['room' => true]],
+            'Staf Perizinan' => ['Staf Perizinan', ['room' => true]],
+            'Wali Kamar' => ['Wali Kamar', ['room' => true]],
+            'Wali Asrama' => ['Wali Asrama', ['wing' => true]],
+        ];
+
+        $failures = [];
+
+        foreach ($cases as $label => [$task, $options]) {
+            $user = $this->makeUser('GURU UMUM', [$task], false, $options);
+            $page = $this->actingAs($user)->get('/'.$user->id.'/dashboard/satuan-pendidikan');
+            $page->assertOk();
+
+            preg_match_all('/href="([^"]+)"/', $page->getContent(), $m);
+            $links = collect($m[1])
+                ->map(fn ($url) => html_entity_decode(trim($url)))
+                ->filter(function ($url) {
+                    if ($url === '' || str_starts_with($url, '#') || str_starts_with($url, 'javascript:') || str_starts_with($url, 'mailto:')) {
+                        return false;
+                    }
+                    if (str_starts_with($url, 'http')) {
+                        $host = parse_url($url, PHP_URL_HOST);
+                        return in_array($host, ['localhost', '127.0.0.1'], true);
+                    }
+                    return str_starts_with($url, '/');
+                })
+                ->map(fn ($url) => parse_url($url, PHP_URL_PATH) ?: $url)
+                ->reject(fn ($path) => str_contains($path, '/logout') || str_contains($path, '/impersonate'))
+                ->reject(fn ($path) => str_starts_with($path, '/build/')
+                    || str_starts_with($path, '//')
+                    || str_starts_with($path, '/manifest')
+                    || preg_match('/\.(css|js|png|jpe?g|svg|webp|ico|woff2?)$/i', $path))
+                ->unique()
+                ->values();
+
+            foreach ($links as $path) {
+                $res = $this->actingAs($user)->get($path);
+                $status = $res->baseResponse->getStatusCode();
+                if ($status >= 400) {
+                    $failures[] = "[$label] $status $path";
+                }
+            }
+        }
+
+        $this->assertSame([], $failures, "Tautan sidebar tugas asrama bermasalah:\n".implode("\n", $failures));
+    }
+
     public function test_tmp_probe(): void
     {
         $this->withoutExceptionHandling();
