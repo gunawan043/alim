@@ -71,103 +71,102 @@
         body.ar {
             font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
             direction: rtl;
-            /* Layout Arab dibuat lebih padat agar STS/SAS muat satu halaman. */
-            font-size: 9pt;
-            line-height: 1.18;
+            /* Layout Arab dibuat padat agar STS/SAS (termasuk 18+ mapel) muat satu halaman. */
+            font-size: 8.5pt;
+            line-height: 1.12;
         }
 
         body.ar .page {
-            padding-top: 7mm;
-            padding-bottom: 10mm;
+            padding: 5mm 10mm 7mm 10mm;
         }
 
         body.ar .kop-surat {
-            height: 20mm !important;
+            height: 18mm !important;
         }
 
         body.ar .judul {
-            font-size: 12pt;
-            line-height: 1.15;
-            margin: 4px 0 6px;
+            font-size: 11pt;
+            line-height: 1.1;
+            margin: 2px 0 4px;
         }
 
         body.ar .info-grid td {
-            padding: 1px 3px;
-            font-size: 8.5pt;
-            line-height: 1.18;
+            padding: 0.5px 2px;
+            font-size: 8pt;
+            line-height: 1.1;
         }
 
         body.ar table.nilai {
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         body.ar table.nilai th,
         body.ar table.nilai td {
-            padding: 1.5px 4px;
-            font-size: 8.5pt;
-            line-height: 1.15;
+            padding: 1px 3px;
+            font-size: 7.5pt;
+            line-height: 1.05;
         }
 
         body.ar .ringkasan-box {
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         body.ar .ringkasan-box td {
-            padding: 2px 5px;
-            font-size: 8.5pt;
-            line-height: 1.18;
+            padding: 1px 4px;
+            font-size: 7.5pt;
+            line-height: 1.1;
         }
 
         body.ar .ringkasan-box td.pred-val {
-            font-size: 12pt;
+            font-size: 10pt;
         }
 
         body.ar .catatan-box {
-            margin-top: 4px;
+            margin-top: 3px;
         }
 
         body.ar .catatan-box td {
-            padding: 3px 5px;
-            font-size: 8.5pt;
-            line-height: 1.2;
+            padding: 2px 4px;
+            font-size: 7.5pt;
+            line-height: 1.1;
         }
 
         body.ar .ttd-grid {
-            margin-top: 8px;
+            margin-top: 4px;
         }
 
         body.ar .ttd-grid td {
-            padding: 2px 4px;
-            font-size: 8pt;
-            line-height: 1.18;
+            padding: 1px 3px;
+            font-size: 7.5pt;
+            line-height: 1.1;
         }
 
         body.ar .ttd-sig-area {
-            height: 9mm !important;
+            height: 6mm !important;
         }
 
         body.ar .signature-stack {
-            width: 20mm !important;
-            height: 9mm !important;
+            width: 18mm !important;
+            height: 7mm !important;
         }
 
         body.ar .signature-stack .stamp-image,
         body.ar .signature-stack .ttd-image,
         body.ar .signature-image {
-            max-width: 20mm;
-            max-height: 9mm;
+            max-width: 18mm;
+            max-height: 7mm;
         }
 
         body.ar .ttd-title,
         body.ar .ttd-name,
         body.ar .ttd-nip {
-            font-size: 8pt;
-            line-height: 1.2;
+            font-size: 7.5pt;
+            line-height: 1.1;
         }
 
         body.ar .footer-bar {
-            padding-top: 2px;
-            padding-bottom: 2px;
+            padding-top: 1px;
+            padding-bottom: 1px;
         }
 
         /* RTL: tabel, urutan kolom, dan perataan teks mengikuti arah Arab. */
