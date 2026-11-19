@@ -74,7 +74,13 @@
             <div class="auth-header">
                 <div class="auth-icon"><i class="ri-shield-keyhole-line"></i></div>
                 <div class="auth-title-main">Verifikasi Login</div>
-                <div class="auth-title-sub">Masukkan 6 digit kode yang dikirim ke {{ $email }}</div>
+                <div class="auth-title-sub">
+                    @if(($otpChannel ?? 'email') === 'whatsapp')
+                        Masukkan 6 digit kode yang dikirim ke WhatsApp Anda
+                    @else
+                        Masukkan 6 digit kode yang dikirim ke {{ $email }}
+                    @endif
+                </div>
             </div>
 
             @if(session('status'))
@@ -106,7 +112,7 @@
                         <i class="ri-smartphone-line"></i> Verifikasi Authenticator
                     </button>
                 </form>
-                <p style="text-align:center;font-size:.75rem;color:#7a9ab5;margin-bottom:1rem">atau gunakan OTP email di bawah</p>
+                <p style="text-align:center;font-size:.75rem;color:#7a9ab5;margin-bottom:1rem">atau gunakan OTP yang dikirim ke email/WhatsApp di bawah</p>
             @endif
 
             <form method="POST" action="{{ route('two-factor.verify') }}" id="otp-form" autocomplete="off">

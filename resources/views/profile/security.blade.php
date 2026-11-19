@@ -159,7 +159,9 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="4" class="text-center text-muted small py-3">Belum ada sesi web.</td></tr>
+                                    <tr><td colspan="4" class="text-center text-muted small py-3">
+                                        Belum ada sesi web aktif. Sesi akan muncul setelah Anda login dari browser.
+                                    </td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -208,19 +210,20 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted small py-3">Belum ada sesi mobile.</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted small py-3">
+                                        Belum ada sesi mobile. Daftar muncul setelah Anda login dari aplikasi mobile.
+                                    </td></tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
-                    @if($mobileSessions->isNotEmpty())
-                        <form method="POST" action="{{ route('user.profile.security.mobile-sessions.revoke-all', ['userId' => $userId]) }}">
-                            @csrf
-                            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Cabut semua sesi mobile?')">
-                                <i class="ri-logout-circle-r-line me-1"></i>Cabut Semua Sesi Mobile
-                            </button>
-                        </form>
-                    @endif
+                    <form method="POST" action="{{ route('user.profile.security.mobile-sessions.revoke-all', ['userId' => $userId]) }}">
+                        @csrf
+                        <button class="btn btn-sm btn-outline-danger" {{ $mobileSessions->isEmpty() ? 'disabled' : '' }}
+                                onclick="return confirm('Cabut semua sesi mobile?')">
+                            <i class="ri-logout-circle-r-line me-1"></i>Cabut Semua Sesi Mobile
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

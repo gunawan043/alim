@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Notifications\WhatsAppGatewayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,7 @@ class SecurityNotificationService
 {
     public function __construct(
         private readonly NotificationUniversalService $notifications,
+        private readonly WhatsAppGatewayService $gateway,
     ) {}
 
     public function login(User $user, Request $request): void
@@ -53,11 +55,15 @@ class SecurityNotificationService
             $user,
             'login',
             'Login Berhasil',
-            'Login ke akun ALIM berhasil pada '.$this->timestamp().' dari IP '.$request->ip()
+            'Login ke akun ALIM berhasil. Pengguna: '.$user->name.' ('.$user->email.'). '
+                .'Waktu '.$this->timestamp().', IP '.$request->ip()
+                .', perangkat '.$this->deviceSummary($request->userAgent())
                 .'. Jika bukan Anda, segera ubah password.',
             $request,
             sendEmail: true,
         );
+
+        $this->notifyCentralLogin($user, $request);
     }
 
     public function passwordForgot(User $user, Request $request): void
@@ -133,6 +139,79 @@ class SecurityNotificationService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Salinan notifikasi login ke nomor admin ALIM (mode pengiriman central
+     * atau both) agar admin dapat memeriksa siapa yang sedang login.
+     * Pesan ke nomor pengguna sendiri sudah dikirim lewat channel universal.
+     */
+    private function notifyCentralLogin(User $user, Request $request): void
+    {
+        if ((string) setting('security_notify_login', '1') === '0'
+            || (string) setting('whatsapp_notifications', '1') === '0') {
+            return;
+        }
+
+        if (! in_array($this->gateway->deliveryMode(), ['central', 'both'], true)) {
+            return;
+        }
+
+        $central = $this->gateway->centralNumber();
+
+        if (! $central) {
+            return;
+        }
+
+        $userPhone = $this->notifications->phoneFor($user);
+
+        if ($userPhone && $this->gateway->normalizePhone($userPhone) === $central) {
+            return;
+        }
+
+        $message = "Login berhasil — ALIM\n\n"
+            ."Nama: {$user->name}\n"
+            ."Email: {$user->email}\n"
+            ."Waktu: {$this->timestamp()}\n"
+            ."IP: {$request->ip()}\n"
+            .'Perangkat: '.$this->deviceSummary($request->userAgent())."\n\n"
+            .'Jika bukan Anda, segera ubah kata sandi.';
+
+        try {
+            $this->gateway->send($central, $message, [
+                'event' => 'login',
+                'user_id' => $user->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengirim notifikasi login ke nomor admin', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function deviceSummary(?string $userAgent): string
+    {
+        $agent = (string) $userAgent;
+
+        $platform = match (true) {
+            str_contains($agent, 'Android') => 'Android',
+            str_contains($agent, 'iPhone'), str_contains($agent, 'iPad') => 'iOS',
+            str_contains($agent, 'Windows') => 'Windows',
+            str_contains($agent, 'Macintosh') => 'macOS',
+            str_contains($agent, 'Linux') => 'Linux',
+            default => 'perangkat tidak dikenal',
+        };
+
+        $browser = match (true) {
+            str_contains($agent, 'Edg') => 'Edge',
+            str_contains($agent, 'Chrome') => 'Chrome',
+            str_contains($agent, 'Firefox') => 'Firefox',
+            str_contains($agent, 'Safari') => 'Safari',
+            default => 'Browser',
+        };
+
+        return $browser.' · '.$platform;
     }
 
     private function timestamp(): string

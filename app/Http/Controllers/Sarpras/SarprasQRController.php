@@ -9,10 +9,10 @@ use App\Models\Asset;
 use App\Models\AssetPhoto;
 use App\Models\QrScanHistory;
 use App\Services\Ljk\LjkQrRenderer;
-use App\Services\Pdf\DocumentPdfService;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\PhotoProofService;
 use Carbon\Carbon;
+use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -110,7 +110,7 @@ class SarprasQRController extends SarprasBaseController
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $query = Asset::with(['room', 'room.school', 'school', 'category'])->where('is_active', true);
+        $query = Asset::with(['room', 'room.school', 'category'])->where('is_active', true);
         if ($schoolId) {
             $query->where('school_id', $schoolId);
         }
@@ -129,19 +129,15 @@ class SarprasQRController extends SarprasBaseController
 
         $labels = $this->buildLabels($assets);
 
-        $backgroundPath = storage_path('app/public/templates/qr-template-a6.png');
-        $backgroundData = is_file($backgroundPath)
-            ? 'data:image/png;base64,'.base64_encode((string) file_get_contents($backgroundPath))
-            : null;
+        $pdf = new Dompdf(['isRemoteEnabled' => true, 'defaultFont' => 'DejaVu Sans']);
+        $pdf->loadHtml(view('sarpras.qr.pdf', compact('labels'))->render());
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
 
-        return app(DocumentPdfService::class)->fromView(
-            'sarpras.qr.pdf',
-            compact('labels', 'backgroundData'),
-            'QR-Aset-'.date('Ymd'),
-            'portrait',
-            'A4',
-            'attachment',
-        );
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="qr-labels-'.date('Ymd').'.pdf"',
+        ]);
     }
 
     /**
@@ -163,8 +159,7 @@ class SarprasQRController extends SarprasBaseController
                     'name' => $asset->category?->name ?? $asset->asset_name,
                     'code' => 'Kelompok '.$asset->qrGroupMembers()->count().' unit',
                     'room' => $asset->room?->room_name,
-                    'school' => $asset->room?->school?->name ?? $asset->school?->name,
-                    'year' => $asset->acquisition_year,
+                    'school' => $asset->room?->school?->name,
                     'url' => $asset->qrScanUrl(),
                     'mode' => Asset::QR_MODE_GROUP,
                 ];
@@ -176,15 +171,14 @@ class SarprasQRController extends SarprasBaseController
                 'name' => $asset->asset_name,
                 'code' => $asset->asset_code,
                 'room' => $asset->room?->room_name,
-                'school' => $asset->room?->school?->name ?? $asset->school?->name,
-                'year' => $asset->acquisition_year,
+                'school' => $asset->room?->school?->name,
                 'url' => $asset->qrScanUrl(),
                 'mode' => Asset::QR_MODE_INDIVIDUAL,
             ];
         }
 
         foreach ($labels as $index => $label) {
-            $labels[$index]['qr'] = LjkQrRenderer::pngDataUri($label['url'], 1000, 2, 'Q');
+            $labels[$index]['qr'] = LjkQrRenderer::pngDataUri($label['url'], 480, 5, 'Q');
         }
 
         return $labels;

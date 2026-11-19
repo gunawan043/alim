@@ -8,12 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\LoginWaliRequest;
 use App\Http\Requests\Mobile\RegisterWaliRequest;
 use App\Http\Services\WaliSantriService;
-use App\Mail\LoginOtpMail;
 use App\Models\AuditLog;
 use App\Models\LoginOtp;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
 use App\Models\WaliSantri;
+use App\Services\LoginOtpNotifier;
 use App\Services\MobileSessionIntrospector;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
@@ -26,7 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -325,16 +325,22 @@ class AuthController extends Controller
     {
         $expiryMinutes = SecurityPolicy::otpExpiryMinutes();
         $record = null;
-
-        $emailOtpSent = true;
+        $channel = null;
 
         try {
             [$record, $otp] = LoginOtp::issue($user, $expiryMinutes);
             app(SystemMailSettingsService::class)->apply();
-            Mail::to($user->email)->send(new LoginOtpMail($otp, $user->name, $expiryMinutes));
+            $channel = app(LoginOtpNotifier::class)->send($user, $otp, $expiryMinutes)['channel'];
         } catch (\Throwable $e) {
+            Log::warning('Gagal mengirim OTP login mobile', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        if ($channel === null) {
             $record?->delete();
-            $emailOtpSent = false;
+            $record = null;
 
             $hasRecoveryCode = TwoFactorRecoveryCode::where('user_id', $user->id)
                 ->whereNull('used_at')
@@ -351,8 +357,8 @@ class AuthController extends Controller
         $challengeToken = Crypt::encryptString($user->id.'|'.($record?->id ?? '0'));
         $methods = [];
 
-        if ($emailOtpSent) {
-            $methods[] = 'email';
+        if ($channel !== null) {
+            $methods[] = $channel;
         }
 
         if ($user->hasTotpEnabled()) {

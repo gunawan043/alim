@@ -1,8 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <title>{{ $title ?? 'QR Code Kehadiran Kelas' }}</title>
 
     <style>
@@ -15,8 +17,7 @@
             box-sizing: border-box;
         }
 
-        html,
-        body {
+        html, body {
             margin: 0;
             padding: 0;
             width: 210mm;
@@ -29,6 +30,10 @@
             color: #ffffff;
         }
 
+        /* =====================================
+           HALAMAN A4
+        ===================================== */
+
         .page {
             position: relative;
             width: 210mm;
@@ -36,7 +41,7 @@
 
             background-image: url('{{ $backgroundData }}');
             background-size: 210mm 297mm;
-            background-position: top left;
+            background-position: center;
             background-repeat: no-repeat;
 
             overflow: hidden;
@@ -47,82 +52,96 @@
             page-break-after: auto;
         }
 
-        /* Area biru di atas kotak putih: y = 0–103,6 mm */
-        .school-name {
+        /* =====================================
+           JUDUL QR CODE
+        ===================================== */
+
+        .header {
             position: absolute;
-            top: 32mm;
-            left: 10mm;
-            width: 190mm;
+            top: 20mm;
+            left: 15mm;
+            width: 180mm;
 
             text-align: center;
-            text-transform: uppercase;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 20pt;
-            font-weight: bold;
-            line-height: 1.15;
-            letter-spacing: .4px;
-            color: #e0e7ff;
         }
 
         .document-title {
-            position: absolute;
-            top: 44mm;
-            left: 10mm;
-            width: 190mm;
-
-            text-align: center;
-            text-transform: uppercase;
-            white-space: nowrap;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
+            font-size: 22pt;
             font-weight: bold;
-            line-height: 1.05;
-            letter-spacing: .5px;
+            line-height: 1.3;
+            letter-spacing: 1px;
+            text-transform: uppercase;
             color: #ffffff;
         }
 
-        .academic-year {
+        /* =====================================
+           IDENTITAS SEKOLAH
+        ===================================== */
+
+        .school-name {
             position: absolute;
-            top: 63mm;
-            left: 15mm;
-            width: 180mm;
+            top: 42mm;
+            left: 20mm;
+            width: 170mm;
 
             text-align: center;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 15pt;
+            font-size: 14pt;
             font-weight: bold;
-            line-height: 1.15;
+            line-height: 1.3;
+            color: #e0e7ff;
         }
 
-        .academic-year-pill {
-            display: inline-block;
-            padding: 1.7mm 8mm;
-            background-color: #ffffff;
-            border: 0.4mm solid #dbeafe;
-            border-radius: 4mm;
-            white-space: nowrap;
-            color: #0b2a7a;
+        /* =====================================
+           INFORMASI ADMINISTRASI KELAS
+        ===================================== */
+
+        .meta {
+            position: absolute;
+            top: 58mm;
+            left: 42mm;
+            width: 126mm;
+
+            border-collapse: collapse;
+            font-size: 11pt;
+            font-weight: bold;
+            color: #ffffff;
         }
 
-        .academic-year .label {
-            color: #1e40af;
+        .meta td {
+            padding: 2mm 0;
+            vertical-align: middle;
         }
 
-        .academic-year .value {
-            color: #0b2a7a;
+        .meta td:first-child {
+            width: 42%;
+            color: #dbeafe;
         }
+
+        .meta td:nth-child(2) {
+            width: 5%;
+            text-align: center;
+        }
+
+        .meta td:last-child {
+            width: 53%;
+            text-align: left;
+        }
+
+        /* =====================================
+           PETUNJUK PENGGUNAAN
+        ===================================== */
 
         .instruction {
             position: absolute;
-            top: 79mm;
-            left: 15mm;
-            width: 180mm;
+            top: 84mm;
+            left: 30mm;
+            width: 150mm;
 
             text-align: center;
             font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
-            font-size: 12pt;
-            font-style: italic;
+            font-size: 9pt;
             font-weight: normal;
-            line-height: 1.15;
+            line-height: 1.5;
             color: #e0e7ff;
         }
 
@@ -131,25 +150,91 @@
             color: #ffffff;
         }
 
-        /* Kotak putih template: x = 22,6–187,3 mm; y = 103,7–257,8 mm */
+        /* =====================================
+           QR CODE
+           Ukuran keseluruhan: 150 x 150 mm
+        ===================================== */
+
         .qr-panel {
             position: absolute;
-            top: 104.7mm;
-            left: 29mm;
+            top: 105mm;
+            left: 30mm;
 
-            width: 152mm;
-            height: 152mm;
+            width: 150mm;
+            height: 150mm;
+
+            padding: 3mm;
+            background: #ffffff;
+            border-radius: 3mm;
         }
 
         .qr-panel img {
             display: block;
-            width: 152mm;
-            height: 152mm;
+            width: 144mm;
+            height: 144mm;
         }
 
+        /* =====================================
+           KETERANGAN QR CODE
+        ===================================== */
+
+        .scan-caption {
+            position: absolute;
+            top: 258mm;
+            left: 20mm;
+            width: 170mm;
+
+            text-align: center;
+            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
+            font-size: 9pt;
+            font-weight: bold;
+            line-height: 1.5;
+            color: #ffffff;
+        }
+
+        /* =====================================
+           FOOTER ALIM
+        ===================================== */
+
+        .footer {
+            position: absolute;
+            bottom: 8mm;
+            left: 20mm;
+            width: 170mm;
+
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .footer-line {
+            width: 65mm;
+            margin: 0 auto 3mm;
+            border-top: 0.4mm solid rgba(255,255,255,.7);
+        }
+
+        .footer-title {
+            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
+            font-size: 9pt;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .footer-subtitle {
+            margin-top: 1.5mm;
+            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
+            font-size: 7pt;
+            font-weight: normal;
+            letter-spacing: .5px;
+            color: #e0e7ff;
+        }
+
+        /* =====================================
+           PENGATURAN CETAK
+        ===================================== */
+
         @media print {
-            html,
-            body {
+            html, body {
                 width: 210mm;
                 height: auto;
                 margin: 0;
@@ -172,45 +257,101 @@
                 break-after: auto;
             }
         }
+
     </style>
 </head>
+
 <body>
+
 @foreach($cards as $card)
+
     @php
         $studyGroup = $card['studyGroup'];
         $token = $card['token'];
         $qrData = $card['qrData'];
-        $className = strtoupper($studyGroup->full_name ?? $studyGroup->name);
-        $titleText = 'QR CODE KELAS '.$className;
-        $titleLength = strlen($titleText);
-        $titleSize = $titleLength <= 20 ? 36 : ($titleLength <= 28 ? 30 : ($titleLength <= 36 ? 26 : 22));
+
+        $className = strtoupper(
+            $studyGroup->full_name ?? $studyGroup->name
+        );
     @endphp
 
     <div class="page {{ $loop->last ? 'last' : '' }}">
+
+        <!-- =====================================
+             JUDUL DOKUMEN
+        ====================================== -->
+
+        <div class="header">
+            <div class="document-title">
+                QR CODE KEHADIRAN KELAS {{ $className }}
+            </div>
+        </div>
+
+
+        <!-- =====================================
+             NAMA SEKOLAH
+        ====================================== -->
+
         <div class="school-name">
             {{ $studyGroup->school?->name ?? '' }}
         </div>
 
-        <div class="document-title" style="font-size: {{ $titleSize }}pt;">
-            {{ $titleText }}
-        </div>
 
-        <div class="academic-year">
-            <span class="academic-year-pill">
-                <span class="label">TAHUN AJARAN</span> :
-                <span class="value">{{ $token->academicYear?->name ?? '—' }}</span>
-            </span>
-        </div>
+        <!-- =====================================
+             INFORMASI KELAS
+        ====================================== -->
+
+        <table class="meta">
+
+            <tr>
+                <td>WALI KELAS</td>
+                <td>:</td>
+                <td>
+                    {{ $studyGroup->homeroomTeacher?->name ?? '—' }}
+                </td>
+            </tr>
+
+            <tr>
+                <td>TAHUN AJARAN</td>
+                <td>:</td>
+                <td>
+                    {{ $token->academicYear?->name ?? '—' }}
+                </td>
+            </tr>
+
+        </table>
+
+
+        <!-- =====================================
+             PETUNJUK PENGGUNAAN
+        ====================================== -->
 
         <div class="instruction">
-            Pindai QR melalui menu <strong>Scan QR Kehadiran</strong><br>
-            untuk mencatat absensi masuk dan keluar kelas.
+
+            Pindai QR Code berikut melalui menu
+            <strong>Scan QR Kehadiran</strong>
+            pada aplikasi ALIM untuk mencatat
+            kehadiran masuk dan keluar kelas.
+
         </div>
 
+
+        <!-- =====================================
+             QR CODE
+        ====================================== -->
+
         <div class="qr-panel">
-            <img src="{{ $qrData }}" alt="QR Code Kehadiran Kelas {{ $className }}">
+
+            <img
+                src="{{ $qrData }}"
+                alt="QR Code Kehadiran Kelas {{ $className }}"
+            >
+
         </div>
+
     </div>
+
 @endforeach
+
 </body>
 </html>

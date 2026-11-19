@@ -326,7 +326,7 @@ class NotificationUniversalService
         // WhatsApp
         if (($data['send_whatsapp'] ?? false) && $whatsappEnabled && $prefs->whatsapp_enabled
             && $this->channelAllowed($action, 'wa')) {
-            $phone = $this->recipientPhone($user);
+            $phone = $this->phoneFor($user);
             if ($phone) {
                 $this->sendWhatsApp($user, $notification, $phone, $data);
             }
@@ -362,7 +362,7 @@ class NotificationUniversalService
     /**
      * Nomor WhatsApp penerima: kontak GTK → no_hp akun → profil → recruitment.
      */
-    private function recipientPhone(User $user): ?string
+    public function phoneFor(User $user): ?string
     {
         return $user->gtkContact?->no_whatsapp
             ?: ($user->no_hp ?: null)

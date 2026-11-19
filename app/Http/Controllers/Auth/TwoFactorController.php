@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\LoginOtpMail;
 use App\Models\AuditLog;
 use App\Models\LoginOtp;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
+use App\Services\LoginOtpNotifier;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use App\Services\TotpService;
@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -44,6 +43,7 @@ class TwoFactorController extends Controller
 
         return view('auth.two-factor', [
             'email' => $this->maskEmail($user->email),
+            'otpChannel' => (string) $request->session()->get('2fa_otp_channel', 'email'),
             'expiresAt' => $otp?->expires_at,
             'expiresMinutes' => $this->expiryMinutes(),
             'recoveryCodesAvailable' => TwoFactorRecoveryCode::where('user_id', $user->id)
@@ -237,14 +237,15 @@ class TwoFactorController extends Controller
         RateLimiter::hit($throttleKey, 300);
 
         $record = null;
+        $channel = null;
 
         try {
             [$record, $otp] = LoginOtp::issue($user, $this->expiryMinutes());
-            Mail::to($user->email)->send(new LoginOtpMail(
-                $otp,
-                $user->name,
-                $this->expiryMinutes(),
-            ));
+            $channel = app(LoginOtpNotifier::class)->send($user, $otp, $this->expiryMinutes())['channel'];
+
+            if ($channel === null) {
+                throw new \RuntimeException('Kode OTP tidak dapat dikirim lewat email maupun WhatsApp.');
+            }
         } catch (\Throwable $e) {
             $record?->delete();
 
@@ -258,9 +259,14 @@ class TwoFactorController extends Controller
             ]);
         }
 
-        $request->session()->put('2fa_started_at', now()->timestamp);
+        $request->session()->put([
+            '2fa_started_at' => now()->timestamp,
+            '2fa_otp_channel' => $channel,
+        ]);
 
-        return back()->with('status', 'Kode verifikasi baru telah dikirim ke email Anda.');
+        return back()->with('status', $channel === 'whatsapp'
+            ? 'Kode verifikasi baru telah dikirim melalui WhatsApp.'
+            : 'Kode verifikasi baru telah dikirim ke email Anda.');
     }
 
     public function cancel(Request $request): RedirectResponse

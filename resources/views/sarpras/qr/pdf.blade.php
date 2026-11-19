@@ -1,232 +1,43 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'QR Code Aset' }}</title>
-
-    <style>
-        @page {
-            size: A4 portrait;
-            margin: 0;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            width: 210mm;
-            height: 297mm;
-        }
-
-        body {
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .page {
-            position: relative;
-            width: 210mm;
-            height: 297mm;
-
-            background-image: url('{{ $backgroundData }}');
-            background-size: 210mm 297mm;
-            background-position: top left;
-            background-repeat: no-repeat;
-
-            overflow: hidden;
-            page-break-after: always;
-        }
-
-        .page.last {
-            page-break-after: auto;
-        }
-
-        .school-name {
-            position: absolute;
-            top: 32mm;
-            left: 10mm;
-            width: 190mm;
-
-            text-align: center;
-            text-transform: uppercase;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 20pt;
-            font-weight: bold;
-            line-height: 1.15;
-            letter-spacing: .4px;
-            color: #e0e7ff;
-        }
-
-        .document-title {
-            position: absolute;
-            top: 44mm;
-            left: 10mm;
-            width: 190mm;
-
-            text-align: center;
-            text-transform: uppercase;
-            white-space: nowrap;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-weight: bold;
-            line-height: 1.05;
-            letter-spacing: .5px;
-            color: #ffffff;
-        }
-
-        .asset-name {
-            position: absolute;
-            top: 59mm;
-            left: 10mm;
-            width: 190mm;
-
-            text-align: center;
-            text-transform: uppercase;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-weight: bold;
-            line-height: 1.1;
-            color: #ffffff;
-            word-wrap: break-word;
-        }
-
-        .asset-meta {
-            position: absolute;
-            top: 76mm;
-            left: 10mm;
-            width: 190mm;
-
-            text-align: center;
-            font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif;
-            font-size: 12.5pt;
-            font-weight: bold;
-            line-height: 1.15;
-        }
-
-        .asset-meta-pill {
-            display: inline-block;
-            padding: 1.7mm 8mm;
-            background-color: #ffffff;
-            border: 0.4mm solid #dbeafe;
-            border-radius: 4mm;
-            white-space: nowrap;
-            color: #0b2a7a;
-        }
-
-        .asset-meta .label {
-            color: #1e40af;
-        }
-
-        .asset-meta .value {
-            color: #0b2a7a;
-        }
-
-        .instruction {
-            position: absolute;
-            top: 89mm;
-            left: 15mm;
-            width: 180mm;
-
-            text-align: center;
-            font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
-            font-size: 11.5pt;
-            font-style: italic;
-            font-weight: normal;
-            line-height: 1.15;
-            color: #e0e7ff;
-        }
-
-        .qr-panel {
-            position: absolute;
-            top: 104.7mm;
-            left: 29mm;
-
-            width: 152mm;
-            height: 152mm;
-        }
-
-        .qr-panel img {
-            display: block;
-            width: 152mm;
-            height: 152mm;
-        }
-
-        @media print {
-            html,
-            body {
-                width: 210mm;
-                height: auto;
-                margin: 0;
-                padding: 0;
-            }
-
-            .page {
-                width: 210mm;
-                height: 297mm;
-
-                page-break-after: always;
-                break-after: page;
-
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-
-            .page.last {
-                page-break-after: auto;
-                break-after: auto;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Labels - {{ date('d/m/Y') }}</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Arial', sans-serif; background: white; color: #222; }
+.header { text-align: center; border-bottom: 2px solid #333; padding: 16px 0 12px; margin-bottom: 16px; }
+.header h2 { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+.header p { font-size: 11px; color: #666; margin-top: 2px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 0 16px 16px; }
+.label { border: 1px solid #333; border-radius: 6px; padding: 10px; text-align: center; page-break-inside: avoid; }
+.label img { width: 90px; height: 90px; margin: 0 auto; display: block; }
+.label .name { font-size: 11px; font-weight: 700; margin-top: 6px; line-height: 1.3; }
+.label .code { font-size: 9px; color: #555; margin-top: 2px; }
+.label .room { font-size: 9px; color: #888; }
+.label .school { font-size: 8px; color: #aaa; border-top: 1px dashed #ddd; margin-top: 4px; padding-top: 4px; }
+@page { size: A4; margin: 10mm; }
+@media print { .grid { padding: 0; } }
+</style>
 </head>
 <body>
-@foreach($labels as $label)
-    @php
-        $code = $label['code'] ?? '—';
-        $name = $label['name'] ?? '—';
-        $titleText = 'QR CODE ASET '.$code;
-        $titleLength = strlen($titleText);
-        $titleSize = $titleLength <= 22 ? 36 : ($titleLength <= 30 ? 30 : ($titleLength <= 38 ? 26 : 22));
-        $nameText = strtoupper($name);
-        $nameLength = strlen($nameText);
-        $nameSize = $nameLength <= 30 ? 19 : ($nameLength <= 45 ? 16 : 14);
-    @endphp
-
-    <div class="page {{ $loop->last ? 'last' : '' }}">
-        <div class="school-name">
-            {{ $label['school'] ?? '' }}
-        </div>
-
-        <div class="document-title" style="font-size: {{ $titleSize }}pt;">
-            {{ $titleText }}
-        </div>
-
-        <div class="asset-name" style="font-size: {{ $nameSize }}pt;">
-            {{ $nameText }}
-        </div>
-
-        <div class="asset-meta">
-            <span class="asset-meta-pill">
-                <span class="label">RUANG</span> :
-                <span class="value">{{ $label['room'] ?? '—' }}</span>
-                &nbsp;|&nbsp;
-                <span class="label">TAHUN</span> :
-                <span class="value">{{ $label['year'] ?? '—' }}</span>
-            </span>
-        </div>
-
-        <div class="instruction">
-            Pindai QR untuk melihat detail aset<br>
-            dan mencatat audit barang.
-        </div>
-
-        <div class="qr-panel">
-            <img src="{{ $label['qr'] ?? '' }}" alt="QR Code Aset {{ $code }}">
-        </div>
+<div class="header">
+    <h2>DAFTAR QR CODE ASET</h2>
+    <p>Dicetak: {{ date('d F Y, H:i') }} | Total: {{ $assets->count() }} aset</p>
+</div>
+<div class="grid">
+    @foreach($assets as $asset)
+    <div class="label">
+        <img src="{{ $qrData[$asset->id] ?? '' }}" alt="QR">
+        <div class="name">{{ Str::limit($asset->asset_name, 40) }}</div>
+        <div class="code">{{ $asset->asset_code ?? '-' }}</div>
+        <div class="room">{{ $asset->room?->room_name ?? '-' }}</div>
+        @if($asset->room?->school)
+        <div class="school">{{ $asset->room->school->name }}</div>
+        @endif
     </div>
-@endforeach
+    @endforeach
+</div>
 </body>
 </html>

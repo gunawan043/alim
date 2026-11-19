@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Mail\AccountCompromisedMail;
 use App\Mail\AccountLockedMail;
 use App\Mail\IpBlockedMail;
-use App\Mail\LoginOtpMail;
 use App\Models\AuditLog;
 use App\Models\Dormitory;
 use App\Models\FailedLoginAttempt;
@@ -18,6 +17,7 @@ use App\Models\StudentOperatorAssignment;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
 use App\Models\WebPushSubscription;
+use App\Services\LoginOtpNotifier;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use Illuminate\Http\RedirectResponse;
@@ -275,11 +275,15 @@ class LoginController extends Controller
     {
         $expiryMinutes = SecurityPolicy::otpExpiryMinutes();
         $record = null;
+        $channel = null;
 
         try {
             [$record, $otp] = LoginOtp::issue($user, $expiryMinutes);
-            if (! $this->sendMailSafely($user->email, new LoginOtpMail($otp, $user->name, $expiryMinutes))) {
-                throw new \RuntimeException('Kode OTP tidak dapat dikirim ke email pengguna.');
+            $delivery = app(LoginOtpNotifier::class)->send($user, $otp, $expiryMinutes);
+            $channel = $delivery['channel'];
+
+            if ($channel === null) {
+                throw new \RuntimeException('Kode OTP tidak dapat dikirim lewat email maupun WhatsApp.');
             }
         } catch (\Throwable $e) {
             $record?->delete();
@@ -312,10 +316,13 @@ class LoginController extends Controller
             '2fa_user_id' => $user->id,
             '2fa_remember' => $remember,
             '2fa_started_at' => now()->timestamp,
+            '2fa_otp_channel' => $channel,
         ]);
 
         return redirect()->route('two-factor.challenge')
-            ->with('status', 'Kode verifikasi telah dikirim ke email Anda.');
+            ->with('status', $channel === 'whatsapp'
+                ? 'Kode verifikasi telah dikirim melalui WhatsApp.'
+                : 'Kode verifikasi telah dikirim ke email Anda.');
     }
 
     public function redirectBasedOnRole($user): RedirectResponse
