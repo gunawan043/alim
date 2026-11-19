@@ -492,6 +492,10 @@ class DormitoryPermitController extends Controller
     {
         $dormitory = $this->enforceDormitoryScope($asramaUuid);
 
+        $permit = DormitoryPermit::with(['student.currentClassHistory', 'room', 'mahrom', 'approvedBy'])
+            ->where('dormitory_id', $asramaUuid)
+            ->findOrFail($permitUuid);
+
         $canAuthorizePickup = app(DormitoryPolicyAccess::class)
             ->canManageQuota(auth()->user(), $asramaUuid);
         $canApprovePermit = app(DormitoryPolicyAccess::class)
