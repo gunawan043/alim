@@ -1786,6 +1786,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [SubjectController::class, 'store'])->name('store');
                 Route::get('/{id}', [SubjectController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [SubjectController::class, 'edit'])->name('edit');
+                Route::post('/{id}/sync-grades', [SubjectController::class, 'syncGrades'])->name('sync-grades');
                 Route::put('/{id}/names', [SubjectController::class, 'updateNames'])->name('names.update');
                 Route::put('/{id}', [SubjectController::class, 'update'])->name('update');
                 Route::delete('/{id}', [SubjectController::class, 'destroy'])->name('destroy');

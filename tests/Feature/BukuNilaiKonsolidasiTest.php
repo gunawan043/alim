@@ -617,6 +617,49 @@ class BukuNilaiKonsolidasiTest extends TestCase
         $this->assertSame(6.0, (float) $sgs->fresh()->weekly_hours);
     }
 
+
+    public function test_mapel_baru_dari_master_langsung_masuk_tingkat_dan_rombel(): void
+    {
+        $this->studyGroup->update(['homeroom_teacher_id' => $this->guruA->id]);
+
+        $this->actingAs($this->kurikulum)
+            ->post("/{$this->kurikulum->id}/subjects", [
+                'code' => 'MAPEL-BARU',
+                'name' => 'Mapel Baru Uji',
+                'category' => 'nasional',
+                'credit_hours' => 3,
+                'is_active' => 1,
+            ])
+            ->assertRedirect();
+
+        $subject = Subject::where('school_id', $this->school->id)
+            ->where('code', 'MAPEL-BARU')
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('grade_level_subjects', [
+            'grade_level_id' => $this->grade->id,
+            'subject_id' => $subject->id,
+            'academic_year_id' => $this->ay->id,
+            'allocation_hours' => 3,
+            'is_active' => 1,
+        ]);
+
+        $this->assertDatabaseHas('study_group_subjects', [
+            'study_group_id' => $this->studyGroup->id,
+            'subject_id' => $subject->id,
+            'academic_year_id' => $this->ay->id,
+            'is_active' => 1,
+        ]);
+
+        $this->assertDatabaseHas('teacher_admin_books', [
+            'study_group_id' => $this->studyGroup->id,
+            'subject_id' => $subject->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'is_active' => 1,
+        ]);
+    }
+
     private function seedSnapshot(User $user): void
     {
         $roleDimension = implode(',', $user->fresh()->effectiveRoles()) ?: 'default';

@@ -244,12 +244,27 @@
                                             <span class="badge bg-warning-subtle text-warning" style="font-size:11px;">{{ $sub->category }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-center fw-semibold">{{ $sub->credit_hours ?? '—' }} JP</td>
+                                    <td class="text-center fw-semibold">
+                                        {{ $sub->credit_hours ?? '—' }} JP
+                                        @if(($sub->grade_level_count ?? 0) === 0)
+                                            <div><span class="badge bg-warning-subtle text-warning" style="font-size:10px;">Belum di tingkat</span></div>
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge {{ $sub->is_active ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}"
                                               style="font-size:11px;">{{ $sub->is_active ? 'Aktif' : 'Nonaktif' }}</span>
                                     </td>
                                     <td class="text-end">
+                                        @if(($sub->grade_level_count ?? 0) === 0)
+                                            <form method="POST" action="{{ route('user.subjects.sync-grades', ['userId' => $userId, 'id' => $sub->id]) }}" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-soft-success btn-sm"
+                                                        title="Terapkan ke semua tingkat aktif"
+                                                        onclick="return confirm('Terapkan mapel ini ke semua tingkat aktif?')">
+                                                    <i class="ri-stack-line"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                         <button type="button"
                                                 class="btn btn-soft-info btn-sm js-edit-name"
                                                 title="Atur nama Indonesia & Arab"

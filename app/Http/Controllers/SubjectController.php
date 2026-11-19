@@ -16,6 +16,14 @@ class SubjectController extends Controller
     {
         $query = Subject::with('school');
 
+        $activeAyId = AcademicYear::where('is_active', true)->value('id');
+        $query->withCount([
+            'gradeLevelSubjects as grade_level_count' => fn ($q) => $q->when(
+                $activeAyId,
+                fn ($qq) => $qq->where('academic_year_id', $activeAyId)
+            ),
+        ]);
+
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
             $query->where('school_id', $schoolId);
@@ -213,8 +221,67 @@ class SubjectController extends Controller
 
         $subject = Subject::create($data);
 
+        // Mapel master langsung diterapkan ke seluruh tingkat aktif pada
+        // satuan pendidikan ini, lalu observer menyusulkan mapel rombel dan
+        // buku nilai. Tanpa ini, mapel baru hanya ada di master dan tidak
+        // pernah muncul di leger.
+        $syncedGrades = $this->syncSubjectToGrades($subject);
+
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])
-            ->with('success', 'Mata pelajaran berhasil disimpan.');
+            ->with('success', 'Mata pelajaran berhasil disimpan dan diterapkan ke '.$syncedGrades.' tingkat aktif.');
+    }
+
+    /**
+     * Terapkan mapel master ke tingkat aktif (grade_level_subjects).
+     * Observer GradeLevelSubject akan menyusulkan mapel rombel + buku nilai.
+     */
+    private function syncSubjectToGrades(Subject $subject, ?array $gradeLevelIds = null): int
+    {
+        $activeAy = AcademicYear::where('is_active', true)->first();
+
+        $grades = GradeLevel::query()
+            ->where('school_id', $subject->school_id)
+            ->where('is_active', true)
+            ->when($gradeLevelIds !== null, fn ($q) => $q->whereIn('id', $gradeLevelIds))
+            ->get();
+
+        $synced = 0;
+
+        foreach ($grades as $grade) {
+            GradeLevelSubject::updateOrCreate(
+                [
+                    'academic_year_id' => $activeAy?->id,
+                    'grade_level_id' => $grade->id,
+                    'subject_id' => $subject->id,
+                    'track' => null,
+                ],
+                [
+                    'allocation_hours' => (int) ($subject->credit_hours ?: 2),
+                    'is_active' => true,
+                ]
+            );
+
+            $synced++;
+        }
+
+        return $synced;
+    }
+
+    /**
+     * Terapkan mapel yang sudah ada ke seluruh tingkat aktif.
+     */
+    public function syncGrades(Request $request, string $userId, string $id)
+    {
+        $subject = Subject::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $subject->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $synced = $this->syncSubjectToGrades($subject);
+
+        return back()->with('success', "Mapel diterapkan ke {$synced} tingkat aktif. Buku nilai/leger akan menyusul otomatis.");
     }
 
     public function show(string $userId, string $id)

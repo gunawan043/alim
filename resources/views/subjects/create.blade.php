@@ -107,6 +107,7 @@
                         <ul class="text-muted small mb-0 ps-3">
                             <li class="mb-2">Gunakan kode singkat unik per sekolah (contoh: <code>MTK</code>, <code>B.IND</code>).</li>
                             <li class="mb-2">JP/minggu menjadi alokasi dasar sebelum disesuaikan di <strong>Plotting Guru</strong> dan jadwal.</li>
+                            <li class="mb-2">Mapel baru otomatis diterapkan ke <strong>semua tingkat aktif</strong> dengan JP default agar langsung masuk buku nilai/leger. Sesuaikan JP/tingkat di <strong>Tingkat &amp; Struktur Mapel</strong>.</li>
                             <li class="mb-2">Kategori <em>Muatan Lokal</em> dipakai untuk mapel khas satuan pendidikan.</li>
                             <li>Mapel nonaktif tidak dihitung pada rekap JP aktif.</li>
                         </ul>

@@ -29,6 +29,13 @@
                         <span class="badge bg-dark-subtle text-dark ms-1">{{ $subject->code ?? '—' }}</span>
                     </h5>
                     <div class="d-flex gap-2">
+                        <form method="POST" action="{{ route('user.subjects.sync-grades', ['userId' => $userId, 'id' => $subject->id]) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-success"
+                                    onclick="return confirm('Terapkan mapel ini ke seluruh tingkat aktif? JP memakai default mapel.')">
+                                <i class="ri-stack-line me-1"></i> Terapkan ke Semua Tingkat
+                            </button>
+                        </form>
                         <a href="{{ route('user.subjects.edit', ['userId' => $userId, 'id' => $subject->id]) }}" class="btn btn-sm btn-warning">
                             <i class="ri-pencil-line me-1"></i> Edit
                         </a>
