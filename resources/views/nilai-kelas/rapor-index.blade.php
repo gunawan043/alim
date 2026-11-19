@@ -755,8 +755,8 @@
                             @endforeach
                         </div>
                         <div class="form-text mb-3">
-                            QR verifikasi hanya tercetak bila dokumen memiliki verifikasi digital (mode QR/PAdES).
-                            Matikan switch ini untuk rapor bertanda tangan basah.
+                            QR verifikasi hanya tercetak bila dokumen memiliki verifikasi digital (mode QR/PAdES)
+                            dan switch ini aktif. Jika dimatikan, TTD &amp; stempel dicetak sebagai tanda tangan visual.
                         </div>
 
                         @php

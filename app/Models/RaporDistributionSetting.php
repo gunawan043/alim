@@ -116,7 +116,7 @@ class RaporDistributionSetting extends Model
             'show_ttd_ksp' => true,
             'show_ttd_wali' => true,
             'show_stamp' => true,
-            'show_qr' => true,
+            'show_qr' => false,
             'kop_height' => 25.0,
             'ttd_ksp_width' => 30.0,
             'ttd_ksp_height' => 15.0,

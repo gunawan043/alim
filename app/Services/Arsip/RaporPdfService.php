@@ -426,7 +426,8 @@ class RaporPdfService
             'kspNameAr' => $resolver->principalName($ownerSchool),
             'verificationByStudent' => $verificationByStudent,
             'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
-            'hideTtdStamp' => in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
+            'hideTtdStamp' => ($layout['show_qr'] ?? false)
+                && in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
         ])->render();
     }
 
@@ -520,7 +521,8 @@ class RaporPdfService
             'kspNameAr' => $resolver->principalName($ownerSchool),
             'verificationByStudent' => $verificationByStudent,
             'principal' => app(SchoolLeaderService::class)->forSchool($ownerSchool),
-            'hideTtdStamp' => in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
+            'hideTtdStamp' => ($layout['show_qr'] ?? false)
+                && in_array(config('documents.modes.rapor', 'qr'), ['qr', 'pades'], true),
         ])->render();
 
         $pdf = $this->renderPdf($html, (string) $layout['paper_size']);

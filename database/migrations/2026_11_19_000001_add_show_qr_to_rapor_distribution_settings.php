@@ -14,7 +14,7 @@ return new class extends Migration
 
         Schema::table('rapor_distribution_settings', function (Blueprint $table) {
             if (! Schema::hasColumn('rapor_distribution_settings', 'show_qr')) {
-                $table->boolean('show_qr')->default(true);
+                $table->boolean('show_qr')->default(false);
             }
         });
     }
