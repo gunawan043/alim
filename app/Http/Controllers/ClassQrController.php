@@ -134,7 +134,7 @@ class ClassQrController extends Controller
         $academicYear = AcademicYear::where('is_active', true)->first();
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
         $qrData = LjkQrRenderer::pngDataUri(
-            json_encode($this->qrTokenService->buildQrPayload($token)), 520, 5, 'Q'
+            json_encode($this->qrTokenService->buildQrPayload($token)), 1000, 2, 'Q'
         );
         $backgroundData = $this->imageDataUri(null, storage_path('app/public/templates/qr-template-a6.png'));
 
@@ -151,7 +151,7 @@ class ClassQrController extends Controller
             ],
             'QR-Kelas-'.($studyGroup->full_name ?? $studyGroup->name),
             'portrait',
-            'A6',
+            'A4',
         );
     }
 
@@ -186,7 +186,7 @@ class ClassQrController extends Controller
                 'studyGroup' => $studyGroup,
                 'token' => $token,
                 'qrData' => LjkQrRenderer::pngDataUri(
-                    json_encode($this->qrTokenService->buildQrPayload($token)), 520, 5, 'Q'
+                    json_encode($this->qrTokenService->buildQrPayload($token)), 1000, 2, 'Q'
                 ),
             ];
         })->all();
@@ -200,7 +200,7 @@ class ClassQrController extends Controller
             ],
             'QR-Semua-Rombel',
             'portrait',
-            'A6',
+            'A4',
         );
     }
 

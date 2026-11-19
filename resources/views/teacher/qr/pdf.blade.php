@@ -50,7 +50,7 @@
         /* Area biru di atas kotak putih: y = 0–103,6 mm */
         .school-name {
             position: absolute;
-            top: 29mm;
+            top: 32mm;
             left: 10mm;
             width: 190mm;
 
@@ -66,7 +66,7 @@
 
         .document-title {
             position: absolute;
-            top: 40mm;
+            top: 44mm;
             left: 10mm;
             width: 190mm;
 
@@ -82,7 +82,7 @@
 
         .academic-year {
             position: absolute;
-            top: 56.5mm;
+            top: 63mm;
             left: 15mm;
             width: 180mm;
 
@@ -113,7 +113,7 @@
 
         .instruction {
             position: absolute;
-            top: 71mm;
+            top: 79mm;
             left: 15mm;
             width: 180mm;
 
@@ -134,17 +134,17 @@
         /* Kotak putih template: x = 22,6–187,3 mm; y = 103,7–257,8 mm */
         .qr-panel {
             position: absolute;
-            top: 108.2mm;
-            left: 32.5mm;
+            top: 104.7mm;
+            left: 29mm;
 
-            width: 145mm;
-            height: 145mm;
+            width: 152mm;
+            height: 152mm;
         }
 
         .qr-panel img {
             display: block;
-            width: 145mm;
-            height: 145mm;
+            width: 152mm;
+            height: 152mm;
         }
 
         @media print {
