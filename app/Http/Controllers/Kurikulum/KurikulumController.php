@@ -51,8 +51,10 @@ class KurikulumController extends Controller
             ->pluck('academic_year_id')
             ->first();
 
-        $activeAy = ($ayWithAssignments ? $academicYears->firstWhere('id', $ayWithAssignments) : null)
-            ?? $academicYears->firstWhere('is_active', true)
+        // Default TA: TA AKTIF selalu menjadi default. TA dengan penugasan
+        // hanya dipakai sebagai fallback bila tidak ada TA aktif.
+        $activeAy = $academicYears->firstWhere('is_active', true)
+            ?? ($ayWithAssignments ? $academicYears->firstWhere('id', $ayWithAssignments) : null)
             ?? $academicYears->first();
 
         $academicYearId = $request->input('academic_year_id', $activeAy?->id);

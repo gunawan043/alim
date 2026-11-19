@@ -17,10 +17,28 @@
         @slot('title') Kurikulum Pembelajaran @endslot
     @endcomponent
 
-    <div class="d-flex justify-content-end mb-3">
+    <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+        <a href="{{ route('user.schools.nilai.index', ['userId' => $userId, 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
+           class="btn btn-soft-primary">
+            <i class="ri-table-line me-1"></i>Leger &amp; Rapor
+        </a>
+        <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}"
+           class="btn btn-soft-info">
+            <i class="ri-file-shield-2-line me-1"></i>SK Pembagian Tugas
+        </a>
         <a href="{{ route('user.kurikulum.import.form', ['userId' => $userId]) }}" class="btn btn-success">
             <i class="ri-upload-cloud-2-line me-1"></i>Import Excel Kurikulum
         </a>
+    </div>
+
+    <div class="alert alert-info py-2 px-3 small d-flex align-items-start gap-2" role="alert">
+        <i class="ri-information-line fs-5"></i>
+        <div>
+            Peta ini adalah sumber <strong>struktur mapel per tingkat</strong> dan <strong>KKTP</strong>.
+            Struktur tersebut mengalir ke <strong>mapel rombel → buku nilai → leger</strong>,
+            sedangkan <strong>SK Pembagian Tugas</strong> mengisi guru pengampu dan buku nilainya.
+            Filter tahun ajaran mengikuti <strong>TA aktif</strong>; pilih TA lain hanya untuk melihat arsip.
+        </div>
     </div>
 
     @if($isArchive ?? false)
