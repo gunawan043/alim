@@ -355,6 +355,17 @@ class LeaveWorkflowService
             }
         }
 
+        // Pengajuan yang masih menunggu persetujuan: kabari wali & kepala
+        // asrama. Pengajuan yang auto-approved sudah dikabari lewat event
+        // persetujuan agar tidak dobel.
+        if ($permit->status !== DormitoryPermit::STATUS_APPROVED) {
+            try {
+                app(GuardianWhatsAppNotifier::class)->notifyPermitSubmitted($permit->fresh(['student']));
+            } catch (\Throwable $e) {
+                \Log::warning('WA notif pengajuan izin gagal: '.$e->getMessage());
+            }
+        }
+
         return $permit;
     }
 

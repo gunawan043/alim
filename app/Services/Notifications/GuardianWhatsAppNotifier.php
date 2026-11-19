@@ -72,6 +72,23 @@ class GuardianWhatsAppNotifier
         return $this->sendPermitToTargets($permit, $message, 'permit_returned', $permit->id);
     }
 
+    public function notifyPermitSubmitted(DormitoryPermit $permit): bool
+    {
+        if (! $this->eventEnabled('permit_submitted') || ! $permit->student) {
+            return false;
+        }
+
+        $message = $this->template('permit_submitted', [
+            'santri' => $permit->student->name,
+            'jenis' => ucfirst(str_replace('_', ' ', (string) $permit->permit_type)),
+            'berangkat' => $permit->departure_datetime?->format('d/m/Y H:i') ?? '-',
+            'estimasi' => $permit->expected_return_datetime?->format('d/m/Y H:i') ?? '-',
+            'penjemput' => trim((string) ($permit->companion_name ?: '-')),
+        ]);
+
+        return $this->sendPermitToTargets($permit, $message, 'permit_submitted', $permit->id);
+    }
+
     public function notifyPermitApproved(DormitoryPermit $permit): bool
     {
         if (! $this->eventEnabled('permit_approved') || ! $permit->student) {

@@ -477,11 +477,14 @@ class WhatsAppGuardianNotificationTest extends TestCase
             'status' => 'approved',
         ]);
 
-        $this->assertTrue(app(GuardianWhatsAppNotifier::class)->notifyPermitApproved($permit));
+        $notifier = app(GuardianWhatsAppNotifier::class);
+        $this->assertTrue($notifier->notifyPermitSubmitted($permit));
+        $this->assertTrue($notifier->notifyPermitApproved($permit));
 
         Http::assertSent(fn ($request) => $request['target'] === '6281234567890');
         Http::assertSent(fn ($request) => $request['target'] === '6281311112222'
             && str_contains($request['message'], 'Kepala Asrama'));
+        Http::assertSent(fn ($request) => str_contains($request['message'], 'DIAJUKAN'));
     }
 
     private function makePermit(array $overrides = []): DormitoryPermit

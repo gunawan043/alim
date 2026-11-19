@@ -42,6 +42,7 @@ return [
         'permit_picked_up' => env('WA_EVENT_PICKED_UP', true),
         'permit_returned' => env('WA_EVENT_RETURNED', true),
         'student_sick' => env('WA_EVENT_SICK', true),
+        'permit_submitted' => true,
         'permit_approved' => true,
         'permit_rejected' => true,
         'violation' => true,
@@ -71,6 +72,8 @@ return [
         'rapor' => "Assalamu'alaikum Bpk/Ibu wali,\n\n*Pemberitahuan Rapor* — nilai final untuk *{mapel}* kelas *{rombel}* ({judul}) telah dikunci dan rapor siap ditinjau.\n• Waktu: {waktu}\n\nSilakan menghubungi wali kelas bila ada pertanyaan. Terima kasih.",
 
         'holiday' => "Assalamu'alaikum Bpk/Ibu wali,\n\n*Pemberitahuan Libur/Jadwal*:\n• {judul}\n• Tanggal: {tanggal}\n• Jenis: {catatan_sumber}\n\nMohon diperhatikan jadwalnya. Terima kasih.",
+
+        'permit_submitted' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nPengajuan izin *{jenis}* untuk santri *{santri}* telah *DIAJUKAN* dan menunggu persetujuan pengasuh.\n• Berangkat: {berangkat}\n• Estimasi kembali: {estimasi}\n• Penjemput: {penjemput}\n\nKami akan menginformasikan perkembangan berikutnya. Terima kasih.",
 
         'permit_approved' => "Assalamu'alaikum Bpk/Ibu wali dari {santri},\n\nIzin *{jenis}* untuk santri *{santri}* telah *DISETUJUI*.\n• Berangkat: {berangkat}\n• Estimasi kembali: {estimasi}\n• Penjemput: {penjemput}\n\nMohon pastikan kembali sesuai jadwal. Terima kasih.",
 
