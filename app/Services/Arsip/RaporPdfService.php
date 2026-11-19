@@ -75,7 +75,7 @@ class RaporPdfService
                 'orang_tua' => 'الوالد / الولي',
                 'wali_kelas' => 'ولي الفصل',
                 'mengetahui_kepala' => 'مدير المدرسة',
-                'nip' => 'رقم الموظف',
+                'nip' => 'NUPY.',
                 'halaman' => 'الصفحة',
                 'dari' => 'من',
                 'tanggal' => '',

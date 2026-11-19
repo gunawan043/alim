@@ -486,7 +486,7 @@
                 <td class="val">{{ $num($data['TahunAjaran'] ?? '-') }}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('tahun_ajaran')) !!}</td>
-                <td class="val">{!! $text($data['KelasAr'] ?? $data['Kelas'] ?? '-') !!}</td>
+                <td class="val">{!! $text($data['Kelas'] ?? '-') !!}</td>
                 <td class="colon">:</td>
                 <td class="lbl">{!! $text($label('kelas')) !!}</td>
             </tr>
@@ -614,6 +614,8 @@
             (float) ($layout['ttd_ksp_height'] ?? 0),
             (float) ($layout['stamp_height'] ?? 0),
         );
+        $waliNupy = $studyGroup->homeroomTeacher?->employment?->nupy
+            ?? $studyGroup->homeroomTeacher?->gtkProfile?->nupy;
     @endphp
     <table class="ttd-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
@@ -642,6 +644,7 @@
                 </div>
                 <div class="signature-line">____________________</div>
                 <div class="ttd-name"><strong>{!! $text(($isArabic && ! empty($waliNameAr)) ? $waliNameAr : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong></div>
+                <div class="ttd-nip">{!! $text($label('nip')) !!} {{ $num($waliNupy ?? '...................') }}</div>
             </td>
             <td class="ttd-col">
                 <div class="ttd-title">{!! $text($label('mengetahui_kepala')) !!}</div>
