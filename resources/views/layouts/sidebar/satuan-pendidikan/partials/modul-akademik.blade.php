@@ -17,6 +17,13 @@
 </li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.grade-levels.']) ? ' active' : '' }}"
+       href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">
+        <i class="ri-stack-line"></i><span>Tingkat &amp; Struktur Mapel</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.institution-decrees.']) ? ' active' : '' }}"
        href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">
         <i class="ri-file-paper-2-line"></i><span>SK &amp; Keputusan</span>
