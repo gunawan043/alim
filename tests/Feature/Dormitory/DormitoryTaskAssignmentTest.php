@@ -260,6 +260,17 @@ class DormitoryTaskAssignmentTest extends TestCase
             ->assertSee('Wakil Kepala Asrama (Uji)');
     }
 
+    public function test_halaman_data_gtk_satuan_kerja_dapat_dibuka(): void
+    {
+        $this->actingAs($this->leader)
+            ->get(route('user.gtk.by-work-unit', [
+                'userId' => $this->leader->id,
+                'satuanKerja' => $this->dormitory->work_unit_id,
+            ]))
+            ->assertOk()
+            ->assertSee('Daftar GTK');
+    }
+
     public function test_sidebar_menampilkan_menu_data_gtk_satuan_kerja(): void
     {
         $this->actingAs($this->leader)

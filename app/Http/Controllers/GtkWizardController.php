@@ -3235,7 +3235,18 @@ class GtkWizardController extends Controller
      */
     public function indexByWorkUnit(Request $request, string $satuanKerja)
     {
-        $workUnit = WorkUnit::findOrFail($satuanKerja);
+        /*
+         * Route `user.gtk.by-work-unit` punya dua parameter ({userId} dan
+         * {satuanKerja}), sedangkan `wadir1.gtk.by-work-unit` hanya punya
+         * {workUnitUuid}. Laravel mengisi argumen method secara posisi,
+         * sehingga `$satuanKerja` bisa menerima userId. Ambil dari nama
+         * parameter route agar kedua route tetap benar.
+         */
+        $workUnitId = $request->route('satuanKerja')
+            ?? $request->route('workUnitUuid')
+            ?? $satuanKerja;
+
+        $workUnit = WorkUnit::findOrFail($workUnitId);
 
         $gtkQuery = User::with(['gtkProfile', 'employment', 'contact', 'workUnits'])
             ->whereHas('employment')
@@ -3295,7 +3306,15 @@ class GtkWizardController extends Controller
 
         $jenisGtk = JenisGtk::active()->orderBy('urutan')->get();
 
-        return view('gtk.index', compact('gtkList', 'workUnits', 'satuanKerja', 'statistics', 'jenisGtk'));
+        return view('gtk.index', [
+            'gtkList' => $gtkList,
+            'workUnits' => $workUnits,
+            // View memakai $satuanKerja->name / ->kode / ->id, jadi kirim model.
+            'satuanKerja' => $workUnit,
+            'statistics' => $statistics,
+            'jenisGtk' => $jenisGtk,
+            'crossUnitUserIds' => collect(),
+        ]);
     }
 
     /**
