@@ -116,7 +116,8 @@ class JadwalGeneratorService
                 $blocks[$sgId] = $this->placeTahfidzBlock(
                     $group,
                     $academicYearId,
-                    $this->tahfidzAssignments($assignments[$sgId])
+                    $this->tahfidzAssignments($assignments[$sgId]),
+                    $this->curriculumTahfidzPlan($group)
                 );
             } catch (\Throwable $e) {
                 $blocks[$sgId] = ['total' => 0, 'placed' => 0, 'error' => $e->getMessage()];
@@ -178,7 +179,8 @@ class JadwalGeneratorService
         $block = $this->placeTahfidzBlock(
             $studyGroup,
             $academicYearId,
-            $this->tahfidzAssignments($assignments)
+            $this->tahfidzAssignments($assignments),
+            $this->curriculumTahfidzPlan($studyGroup)
         );
 
         return $this->buildSummary($studyGroup, $academicYearId, $assignments, $block);
@@ -424,8 +426,12 @@ class JadwalGeneratorService
      * @param  Collection<int, TeachingAssignment>  $tahfidzAssignments
      * @return array<string, mixed>
      */
-    private function placeTahfidzBlock(StudyGroup $group, string $academicYearId, Collection $tahfidzAssignments): array
-    {
+    private function placeTahfidzBlock(
+        StudyGroup $group,
+        string $academicYearId,
+        Collection $tahfidzAssignments,
+        ?array $curriculumPlan = null,
+    ): array {
         $result = [
             'total' => 0,
             'placed' => 0,
@@ -436,8 +442,11 @@ class JadwalGeneratorService
             'message' => null,
         ];
 
-        if ($tahfidzAssignments->isEmpty()) {
-            $result['message'] = 'Rombel ini tidak punya mapel tahfidz di SK. Tambahkan mapel Tahfidz pada SK penugasan guru rombel ini.';
+        $curriculumHours = (int) ($curriculumPlan['hours'] ?? 0);
+        $curriculumSubjectId = $curriculumPlan['subject_id'] ?? null;
+
+        if ($tahfidzAssignments->isEmpty() && $curriculumHours <= 0) {
+            $result['message'] = 'Rombel ini tidak punya mapel tahfidz di kurikulum maupun SK.';
 
             return $result;
         }
@@ -445,7 +454,7 @@ class JadwalGeneratorService
         $key = $group->grade_level_id ?: 'rombel:'.$group->id;
         $context = $this->tahfidzTeams[$key] ?? null;
 
-        // Mode satu rombel: konteks tingkat belum dimuat, susun dari SK rombel ini.
+        // Mode satu rombel / tanpa SK: konteks tingkat belum dimuat, susun dari kurikulum + SK bila ada.
         if (! $context) {
             $teachers = [];
 
@@ -455,10 +464,12 @@ class JadwalGeneratorService
                 }
             }
 
+            $fallbackHours = $tahfidzAssignments->max(fn ($a) => $this->resolveWeeklyHours($a, $group)) ?: 0;
+
             $context = [
                 'teachers' => $teachers,
-                'subject_id' => $tahfidzAssignments->first()->subject_id,
-                'rombel_totals' => [$group->id => (int) $tahfidzAssignments->max(fn ($a) => $this->resolveWeeklyHours($a, $group))],
+                'subject_id' => $curriculumSubjectId ?? $tahfidzAssignments->first()?->subject_id,
+                'rombel_totals' => [$group->id => $curriculumHours > 0 ? $curriculumHours : (int) $fallbackHours],
                 'school_id' => $group->school_id,
                 'grade_level_id' => $group->grade_level_id,
             ];
@@ -473,11 +484,13 @@ class JadwalGeneratorService
 
         $this->tahfidzTeams[$key] = $context;
 
-        $total = (int) ($context['rombel_totals'][$group->id]
-            ?? $tahfidzAssignments->max(fn ($a) => $this->resolveWeeklyHours($a, $group)));
+        $total = $curriculumHours > 0
+            ? $curriculumHours
+            : (int) ($context['rombel_totals'][$group->id]
+                ?? $tahfidzAssignments->max(fn ($a) => $this->resolveWeeklyHours($a, $group)));
 
         $result['total'] = $total;
-        $result['subject_id'] = $context['subject_id'] ?? $tahfidzAssignments->first()->subject_id;
+        $result['subject_id'] = $curriculumSubjectId ?? $context['subject_id'] ?? $tahfidzAssignments->first()?->subject_id;
         $result['team'] = array_values($context['teachers']);
 
         if ($total <= 0) {
@@ -561,13 +574,6 @@ class JadwalGeneratorService
         $schoolId = $context['school_id'] ?? $group->school_id;
         $masterDays = $this->masterSlotsByDay($schoolId);
         $teachers = array_values($context['teachers'] ?? []);
-
-        if (empty($teachers)) {
-            return $this->tahfidzWindows[$key] = [
-                'days' => [],
-                'error' => 'Tidak ada guru tahfidz pada SK untuk tingkat ini.',
-            ];
-        }
 
         if (empty($masterDays)) {
             return $this->tahfidzWindows[$key] = [
@@ -824,6 +830,8 @@ class JadwalGeneratorService
                 ];
             }
         }
+
+        $this->balanceStudyGroupDays($studyGroup, $academicYearId, $masterDays);
 
         $summary['generated'] = $generated;
         $summary['conflicts'] = $this->verifyConflicts([$studyGroup->id], $academicYearId);
@@ -1099,6 +1107,26 @@ class JadwalGeneratorService
     }
 
     /**
+     * JP dan subject Tahfidz dari kurikulum rombel (bukan dari SK).
+     *
+     * @return array{subject_id:string,hours:int}|null
+     */
+    private function curriculumTahfidzPlan(StudyGroup $studyGroup): ?array
+    {
+        foreach ($this->curriculumSubjects($studyGroup) as $subjectId => $row) {
+            if ($this->isTahfidzSubject($subjectId)) {
+                $hours = (int) ($row['hours'] ?? 0);
+
+                if ($hours > 0) {
+                    return ['subject_id' => (string) $subjectId, 'hours' => $hours];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Daftar mapel dan JP dari kurikulum rombel.
      * Prioritas: study_group_subjects → grade_level_subjects.
      *
@@ -1361,6 +1389,92 @@ class JadwalGeneratorService
         }
 
         return null;
+    }
+
+    /**
+     * Ratakan jumlah JP antar hari setelah semua mapel ditempatkan.
+     * Hanya memindahkan entri biasa (bukan blok Tahfidz) dan tetap menghormati
+     * bentrok guru/rombel serta ketersediaan guru.
+     *
+     * @param  array<int, array<int, array{slot:int, start:string, end:string, is_break:bool}>>  $masterDays
+     */
+    private function balanceStudyGroupDays(StudyGroup $studyGroup, string $academicYearId, array $masterDays): void
+    {
+        $days = $this->teachingDays($masterDays);
+
+        if (count($days) < 2) {
+            return;
+        }
+
+        for ($iteration = 0; $iteration < 200; $iteration++) {
+            $loads = JadwalKbm::query()
+                ->where('study_group_id', $studyGroup->id)
+                ->where('academic_year_id', $academicYearId)
+                ->where('is_active', true)
+                ->selectRaw('day_of_week, COUNT(*) as total')
+                ->groupBy('day_of_week')
+                ->pluck('total', 'day_of_week')
+                ->toArray();
+
+            foreach ($days as $day) {
+                $loads[$day] = (int) ($loads[$day] ?? 0);
+            }
+
+            arsort($loads);
+            $highDay = (int) array_key_first($loads);
+            $highCount = (int) $loads[$highDay];
+            asort($loads);
+            $lowDay = (int) array_key_first($loads);
+            $lowCount = (int) $loads[$lowDay];
+
+            if ($highCount - $lowCount <= 1) {
+                break;
+            }
+
+            $moved = false;
+
+            $entries = JadwalKbm::query()
+                ->where('study_group_id', $studyGroup->id)
+                ->where('academic_year_id', $academicYearId)
+                ->where('day_of_week', $highDay)
+                ->where('is_active', true)
+                ->where(function ($q) {
+                    $q->whereNull('notes')->orWhere('notes', '!=', self::TAHFIDZ_NOTE);
+                })
+                ->orderByDesc('slot_index')
+                ->get();
+
+            foreach ($entries as $entry) {
+                $slot = $this->findFreeSlotOnDay(
+                    $studyGroup->id,
+                    $studyGroup->school_id,
+                    $entry->teacher_id,
+                    $academicYearId,
+                    $lowDay,
+                    $masterDays[$lowDay] ?? [],
+                    null
+                );
+
+                if ($slot === null) {
+                    continue;
+                }
+
+                $entry->update([
+                    'day_of_week' => $lowDay,
+                    'slot_index' => $slot['slot_index'],
+                    'start_time' => $slot['start_time'],
+                    'end_time' => $slot['end_time'],
+                ]);
+
+                $moved = true;
+
+                break;
+            }
+
+            if (! $moved) {
+                break;
+            }
+        }
     }
 
     protected function createJadwal(StudyGroup $studyGroup, string $academicYearId, array $plan, array $slot): JadwalKbm
