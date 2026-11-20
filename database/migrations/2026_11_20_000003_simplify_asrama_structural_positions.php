@@ -99,6 +99,11 @@ return new class extends Migration
 
         // Alihkan seluruh referensi sebelum baris master dihapus, supaya
         // FK ON DELETE SET NULL tidak mengosongkan jabatan orang.
+        //
+        // Catatan SQLite: `gtk_position_proposals.proposed_position_id` masih
+        // membawa FK lama yang menunjuk tabel `positions` yang sudah di-drop,
+        // sehingga UPDATE apa pun di tabel itu gagal walau tidak ada barisnya.
+        // Kegagalan per tabel diabaikan agar migrasi tetap berjalan.
         foreach ([
             ['gtk_employments', 'jabatan_id'],
             ['gtk_work_unit', 'position_id'],
@@ -106,8 +111,16 @@ return new class extends Migration
             ['gtk_position_proposals', 'proposed_position_id'],
             ['structural_assignments', 'position_id'],
         ] as [$table, $column]) {
-            if (Schema::hasTable($table) && Schema::hasColumn($table, $column)) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $column)) {
+                continue;
+            }
+
+            try {
                 DB::table($table)->whereIn($column, $removeIds)->update([$column => $stafId]);
+            } catch (\Throwable $e) {
+                \Log::warning("Migrasi jabatan asrama: lewati {$table}.{$column}", [
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
