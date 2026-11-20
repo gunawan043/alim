@@ -36,6 +36,8 @@
     $hijriDate = $isArabic
         ? (\App\Support\ArabicText::formatHijriDate($printDate) ?: \App\Support\ArabicText::formatDate($printDate))
         : '';
+    // Rapor Indonesia juga mencantumkan tanggal Hijriah di samping tanggal Masehi.
+    $hijriDateLatin = $isArabic ? '' : \App\Support\ArabicText::formatHijriDateLatin($printDate);
     $layout = array_merge(\App\Models\RaporDistributionSetting::defaultLayout(), $layout ?? []);
     // Kolom Bobot & Jumlah hanya untuk rapor SAS (nilai akhir).
     $showBobot = (($santri[array_key_first($santri)]['Jenis'] ?? 'sts') === 'sas');
@@ -723,7 +725,7 @@
                 @if($isArabic)
                     {!! $text($hijriDate) !!}، {!! $text($cityText($printCity)) !!}
                 @else
-                    {!! $text($cityText($printCity)) !!}, {{ $printDate->translatedFormat('d F Y') }}
+                    {!! $text($cityText($printCity)) !!}, {{ $printDate->translatedFormat('d F Y') }} M{{ filled($hijriDateLatin) ? ' / '.$hijriDateLatin : '' }}
                 @endif
             </td>
         </tr>

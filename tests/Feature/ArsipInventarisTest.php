@@ -1067,6 +1067,23 @@ class ArsipInventarisTest extends TestCase
         $this->assertMatchesRegularExpression('/[\x{0660}-\x{0669}]/u', $hijri);
     }
 
+    public function test_rapor_indonesia_menampilkan_tanggal_hijriah(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-20 09:00:00'));
+
+        $html = app(RaporPdfService::class)->renderHtml(
+            $this->school->id, $this->activeRombel, $this->activeAy,
+            (string) $this->activeAy->id, 'ganjil', 'sts', $this->activeStudent, 'id',
+        );
+
+        $hijri = ArabicText::formatHijriDateLatin('2026-10-20');
+        $masehi = \Carbon\Carbon::parse('2026-10-20')->translatedFormat('d F Y');
+
+        $this->assertNotSame('', $hijri);
+        $this->assertStringContainsString($masehi.' M', $html);
+        $this->assertStringContainsString($hijri, $html);
+    }
+
     public function test_filter_dokumen_arsip_berdasarkan_jenis_dan_bahasa(): void
     {
         foreach ([
