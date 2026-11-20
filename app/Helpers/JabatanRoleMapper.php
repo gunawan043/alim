@@ -93,6 +93,8 @@ class JabatanRoleMapper
             || str_starts_with($normalized, 'musrifah')
             || str_starts_with($normalized, 'musyrifah')
             || str_starts_with($normalized, 'tata usaha asrama')
+            || str_starts_with($normalized, 'staf asrama')
+            || str_starts_with($normalized, 'staf pengasuhan')
             || str_starts_with($normalized, 'staf perizinan')
             || str_starts_with($normalized, 'perizinan')) {
             return 'Asrama';
@@ -128,7 +130,9 @@ class JabatanRoleMapper
         // ── Satuan Keamanan ───────────────────────────────────────────────
         if (str_starts_with($normalized, 'kepala satuan keamanan')
             || str_starts_with($normalized, 'koordinator satuan keamanan')
-            || str_starts_with($normalized, 'anggota satuan keamanan')) {
+            || str_starts_with($normalized, 'anggota satuan keamanan')
+            || str_starts_with($normalized, 'petugas keamanan')
+            || str_starts_with($normalized, 'staf keamanan')) {
             return 'Satuan Keamanan';
         }
 
