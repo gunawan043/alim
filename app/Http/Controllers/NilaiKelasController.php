@@ -10,6 +10,7 @@ use App\Models\NilaiSumatif;
 use App\Models\PembiasaanPagi;
 use App\Models\PenghargaanAkademik;
 use App\Models\RaporDistributionSetting;
+use App\Models\RaporPredicateNote;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
@@ -467,13 +468,20 @@ class NilaiKelasController extends Controller
             $studyGroup->gradeLevel?->level ?? (int) $studyGroup->name,
         );
 
+        // Catatan rapor per predikat untuk rombel ini (dipakai bila catatan wali kosong).
+        $predicateNotes = RaporPredicateNote::mapFor(
+            (string) $studyGroup->id,
+            (string) $selectedAyId,
+            (string) $selectedSemester,
+        );
+
         return view('nilai-kelas.sts', compact(
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap',
+            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'predicateNotes',
             'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional'
         ));
     }
@@ -485,7 +493,8 @@ class NilaiKelasController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        $this->assertLegerAccess($userId, StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId));
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId);
+        $this->assertLegerAccess($userId, $studyGroup);
 
         // ── TAB MAPEL: simpan per mapel (SH dinamis + STS) ──
         if ($request->tab === 'mapel' && $request->filled('admin_book_id')) {
@@ -627,7 +636,7 @@ class NilaiKelasController extends Controller
         }
 
         // ── TAB LEGER: simpan STS langsung ke semua mapel ──
-        if ($request->tab === 'leger' && ($request->filled('leger_sts') || $request->filled('leger_kkm') || $request->filled('leger_bobot'))) {
+        if ($request->tab === 'leger' && ($request->filled('leger_sts') || $request->filled('leger_kkm') || $request->filled('leger_bobot') || $request->has('predicate_notes'))) {
             $selectedAyId = $request->academic_year_id;
             $selectedSem = $request->semester ?? 'ganjil';
 
@@ -710,6 +719,32 @@ class NilaiKelasController extends Controller
                 }
             }
 
+            // ── Simpan catatan rapor per predikat (per rombel) ──
+            if ($request->has('predicate_notes')) {
+                $request->validate([
+                    'predicate_notes' => 'nullable|array',
+                    'predicate_notes.*' => 'nullable|string|max:500',
+                ]);
+
+                foreach (RaporPredicateNote::PREDICATES as $predicate) {
+                    $note = trim((string) ($request->input('predicate_notes.'.$predicate) ?? ''));
+
+                    RaporPredicateNote::updateOrCreate(
+                        [
+                            'study_group_id' => (string) $studyGroup->id,
+                            'academic_year_id' => $selectedAyId,
+                            'semester' => $selectedSem,
+                            'predicate' => $predicate,
+                        ],
+                        [
+                            'school_id' => $studyGroup->school_id,
+                            'note' => $note !== '' ? $note : null,
+                            'updated_by' => $userId,
+                        ]
+                    );
+                }
+            }
+
             $savedRows = [];
             $legerMode = $request->input('leger_mode') === 'sas' ? 'sas' : 'sts';
 
@@ -780,10 +815,17 @@ class NilaiKelasController extends Controller
 
             // ── AJAX: auto-save ──
             if ($request->ajax() || $request->wantsJson()) {
+                $message = match (true) {
+                    $request->filled('leger_sts') => 'Leger disimpan.',
+                    $request->filled('leger_kkm') => 'KKTP disimpan.',
+                    $request->filled('leger_bobot') => 'Bobot disimpan.',
+                    default => 'Catatan predikat disimpan.',
+                };
+
                 return response()->json([
                     'success' => true,
                     'saved_rows' => $savedRows,
-                    'message' => $request->filled('leger_sts') ? 'Leger disimpan.' : 'KKTP disimpan.',
+                    'message' => $message,
                 ]);
             }
 
@@ -795,7 +837,14 @@ class NilaiKelasController extends Controller
                 'tab' => 'leger',
             ]);
 
-            return redirect($backUrl)->with('success', 'Leger berhasil disimpan.');
+            $pesan = $request->has('predicate_notes')
+                && ! $request->filled('leger_sts')
+                && ! $request->filled('leger_kkm')
+                && ! $request->filled('leger_bobot')
+                    ? 'Catatan predikat berhasil disimpan.'
+                    : 'Leger berhasil disimpan.';
+
+            return redirect($backUrl)->with('success', $pesan);
         }
 
         // Fallback
@@ -1103,6 +1152,14 @@ class NilaiKelasController extends Controller
             ->sortBy(fn ($subject) => $subjectOrder[$subject->id] ?? PHP_INT_MAX)
             ->values();
 
+        // Nama Arab untuk form: master mapel dulu, lalu kamus otomatis.
+        // Sumbernya sama dengan yang dipakai saat mencetak rapor.
+        $subjectArabicMap = $availableSubjects
+            ->mapWithKeys(fn ($subject) => [
+                $subject->id => app(\App\Services\ArabicName\ArabicNameResolver::class)->subjectName($subject),
+            ])
+            ->all();
+
         $summaries = $selectedAyId && $students->isNotEmpty()
             ? $raporPdf->summariesForStudents(
                 $schoolId,
@@ -1146,7 +1203,7 @@ class NilaiKelasController extends Controller
         return view('nilai-kelas.rapor-index', compact(
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
             'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'variantLayouts', 'docJenis', 'docBahasa',
-            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap', 'subjectKktpMap',
+            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap', 'subjectKktpMap', 'subjectArabicMap',
         ));
     }
 

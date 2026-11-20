@@ -7,6 +7,7 @@ use App\Models\AdminPresensiHarian;
 use App\Models\DocumentSignature;
 use App\Models\NilaiSumatif;
 use App\Models\RaporDistributionSetting;
+use App\Models\RaporPredicateNote;
 use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
@@ -401,6 +402,13 @@ class RaporPdfService
 
         $catatanWali = $registration?->homeroom_note;
 
+        // Catatan per predikat (per rombel) dipakai bila catatan wali kosong.
+        $catatanPredikat = RaporPredicateNote::mapFor(
+            (string) $studyGroupId,
+            (string) $selectedAyId,
+            (string) $selectedSem,
+        )[$predikat] ?? null;
+
         // Final score & predikat hanya disimpan untuk dokumen SAS (nilai akhir) pada TA aktif
         // — cetak/arsip TA arsip tidak menulis apa pun ke data periode lama.
         if ($jenis === 'sas') {
@@ -447,6 +455,7 @@ class RaporPdfService
                 'Izin' => $iCount,
                 'Alpa' => $aCount,
                 'CatatanWali' => $catatanWali,
+                'CatatanPredikat' => $catatanPredikat,
             ],
         ];
     }

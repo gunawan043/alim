@@ -374,6 +374,51 @@
                         </ul>
                     </div>
 
+                    {{-- Catatan rapor per predikat (dipakai bila catatan wali kosong) --}}
+                    <div class="px-4 pt-2">
+                        <details class="predicate-notes-box">
+                            <summary class="d-flex align-items-center gap-2">
+                                <i class="ri-chat-quote-line"></i>
+                                <span class="fw-semibold">Catatan Rapor per Predikat</span>
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size:10px;">
+                                    {{ count($predicateNotes ?? []) }} terisi
+                                </span>
+                                <span class="text-muted ms-auto" style="font-size:11px;">Klik untuk buka</span>
+                            </summary>
+                            <form method="POST"
+                                  action="{{ route('user.schools.nilai-kelas.sts.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
+                                  class="mt-2">
+                                @csrf
+                                <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                                <input type="hidden" name="semester" value="{{ $selectedSemester }}">
+                                <input type="hidden" name="tab" value="leger">
+                                <input type="hidden" name="leger_mode" value="{{ $legerMode ?? 'sts' }}">
+
+                                <div class="row g-2">
+                                    @foreach(\App\Models\RaporPredicateNote::PREDICATES as $predicate)
+                                        <div class="col-md-6 col-xl-4">
+                                            <label class="form-label mb-1" style="font-size:11px;font-weight:600;">{{ $predicate }}</label>
+                                            <textarea name="predicate_notes[{{ $predicate }}]" rows="2" maxlength="500"
+                                                      class="form-control form-control-sm"
+                                                      style="font-size:12px;"
+                                                      placeholder="Catatan untuk predikat {{ $predicate }}">{{ $predicateNotes[$predicate] ?? '' }}</textarea>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2 mb-1">
+                                    <small class="text-muted" style="font-size:11px;">
+                                        <i class="ri-information-line me-1"></i>
+                                        Catatan ini tercetak pada rapor santri yang predikatnya sesuai, hanya bila catatan wali kelas masih kosong.
+                                    </small>
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                                        <i class="ri-save-3-line me-1"></i>Simpan Catatan Predikat
+                                    </button>
+                                </div>
+                            </form>
+                        </details>
+                    </div>
+
                     <form method="POST" action="{{ route('user.schools.nilai-kelas.sts.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}" id="formLeger">
                         @csrf
                         <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
@@ -400,10 +445,10 @@
                                             <th colspan="3" class="align-middle" style="background:var(--bs-primary-bg-subtle);color:var(--bs-primary-text-emphasis);letter-spacing:0.4px;">TAHFIDZ</th>
                                         @endif
                                         @if(($agamaCount ?? 0) > 0)
-                                            <th colspan="{{ $agamaCount }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
+                                            <th colspan="{{ $isSasLeger ? $agamaCount * 2 : $agamaCount }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
                                         @endif
                                         @if($umumCount > 0)
-                                            <th colspan="{{ $umumCount }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
+                                            <th colspan="{{ $isSasLeger ? $umumCount * 2 : $umumCount }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
                                         <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
                                         @if($isSasLeger)
@@ -426,7 +471,7 @@
                                             <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
                                         @endif
                                         @foreach($subjectMap as $subject)
-                                            <th rowspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
+                                            <th rowspan="{{ $isSasLeger ? 1 : 2 }}" colspan="{{ $isSasLeger ? 2 : 1 }}" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
                                                 <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px;">
                                                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                                                 </div>
@@ -435,6 +480,12 @@
                                         <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
                                     </tr>
                                     <tr class="text-center">
+                                        @if($isSasLeger)
+                                            @foreach($subjectMap as $subject)
+                                                <th class="sub-n" style="background:var(--bs-tertiary-bg);font-size:9px;" title="Nilai {{ $subject->name }}">N</th>
+                                                <th class="sub-bn" style="background:var(--bs-secondary-bg);font-size:9px;" title="Nilai × Bobot {{ $subject->name }}">B×N</th>
+                                            @endforeach
+                                        @endif
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-success-subtle text-success" data-sort="s">S</th>
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-warning-subtle text-warning" data-sort="i">I</th>
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-danger-subtle text-danger" data-sort="a">A</th>
@@ -447,7 +498,7 @@
                                         </th>
                                         @foreach($subjectMap as $subject)
                                             @php $book = $bookMap[$subject->id] ?? null; @endphp
-                                            <th>
+                                            <th @if($isSasLeger) colspan="2" @endif>
                                                 @if($book)
                                                     <input type="number" class="kktp-input"
                                                            name="leger_kkm[{{ $book->id }}]"
@@ -479,7 +530,7 @@
                                                         ? rtrim(rtrim(number_format((float) $bobotJp, 2, '.', ''), '0'), '.')
                                                         : '';
                                                 @endphp
-                                                <th title="Bobot {{ $subject->name }} — kosong berarti memakai JP ({{ $bobotJpText ?: '—' }})">
+                                                <th @if($isSasLeger) colspan="2" @endif title="Bobot {{ $subject->name }} — kosong berarti memakai JP ({{ $bobotJpText ?: '—' }})">
                                                     <input type="number" class="bobot-input"
                                                            name="leger_bobot[{{ $subject->id }}]"
                                                            value="{{ $bobotVal }}"
@@ -567,6 +618,8 @@
                                                         $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
                                                     }
                                                     $belowKkm = $stsVal !== null && $stsVal < $kkm;
+                                                    $bobotEfektif = (float) ($bobotMap[$subject->id] ?? 0);
+                                                    $nilaiTertimbang = $stsVal !== null ? $bobotEfektif * (float) $stsVal : null;
                                                 @endphp
                                                 <td style="text-align:center;" data-col="subject-{{ $subject->id }}">
                                                     @if($book)
@@ -577,6 +630,15 @@
                                                         <span class="text-muted">—</span>
                                                     @endif
                                                 </td>
+                                                @if($isSasLeger)
+                                                    <td class="sub-bn" style="text-align:center;background:var(--bs-secondary-bg);" data-col="subject-{{ $subject->id }}-bn">
+                                                        @if($nilaiTertimbang !== null)
+                                                            <span class="fw-semibold">{{ number_format($nilaiTertimbang, 1, '.', '') }}</span>
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                @endif
                                             @endforeach
                                             {{-- Jumlah --}}
                                             <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
@@ -629,7 +691,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $subjectMap->count() + 10 + ((($legerMode ?? 'sts') === 'sas') ? 6 : 0) }}" class="text-center text-muted py-4">
+                                            <td colspan="{{ $subjectMap->count() * ($isSasLeger ? 2 : 1) + ($isSasLeger ? 17 : 10) }}" class="text-center text-muted py-4">
                                                 <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                             </td>
                                         </tr>
@@ -956,6 +1018,28 @@
     .leger-scroll { max-height: 72vh; overflow: auto; }
     .leger-scroll thead th { position: sticky; top: 0; z-index: 30; background: var(--bs-tertiary-bg); }
 
+    .predicate-notes-box {
+        border: 1px dashed var(--bs-border-color);
+        border-radius: 8px;
+        padding: 8px 12px;
+        background: var(--bs-tertiary-bg);
+    }
+
+    .predicate-notes-box summary {
+        cursor: pointer;
+        list-style: none;
+        font-size: 12px;
+        color: var(--bs-body-color);
+    }
+
+    .predicate-notes-box summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .predicate-notes-box[open] summary .ms-auto {
+        visibility: hidden;
+    }
+
     /* ── Kolom identitas: SERAGAM di kedua tab; NAMA tanpa batas maksimum ── */
     #tab-leger th[data-sort="no"], #tab-leger td[data-col="no"],
     #tab-mapel th[data-sort="no"], #tab-mapel td[data-col="no"] { width: 50px; min-width: 50px; max-width: 50px; }
@@ -1000,6 +1084,10 @@
 
     /* ── Lebar kolom konsisten ── */
     #tab-leger th[data-sort^="subject-"], #tab-leger td[data-col^="subject-"] { width: 92px; min-width: 92px; max-width: 92px; }
+    /* Leger SAS: sub-kolom Nilai | B×N lebih ramping */
+    #tab-leger th[data-sort^="subject-"][colspan="2"] { width: 124px; min-width: 124px; max-width: 124px; }
+    #tab-leger th.sub-n { width: 56px; min-width: 56px; max-width: 56px; }
+    #tab-leger th.sub-bn, #tab-leger td.sub-bn { width: 68px; min-width: 68px; max-width: 68px; }
     #tab-leger th[data-sort="doa"], #tab-leger td[data-col="doa"] { width: 46px; min-width: 46px; max-width: 46px; }
     #tab-leger th[data-sort="hiwar"], #tab-leger td[data-col="hiwar"] { width: 50px; min-width: 50px; max-width: 50px; }
     #tab-leger th[data-sort="conv"], #tab-leger td[data-col="conv"] { width: 84px; min-width: 84px; max-width: 84px; }

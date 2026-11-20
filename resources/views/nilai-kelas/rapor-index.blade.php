@@ -637,7 +637,7 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th style="width:60px;" class="text-center">Masuk</th>
-                                            <th style="min-width:240px;">Mata Pelajaran <span class="text-muted fw-normal">(Latin &amp; Arab)</span></th>
+                                            <th style="min-width:340px;">Mata Pelajaran <span class="text-muted fw-normal">(Latin &amp; Arab)</span></th>
                                             <th style="width:100px;" class="text-center">KKTP</th>
                                             <th style="width:110px;" class="text-center">Bobot <span class="text-muted fw-normal">(SAS)</span></th>
                                             <th style="width:120px;" class="text-center">Urutan</th>
@@ -659,25 +659,25 @@
                                                            id="subject-{{ $subject->id }}" @checked($isSelected)>
                                                 </td>
                                                 <td>
-                                                    <div class="d-flex flex-column gap-1">
-                                                        <div class="input-group input-group-sm">
-                                                            <span class="input-group-text" style="width:42px;">ID</span>
+                                                    <div class="d-flex align-items-start gap-1">
+                                                        <div class="input-group input-group-sm" style="min-width:0;flex:1 1 0;">
+                                                            <span class="input-group-text px-1" style="width:34px;justify-content:center;">ID</span>
                                                             <input type="text" class="form-control"
                                                                    name="subject_name[{{ $subject->id }}]"
                                                                    value="{{ old('subject_name.'.$subject->id, $subject->name) }}"
                                                                    maxlength="255" aria-label="Nama mapel Latin">
                                                         </div>
-                                                        <div class="input-group input-group-sm">
-                                                            <span class="input-group-text" style="width:42px;">AR</span>
+                                                        <div class="input-group input-group-sm" style="min-width:0;flex:1 1 0;">
+                                                            <span class="input-group-text px-1" style="width:34px;justify-content:center;">AR</span>
                                                             <input type="text" class="form-control" dir="rtl"
                                                                    name="subject_name_ar[{{ $subject->id }}]"
-                                                                   value="{{ old('subject_name_ar.'.$subject->id, $subject->name_ar) }}"
-                                                                   maxlength="255" placeholder="Nama Arab (opsional)" aria-label="Nama mapel Arab">
+                                                                   value="{{ old('subject_name_ar.'.$subject->id, $subjectArabicMap[$subject->id] ?? $subject->name_ar) }}"
+                                                                   maxlength="255" placeholder="Nama Arab" aria-label="Nama mapel Arab">
                                                         </div>
-                                                        @if($subject->category)
-                                                            <small class="text-muted">{{ $subject->category }}</small>
-                                                        @endif
                                                     </div>
+                                                    @if($subject->category)
+                                                        <small class="text-muted d-block mt-1">{{ $subject->category }}</small>
+                                                    @endif
                                                 </td>
                                                 <td class="text-center">
                                                     <input type="text" inputmode="decimal"
@@ -702,9 +702,6 @@
                                                            class="form-control form-control-sm text-center mx-auto"
                                                            style="max-width:90px;"
                                                            aria-label="Bobot {{ $subject->name }}">
-                                                    <small class="text-muted d-block" style="font-size:10px;">
-                                                        JP: {{ $bobotRow['jp'] !== null ? rtrim(rtrim(number_format((float) $bobotRow['jp'], 2, '.', ''), '0'), '.') : '—' }}
-                                                    </small>
                                                 </td>
                                                 <td class="text-center">
                                                     <input type="hidden" name="subject_order[{{ $subject->id }}]"
@@ -1278,6 +1275,12 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
         if (!url) return;
         iframe.src = url;
         if (open) open.href = url;
+
+        // Simpan varian di URL halaman agar refresh (F5) tidak kembali ke STS/ID.
+        const pageUrl = new URL(window.location.href);
+        pageUrl.searchParams.set('doc_jenis', jenis.value || 'sts');
+        pageUrl.searchParams.set('doc_bahasa', bahasa.value || 'id');
+        window.history.replaceState({}, '', pageUrl.toString());
     }
 
     [student, jenis, bahasa].forEach(function (el) {

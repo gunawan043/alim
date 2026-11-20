@@ -658,6 +658,8 @@
                 <td>
                     @if(! empty($data['CatatanWali']))
                         {!! \App\Support\ArabicText::toHtml($data['CatatanWali']) !!}
+                    @elseif(! empty($data['CatatanPredikat']))
+                        {!! \App\Support\ArabicText::toHtml($data['CatatanPredikat']) !!}
                     @else
                         <span style="color:#94a3b8;">—</span>
                     @endif
@@ -687,6 +689,8 @@
                 <td>
                     @if(! empty($data['CatatanWali']))
                         {!! nl2br(e($data['CatatanWali'])) !!}
+                    @elseif(! empty($data['CatatanPredikat']))
+                        {!! nl2br(e($data['CatatanPredikat'])) !!}
                     @else
                         <span style="color:#94a3b8;">—</span>
                     @endif

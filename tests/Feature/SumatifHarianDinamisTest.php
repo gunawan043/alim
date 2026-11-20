@@ -1283,6 +1283,85 @@ class SumatifHarianDinamisTest extends TestCase
             ->assertSee('#tab-leger thead th[data-col="name"]', false);
     }
 
+    public function test_catatan_predikat_per_rombel_tersimpan_dan_tercetak_saat_catatan_wali_kosong(): void
+    {
+        $this->actingAs($this->teacher);
+
+        $catatan = 'Pertahankan prestasi, tingkatkan mutu hafalan.';
+
+        $this->withHeaders(['Accept' => 'application/json'])->post(
+            "/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/sts",
+            [
+                'tab' => 'leger',
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'predicate_notes' => ['Mumtaz' => $catatan],
+            ]
+        )->assertOk()->assertJson(['success' => true, 'message' => 'Catatan predikat disimpan.']);
+
+        $this->assertDatabaseHas('rapor_predicate_notes', [
+            'study_group_id' => $this->studyGroup->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'predicate' => 'Mumtaz',
+            'note' => $catatan,
+        ]);
+
+        $this->get("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/sts?tab=leger&leger=sas&academic_year_id={$this->ay->id}&semester=ganjil")
+            ->assertOk()
+            ->assertSee('Catatan Rapor per Predikat')
+            ->assertSee($catatan);
+
+        // Nilai SAS 92 -> predikat Mumtaz.
+        NilaiSumatif::create([
+            'admin_book_id' => $this->book->id,
+            'student_id' => $this->students[0]->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'sas' => 92,
+            'sas_murni' => 92,
+        ]);
+
+        $service = app(\App\Services\Arsip\RaporPdfService::class);
+        $student = $this->students[0]->fresh();
+
+        $data = $service->buildSantriData(
+            $this->school->id, $this->studyGroup, $this->ay,
+            (string) $this->ay->id, 'ganjil', 'sas', $student,
+        )[$student->id];
+
+        $this->assertSame('Mumtaz', $data['Predikat']);
+        $this->assertSame($catatan, $data['CatatanPredikat']);
+
+        // Catatan wali kosong -> catatan predikat tercetak.
+        $html = $service->renderHtml(
+            $this->school->id, $this->studyGroup, $this->ay,
+            (string) $this->ay->id, 'ganjil', 'sas', $student, 'id',
+        );
+        $this->assertStringContainsString($catatan, $html);
+
+        // Catatan wali terisi -> catatan wali yang dipakai, catatan predikat tidak.
+        \App\Models\RaportRegistration::updateOrCreate(
+            [
+                'student_id' => $student->id,
+                'study_group_id' => $this->studyGroup->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+            ],
+            [
+                'status' => 'draft',
+                'homeroom_note' => 'Catatan wali asli.',
+            ]
+        );
+
+        $htmlWali = $service->renderHtml(
+            $this->school->id, $this->studyGroup, $this->ay,
+            (string) $this->ay->id, 'ganjil', 'sas', $student, 'id',
+        );
+        $this->assertStringContainsString('Catatan wali asli.', $htmlWali);
+        $this->assertStringNotContainsString($catatan, $htmlWali);
+    }
+
     public function test_semester_genap_otomatis_dibuatkan_buku(): void
     {
         $this->assertFalse(

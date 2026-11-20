@@ -661,6 +661,8 @@
                     <td rowspan="3" class="notes">
                         @if(filled($data['CatatanWali'] ?? null))
                             {{ $data['CatatanWali'] }}
+                        @elseif(filled($data['CatatanPredikat'] ?? null))
+                            {{ $data['CatatanPredikat'] }}
                         @else
                             —
                         @endif
@@ -669,6 +671,8 @@
                     <td rowspan="3" class="notes-ar">
                         @if(! empty($data['CatatanWali']))
                             {!! \App\Support\ArabicText::toHtml($data['CatatanWali']) !!}
+                        @elseif(! empty($data['CatatanPredikat']))
+                            {!! \App\Support\ArabicText::toHtml($data['CatatanPredikat']) !!}
                         @else
                             —
                         @endif
