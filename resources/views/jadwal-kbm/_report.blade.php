@@ -70,10 +70,13 @@
                                         <i class="ri-error-warning-line me-1"></i>Tidak ada assignment (SK guru) aktif
                                     </div>
                                 @endif
+                                @foreach($group['warnings'] ?? [] as $warning)
+                                    <div class="small text-warning"><i class="ri-error-warning-line me-1"></i>{{ $warning }}</div>
+                                @endforeach
                                 @foreach($group['conflicts'] as $conflict)
                                     <div class="small text-danger"><i class="ri-close-circle-line me-1"></i>{{ $conflict }}</div>
                                 @endforeach
-                                @if($group['has_assignments'] && empty($group['conflicts']) && empty($group['shortages']))
+                                @if($group['has_assignments'] && empty($group['conflicts']) && empty($group['shortages']) && empty($group['warnings'] ?? []))
                                     <span class="small text-success"><i class="ri-checkbox-circle-line me-1"></i>Semua JP terpasang tanpa konflik</span>
                                 @endif
                             </td>

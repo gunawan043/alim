@@ -163,7 +163,9 @@
                                         @if(! $cell->is_active)
                                             <div class="text-danger fw-semibold" style="font-size:10px">NONAKTIF</div>
                                         @else
-                                            <div class="text-muted" style="font-size:11px">{{ $cell->teacher?->name ?? ($cell->teacher_id ? '' : 'TIM TAHFIDZ') }}</div>
+                                            <div class="text-muted" style="font-size:11px">
+                                                {{ $cell->teacher?->name ?? ($cell->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE ? 'TIM TAHFIDZ' : 'Guru belum ditetapkan') }}
+                                            </div>
                                         @endif
                                     @elseif($ms)
                                         <span class="text-light">–</span>

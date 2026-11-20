@@ -80,8 +80,10 @@
                                                             <span class="teacher-code text-danger fw-semibold">NONAKTIF</span>
                                                         @elseif($entry->teacher_id)
                                                             <span class="teacher-code">{{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}</span>
-                                                        @else
+                                                        @elseif($entry->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE)
                                                             <span class="teacher-code">TIM TAHFIDZ</span>
+                                                        @else
+                                                            <span class="teacher-code text-danger">GURU BELUM ADA</span>
                                                         @endif
                                                     @else
                                                         <span class="matrix-cell-empty">+</span>
@@ -97,8 +99,10 @@
                                                     <span class="teacher-code" title="{{ $entry->teacher?->name }}">
                                                         {{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}
                                                     </span>
-                                                @else
+                                                @elseif($entry->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE)
                                                     <span class="teacher-code" title="Blok tahfidz (tim guru tahfidz)">TIM TAHFIDZ</span>
+                                                @else
+                                                    <span class="teacher-code text-danger" title="Belum ada guru di SK">GURU BELUM ADA</span>
                                                 @endif
                                             @else
                                                 <span class="text-muted">—</span>

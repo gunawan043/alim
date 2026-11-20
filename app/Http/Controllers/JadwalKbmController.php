@@ -1288,6 +1288,7 @@ class JadwalKbmController extends Controller
                 'requested' => (int) ($result['requested'] ?? 0),
                 'missing' => $missing,
                 'shortages' => $result['shortages'] ?? [],
+                'warnings' => $result['warnings'] ?? [],
                 'conflicts' => $result['conflicts'] ?? [],
                 'has_assignments' => (bool) ($result['has_assignments'] ?? true),
                 'tahfidz' => $result['tahfidz'] ?? null,
