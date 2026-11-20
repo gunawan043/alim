@@ -379,6 +379,7 @@
                         <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
                         <input type="hidden" name="semester" value="{{ $selectedSemester }}">
                         <input type="hidden" name="tab" value="leger">
+                        <input type="hidden" name="leger_mode" value="{{ $legerMode ?? 'sts' }}">
 
                         <div class="table-responsive leger-scroll">
                             <table id="tab-leger" class="table table-bordered table-hover align-middle mb-0" style="min-width: max-content;">
@@ -469,14 +470,24 @@
                                             </th>
                                             @foreach($subjectMap as $subject)
                                                 @php
-                                                    $bobotVal = $bobotMap[$subject->id] ?? null;
-                                                    $bobotText = $bobotVal === null
-                                                        ? '—'
-                                                        : (fmod((float) $bobotVal, 1.0) === 0.0
-                                                            ? (string) (int) $bobotVal
-                                                            : rtrim(rtrim(number_format((float) $bobotVal, 2, '.', ''), '0'), '.'));
+                                                    $bobotManual = $bobotManualMap[$subject->id] ?? null;
+                                                    $bobotJp = $bobotJpMap[$subject->id] ?? null;
+                                                    $bobotVal = $bobotManual !== null
+                                                        ? rtrim(rtrim(number_format((float) $bobotManual, 2, '.', ''), '0'), '.')
+                                                        : '';
+                                                    $bobotJpText = $bobotJp !== null
+                                                        ? rtrim(rtrim(number_format((float) $bobotJp, 2, '.', ''), '0'), '.')
+                                                        : '';
                                                 @endphp
-                                                <th style="font-weight:700;" title="Bobot {{ $subject->name }}">{{ $bobotText }}</th>
+                                                <th title="Bobot {{ $subject->name }} — kosong berarti memakai JP ({{ $bobotJpText ?: '—' }})">
+                                                    <input type="number" class="bobot-input"
+                                                           name="leger_bobot[{{ $subject->id }}]"
+                                                           value="{{ $bobotVal }}"
+                                                           min="0" max="99" step="0.01"
+                                                           placeholder="{{ $bobotJpText }}"
+                                                           oninput="if(this.value < 0) this.value = 0;"
+                                                           title="Bobot {{ $subject->name }}">
+                                                </th>
                                             @endforeach
                                         </tr>
                                     @endif
@@ -1018,6 +1029,12 @@
     }
     #tab-leger input.leger-input.is-below { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
     #tab-leger input.leger-input:focus { border: 0; box-shadow: none; outline: none; background: rgba(var(--bs-primary-rgb), .06); }
+    /* Kolom terkunci (menunggu Nilai Murni) diberi corak agar terlihat sebelum diketik */
+    #tab-mapel input.js-gated[readonly] {
+        background: repeating-linear-gradient(45deg, #fff8e1, #fff8e1 4px, #ffe9a8 4px, #ffe9a8 8px);
+        cursor: not-allowed;
+    }
+    #tab-mapel input.js-gated[readonly]:focus { background: repeating-linear-gradient(45deg, #fff8e1, #fff8e1 4px, #ffe9a8 4px, #ffe9a8 8px); }
     /* Tidak ada border/ring saat input diklik (border dari tabel) */
     #tab-leger input:focus, #tab-mapel input:focus,
     #tab-leger input:focus-visible, #tab-mapel input:focus-visible {
@@ -1074,6 +1091,18 @@
         font-weight: 700; font-size: 12px; text-align: center;
     }
     #tab-leger th input.kktp-input:focus { border: 0; outline: none; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
+
+    #tab-leger th input.bobot-input {
+        width: 100%; min-width: 46px; height: 26px; padding: 0 2px;
+        border: 0; border-radius: 0; box-shadow: none;
+        background: transparent; color: var(--bs-body-color);
+        font-weight: 700; font-size: 12px; text-align: center;
+        -moz-appearance: textfield;
+    }
+    #tab-leger th input.bobot-input::-webkit-outer-spin-button,
+    #tab-leger th input.bobot-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    #tab-leger th input.bobot-input::placeholder { color: var(--bs-secondary-color); font-weight: 500; }
+    #tab-leger th input.bobot-input:focus { border: 0; outline: none; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
 </style>
 <script>
 function syncSearchInput(val) {

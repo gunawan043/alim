@@ -113,6 +113,10 @@
             toast('Kolom masih terkunci. Isi Nilai Murni terlebih dahulu.');
 
             if (firstBlocked) firstBlocked.focus();
+        } else if (filled > 0 && blocked > 0) {
+            // Sebagian sel dilewati karena terkunci — jangan diam saja agar
+            // pengguna tidak mengira seluruh data sudah masuk.
+            toast(blocked + ' sel dilewati karena masih terkunci. Isi Nilai Murni pada baris tersebut lalu tempel ulang.');
         }
     }
 

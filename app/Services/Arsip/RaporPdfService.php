@@ -64,7 +64,7 @@ class RaporPdfService
         if ($bahasa === self::BAHASA_AR) {
             return [
                 'title_sts' => 'تقرير نتائج التعلم لمنتصف الفصل الدراسي',
-                'title_sas' => 'تقرير نتائج التعلم لنهاية الفصل الدراسي',
+                'title_sas' => 'كشف درجات أعمال السنة',
                 'nama' => 'الاسم',
                 'semester' => 'الفصل الدراسي',
                 'semester_ganjil' => 'الفصل الأول',
@@ -96,7 +96,8 @@ class RaporPdfService
                 'nip' => 'NUPY.',
                 'halaman' => 'الصفحة',
                 'dari' => 'من',
-                'tanggal' => '',
+                'tanggal' => 'التاريخ',
+                'diberikan_di' => 'حرر',
             ];
         }
 
@@ -134,7 +135,8 @@ class RaporPdfService
             'nip' => 'NUPY.',
             'halaman' => 'Halaman',
             'dari' => 'dari',
-            'tanggal' => '',
+            'tanggal' => 'Tanggal',
+            'diberikan_di' => 'Diberikan di',
         ];
     }
 

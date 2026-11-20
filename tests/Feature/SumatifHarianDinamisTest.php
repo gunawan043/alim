@@ -437,6 +437,45 @@ class SumatifHarianDinamisTest extends TestCase
         $this->assertStringNotContainsString('KKM', $legerHtml);
     }
 
+    public function test_leger_sas_menyimpan_kolom_sas_dan_tidak_menimpa_sts(): void
+    {
+        $this->actingAs($this->teacher);
+        $student = $this->students[0];
+
+        $this->post("/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/sts", [
+            'tab' => 'leger',
+            'leger_mode' => 'sas',
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'leger_sts' => [
+                $student->id => [
+                    $this->book->id => ['sas' => 88],
+                ],
+            ],
+        ])->assertRedirect();
+
+        $row = NilaiSumatif::where('admin_book_id', $this->book->id)
+            ->where('student_id', $student->id)
+            ->first();
+
+        $this->assertNotNull($row, 'Baris nilai harus terbentuk dari leger SAS.');
+        $this->assertSame(88.0, (float) $row->sas, 'Nilai SAS dari leger harus masuk ke kolom sas.');
+        $this->assertSame(88.0, (float) $row->sas_murni, 'Nilai Murni SAS otomatis diisi bila masih kosong.');
+        $this->assertNull($row->sts, 'Menyimpan SAS tidak boleh menimpa kolom STS.');
+
+        // Nilai SAS harus terbaca rapor SAS.
+        $html = app(\App\Services\Arsip\RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->studyGroup,
+            $this->ay,
+            (string) $this->ay->id,
+            'ganjil',
+            'sas',
+            $student,
+        );
+        $this->assertStringContainsString('88.0', $html);
+    }
+
     public function test_leger_sas_and_sts_show_different_scores(): void
     {
         $service = app(SumatifHarianService::class);

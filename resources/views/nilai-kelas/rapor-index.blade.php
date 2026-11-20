@@ -573,7 +573,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
                         <div>
                             <h6 class="mb-1 fw-semibold"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h6>
-                            <p class="text-muted mb-0 small">Centang mapel yang dicetak, lalu gunakan tombol panah untuk mengatur urutan. Berlaku untuk STS dan SAS.</p>
+                            <p class="text-muted mb-0 small">Centang mapel yang dicetak, ubah nama Latin/Arab, KKTP, dan bobot, lalu gunakan tombol panah untuk mengatur urutan. Berlaku untuk STS dan SAS.</p>
                         </div>
                         <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
                     </div>
@@ -593,16 +593,21 @@
                                 <table class="table table-sm table-hover align-middle mb-3">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width:70px;" class="text-center">Masuk</th>
-                                            <th>Mata Pelajaran</th>
-                                            <th style="width:120px;" class="text-center">Bobot <span class="text-muted fw-normal">(SAS)</span></th>
-                                            <th style="width:140px;" class="text-center">Urutan</th>
+                                            <th style="width:60px;" class="text-center">Masuk</th>
+                                            <th style="min-width:240px;">Mata Pelajaran <span class="text-muted fw-normal">(Latin &amp; Arab)</span></th>
+                                            <th style="width:100px;" class="text-center">KKTP</th>
+                                            <th style="width:110px;" class="text-center">Bobot <span class="text-muted fw-normal">(SAS)</span></th>
+                                            <th style="width:120px;" class="text-center">Urutan</th>
                                         </tr>
                                     </thead>
                                     <tbody id="subjectOrderBody">
                                         @foreach($availableSubjects as $subject)
                                             @php
                                                 $isSelected = in_array($subject->id, $selectedSubjectIds, true);
+                                                $kktpRow = ($subjectKktpMap ?? [])[$subject->id] ?? ['kktp_id' => null, 'score' => null];
+                                                $kktpVal = $kktpRow['score'] !== null
+                                                    ? rtrim(rtrim(number_format((float) $kktpRow['score'], 2, '.', ''), '0'), '.')
+                                                    : '';
                                             @endphp
                                             <tr class="subject-row" data-subject-id="{{ $subject->id }}">
                                                 <td class="text-center">
@@ -611,10 +616,34 @@
                                                            id="subject-{{ $subject->id }}" @checked($isSelected)>
                                                 </td>
                                                 <td>
-                                                    <label class="fw-semibold mb-0" for="subject-{{ $subject->id }}">{{ $subject->name }}</label>
-                                                    @if($subject->category)
-                                                        <small class="text-muted ms-1">({{ $subject->category }})</small>
-                                                    @endif
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text" style="width:42px;">ID</span>
+                                                            <input type="text" class="form-control"
+                                                                   name="subject_name[{{ $subject->id }}]"
+                                                                   value="{{ old('subject_name.'.$subject->id, $subject->name) }}"
+                                                                   maxlength="255" aria-label="Nama mapel Latin">
+                                                        </div>
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text" style="width:42px;">AR</span>
+                                                            <input type="text" class="form-control" dir="rtl"
+                                                                   name="subject_name_ar[{{ $subject->id }}]"
+                                                                   value="{{ old('subject_name_ar.'.$subject->id, $subject->name_ar) }}"
+                                                                   maxlength="255" placeholder="Nama Arab (opsional)" aria-label="Nama mapel Arab">
+                                                        </div>
+                                                        @if($subject->category)
+                                                            <small class="text-muted">{{ $subject->category }}</small>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="text" inputmode="decimal"
+                                                           name="subject_kktp[{{ $subject->id }}]"
+                                                           value="{{ old('subject_kktp.'.$subject->id, $kktpVal) }}"
+                                                           placeholder="—"
+                                                           class="form-control form-control-sm text-center mx-auto"
+                                                           style="max-width:80px;"
+                                                           aria-label="KKTP {{ $subject->name }}">
                                                 </td>
                                                 <td class="text-center">
                                                     @php
@@ -628,7 +657,8 @@
                                                            value="{{ old('subject_bobot.'.$subject->id, $bobotVal) }}"
                                                            placeholder="{{ $bobotRow['jp'] !== null ? rtrim(rtrim(number_format((float) $bobotRow['jp'], 2, '.', ''), '0'), '.') : '0' }}"
                                                            class="form-control form-control-sm text-center mx-auto"
-                                                           style="max-width:90px;">
+                                                           style="max-width:90px;"
+                                                           aria-label="Bobot {{ $subject->name }}">
                                                     <small class="text-muted d-block" style="font-size:10px;">
                                                         JP: {{ $bobotRow['jp'] !== null ? rtrim(rtrim(number_format((float) $bobotRow['jp'], 2, '.', ''), '0'), '.') : '—' }}
                                                     </small>
@@ -657,9 +687,9 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Bobot kosong = memakai JP rombel; boleh desimal (mis. 2,5). Urutan mengikuti posisi baris.</small>
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Bobot kosong = memakai JP rombel; boleh desimal (mis. 2,5). Nama Latin/Arab disimpan ke master mapel sehingga berlaku untuk semua rombel. KKTP kosong = tidak diubah. Urutan mengikuti posisi baris.</small>
                                 <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="ri-save-3-line me-1"></i>Simpan Mapel, Urutan &amp; Bobot
+                                    <i class="ri-save-3-line me-1"></i>Simpan Mapel, Nama, KKTP &amp; Bobot
                                 </button>
                             </div>
                         </form>
@@ -725,18 +755,45 @@
                                 <input type="number" name="footer_font_size" class="form-control form-control-sm" min="5" max="16" step="0.5" required value="{{ old('footer_font_size', $layout['footer_font_size']) }}">
                             </div>
                             <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Tinggi Baris</label>
+                                <label class="form-label small mb-1">Tinggi Baris Teks</label>
                                 <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Line Height Tabel</label>
+                                <input type="number" name="table_line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('table_line_height', $layout['table_line_height'] ?? 1.15) }}">
+                                <div class="form-text">Jarak antarbaris teks di dalam tabel nilai.</div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Jarak Baris Santri (mm)</label>
+                                <input type="number" name="table_row_padding" class="form-control form-control-sm" min="0" max="3" step="0.05" required value="{{ old('table_row_padding', $layout['table_row_padding'] ?? 0.5) }}">
+                                <div class="form-text">Padding atas-bawah tiap baris data santri.</div>
                             </div>
                         </div>
 
-                        <div class="col-md-6 px-0">
-                            <label class="form-label small mb-1">Ukuran Kertas</label>
-                            <select name="paper_size" class="form-select form-select-sm" required>
-                                <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
-                                <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
-                                <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
-                            </select>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Ukuran Kertas</label>
+                                <select name="paper_size" class="form-select form-select-sm" required>
+                                    <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
+                                    <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
+                                    <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Footer Kiri</label>
+                                <input type="text" name="footer_left" class="form-control form-control-sm" maxlength="120"
+                                       value="{{ old('footer_left', $layout['footer_left']) }}"
+                                       placeholder="{{ $docBahasa === 'id-ar' ? 'PAH-KSP-FORM-14-04' : 'PAH-KSP-FORM-14-02' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Footer Tengah</label>
+                                <input type="text" name="footer_center" class="form-control form-control-sm" maxlength="120"
+                                       value="{{ old('footer_center', $layout['footer_center']) }}"
+                                       placeholder="REV.01 / 10 September 2025">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-text">Nomor halaman di kanan footer tetap otomatis. Kosongkan untuk memakai teks bawaan.</div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -1031,7 +1088,8 @@ renumberSubjectRows();
         [
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
-            'footer_font_size', 'line_height', 'paper_size',
+            'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding', 'paper_size',
+            'footer_left', 'footer_center',
             'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',

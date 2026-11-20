@@ -48,9 +48,21 @@
     };
     $printDate = $distributionDate ?? now();
     $printCity = $distributionCity ?: ($studyGroup->school?->city?->display_name ?? 'Mataram');
-    $hijriDate = \App\Support\ArabicText::formatHijriDate($printDate) ?: \App\Support\ArabicText::formatDate($printDate);
+    // Hijri::parse() mengubah locale objek tanggal yang dilewatkan, jadi setiap
+    // format memakai salinan sendiri agar tanggal Masehi tidak ikut berubah.
+    $printDateLatin = \Carbon\Carbon::parse($printDate)->locale('id')->translatedFormat('d F Y');
+    $hijriDate = \App\Support\ArabicText::formatHijriDate(\Carbon\Carbon::parse($printDate))
+        ?: \App\Support\ArabicText::formatDate(\Carbon\Carbon::parse($printDate));
+    $hijriDateLatin = \App\Support\ArabicText::formatHijriDateLatin(\Carbon\Carbon::parse($printDate));
+    $printDateAr = \App\Support\ArabicText::formatDate(\Carbon\Carbon::parse($printDate));
     $waliNupy = $studyGroup->homeroomTeacher?->employment?->nupy
         ?? $studyGroup->homeroomTeacher?->gtkProfile?->nupy;
+
+    // Tinggi baris tabel nilai: 5.8pt dikonversi ke mm (1pt = 0.3528mm)
+    // lalu dikali line-height + padding atas-bawah.
+    $tableRowPad = (float) ($layout['table_row_padding'] ?? 0.5);
+    $tableLineHeight = (float) ($layout['table_line_height'] ?? 1.15);
+    $rowHeight = round(5.8 * 0.3528 * $tableLineHeight + 2 * $tableRowPad, 2);
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -98,7 +110,6 @@
             display: block;
             width: 100%;
             object-fit: contain;
-            border-bottom: 2px solid #000;
             margin-bottom: 2mm;
         }
 
@@ -196,13 +207,13 @@
             border-collapse: collapse;
             table-layout: fixed;
             font-size: 5.8pt;
-            line-height: 1.05;
+            line-height: {{ $layout['table_line_height'] ?? 1.15 }};
         }
 
         table.nilai th,
         table.nilai td {
             border: 0.3mm solid #000;
-            padding: 0.45mm 0.5mm;
+            padding: {{ $layout['table_row_padding'] ?? 0.5 }}mm 0.5mm;
             vertical-align: middle;
         }
 
@@ -210,17 +221,18 @@
             text-align: center;
             font-weight: bold;
             line-height: 1.1;
-            padding: 0.7mm 0.5mm;
+            padding: {{ ($layout['table_row_padding'] ?? 0.5) + 0.25 }}mm 0.5mm;
             height: 8.4mm;
         }
 
-        /* Tinggi baris dikunci agar tabel kiri & kanan sejajar barisnya. */
+        /* Tinggi baris dihitung dari line-height & padding agar bisa diatur;
+           dikunci eksplisit supaya kiri & kanan tetap sejajar. */
         table.nilai tbody td {
-            height: 3.9mm;
+            height: {{ $rowHeight }}mm;
         }
 
         table.nilai tbody tr {
-            height: 3.9mm;
+            height: {{ $rowHeight }}mm;
         }
 
         table.nilai td.center {
@@ -298,15 +310,57 @@
             font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
         }
 
+        .issued {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 0.8mm;
+            font-size: 6.4pt;
+            line-height: 1.2;
+        }
+
+        .issued > tbody > tr > td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0;
+        }
+
+        .issued td.issued-id { text-align: left; }
+
+        .issued td.issued-ar {
+            text-align: right;
+            font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
+        }
+
+        .issued-inner {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .issued-inner td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+
+        .issued-inner td.lbl { white-space: nowrap; width: 1%; }
+        .issued-inner td.sep { width: 1%; padding: 0 1mm; }
+
+        .issued .issued-sub { padding-right: 12mm; }
+        .issued td.issued-ar .issued-sub { display: inline-block; padding-right: 12mm; }
+
+        .num-ar {
+            font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
+        }
+
         .approval {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-top: 1.2mm;
+            margin-top: 0.8mm;
             font-size: 6.2pt;
             line-height: 1.15;
         }
-
         .approval td {
             width: 33.33%;
             vertical-align: top;
@@ -603,6 +657,34 @@
             </tbody>
         </table>
 
+        {{-- Diberikan di & tanggal: diletakkan sebelum blok tanda tangan --}}
+        <table class="issued">
+            <tr>
+                <td class="issued-id">
+                    <table class="issued-inner">
+                        <tr>
+                            <td class="lbl">{{ $li('diberikan_di') }}</td>
+                            <td class="sep">:</td>
+                            <td>{{ $printCity }}</td>
+                        </tr>
+                        <tr>
+                            <td class="lbl">{{ $li('tanggal') }}</td>
+                            <td class="sep">:</td>
+                            <td>
+                                {{ $printDateLatin }} M<br>
+                                {{ $hijriDateLatin }}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="issued-ar">
+                    <div>{!! $ar($la('diberikan_di').' : '.\App\Support\ArabicText::cityName($printCity)) !!}</div>
+                    <div>{!! $ar($la('tanggal').' : '.$printDateAr.' مـ') !!}</div>
+                    <div class="issued-sub">{!! $ar($hijriDate) !!}</div>
+                </td>
+            </tr>
+        </table>
+
         {{-- Pengesahan --}}
         @php
             $sigAreaHeight = min(16.0, max(
@@ -656,14 +738,7 @@
             </tr>
         </table>
 
-        {{-- Tempat & tanggal (dua bahasa) --}}
-        <table style="width:100%; border-collapse:collapse; margin-top:1mm; font-size:6.8pt;">
-            <tr>
-                <td style="text-align:left;">{{ $printCity }}, {{ $printDate->translatedFormat('d F Y') }}</td>
-                <td class="ar" style="text-align:right;">{!! $ar($hijriDate) !!}، {!! $ar(\App\Support\ArabicText::cityName($printCity)) !!}</td>
-            </tr>
-        </table>
-
+        {{-- Pengesahan --}}
         @if($layout['show_qr'] ?? false)
             @include('documents._qr-footer', ['verification' => $verificationByStudent[$key] ?? null])
         @endif
@@ -673,8 +748,8 @@
 <div class="footer-bar">
     <table>
         <tr>
-            <td>PAH-KSP-FORM-14-04</td>
-            <td class="center">REV.01 / 10 September 2025</td>
+            <td>{{ ($layout['footer_left'] ?? null) ?: 'PAH-KSP-FORM-14-04' }}</td>
+            <td class="center">{{ ($layout['footer_center'] ?? null) ?: 'REV.01 / 10 September 2025' }}</td>
             <td class="right">Halaman 1 dari 1</td>
         </tr>
     </table>

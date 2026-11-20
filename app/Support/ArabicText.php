@@ -243,6 +243,32 @@ final class ArabicText
     }
 
     /**
+     * Tanggal Hijriah berbahasa Indonesia (contoh: "5 Rabiul Akhir 1448 H").
+     * Dipakai berdampingan dengan tanggal Masehi pada blok tanda tangan.
+     */
+    public static function formatHijriDateLatin(\DateTimeInterface|string|null $date): string
+    {
+        if (! $date) {
+            return '';
+        }
+
+        try {
+            Hijri::getInstance();
+            $hijri = Hijri::parse($date);
+
+            $months = [
+                1 => 'Muharram', 2 => 'Safar', 3 => 'Rabiul Awwal', 4 => 'Rabiul Akhir',
+                5 => 'Jumadil Awwal', 6 => 'Jumadil Akhir', 7 => 'Rajab', 8 => 'Syaban',
+                9 => 'Ramadan', 10 => 'Syawal', 11 => 'Dzulqaidah', 12 => 'Dzulhijjah',
+            ];
+
+            return $hijri->day.' '.($months[(int) $hijri->month] ?? '').' '.$hijri->year.' H';
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /**
      * Tanggal format Arab: "17 أكتوبر 2026" dengan angka Arab-Indik.
      */
     public static function formatDate(\DateTimeInterface|string|null $date): string

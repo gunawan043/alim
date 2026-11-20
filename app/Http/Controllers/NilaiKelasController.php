@@ -16,6 +16,7 @@ use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
+use App\Models\Subject;
 use App\Models\SubjectKktp;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
@@ -386,15 +387,20 @@ class NilaiKelasController extends Controller
         }
 
         // Bobot per mapel (khusus SAS): override manual, jatuh ke JP bila kosong.
-        $bobotMap = StudyGroupSubject::query()
+        $bobotRows = StudyGroupSubject::query()
             ->where('study_group_id', $studyGroup->id)
             ->where('academic_year_id', $selectedAyId)
             ->whereIn('subject_id', $subjectMap->pluck('id')->all())
-            ->get()
-            ->mapWithKeys(fn ($row) => [
-                $row->subject_id => $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours,
-            ])
-            ->all();
+            ->get();
+
+        $bobotMap = [];
+        $bobotManualMap = [];
+        $bobotJpMap = [];
+        foreach ($bobotRows as $row) {
+            $bobotMap[$row->subject_id] = $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours;
+            $bobotManualMap[$row->subject_id] = $row->bobot !== null ? (float) $row->bobot : null;
+            $bobotJpMap[$row->subject_id] = $row->weekly_hours !== null ? (float) $row->weekly_hours : null;
+        }
 
         $legerAggMap = [];
         $legerJumlahMap = [];
@@ -467,7 +473,7 @@ class NilaiKelasController extends Controller
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'bobotMap', 'legerJumlahMap',
+            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap',
             'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional'
         ));
     }
@@ -499,6 +505,10 @@ class NilaiKelasController extends Controller
             $murniOptional = NilaiMurniRule::optionalForAdminBook($adminBook);
 
             $policyErrors = [];
+            $studentNames = Student::whereIn('id', array_keys((array) $nilaiData))
+                ->pluck('name', 'id');
+            $subjectName = $adminBook->subject?->name ?? 'mapel ini';
+
             foreach ((array) $nilaiData as $studentId => $row) {
                 $existingRow = NilaiSumatif::where('admin_book_id', $bookId)
                     ->where('student_id', $studentId)
@@ -512,15 +522,27 @@ class NilaiKelasController extends Controller
                 $hasSasMurni = (isset($row['sas_murni']) && $row['sas_murni'] !== '' && $row['sas_murni'] !== null)
                     || ($existingRow?->sas_murni !== null);
 
+                $nama = $studentNames[$studentId] ?? 'santri ini';
+
                 if (! $murniOptional && $hasSts && ! $hasStsMurni) {
-                    $policyErrors["nilai.{$studentId}.sts"] = 'Isi Nilai Murni STS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS.';
+                    $policyErrors["nilai.{$studentId}.sts"] = "Baris {$nama}: kolom STS belum bisa disimpan karena Nilai Murni STS kosong. Isi dulu kolom N. Murni STS pada baris {$nama} ({$subjectName}), lalu simpan lagi.";
                 }
                 if (! $murniOptional && $hasSas && ! $hasSasMurni) {
-                    $policyErrors["nilai.{$studentId}.sas"] = 'Isi Nilai Murni SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom SAS.';
+                    $policyErrors["nilai.{$studentId}.sas"] = "Baris {$nama}: kolom SAS belum bisa disimpan karena Nilai Murni SAS kosong. Isi dulu kolom N. Murni SAS pada baris {$nama} ({$subjectName}), lalu simpan lagi.";
                 }
             }
 
             if (! empty($policyErrors)) {
+                // Auto-save memakai AJAX: kirim pesan yang bisa dibaca langsung,
+                // bukan halaman 422 tanpa keterangan.
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => reset($policyErrors),
+                        'errors' => $policyErrors,
+                    ], 422);
+                }
+
                 throw ValidationException::withMessages($policyErrors);
             }
 
@@ -605,7 +627,7 @@ class NilaiKelasController extends Controller
         }
 
         // ── TAB LEGER: simpan STS langsung ke semua mapel ──
-        if ($request->tab === 'leger' && ($request->filled('leger_sts') || $request->filled('leger_kkm'))) {
+        if ($request->tab === 'leger' && ($request->filled('leger_sts') || $request->filled('leger_kkm') || $request->filled('leger_bobot'))) {
             $selectedAyId = $request->academic_year_id;
             $selectedSem = $request->semester ?? 'ganjil';
 
@@ -664,18 +686,74 @@ class NilaiKelasController extends Controller
                 }
             }
 
+            // ── Simpan bobot rapor SAS per mapel (kosong = kembali ke JP) ──
+            if ($request->filled('leger_bobot')) {
+                $request->validate(['leger_bobot.*' => 'nullable|numeric|min:0|max:99']);
+
+                $subjectIds = $allBooks->pluck('subject_id')->filter()->unique()->all();
+
+                foreach ($request->leger_bobot as $subjectId => $rawBobot) {
+                    if (! in_array($subjectId, $subjectIds, true)) {
+                        continue;
+                    }
+
+                    $rawBobot = is_string($rawBobot) ? str_replace(',', '.', trim($rawBobot)) : $rawBobot;
+                    $bobot = ($rawBobot === null || $rawBobot === '')
+                        ? null
+                        : round(max(0, (float) $rawBobot), 2);
+
+                    StudyGroupSubject::query()
+                        ->where('study_group_id', $studyGroupId)
+                        ->where('academic_year_id', $selectedAyId)
+                        ->where('subject_id', $subjectId)
+                        ->update(['bobot' => $bobot]);
+                }
+            }
+
             $savedRows = [];
+            $legerMode = $request->input('leger_mode') === 'sas' ? 'sas' : 'sts';
+
+            // Preload baris yang sudah ada agar auto-save tidak menulis ulang
+            // ratusan sel yang nilainya tidak berubah.
+            $existingRows = NilaiSumatif::whereIn('admin_book_id', $allBooks->keys()->all())
+                ->where('semester', $selectedSem)
+                ->get()
+                ->keyBy(fn ($r) => (string) $r->admin_book_id.'|'.(string) $r->student_id);
+
             foreach (($request->leger_sts ?? []) as $studentId => $books) {
                 foreach ($books as $bookId => $fields) {
                     $book = $allBooks->get((string) $bookId);
                     if (! $book) {
                         continue;
                     }
+
+                    $raw = $fields[$legerMode] ?? null;
+                    $newVal = ($raw === '' || $raw === null || ! is_numeric($raw)) ? null : (float) $raw;
+
+                    $existing = $existingRows->get((string) $bookId.'|'.(string) $studentId);
+                    $currentVal = $existing?->{$legerMode};
+                    $currentVal = $currentVal !== null ? (float) $currentVal : null;
+
+                    $needMurni = $legerMode === 'sas' && $newVal !== null && $existing?->sas_murni === null;
+
+                    if ($currentVal === $newVal && ! $needMurni) {
+                        continue;
+                    }
+
                     abort_if($book->isLocked(), 403, 'Buku nilai '.($book->subject?->name ?? '').' sudah dikunci.');
                     abort_if($book->isPublished(), 403, 'Nilai '.($book->subject?->name ?? 'mapel').' sudah dipublikasikan. Batalkan publikasi terlebih dahulu.');
 
-                    $stsVal = $fields['sts'] ?? null;
-                    $stsVal = ($stsVal === '' || $stsVal === null) ? null : $stsVal;
+                    $payload = [
+                        'academic_year_id' => $selectedAyId,
+                        $legerMode => $newVal,
+                    ];
+
+                    // Leger SAS: bila Nilai Murni SAS belum ada, samakan dengan
+                    // nilai yang diketik agar rapor langsung punya nilai akhir
+                    // (murni = hasil ujian, tanpa komponen lain).
+                    if ($needMurni) {
+                        $payload['sas_murni'] = $newVal;
+                    }
 
                     $nilai = NilaiSumatif::updateOrCreate(
                         [
@@ -683,10 +761,7 @@ class NilaiKelasController extends Controller
                             'student_id' => $studentId,
                             'semester' => $selectedSem,
                         ],
-                        [
-                            'academic_year_id' => $selectedAyId,
-                            'sts' => $stsVal,
-                        ]
+                        $payload
                     );
 
                     // Satu aturan kalkulasi: hitung ulang RS/RSA/NR dari kondisi baris.
@@ -696,6 +771,9 @@ class NilaiKelasController extends Controller
                         'student_id' => $studentId,
                         'book_id' => $bookId,
                         'sts' => $nilai->sts !== null ? (float) $nilai->sts : null,
+                        'sas' => $nilai->sas !== null ? (float) $nilai->sas : null,
+                        'rsa' => $nilai->rsa !== null ? (float) $nilai->rsa : null,
+                        'nr_final' => $nilai->nr_final !== null ? (float) $nilai->nr_final : null,
                     ];
                 }
             }
@@ -1050,10 +1128,25 @@ class NilaiKelasController extends Controller
             ]])
             ->all();
 
+        // KKTP efektif tiap mapel diambil dari buku ajar (subject_kktp) agar
+        // nilai yang tampil di rapor bisa diubah langsung dari tabel ini.
+        $subjectKktpMap = TeacherAdminBook::query()
+            ->with('kktp')
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $selectedAyId)
+            ->where('semester', $selectedSem)
+            ->whereIn('subject_id', $availableSubjectIds)
+            ->get()
+            ->mapWithKeys(fn ($book) => [$book->subject_id => [
+                'kktp_id' => $book->kktp_id,
+                'score' => $book->kktp?->kkm_score,
+            ]])
+            ->all();
+
         return view('nilai-kelas.rapor-index', compact(
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
             'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'variantLayouts', 'docJenis', 'docBahasa',
-            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap',
+            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap', 'subjectKktpMap',
         ));
     }
 
@@ -1526,6 +1619,10 @@ class NilaiKelasController extends Controller
             'info_font_size' => 'required|numeric|min:6|max:20',
             'footer_font_size' => 'required|numeric|min:5|max:16',
             'line_height' => 'required|numeric|min:1|max:2.5',
+            'table_line_height' => 'required|numeric|min:1|max:2.5',
+            'table_row_padding' => 'required|numeric|min:0|max:3',
+            'footer_left' => 'nullable|string|max:120',
+            'footer_center' => 'nullable|string|max:120',
             'paper_size' => 'required|in:a4,folio,letter',
             'doc_jenis' => 'nullable|in:sts,sas',
             'doc_bahasa' => 'nullable|in:id,ar,id-ar',
@@ -1569,13 +1666,20 @@ class NilaiKelasController extends Controller
         foreach ([
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
-            'footer_font_size', 'line_height', 'paper_size',
+            'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding', 'paper_size',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height', 'ttd_ksp_margin',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
             'ttd_ksp_margin', 'ttd_wali_margin', 'stamp_margin',
         ] as $key) {
             if (array_key_exists($key, $validated)) {
                 $values[$key] = $validated[$key];
+            }
+        }
+
+        foreach (['footer_left', 'footer_center'] as $key) {
+            if (array_key_exists($key, $validated)) {
+                $value = trim((string) $validated[$key]);
+                $values[$key] = $value !== '' ? $value : null;
             }
         }
 
@@ -1788,6 +1892,9 @@ class NilaiKelasController extends Controller
             'subject_ids' => 'required|array|min:1',
             'subject_order' => 'nullable|array',
             'subject_bobot' => 'nullable|array',
+            'subject_name' => 'nullable|array',
+            'subject_name_ar' => 'nullable|array',
+            'subject_kktp' => 'nullable|array',
         ]);
 
         $available = app(RaporPdfService::class)
@@ -1844,7 +1951,83 @@ class NilaiKelasController extends Controller
                 ->update(['bobot' => $bobot]);
         }
 
-        return back()->with('success', 'Mapel rapor, urutan, dan bobot berhasil disimpan.');
+        $books = TeacherAdminBook::query()
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $validated['academic_year_id'])
+            ->where('semester', $validated['semester'])
+            ->whereIn('subject_id', $available)
+            ->get()
+            ->keyBy('subject_id');
+
+        // Nama Latin & Arab disimpan di master mapel (berlaku untuk semua rombel).
+        $nameInput = (array) $request->input('subject_name', []);
+        $nameArInput = (array) $request->input('subject_name_ar', []);
+
+        foreach ($available as $subjectId) {
+            $subject = Subject::find($subjectId);
+            if (! $subject) {
+                continue;
+            }
+
+            $name = trim((string) ($nameInput[$subjectId] ?? ''));
+            if ($name !== '' && $name !== $subject->name) {
+                $subject->name = mb_substr($name, 0, 255);
+            }
+
+            if (array_key_exists($subjectId, $nameArInput)) {
+                $nameAr = trim((string) $nameArInput[$subjectId]);
+                $subject->name_ar = $nameAr !== '' ? mb_substr($nameAr, 0, 255) : null;
+            }
+
+            if ($subject->isDirty()) {
+                $subject->save();
+            }
+        }
+
+        // KKTP per mapel: mengubah skor pada subject_kktp yang dipakai buku ajar.
+        $kktpInput = (array) $request->input('subject_kktp', []);
+        foreach ($kktpInput as $subjectId => $raw) {
+            if (! in_array($subjectId, $available, true)) {
+                continue;
+            }
+
+            $book = $books[$subjectId] ?? null;
+            if (! $book) {
+                continue;
+            }
+
+            $raw = str_replace(',', '.', trim((string) $raw));
+            if ($raw === '' || ! is_numeric($raw)) {
+                continue;
+            }
+
+            $score = round(max(0, min(100, (float) $raw)), 2);
+
+            $kktp = $book->kktp_id ? SubjectKktp::find($book->kktp_id) : null;
+            if (! $kktp) {
+                // Belum ada baris KKTP: buat untuk mapel + tingkat + TA + semester ini,
+                // lalu tautkan ke buku ajar agar rapor langsung membacanya.
+                $kktp = SubjectKktp::create([
+                    'subject_id' => $subjectId,
+                    'school_id' => $studyGroup->school_id,
+                    'grade_level_id' => $studyGroup->grade_level_id,
+                    'academic_year_id' => $validated['academic_year_id'],
+                    'semester' => $validated['semester'],
+                    'kkm_score' => $score,
+                    'kktp_score' => $score,
+                    'created_by' => $request->user()?->id,
+                ]);
+
+                $book->kktp_id = $kktp->id;
+                $book->save();
+            } else {
+                $kktp->kkm_score = $score;
+                $kktp->kktp_score = $score;
+                $kktp->save();
+            }
+        }
+
+        return back()->with('success', 'Mapel rapor, nama, KKTP, urutan, dan bobot berhasil disimpan.');
     }
 
     /**

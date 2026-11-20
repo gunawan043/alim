@@ -304,8 +304,9 @@
         table.nilai th,
         table.nilai td {
             border: 1px solid #000;
-            padding: 2px 6px;
+            padding: {{ $layout['table_row_padding'] ?? 0.5 }}mm 6px;
             font-size: {{ $layout['table_font_size'] }}pt;
+            line-height: {{ $layout['table_line_height'] ?? 1.15 }};
         }
         table.nilai th {
             background: #f0f0f0;
@@ -753,8 +754,8 @@
 <div class="footer-bar">
     <table style="width:100%; border-collapse:collapse;">
     <tr>
-        <td class="left">PAH-KSP-FORM-14-02</td>
-        <td class="center">REV.01 / 10 September 2025</td>
+        <td class="left">{{ ($layout['footer_left'] ?? null) ?: 'PAH-KSP-FORM-14-02' }}</td>
+        <td class="center">{{ ($layout['footer_center'] ?? null) ?: 'REV.01 / 10 September 2025' }}</td>
         <td class="right">
             @if($isArabic)
                 {!! $text($label('halaman')) !!} {{ $num(1) }} {!! $text($label('dari')) !!} {{ $num(1) }}
