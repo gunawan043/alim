@@ -547,6 +547,38 @@ class ArsipInventarisTest extends TestCase
     // V5 — CETAK MULTIBAHASA, HIJRI, FILTER DOKUMEN
     // ─────────────────────────────────────────────────────────────
 
+    public function test_catatan_umum_tidak_terhapus_saat_simpan_tanggal_pembagian(): void
+    {
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/pengaturan";
+        $catatan = 'Rapor dibagikan pada rapat wali santri.';
+
+        // Form catatan umum (membawa tanggal & kota sebagai hidden input).
+        $this->actingAs($this->tu)->post($url, [
+            'academic_year_id' => $this->activeAy->id,
+            'semester' => 'ganjil',
+            'distribution_date' => '2026-10-20',
+            'city' => 'Mataram',
+            'notes' => $catatan,
+        ])->assertRedirect()->assertSessionHas('success');
+
+        // Form tanggal pembagian tidak mengirim field notes; catatan harus tetap ada.
+        $this->actingAs($this->tu)->post($url, [
+            'academic_year_id' => $this->activeAy->id,
+            'semester' => 'ganjil',
+            'distribution_date' => '2026-10-21',
+            'city' => 'Mataram',
+        ])->assertRedirect()->assertSessionHas('success');
+
+        $setting = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail();
+
+        $this->assertSame($catatan, $setting->notes);
+        $this->assertSame('2026-10-21', $setting->distribution_date?->format('Y-m-d'));
+    }
+
     public function test_cetak_rapor_bahasa_arab_dari_ui(): void
     {
         $this->actingAs($this->tu);

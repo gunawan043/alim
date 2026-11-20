@@ -1575,21 +1575,31 @@ class NilaiKelasController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
+        $payload = [
+            'distribution_date' => $validated['distribution_date'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'updated_by' => $request->user()?->id,
+        ];
+
+        // Catatan umum punya form sendiri; jangan hapus bila form tanggal yang dikirim.
+        if ($request->has('notes')) {
+            $payload['notes'] = $validated['notes'] ?? null;
+        }
+
         RaporDistributionSetting::updateOrCreate(
             [
                 'school_id' => $studyGroup->school_id,
                 'academic_year_id' => $validated['academic_year_id'],
                 'semester' => $validated['semester'],
             ],
-            [
-                'distribution_date' => $validated['distribution_date'] ?? null,
-                'city' => $validated['city'] ?? null,
-                'notes' => $validated['notes'] ?? null,
-                'updated_by' => $request->user()?->id,
-            ]
+            $payload
         );
 
-        return back()->with('success', 'Tanggal pembagian rapor berhasil disimpan.');
+        $pesan = $request->has('notes')
+            ? 'Catatan umum rapor berhasil disimpan.'
+            : 'Tanggal pembagian rapor berhasil disimpan.';
+
+        return back()->with('success', $pesan);
     }
 
     /**
@@ -1619,8 +1629,8 @@ class NilaiKelasController extends Controller
             'info_font_size' => 'required|numeric|min:6|max:20',
             'footer_font_size' => 'required|numeric|min:5|max:16',
             'line_height' => 'required|numeric|min:1|max:2.5',
-            'table_line_height' => 'required|numeric|min:1|max:2.5',
-            'table_row_padding' => 'required|numeric|min:0|max:3',
+            'table_line_height' => 'nullable|numeric|min:1|max:2.5',
+            'table_row_padding' => 'nullable|numeric|min:0|max:3',
             'table_border_width' => 'nullable|numeric|min:0|max:2',
             'bold_table_header' => 'nullable|boolean',
             'bold_subject' => 'nullable|boolean',

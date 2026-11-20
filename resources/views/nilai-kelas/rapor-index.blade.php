@@ -228,16 +228,11 @@
                     <input type="date" name="distribution_date" class="form-control"
                            value="{{ $distributionSetting?->distribution_date?->format('Y-m-d') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-semibold">Kota</label>
                     <input type="text" name="city" class="form-control" maxlength="100"
                            value="{{ $distributionSetting?->city ?? $studyGroup->school?->city }}"
                            placeholder="Mataram">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Catatan</label>
-                    <input type="text" name="notes" class="form-control" maxlength="500"
-                           value="{{ $distributionSetting?->notes }}" placeholder="Opsional">
                 </div>
                 <div class="col-md-auto">
                     <button type="submit" class="btn btn-success">
