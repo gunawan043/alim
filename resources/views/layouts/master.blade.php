@@ -93,6 +93,29 @@
     @stack('script')
     @stack('scripts')
     @yield('js')
+
+    {{-- Cegah roda mouse mengubah nilai input angka (leger, buku nilai, dsb.).
+         Input angka yang sedang fokus bertambah/berkurang saat roda mouse
+         digeser; batalkan aksi itu dan lepaskan fokus agar roda mouse kembali
+         menggulir halaman. --}}
+    <script>
+        (function () {
+            'use strict';
+
+            document.addEventListener('wheel', function (event) {
+                var target = event.target;
+
+                if (! target || target.tagName !== 'INPUT' || target.type !== 'number') {
+                    return;
+                }
+
+                if (document.activeElement === target) {
+                    event.preventDefault();
+                    target.blur();
+                }
+            }, { passive: false });
+        })();
+    </script>
 </body>
 
 </html>
