@@ -257,7 +257,8 @@
     </div>
 
     <div class="row g-3 mb-5">
-        <div class="col-xl-7">
+        {{-- Cetak Rapor Santri: lebar penuh di bawah pengaturan --}}
+        <div class="col-12 order-2">
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
@@ -343,6 +344,7 @@
                                     <th style="width:75px;text-align:center;">Nilai</th>
                                     <th style="width:90px;text-align:center;">Predikat</th>
                                     <th style="width:70px;text-align:center;">Peringkat</th>
+                                    <th style="min-width:220px;">Catatan Wali Kelas</th>
                                     <th style="width:120px;text-align:center;">Aksi</th>
                                 </tr>
                             </thead>
@@ -394,6 +396,33 @@
                                                 —
                                             @endif
                                         </td>
+                                        <td>
+                                            @php
+                                                $noteAction = route('user.schools.nilai-kelas.rapor.note', [
+                                                    'userId' => $userId,
+                                                    'studyGroupId' => $studyGroup->id,
+                                                    'studentId' => $student->id,
+                                                    'academic_year_id' => $selectedAyId,
+                                                    'semester' => $selectedSem,
+                                                ]);
+                                                $noteValue = $registrations[$student->id]->homeroom_note ?? '';
+                                            @endphp
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control js-note-inline"
+                                                       value="{{ $noteValue }}"
+                                                       maxlength="500"
+                                                       placeholder="Catatan wali kelas…"
+                                                       data-action="{{ $noteAction }}"
+                                                       aria-label="Catatan {{ $student->name }}">
+                                                <button type="button" class="btn btn-outline-secondary js-note"
+                                                        title="Buka editor catatan"
+                                                        data-name="{{ $student->name }}"
+                                                        data-note="{{ $noteValue }}"
+                                                        data-action="{{ $noteAction }}">
+                                                    <i class="ri-expand-diagonal-line"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                         <td class="text-center">
                                             <div class="btn-group">
                                                 <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -411,23 +440,11 @@
                                                     <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
                                                 </ul>
                                             </div>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-note"
-                                                    data-name="{{ $student->name }}"
-                                                    data-note="{{ $registrations[$student->id]->homeroom_note ?? '' }}"
-                                                    data-action="{{ route('user.schools.nilai-kelas.rapor.note', [
-                                                        'userId' => $userId,
-                                                        'studyGroupId' => $studyGroup->id,
-                                                        'studentId' => $student->id,
-                                                        'academic_year_id' => $selectedAyId,
-                                                        'semester' => $selectedSem,
-                                                    ]) }}">
-                                                <i class="ri-chat-1-line me-1"></i> Catatan
-                                            </button>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
+                                        <td colspan="8" class="text-center text-muted py-4">
                                             <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                         </td>
                                     </tr>
@@ -439,7 +456,7 @@
             </div>
         </div>
 
-        <div class="col-xl-5">
+        <div class="col-xl-6 order-1">
             @php
                 $previewStudent = $students->first()?->student;
                 $previewUrl = $previewStudent
@@ -513,7 +530,31 @@
                         </div>
                     </div>
 
-                    <hr class="my-4">
+                    <hr class="my-3">
+
+                    {{-- Catatan umum: tercetak pada rapor semua santri --}}
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <h6 class="mb-0 small fw-semibold"><i class="ri-chat-quote-line me-1"></i>Catatan Umum Rapor</h6>
+                        <span class="badge bg-secondary-subtle text-secondary">Tercetak di semua rapor</span>
+                    </div>
+                    <form method="POST"
+                          action="{{ route('user.schools.nilai-kelas.rapor.pengaturan', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $selectedAyId }}">
+                        <input type="hidden" name="semester" value="{{ $selectedSem }}">
+                        <input type="hidden" name="distribution_date" value="{{ $distributionSetting?->distribution_date?->format('Y-m-d') }}">
+                        <input type="hidden" name="city" value="{{ $distributionSetting?->city ?? $studyGroup->school?->city }}">
+                        <textarea name="notes" rows="2" maxlength="500" class="form-control form-control-sm"
+                                  placeholder="Mis. Rapor dibagikan bersama rapat wali santri. Kosongkan bila tidak perlu.">{{ old('notes', $distributionSetting?->notes) }}</textarea>
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                            <small class="text-muted">Tampil pada baris catatan di bawah tabel nilai.</small>
+                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                <i class="ri-save-3-line me-1"></i>Simpan Catatan
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-3">
 
                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                         <h6 class="mb-0 small fw-semibold"><i class="ri-eye-line me-1"></i>Preview PDF</h6>
@@ -550,7 +591,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="border rounded overflow-hidden bg-light" style="height:720px;">
+                        <div class="border rounded overflow-hidden bg-light" style="height:620px;">
                             <iframe id="raporPreview"
                                     src="{{ $previewUrl }}"
                                     title="Preview PDF rapor"
@@ -568,16 +609,23 @@
                             <i class="ri-information-line me-1"></i>Belum ada santri pada TA/semester ini, preview belum tersedia.
                         </div>
                     @endif
-                    <hr class="my-4">
+                </div>
+            </div>
+        </div>
 
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        {{-- Mapel yang masuk rapor: berdampingan dengan pengaturan --}}
+        <div class="col-xl-6 order-1">
+            <div class="card h-100">
+                <div class="card-header border-bottom-dashed">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
-                            <h6 class="mb-1 fw-semibold"><i class="ri-book-open-line text-primary me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h6>
-                            <p class="text-muted mb-0 small">Centang mapel yang dicetak, ubah nama Latin/Arab, KKTP, dan bobot, lalu gunakan tombol panah untuk mengatur urutan. Berlaku untuk STS dan SAS.</p>
+                            <h5 class="card-title mb-0"><i class="ri-book-open-line text-success me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h5>
+                            <p class="text-muted mb-0 small">Centang mapel yang dicetak, ubah nama Latin/Arab, KKTP, dan bobot, lalu atur urutannya.</p>
                         </div>
                         <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
                     </div>
-
+                </div>
+                <div class="card-body">
                     @if($availableSubjects->isEmpty())
                         <div class="alert alert-warning py-2 mb-0 small">
                             <i class="ri-information-line me-1"></i>Belum ada buku/mapel aktif untuk rombel dan semester ini.
@@ -760,13 +808,39 @@
                             </div>
                             <div class="col-6 col-md-4">
                                 <label class="form-label small mb-1">Line Height Tabel</label>
-                                <input type="number" name="table_line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('table_line_height', $layout['table_line_height'] ?? 1.15) }}">
+                                <input type="number" name="table_line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('table_line_height', $layout['table_line_height'] ?? 1.05) }}">
                                 <div class="form-text">Jarak antarbaris teks di dalam tabel nilai.</div>
                             </div>
                             <div class="col-6 col-md-4">
                                 <label class="form-label small mb-1">Jarak Baris Santri (mm)</label>
                                 <input type="number" name="table_row_padding" class="form-control form-control-sm" min="0" max="3" step="0.05" required value="{{ old('table_row_padding', $layout['table_row_padding'] ?? 0.5) }}">
                                 <div class="form-text">Padding atas-bawah tiap baris data santri.</div>
+                            </div>
+                        </div>
+
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-table-line me-1"></i>Gaya Tabel</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Tebal Garis (mm)</label>
+                                <input type="number" name="table_border_width" class="form-control form-control-sm"
+                                       min="0" max="2" step="0.05" required
+                                       value="{{ old('table_border_width', $layout['table_border_width'] ?? 0.3) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1 d-block">Teks</label>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="bold_table_header" value="1"
+                                           id="boldTableHeader" @checked(old('bold_table_header', $layout['bold_table_header'] ?? true))>
+                                    <label class="form-check-label small" for="boldTableHeader">Judul tebal</label>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1 d-block">&nbsp;</label>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="bold_subject" value="1"
+                                           id="boldSubject" @checked(old('bold_subject', $layout['bold_subject'] ?? true))>
+                                    <label class="form-check-label small" for="boldSubject">Nama mapel tebal</label>
+                                </div>
                             </div>
                         </div>
 
@@ -1089,7 +1163,7 @@ renumberSubjectRows();
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
             'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding', 'paper_size',
-            'footer_left', 'footer_center',
+            'footer_left', 'footer_center', 'bold_table_header', 'bold_subject',
             'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
@@ -1131,6 +1205,50 @@ document.querySelectorAll('.js-note').forEach(function (btn) {
         document.getElementById('noteStudent').textContent = btn.dataset.name || '—';
         document.getElementById('noteText').value = btn.dataset.note || '';
         new bootstrap.Modal(document.getElementById('noteModal')).show();
+    });
+});
+
+// Simpan catatan langsung dari tabel (tanpa membuka modal).
+document.querySelectorAll('.js-note-inline').forEach(function (input) {
+    var original = input.value;
+    var saving = false;
+
+    function simpan() {
+        if (saving || input.value === original) return;
+
+        saving = true;
+        input.classList.add('border-warning');
+
+        var body = new FormData();
+        body.append('_token', '{{ csrf_token() }}');
+        body.append('homeroom_note', input.value);
+
+        fetch(input.dataset.action, {
+            method: 'POST',
+            body: body,
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function (res) {
+            if (!res.ok) throw new Error('gagal');
+            return res.json();
+        }).then(function () {
+            original = input.value;
+            input.classList.remove('border-warning');
+            input.classList.add('border-success');
+            setTimeout(function () { input.classList.remove('border-success'); }, 1500);
+        }).catch(function () {
+            input.classList.remove('border-warning');
+            input.classList.add('border-danger');
+            input.title = 'Catatan gagal disimpan. Coba lagi.';
+        }).finally(function () {
+            saving = false;
+        });
+    }
+
+    input.addEventListener('change', simpan);
+    input.addEventListener('blur', simpan);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
     });
 });
 

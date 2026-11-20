@@ -39,6 +39,9 @@
     $layout = array_merge(\App\Models\RaporDistributionSetting::defaultLayout(), $layout ?? []);
     // Kolom Bobot & Jumlah hanya untuk rapor SAS (nilai akhir).
     $showBobot = (($santri[array_key_first($santri)]['Jenis'] ?? 'sts') === 'sas');
+    $borderWidth = (float) ($layout['table_border_width'] ?? 0.3);
+    $boldHeader = (bool) ($layout['bold_table_header'] ?? true);
+    $boldSubject = (bool) ($layout['bold_subject'] ?? true);
     $paperSize = $layout['paper_size'] ?? 'a4';
     $paperCss = match ($paperSize) {
         'folio' => '215mm 330mm',
@@ -303,20 +306,21 @@
         }
         table.nilai th,
         table.nilai td {
-            border: 1px solid #000;
+            border: {{ $borderWidth }}mm solid #000;
             padding: {{ $layout['table_row_padding'] ?? 0.5 }}mm 6px;
             font-size: {{ $layout['table_font_size'] }}pt;
-            line-height: {{ $layout['table_line_height'] ?? 1.15 }};
+            line-height: {{ $layout['table_line_height'] ?? 1.05 }};
         }
         table.nilai th {
             background: #f0f0f0;
-            font-weight: bold;
+            font-weight: {{ $boldHeader ? 'bold' : 'normal' }};
             text-align: center;
             vertical-align: middle;
         }
         table.nilai td.mapel {
             text-align: left;
             width: 40%;
+            font-weight: {{ $boldSubject ? 'bold' : 'normal' }};
         }
         table.nilai td.no {
             text-align: center;
@@ -357,7 +361,7 @@
             margin-top: 5px;
         }
         .ringkasan-box td {
-            border: 1px solid #000;
+            border: {{ $borderWidth }}mm solid #000;
             padding: 3px 8px;
             font-size: {{ $layout['table_font_size'] }}pt;
             font-weight: bold;
@@ -395,7 +399,7 @@
             margin-top: 8px;
         }
         .catatan-box td {
-            border: 1px solid #000;
+            border: {{ $borderWidth }}mm solid #000;
             padding: 4px 8px;
             font-size: {{ $layout['table_font_size'] }}pt;
             vertical-align: top;
@@ -406,6 +410,13 @@
         }
         .catatan-box td.lbl-col {
             width: 40%;
+        }
+        .catatan-box .catatan-umum {
+            margin-top: 3px;
+            padding-top: 2px;
+            border-top: 1px dotted #94a3b8;
+            font-size: {{ max(6.5, (float) $layout['table_font_size'] - 1.5) }}pt;
+            line-height: 1.15;
         }
 
         /* ── TTD ── */
@@ -650,6 +661,11 @@
                     @else
                         <span style="color:#94a3b8;">—</span>
                     @endif
+                    @if(filled($distributionNote ?? null))
+                        <div class="catatan-umum">
+                            <strong>{!! $text($label('catatan_umum')) !!}:</strong> {!! $text($distributionNote) !!}
+                        </div>
+                    @endif
                 </td>
                 <td class="lbl-col">
                     {!! $num(1) !!}.&nbsp; {!! $text($label('sakit')) !!} &nbsp;: {{ $num($data['Sakit'] ?? '-') }} {!! $text($label('hari')) !!}<br>
@@ -674,6 +690,11 @@
                     @else
                         <span style="color:#94a3b8;">—</span>
                     @endif
+                    @if(filled($distributionNote ?? null))
+                        <div class="catatan-umum">
+                            <strong>{!! $text($label('catatan_umum')) !!}:</strong> {!! $text($distributionNote) !!}
+                        </div>
+                    @endif
                 </td>
             </tr>
         @endif
@@ -681,11 +702,13 @@
 
     {{-- TTD: Orang Tua/Wali, Wali Kelas, Kepala Sekolah sejajar dalam satu baris --}}
     @php
+        // Ruang tanda tangan mengikuti gambar yang benar-benar ada; bila belum
+        // ada TTD/stempel, cukup 10mm agar tidak menyisakan ruang kosong.
         $sigAreaHeight = max(
-            (float) ($layout['ttd_wali_height'] ?? 0),
-            (float) ($layout['ttd_ksp_height'] ?? 0),
-            (float) ($layout['stamp_height'] ?? 0),
-        );
+            ! empty($ttdWaliBase64) ? (float) ($layout['ttd_wali_height'] ?? 0) : 0,
+            ! empty($ttdKspBase64) ? (float) ($layout['ttd_ksp_height'] ?? 0) : 0,
+            ! empty($stampBase64) ? (float) ($layout['stamp_height'] ?? 0) : 0,
+        ) ?: 10.0;
         $waliNupy = $studyGroup->homeroomTeacher?->employment?->nupy
             ?? $studyGroup->homeroomTeacher?->gtkProfile?->nupy;
     @endphp

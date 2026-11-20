@@ -1621,6 +1621,9 @@ class NilaiKelasController extends Controller
             'line_height' => 'required|numeric|min:1|max:2.5',
             'table_line_height' => 'required|numeric|min:1|max:2.5',
             'table_row_padding' => 'required|numeric|min:0|max:3',
+            'table_border_width' => 'nullable|numeric|min:0|max:2',
+            'bold_table_header' => 'nullable|boolean',
+            'bold_subject' => 'nullable|boolean',
             'footer_left' => 'nullable|string|max:120',
             'footer_center' => 'nullable|string|max:120',
             'paper_size' => 'required|in:a4,folio,letter',
@@ -1666,7 +1669,8 @@ class NilaiKelasController extends Controller
         foreach ([
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
-            'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding', 'paper_size',
+            'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding',
+            'table_border_width', 'paper_size',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height', 'ttd_ksp_margin',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
             'ttd_ksp_margin', 'ttd_wali_margin', 'stamp_margin',
@@ -1683,7 +1687,7 @@ class NilaiKelasController extends Controller
             }
         }
 
-        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr'] as $key) {
+        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr', 'bold_table_header', 'bold_subject'] as $key) {
             if ($request->has($key)) {
                 $values[$key] = $request->boolean($key);
             }
@@ -2073,6 +2077,14 @@ class NilaiKelasController extends Controller
                 'homeroom_note' => $validated['homeroom_note'] ?? null,
             ]
         );
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Catatan wali kelas berhasil disimpan.',
+                'homeroom_note' => $validated['homeroom_note'] ?? null,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Catatan wali kelas berhasil disimpan.');
     }

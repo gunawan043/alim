@@ -14,7 +14,7 @@ return new class extends Migration
 
         Schema::table('rapor_distribution_settings', function (Blueprint $table) {
             if (! Schema::hasColumn('rapor_distribution_settings', 'table_line_height')) {
-                $table->decimal('table_line_height', 3, 2)->default(1.15);
+                $table->decimal('table_line_height', 3, 2)->default(1.05);
             }
             if (! Schema::hasColumn('rapor_distribution_settings', 'table_row_padding')) {
                 $table->decimal('table_row_padding', 4, 2)->default(0.50);

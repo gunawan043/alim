@@ -61,8 +61,11 @@
     // Tinggi baris tabel nilai: 5.8pt dikonversi ke mm (1pt = 0.3528mm)
     // lalu dikali line-height + padding atas-bawah.
     $tableRowPad = (float) ($layout['table_row_padding'] ?? 0.5);
-    $tableLineHeight = (float) ($layout['table_line_height'] ?? 1.15);
+    $tableLineHeight = (float) ($layout['table_line_height'] ?? 1.05);
     $rowHeight = round(5.8 * 0.3528 * $tableLineHeight + 2 * $tableRowPad, 2);
+    $borderWidth = (float) ($layout['table_border_width'] ?? 0.3);
+    $boldHeader = (bool) ($layout['bold_table_header'] ?? true);
+    $boldSubject = (bool) ($layout['bold_subject'] ?? true);
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -110,7 +113,7 @@
             display: block;
             width: 100%;
             object-fit: contain;
-            margin-bottom: 2mm;
+            margin-bottom: 1.4mm;
         }
 
         .kop-fallback {
@@ -133,7 +136,7 @@
 
         .title {
             text-align: center;
-            margin: 1mm 0 1.5mm;
+            margin: 0.8mm 0 1.2mm;
             line-height: 1.2;
         }
 
@@ -154,12 +157,13 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-bottom: 1.5mm;
+            margin-bottom: 1mm;
             font-size: 6.4pt;
+            line-height: 1.05;
         }
 
         table.ident td {
-            padding: 0.3mm 0;
+            padding: 0.15mm 0;
             vertical-align: top;
         }
 
@@ -206,23 +210,23 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 5.8pt;
-            line-height: {{ $layout['table_line_height'] ?? 1.15 }};
+            font-size: 5.4pt;
+            line-height: {{ $layout['table_line_height'] ?? 1.05 }};
         }
 
         table.nilai th,
         table.nilai td {
-            border: 0.3mm solid #000;
+            border: {{ $borderWidth }}mm solid #000;
             padding: {{ $layout['table_row_padding'] ?? 0.5 }}mm 0.5mm;
             vertical-align: middle;
         }
 
         table.nilai th {
             text-align: center;
-            font-weight: bold;
-            line-height: 1.1;
+            font-weight: {{ $boldHeader ? 'bold' : 'normal' }};
+            line-height: 1.05;
             padding: {{ ($layout['table_row_padding'] ?? 0.5) + 0.25 }}mm 0.5mm;
-            height: 8.4mm;
+            height: 6.5mm;
         }
 
         /* Tinggi baris dihitung dari line-height & padding agar bisa diatur;
@@ -241,7 +245,7 @@
 
         table.nilai td.subject {
             text-align: left;
-            font-weight: bold;
+            font-weight: {{ $boldSubject ? 'bold' : 'normal' }};
             word-wrap: break-word;
         }
 
@@ -249,7 +253,8 @@
             direction: rtl;
             text-align: right;
             font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
-            font-weight: bold;
+            font-weight: {{ $boldSubject ? 'bold' : 'normal' }};
+            line-height: 1.05;
         }
 
         table.nilai th.arabic-cell {
@@ -275,36 +280,58 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            font-size: 5.9pt;
-            line-height: 1.15;
-            margin-top: 1mm;
+            font-size: 5.6pt;
+            line-height: 1.05;
+            margin-top: 0.5mm;
         }
 
         table.section th,
         table.section td {
-            border: 0.3mm solid #000;
-            padding: 0.7mm 0.8mm;
+            border: {{ $borderWidth }}mm solid #000;
+            padding: 0.45mm 0.8mm;
             vertical-align: middle;
         }
 
         table.section th {
             text-align: center;
-            font-weight: bold;
+            font-weight: {{ $boldHeader ? 'bold' : 'normal' }};
         }
 
         table.section tbody td {
-            height: 3.6mm;
+            height: 3.2mm;
         }
 
         table.section td.notes {
             vertical-align: top;
-            line-height: 1.35;
+            line-height: 1.2;
             text-align: justify;
+        }
+
+        table.section td.catatan-umum-cell {
+            font-size: 5.4pt;
+            line-height: 1.15;
+            padding: 0.5mm 0.8mm;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        table.section td.catatan-umum-cell .cu-label { font-weight: bold; }
+
+        table.section td.catatan-umum-ar {
+            direction: rtl;
+            text-align: right;
+            font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
+            font-size: 5.6pt;
+        }
+
+        table.section td.catatan-umum-ar .cu-latin {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 5.4pt;
         }
 
         table.section td.notes-ar {
             vertical-align: top;
-            line-height: 1.45;
+            line-height: 1.2;
             direction: rtl;
             text-align: right;
             font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
@@ -314,9 +341,9 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-top: 0.8mm;
-            font-size: 6.4pt;
-            line-height: 1.2;
+            margin-top: 0.4mm;
+            font-size: 6pt;
+            line-height: 1.1;
         }
 
         .issued > tbody > tr > td {
@@ -357,7 +384,7 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-top: 0.8mm;
+            margin-top: 0.5mm;
             font-size: 6.2pt;
             line-height: 1.15;
         }
@@ -383,6 +410,7 @@
             display: flex;
             align-items: flex-end;
             justify-content: center;
+            position: relative;
         }
 
         .sig-name {
@@ -630,7 +658,13 @@
                 <tr>
                     <td class="center">1. {{ $li('sakit') }}</td>
                     <td class="center">{{ $sick }}</td>
-                    <td rowspan="3" class="notes">{{ $data['CatatanWali'] ?: '—' }}</td>
+                    <td rowspan="3" class="notes">
+                        @if(filled($data['CatatanWali'] ?? null))
+                            {{ $data['CatatanWali'] }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="spacer" rowspan="3"></td>
                     <td rowspan="3" class="notes-ar">
                         @if(! empty($data['CatatanWali']))
@@ -654,6 +688,20 @@
                     <td class="center num-ar">{{ $arNum($alpa) }}</td>
                     <td class="center">{!! $ar($la('alpa')) !!}</td>
                 </tr>
+                @if(filled($distributionNote ?? null))
+                    <tr>
+                        <td colspan="3" class="catatan-umum-cell">
+                            <span class="cu-label">{{ $li('catatan_umum') }}:</span> {{ $distributionNote }}
+                        </td>
+                        <td class="spacer"></td>
+                        <td colspan="3" class="catatan-umum-cell catatan-umum-ar">
+                            <span class="cu-label">{!! $ar($la('catatan_umum')) !!}:</span>
+                            {{-- Catatan ditulis dalam bahasa Indonesia; tampilkan apa adanya
+                                 (bukan di-shaping Arab) agar tetap terbaca. --}}
+                            <span class="cu-latin">{{ $distributionNote }}</span>
+                        </td>
+                    </tr>
+                @endif
             </tbody>
         </table>
 
@@ -687,11 +735,13 @@
 
         {{-- Pengesahan --}}
         @php
+            // Ruang tanda tangan mengikuti gambar yang benar-benar ada; bila
+            // belum ada TTD/stempel, cukup 10mm agar tidak menyisakan ruang kosong.
             $sigAreaHeight = min(16.0, max(
-                (float) ($layout['ttd_wali_height'] ?? 0),
-                (float) ($layout['ttd_ksp_height'] ?? 0),
-                (float) ($layout['stamp_height'] ?? 0),
-            ));
+                ! empty($ttdWaliBase64) ? (float) ($layout['ttd_wali_height'] ?? 0) : 0,
+                ! empty($ttdKspBase64) ? (float) ($layout['ttd_ksp_height'] ?? 0) : 0,
+                ! empty($stampBase64) ? (float) ($layout['stamp_height'] ?? 0) : 0,
+            )) ?: 9.0;
         @endphp
         <table class="approval">
             <tr>
@@ -719,7 +769,9 @@
                     <div class="role">{{ $li('mengetahui_kepala') }}</div>
                     <div class="role-ar">{!! $ar($la('mengetahui_kepala')) !!}</div>
                     <div class="sig-area" style="height: {{ $sigAreaHeight }}mm;">
-                        <div style="position: relative; width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm;">
+                        {{-- Wrapper ini sengaja absolute agar tinggi stempel/TTD
+                             tidak menambah tinggi baris (sig-area sudah menyediakan ruang). --}}
+                        <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
                             @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? true) && ! empty($stampBase64))
                                 <img src="{{ $stampBase64 }}"
                                      style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:{{ $layout['stamp_width'] }}mm;height:{{ $layout['stamp_height'] }}mm;object-fit:contain;opacity:.9;"
