@@ -70,13 +70,14 @@
                             <th>Mata Pelajaran</th>
                             <th>Guru</th>
                             <th style="width:130px">Ruang</th>
+                            <th style="width:90px" class="text-center">Status</th>
                             <th style="width:120px">Waktu</th>
                             <th style="width:52px" class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($jadwals as $jadwal)
-                            <tr>
+                            <tr class="{{ $jadwal->is_active ? '' : 'table-secondary' }}">
                                 <td>
                                     <select name="entries[{{ $loop->index }}][day_of_week]" class="form-select form-select-sm">
                                         @foreach($days as $number => $name)
@@ -115,6 +116,13 @@
                                     <input type="text" name="entries[{{ $loop->index }}][room]" class="form-control form-control-sm"
                                            value="{{ $jadwal->room }}" maxlength="50">
                                 </td>
+                                <td class="text-center">
+                                    <input type="hidden" name="entries[{{ $loop->index }}][is_active]" value="0">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="entries[{{ $loop->index }}][is_active]" value="1"
+                                           title="Aktifkan jadwal ini"
+                                           {{ $jadwal->is_active ? 'checked' : '' }}>
+                                </td>
                                 <td class="text-muted small">{{ substr($jadwal->start_time, 0, 5) }}–{{ substr($jadwal->end_time, 0, 5) }}</td>
                                 <td class="text-center">
                                     <button type="submit" form="delete-entry-{{ $jadwal->id }}" class="btn btn-sm btn-soft-danger"
@@ -125,7 +133,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     Belum ada jadwal.
                                     <a href="{{ route('user.jadwal-kbm.generate', ['userId' => $userId]) }}">Generate dulu</a>.
                                 </td>

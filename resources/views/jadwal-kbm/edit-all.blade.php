@@ -20,6 +20,7 @@
         .matrix-cell-empty { color: #94a3b8; font-weight: 600; }
         .matrix-conflict { background: #fef3c7 !important; }
         .matrix-unavailable { background: #fee2e2 !important; }
+    .matrix-inactive { background: #f1f5f9 !important; opacity: .72; }
         .teacher-subject { display: flex; justify-content: space-between; gap: .5rem; border-top: 1px solid #e5e7eb; margin-top: .35rem; padding-top: .35rem; }
         .teacher-hours { white-space: nowrap; font-weight: 600; }
         .teacher-total { text-align: right; color: #64748b; margin-top: .25rem; }
@@ -156,6 +157,14 @@
                                 <label class="form-label small">Ruang</label>
                                 <input type="text" name="room" id="matrixEntryRoom" class="form-control form-control-sm" maxlength="50">
                             </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch">
+                                    <input type="hidden" name="is_active" value="0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="matrixEntryActive" name="is_active" value="1" checked>
+                                    <label class="form-check-label small" for="matrixEntryActive">Jadwal aktif</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer d-flex justify-content-between">
@@ -256,6 +265,7 @@
             document.getElementById('matrixEntrySubject').value = button.dataset.subjectId || '';
             document.getElementById('matrixEntryTeacher').value = button.dataset.teacherId || '';
             document.getElementById('matrixEntryRoom').value = button.dataset.room || '';
+            document.getElementById('matrixEntryActive').checked = button.dataset.active !== '0';
 
             window.initSearchableSelects?.(modalEl);
             modal.show();

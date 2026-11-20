@@ -57,8 +57,9 @@
                                             $entryId = $entry?->id;
                                             $isConflict = $entryId && isset($conflictIds[$entryId]);
                                             $isUnavailable = $entryId && isset($unavailableIds[$entryId]);
+                                            $isInactive = $entry && ! $entry->is_active;
                                         @endphp
-                                        <td class="small text-center matrix-cell {{ $isConflict ? 'matrix-conflict' : '' }} {{ $isUnavailable ? 'matrix-unavailable' : '' }}">
+                                        <td class="small text-center matrix-cell {{ $isConflict ? 'matrix-conflict' : '' }} {{ $isUnavailable ? 'matrix-unavailable' : '' }} {{ $isInactive ? 'matrix-inactive' : '' }}">
                                             @if($editable)
                                                 <button type="button"
                                                     class="matrix-cell-button"
@@ -71,10 +72,13 @@
                                                     data-subject-id="{{ $entry?->subject_id }}"
                                                     data-teacher-id="{{ $entry?->teacher_id }}"
                                                     data-room="{{ $entry?->room }}"
+                                                    data-active="{{ $entry ? ($entry->is_active ? '1' : '0') : '1' }}"
                                                     title="{{ $entry ? 'Klik untuk mengubah jadwal' : 'Klik untuk menambah jadwal' }}">
                                                     @if($entry)
-                                                        <span class="subject-code">{{ $entry->subject?->code ?: ($entry->subject?->name ?? '-') }}</span>
-                                                        @if($entry->teacher_id)
+                                                        <span class="subject-code {{ $isInactive ? 'text-decoration-line-through text-muted' : '' }}">{{ $entry->subject?->code ?: ($entry->subject?->name ?? '-') }}</span>
+                                                        @if($isInactive)
+                                                            <span class="teacher-code text-danger fw-semibold">NONAKTIF</span>
+                                                        @elseif($entry->teacher_id)
                                                             <span class="teacher-code">{{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}</span>
                                                         @else
                                                             <span class="teacher-code">TIM TAHFIDZ</span>
@@ -84,10 +88,12 @@
                                                     @endif
                                                 </button>
                                             @elseif($entry)
-                                                <span class="subject-code" title="{{ $entry->subject?->name }}">
+                                                <span class="subject-code {{ $isInactive ? 'text-decoration-line-through text-muted' : '' }}" title="{{ $entry->subject?->name }}">
                                                     {{ $entry->subject?->code ?: ($entry->subject?->name ?? '-') }}
                                                 </span>
-                                                @if($entry->teacher_id)
+                                                @if($isInactive)
+                                                    <span class="teacher-code text-danger fw-semibold">NONAKTIF</span>
+                                                @elseif($entry->teacher_id)
                                                     <span class="teacher-code" title="{{ $entry->teacher?->name }}">
                                                         {{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}
                                                     </span>

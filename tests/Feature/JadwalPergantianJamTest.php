@@ -19,6 +19,7 @@ use App\Services\JadwalGeneratorService;
 use App\Services\QrTokenService;
 use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -731,6 +732,134 @@ class JadwalPergantianJamTest extends TestCase
     // ─────────────────────────────────────────────────────────────
     // FIXTURE
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    // STATUS JADWAL & IMPORT
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_schedule_status_can_be_toggled_for_all_and_per_group(): void
+    {
+        $this->actingAs($this->admin);
+
+        $this->makeJadwal($this->teacher1, $this->sgA, $this->math, 1, 1, '07:00:00', '07:45:00');
+        $this->makeJadwal($this->teacher2, $this->sgB, $this->arabic, 2, 2, '07:45:00', '08:30:00');
+
+        // Nonaktifkan seluruh jadwal sekolah pada TA aktif.
+        $this->post("/{$this->admin->id}/jadwal-kbm/status", [
+            'is_active' => 0,
+            'reason' => 'Ujian Tengah Semester',
+        ])->assertRedirect();
+
+        $this->assertSame(0, JadwalKbm::where('is_active', true)->count());
+        $this->assertSame(2, JadwalKbm::where('is_active', false)->count());
+
+        // Aktifkan hanya rombel A.
+        $this->post("/{$this->admin->id}/jadwal-kbm/status", [
+            'is_active' => 1,
+            'study_group_id' => $this->sgA->id,
+            'reason' => 'Kelas A selesai ujian lebih awal',
+        ])->assertRedirect();
+
+        $this->assertTrue(JadwalKbm::where('study_group_id', $this->sgA->id)->firstOrFail()->is_active);
+        $this->assertFalse(JadwalKbm::where('study_group_id', $this->sgB->id)->firstOrFail()->is_active);
+
+        // Status tampil di halaman index.
+        $this->get("/{$this->admin->id}/jadwal-kbm")
+            ->assertOk()
+            ->assertSee('Aktif')
+            ->assertSee('Nonaktif');
+    }
+
+    public function test_schedule_entry_can_be_deactivated_from_manual_edit(): void
+    {
+        $this->actingAs($this->admin);
+
+        $entry = $this->makeJadwal($this->teacher1, $this->sgA, $this->math, 1, 1, '07:00:00', '07:45:00');
+
+        $this->put("/{$this->admin->id}/jadwal-kbm/{$this->sgA->id}", [
+            'entries' => [[
+                'id' => $entry->id,
+                'day_of_week' => 1,
+                'slot_index' => 1,
+                'subject_id' => $this->math->id,
+                'teacher_id' => $this->teacher1->id,
+                'room' => '701',
+                'is_active' => 0,
+            ]],
+        ])->assertRedirect(route('user.jadwal-kbm.show', [
+            'userId' => $this->admin->id,
+            'studyGroupId' => $this->sgA->id,
+        ]));
+
+        $this->assertFalse($entry->fresh()->is_active);
+    }
+
+    public function test_jadwal_import_template_and_csv_import(): void
+    {
+        $this->actingAs($this->admin);
+
+        $template = $this->get("/{$this->admin->id}/jadwal-kbm/import/template");
+        $template->assertOk();
+        $template->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $this->assertSame('PK', substr($template->streamedContent(), 0, 2));
+
+        $this->get("/{$this->admin->id}/jadwal-kbm/import")
+            ->assertOk()
+            ->assertSee('Import Jadwal Pelajaran')
+            ->assertSee('Unduh Template');
+
+        $csv = implode("\n", [
+            'Rombel,Hari,Jam Ke,Kode Mapel,Mapel,Guru,Ruang,Aktif,Catatan',
+            '7A,Senin,1,MAT,Matematika,Guru Satu,701,1,Import',
+            '7B,Selasa,2,BAR,Bahasa Arab,Guru Dua,702,0,Nonaktif',
+            '7A,Senin,3,MAT,Matematika,Guru Satu,701,1,Jam istirahat',
+        ]);
+
+        $file = $this->uploadedCsv($csv);
+
+        $this->post("/{$this->admin->id}/jadwal-kbm/import", [
+            'file' => $file,
+            'update_existing' => 1,
+            'default_active' => 1,
+        ])->assertRedirect(route('user.jadwal-kbm.import.form', ['userId' => $this->admin->id]));
+
+        $entryA = JadwalKbm::where('study_group_id', $this->sgA->id)
+            ->where('day_of_week', 1)
+            ->where('slot_index', 1)
+            ->firstOrFail();
+        $entryB = JadwalKbm::where('study_group_id', $this->sgB->id)
+            ->where('day_of_week', 2)
+            ->where('slot_index', 2)
+            ->firstOrFail();
+
+        $this->assertTrue($entryA->is_active);
+        $this->assertSame('701', $entryA->room);
+        $this->assertFalse($entryB->is_active);
+        $this->assertSame(2, JadwalKbm::count(), 'Baris jam istirahat harus dilewati');
+
+        // Import ulang memperbarui entri yang sama, bukan membuat duplikat.
+        $updateCsv = implode("\n", [
+            'Rombel,Hari,Jam Ke,Kode Mapel,Mapel,Guru,Ruang,Aktif,Catatan',
+            '7A,Senin,1,MAT,Matematika,Guru Satu,RUANG-BARU,1,Update',
+        ]);
+
+        $this->post("/{$this->admin->id}/jadwal-kbm/import", [
+            'file' => $this->uploadedCsv($updateCsv),
+            'update_existing' => 1,
+            'default_active' => 1,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertSame(2, JadwalKbm::count());
+        $this->assertSame('RUANG-BARU', $entryA->fresh()->room);
+    }
+
+    private function uploadedCsv(string $content): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'jadwal-import-');
+        file_put_contents($path, $content);
+
+        return new UploadedFile($path, 'jadwal.csv', 'text/csv', null, true);
+    }
 
     private function seedFixture(): void
     {

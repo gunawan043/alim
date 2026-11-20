@@ -35,6 +35,19 @@
         <a href="{{ route('user.jadwal-kbm.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}" class="btn btn-secondary btn-sm" target="_blank">
             <i class="ri-printer-line me-1"></i>Cetak
         </a>
+        @if(($statusCounts['total'] ?? 0) > 0)
+            <form method="POST"
+                  action="{{ route('user.jadwal-kbm.status', ['userId' => $userId]) }}"
+                  class="d-inline js-toggle-status">
+                @csrf
+                <input type="hidden" name="study_group_id" value="{{ $studyGroup->id }}">
+                <input type="hidden" name="is_active" value="{{ $scheduleStatus === 'inactive' ? 1 : 0 }}">
+                <button type="submit" class="btn btn-sm {{ $scheduleStatus === 'inactive' ? 'btn-success' : 'btn-outline-danger' }}">
+                    <i class="ri-{{ $scheduleStatus === 'inactive' ? 'play' : 'pause' }}-circle-line me-1"></i>
+                    {{ $scheduleStatus === 'inactive' ? 'Aktifkan Jadwal' : 'Nonaktifkan Jadwal' }}
+                </button>
+            </form>
+        @endif
         @if($activeAy)
             <form method="POST"
                   action="{{ route('user.jadwal-kbm.generate.execute', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}"
@@ -64,6 +77,20 @@
 @endif
 
 @include('jadwal-kbm._report')
+
+@if($scheduleStatus === 'inactive')
+    <div class="alert alert-danger">
+        <i class="ri-pause-circle-line me-1"></i>
+        <strong>Jadwal rombel ini sedang dinonaktifkan.</strong>
+        Jadwal tetap tersimpan, tetapi tidak dianggap aktif pada dashboard, absensi, dan fitur yang membaca jadwal aktif.
+    </div>
+@elseif($scheduleStatus === 'partial')
+    <div class="alert alert-warning">
+        <i class="ri-error-warning-line me-1"></i>
+        <strong>Sebagian jadwal rombel ini dinonaktifkan.</strong>
+        {{ $statusCounts['inactive'] }} dari {{ $statusCounts['total'] }} entri tidak aktif.
+    </div>
+@endif
 
 @php
     $slotNumbers = collect();
@@ -128,12 +155,16 @@
                                     $ms = ($masterSlots[$dayNumber] ?? collect())->firstWhere('slot_number', $no);
                                     $cell = ($jadwals[$dayNumber] ?? collect())->firstWhere('slot_index', $no);
                                 @endphp
-                                <td class="text-center">
+                                <td class="text-center {{ $cell && ! $cell->is_active ? 'table-secondary' : '' }}">
                                     @if($ms && $ms->is_break)
                                         <span class="fst-italic text-muted" style="font-size:12px">{{ $ms->label ?: 'Istirahat' }}</span>
                                     @elseif($cell)
-                                        <div class="fw-medium" style="font-size:12px">{{ $cell->subject?->name ?? '-' }}</div>
-                                        <div class="text-muted" style="font-size:11px">{{ $cell->teacher?->name ?? ($cell->teacher_id ? '' : 'TIM TAHFIDZ') }}</div>
+                                        <div class="fw-medium {{ $cell->is_active ? '' : 'text-decoration-line-through text-muted' }}" style="font-size:12px">{{ $cell->subject?->name ?? '-' }}</div>
+                                        @if(! $cell->is_active)
+                                            <div class="text-danger fw-semibold" style="font-size:10px">NONAKTIF</div>
+                                        @else
+                                            <div class="text-muted" style="font-size:11px">{{ $cell->teacher?->name ?? ($cell->teacher_id ? '' : 'TIM TAHFIDZ') }}</div>
+                                        @endif
                                     @elseif($ms)
                                         <span class="text-light">–</span>
                                     @else
@@ -184,6 +215,18 @@
 document.querySelectorAll('.js-regenerate').forEach(function (form) {
     form.addEventListener('submit', function (e) {
         if (! confirm('Generate ulang jadwal rombel ini? Jadwal lama akan ditimpa.')) {
+            e.preventDefault();
+        }
+    });
+});
+
+document.querySelectorAll('.js-toggle-status').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+        var activate = form.querySelector('input[name="is_active"]').value === '1';
+        var message = activate
+            ? 'Aktifkan kembali seluruh jadwal rombel ini?'
+            : 'Nonaktifkan seluruh jadwal rombel ini? Jadwal tetap tersimpan.';
+        if (! confirm(message)) {
             e.preventDefault();
         }
     });

@@ -45,6 +45,7 @@ class JadwalKbmUpdateRequest extends FormRequest
                 Rule::exists('subjects', 'id'),
             ],
             'entries.*.room' => 'nullable|string|max:50',
+            'entries.*.is_active' => 'nullable|boolean',
         ];
     }
 

@@ -1936,6 +1936,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/cetak-semua', [JadwalKbmController::class, 'cetakAll'])->name('cetak-all');
                 Route::get('/export-excel', [JadwalKbmController::class, 'exportExcel'])->name('export-excel');
                 Route::get('/edit-semua', [JadwalKbmController::class, 'editAll'])->name('edit-all');
+                Route::get('/import', [JadwalKbmController::class, 'importForm'])->name('import.form');
+                Route::get('/import/template', [JadwalKbmController::class, 'importTemplate'])->name('import.template');
+                Route::post('/import', [JadwalKbmController::class, 'importStore'])->name('import.store');
+                Route::post('/status', [JadwalKbmController::class, 'toggleStatus'])->name('status');
                 Route::get('/{studyGroupId}', [JadwalKbmController::class, 'show'])->name('show');
                 Route::get('/{studyGroupId}/edit', [JadwalKbmController::class, 'edit'])->name('edit');
                 Route::post('/{studyGroupId}/entries', [JadwalKbmController::class, 'storeEntry'])->name('entries.store');

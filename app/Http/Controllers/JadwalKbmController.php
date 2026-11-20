@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\JadwalKbmImportTemplateExport;
 use App\Exports\JadwalKbmMatrixExport;
 use App\Http\Requests\JadwalKbmGenerateRequest;
 use App\Http\Requests\JadwalKbmUpdateRequest;
+use App\Imports\JadwalKbmImport;
 use App\Models\AcademicYear;
 use App\Models\JadwalKbm;
 use App\Models\OtherTeacherTask;
@@ -25,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
 class JadwalKbmController extends Controller
@@ -50,27 +53,212 @@ class JadwalKbmController extends Controller
             ->get()
             ->groupBy('study_group_id');
 
-        // Filter cepat: sudah / belum terjadwal.
+        // Filter cepat: sudah / belum terjadwal (hanya menghitung jadwal aktif).
         $status = $request->input('status');
         if ($status === 'terjadwal') {
-            $studyGroups = $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->isNotEmpty())->values();
+            $studyGroups = $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->where('is_active', true)->isNotEmpty())->values();
         } elseif ($status === 'belum') {
-            $studyGroups = $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->isEmpty())->values();
+            $studyGroups = $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->where('is_active', true)->isEmpty())->values();
         }
+
+        $allJadwals = $jadwals->flatten(1);
+        $slotTotal = $allJadwals->count();
+        $slotActive = $allJadwals->where('is_active', true)->count();
+        $slotInactive = $slotTotal - $slotActive;
 
         $stats = [
             'rombel' => $studyGroups->count(),
-            'terjadwal' => $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->isNotEmpty())->count(),
-            'slot' => (int) $studyGroups->sum(fn ($sg) => ($jadwals[$sg->id] ?? collect())->count()),
-            'guru' => $studyGroups->flatMap(fn ($sg) => ($jadwals[$sg->id] ?? collect())->pluck('teacher_id'))->filter()->unique()->count(),
+            'terjadwal' => $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->where('is_active', true)->isNotEmpty())->count(),
+            'nonaktif' => $studyGroups->filter(fn ($sg) => ($jadwals[$sg->id] ?? collect())->where('is_active', true)->isEmpty() && ($jadwals[$sg->id] ?? collect())->isNotEmpty())->count(),
+            'slot' => $slotTotal,
+            'slot_active' => $slotActive,
+            'slot_inactive' => $slotInactive,
+            'guru' => $allJadwals->where('is_active', true)->pluck('teacher_id')->filter()->unique()->count(),
         ];
+
+        $scheduleStatus = $slotTotal === 0
+            ? 'empty'
+            : ($slotActive === 0 ? 'inactive' : ($slotInactive === 0 ? 'active' : 'partial'));
 
         $matrixData = $this->buildMatrixData($studyGroups, $jadwals, $schoolId);
 
         return view('jadwal-kbm.index', compact(
-            'studyGroups', 'jadwals', 'activeAy', 'stats', 'status',
+            'studyGroups', 'jadwals', 'activeAy', 'stats', 'status', 'scheduleStatus',
             'matrixData',
         ));
+    }
+
+    /**
+     * Form import jadwal pelajaran.
+     */
+    public function importForm(Request $request, string $userId)
+    {
+        $this->authorizeUpdate($request);
+
+        $schoolId = $this->resolveSchoolId($request);
+        $school = $schoolId ? School::find($schoolId) : null;
+        abort_if(! $school, 422, 'Pilih satuan pendidikan terlebih dahulu.');
+
+        $activeAy = AcademicYear::where('is_active', true)->first();
+        abort_if(! $activeAy, 422, 'Tahun ajaran aktif belum ditetapkan.');
+
+        $studyGroups = StudyGroup::where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->orderedByGrade()
+            ->get(['id', 'name', 'code', 'room']);
+
+        $subjects = Subject::query()
+            ->where(function ($q) use ($schoolId) {
+                $q->whereNull('school_id')->orWhere('school_id', $schoolId);
+            })
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        $teachers = app(TeacherAvailabilityService::class)->teachersForSchool($schoolId);
+
+        return view('jadwal-kbm.import', compact(
+            'userId', 'school', 'activeAy', 'studyGroups', 'subjects', 'teachers'
+        ));
+    }
+
+    /**
+     * Unduh template import jadwal (XLSX) beserta sheet referensi.
+     */
+    public function importTemplate(Request $request, string $userId)
+    {
+        $this->authorizeUpdate($request);
+
+        $schoolId = $this->resolveSchoolId($request);
+        $school = $schoolId ? School::find($schoolId) : null;
+        abort_if(! $school, 422, 'Pilih satuan pendidikan terlebih dahulu.');
+
+        $activeAy = AcademicYear::where('is_active', true)->first();
+        abort_if(! $activeAy, 422, 'Tahun ajaran aktif belum ditetapkan.');
+
+        return (new JadwalKbmImportTemplateExport($school, $activeAy))->download();
+    }
+
+    /**
+     * Proses import jadwal dari XLSX/XLS/CSV.
+     */
+    public function importStore(Request $request, string $userId)
+    {
+        $this->authorizeUpdate($request);
+
+        $schoolId = $this->resolveSchoolId($request);
+        $school = $schoolId ? School::find($schoolId) : null;
+        abort_if(! $school, 422, 'Pilih satuan pendidikan terlebih dahulu.');
+
+        $activeAy = AcademicYear::where('is_active', true)->first();
+        abort_if(! $activeAy, 422, 'Tahun ajaran aktif belum ditetapkan.');
+
+        $data = $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:10240',
+            'update_existing' => 'nullable|boolean',
+            'default_active' => 'nullable|boolean',
+        ], [
+            'file.required' => 'File jadwal wajib diunggah.',
+            'file.mimes' => 'File harus berformat .xlsx, .xls, atau .csv.',
+            'file.max' => 'Ukuran file maksimal 10 MB.',
+        ]);
+
+        try {
+            $result = (new JadwalKbmImport(
+                $school,
+                $activeAy,
+                $request->user(),
+                $request->boolean('update_existing', true),
+                $request->boolean('default_active', true),
+            ))->import($request->file('file'));
+        } catch (\Throwable $e) {
+            Log::warning('Import jadwal gagal: '.$e->getMessage(), [
+                'school_id' => $school->id,
+                'academic_year_id' => $activeAy->id,
+                'user_id' => $request->user()?->id,
+            ]);
+
+            return redirect()
+                ->route('user.jadwal-kbm.import.form', ['userId' => $userId])
+                ->with('error', 'Import gagal: '.$e->getMessage());
+        }
+
+        $stats = $result['stats'];
+        $total = (int) ($stats['created'] + $stats['updated'] + $stats['skipped']);
+
+        $message = $total > 0
+            ? "Import jadwal selesai: {$stats['created']} entri baru, {$stats['updated']} diperbarui, {$stats['skipped']} dilewati."
+            : 'Tidak ada baris jadwal yang diproses.';
+
+        return redirect()
+            ->route('user.jadwal-kbm.import.form', ['userId' => $userId])
+            ->with($stats['created'] + $stats['updated'] > 0 ? 'success' : 'error', $message)
+            ->with('jadwal_import_errors', $result['errors'])
+            ->with('jadwal_import_warnings', $result['warnings'])
+            ->with('jadwal_import_stats', $stats);
+    }
+
+    /**
+     * Aktifkan/nonaktifkan jadwal untuk seluruh sekolah atau satu rombel.
+     */
+    public function toggleStatus(Request $request, string $userId)
+    {
+        $this->authorizeUpdate($request);
+
+        $schoolId = $this->resolveSchoolId($request);
+        abort_if(! $schoolId, 422, 'Pilih satuan pendidikan terlebih dahulu.');
+
+        $activeAy = AcademicYear::where('is_active', true)->first();
+        abort_if(! $activeAy, 422, 'Tahun ajaran aktif belum ditetapkan.');
+
+        $data = $request->validate([
+            'is_active' => 'required|boolean',
+            'study_group_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('study_groups', 'id')->where('school_id', $schoolId),
+            ],
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $query = JadwalKbm::query()
+            ->where('school_id', $schoolId)
+            ->where('academic_year_id', $activeAy->id);
+
+        $studyGroupName = 'semua rombel';
+        if (! empty($data['study_group_id'])) {
+            $studyGroup = StudyGroup::where('school_id', $schoolId)->findOrFail($data['study_group_id']);
+            $query->where('study_group_id', $studyGroup->id);
+            $studyGroupName = $studyGroup->full_name;
+        }
+
+        $total = (clone $query)->count();
+        if ($total === 0) {
+            return back()->with('warning', 'Belum ada entri jadwal untuk diubah statusnya.');
+        }
+
+        $isActive = $request->boolean('is_active');
+        $query->update([
+            'is_active' => $isActive,
+            'updated_at' => now(),
+        ]);
+
+        activity()
+            ->causedBy($request->user())
+            ->withProperties([
+                'school_id' => $schoolId,
+                'academic_year_id' => $activeAy->id,
+                'study_group_id' => $data['study_group_id'] ?? null,
+                'is_active' => $isActive,
+                'reason' => $data['reason'] ?? null,
+                'total_entries' => $total,
+            ])
+            ->log('jadwal_kbm.status');
+
+        return back()->with(
+            'success',
+            ($isActive ? 'Jadwal diaktifkan' : 'Jadwal dinonaktifkan')." untuk {$studyGroupName} ({$total} entri)."
+        );
     }
 
     public function generateIndex(Request $request, string $userId)
@@ -530,8 +718,20 @@ class JadwalKbmController extends Controller
             ->get()->groupBy('day_of_week');
 
         $days = $this->days();
+        $flatJadwals = $jadwals->flatten(1);
+        $statusCounts = [
+            'total' => $flatJadwals->count(),
+            'active' => $flatJadwals->where('is_active', true)->count(),
+        ];
+        $statusCounts['inactive'] = $statusCounts['total'] - $statusCounts['active'];
+        $scheduleStatus = $statusCounts['total'] === 0
+            ? 'empty'
+            : ($statusCounts['active'] === 0 ? 'inactive' : ($statusCounts['inactive'] === 0 ? 'active' : 'partial'));
 
-        return view('jadwal-kbm.show', compact('studyGroup', 'jadwals', 'days', 'activeAy', 'masterSlots', 'tahfidzSchedules'));
+        return view('jadwal-kbm.show', compact(
+            'studyGroup', 'jadwals', 'days', 'activeAy', 'masterSlots', 'tahfidzSchedules',
+            'statusCounts', 'scheduleStatus'
+        ));
     }
 
     /**
@@ -644,6 +844,7 @@ class JadwalKbmController extends Controller
             'subject_id' => 'required|uuid|exists:subjects,id',
             'teacher_id' => 'nullable|uuid|exists:users,id',
             'room' => 'nullable|string|max:50',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $day = (int) $data['day_of_week'];
@@ -697,7 +898,7 @@ class JadwalKbmController extends Controller
             'start_time' => $times['start'],
             'end_time' => $times['end'],
             'room' => $data['room'] ?? $studyGroup->room,
-            'is_active' => true,
+            'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
         ]);
 
         $redirectRoute = $request->boolean('matrix')
@@ -755,6 +956,7 @@ class JadwalKbmController extends Controller
             'subject_id' => 'required|uuid|exists:subjects,id',
             'teacher_id' => 'nullable|uuid|exists:users,id',
             'room' => 'nullable|string|max:50',
+            'is_active' => 'nullable|boolean',
         ]);
 
         $day = (int) $data['day_of_week'];
@@ -810,6 +1012,7 @@ class JadwalKbmController extends Controller
             'teacher_id' => $teacherId,
             'subject_id' => $data['subject_id'],
             'room' => $data['room'] ?? $entry->room,
+            'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $entry->is_active,
         ]);
 
         $response = redirect()
@@ -910,6 +1113,9 @@ class JadwalKbmController extends Controller
                     'teacher_id' => $entry['teacher_id'] ?? null,
                     'subject_id' => $entry['subject_id'],
                     'room' => $entry['room'] ?? $jadwal->room,
+                    'is_active' => array_key_exists('is_active', $entry)
+                        ? (bool) $entry['is_active']
+                        : $jadwal->is_active,
                 ]);
             }
         });
@@ -980,6 +1186,7 @@ class JadwalKbmController extends Controller
 
         $jadwals = JadwalKbm::with(['studyGroup.gradeLevel', 'subject'])
             ->where('teacher_id', $teacherId)
+            ->where('is_active', true)
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
             ->orderBy('day_of_week')
@@ -1000,6 +1207,7 @@ class JadwalKbmController extends Controller
         if ($tahfidzGroupIds->isNotEmpty()) {
             $blocks = JadwalKbm::with(['studyGroup.gradeLevel', 'subject'])
                 ->whereNull('teacher_id')
+                ->where('is_active', true)
                 ->where('notes', JadwalGeneratorService::TAHFIDZ_NOTE)
                 ->whereIn('study_group_id', $tahfidzGroupIds)
                 ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))

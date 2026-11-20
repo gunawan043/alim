@@ -20,6 +20,7 @@
     .matrix-cell-empty { color: #94a3b8; font-weight: 600; }
     .matrix-conflict { background: #fef3c7 !important; }
     .matrix-unavailable { background: #fee2e2 !important; }
+    .matrix-inactive { background: #f1f5f9 !important; opacity: .72; }
     .matrix-layout { display: flex; gap: 1rem; align-items: flex-start; }
     .matrix-schedule { flex: 1 1 74%; min-width: 0; }
     .matrix-teachers { flex: 0 0 25%; min-width: 275px; }
@@ -86,6 +87,34 @@
 
 @include('jadwal-kbm._report')
 
+@if($scheduleStatus === 'inactive')
+    <div class="alert alert-danger d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <i class="ri-pause-circle-line me-1"></i>
+            <strong>Jadwal pelajaran sedang dinonaktifkan.</strong>
+            Jadwal tetap tersimpan, tetapi tidak dianggap aktif pada dashboard, absensi, dan fitur yang membaca jadwal aktif.
+        </div>
+        <button type="button" class="btn btn-sm btn-danger js-schedule-status"
+                data-bs-toggle="modal" data-bs-target="#scheduleStatusModal"
+                data-group-id="" data-group-name="semua rombel" data-active="1">
+            <i class="ri-play-circle-line me-1"></i>Aktifkan Jadwal
+        </button>
+    </div>
+@elseif($scheduleStatus === 'partial')
+    <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <i class="ri-error-warning-line me-1"></i>
+            <strong>Sebagian jadwal dinonaktifkan.</strong>
+            {{ $stats['slot_inactive'] }} dari {{ $stats['slot'] }} entri tidak aktif.
+        </div>
+        <button type="button" class="btn btn-sm btn-warning js-schedule-status"
+                data-bs-toggle="modal" data-bs-target="#scheduleStatusModal"
+                data-group-id="" data-group-name="semua rombel" data-active="1">
+            <i class="ri-play-circle-line me-1"></i>Aktifkan Semua
+        </button>
+    </div>
+@endif
+
 {{-- STATISTIK --}}
 <div class="row">
     <div class="col-xl-3 col-md-6">
@@ -122,6 +151,9 @@
                     @else
                         <span class="badge bg-success-subtle text-success stat-label">Semua terjadwal</span>
                     @endif
+                    @if(($stats['nonaktif'] ?? 0) > 0)
+                        <span class="badge bg-secondary-subtle text-secondary stat-label ms-1">{{ $stats['nonaktif'] }} nonaktif</span>
+                    @endif
                 </p>
             </div>
         </div>
@@ -138,7 +170,12 @@
                         <h3 class="fw-bold ff-secondary mb-0">{{ number_format($stats['slot']) }}</h3>
                     </div>
                 </div>
-                <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Tahun ajaran aktif</p>
+                <p class="text-muted mb-0 stat-label">
+                    <span class="badge bg-success-subtle text-success">{{ number_format($stats['slot_active']) }} aktif</span>
+                    @if($stats['slot_inactive'] > 0)
+                        <span class="badge bg-secondary-subtle text-secondary ms-1">{{ number_format($stats['slot_inactive']) }} nonaktif</span>
+                    @endif
+                </p>
             </div>
         </div>
     </div>
@@ -209,6 +246,16 @@
                     <a href="{{ route('user.jadwal-kbm.edit-all', ['userId' => $userId]) }}" class="btn btn-soft-info">
                         <i class="ri-edit-2-line me-1"></i> Edit Semua Rombel
                     </a>
+                    <a href="{{ route('user.jadwal-kbm.import.form', ['userId' => $userId]) }}" class="btn btn-soft-success">
+                        <i class="ri-upload-2-line me-1"></i> Import Jadwal
+                    </a>
+                    <button type="button" class="btn btn-soft-danger js-schedule-status"
+                            data-bs-toggle="modal" data-bs-target="#scheduleStatusModal"
+                            data-group-id="" data-group-name="semua rombel"
+                            data-active="{{ $scheduleStatus === 'inactive' ? '1' : '0' }}">
+                        <i class="ri-pause-circle-line me-1"></i>
+                        {{ $scheduleStatus === 'inactive' ? 'Aktifkan Jadwal' : 'Nonaktifkan Jadwal' }}
+                    </button>
                     <a href="{{ route('user.jadwal-kbm.export-excel', ['userId' => $userId]) }}" class="btn btn-success">
                         <i class="ri-file-excel-2-line me-1"></i> Export Excel
                     </a>
@@ -243,6 +290,7 @@
                     <th>Tingkat</th>
                     <th>Wali Kelas</th>
                     <th class="text-center">Slot Jadwal</th>
+                    <th class="text-center">Status</th>
                     <th class="text-end" style="width:230px">Aksi</th>
                 </tr>
             </thead>
@@ -251,6 +299,8 @@
                     @php
                         $group = $jadwals[$sg->id] ?? collect();
                         $count = $group->count();
+                        $activeCount = $group->where('is_active', true)->count();
+                        $groupStatus = $count === 0 ? 'empty' : ($activeCount === 0 ? 'inactive' : ($activeCount === $count ? 'active' : 'partial'));
                     @endphp
                     <tr>
                         <td class="text-center text-muted">{{ $loop->iteration }}</td>
@@ -268,6 +318,27 @@
                                 <span class="badge bg-success sg-badge">{{ $count }} slot</span>
                             @else
                                 <span class="badge bg-secondary-subtle text-secondary sg-badge">Belum ada jadwal</span>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            @if($groupStatus === 'empty')
+                                <span class="badge bg-light text-muted">—</span>
+                            @elseif($groupStatus === 'active')
+                                <span class="badge bg-success-subtle text-success">Aktif</span>
+                            @elseif($groupStatus === 'inactive')
+                                <span class="badge bg-danger-subtle text-danger">Nonaktif</span>
+                            @else
+                                <span class="badge bg-warning-subtle text-warning">Sebagian</span>
+                            @endif
+                            @if($count > 0)
+                                <div class="mt-1">
+                                    <button type="button" class="btn btn-sm btn-link p-0 js-schedule-status"
+                                            data-bs-toggle="modal" data-bs-target="#scheduleStatusModal"
+                                            data-group-id="{{ $sg->id }}" data-group-name="{{ $sg->name }}"
+                                            data-active="{{ $activeCount > 0 ? '0' : '1' }}">
+                                        {{ $activeCount > 0 ? 'Nonaktifkan' : 'Aktifkan' }}
+                                    </button>
+                                </div>
                             @endif
                         </td>
                         <td class="text-end">
@@ -303,7 +374,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-center py-5">
+                        <td colspan="7" class="text-center py-5">
                             <div class="text-muted mb-2"><i class="ri-calendar-close-line" style="font-size:2.5rem;opacity:.4"></i></div>
                             <h6 class="fw-semibold">Belum ada rombel pada filter ini</h6>
                             <p class="text-muted small mb-0">Tambahkan rombongan belajar atau ubah filter terlebih dahulu.</p>
@@ -312,6 +383,50 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+</div>
+
+<div class="modal fade" id="scheduleStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('user.jadwal-kbm.status', ['userId' => $userId]) }}" id="scheduleStatusForm">
+                @csrf
+                <input type="hidden" name="study_group_id" id="scheduleStatusGroupId" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="ri-toggle-line me-2 text-primary"></i>Status Jadwal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Berlaku untuk: <strong id="scheduleStatusGroupName">semua rombel</strong>.
+                        Jadwal yang nonaktif tetap tersimpan dan tidak dihapus.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tindakan</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_active" id="scheduleStatusActive" value="1" required>
+                                <label class="form-check-label" for="scheduleStatusActive">Aktifkan jadwal</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_active" id="scheduleStatusInactive" value="0" required>
+                                <label class="form-check-label" for="scheduleStatusInactive">Nonaktifkan jadwal</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label small">Alasan / kegiatan <span class="text-muted">(opsional)</span></label>
+                        <input type="text" name="reason" class="form-control form-control-sm" maxlength="255"
+                               placeholder="Contoh: Ujian Tengah Semester">
+                        <div class="form-text">Dicatat pada log aktivitas untuk keperluan audit.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Status</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection
@@ -324,6 +439,24 @@ document.querySelectorAll('.js-generate-single').forEach(function (form) {
         if (! confirm('Generate ulang jadwal untuk ' + name + ' berdasarkan penugasan mengajar?')) {
             e.preventDefault();
         }
+    });
+});
+
+document.querySelectorAll('.js-schedule-status').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var groupId = button.dataset.groupId || '';
+        var groupName = button.dataset.groupName || 'semua rombel';
+        var targetActive = button.dataset.active === '1';
+
+        var groupInput = document.getElementById('scheduleStatusGroupId');
+        var groupLabel = document.getElementById('scheduleStatusGroupName');
+        var activeRadio = document.getElementById('scheduleStatusActive');
+        var inactiveRadio = document.getElementById('scheduleStatusInactive');
+
+        if (groupInput) groupInput.value = groupId;
+        if (groupLabel) groupLabel.textContent = groupName;
+        if (activeRadio) activeRadio.checked = targetActive;
+        if (inactiveRadio) inactiveRadio.checked = !targetActive;
     });
 });
 </script>
