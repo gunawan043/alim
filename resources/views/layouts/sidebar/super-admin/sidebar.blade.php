@@ -598,9 +598,23 @@
 <li class="menu-title"><span>Log & Monitoring</span></li>
 
 <li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.sa.login-activities.']) ? ' active' : '' }}"
+       href="{{ route('user.sa.login-activities.index', ['userId' => $userId]) }}">
+        <i class="ri-shield-keyhole-line"></i><span>Aktivitas Login</span>
+    </a>
+</li>
+
+<li class="nav-item">
     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.sa.audit-logs.']) ? ' active' : '' }}"
        href="{{ route('user.sa.audit-logs.index', ['userId' => $userId]) }}">
         <i class="ri-file-history-line"></i><span>Audit Log</span>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.sa.system-logs.']) ? ' active' : '' }}"
+       href="{{ route('user.sa.system-logs.index', ['userId' => $userId]) }}">
+        <i class="ri-bug-line"></i><span>Log Sistem</span>
     </a>
 </li>
 

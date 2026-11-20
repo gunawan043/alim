@@ -8,6 +8,7 @@ use App\Models\LoginOtp;
 use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
 use App\Services\LoginOtpNotifier;
+use App\Services\Security\LoginActivityLogger;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use App\Services\TotpService;
@@ -106,6 +107,10 @@ class TwoFactorController extends Controller
         });
 
         if (isset($result['error'])) {
+            app(LoginActivityLogger::class)->record('2fa_failed', $request, $user, $user->email, $result['error'], [
+                'method' => 'otp',
+            ]);
+
             throw ValidationException::withMessages(['otp' => $result['error']]);
         }
 
@@ -145,6 +150,10 @@ class TwoFactorController extends Controller
         RateLimiter::hit($throttleKey, 300);
 
         if (! TotpService::verify((string) $user->getTotpSecret(), $validated['totp_code'])) {
+            app(LoginActivityLogger::class)->record('2fa_failed', $request, $user, $user->email, 'Kode authenticator tidak valid', [
+                'method' => 'totp',
+            ]);
+
             throw ValidationException::withMessages([
                 'totp_code' => 'Kode authenticator tidak valid. Pastikan waktu perangkat sudah benar.',
             ]);
@@ -179,6 +188,10 @@ class TwoFactorController extends Controller
         RateLimiter::hit($throttleKey, 300);
 
         if (! TwoFactorRecoveryCode::verifyFor($user, $validated['recovery_code'])) {
+            app(LoginActivityLogger::class)->record('2fa_failed', $request, $user, $user->email, 'Kode pemulihan tidak valid', [
+                'method' => 'recovery_code',
+            ]);
+
             throw ValidationException::withMessages([
                 'recovery_code' => 'Kode pemulihan tidak valid atau sudah pernah digunakan.',
             ]);
@@ -210,6 +223,10 @@ class TwoFactorController extends Controller
             'record_id' => $recordId,
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
+        ]);
+
+        app(LoginActivityLogger::class)->record('login_success', $request, $user, $user->email, 'Verifikasi 2FA berhasil', [
+            'method' => $auditAction,
         ]);
 
         app(SecurityNotificationService::class)->login($user, $request);

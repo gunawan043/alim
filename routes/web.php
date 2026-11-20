@@ -313,6 +313,8 @@ use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
 use App\Http\Controllers\SuperAdmin\AiProviderController;
 use App\Http\Controllers\SuperAdmin\AuditLogController;
+use App\Http\Controllers\SuperAdmin\LoginActivityController;
+use App\Http\Controllers\SuperAdmin\SystemLogController;
 use App\Http\Controllers\SuperAdmin\CurriculumStructureController;
 use App\Http\Controllers\SuperAdmin\FailedJobController;
 use App\Http\Controllers\SuperAdmin\NotificationUniversalController;
@@ -3228,6 +3230,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/export', [AuditLogController::class, 'export'])->name('export');
                     Route::get('/{id}', [AuditLogController::class, 'show'])->name('show');
                 });
+
+                Route::prefix('login-activities')->name('login-activities.')->group(function () {
+                    Route::get('/', [LoginActivityController::class, 'index'])->name('index');
+                    Route::get('/export', [LoginActivityController::class, 'export'])->name('export');
+                    Route::post('/users/{targetId}/unlock', [LoginActivityController::class, 'unlockUser'])->name('users.unlock');
+                    Route::post('/ips/block', [LoginActivityController::class, 'blockIp'])->name('ips.block');
+                    Route::post('/ips/unblock', [LoginActivityController::class, 'unblockIp'])->name('ips.unblock');
+                    Route::get('/{id}', [LoginActivityController::class, 'show'])->name('show');
+                });
+
+                Route::get('/system-logs', [SystemLogController::class, 'index'])->name('system-logs.index');
+                Route::get('/system-logs/download', [SystemLogController::class, 'download'])->name('system-logs.download');
 
                 Route::prefix('tokens')->name('tokens.')->group(function () {
                     Route::get('/', [TokenSesiController::class, 'index'])->name('index');

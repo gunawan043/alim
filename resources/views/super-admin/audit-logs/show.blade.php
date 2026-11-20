@@ -51,6 +51,13 @@
                         </tr>
                     </table>
 
+                    @if($log->metadata)
+                        <div class="mt-3">
+                            <label class="form-label fw-bold">Metadata</label>
+                            <pre class="bg-light p-3 rounded border" style="font-size:12px">{{ json_encode($log->metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
+                        </div>
+                    @endif
+
                     @if($log->old_values)
                         <div class="mt-3">
                             <label class="form-label fw-bold">Data Lama (Sebelum)</label>

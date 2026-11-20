@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WaliSantri;
 use App\Services\LoginOtpNotifier;
 use App\Services\MobileSessionIntrospector;
+use App\Services\Security\LoginActivityLogger;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use App\Services\SystemMailSettingsService;
@@ -93,6 +94,12 @@ class AuthController extends Controller
         $user = User::where('email', $credentials['email'])->first();
 
         if ($user && $user->isLocked()) {
+            app(LoginActivityLogger::class)->record('login_blocked', $request, $user, $credentials['email'], 'Akun masih terkunci', [
+                'attempts' => $user->failed_login_attempts,
+                'locked_until' => $user->locked_until?->toIso8601String(),
+                'method' => 'mobile_password',
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => ['Akun Anda terkunci sementara. Coba lagi nanti atau reset password.'],
             ]);
@@ -103,18 +110,31 @@ class AuthController extends Controller
                 $user->incrementFailedLoginAttempts();
             }
 
+            app(LoginActivityLogger::class)->record('login_failed', $request, $user, $credentials['email'], 'Email atau password salah', [
+                'attempts' => $user?->failed_login_attempts,
+                'method' => 'mobile_password',
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => ['Email atau password yang Anda masukkan salah.'],
             ]);
         }
 
         if (! $user->is_active) {
+            app(LoginActivityLogger::class)->record('login_failed', $request, $user, $credentials['email'], 'Akun tidak aktif', [
+                'method' => 'mobile_password',
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => ['Akun Anda tidak aktif. Silakan hubungi administrators.'],
             ]);
         }
 
         if (! $this->isWaliAccount($user)) {
+            app(LoginActivityLogger::class)->record('login_failed', $request, $user, $credentials['email'], 'Bukan akun wali santri', [
+                'method' => 'mobile_password',
+            ]);
+
             throw ValidationException::withMessages([
                 'email' => ['Aplikasi mobile ini hanya untuk akun wali santri.'],
             ]);
@@ -143,6 +163,10 @@ class AuthController extends Controller
             'record_id' => $user->id,
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
+        ]);
+
+        app(LoginActivityLogger::class)->record('login_success', $request, $user, $credentials['email'], 'Login mobile berhasil', [
+            'method' => 'mobile_password',
         ]);
 
         app(SecurityNotificationService::class)->login($user, $request);
@@ -270,6 +294,10 @@ class AuthController extends Controller
             'record_id' => $user->id,
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
+        ]);
+
+        app(LoginActivityLogger::class)->record('login_success', $request, $user, $user->email, 'Verifikasi 2FA mobile berhasil', [
+            'method' => 'mobile_2fa',
         ]);
 
         app(SecurityNotificationService::class)->login($user, $request);

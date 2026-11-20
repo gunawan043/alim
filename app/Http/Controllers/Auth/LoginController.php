@@ -18,6 +18,7 @@ use App\Models\TwoFactorRecoveryCode;
 use App\Models\User;
 use App\Models\WebPushSubscription;
 use App\Services\LoginOtpNotifier;
+use App\Services\Security\LoginActivityLogger;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use Illuminate\Http\RedirectResponse;
@@ -63,6 +64,11 @@ class LoginController extends Controller
             if ($user->isLocked()) {
                 $seconds = now()->diffInSeconds($user->locked_until, false);
 
+                app(LoginActivityLogger::class)->record('login_blocked', $request, $user, $identity, 'Akun masih terkunci', [
+                    'attempts' => $user->failed_login_attempts,
+                    'locked_until' => $user->locked_until?->toIso8601String(),
+                ]);
+
                 return $this->showLoginWithError(
                     $request,
                     'Akun terkunci. Hubungi Super Admin untuk membuka akun.',
@@ -74,6 +80,7 @@ class LoginController extends Controller
 
         if (! $user) {
             Log::warning('Login failed: user not found', ['identity' => $identity, 'ip' => $ip]);
+            app(LoginActivityLogger::class)->record('login_failed', $request, null, $identity, 'Email atau NUPY tidak ditemukan');
             $this->trackIpAttempt($ip, null, $identity);
 
             return $this->showLoginWithError($request, 'Email atau NUPY tidak ditemukan.');
@@ -112,6 +119,10 @@ class LoginController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
+            app(LoginActivityLogger::class)->record('login_success', $request, $user, $identity, 'Password valid', [
+                'method' => 'password',
+            ]);
+
             app(SecurityNotificationService::class)->login($user, $request);
 
             return $this->redirectBasedOnRole($user);
@@ -133,6 +144,17 @@ class LoginController extends Controller
 
         $user->incrementFailedLoginAttempts();
         $this->trackIpAttempt($ip, $user->failed_login_attempts, $identity);
+
+        app(LoginActivityLogger::class)->record('login_failed', $request, $user, $identity, 'Password salah', [
+            'attempts' => $user->failed_login_attempts,
+        ]);
+
+        if ($user->isLocked()) {
+            app(LoginActivityLogger::class)->record('account_locked', $request, $user, $identity, 'Batas percobaan login tercapai', [
+                'attempts' => $user->failed_login_attempts,
+                'locked_until' => $user->locked_until?->toIso8601String(),
+            ]);
+        }
 
         if ($user->failed_login_attempts >= SecurityPolicy::maxLoginAttempts()) {
             $this->sendMailSafely($user->email, new AccountLockedMail(
@@ -176,6 +198,13 @@ class LoginController extends Controller
         }
 
         if ($record->isLockedByIp()) {
+            if ($record->attempts === SecurityPolicy::maxLoginAttempts()) {
+                app(LoginActivityLogger::class)->record('ip_blocked', request(), null, $email, 'Batas percobaan login per IP tercapai', [
+                    'attempts' => $record->attempts,
+                    'locked_until' => $record->locked_until?->toIso8601String(),
+                ]);
+            }
+
             $superAdminIds = usersHavingPermission('general_admin.administrable');
             $superAdmins = User::whereIn('id', $superAdminIds)->pluck('email');
             $this->sendMailSafely($superAdmins->all(), new IpBlockedMail(
@@ -242,6 +271,8 @@ class LoginController extends Controller
         $user = Auth::user();
 
         if ($user) {
+            app(LoginActivityLogger::class)->record('logout', $request, $user, $user->email, 'Logout manual');
+
             WebPushSubscription::query()
                 ->where('user_id', $user->id)
                 ->whereNull('revoked_at')
@@ -286,6 +317,10 @@ class LoginController extends Controller
                 throw new \RuntimeException('Kode OTP tidak dapat dikirim lewat email maupun WhatsApp.');
             }
         } catch (\Throwable $e) {
+            app(LoginActivityLogger::class)->record('otp_failed', $request, $user, $user->email, 'Gagal mengirim OTP login', [
+                'error' => $e->getMessage(),
+            ]);
+
             $record?->delete();
 
             $hasRecoveryCode = TwoFactorRecoveryCode::where('user_id', $user->id)

@@ -44,12 +44,14 @@ class AuditLog extends Model
         'ip_address',
         'user_agent',
         'request_id',
+        'metadata',
     ];
 
     protected $casts = [
         'id' => 'string',
         'user_id' => 'string',
         'created_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     // RELATIONSHIPS
@@ -106,6 +108,9 @@ class AuditLog extends Model
             'SECURITY_SETTINGS_UPDATED' => 'Mengubah Pengaturan Keamanan',
             'EMAIL_SETTINGS_UPDATED' => 'Mengubah Pengaturan Email',
             'LOGIN_SUCCESS' => 'Login Berhasil',
+            'LOGIN_ACCOUNT_UNLOCKED' => 'Membuka Akun Terkunci',
+            'LOGIN_IP_BLOCKED' => 'Memblokir IP Login',
+            'LOGIN_IP_UNBLOCKED' => 'Membuka Blokir IP Login',
             'LOGIN_2FA_TOTP_VERIFIED' => 'Login dengan Authenticator',
             'MOBILE_2FA_VERIFIED' => 'Verifikasi 2FA Mobile',
             'TWO_FACTOR_RECOVERY_CODES_GENERATED' => 'Membuat Kode Pemulihan 2FA',
