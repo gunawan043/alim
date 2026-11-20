@@ -31,9 +31,7 @@ class DormitoryNotificationSettingController extends Controller
 
         $data = $request->validate([
             'is_enabled' => 'nullable|boolean',
-            'h1_reminder_enabled' => 'nullable|boolean',
-            'h1_reminder_time' => 'required|date_format:H:i',
-            'interval_minutes' => 'required|integer|min:5|max:1440',
+            'interval_minutes' => 'required|integer|min:1|max:1440',
             'max_reminders' => 'required|integer|min:1|max:20',
             'escalate_after_minutes' => 'required|integer|min:15|max:10080',
             'notify_staff' => 'nullable|boolean',
@@ -43,17 +41,14 @@ class DormitoryNotificationSettingController extends Controller
         ], [
             'channels.required' => 'Pilih minimal satu kanal notifikasi.',
             'channels.min' => 'Pilih minimal satu kanal notifikasi.',
-            'interval_minutes.min' => 'Interval minimal 5 menit.',
+            'interval_minutes.min' => 'Interval minimal 1 menit.',
             'max_reminders.min' => 'Minimal 1 kali pengingat.',
-            'h1_reminder_time.required' => 'Jam pengingat H-1 wajib diisi.',
         ]);
 
         $setting = DormitoryNotificationSetting::firstOrNew(['dormitory_id' => $asramaUuid]);
 
         $setting->fill([
             'is_enabled' => $request->boolean('is_enabled'),
-            'h1_reminder_enabled' => $request->boolean('h1_reminder_enabled'),
-            'h1_reminder_time' => $data['h1_reminder_time'],
             'interval_minutes' => (int) $data['interval_minutes'],
             'max_reminders' => (int) $data['max_reminders'],
             'escalate_after_minutes' => (int) $data['escalate_after_minutes'],

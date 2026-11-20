@@ -37,7 +37,11 @@
                             <i class="ri-notification-3-line me-1 text-primary"></i>
                             Pengingat Santri Belum Kembali — {{ $dormitory->name }}
                         </h5>
-                        <p class="text-muted mb-0 small">Berlaku untuk izin pulang santri pada asrama ini.</p>
+                        <p class="text-muted mb-0 small">
+                            Berlaku untuk izin pulang santri pada asrama ini. Pengingat mulai dikirim
+                            saat batas waktu kepulangan terlewati, lalu diulang sesuai interval di bawah
+                            selama santri belum kembali.
+                        </p>
                     </div>
                     <div class="card-body">
                         {{-- Status --}}
@@ -59,10 +63,10 @@
                                 <div class="input-group">
                                     <input type="number" name="interval_minutes" id="interval_minutes"
                                            class="form-control @error('interval_minutes') is-invalid @enderror"
-                                           value="{{ old('interval_minutes', $setting->interval_minutes) }}" min="5" max="1440" required>
+                                           value="{{ old('interval_minutes', $setting->interval_minutes) }}" min="1" max="1440" required>
                                     <span class="input-group-text">menit</span>
                                 </div>
-                                <div class="form-text">Diulang selama santri belum kembali.</div>
+                                <div class="form-text">Dihitung dari batas waktu kepulangan, diulang selama santri belum kembali.</div>
                                 @error('interval_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
@@ -85,30 +89,6 @@
                                 </div>
                                 <div class="form-text">Dihitung dari batas waktu kembali.</div>
                                 @error('escalate_after_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        {{-- Pengingat H-1 --}}
-                        <h6 class="text-uppercase text-muted fs-11 mb-3">Pengingat Sebelum Batas Kembali (H-1)</h6>
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-8">
-                                <div class="form-check form-switch">
-                                    <input type="hidden" name="h1_reminder_enabled" value="0">
-                                    <input class="form-check-input" type="checkbox" role="switch" name="h1_reminder_enabled" value="1"
-                                           id="h1_reminder_enabled" {{ old('h1_reminder_enabled', $setting->h1_reminder_enabled) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="h1_reminder_enabled">
-                                        Kirim pengingat sehari sebelum batas kembali
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="h1_reminder_time" class="form-label">Jam kirim <span class="text-danger">*</span></label>
-                                <input type="time" name="h1_reminder_time" id="h1_reminder_time"
-                                       class="form-control @error('h1_reminder_time') is-invalid @enderror"
-                                       value="{{ old('h1_reminder_time', $setting->h1_reminder_time) }}" required>
-                                @error('h1_reminder_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
 

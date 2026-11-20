@@ -172,8 +172,6 @@ class DormitoryReturnReminderTest extends TestCase
         return DormitoryNotificationSetting::create(array_merge([
             'dormitory_id' => $this->dormitory->id,
             'is_enabled' => true,
-            'h1_reminder_enabled' => true,
-            'h1_reminder_time' => '16:00',
             'interval_minutes' => 30,
             'max_reminders' => 3,
             'escalate_after_minutes' => 180,
@@ -303,33 +301,6 @@ class DormitoryReturnReminderTest extends TestCase
         );
     }
 
-    public function test_pengingat_h1_hanya_sekali_pada_jam_yang_ditentukan(): void
-    {
-        $this->makeSettings(['h1_reminder_time' => '16:00', 'channels' => ['whatsapp']]);
-        $now = CarbonImmutable::parse('2026-11-02 16:00:00');
-        $permit = $this->makePermit($now->addDay()->setTime(10, 0));
-
-        $this->whatsapp->shouldReceive('notifyReturnReminder')->once()->andReturn(true);
-        $this->notifications->shouldReceive('notifyGuardiansForStudents')->once()->andReturn(1);
-
-        $this->assertSame(1, $this->service()->processHeadStartReminders($now));
-        $this->assertNotNull($permit->fresh()->return_reminder_sent_at);
-
-        // Proses ulang pada menit yang sama tidak mengirim ganda.
-        $this->assertSame(0, $this->service()->processHeadStartReminders($now));
-    }
-
-    public function test_pengingat_h1_tidak_dikirim_di_luar_jam_pengaturan(): void
-    {
-        $this->makeSettings(['h1_reminder_time' => '16:00']);
-        $now = CarbonImmutable::parse('2026-11-02 15:30:00');
-        $this->makePermit($now->addDay()->setTime(10, 0));
-
-        $this->expectNoMessages();
-
-        $this->assertSame(0, $this->service()->processHeadStartReminders($now));
-    }
-
     public function test_halaman_pengaturan_dapat_disimpan(): void
     {
         $url = route('user.asrama.notifications.edit', [
@@ -345,8 +316,6 @@ class DormitoryReturnReminderTest extends TestCase
         $this->actingAs($this->admin)
             ->put($url, [
                 'is_enabled' => '1',
-                'h1_reminder_enabled' => '0',
-                'h1_reminder_time' => '17:30',
                 'interval_minutes' => 15,
                 'max_reminders' => 4,
                 'escalate_after_minutes' => 240,
@@ -359,8 +328,6 @@ class DormitoryReturnReminderTest extends TestCase
         $setting = DormitoryNotificationSetting::where('dormitory_id', $this->dormitory->id)->firstOrFail();
 
         $this->assertTrue($setting->is_enabled);
-        $this->assertFalse($setting->h1_reminder_enabled);
-        $this->assertSame('17:30', $setting->h1_reminder_time);
         $this->assertSame(15, $setting->interval_minutes);
         $this->assertSame(4, $setting->max_reminders);
         $this->assertSame(['whatsapp', 'email'], $setting->channels);

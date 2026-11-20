@@ -37,6 +37,9 @@ class ReturnReminderService
     /**
      * Kirim pengingat yang sudah jatuh tempo + proses eskalasi.
      *
+     * Pengingat mulai berjalan saat `expected_return_datetime` terlewati,
+     * lalu diulang sesuai `interval_minutes` hingga `max_reminders`.
+     *
      * @return array{reminders: int, escalations: int}
      */
     public function process(?CarbonInterface $now = null): array
@@ -57,64 +60,6 @@ class ReturnReminderService
         });
 
         return ['reminders' => $sent, 'escalations' => $escalated];
-    }
-
-    /**
-     * Pengingat H-1: dikirim pada jam yang dipilih asrama untuk izin yang
-     * batas kembalinya jatuh besok.
-     */
-    public function processHeadStartReminders(?CarbonInterface $now = null): int
-    {
-        $now = $now ? \Carbon\CarbonImmutable::instance($now) : now()->toImmutable();
-        $sent = 0;
-
-        Dormitory::query()->orderBy('name')->each(function (Dormitory $dormitory) use ($now, &$sent) {
-            $setting = DormitoryNotificationSetting::forDormitory($dormitory->id);
-
-            if (! $setting->is_enabled || ! $setting->h1_reminder_enabled) {
-                return;
-            }
-
-            // Jendela 5 menit agar toleran terhadap keterlambatan scheduler;
-            // kolom return_reminder_sent_at mencegah pengiriman ganda.
-            $scheduledAt = \Carbon\CarbonImmutable::parse($now->format('Y-m-d').' '.$setting->h1_reminder_time);
-
-            if ($now->lessThan($scheduledAt) || $now->greaterThanOrEqualTo($scheduledAt->addMinutes(5))) {
-                return;
-            }
-
-            $tomorrowStart = $now->addDay()->startOfDay();
-            $tomorrowEnd = $now->addDay()->endOfDay();
-
-            $permits = DormitoryPermit::with(['student'])
-                ->where('dormitory_id', $dormitory->id)
-                ->whereIn('status', self::ACTIVE_STATUSES)
-                ->whereNull('actual_return_datetime')
-                ->whereNull('return_reminder_sent_at')
-                ->whereBetween('expected_return_datetime', [$tomorrowStart, $tomorrowEnd])
-                ->get();
-
-            foreach ($permits as $permit) {
-                if (! $permit->student) {
-                    continue;
-                }
-
-                try {
-                    if ($setting->hasChannel('whatsapp')) {
-                        $this->whatsapp->notifyReturnReminder($permit);
-                    }
-
-                    $this->notifyGuardians($permit, $setting, $now, headStart: true);
-
-                    $permit->forceFill(['return_reminder_sent_at' => $now])->save();
-                    $sent++;
-                } catch (\Throwable $e) {
-                    Log::warning('Pengingat H-1 asrama gagal: '.$e->getMessage());
-                }
-            }
-        });
-
-        return $sent;
     }
 
     private function sendDueReminders(Dormitory $dormitory, DormitoryNotificationSetting $setting, CarbonInterface $now): int
@@ -148,7 +93,7 @@ class ReturnReminderService
                     $this->whatsapp->notifyOverdue($permit);
                 }
 
-                $this->notifyGuardians($permit, $setting, $now);
+                $this->notifyGuardians($permit, $setting);
 
                 $permit->increment('overdue_notified_count');
                 $permit->forceFill(['overdue_notified_at' => $now])->save();
@@ -239,8 +184,6 @@ class ReturnReminderService
     private function notifyGuardians(
         DormitoryPermit $permit,
         DormitoryNotificationSetting $setting,
-        CarbonInterface $now,
-        bool $headStart = false,
     ): void {
         $student = $permit->student;
 
@@ -260,15 +203,15 @@ class ReturnReminderService
             'wali' => $guardianName,
             'estimasi' => $estimasi,
             'asrama' => $dormitoryName,
-        ], $headStart);
+        ]);
 
         $this->notifications->notifyGuardiansForStudents([$student->id], [
             'module' => 'dormitory',
             'reference_type' => 'dormitory_permit',
             'reference_id' => $permit->id,
-            'type' => $headStart ? 'warning' : 'danger',
-            'action' => $headStart ? 'permit_return_reminder' : 'overdue_permit',
-            'title' => ($headStart ? 'Pengingat Kembali — ' : 'Terlambat Pulang — ').$student->name,
+            'type' => 'danger',
+            'action' => 'overdue_permit',
+            'title' => 'Terlambat Pulang — '.$student->name,
             'message' => $message,
             'data' => [
                 'student_id' => $student->id,
@@ -277,7 +220,6 @@ class ReturnReminderService
                 'permit_id' => $permit->id,
                 'expected_return_datetime' => $permit->expected_return_datetime?->toIso8601String(),
                 'overdue_count' => $permit->overdue_notified_count,
-                'head_start' => $headStart,
             ],
             'send_whatsapp' => false, // WA dikirim via GuardianWhatsAppNotifier (mode delivery).
             'send_push' => $setting->hasChannel('push'),
@@ -290,11 +232,9 @@ class ReturnReminderService
     /**
      * @param  array<string, string>  $vars
      */
-    private function renderMessage(?string $template, array $vars, bool $headStart): string
+    private function renderMessage(?string $template, array $vars): string
     {
-        $default = $headStart
-            ? "Bpk/Ibu {wali}, mengingatkan {santri} dijadwalkan kembali ke {asrama} pada {estimasi}.\nMohon konfirmasi bila ada perubahan."
-            : "Bpk/Ibu {wali}, {santri} belum kembali ke {asrama} hingga batas waktu {estimasi}.\nMohon konfirmasi keberadaan ananda.";
+        $default = "Bpk/Ibu {wali}, {santri} belum kembali ke {asrama} hingga batas waktu {estimasi}.\nMohon konfirmasi keberadaan ananda.";
 
         $text = filled($template) ? $template : $default;
 

@@ -347,7 +347,6 @@ class TopbarNotificationAndWaToggleTest extends TestCase
             ->implode("\n");
 
         $this->assertStringContainsString('dormitory:process-overdue', $events);
-        $this->assertStringContainsString('dormitory:remind-returns', $events);
     }
 
     private function makeUser(string $name, string $email, string $workUnitId, Role $role): User

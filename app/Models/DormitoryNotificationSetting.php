@@ -27,8 +27,6 @@ class DormitoryNotificationSetting extends Model
     protected $fillable = [
         'dormitory_id',
         'is_enabled',
-        'h1_reminder_enabled',
-        'h1_reminder_time',
         'interval_minutes',
         'max_reminders',
         'escalate_after_minutes',
@@ -39,7 +37,6 @@ class DormitoryNotificationSetting extends Model
 
     protected $casts = [
         'is_enabled' => 'boolean',
-        'h1_reminder_enabled' => 'boolean',
         'notify_staff' => 'boolean',
         'interval_minutes' => 'integer',
         'max_reminders' => 'integer',
@@ -66,8 +63,6 @@ class DormitoryNotificationSetting extends Model
         return new self([
             'dormitory_id' => $dormitoryId,
             'is_enabled' => true,
-            'h1_reminder_enabled' => true,
-            'h1_reminder_time' => '16:00',
             'interval_minutes' => 30,
             'max_reminders' => 3,
             'escalate_after_minutes' => 180,
