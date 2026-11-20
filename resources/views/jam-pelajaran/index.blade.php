@@ -224,7 +224,101 @@
         </div>
     @endif
 
+    @if($canManage && $schoolId)
+        @php $schoolwideRows = old('activities', $schoolwide ?? []); @endphp
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h6 class="mb-0 fw-semibold"><i class="ri-group-line text-success me-1"></i>Kegiatan Serempak Seluruh Rombel</h6>
+                <span class="badge bg-success-subtle text-success">Liqo, ekstrakurikuler, upacara, dll.</span>
+            </div>
+            <form method="POST" action="{{ route('user.jam-pelajaran.serempak', ['userId' => $userId]) }}">
+                @csrf
+                <div class="card-body">
+                    <div class="alert alert-light border small">
+                        Kegiatan di sini ditempatkan pada <strong>hari dan jam yang sama untuk semua rombel</strong>.
+                        Isi <strong>mapel</strong> untuk kegiatan yang sudah ada di kurikulum (mis. Liqo Maftuh).
+                        Untuk ekstrakurikuler yang belum punya mapel, kosongkan mapel dan isi nama kegiatan;
+                        sistem membuat mapel internal <code>EKS</code> yang tidak masuk kurikulum.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:56px" class="text-center">Aktif</th>
+                                    <th style="min-width:180px">Nama Kegiatan</th>
+                                    <th style="min-width:220px">Mapel (opsional)</th>
+                                    <th style="width:110px">Hari</th>
+                                    <th style="width:110px">Mulai Jam</th>
+                                    <th style="width:90px">JP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for($i = 0; $i < 4; $i++)
+                                    @php $row = $schoolwideRows[$i] ?? []; @endphp
+                                    <tr>
+                                        <td class="text-center">
+                                            <input type="hidden" name="activities[{{ $i }}][active]" value="0">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="activities[{{ $i }}][active]" value="1"
+                                                   @checked((bool) ($row['active'] ?? false))>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="activities[{{ $i }}][label]"
+                                                   class="form-control form-control-sm" maxlength="100"
+                                                   value="{{ $row['label'] ?? '' }}"
+                                                   placeholder="Contoh: Liqo Maftuh / Ekstrakurikuler">
+                                        </td>
+                                        <td>
+                                            <select name="activities[{{ $i }}][subject_id]" class="form-select form-select-sm">
+                                                <option value="">— Tanpa mapel / buat EKS —</option>
+                                                @foreach($schoolwideSubjects as $subject)
+                                                    <option value="{{ $subject->id }}"
+                                                        @selected((string) ($row['subject_id'] ?? '') === (string) $subject->id)>
+                                                        {{ $subject->name }}{{ $subject->code ? ' ('.$subject->code.')' : '' }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select name="activities[{{ $i }}][day_of_week]" class="form-select form-select-sm">
+                                                @foreach($days as $dayNumber => $dayName)
+                                                    @if($dayNumber <= 6)
+                                                        <option value="{{ $dayNumber }}"
+                                                            @selected((int) ($row['day_of_week'] ?? 1) === $dayNumber)>
+                                                            {{ $dayName }}
+                                                        </option>
+                                                    @endif
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="activities[{{ $i }}][slot_start]"
+                                                   class="form-control form-control-sm" min="1" max="12"
+                                                   value="{{ $row['slot_start'] ?? 1 }}">
+                                        </td>
+                                        <td>
+                                            <input type="number" name="activities[{{ $i }}][jp]"
+                                                   class="form-control form-control-sm" min="1" max="6"
+                                                   value="{{ $row['jp'] ?? 1 }}">
+                                        </td>
+                                    </tr>
+                                @endfor
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="ri-save-line me-1"></i>Simpan kegiatan serempak
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
     <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs nav-tabs-custom card-header-tabs border-bottom-0" role="tablist">    <div class="card">
         <div class="card-header">
             <ul class="nav nav-tabs nav-tabs-custom card-header-tabs border-bottom-0" role="tablist">
                 @foreach($days as $dayNumber => $dayName)

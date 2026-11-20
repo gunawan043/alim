@@ -164,7 +164,13 @@
                                             <div class="text-danger fw-semibold" style="font-size:10px">NONAKTIF</div>
                                         @else
                                             <div class="text-muted" style="font-size:11px">
-                                                {{ $cell->teacher?->name ?? ($cell->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE ? 'TIM TAHFIDZ' : 'Guru belum ditetapkan') }}
+                                                @if($cell->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE)
+                                                    TIM TAHFIDZ
+                                                @elseif(str_starts_with((string) $cell->notes, 'KEGIATAN SEREMPAK:'))
+                                                    <span class="text-success">Kegiatan serempak</span>
+                                                @else
+                                                    {{ $cell->teacher?->name ?? 'Guru belum ditetapkan' }}
+                                                @endif
                                             </div>
                                         @endif
                                     @elseif($ms)

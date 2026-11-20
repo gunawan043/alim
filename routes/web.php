@@ -1957,6 +1957,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/', [JamPelajaranController::class, 'store'])->name('store');
                 Route::post('/template', [JamPelajaranController::class, 'template'])->name('template');
                 Route::post('/tahfidz', [JamPelajaranController::class, 'saveTahfidz'])->name('tahfidz');
+                Route::post('/serempak', [JamPelajaranController::class, 'saveSchoolwide'])->name('serempak');
                 Route::put('/{slotId}', [JamPelajaranController::class, 'update'])->name('update');
                 Route::delete('/{slotId}', [JamPelajaranController::class, 'destroy'])->name('destroy');
             });

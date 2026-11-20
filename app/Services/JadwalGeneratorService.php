@@ -41,6 +41,9 @@ class JadwalGeneratorService
     /** @var array<int, bool> hari yang sudah dipakai blok tahfidz tingkat lain */
     private array $tahfidzUsedDays = [];
 
+    /** @var array<string, bool> subject_id kegiatan serempak (Liqo/Ekskul) */
+    private array $schoolwideSubjectIds = [];
+
     /** Jumlah slot maksimum pada grid fallback (jika sekolah belum punya master slot). */
     public const MAX_PERIODS_PER_DAY = 12;
 
@@ -98,6 +101,23 @@ class JadwalGeneratorService
             }
         }
 
+        // Fase 0b — kegiatan serempak (Liqo, ekstrakurikuler, dll.) untuk SEMUA
+        // rombel di sekolah, bukan hanya rombel yang dicentang.
+        $schoolwideByGroup = [];
+        foreach ($groups->pluck('school_id')->filter()->unique() as $schoolwideSchoolId) {
+            $schoolwideGroups = StudyGroup::query()
+                ->where('school_id', $schoolwideSchoolId)
+                ->where('academic_year_id', $academicYearId)
+                ->where('is_active', true)
+                ->get();
+
+            $schoolwideByGroup += $this->placeSchoolwideActivities(
+                $schoolwideGroups,
+                $academicYearId,
+                (string) $schoolwideSchoolId
+            );
+        }
+
         // Fase 1 — blok TIM TAHFIDZ untuk semua rombel.
         // Blok tingkat lain yang tidak ikut dihapus tetap dikunci lebih dulu.
         $this->seedTahfidzBusyFromExisting(
@@ -141,7 +161,8 @@ class JadwalGeneratorService
                     $group,
                     $academicYearId,
                     $assignments[$sgId] ?? $this->activeAssignments($sgId, $academicYearId),
-                    $blocks[$sgId] ?? null
+                    $blocks[$sgId] ?? null,
+                    $schoolwideByGroup[$sgId] ?? null
                 ));
             } catch (\Throwable $e) {
                 $results->push($this->emptySummary($sgId, $group, $e->getMessage()));
@@ -171,6 +192,18 @@ class JadwalGeneratorService
             $this->clearSchedule($studyGroupId, $academicYearId);
         }
 
+        $schoolwideGroups = StudyGroup::query()
+            ->where('school_id', $studyGroup->school_id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('is_active', true)
+            ->get();
+
+        $schoolwideByGroup = $this->placeSchoolwideActivities(
+            $schoolwideGroups,
+            $academicYearId,
+            (string) $studyGroup->school_id
+        );
+
         $this->seedTahfidzBusyFromExisting(
             $academicYearId,
             $this->siblingStudyGroupIds([$studyGroupId], $academicYearId)
@@ -183,7 +216,13 @@ class JadwalGeneratorService
             $this->curriculumTahfidzPlan($studyGroup)
         );
 
-        return $this->buildSummary($studyGroup, $academicYearId, $assignments, $block);
+        return $this->buildSummary(
+            $studyGroup,
+            $academicYearId,
+            $assignments,
+            $block,
+            $schoolwideByGroup[$studyGroup->id] ?? null
+        );
     }
 
     /**
@@ -226,6 +265,7 @@ class JadwalGeneratorService
         $this->tahfidzTeams = [];
         $this->tahfidzWindows = [];
         $this->tahfidzUsedDays = [];
+        $this->schoolwideSubjectIds = [];
     }
 
     /**
@@ -414,6 +454,128 @@ class JadwalGeneratorService
             || str_contains($name, 'tahfidz')
             || str_contains($name, 'tahfiz')
             || $code === 'thf';
+    }
+
+    /**
+     * Tempatkan kegiatan serempak pada hari & slot yang sama untuk semua rombel.
+     * Kegiatan ini menimpa slot yang sudah ada agar benar-benar serempak.
+     *
+     * @param  Collection<int, StudyGroup>  $groups
+     * @return array<string, array{placed:int,counted_placed:int,curriculum_hours:int,activities:array<int,array<string,mixed>>}>
+     */
+    private function placeSchoolwideActivities(Collection $groups, string $academicYearId, string $schoolId): array
+    {
+        $activities = $this->schoolwideActivitiesForSchool($schoolId);
+
+        if ($activities === []) {
+            return [];
+        }
+
+        $masterDays = $this->masterSlotsByDay($schoolId);
+        $result = [];
+
+        foreach ($groups as $group) {
+            $curriculum = $this->curriculumSubjects($group);
+            $result[$group->id] = [
+                'placed' => 0,
+                'counted_placed' => 0,
+                'curriculum_hours' => 0,
+                'activities' => [],
+            ];
+
+            foreach ($activities as $activity) {
+                if (! ($activity['active'] ?? false)) {
+                    continue;
+                }
+
+                $subjectId = (string) ($activity['subject_id'] ?? '');
+                $day = (int) ($activity['day_of_week'] ?? 0);
+                $start = (int) ($activity['slot_start'] ?? 0);
+                $jp = (int) ($activity['jp'] ?? 0);
+                $label = trim((string) ($activity['label'] ?? ''));
+
+                if ($subjectId === '' || $day < 1 || $start < 1 || $jp < 1) {
+                    continue;
+                }
+
+                $subject = Subject::find($subjectId);
+
+                if (! $subject) {
+                    continue;
+                }
+
+                $this->schoolwideSubjectIds[$subjectId] = true;
+                $curriculumHours = (int) ($curriculum[$subjectId]['hours'] ?? 0);
+                $placedForActivity = 0;
+
+                // Hapus jadwal lama mapel kegiatan ini agar tidak dobel.
+                JadwalKbm::where('study_group_id', $group->id)
+                    ->where('academic_year_id', $academicYearId)
+                    ->where('subject_id', $subjectId)
+                    ->delete();
+
+                for ($offset = 0; $offset < $jp; $offset++) {
+                    $slotNumber = $start + $offset;
+                    $slotMeta = collect($masterDays[$day] ?? [])->firstWhere('slot', $slotNumber);
+
+                    if (! $slotMeta || ($slotMeta['is_break'] ?? false)) {
+                        continue;
+                    }
+
+                    // Kegiatan serempak mengalahkan entri lama pada slot ini.
+                    JadwalKbm::where('study_group_id', $group->id)
+                        ->where('academic_year_id', $academicYearId)
+                        ->where('day_of_week', $day)
+                        ->where('slot_index', $slotNumber)
+                        ->delete();
+
+                    JadwalKbm::create([
+                        'school_id' => $group->school_id,
+                        'academic_year_id' => $academicYearId,
+                        'study_group_id' => $group->id,
+                        'subject_id' => $subjectId,
+                        'teacher_id' => null,
+                        'day_of_week' => $day,
+                        'slot_index' => $slotNumber,
+                        'start_time' => $slotMeta['start'],
+                        'end_time' => $slotMeta['end'],
+                        'room' => $group->room,
+                        'is_active' => true,
+                        'notes' => 'KEGIATAN SEREMPAK: '.($label !== '' ? $label : $subject->name),
+                    ]);
+
+                    $placedForActivity++;
+                }
+
+                if ($placedForActivity === 0) {
+                    continue;
+                }
+
+                $result[$group->id]['placed'] += $placedForActivity;
+                $result[$group->id]['counted_placed'] += min($placedForActivity, $curriculumHours);
+                $result[$group->id]['curriculum_hours'] += $curriculumHours;
+                $result[$group->id]['activities'][] = [
+                    'label' => $label !== '' ? $label : $subject->name,
+                    'subject_id' => $subjectId,
+                    'day' => $day,
+                    'slot_start' => $start,
+                    'jp' => $placedForActivity,
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function schoolwideActivitiesForSchool(string $schoolId): array
+    {
+        $raw = setting("jadwal.schoolwide.{$schoolId}");
+        $decoded = is_string($raw) ? json_decode($raw, true) : [];
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
@@ -784,8 +946,13 @@ class JadwalGeneratorService
      * @param  array<string, mixed>|null  $block
      * @return array<string, mixed>
      */
-    private function buildSummary(StudyGroup $studyGroup, string $academicYearId, Collection $assignments, ?array $block): array
-    {
+    private function buildSummary(
+        StudyGroup $studyGroup,
+        string $academicYearId,
+        Collection $assignments,
+        ?array $block,
+        ?array $schoolwide = null,
+    ): array {
         $summary = [
             'study_group_id' => $studyGroup->id,
             'study_group_name' => $studyGroup->full_name ?? $studyGroup->name,
@@ -796,6 +963,7 @@ class JadwalGeneratorService
             'warnings' => [],
             'conflicts' => [],
             'tahfidz' => $block,
+            'schoolwide' => $schoolwide,
         ];
 
         $curriculum = $this->curriculumSubjects($studyGroup);
@@ -808,9 +976,11 @@ class JadwalGeneratorService
 
         $plans = $this->resolvePlans($this->regularAssignments($assignments), $studyGroup, $curriculum);
         $masterDays = $this->masterSlotsByDay($studyGroup->school_id);
-        $summary['requested'] = (int) array_sum(array_column($plans, 'hours')) + (int) ($block['total'] ?? 0);
+        $summary['requested'] = (int) array_sum(array_column($plans, 'hours'))
+            + (int) ($block['total'] ?? 0)
+            + (int) ($schoolwide['curriculum_hours'] ?? 0);
 
-        $generated = (int) ($block['placed'] ?? 0);
+        $generated = (int) ($block['placed'] ?? 0) + (int) ($schoolwide['counted_placed'] ?? 0);
 
         foreach ($plans as $plan) {
             $placed = $this->placePlan($studyGroup, $academicYearId, $plan, $masterDays);
@@ -830,8 +1000,6 @@ class JadwalGeneratorService
                 ];
             }
         }
-
-        $this->balanceStudyGroupDays($studyGroup, $academicYearId, $masterDays);
 
         $summary['generated'] = $generated;
         $summary['conflicts'] = $this->verifyConflicts([$studyGroup->id], $academicYearId);
@@ -854,6 +1022,7 @@ class JadwalGeneratorService
             'warnings' => [],
             'conflicts' => [$error],
             'tahfidz' => null,
+            'schoolwide' => null,
         ];
     }
 
@@ -1049,7 +1218,7 @@ class JadwalGeneratorService
         $assignmentsBySubject = $assignments->groupBy('subject_id');
 
         foreach ($curriculum as $subjectId => $row) {
-            if ($this->isTahfidzSubject($subjectId)) {
+            if ($this->isTahfidzSubject($subjectId) || isset($this->schoolwideSubjectIds[$subjectId])) {
                 continue;
             }
 
@@ -1207,14 +1376,24 @@ class JadwalGeneratorService
             return 0;
         }
 
-        $quotas = $this->distributeQuota($hours, $days, $studyGroup, $plan);
+        $currentLoads = JadwalKbm::query()
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('is_active', true)
+            ->selectRaw('day_of_week, COUNT(*) as total')
+            ->groupBy('day_of_week')
+            ->pluck('total', 'day_of_week')
+            ->map(fn ($total) => (int) $total)
+            ->toArray();
+
+        $quotas = $this->distributeQuota($hours, $days, $studyGroup, $plan, $currentLoads);
+        $targetDays = array_values(array_filter($days, fn ($day) => (int) ($quotas[$day] ?? 0) > 0));
         $remaining = $hours;
         $placed = 0;
         $lastSlotPerDay = [];
 
-        // Fase 1 — isi kuota per hari. Kuota disebar merata sejak awal agar
-        // mapel 2–3 JP tidak menumpuk di Senin–Rabu dan meninggalkan Jumat/Sabtu kosong.
-        foreach ($days as $day) {
+        // Fase 1 — isi kuota pada maksimal 2 hari per mapel.
+        foreach ($targetDays as $day) {
             $quota = (int) ($quotas[$day] ?? 0);
 
             for ($i = 0; $i < $quota && $remaining > 0; $i++) {
@@ -1246,7 +1425,7 @@ class JadwalGeneratorService
         while ($remaining > 0 && $guard++ < 300) {
             $placedThisRound = false;
 
-            foreach ($days as $day) {
+            foreach ($targetDays as $day) {
                 if ($remaining <= 0) {
                     break;
                 }
@@ -1313,22 +1492,48 @@ class JadwalGeneratorService
      * @param  array<string, mixed>  $plan
      * @return array<int, int>
      */
-    private function distributeQuota(int $hours, array $days, StudyGroup $studyGroup, array $plan): array
+    /**
+     * Bagi JP ke MAKSIMAL 2 hari per mapel per rombel.
+     * Contoh 6 JP = 3 JP + 3 JP pada dua hari; bukan 1 JP di enam hari.
+     *
+     * @param  array<int, int>  $days
+     * @param  array<string, mixed>  $plan
+     * @param  array<int, int>  $currentLoads
+     * @return array<int, int>
+     */
+    private function distributeQuota(int $hours, array $days, StudyGroup $studyGroup, array $plan, array $currentLoads = []): array
     {
-        $dayCount = count($days);
-        $base = intdiv($hours, $dayCount);
-        $extra = $hours % $dayCount;
+        $maxDays = min(2, count($days), $hours);
 
-        $quotas = array_fill_keys($days, $base);
+        if ($maxDays <= 0) {
+            return array_fill_keys($days, 0);
+        }
 
-        if ($extra > 0) {
-            $seed = $studyGroup->id.'|'.$plan['subject_id'].'|'.($plan['teacher_id'] ?? '');
-            $offset = abs((int) crc32($seed)) % $dayCount;
+        $seed = abs((int) crc32($studyGroup->id.'|'.$plan['subject_id'].'|'.($plan['teacher_id'] ?? '')));
+        $rotation = $seed % count($days);
 
-            for ($i = 0; $i < $extra; $i++) {
-                $day = $days[($offset + $i) % $dayCount];
-                $quotas[$day]++;
+        $ordered = $days;
+        usort($ordered, function (int $a, int $b) use ($currentLoads, $days, $rotation) {
+            $loadA = (int) ($currentLoads[$a] ?? 0);
+            $loadB = (int) ($currentLoads[$b] ?? 0);
+
+            if ($loadA !== $loadB) {
+                return $loadA <=> $loadB;
             }
+
+            $indexA = (array_search($a, $days, true) - $rotation + count($days)) % count($days);
+            $indexB = (array_search($b, $days, true) - $rotation + count($days)) % count($days);
+
+            return $indexA <=> $indexB;
+        });
+
+        $selected = array_slice($ordered, 0, $maxDays);
+        $quotas = array_fill_keys($days, 0);
+        $base = intdiv($hours, $maxDays);
+        $extra = $hours % $maxDays;
+
+        foreach ($selected as $index => $day) {
+            $quotas[$day] = $base + ($index < $extra ? 1 : 0);
         }
 
         return $quotas;

@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
+use App\Models\SystemSetting;
 use App\Models\Subject;
 use App\Models\TeacherClassAttendance;
 use App\Models\TeachingAssignment;
@@ -22,6 +23,7 @@ use Illuminate\Broadcasting\BroadcastManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -976,6 +978,99 @@ class JadwalPergantianJamTest extends TestCase
         $this->assertCount(2, $fikih);
         $this->assertNull($fikih->first()->teacher_id);
         $this->assertSame(JadwalGeneratorService::NO_TEACHER_NOTE, $fikih->first()->notes);
+    }
+
+    public function test_six_jp_subject_is_placed_on_at_most_two_days(): void
+    {
+        $this->actingAs($this->admin);
+
+        $this->assignMathA->update(['weekly_hours' => 6]);
+
+        $result = app(JadwalGeneratorService::class)->generateForStudyGroup(
+            $this->sgA->id,
+            $this->ay->id,
+            'ganjil',
+            true,
+        );
+
+        $this->assertSame(10, $result['generated']);
+
+        $mathRows = JadwalKbm::where('study_group_id', $this->sgA->id)
+            ->where('subject_id', $this->math->id)
+            ->get();
+
+        $this->assertCount(6, $mathRows);
+        $this->assertLessThanOrEqual(2, $mathRows->pluck('day_of_week')->unique()->count());
+    }
+
+    public function test_schoolwide_activity_is_placed_on_same_slot_for_all_rombel(): void
+    {
+        $this->actingAs($this->admin);
+
+        $liqo = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'LQF',
+            'name' => 'Liqo Maftuh',
+            'credit_hours' => 1,
+            'is_active' => true,
+        ]);
+
+        foreach ([$this->sgA, $this->sgB] as $group) {
+            $curriculum = [[$liqo, 1]];
+
+            if ($group->id === $this->sgA->id) {
+                $curriculum = [
+                    [$this->math, 6],
+                    [$this->arabic, 4],
+                    [$liqo, 1],
+                ];
+            }
+
+            foreach ($curriculum as [$subject, $hours]) {
+                StudyGroupSubject::create([
+                    'school_id' => $this->school->id,
+                    'academic_year_id' => $this->ay->id,
+                    'study_group_id' => $group->id,
+                    'subject_id' => $subject->id,
+                    'weekly_hours' => $hours,
+                    'is_active' => true,
+                ]);
+            }
+        }
+
+        SystemSetting::set(
+            "jadwal.schoolwide.{$this->school->id}",
+            json_encode([[
+                'active' => true,
+                'label' => 'Liqo Maftuh',
+                'subject_id' => $liqo->id,
+                'day_of_week' => 1,
+                'slot_start' => 1,
+                'jp' => 1,
+            ]]),
+            'jadwal'
+        );
+        Cache::forget('system_settings_map');
+
+        $result = app(JadwalGeneratorService::class)->generateForStudyGroup(
+            $this->sgA->id,
+            $this->ay->id,
+            'ganjil',
+            true,
+        );
+
+        $this->assertSame(11, $result['generated']);
+
+        foreach ([$this->sgA, $this->sgB] as $group) {
+            $rows = JadwalKbm::where('study_group_id', $group->id)
+                ->where('subject_id', $liqo->id)
+                ->get();
+
+            $this->assertCount(1, $rows);
+            $this->assertSame(1, (int) $rows->first()->day_of_week);
+            $this->assertSame(1, (int) $rows->first()->slot_index);
+            $this->assertStringStartsWith('KEGIATAN SEREMPAK:', (string) $rows->first()->notes);
+        }
     }
 
     private function seedFixture(): void

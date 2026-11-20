@@ -82,6 +82,8 @@
                                                             <span class="teacher-code">{{ $teacherCodes[(string) $entry->teacher_id] ?? '' }}</span>
                                                         @elseif($entry->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE)
                                                             <span class="teacher-code">TIM TAHFIDZ</span>
+                                                        @elseif(str_starts_with((string) $entry->notes, 'KEGIATAN SEREMPAK:'))
+                                                            <span class="teacher-code text-success">SEREMPAK</span>
                                                         @else
                                                             <span class="teacher-code text-danger">GURU BELUM ADA</span>
                                                         @endif
@@ -101,6 +103,8 @@
                                                     </span>
                                                 @elseif($entry->notes === \App\Services\JadwalGeneratorService::TAHFIDZ_NOTE)
                                                     <span class="teacher-code" title="Blok tahfidz (tim guru tahfidz)">TIM TAHFIDZ</span>
+                                                @elseif(str_starts_with((string) $entry->notes, 'KEGIATAN SEREMPAK:'))
+                                                    <span class="teacher-code text-success" title="{{ $entry->notes }}">SEREMPAK</span>
                                                 @else
                                                     <span class="teacher-code text-danger" title="Belum ada guru di SK">GURU BELUM ADA</span>
                                                 @endif

@@ -80,6 +80,16 @@ class JamPelajaranController extends Controller
             'subjects' => $schoolId
                 ? DB::table('subjects')->where('school_id', $schoolId)->where('is_active', 1)->orderBy('name')->get(['id', 'name', 'code'])
                 : collect(),
+            'schoolwide' => $this->schoolwideActivities($schoolId),
+            'schoolwideSubjects' => $schoolId
+                ? DB::table('subjects')
+                    ->where('school_id', $schoolId)
+                    ->where(function ($q) {
+                        $q->where('is_active', 1)->orWhere('code', 'EKS');
+                    })
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'code'])
+                : collect(),
         ]);
     }
 
@@ -107,6 +117,111 @@ class JamPelajaranController extends Controller
         Cache::forget('system_settings_map');
 
         return back()->with('success', 'Pengaturan blok tahfidz disimpan.');
+    }
+
+    /**
+     * Pengaturan kegiatan serempak seluruh rombel (Liqo, ekstrakurikuler, dll).
+     */
+    public function saveSchoolwide(Request $request, string $userId)
+    {
+        $this->authorizeManage($request);
+
+        $schoolId = $this->resolveSchoolId($request);
+        if (! $schoolId) {
+            return back()->with('error', 'Konteks sekolah tidak ditemukan. Pilih sekolah terlebih dahulu.');
+        }
+
+        $data = $request->validate([
+            'activities' => 'nullable|array',
+            'activities.*.active' => 'nullable|boolean',
+            'activities.*.label' => 'nullable|string|max:100',
+            'activities.*.subject_id' => 'nullable|string|max:64',
+            'activities.*.day_of_week' => 'nullable|integer|between:1,6',
+            'activities.*.slot_start' => 'nullable|integer|between:1,12',
+            'activities.*.jp' => 'nullable|integer|between:1,6',
+        ]);
+
+        $activities = [];
+
+        foreach ($data['activities'] ?? [] as $row) {
+            $label = trim((string) ($row['label'] ?? ''));
+            $subjectId = trim((string) ($row['subject_id'] ?? ''));
+            $day = (int) ($row['day_of_week'] ?? 0);
+            $slotStart = (int) ($row['slot_start'] ?? 0);
+            $jp = (int) ($row['jp'] ?? 0);
+            $active = (bool) ($row['active'] ?? false);
+
+            if (! $active || ($label === '' && $subjectId === '')) {
+                continue;
+            }
+
+            if ($day < 1 || $slotStart < 1 || $jp < 1) {
+                continue;
+            }
+
+            $subject = null;
+
+            if ($subjectId !== '') {
+                $subject = \App\Models\Subject::query()
+                    ->where('id', $subjectId)
+                    ->where(function ($q) use ($schoolId) {
+                        $q->whereNull('school_id')->orWhere('school_id', $schoolId);
+                    })
+                    ->first();
+            }
+
+            if (! $subject && $label !== '') {
+                // Kegiatan tanpa mapel (mis. ekstrakurikuler): buat mapel internal
+                // nonaktif agar tidak ikut kurikulum, tetapi tetap tampil di jadwal.
+                $subject = \App\Models\Subject::withoutEvents(function () use ($schoolId, $label) {
+                    return \App\Models\Subject::firstOrCreate(
+                        ['school_id' => $schoolId, 'code' => 'EKS'],
+                        [
+                            'name' => $label,
+                            'is_active' => false,
+                            'credit_hours' => 0,
+                        ],
+                    );
+                });
+            }
+
+            if (! $subject) {
+                continue;
+            }
+
+            $activities[] = [
+                'active' => true,
+                'label' => $label !== '' ? $label : $subject->name,
+                'subject_id' => $subject->id,
+                'day_of_week' => $day,
+                'slot_start' => $slotStart,
+                'jp' => $jp,
+            ];
+        }
+
+        SystemSetting::set(
+            "jadwal.schoolwide.{$schoolId}",
+            json_encode($activities, JSON_UNESCAPED_UNICODE),
+            'jadwal'
+        );
+        Cache::forget('system_settings_map');
+
+        return back()->with('success', 'Pengaturan kegiatan serempak disimpan.');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function schoolwideActivities(?string $schoolId): array
+    {
+        if (! $schoolId) {
+            return [];
+        }
+
+        $raw = setting("jadwal.schoolwide.{$schoolId}");
+        $decoded = is_string($raw) ? json_decode($raw, true) : [];
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
