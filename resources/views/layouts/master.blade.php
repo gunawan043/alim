@@ -95,12 +95,30 @@
     @yield('js')
 
     {{-- Cegah roda mouse mengubah nilai input angka (leger, buku nilai, dsb.).
-         Input angka yang sedang fokus bertambah/berkurang saat roda mouse
-         digeser; batalkan aksi itu dan lepaskan fokus agar roda mouse kembali
-         menggulir halaman. --}}
+         Input angka bertambah/berkurang saat roda mouse digeser di atasnya.
+         Listener dipasang di fase capture agar tidak kalah oleh handler lain
+         yang memanggil stopPropagation, lalu gulir diteruskan manual ke
+         container terdekat supaya halaman tetap bisa di-scroll. --}}
     <script>
         (function () {
             'use strict';
+
+            function scrollContainer(el) {
+                var node = el.parentElement;
+
+                while (node && node !== document.body && node !== document.documentElement) {
+                    var style = window.getComputedStyle(node);
+
+                    if ((style.overflowY === 'auto' || style.overflowY === 'scroll')
+                        && node.scrollHeight > node.clientHeight) {
+                        return node;
+                    }
+
+                    node = node.parentElement;
+                }
+
+                return null;
+            }
 
             document.addEventListener('wheel', function (event) {
                 var target = event.target;
@@ -109,11 +127,32 @@
                     return;
                 }
 
+                event.preventDefault();
+
                 if (document.activeElement === target) {
-                    event.preventDefault();
                     target.blur();
                 }
-            }, { passive: false });
+
+                var deltaY = event.deltaY;
+                var deltaX = event.deltaX;
+
+                if (event.deltaMode === 1) {
+                    deltaY *= 16;
+                    deltaX *= 16;
+                } else if (event.deltaMode === 2) {
+                    deltaY *= window.innerHeight;
+                    deltaX *= window.innerWidth;
+                }
+
+                var container = scrollContainer(target);
+
+                if (container) {
+                    container.scrollTop += deltaY;
+                    container.scrollLeft += deltaX;
+                } else {
+                    window.scrollBy(deltaX, deltaY);
+                }
+            }, { passive: false, capture: true });
         })();
     </script>
 </body>
