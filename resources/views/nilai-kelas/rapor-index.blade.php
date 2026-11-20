@@ -793,6 +793,64 @@
                             </div>
                         </div>
 
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-heading me-1"></i>Judul Rapor</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Teks Judul (ID / Arab tunggal)</label>
+                                <input type="text" name="title_text" class="form-control form-control-sm" maxlength="255"
+                                       value="{{ old('title_text', $layout['title_text'] ?? '') }}"
+                                       placeholder="LAPORAN HASIL BELAJAR AKHIR SEMESTER">
+                                <div class="form-text">Kosongkan untuk memakai judul bawaan.</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Judul Arab (Bilingual)</label>
+                                <input type="text" name="title_ar_text" class="form-control form-control-sm" maxlength="255" dir="rtl"
+                                       value="{{ old('title_ar_text', $layout['title_ar_text'] ?? '') }}"
+                                       placeholder="كشف درجات أعمال السنة">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Judul Latin (Bilingual)</label>
+                                <input type="text" name="title_id_text" class="form-control form-control-sm" maxlength="255"
+                                       value="{{ old('title_id_text', $layout['title_id_text'] ?? '') }}"
+                                       placeholder="LAPORAN HASIL BELAJAR AKHIR SEMESTER">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Jarak Antar Judul (mm)</label>
+                                <input type="number" name="title_gap" class="form-control form-control-sm" min="0" max="20" step="0.1"
+                                       value="{{ old('title_gap', $layout['title_gap'] ?? 0.5) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Line Height Judul</label>
+                                <input type="number" name="title_line_height" class="form-control form-control-sm" min="0.8" max="3" step="0.05"
+                                       value="{{ old('title_line_height', $layout['title_line_height'] ?? 1.2) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Jarak Atas (mm)</label>
+                                <input type="number" name="title_margin_top" class="form-control form-control-sm" min="0" max="30" step="0.1"
+                                       value="{{ old('title_margin_top', $layout['title_margin_top'] ?? 0.8) }}">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1">Jarak Bawah (mm)</label>
+                                <input type="number" name="title_margin_bottom" class="form-control form-control-sm" min="0" max="30" step="0.1"
+                                       value="{{ old('title_margin_bottom', $layout['title_margin_bottom'] ?? 1.2) }}">
+                            </div>
+                        </div>
+
+                        <h6 class="mb-2 small fw-semibold"><i class="ri-user-3-line me-1"></i>Identitas Santri</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Line Height Identitas</label>
+                                <input type="number" name="ident_line_height" class="form-control form-control-sm" min="0.8" max="3" step="0.05"
+                                       value="{{ old('ident_line_height', $layout['ident_line_height'] ?? 1.05) }}">
+                            </div>
+                            <div class="col-6 col-md-4">
+                                <label class="form-label small mb-1">Jarak Antar Baris (mm)</label>
+                                <input type="number" name="ident_row_padding" class="form-control form-control-sm" min="0" max="5" step="0.05"
+                                       value="{{ old('ident_row_padding', $layout['ident_row_padding'] ?? 0.15) }}">
+                                <div class="form-text">Jarak baris Nama, Kelas, NIS, Semester.</div>
+                            </div>
+                        </div>
+
                         <h6 class="mb-2 small fw-semibold"><i class="ri-table-line me-1"></i>Gaya Tabel</h6>
                         <div class="row g-2 mb-3">
                             <div class="col-6 col-md-4">
@@ -839,6 +897,18 @@
                                 <input type="text" name="footer_center" class="form-control form-control-sm" maxlength="120"
                                        value="{{ old('footer_center', $layout['footer_center']) }}"
                                        placeholder="REV.01 / 10 September 2025">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="form-label small mb-1">Padding Footer (mm)</label>
+                                <input type="number" name="footer_padding" class="form-control form-control-sm" min="0" max="20" step="0.5"
+                                       value="{{ old('footer_padding', $layout['footer_padding'] ?? 2) }}">
+                            </div>
+                            <div class="col-6 col-md-2 d-flex align-items-end">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="footer_border" value="1"
+                                           id="footerBorder" @checked(old('footer_border', $layout['footer_border'] ?? false))>
+                                    <label class="form-check-label small" for="footerBorder">Garis atas footer</label>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-text">Nomor halaman di kanan footer tetap otomatis. Kosongkan untuk memakai teks bawaan.</div>
@@ -1138,6 +1208,9 @@ renumberSubjectRows();
             'margin_top', 'margin_right', 'margin_bottom', 'margin_left',
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
             'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding', 'paper_size',
+            'title_text', 'title_ar_text', 'title_id_text', 'title_gap', 'title_line_height',
+            'title_margin_top', 'title_margin_bottom', 'ident_line_height', 'ident_row_padding',
+            'footer_border', 'footer_padding',
             'footer_left', 'footer_center', 'bold_table_header', 'bold_subject',
             'show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height',

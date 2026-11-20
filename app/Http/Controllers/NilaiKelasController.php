@@ -1699,6 +1699,17 @@ class NilaiKelasController extends Controller
             'table_border_width' => 'nullable|numeric|min:0|max:2',
             'bold_table_header' => 'nullable|boolean',
             'bold_subject' => 'nullable|boolean',
+            'title_text' => 'nullable|string|max:255',
+            'title_ar_text' => 'nullable|string|max:255',
+            'title_id_text' => 'nullable|string|max:255',
+            'title_gap' => 'nullable|numeric|min:0|max:20',
+            'title_line_height' => 'nullable|numeric|min:0.8|max:3',
+            'title_margin_top' => 'nullable|numeric|min:0|max:30',
+            'title_margin_bottom' => 'nullable|numeric|min:0|max:30',
+            'ident_line_height' => 'nullable|numeric|min:0.8|max:3',
+            'ident_row_padding' => 'nullable|numeric|min:0|max:5',
+            'footer_border' => 'nullable|boolean',
+            'footer_padding' => 'nullable|numeric|min:0|max:20',
             'footer_left' => 'nullable|string|max:120',
             'footer_center' => 'nullable|string|max:120',
             'paper_size' => 'required|in:a4,folio,letter',
@@ -1746,6 +1757,8 @@ class NilaiKelasController extends Controller
             'font_size', 'title_font_size', 'table_font_size', 'info_font_size',
             'footer_font_size', 'line_height', 'table_line_height', 'table_row_padding',
             'table_border_width', 'paper_size',
+            'title_gap', 'title_line_height', 'title_margin_top', 'title_margin_bottom',
+            'ident_line_height', 'ident_row_padding', 'footer_padding',
             'kop_height', 'ttd_ksp_width', 'ttd_ksp_height', 'ttd_ksp_margin',
             'ttd_wali_width', 'ttd_wali_height', 'stamp_width', 'stamp_height',
             'ttd_ksp_margin', 'ttd_wali_margin', 'stamp_margin',
@@ -1755,14 +1768,14 @@ class NilaiKelasController extends Controller
             }
         }
 
-        foreach (['footer_left', 'footer_center'] as $key) {
+        foreach (['footer_left', 'footer_center', 'title_text', 'title_ar_text', 'title_id_text'] as $key) {
             if (array_key_exists($key, $validated)) {
                 $value = trim((string) $validated[$key]);
                 $values[$key] = $value !== '' ? $value : null;
             }
         }
 
-        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr', 'bold_table_header', 'bold_subject'] as $key) {
+        foreach (['show_kop', 'show_ttd_ksp', 'show_ttd_wali', 'show_stamp', 'show_qr', 'bold_table_header', 'bold_subject', 'footer_border'] as $key) {
             if ($request->has($key)) {
                 $values[$key] = $request->boolean($key);
             }

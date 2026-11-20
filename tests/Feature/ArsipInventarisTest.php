@@ -673,6 +673,69 @@ class ArsipInventarisTest extends TestCase
         $this->assertSame('folio', $layout['paper_size']);
     }
 
+    public function test_judul_identitas_dan_footer_rapor_mengikuti_pengaturan_varian(): void
+    {
+        $this->actingAs($this->tu)
+            ->post("/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor/layout", [
+                'academic_year_id' => $this->activeAy->id,
+                'semester' => 'ganjil',
+                'margin_top' => 10,
+                'margin_right' => 14,
+                'margin_bottom' => 15,
+                'margin_left' => 14,
+                'font_size' => 10,
+                'title_font_size' => 15,
+                'table_font_size' => 9,
+                'info_font_size' => 9,
+                'footer_font_size' => 7,
+                'line_height' => 1.3,
+                'paper_size' => 'a4',
+                'doc_jenis' => 'sas',
+                'doc_bahasa' => 'id-ar',
+                'title_ar_text' => 'كشف درجات أعمال السنة',
+                'title_id_text' => 'LAPORAN HASIL BELAJAR AKHIR SEMESTER',
+                'title_gap' => 0.8,
+                'title_line_height' => 1.25,
+                'title_margin_top' => 1.5,
+                'title_margin_bottom' => 2,
+                'ident_line_height' => 1.2,
+                'ident_row_padding' => 0.4,
+                'footer_padding' => 3,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $setting = \App\Models\RaporDistributionSetting::query()
+            ->where('school_id', $this->school->id)
+            ->where('academic_year_id', $this->activeAy->id)
+            ->where('semester', 'ganjil')
+            ->firstOrFail();
+
+        $layout = $setting->variantLayoutSettings('sas', 'id-ar');
+
+        $this->assertSame('LAPORAN HASIL BELAJAR AKHIR SEMESTER', $layout['title_id_text']);
+        $this->assertEquals(0.8, $layout['title_gap']);
+        $this->assertEquals(1.2, $layout['ident_line_height']);
+        $this->assertEquals(0.4, $layout['ident_row_padding']);
+        $this->assertEquals(3.0, $layout['footer_padding']);
+        $this->assertFalse($layout['footer_border']);
+
+        $html = app(RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->activeRombel->fresh(),
+            $this->activeAy,
+            (string) $this->activeAy->id,
+            'ganjil',
+            'sas',
+            $this->activeStudent->fresh(),
+            'id-ar',
+        );
+
+        $this->assertStringContainsString('LAPORAN HASIL BELAJAR AKHIR SEMESTER', $html);
+        $this->assertStringContainsString('border-top: none', $html);
+        $this->assertStringContainsString('line-height: 1.2', $html);
+    }
+
     public function test_tabel_rapor_menampilkan_nilai_predikat_dan_peringkat(): void
     {
         $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor"

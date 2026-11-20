@@ -136,8 +136,8 @@
 
         .title {
             text-align: center;
-            margin: 0.8mm 0 1.2mm;
-            line-height: 1.2;
+            margin: {{ $layout['title_margin_top'] ?? 0.8 }}mm 0 {{ $layout['title_margin_bottom'] ?? 1.2 }}mm;
+            line-height: {{ $layout['title_line_height'] ?? 1.2 }};
         }
 
         .title .ar-title {
@@ -148,6 +148,7 @@
         }
 
         .title .id-title {
+            margin-top: {{ $layout['title_gap'] ?? 0.5 }}mm;
             font-size: 10.5pt;
             font-weight: bold;
             text-transform: uppercase;
@@ -159,11 +160,11 @@
             table-layout: fixed;
             margin-bottom: 1mm;
             font-size: 6.4pt;
-            line-height: 1.05;
+            line-height: {{ $layout['ident_line_height'] ?? 1.05 }};
         }
 
         table.ident td {
-            padding: 0.15mm 0;
+            padding: {{ $layout['ident_row_padding'] ?? 0.15 }}mm 0;
             vertical-align: top;
         }
 
@@ -429,8 +430,8 @@
             bottom: 0;
             left: 0;
             right: 0;
-            border-top: 1px solid #000;
-            padding: 2px {{ $layout['margin_right'] }}mm 2px {{ $layout['margin_left'] }}mm;
+            border-top: {{ ($layout['footer_border'] ?? false) ? '1px solid #000' : 'none' }};
+            padding: {{ $layout['footer_padding'] ?? 2 }}mm {{ $layout['margin_right'] }}mm {{ $layout['footer_padding'] ?? 2 }}mm {{ $layout['margin_left'] }}mm;
             font-size: {{ max(5.5, (float) $layout['footer_font_size']) }}pt;
         }
 
@@ -468,10 +469,10 @@
             </div>
         @endif
 
-        {{-- Judul dua bahasa --}}
+        {{-- Judul dua bahasa (teks dapat diatur per varian) --}}
         <div class="title">
-            <div class="ar-title">{!! $ar($la($isSas ? 'title_sas' : 'title_sts')) !!}</div>
-            <div class="id-title">{{ $li($isSas ? 'title_sas' : 'title_sts') }}</div>
+            <div class="ar-title">{!! $ar(filled($layout['title_ar_text'] ?? null) ? $layout['title_ar_text'] : $la($isSas ? 'title_sas' : 'title_sts')) !!}</div>
+            <div class="id-title">{{ filled($layout['title_id_text'] ?? null) ? $layout['title_id_text'] : $li($isSas ? 'title_sas' : 'title_sts') }}</div>
         </div>
 
         {{-- Identitas: satu tabel, kiri Indonesia, kanan Arab --}}

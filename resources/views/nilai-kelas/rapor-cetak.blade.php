@@ -264,7 +264,8 @@
             text-align: center;
             font-size: {{ $layout['title_font_size'] }}pt;
             font-weight: bold;
-            margin: 12px 0 14px 0;
+            margin: {{ $layout['title_margin_top'] ?? 0.8 }}mm 0 {{ $layout['title_margin_bottom'] ?? 1.2 }}mm 0;
+            line-height: {{ $layout['title_line_height'] ?? 1.2 }};
             text-transform: uppercase;
             text-decoration: underline;
         }
@@ -277,9 +278,9 @@
         }
         .info-grid td {
             border: none;
-            padding: 3px 4px;
+            padding: {{ $layout['ident_row_padding'] ?? 0.15 }}mm 4px;
             font-size: {{ $layout['info_font_size'] }}pt;
-            line-height: {{ $layout['line_height'] }};
+            line-height: {{ $layout['ident_line_height'] ?? 1.05 }};
             vertical-align: middle;
         }
         .info-grid td.lbl {
@@ -472,8 +473,8 @@
             bottom: 0;
             left: 0;
             right: 0;
-            border-top: 1px solid #000;
-            padding: 4px {{ $layout['margin_right'] }}mm 4px {{ $layout['margin_left'] }}mm;
+            border-top: {{ ($layout['footer_border'] ?? false) ? '1px solid #000' : 'none' }};
+            padding: {{ $layout['footer_padding'] ?? 2 }}mm {{ $layout['margin_right'] }}mm {{ $layout['footer_padding'] ?? 2 }}mm {{ $layout['margin_left'] }}mm;
             display: table;
             width: 100%;
         }
@@ -502,8 +503,8 @@
     <img src="{{ $kopBase64 }}" class="kop-surat" style="height: {{ $layout['kop_height'] }}mm;" alt="Kop Surat">
     @endif
 
-    {{-- Judul --}}
-    <div class="judul">{!! $text($label(($data['Jenis'] ?? 'sts') === 'sas' ? 'title_sas' : 'title_sts')) !!}</div>
+    {{-- Judul (teks dapat diatur per varian) --}}
+    <div class="judul">{!! $text(filled($layout['title_text'] ?? null) ? $layout['title_text'] : $label(($data['Jenis'] ?? 'sts') === 'sas' ? 'title_sas' : 'title_sts')) !!}</div>
 
     {{-- Info Santri --}}
     <table class="info-grid">
