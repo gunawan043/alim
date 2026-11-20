@@ -637,7 +637,7 @@
                     <input type="hidden" name="tab" value="mapel">
 
                     <div class="table-responsive leger-scroll">
-                        <table id="tab-mapel" class="table table-bordered table-nowrap align-middle mb-0">
+                        <table id="tab-mapel" data-paste-grid class="table table-bordered table-nowrap align-middle mb-0">
                             <thead class="table-light text-center">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="no">No</th>
@@ -1231,29 +1231,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (target.select) target.select();
             }
         });
-
-        // Paste matriks dari Excel/Sheets mulai dari sel yang difokuskan
-        table.addEventListener('paste', function (e) {
-            if (!e.target.classList || !e.target.classList.contains('sheet-input')) return;
-            var text = (e.clipboardData || window.clipboardData).getData('text');
-            if (!text || (text.indexOf('\t') === -1 && text.indexOf('\n') === -1)) return;
-
-            e.preventDefault();
-            var grid = text.replace(/\r/g, '').replace(/\n+$/, '').split('\n').map(function (r) { return r.split('\t'); });
-            var a = allInputs();
-            var start = a.indexOf(e.target);
-            var row0 = Math.floor(start / perRow);
-            var col0 = start % perRow;
-
-            grid.forEach(function (rowVals, dr) {
-                rowVals.forEach(function (val, dc) {
-                    var target = a[(row0 + dr) * perRow + (col0 + dc)];
-                    if (!target || target.readOnly || target.disabled) return;
-                    target.value = String(val).trim().replace(',', '.');
-                    target.dispatchEvent(new Event('input', { bubbles: true }));
-                });
-            });
-        });
     })();
 
     // ─── Auto-save for Leger & Mapel ─────────────────────────────
@@ -1477,4 +1454,5 @@ document.addEventListener('DOMContentLoaded', function () {
     kolomRender();
 });
 </script>
+@include('partials.paste-grid')
 @endsection

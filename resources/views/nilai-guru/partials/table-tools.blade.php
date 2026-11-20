@@ -156,3 +156,5 @@
     });
 })();
 </script>
+
+@include('partials.paste-grid')
