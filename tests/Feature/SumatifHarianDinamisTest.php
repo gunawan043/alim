@@ -1362,6 +1362,71 @@ class SumatifHarianDinamisTest extends TestCase
         $this->assertStringNotContainsString($catatan, $htmlWali);
     }
 
+    public function test_catatan_wali_arab_dan_placeholder_nama(): void
+    {
+        $this->actingAs($this->teacher);
+
+        $student = $this->students[0];
+        $noteId = 'Ananda {nama} rajin belajar.';
+        $noteAr = 'الطالب {nama} مجتهد.';
+
+        $url = "/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/rapor/{$student->id}/catatan";
+
+        $this->withHeaders(['Accept' => 'application/json'])->post($url, [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'homeroom_note' => $noteId,
+            'homeroom_note_ar' => $noteAr,
+        ])->assertOk()->assertJson([
+            'success' => true,
+            'homeroom_note' => $noteId,
+            'homeroom_note_ar' => $noteAr,
+        ]);
+
+        $this->assertDatabaseHas('raport_registrations', [
+            'student_id' => $student->id,
+            'study_group_id' => $this->studyGroup->id,
+            'homeroom_note' => $noteId,
+            'homeroom_note_ar' => $noteAr,
+        ]);
+
+        // Simpan cepat dari tabel hanya mengirim catatan Indonesia; catatan Arab
+        // tidak boleh terhapus.
+        $this->withHeaders(['Accept' => 'application/json'])->post($url, [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'homeroom_note' => 'Catatan baru {nama}.',
+        ])->assertOk();
+
+        $registration = \App\Models\RaportRegistration::where('student_id', $student->id)
+            ->where('study_group_id', $this->studyGroup->id)
+            ->where('semester', 'ganjil')
+            ->first();
+
+        $this->assertSame('Catatan baru {nama}.', $registration->homeroom_note);
+        $this->assertSame($noteAr, $registration->homeroom_note_ar);
+
+        // Placeholder diganti saat cetak: nama Latin untuk catatan Indonesia,
+        // nama Arab untuk catatan Arab.
+        $service = app(\App\Services\Arsip\RaporPdfService::class);
+        $data = $service->buildSantriData(
+            $this->school->id, $this->studyGroup, $this->ay,
+            (string) $this->ay->id, 'ganjil', 'sas', $student->fresh(),
+        )[$student->id];
+
+        $this->assertSame("Catatan baru {$student->name}.", $data['CatatanWali']);
+        $this->assertStringNotContainsString('{nama}', (string) $data['CatatanWali']);
+        $this->assertStringContainsString($data['NamaAr'], (string) $data['CatatanWaliAr']);
+        $this->assertStringNotContainsString('{nama}', (string) $data['CatatanWaliAr']);
+
+        // Rapor Arab memakai catatan Arab (bukan catatan Indonesia).
+        $htmlAr = $service->renderHtml(
+            $this->school->id, $this->studyGroup, $this->ay,
+            (string) $this->ay->id, 'ganjil', 'sas', $student->fresh(), 'ar',
+        );
+        $this->assertStringNotContainsString('Catatan baru', $htmlAr);
+    }
+
     public function test_semester_genap_otomatis_dibuatkan_buku(): void
     {
         $this->assertFalse(

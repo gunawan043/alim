@@ -1195,6 +1195,17 @@ class NilaiKelasController extends Controller
 
         // KKTP efektif tiap mapel diambil dari buku ajar (subject_kktp) agar
         // nilai yang tampil di rapor bisa diubah langsung dari tabel ini.
+        // KKTP: pakai yang tertaut ke buku admin; bila belum tertaut, ambil
+        // dari peta kurikulum (SubjectKktp) pada tingkat/TA/semester yang sama.
+        $kktpBySubject = SubjectKktp::query()
+            ->where('school_id', $studyGroup->school_id)
+            ->where('grade_level_id', $studyGroup->grade_level_id)
+            ->where('academic_year_id', $selectedAyId)
+            ->where('semester', $selectedSem)
+            ->whereIn('subject_id', $availableSubjectIds)
+            ->get()
+            ->keyBy('subject_id');
+
         $subjectKktpMap = TeacherAdminBook::query()
             ->with('kktp')
             ->where('study_group_id', $studyGroup->id)
@@ -1202,10 +1213,14 @@ class NilaiKelasController extends Controller
             ->where('semester', $selectedSem)
             ->whereIn('subject_id', $availableSubjectIds)
             ->get()
-            ->mapWithKeys(fn ($book) => [$book->subject_id => [
-                'kktp_id' => $book->kktp_id,
-                'score' => $book->kktp?->kkm_score,
-            ]])
+            ->mapWithKeys(function ($book) use ($kktpBySubject) {
+                $fallback = $kktpBySubject->get($book->subject_id);
+
+                return [$book->subject_id => [
+                    'kktp_id' => $book->kktp_id ?? $fallback?->id,
+                    'score' => $book->kktp?->kkm_score ?? $fallback?->kkm_score,
+                ]];
+            })
             ->all();
 
         return view('nilai-kelas.rapor-index', compact(
@@ -2152,7 +2167,18 @@ class NilaiKelasController extends Controller
 
         $validated = $request->validate([
             'homeroom_note' => 'nullable|string|max:500',
+            'homeroom_note_ar' => 'nullable|string|max:500',
         ]);
+
+        // Hanya kolom yang dikirim yang diubah, agar simpan cepat dari tabel
+        // (hanya catatan Indonesia) tidak menghapus catatan Arab.
+        $payload = [];
+        if ($request->has('homeroom_note')) {
+            $payload['homeroom_note'] = $validated['homeroom_note'] ?? null;
+        }
+        if ($request->has('homeroom_note_ar')) {
+            $payload['homeroom_note_ar'] = $validated['homeroom_note_ar'] ?? null;
+        }
 
         RaportRegistration::updateOrCreate(
             [
@@ -2161,9 +2187,7 @@ class NilaiKelasController extends Controller
                 'academic_year_id' => $selectedAyId,
                 'semester' => $selectedSem,
             ],
-            [
-                'homeroom_note' => $validated['homeroom_note'] ?? null,
-            ]
+            $payload
         );
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -2171,6 +2195,7 @@ class NilaiKelasController extends Controller
                 'success' => true,
                 'message' => 'Catatan wali kelas berhasil disimpan.',
                 'homeroom_note' => $validated['homeroom_note'] ?? null,
+                'homeroom_note_ar' => $validated['homeroom_note_ar'] ?? null,
             ]);
         }
 

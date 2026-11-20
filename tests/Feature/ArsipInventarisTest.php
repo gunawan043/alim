@@ -621,7 +621,36 @@ class ArsipInventarisTest extends TestCase
             ->assertSee('name="paper_size"', false)
             ->assertSee('js-variant-settings', false)
             ->assertDontSee('id="previewJenis"', false)
-            ->assertDontSee('id="previewBahasa"', false);
+            ->assertDontSee('id="previewBahasa"', false)
+            // Modal pengaturan dipecah per tab agar tidak memanjang ke bawah.
+            ->assertSee('id="layoutTabPage"', false)
+            ->assertSee('id="layoutTabFont"', false)
+            ->assertSee('id="layoutTabTitle"', false)
+            ->assertSee('id="layoutTabTable"', false);
+    }
+
+    public function test_kktp_dari_peta_kurikulum_tampil_walau_buku_belum_terhubung(): void
+    {
+        $this->activeBook->update(['kktp_id' => null]);
+
+        SubjectKktp::create([
+            'subject_id' => $this->subject->id,
+            'school_id' => $this->school->id,
+            'grade_level_id' => $this->grade->id,
+            'academic_year_id' => $this->activeAy->id,
+            'semester' => 'ganjil',
+            'kkm_score' => 78,
+            'created_by' => $this->tu->id,
+        ]);
+
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor"
+            ."?academic_year_id={$this->activeAy->id}&semester=ganjil";
+
+        $this->actingAs($this->tu)
+            ->get($url)
+            ->assertOk()
+            ->assertSee('name="subject_kktp['.$this->subject->id.']"', false)
+            ->assertSee('value="78"', false);
     }
 
     public function test_preview_memakai_varian_dari_url(): void

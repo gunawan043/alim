@@ -26,6 +26,21 @@
             min-height: 0;
             overflow-y: auto;
         }
+        /* Modal pengaturan dipecah per tab agar tidak memanjang ke bawah. */
+        .rapor-settings-tabs {
+            gap: .25rem;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--vz-border-color, #e9ebec);
+        }
+        .rapor-settings-tabs .nav-link {
+            padding: .35rem .6rem;
+            font-size: .8125rem;
+            white-space: nowrap;
+        }
+        #layoutSettingsModal .tab-pane > h6:first-child {
+            margin-top: .25rem;
+        }
     </style>
 @endsection
 
@@ -401,6 +416,7 @@
                                                     'semester' => $selectedSem,
                                                 ]);
                                                 $noteValue = $registrations[$student->id]->homeroom_note ?? '';
+                                                $noteValueAr = $registrations[$student->id]->homeroom_note_ar ?? '';
                                             @endphp
                                             <div class="input-group input-group-sm">
                                                 <input type="text" class="form-control js-note-inline"
@@ -410,9 +426,10 @@
                                                        data-action="{{ $noteAction }}"
                                                        aria-label="Catatan {{ $student->name }}">
                                                 <button type="button" class="btn btn-outline-secondary js-note"
-                                                        title="Buka editor catatan"
+                                                        title="Buka editor catatan (Indonesia &amp; Arab)"
                                                         data-name="{{ $student->name }}"
                                                         data-note="{{ $noteValue }}"
+                                                        data-note-ar="{{ $noteValueAr }}"
                                                         data-action="{{ $noteAction }}">
                                                     <i class="ri-expand-diagonal-line"></i>
                                                 </button>
@@ -738,180 +755,225 @@
                         <h5 class="modal-title"><i class="ri-layout-line me-2 text-primary"></i>Margin, Font &amp; Kertas <span id="layoutVariantLabel" class="text-muted fw-normal small"></span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
-                    <div class="modal-body">
-                        <p class="text-muted small mb-3">
-                            Pengaturan untuk varian <strong>{{ strtoupper($docJenis) }} — {{ strtoupper($docBahasa) }}</strong>.
-                        </p>
+                    <div class="modal-body p-0">
+                        <ul class="nav nav-pills rapor-settings-tabs px-3 pt-3" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#layoutTabPage" role="tab" aria-selected="true">
+                                    <i class="ri-file-paper-2-line me-1"></i>Halaman
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#layoutTabFont" role="tab" aria-selected="false">
+                                    <i class="ri-font-size-2 me-1"></i>Font &amp; Baris
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#layoutTabTitle" role="tab" aria-selected="false">
+                                    <i class="ri-heading me-1"></i>Judul &amp; Identitas
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#layoutTabTable" role="tab" aria-selected="false">
+                                    <i class="ri-table-line me-1"></i>Tabel &amp; Footer
+                                </button>
+                            </li>
+                        </ul>
 
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-layout-line me-1"></i>Margin (mm)</h6>
-                        <div class="row g-2 mb-3">
-                            @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
-                                <div class="col-6 col-md-3">
-                                    <label class="form-label small mb-1">{{ $label }}</label>
-                                    <input type="number" name="{{ $field }}" class="form-control form-control-sm"
-                                           min="0" max="50" step="0.5" required
-                                           value="{{ old($field, $layout[$field]) }}">
+                        <div class="tab-content px-3 pb-3 pt-3">
+                            {{-- Tab 1: halaman, margin, kertas --}}
+                            <div class="tab-pane fade show active" id="layoutTabPage" role="tabpanel">
+                                <p class="text-muted small mb-3">
+                                    Pengaturan untuk varian <strong>{{ strtoupper($docJenis) }} — {{ strtoupper($docBahasa) }}</strong>.
+                                </p>
+
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-layout-line me-1"></i>Margin (mm)</h6>
+                                <div class="row g-2 mb-3">
+                                    @foreach(['margin_top' => 'Atas', 'margin_right' => 'Kanan', 'margin_bottom' => 'Bawah', 'margin_left' => 'Kiri'] as $field => $label)
+                                        <div class="col-6 col-md-3">
+                                            <label class="form-label small mb-1">{{ $label }}</label>
+                                            <input type="number" name="{{ $field }}" class="form-control form-control-sm"
+                                                   min="0" max="50" step="0.5" required
+                                                   value="{{ old($field, $layout[$field]) }}">
+                                        </div>
+                                    @endforeach
                                 </div>
-                            @endforeach
-                        </div>
 
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-font-size-2 me-1"></i>Ukuran Font (pt) &amp; Baris</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Isi</label>
-                                <input type="number" name="font_size" class="form-control form-control-sm" min="6" max="24" step="0.5" required value="{{ old('font_size', $layout['font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Judul</label>
-                                <input type="number" name="title_font_size" class="form-control form-control-sm" min="8" max="30" step="0.5" required value="{{ old('title_font_size', $layout['title_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Tabel</label>
-                                <input type="number" name="table_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('table_font_size', $layout['table_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Info Santri</label>
-                                <input type="number" name="info_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('info_font_size', $layout['info_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Footer/TTD</label>
-                                <input type="number" name="footer_font_size" class="form-control form-control-sm" min="5" max="16" step="0.5" required value="{{ old('footer_font_size', $layout['footer_font_size']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Tinggi Baris Teks</label>
-                                <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Line Height Tabel</label>
-                                <input type="number" name="table_line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('table_line_height', $layout['table_line_height'] ?? 1.05) }}">
-                                <div class="form-text">Jarak antarbaris teks di dalam tabel nilai.</div>
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Jarak Baris Santri (mm)</label>
-                                <input type="number" name="table_row_padding" class="form-control form-control-sm" min="0" max="3" step="0.05" required value="{{ old('table_row_padding', $layout['table_row_padding'] ?? 0.5) }}">
-                                <div class="form-text">Padding atas-bawah tiap baris data santri.</div>
-                            </div>
-                        </div>
-
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-heading me-1"></i>Judul Rapor</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Teks Judul (ID / Arab tunggal)</label>
-                                <input type="text" name="title_text" class="form-control form-control-sm" maxlength="255"
-                                       value="{{ old('title_text', $layout['title_text'] ?? '') }}"
-                                       placeholder="LAPORAN HASIL BELAJAR AKHIR SEMESTER">
-                                <div class="form-text">Kosongkan untuk memakai judul bawaan.</div>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Judul Arab (Bilingual)</label>
-                                <input type="text" name="title_ar_text" class="form-control form-control-sm" maxlength="255" dir="rtl"
-                                       value="{{ old('title_ar_text', $layout['title_ar_text'] ?? '') }}"
-                                       placeholder="كشف درجات أعمال السنة">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Judul Latin (Bilingual)</label>
-                                <input type="text" name="title_id_text" class="form-control form-control-sm" maxlength="255"
-                                       value="{{ old('title_id_text', $layout['title_id_text'] ?? '') }}"
-                                       placeholder="LAPORAN HASIL BELAJAR AKHIR SEMESTER">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Jarak Antar Judul (mm)</label>
-                                <input type="number" name="title_gap" class="form-control form-control-sm" min="0" max="20" step="0.1"
-                                       value="{{ old('title_gap', $layout['title_gap'] ?? 0.5) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Line Height Judul</label>
-                                <input type="number" name="title_line_height" class="form-control form-control-sm" min="0.8" max="3" step="0.05"
-                                       value="{{ old('title_line_height', $layout['title_line_height'] ?? 1.2) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Jarak Atas (mm)</label>
-                                <input type="number" name="title_margin_top" class="form-control form-control-sm" min="0" max="30" step="0.1"
-                                       value="{{ old('title_margin_top', $layout['title_margin_top'] ?? 0.8) }}">
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <label class="form-label small mb-1">Jarak Bawah (mm)</label>
-                                <input type="number" name="title_margin_bottom" class="form-control form-control-sm" min="0" max="30" step="0.1"
-                                       value="{{ old('title_margin_bottom', $layout['title_margin_bottom'] ?? 1.2) }}">
-                            </div>
-                        </div>
-
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-user-3-line me-1"></i>Identitas Santri</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Line Height Identitas</label>
-                                <input type="number" name="ident_line_height" class="form-control form-control-sm" min="0.8" max="3" step="0.05"
-                                       value="{{ old('ident_line_height', $layout['ident_line_height'] ?? 1.05) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Jarak Antar Baris (mm)</label>
-                                <input type="number" name="ident_row_padding" class="form-control form-control-sm" min="0" max="5" step="0.05"
-                                       value="{{ old('ident_row_padding', $layout['ident_row_padding'] ?? 0.15) }}">
-                                <div class="form-text">Jarak baris Nama, Kelas, NIS, Semester.</div>
-                            </div>
-                        </div>
-
-                        <h6 class="mb-2 small fw-semibold"><i class="ri-table-line me-1"></i>Gaya Tabel</h6>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1">Tebal Garis (mm)</label>
-                                <input type="number" name="table_border_width" class="form-control form-control-sm"
-                                       min="0" max="2" step="0.05" required
-                                       value="{{ old('table_border_width', $layout['table_border_width'] ?? 0.3) }}">
-                            </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1 d-block">Teks</label>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="bold_table_header" value="1"
-                                           id="boldTableHeader" @checked(old('bold_table_header', $layout['bold_table_header'] ?? true))>
-                                    <label class="form-check-label small" for="boldTableHeader">Judul tebal</label>
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-file-paper-2-line me-1"></i>Ukuran Kertas</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <select name="paper_size" class="form-select form-select-sm" required>
+                                            <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
+                                            <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
+                                            <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-6 col-md-4">
-                                <label class="form-label small mb-1 d-block">&nbsp;</label>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="bold_subject" value="1"
-                                           id="boldSubject" @checked(old('bold_subject', $layout['bold_subject'] ?? true))>
-                                    <label class="form-check-label small" for="boldSubject">Nama mapel tebal</label>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Ukuran Kertas</label>
-                                <select name="paper_size" class="form-select form-select-sm" required>
-                                    <option value="a4" {{ old('paper_size', $layout['paper_size']) === 'a4' ? 'selected' : '' }}>A4</option>
-                                    <option value="folio" {{ old('paper_size', $layout['paper_size']) === 'folio' ? 'selected' : '' }}>F4 / Folio</option>
-                                    <option value="letter" {{ old('paper_size', $layout['paper_size']) === 'letter' ? 'selected' : '' }}>Letter</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Footer Kiri</label>
-                                <input type="text" name="footer_left" class="form-control form-control-sm" maxlength="120"
-                                       value="{{ old('footer_left', $layout['footer_left']) }}"
-                                       placeholder="{{ $docBahasa === 'id-ar' ? 'PAH-KSP-FORM-14-04' : 'PAH-KSP-FORM-14-02' }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small mb-1">Footer Tengah</label>
-                                <input type="text" name="footer_center" class="form-control form-control-sm" maxlength="120"
-                                       value="{{ old('footer_center', $layout['footer_center']) }}"
-                                       placeholder="REV.01 / 10 September 2025">
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <label class="form-label small mb-1">Padding Footer (mm)</label>
-                                <input type="number" name="footer_padding" class="form-control form-control-sm" min="0" max="20" step="0.5"
-                                       value="{{ old('footer_padding', $layout['footer_padding'] ?? 2) }}">
-                            </div>
-                            <div class="col-6 col-md-2 d-flex align-items-end">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="footer_border" value="1"
-                                           id="footerBorder" @checked(old('footer_border', $layout['footer_border'] ?? false))>
-                                    <label class="form-check-label small" for="footerBorder">Garis atas footer</label>
+                            {{-- Tab 2: ukuran font & tinggi baris --}}
+                            <div class="tab-pane fade" id="layoutTabFont" role="tabpanel">
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-font-size-2 me-1"></i>Ukuran Font (pt)</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Isi</label>
+                                        <input type="number" name="font_size" class="form-control form-control-sm" min="6" max="24" step="0.5" required value="{{ old('font_size', $layout['font_size']) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Judul</label>
+                                        <input type="number" name="title_font_size" class="form-control form-control-sm" min="8" max="30" step="0.5" required value="{{ old('title_font_size', $layout['title_font_size']) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Tabel</label>
+                                        <input type="number" name="table_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('table_font_size', $layout['table_font_size']) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Info Santri</label>
+                                        <input type="number" name="info_font_size" class="form-control form-control-sm" min="6" max="20" step="0.5" required value="{{ old('info_font_size', $layout['info_font_size']) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Footer/TTD</label>
+                                        <input type="number" name="footer_font_size" class="form-control form-control-sm" min="5" max="16" step="0.5" required value="{{ old('footer_font_size', $layout['footer_font_size']) }}">
+                                    </div>
+                                </div>
+
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-line-height me-1"></i>Tinggi Baris</h6>
+                                <div class="row g-2">
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Tinggi Baris Teks</label>
+                                        <input type="number" name="line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('line_height', $layout['line_height']) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Line Height Tabel</label>
+                                        <input type="number" name="table_line_height" class="form-control form-control-sm" min="1" max="2.5" step="0.05" required value="{{ old('table_line_height', $layout['table_line_height'] ?? 1.05) }}">
+                                        <div class="form-text">Jarak antarbaris teks di dalam tabel nilai.</div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Jarak Baris Santri (mm)</label>
+                                        <input type="number" name="table_row_padding" class="form-control form-control-sm" min="0" max="3" step="0.05" required value="{{ old('table_row_padding', $layout['table_row_padding'] ?? 0.5) }}">
+                                        <div class="form-text">Padding atas-bawah tiap baris data santri.</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-12">
-                                <div class="form-text">Nomor halaman di kanan footer tetap otomatis. Kosongkan untuk memakai teks bawaan.</div>
+
+                            {{-- Tab 3: judul & identitas santri --}}
+                            <div class="tab-pane fade" id="layoutTabTitle" role="tabpanel">
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-heading me-1"></i>Judul Rapor</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Teks Judul (ID / Arab tunggal)</label>
+                                        <input type="text" name="title_text" class="form-control form-control-sm" maxlength="255"
+                                               value="{{ old('title_text', $layout['title_text'] ?? '') }}"
+                                               placeholder="LAPORAN HASIL BELAJAR AKHIR SEMESTER">
+                                        <div class="form-text">Kosongkan untuk memakai judul bawaan.</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Judul Arab (Bilingual)</label>
+                                        <input type="text" name="title_ar_text" class="form-control form-control-sm" maxlength="255" dir="rtl"
+                                               value="{{ old('title_ar_text', $layout['title_ar_text'] ?? '') }}"
+                                               placeholder="كشف درجات أعمال السنة">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Judul Latin (Bilingual)</label>
+                                        <input type="text" name="title_id_text" class="form-control form-control-sm" maxlength="255"
+                                               value="{{ old('title_id_text', $layout['title_id_text'] ?? '') }}"
+                                               placeholder="LAPORAN HASIL BELAJAR AKHIR SEMESTER">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Jarak Antar Judul (mm)</label>
+                                        <input type="number" name="title_gap" class="form-control form-control-sm" min="0" max="20" step="0.1"
+                                               value="{{ old('title_gap', $layout['title_gap'] ?? 0.5) }}">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Line Height Judul</label>
+                                        <input type="number" name="title_line_height" class="form-control form-control-sm" min="0.8" max="3" step="0.05"
+                                               value="{{ old('title_line_height', $layout['title_line_height'] ?? 1.2) }}">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Jarak Atas (mm)</label>
+                                        <input type="number" name="title_margin_top" class="form-control form-control-sm" min="0" max="30" step="0.1"
+                                               value="{{ old('title_margin_top', $layout['title_margin_top'] ?? 0.8) }}">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Jarak Bawah (mm)</label>
+                                        <input type="number" name="title_margin_bottom" class="form-control form-control-sm" min="0" max="30" step="0.1"
+                                               value="{{ old('title_margin_bottom', $layout['title_margin_bottom'] ?? 1.2) }}">
+                                    </div>
+                                </div>
+
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-user-3-line me-1"></i>Identitas Santri</h6>
+                                <div class="row g-2">
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Line Height Identitas</label>
+                                        <input type="number" name="ident_line_height" class="form-control form-control-sm" min="0.8" max="3" step="0.05"
+                                               value="{{ old('ident_line_height', $layout['ident_line_height'] ?? 1.05) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Jarak Antar Baris (mm)</label>
+                                        <input type="number" name="ident_row_padding" class="form-control form-control-sm" min="0" max="5" step="0.05"
+                                               value="{{ old('ident_row_padding', $layout['ident_row_padding'] ?? 0.15) }}">
+                                        <div class="form-text">Jarak baris Nama, Kelas, NIS, Semester.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Tab 4: gaya tabel & footer --}}
+                            <div class="tab-pane fade" id="layoutTabTable" role="tabpanel">
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-table-line me-1"></i>Gaya Tabel</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1">Tebal Garis (mm)</label>
+                                        <input type="number" name="table_border_width" class="form-control form-control-sm"
+                                               min="0" max="2" step="0.05" required
+                                               value="{{ old('table_border_width', $layout['table_border_width'] ?? 0.3) }}">
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1 d-block">Teks</label>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="bold_table_header" value="1"
+                                                   id="boldTableHeader" @checked(old('bold_table_header', $layout['bold_table_header'] ?? true))>
+                                            <label class="form-check-label small" for="boldTableHeader">Judul tebal</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <label class="form-label small mb-1 d-block">&nbsp;</label>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" name="bold_subject" value="1"
+                                                   id="boldSubject" @checked(old('bold_subject', $layout['bold_subject'] ?? true))>
+                                            <label class="form-check-label small" for="boldSubject">Nama mapel tebal</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-layout-bottom-2-line me-1"></i>Footer</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Footer Kiri</label>
+                                        <input type="text" name="footer_left" class="form-control form-control-sm" maxlength="120"
+                                               value="{{ old('footer_left', $layout['footer_left']) }}"
+                                               placeholder="{{ $docBahasa === 'id-ar' ? 'PAH-KSP-FORM-14-04' : 'PAH-KSP-FORM-14-02' }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Footer Tengah</label>
+                                        <input type="text" name="footer_center" class="form-control form-control-sm" maxlength="120"
+                                               value="{{ old('footer_center', $layout['footer_center']) }}"
+                                               placeholder="REV.01 / 10 September 2025">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small mb-1">Padding Footer (mm)</label>
+                                        <input type="number" name="footer_padding" class="form-control form-control-sm" min="0" max="20" step="0.5"
+                                               value="{{ old('footer_padding', $layout['footer_padding'] ?? 2) }}">
+                                    </div>
+                                    <div class="col-6 col-md-2 d-flex align-items-end">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" name="footer_border" value="1"
+                                                   id="footerBorder" @checked(old('footer_border', $layout['footer_border'] ?? false))>
+                                            <label class="form-check-label small" for="footerBorder">Garis atas footer</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-text">Nomor halaman di kanan footer tetap otomatis. Kosongkan untuk memakai teks bawaan.</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1116,9 +1178,20 @@
                     </div>
                     <div class="modal-body">
                         <p class="small text-muted mb-2">Santri: <strong id="noteStudent">—</strong></p>
-                        <textarea name="homeroom_note" id="noteText" class="form-control" rows="4" maxlength="500"
-                                  placeholder="Catatan untuk rapor (maks. 500 karakter)"></textarea>
-                        <small class="text-muted">Catatan ini tampil pada bagian "Catatan Wali Kelas" di Rapor.</small>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="noteText">Catatan Indonesia</label>
+                            <textarea name="homeroom_note" id="noteText" class="form-control" rows="3" maxlength="500"
+                                      placeholder="Catatan untuk rapor (maks. 500 karakter)"></textarea>
+                        </div>
+                        <div>
+                            <label class="form-label small mb-1" for="noteTextAr">Catatan Arab (RTL)</label>
+                            <textarea name="homeroom_note_ar" id="noteTextAr" class="form-control" rows="3" maxlength="500" dir="rtl"
+                                      placeholder="ملاحظات باللغة العربية (اختياري)"></textarea>
+                        </div>
+                        <div class="form-text mt-2">
+                            Gunakan <code>{nama}</code> untuk menempatkan nama santri. Pada catatan Arab, nama yang dipakai adalah nama Arab santri.
+                            Catatan Arab dipakai pada rapor bahasa Arab dan kolom Arab rapor bilingual; bila kosong dipakai catatan Indonesia.
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -1234,6 +1307,27 @@ renumberSubjectRows();
     window.applyRaporVariant = applyVariant;
 })();
 
+// Modal pengaturan bertab: selalu mulai dari tab pertama, dan buka tab yang
+// berisi field tidak valid agar pesan validasi tidak tersembunyi.
+(function () {
+    const modal = document.getElementById('layoutSettingsModal');
+    const form = document.getElementById('layoutSettingsForm');
+    if (!modal || !form) return;
+
+    const firstTab = modal.querySelector('.rapor-settings-tabs .nav-link');
+
+    modal.addEventListener('shown.bs.modal', function () {
+        if (firstTab) bootstrap.Tab.getOrCreateInstance(firstTab).show();
+    });
+
+    form.addEventListener('invalid', function (event) {
+        const pane = event.target.closest('.tab-pane');
+        if (!pane) return;
+        const trigger = modal.querySelector('[data-bs-target="#' + pane.id + '"]');
+        if (trigger) bootstrap.Tab.getOrCreateInstance(trigger).show();
+    }, true);
+})();
+
 @if($errors->any() && (old('kop_height') !== null || $errors->has('ttd_wali_file')))
     new bootstrap.Modal(document.getElementById('signatureSettingsModal')).show();
 @endif
@@ -1247,6 +1341,7 @@ document.querySelectorAll('.js-note').forEach(function (btn) {
         document.getElementById('noteForm').action = btn.dataset.action;
         document.getElementById('noteStudent').textContent = btn.dataset.name || '—';
         document.getElementById('noteText').value = btn.dataset.note || '';
+        document.getElementById('noteTextAr').value = btn.dataset.noteAr || '';
         new bootstrap.Modal(document.getElementById('noteModal')).show();
     });
 });

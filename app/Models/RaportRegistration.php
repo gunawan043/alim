@@ -30,6 +30,7 @@ class RaportRegistration extends Model
         'class_rank',
         'predicate',
         'homeroom_note',
+        'homeroom_note_ar',
         'finalized_at',
         'printed_at',
         'finalized_by',

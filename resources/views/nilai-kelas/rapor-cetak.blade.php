@@ -657,8 +657,8 @@
             </tr>
             <tr>
                 <td>
-                    @if(! empty($data['CatatanWali']))
-                        {!! \App\Support\ArabicText::toHtml($data['CatatanWali']) !!}
+                    @if(filled($data['CatatanWaliAr'] ?? null) || filled($data['CatatanWali'] ?? null))
+                        {!! \App\Support\ArabicText::toHtml($data['CatatanWaliAr'] ?? $data['CatatanWali']) !!}
                     @elseif(! empty($data['CatatanPredikat']))
                         {!! \App\Support\ArabicText::toHtml($data['CatatanPredikat']) !!}
                     @else

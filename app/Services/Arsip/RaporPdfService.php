@@ -23,6 +23,7 @@ use App\Services\SchoolUnitService;
 use App\Services\Ljk\LjkPdfFonts;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
+use App\Support\NoteTemplate;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Collection;
@@ -401,6 +402,7 @@ class RaporPdfService
             ->first();
 
         $catatanWali = $registration?->homeroom_note;
+        $catatanWaliAr = $registration?->homeroom_note_ar;
 
         // Catatan per predikat (per rombel) dipakai bila catatan wali kosong.
         $catatanPredikat = RaporPredicateNote::mapFor(
@@ -431,13 +433,20 @@ class RaporPdfService
             }
         }
 
+        $namaAr = filled($student->name_ar)
+            ? $student->name_ar
+            : (app(ArabicNameResolver::class)->studentName($student)
+                ?? app(ArabicNameGeneratorContract::class)->generate($student->name));
+
+        // Placeholder {nama} diisi saat cetak: nama Latin untuk catatan Indonesia,
+        // nama Arab untuk catatan Arab.
+        $catatanWali = NoteTemplate::render($catatanWali, $student->name);
+        $catatanWaliAr = NoteTemplate::render($catatanWaliAr, $namaAr);
+
         return [
             $studentId => [
                 'Nama' => $student->name,
-                'NamaAr' => filled($student->name_ar)
-                    ? $student->name_ar
-                    : (app(ArabicNameResolver::class)->studentName($student)
-                        ?? app(ArabicNameGeneratorContract::class)->generate($student->name)),
+                'NamaAr' => $namaAr,
                 'NIS' => $student->nis ?? '-',
                 'NISN' => $student->nisn ?? '-',
                 'Kelas' => $studyGroup->name,
@@ -455,6 +464,7 @@ class RaporPdfService
                 'Izin' => $iCount,
                 'Alpa' => $aCount,
                 'CatatanWali' => $catatanWali,
+                'CatatanWaliAr' => $catatanWaliAr,
                 'CatatanPredikat' => $catatanPredikat,
             ],
         ];
