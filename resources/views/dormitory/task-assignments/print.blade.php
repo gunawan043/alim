@@ -35,10 +35,11 @@
                         <tr>
                             <th style="width:45px;" class="text-center">No</th>
                             <th>Nama Staf</th>
-                            <th>Jabatan Asrama</th>
+                            <th>Jabatan</th>
+                            <th>Tugas Tambahan</th>
                             <th>Shift</th>
-                            <th>Bidang Tugas</th>
-                            <th>Keterangan</th>
+                            <th>Rincian Bidang</th>
+                            <th>No. SK</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -49,7 +50,14 @@
                                     <div class="fw-semibold">{{ $row['user']->name }}</div>
                                     <div class="small text-muted">{{ $row['user']->email }}</div>
                                 </td>
-                                <td>{{ $row['position_label'] }}</td>
+                                <td>{{ $row['position_name'] ?: '—' }}</td>
+                                <td>
+                                    @forelse(collect($row['task_types'] ?? []) as $task)
+                                        {{ $task->nama }}@if($task->pivot->hours_per_week) ({{ $task->pivot->hours_per_week }} JP)@endif{{ $loop->last ? '' : ', ' }}
+                                    @empty
+                                        —
+                                    @endforelse
+                                </td>
                                 <td>{{ \App\Support\DormitoryPosition::shiftLabel($row['shift']) }}</td>
                                 <td>
                                     @forelse($row['duties'] as $duty)
@@ -58,11 +66,19 @@
                                         —
                                     @endforelse
                                 </td>
-                                <td>{{ $row['notes'] ?: '—' }}</td>
+                                <td class="small">
+                                    {{ $row['nomor_sk'] ?: '—' }}
+                                    @if($row['tmt'] || $row['tst'])
+                                        <div class="text-muted">
+                                            TMT {{ $row['tmt']?->format('d/m/Y') ?? '—' }}
+                                            · TST {{ $row['tst']?->format('d/m/Y') ?? '—' }}
+                                        </div>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">Belum ada pembagian tugas.</td>
+                                <td colspan="7" class="text-center text-muted py-4">Belum ada pembagian tugas.</td>
                             </tr>
                         @endforelse
                     </tbody>

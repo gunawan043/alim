@@ -730,6 +730,10 @@
 
                 @endif
 
+                {{-- Data GTK satuan kerja — berlaku untuk semua role/satuan kerja.
+                     Satuan kerja mengikuti konteks halaman, lalu work unit user. --}}
+                @include('layouts.sidebar.partials.menu-data-gtk-satker')
+
                 <li class="menu-title"><span>Bantuan &amp; Laporan</span></li>
                 <li class="nav-item">
                     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.feedback.']) ? ' active' : '' }}"

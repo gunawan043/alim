@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -22,6 +23,8 @@ class DormitoryStaffAssignment extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'tmt' => 'date',
+        'tst' => 'date',
         'is_active' => 'boolean',
         'duties' => 'array',
     ];
@@ -40,8 +43,12 @@ class DormitoryStaffAssignment extends Model
         'end_date',
         'status',
         'position',
+        'position_id',
         'shift',
         'duties',
+        'nomor_sk',
+        'tmt',
+        'tst',
         'notes',
         'updated_by_id',
     ];
@@ -49,6 +56,31 @@ class DormitoryStaffAssignment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Jabatan mengikuti master struktur organisasi, bukan teks bebas.
+     *
+     * Dinamai `structuralPosition` karena kolom legacy `position` masih
+     * menyimpan slug (`wakil_kepala_asrama`, dst.) dan akan menutupi relasi
+     * bila dinamai `position`.
+     */
+    public function structuralPosition(): BelongsTo
+    {
+        return $this->belongsTo(StructuralPosition::class, 'position_id');
+    }
+
+    /**
+     * Tugas tambahan mengikuti master jenis tugas tambahan.
+     */
+    public function taskTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            AdditionalTaskType::class,
+            'dormitory_staff_assignment_tasks',
+            'assignment_id',
+            'additional_task_type_id',
+        )->withPivot('hours_per_week')->withTimestamps();
     }
 
     public function dormitory(): BelongsTo
