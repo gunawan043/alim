@@ -521,7 +521,7 @@
                             <span><i class="ri-file-paper-2-line me-1 text-primary"></i>Kertas:
                                 {{ strtoupper($layout['paper_size']) }}
                             </span>
-                            <span class="text-muted">Varian: {{ strtoupper($docJenis) }} — {{ strtoupper($docBahasa) }}</span>
+                            <span class="text-muted" id="activeVariantLabel">Varian: {{ strtoupper($docJenis) }} — {{ strtoupper($docBahasa) }}</span>
                         </div>
                     </div>
 
@@ -557,34 +557,17 @@
                     </div>
 
                     @if($students->isNotEmpty() && $previewStudent)
-                        <div class="row g-2 mb-2">
-                            <div class="col-12">
-                                <select id="previewStudent" class="form-select form-select-sm">
-                                    @foreach($students as $history)
-                                        @if($history->student)
-                                            <option value="{{ $history->student->id }}">{{ $history->student->name }} — {{ $history->student->nis ?? $history->student->nisn ?? '-' }}</option>
-                                        @endif
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-5">
-                                <select id="previewJenis" class="form-select form-select-sm">
-                                    <option value="sts" @selected($docJenis === 'sts')>STS</option>
-                                    <option value="sas" @selected($docJenis === 'sas')>SAS</option>
-                                </select>
-                            </div>
-                            <div class="col-4">
-                                <select id="previewBahasa" class="form-select form-select-sm">
-                                    <option value="id" @selected($docBahasa === 'id')>Indonesia</option>
-                                    <option value="ar" @selected($docBahasa === 'ar')>Arab</option>
-                                    <option value="id-ar" @selected($docBahasa === 'id-ar')>Bilingual</option>
-                                </select>
-                            </div>
-                            <div class="col-3">
-                                <button type="button" id="previewRefresh" class="btn btn-outline-primary btn-sm w-100" title="Muat ulang preview">
-                                    <i class="ri-refresh-line"></i>
-                                </button>
-                            </div>
+                        <div class="d-flex gap-2 mb-2">
+                            <select id="previewStudent" class="form-select form-select-sm">
+                                @foreach($students as $history)
+                                    @if($history->student)
+                                        <option value="{{ $history->student->id }}">{{ $history->student->name }} — {{ $history->student->nis ?? $history->student->nisn ?? '-' }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            <button type="button" id="previewRefresh" class="btn btn-outline-primary btn-sm flex-shrink-0" title="Muat ulang preview">
+                                <i class="ri-refresh-line"></i>
+                            </button>
                         </div>
                         <div class="border rounded overflow-hidden bg-light" style="height:620px;">
                             <iframe id="raporPreview"
@@ -675,9 +658,9 @@
                                                                    maxlength="255" placeholder="Nama Arab" aria-label="Nama mapel Arab">
                                                         </div>
                                                     </div>
-                                                    @if($subject->category)
+                                                    <!-- @if($subject->category)
                                                         <small class="text-muted d-block mt-1">{{ $subject->category }}</small>
-                                                    @endif
+                                                    @endif -->
                                                 </td>
                                                 <td class="text-center">
                                                     <input type="text" inputmode="decimal"
@@ -1173,13 +1156,8 @@ renumberSubjectRows();
         if (mediaVariantLabel) mediaVariantLabel.textContent = labels[key] || key;
     }
 
-    document.querySelectorAll('.js-variant-settings').forEach(function (button) {
-        button.addEventListener('click', function () {
-            applyVariant(this.dataset.variantJenis, this.dataset.variantBahasa);
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('layoutSettingsModal')).show();
-        });
-    });
-
+    // Tombol varian mengubah preview (lihat IIFE preview di bawah) dan
+    // menyiapkan isi modal agar pengaturan tersimpan pada varian yang sama.
     window.applyRaporVariant = applyVariant;
 })();
 
@@ -1247,16 +1225,31 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
 (function () {
     const iframe = document.getElementById('raporPreview');
     const student = document.getElementById('previewStudent');
-    const jenis = document.getElementById('previewJenis');
-    const bahasa = document.getElementById('previewBahasa');
     const open = document.getElementById('previewOpen');
     const refresh = document.getElementById('previewRefresh');
+    const variantButtons = document.querySelectorAll('.js-variant-settings');
+    const activeLabel = document.getElementById('activeVariantLabel');
 
     if (!iframe || !student) return;
 
     const baseUrl = @json($previewBaseUrl);
     const academicYearId = @json($selectedAyId);
     const semester = @json($selectedSem);
+    const storageKeyJenis = 'rapor_preview_jenis:' + @json($studyGroup->id);
+    const storageKeyBahasa = 'rapor_preview_bahasa:' + @json($studyGroup->id);
+
+    let activeJenis = @json($docJenis);
+    let activeBahasa = @json($docBahasa);
+
+    // Bila URL tidak membawa varian (mis. setelah redirect simpan data),
+    // pulihkan pilihan terakhir dari browser agar preview tidak berpindah.
+    const initialUrl = new URL(window.location.href);
+    if (!initialUrl.searchParams.has('doc_jenis')) {
+        const storedJenis = localStorage.getItem(storageKeyJenis);
+        const storedBahasa = localStorage.getItem(storageKeyBahasa);
+        if (['sts', 'sas'].includes(storedJenis)) activeJenis = storedJenis;
+        if (['id', 'ar', 'id-ar'].includes(storedBahasa)) activeBahasa = storedBahasa;
+    }
 
     function buildPreviewUrl() {
         if (!student.value) return '';
@@ -1264,10 +1257,39 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
         const url = new URL(baseUrl.replace('__STUDENT__', encodeURIComponent(student.value)));
         if (academicYearId) url.searchParams.set('academic_year_id', academicYearId);
         if (semester) url.searchParams.set('semester', semester);
-        url.searchParams.set('jenis', jenis.value || 'sts');
-        url.searchParams.set('bahasa', bahasa.value || 'id');
+        url.searchParams.set('jenis', activeJenis);
+        url.searchParams.set('bahasa', activeBahasa);
 
         return url.toString();
+    }
+
+    function paintVariantButtons() {
+        variantButtons.forEach(function (button) {
+            const active = button.dataset.variantJenis === activeJenis
+                && button.dataset.variantBahasa === activeBahasa;
+            button.classList.toggle('btn-primary', active);
+            button.classList.toggle('btn-outline-secondary', !active);
+        });
+
+        if (activeLabel) {
+            activeLabel.textContent = 'Varian: ' + activeJenis.toUpperCase() + ' — ' + activeBahasa.toUpperCase();
+        }
+    }
+
+    function syncUrl() {
+        // Simpan varian di URL agar refresh (F5) dan redirect setelah simpan
+        // tetap membuka preview yang sama.
+        const pageUrl = new URL(window.location.href);
+        pageUrl.searchParams.set('doc_jenis', activeJenis);
+        pageUrl.searchParams.set('doc_bahasa', activeBahasa);
+        window.history.replaceState({}, '', pageUrl.toString());
+
+        try {
+            localStorage.setItem(storageKeyJenis, activeJenis);
+            localStorage.setItem(storageKeyBahasa, activeBahasa);
+        } catch (e) {
+            // localStorage bisa diblokir; URL tetap menjadi sumber utama.
+        }
     }
 
     function refreshPreview() {
@@ -1275,18 +1297,40 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
         if (!url) return;
         iframe.src = url;
         if (open) open.href = url;
-
-        // Simpan varian di URL halaman agar refresh (F5) tidak kembali ke STS/ID.
-        const pageUrl = new URL(window.location.href);
-        pageUrl.searchParams.set('doc_jenis', jenis.value || 'sts');
-        pageUrl.searchParams.set('doc_bahasa', bahasa.value || 'id');
-        window.history.replaceState({}, '', pageUrl.toString());
     }
 
-    [student, jenis, bahasa].forEach(function (el) {
-        if (el) el.addEventListener('change', refreshPreview);
+    function selectVariant(jenis, bahasa) {
+        activeJenis = jenis;
+        activeBahasa = bahasa;
+
+        // Isi modal pengaturan dengan nilai varian ini.
+        if (typeof window.applyRaporVariant === 'function') {
+            window.applyRaporVariant(jenis, bahasa);
+        }
+
+        paintVariantButtons();
+        syncUrl();
+        refreshPreview();
+    }
+
+    variantButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            selectVariant(this.dataset.variantJenis, this.dataset.variantBahasa);
+        });
     });
+
+    if (student) student.addEventListener('change', refreshPreview);
     if (refresh) refresh.addEventListener('click', refreshPreview);
+
+    paintVariantButtons();
+
+    if (!initialUrl.searchParams.has('doc_jenis')) {
+        if (typeof window.applyRaporVariant === 'function') {
+            window.applyRaporVariant(activeJenis, activeBahasa);
+        }
+        refreshPreview();
+        syncUrl();
+    }
 })();
 </script>
 @endpush

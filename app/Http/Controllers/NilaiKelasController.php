@@ -1122,8 +1122,16 @@ class NilaiKelasController extends Controller
         // Pengaturan tanggal pembagian, tata letak PDF, dan mapel rapor
         // (per sekolah + TA + semester; berlaku untuk STS dan SAS).
         $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
-        $docJenis = in_array($request->input('doc_jenis'), ['sts', 'sas'], true) ? $request->input('doc_jenis') : 'sts';
-        $docBahasa = in_array($request->input('doc_bahasa'), ['id', 'ar', 'id-ar'], true) ? $request->input('doc_bahasa') : 'id';
+        // Varian dokumen yang sedang dipratinjau. Query string menang; bila
+        // tidak ada (mis. redirect setelah simpan), pakai varian terakhir
+        // di session agar preview tidak berubah sendiri.
+        $docJenis = in_array($request->input('doc_jenis'), ['sts', 'sas'], true)
+            ? $request->input('doc_jenis')
+            : (in_array(session('rapor_doc_jenis'), ['sts', 'sas'], true) ? session('rapor_doc_jenis') : 'sts');
+        $docBahasa = in_array($request->input('doc_bahasa'), ['id', 'ar', 'id-ar'], true)
+            ? $request->input('doc_bahasa')
+            : (in_array(session('rapor_doc_bahasa'), ['id', 'ar', 'id-ar'], true) ? session('rapor_doc_bahasa') : 'id');
+        session(['rapor_doc_jenis' => $docJenis, 'rapor_doc_bahasa' => $docBahasa]);
         $layout = $distributionSetting?->variantLayoutSettings($docJenis, $docBahasa) ?? RaporDistributionSetting::defaultLayout();
 
         $variantLayouts = [];

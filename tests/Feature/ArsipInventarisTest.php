@@ -618,7 +618,23 @@ class ArsipInventarisTest extends TestCase
             ->assertSee('name="margin_top"', false)
             ->assertSee('name="font_size"', false)
             ->assertSee('raporPreview', false)
-            ->assertSee('name="paper_size"', false);
+            ->assertSee('name="paper_size"', false)
+            ->assertSee('js-variant-settings', false)
+            ->assertDontSee('id="previewJenis"', false)
+            ->assertDontSee('id="previewBahasa"', false);
+    }
+
+    public function test_preview_memakai_varian_dari_url(): void
+    {
+        $url = "/{$this->tu->id}/schools/nilai-kelas/{$this->activeRombel->id}/rapor"
+            ."?academic_year_id={$this->activeAy->id}&semester=ganjil&doc_jenis=sas&doc_bahasa=id-ar";
+
+        $this->actingAs($this->tu)
+            ->get($url)
+            ->assertOk()
+            ->assertSee('Varian: SAS — ID-AR')
+            ->assertSee('jenis=sas', false)
+            ->assertSee('bahasa=id-ar', false);
     }
 
     public function test_pengaturan_tata_letak_rapor_disimpan_untuk_sts_dan_sas(): void
