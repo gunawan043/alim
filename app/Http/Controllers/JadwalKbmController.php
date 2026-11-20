@@ -12,6 +12,7 @@ use App\Models\JadwalKbm;
 use App\Models\OtherTeacherTask;
 use App\Models\School;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TahfidzSchedule;
 use App\Models\TeacherClassAttendance;
@@ -283,9 +284,20 @@ class JadwalKbmController extends Controller
             $semester = 'ganjil';
         }
 
-        // Ringkasan penugasan mengajar (SK guru) per rombel — sumber JP yang akan digenerate.
+        // Sumber mapel & JP: kurikulum rombel. SK hanya dipakai untuk guru.
+        $curriculumSummary = collect();
         $assignmentSummary = collect();
+
         if ($selectedAy && $studyGroups->isNotEmpty()) {
+            $curriculumSummary = StudyGroupSubject::query()
+                ->where('academic_year_id', $selectedAy->id)
+                ->where('is_active', true)
+                ->whereIn('study_group_id', $studyGroups->pluck('id'))
+                ->selectRaw('study_group_id, COUNT(*) as total_subjects, COALESCE(SUM(weekly_hours), 0) as total_hours')
+                ->groupBy('study_group_id')
+                ->get()
+                ->keyBy('study_group_id');
+
             $assignmentSummary = TeachingAssignment::query()
                 ->where('academic_year_id', $selectedAy->id)
                 ->where('status', 'active')
@@ -295,6 +307,9 @@ class JadwalKbmController extends Controller
                 ->get()
                 ->keyBy('study_group_id');
         }
+
+        // Fallback data lama: rombel yang belum punya baris kurikulum memakai SK.
+        $subjectSummary = $curriculumSummary->isNotEmpty() ? $curriculumSummary : $assignmentSummary;
 
         // Tugas mengajar tambahan (data pendukung, bukan sumber JP generator).
         $otherTasks = OtherTeacherTask::with(['teacher:id,name', 'studyGroup:id,name'])
@@ -308,14 +323,14 @@ class JadwalKbmController extends Controller
             ? DB::table('class_schedule_slots')->where('school_id', $schoolId)->where('is_active', 1)->count()
             : 0;
 
-        $readyCount = $assignmentSummary->count();
+        $readyCount = $subjectSummary->count();
 
         return view('jadwal-kbm.generate', compact(
             'studyGroups',
             'academicYears',
             'selectedAy',
             'semester',
-            'assignmentSummary',
+            'subjectSummary',
             'otherTasks',
             'masterSlotCount',
             'readyCount'

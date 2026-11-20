@@ -16,8 +16,9 @@
 @endcomponent
 
 <p class="text-muted small mb-3">
-    Jadwal sekolah disusun dari <strong>penugasan mengajar</strong> (SK guru: guru × mapel × rombel × JP)
-    untuk seluruh rombel sekaligus, dengan validasi bentrok guru/rombel.
+    Jadwal sekolah disusun dari <strong>kurikulum</strong>: daftar mapel dan JP per rombel.
+    <strong>SK hanya menentukan guru pengampu</strong>, bukan jumlah JP. <strong>1 JP = 1 slot jam pelajaran.</strong>
+    Seluruh rombel diproses sekaligus dengan validasi bentrok guru/rombel.
 </p>
 
 @if(! $selectedAy)
@@ -103,20 +104,24 @@
                     <a href="{{ route('user.jadwal-kbm.availability', ['userId' => $userId]) }}" class="alert-link">Ketersediaan Guru</a>
                     sebelum generate.
                 </span>
+                <span class="d-block mt-1">
+                    <i class="ri-equalizer-line me-1"></i>
+                    Kapasitas: <strong>{{ $masterSlotCount }} slot</strong> · 1 JP mengambil 1 slot.
+                    Total JP kurikulum dihitung dari mapel rombel, bukan dari SK.
+                </span>
             </div>
 
             @if(($readyCount ?? 0) === 0)
                 <div class="alert alert-warning small">
                     <i class="ri-error-warning-line me-1"></i>
-                    Belum ada penugasan mengajar pada TA ini. Isi dulu di
-                    <a href="{{ route('user.teaching-assignments.index', ['userId' => $userId]) }}" class="alert-link">Plotting Guru Mengajar</a>
-                    atau
-                    <a href="{{ route('user.teaching-assignments.bulk-create', ['userId' => $userId]) }}" class="alert-link">Input Massal</a>.
+                    Belum ada mapel di kurikulum rombel pada TA ini. Isi dulu mapel/JP di
+                    <a href="{{ route('user.kurikulum.index', ['userId' => $userId]) }}" class="alert-link">Kurikulum</a>
+                    atau <a href="{{ route('user.subjects.index', ['userId' => $userId]) }}" class="alert-link">Master Mapel</a>.
                 </div>
             @else
                 <div class="alert alert-success small">
                     <i class="ri-checkbox-circle-line me-1"></i>
-                    {{ $readyCount }} rombel siap digenerate — seluruh rombel terpilih otomatis.
+                    {{ $readyCount }} rombel siap digenerate — mapel & JP dari kurikulum; guru dari SK.
                 </div>
             @endif
 
@@ -139,13 +144,13 @@
                             <th>Rombel</th>
                             <th>Tingkat</th>
                             <th>Wali Kelas</th>
-                            <th class="text-center">Mapel (Penugasan)</th>
-                            <th class="text-center">Total JP (Penugasan)</th>
+                            <th class="text-center">Mapel (Kurikulum)</th>
+                            <th class="text-center">Total JP (Kurikulum)</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($studyGroups as $sg)
-                            @php $summary = $assignmentSummary[$sg->id] ?? null; @endphp
+                            @php $summary = $subjectSummary[$sg->id] ?? null; @endphp
                             <tr>
                                 <td>
                                     <input type="checkbox" name="study_group_ids[]" value="{{ $sg->id }}" class="sg-cb" checked>
@@ -157,7 +162,7 @@
                                     @if($summary)
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ $summary->total_subjects }} mapel</span>
                                     @else
-                                        <span class="badge bg-secondary-subtle text-secondary" title="Sumber jadwal adalah penugasan mengajar (SK/pembagian tugas)">Belum ada penugasan</span>
+                                        <span class="badge bg-secondary-subtle text-secondary" title="Sumber mapel/JP adalah kurikulum rombel">Belum ada mapel kurikulum</span>
                                     @endif
                                 </td>
                                 <td class="text-center">

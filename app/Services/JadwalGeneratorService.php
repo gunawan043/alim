@@ -1006,11 +1006,11 @@ class JadwalGeneratorService
     }
 
     /**
-     * Daftar rencana mapel × guru × JP dari kurikulum + assignment, diurutkan JP terbesar dulu.
+     * Daftar rencana mapel × guru × JP dari kurikulum, diurutkan JP terbesar dulu.
      *
-     * Kurikulum (study_group_subjects / grade_level_subjects) menjadi sumber
-     * daftar mapel dan JP. Jika mapel belum ada di SK, tetap dijadwalkan dengan
-     * guru kosong agar JP kurikulum tidak hilang, lalu dilaporkan sebagai warning.
+     * Kurikulum (study_group_subjects / grade_level_subjects) adalah SATU-SATUNYA
+     * sumber daftar mapel dan JP. SK hanya dipakai untuk mencocokkan guru.
+     * Jika mapel belum ada di SK, tetap dijadwalkan dengan guru kosong.
      *
      * @param  array<string, array{subject:Subject,hours:int}>|null  $curriculum
      * @return array<int, array<string, mixed>>
@@ -1018,7 +1018,34 @@ class JadwalGeneratorService
     protected function resolvePlans(Collection $assignments, StudyGroup $studyGroup, ?array $curriculum = null): array
     {
         $curriculum ??= $this->curriculumSubjects($studyGroup);
+        $hasCurriculum = $curriculum !== [];
         $plans = [];
+
+        if (! $hasCurriculum) {
+            // Data lama tanpa kurikulum rombel: pakai SK sebagai fallback.
+            foreach ($assignments as $assignment) {
+                if (! $assignment->subject) {
+                    continue;
+                }
+
+                $key = $assignment->subject_id.'|'.($assignment->teacher_id ?? 'none');
+                $hours = $this->resolveWeeklyHours($assignment, $studyGroup);
+
+                $plans[$key] = [
+                    'subject_id' => $assignment->subject_id,
+                    'subject_name' => $assignment->subject->name,
+                    'teacher_id' => $assignment->teacher_id,
+                    'teacher_name' => $assignment->teacher?->name ?? '-',
+                    'hours' => $hours,
+                    'no_teacher' => false,
+                ];
+            }
+
+            usort($plans, fn ($a, $b) => $b['hours'] <=> $a['hours']);
+
+            return $plans;
+        }
+
         $assignmentsBySubject = $assignments->groupBy('subject_id');
 
         foreach ($curriculum as $subjectId => $row) {
@@ -1073,31 +1100,6 @@ class JadwalGeneratorService
                 'hours' => $hours,
                 'no_teacher' => ! $teacher,
                 'notes' => $teacher ? null : self::NO_TEACHER_NOTE,
-            ];
-        }
-
-        // Assignment yang tidak tercatat di kurikulum tetap dihormati (data lama).
-        foreach ($assignments as $assignment) {
-            if (! $assignment->subject || isset($curriculum[$assignment->subject_id])) {
-                continue;
-            }
-
-            $key = $assignment->subject_id.'|'.($assignment->teacher_id ?? 'none');
-            $hours = $this->resolveWeeklyHours($assignment, $studyGroup);
-
-            if (isset($plans[$key])) {
-                $plans[$key]['hours'] = max($plans[$key]['hours'], $hours);
-
-                continue;
-            }
-
-            $plans[$key] = [
-                'subject_id' => $assignment->subject_id,
-                'subject_name' => $assignment->subject->name,
-                'teacher_id' => $assignment->teacher_id,
-                'teacher_name' => $assignment->teacher?->name ?? '-',
-                'hours' => $hours,
-                'no_teacher' => false,
             ];
         }
 

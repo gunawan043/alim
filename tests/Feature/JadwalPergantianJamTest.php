@@ -943,14 +943,20 @@ class JadwalPergantianJamTest extends TestCase
             'is_active' => true,
         ]);
 
-        StudyGroupSubject::create([
-            'school_id' => $this->school->id,
-            'academic_year_id' => $this->ay->id,
-            'study_group_id' => $this->sgA->id,
-            'subject_id' => $subject->id,
-            'weekly_hours' => 2,
-            'is_active' => true,
-        ]);
+        foreach ([
+            [$this->math, 6],
+            [$this->arabic, 4],
+            [$subject, 2],
+        ] as [$curriculumSubject, $hours]) {
+            StudyGroupSubject::create([
+                'school_id' => $this->school->id,
+                'academic_year_id' => $this->ay->id,
+                'study_group_id' => $this->sgA->id,
+                'subject_id' => $curriculumSubject->id,
+                'weekly_hours' => $hours,
+                'is_active' => true,
+            ]);
+        }
 
         $result = app(JadwalGeneratorService::class)->generateForStudyGroup(
             $this->sgA->id,

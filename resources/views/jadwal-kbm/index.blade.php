@@ -232,7 +232,7 @@
                     @else
                         <span class="badge bg-warning-subtle text-warning">Tahun ajaran aktif belum ditetapkan</span>
                     @endif
-                    <span class="text-muted small ms-2">Generator menyusun jadwal <strong>seluruh sekolah</strong> dari penugasan mengajar (SK guru) &amp; master Jam Pelajaran.</span>
+                    <span class="text-muted small ms-2">Generator menyusun jadwal <strong>seluruh sekolah</strong> dari kurikulum (mapel + JP); SK hanya menentukan guru. <strong>1 JP = 1 slot.</strong></span>
                 </p>
             </div>
             <div class="col-lg-auto">
