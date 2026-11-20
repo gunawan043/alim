@@ -1036,29 +1036,66 @@ class JadwalGeneratorService
 
     /**
      * Tempatkan satu rencana mapel ke slot-slot bebas.
-     * Strategi: sebar merata antar hari (maks. ceil(JP/2) per hari, maks. JP untuk 1-2 JP),
-     * lalu longgarkan bila slot terbatas.
+     * Strategi: bagi JP ke seluruh hari mengajar secara merata (dengan rotasi
+     * awal per mapel/rombel), isi kuota tiap hari, lalu distribusikan sisa
+     * bila ada bentrok guru atau slot penuh.
      */
     protected function placePlan(StudyGroup $studyGroup, string $academicYearId, array $plan, array $masterDays): int
     {
-        $hours = (int) $plan['hours'];
+        $hours = max(0, (int) $plan['hours']);
+
+        if ($hours === 0) {
+            return 0;
+        }
+
+        $days = $this->teachingDays($masterDays);
+
+        if ($days === []) {
+            return 0;
+        }
+
+        $quotas = $this->distributeQuota($hours, $days, $studyGroup, $plan);
         $remaining = $hours;
         $placed = 0;
-        $maxPerDay = $hours <= 2 ? $hours : (int) ceil($hours / 2);
-        $perDay = [];
         $lastSlotPerDay = [];
+
+        // Fase 1 — isi kuota per hari. Kuota disebar merata sejak awal agar
+        // mapel 2–3 JP tidak menumpuk di Senin–Rabu dan meninggalkan Jumat/Sabtu kosong.
+        foreach ($days as $day) {
+            $quota = (int) ($quotas[$day] ?? 0);
+
+            for ($i = 0; $i < $quota && $remaining > 0; $i++) {
+                $slot = $this->findFreeSlotOnDay(
+                    $studyGroup->id,
+                    $studyGroup->school_id,
+                    $plan['teacher_id'],
+                    $academicYearId,
+                    $day,
+                    $masterDays[$day] ?? [],
+                    $lastSlotPerDay[$day] ?? null
+                );
+
+                if ($slot === null) {
+                    break;
+                }
+
+                $this->createJadwal($studyGroup, $academicYearId, $plan, $slot);
+                $placed++;
+                $remaining--;
+                $lastSlotPerDay[$day] = $slot['slot_index'];
+            }
+        }
+
+        // Fase 2 — sisa kuota yang gagal (bentrok guru/slot penuh) dicarikan
+        // slot di hari lain secara bergilir.
         $guard = 0;
 
         while ($remaining > 0 && $guard++ < 300) {
             $placedThisRound = false;
 
-            foreach (self::DAYS_OF_WEEK as $day) {
+            foreach ($days as $day) {
                 if ($remaining <= 0) {
                     break;
-                }
-
-                if (($perDay[$day] ?? 0) >= $maxPerDay) {
-                    continue;
                 }
 
                 $slot = $this->findFreeSlotOnDay(
@@ -1078,47 +1115,70 @@ class JadwalGeneratorService
                 $this->createJadwal($studyGroup, $academicYearId, $plan, $slot);
                 $placed++;
                 $remaining--;
-                $perDay[$day] = ($perDay[$day] ?? 0) + 1;
                 $lastSlotPerDay[$day] = $slot['slot_index'];
                 $placedThisRound = true;
             }
 
             if (! $placedThisRound) {
-                // Longgarkan batas per hari: cari slot apa pun yang bebas.
-                foreach (self::DAYS_OF_WEEK as $day) {
-                    if ($remaining <= 0) {
-                        break;
-                    }
-
-                    $slot = $this->findFreeSlotOnDay(
-                        $studyGroup->id,
-                        $studyGroup->school_id,
-                        $plan['teacher_id'],
-                        $academicYearId,
-                        $day,
-                        $masterDays[$day] ?? [],
-                        $lastSlotPerDay[$day] ?? null
-                    );
-
-                    if ($slot === null) {
-                        continue;
-                    }
-
-                    $this->createJadwal($studyGroup, $academicYearId, $plan, $slot);
-                    $placed++;
-                    $remaining--;
-                    $lastSlotPerDay[$day] = $slot['slot_index'];
-                    $placedThisRound = true;
-                    break;
-                }
-            }
-
-            if (! $placedThisRound) {
-                break; // Tidak ada slot tersisa sama sekali.
+                break;
             }
         }
 
         return $placed;
+    }
+
+    /**
+     * Hari yang benar-benar memiliki jam mengajar (bukan hanya istirahat).
+     *
+     * @param  array<int, array<int, array{slot:int, start:string, end:string, is_break:bool}>>  $masterDays
+     * @return array<int, int>
+     */
+    private function teachingDays(array $masterDays): array
+    {
+        $days = [];
+
+        foreach ($masterDays as $day => $slots) {
+            foreach ($slots as $slot) {
+                if (! ($slot['is_break'] ?? false)) {
+                    $days[] = (int) $day;
+
+                    break;
+                }
+            }
+        }
+
+        sort($days);
+
+        return array_values(array_unique($days));
+    }
+
+    /**
+     * Bagi JP satu mapel ke hari-hari mengajar secara merata.
+     * Contoh 3 JP / 6 hari = 1 JP pada 3 hari yang berbeda, bukan Senin–Rabu.
+     *
+     * @param  array<int, int>  $days
+     * @param  array<string, mixed>  $plan
+     * @return array<int, int>
+     */
+    private function distributeQuota(int $hours, array $days, StudyGroup $studyGroup, array $plan): array
+    {
+        $dayCount = count($days);
+        $base = intdiv($hours, $dayCount);
+        $extra = $hours % $dayCount;
+
+        $quotas = array_fill_keys($days, $base);
+
+        if ($extra > 0) {
+            $seed = $studyGroup->id.'|'.$plan['subject_id'].'|'.($plan['teacher_id'] ?? '');
+            $offset = abs((int) crc32($seed)) % $dayCount;
+
+            for ($i = 0; $i < $extra; $i++) {
+                $day = $days[($offset + $i) % $dayCount];
+                $quotas[$day]++;
+            }
+        }
+
+        return $quotas;
     }
 
     /**

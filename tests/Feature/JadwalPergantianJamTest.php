@@ -861,6 +861,75 @@ class JadwalPergantianJamTest extends TestCase
         return new UploadedFile($path, 'jadwal.csv', 'text/csv', null, true);
     }
 
+    public function test_generator_spreads_small_subjects_across_days_without_gaps(): void
+    {
+        $this->actingAs($this->admin);
+
+        $this->assignMathA->update(['weekly_hours' => 3]);
+        $this->assignArabicA->update(['weekly_hours' => 3]);
+
+        $extraSubjects = [
+            ['IPS', 'Ilmu Pengetahuan Sosial', $this->teacher1],
+            ['SENI', 'Seni Budaya', $this->teacher2],
+        ];
+
+        foreach ($extraSubjects as [$code, $name, $teacher]) {
+            $subject = Subject::create([
+                'school_id' => $this->school->id,
+                'code' => $code,
+                'name' => $name,
+                'credit_hours' => 3,
+                'is_active' => true,
+            ]);
+
+            TeachingAssignment::create([
+                'decree_id' => $this->assignMathA->decree_id,
+                'teacher_id' => $teacher->id,
+                'school_id' => $this->school->id,
+                'academic_year_id' => $this->ay->id,
+                'study_group_id' => $this->sgA->id,
+                'subject_id' => $subject->id,
+                'weekly_hours' => 3,
+                'status' => 'active',
+            ]);
+        }
+
+        $result = app(JadwalGeneratorService::class)->generateForStudyGroup(
+            $this->sgA->id,
+            $this->ay->id,
+            'ganjil',
+            true,
+        );
+
+        $this->assertSame(12, $result['generated']);
+        $this->assertSame([], $result['shortages']);
+
+        $rows = JadwalKbm::where('study_group_id', $this->sgA->id)
+            ->where('academic_year_id', $this->ay->id)
+            ->get()
+            ->groupBy('day_of_week');
+
+        $this->assertGreaterThanOrEqual(5, $rows->count(), 'JP kecil harus tersebar, bukan menumpuk di awal pekan.');
+
+        foreach ($rows as $day => $entries) {
+            $slots = $entries->pluck('slot_index')->map(fn ($slot) => (int) $slot)->sort()->values()->all();
+            $teachingSlots = DB::table('class_schedule_slots')
+                ->where('school_id', $this->school->id)
+                ->where('day_of_week', $day)
+                ->where('is_break', 0)
+                ->orderBy('slot_number')
+                ->pluck('slot_number')
+                ->map(fn ($slot) => (int) $slot)
+                ->all();
+
+            $this->assertSame(
+                array_slice($teachingSlots, 0, count($slots)),
+                $slots,
+                'Slot dalam satu hari harus berurutan tanpa lubang.'
+            );
+        }
+    }
+
     private function seedFixture(): void
     {
         $workUnitId = (string) Str::uuid();
