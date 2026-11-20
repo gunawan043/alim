@@ -45,6 +45,13 @@ class PerbaikiSatkerAsrama extends Command
     private const JENIS_PENGASUHAN = 'dc268a18-ae2b-4dcb-8f32-c796eb9316b9';
 
     /**
+     * Unit yang termasuk lingkup pengasuhan/asrama.
+     *
+     * @var list<string>
+     */
+    private const ASRAMA_UNITS = ['smp_putri', 'sma_putri', 'ma_plus', 'smp_putra', 'pps'];
+
+    /**
      * Unit di luar target yang tetap perlu ikut dicari, karena stafnya akan
      * dipindahkan (mis. staf asrama diniyah yang masih tercatat di unit
      * akademik PPS Diniyah).
@@ -112,6 +119,7 @@ class PerbaikiSatkerAsrama extends Command
             'MUHAMMAD ALFIN HIDAYAT' => ['smp_putra', 'staf'],
             'HENDRI EFENDI' => ['smp_putra', 'staf'],
             'UTUH ARYA GUNA' => ['smp_putra', 'staf'],
+            'AGAM SASTRA HAMZANI' => ['smp_putra', 'staf', 'pengasuhan'],
 
             // Perizinan putra (bukan putri)
             'ZAINUDDIN' => ['smp_putra', 'perizinan'],
@@ -147,7 +155,6 @@ class PerbaikiSatkerAsrama extends Command
             'ZOHRIADI' => ['keamanan', null],
             'I WAYAN GEDE KOESWARDANA' => ['keamanan', null],
             'MUHAMMAD NASIR' => ['keamanan', null],
-            'AGAM SASTRA HAMZANI' => ['keamanan', null],
         ];
     }
 
@@ -296,8 +303,12 @@ class PerbaikiSatkerAsrama extends Command
                 $user->syncRoles([self::ROLE_KEAMANAN]);
             }
 
-            if ($unitKey === 'pps' && ! $user->hasRole('Asrama')) {
-                $user->assignRole('Asrama');
+            if (in_array($unitKey, self::ASRAMA_UNITS, true)) {
+                if (! $user->hasRole('Asrama')) {
+                    $user->syncRoles(['Asrama']);
+                } elseif ($user->hasRole(self::ROLE_KEAMANAN)) {
+                    $user->removeRole(self::ROLE_KEAMANAN);
+                }
             }
         });
     }
