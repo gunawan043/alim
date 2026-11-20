@@ -7,6 +7,7 @@ use App\Mail\ResetPasswordOtpMail;
 use App\Models\AuditLog;
 use App\Models\PasswordOtp;
 use App\Models\User;
+use App\Services\Security\LoginActivityLogger;
 use App\Services\SecurityNotificationService;
 use App\Services\SecurityPolicy;
 use Illuminate\Auth\Events\PasswordReset;
@@ -56,6 +57,14 @@ class ForgotPasswordController extends Controller
 
         // Jangan membedakan email terdaftar/tidak terdaftar di UI.
         if (! $user) {
+            app(LoginActivityLogger::class)->record(
+                'password_otp_requested',
+                $request,
+                null,
+                $email,
+                'Email tidak terdaftar atau tidak aktif',
+            );
+
             return back()
                 ->withInput($request->only('email'))
                 ->with('status', 'Jika email terdaftar, kode OTP akan dikirim.');
@@ -88,12 +97,30 @@ class ForgotPasswordController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
+            app(LoginActivityLogger::class)->record(
+                'password_otp_failed',
+                $request,
+                $user,
+                $user->email,
+                'Gagal mengirim OTP reset password',
+                ['error' => $e->getMessage()],
+            );
+
             return back()
                 ->withInput($request->only('email'))
                 ->with('status', 'Jika email terdaftar, kode OTP akan dikirim.');
         }
 
         $otpData = PasswordOtp::where('user_id', $user->id)->first();
+
+        app(LoginActivityLogger::class)->record(
+            'password_otp_requested',
+            $request,
+            $user,
+            $user->email,
+            'OTP reset password dikirim',
+            ['expires_at' => $otpData?->expires_at?->toIso8601String()],
+        );
 
         session([
             'reset_user_uuid' => $user->id,
@@ -197,12 +224,33 @@ class ForgotPasswordController extends Controller
         });
 
         if ($error !== null) {
+            $otpUser = User::find($userId);
+
+            app(LoginActivityLogger::class)->record(
+                'password_otp_failed',
+                $request,
+                $otpUser,
+                $otpUser?->email,
+                $error,
+                ['source' => 'password_reset_otp'],
+            );
+
             throw ValidationException::withMessages(['otp' => $error]);
         }
 
         if (! $verified) {
             throw ValidationException::withMessages(['otp' => 'OTP tidak valid.']);
         }
+
+        $verifiedUser = User::find($userId);
+
+        app(LoginActivityLogger::class)->record(
+            'password_otp_verified',
+            $request,
+            $verifiedUser,
+            $verifiedUser?->email,
+            'OTP reset password berhasil diverifikasi',
+        );
 
         AuditLog::create([
             'user_id' => $userId,
@@ -334,6 +382,14 @@ class ForgotPasswordController extends Controller
             ]);
         }
 
+        app(LoginActivityLogger::class)->record(
+            'password_reset_completed',
+            $request,
+            $user,
+            $user->email,
+            'Password berhasil direset',
+        );
+
         app(SecurityNotificationService::class)->passwordReset($user, $request);
 
         return redirect()->route('login')
@@ -391,10 +447,28 @@ class ForgotPasswordController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
+            app(LoginActivityLogger::class)->record(
+                'password_otp_failed',
+                $request,
+                $user,
+                $user->email,
+                'Gagal mengirim ulang OTP reset password',
+                ['error' => $e->getMessage()],
+            );
+
             return back()->withErrors(['otp' => 'Kode OTP tidak dapat dikirim saat ini. Silakan coba lagi.']);
         }
 
         $otpData = PasswordOtp::where('user_id', $user->id)->first();
+
+        app(LoginActivityLogger::class)->record(
+            'password_otp_resent',
+            $request,
+            $user,
+            $user->email,
+            'OTP reset password dikirim ulang',
+            ['expires_at' => $otpData?->expires_at?->toIso8601String()],
+        );
 
         session([
             'otp_expires_at' => $otpData?->expires_at?->timestamp,

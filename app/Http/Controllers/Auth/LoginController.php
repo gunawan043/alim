@@ -140,6 +140,16 @@ class LoginController extends Controller
                 'user_id' => $user->id, 'identity' => $identity, 'ip' => $ip,
                 'attempts' => $user->failed_login_attempts + 1,
             ]);
+
+            if (SecurityPolicy::compromisedThreshold() < SecurityPolicy::maxLoginAttempts()) {
+                app(SecurityNotificationService::class)->failedLogin(
+                    $user,
+                    $request,
+                    $user->failed_login_attempts + 1,
+                    false,
+                    'Ambang peringatan percobaan login',
+                );
+            }
         }
 
         $user->incrementFailedLoginAttempts();
@@ -172,6 +182,14 @@ class LoginController extends Controller
                 'attempts' => $user->failed_login_attempts,
             ]);
 
+            app(SecurityNotificationService::class)->failedLogin(
+                $user,
+                $request,
+                $user->failed_login_attempts,
+                true,
+                'Batas maksimum percobaan login tercapai',
+            );
+
             return $this->showLoginWithError(
                 $request,
                 'Akun terkunci karena terlalu banyak percobaan login gagal. Super Admin telah diberitahu.',
@@ -203,6 +221,8 @@ class LoginController extends Controller
                     'attempts' => $record->attempts,
                     'locked_until' => $record->locked_until?->toIso8601String(),
                 ]);
+
+                app(SecurityNotificationService::class)->ipBlocked($ip, request(), $record->attempts);
             }
 
             $superAdminIds = usersHavingPermission('general_admin.administrable');

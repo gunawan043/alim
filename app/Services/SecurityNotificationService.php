@@ -66,6 +66,94 @@ class SecurityNotificationService
         $this->notifyCentralLogin($user, $request);
     }
 
+    /**
+     * Peringatan langsung via WhatsApp saat terjadi percobaan login gagal
+     * berulang. Dikirim ke nomor pengguna dan nomor admin ALIM.
+     */
+    public function failedLogin(User $user, Request $request, int $attempts, bool $locked, ?string $reason = null): void
+    {
+        if ((string) setting('security_notify_login', '1') === '0'
+            || (string) setting('whatsapp_notifications', '1') === '0') {
+            return;
+        }
+
+        $status = $locked
+            ? 'Akun dikunci sementara sampai '.($user->locked_until?->format('d/m/Y H:i') ?? 'waktu yang ditentukan').'.'
+            : 'Akun belum dikunci, tetapi aktivitas ini perlu diperiksa.';
+
+        $message = "⚠️ Peringatan Keamanan ALIM\n\n"
+            ."Percobaan login gagal berulang terdeteksi.\n\n"
+            ."Nama: {$user->name}\n"
+            ."Email: {$user->email}\n"
+            ."Jumlah percobaan: {$attempts}x\n"
+            ."Waktu: {$this->timestamp()}\n"
+            ."IP: {$request->ip()}\n"
+            .'Perangkat: '.$this->deviceSummary($request->userAgent())."\n"
+            .'Alasan: '.($reason ?: 'Password salah')."\n"
+            ."Status: {$status}\n\n"
+            ."Tindak lanjut:\n"
+            ."1. Jika ini bukan Anda, segera ubah password melalui ".route('password.request').".\n"
+            ."2. Hubungi Super Admin untuk membuka akun jika terkunci.\n\n"
+            .'Abaikan pesan ini jika percobaan tersebut memang dari Anda.';
+
+        $this->sendSecurityWhatsApp($user, $message, [
+            'event' => 'security_login_failed',
+            'user_id' => $user->id,
+            'attempts' => $attempts,
+            'locked' => $locked,
+        ]);
+    }
+
+    /**
+     * Peringatan ke admin saat sebuah IP diblokir karena percobaan login.
+     */
+    public function ipBlocked(string $ip, Request $request, int $attempts): void
+    {
+        if ((string) setting('security_notify_login', '1') === '0'
+            || (string) setting('whatsapp_notifications', '1') === '0') {
+            return;
+        }
+
+        $message = "🚫 Peringatan Keamanan ALIM\n\n"
+            ."IP diblokir sementara karena percobaan login gagal berulang.\n\n"
+            ."IP: {$ip}\n"
+            ."Jumlah percobaan: {$attempts}x\n"
+            ."Waktu: {$this->timestamp()}\n"
+            .'Perangkat: '.$this->deviceSummary($request->userAgent())."\n\n"
+            ."Buka menu Super Admin → Log & Monitoring → Aktivitas Login untuk melihat detail dan membuka blokir.";
+
+        $this->sendSecurityWhatsApp(null, $message, [
+            'event' => 'security_ip_blocked',
+            'ip_address' => $ip,
+            'attempts' => $attempts,
+        ]);
+    }
+
+    private function sendSecurityWhatsApp(?User $user, string $message, array $context = []): void
+    {
+        $numbers = [];
+
+        if ($user && ($phone = $this->notifications->phoneFor($user))) {
+            $numbers[$this->gateway->normalizePhone($phone) ?: $phone] = $phone;
+        }
+
+        if ($central = $this->gateway->centralNumber()) {
+            $numbers[$central] = $central;
+        }
+
+        foreach ($numbers as $number) {
+            try {
+                $this->gateway->send($number, $message, $context);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal mengirim WhatsApp peringatan keamanan', [
+                    'target' => $number,
+                    'event' => $context['event'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
     public function passwordForgot(User $user, Request $request): void
     {
         $this->send(

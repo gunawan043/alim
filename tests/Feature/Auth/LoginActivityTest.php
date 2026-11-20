@@ -5,9 +5,12 @@ namespace Tests\Feature\Auth;
 use App\Models\FailedLoginAttempt;
 use App\Models\LoginActivity;
 use App\Models\SystemSetting;
+use App\Services\Notifications\WhatsAppGatewayService;
+use App\Services\SecurityPolicy;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Mockery;
 use Tests\TestCase;
 
 class LoginActivityTest extends TestCase
@@ -68,6 +71,54 @@ class LoginActivityTest extends TestCase
                     ->exists()
             );
         }
+    }
+
+    public function test_percobaan_login_berulang_mengirim_peringatan_whatsapp(): void
+    {
+        $gateway = Mockery::mock(WhatsAppGatewayService::class);
+        $gateway->shouldReceive('normalizePhone')->andReturnUsing(fn ($phone) => $phone);
+        $gateway->shouldReceive('centralNumber')->andReturn('628123456789');
+        $gateway->shouldReceive('send')->atLeast()->once()->andReturnTrue();
+        $this->app->instance(WhatsAppGatewayService::class, $gateway);
+
+        $user = User::factory()->create([
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+
+        foreach (range(1, SecurityPolicy::compromisedThreshold()) as $attempt) {
+            $this->post('/login', [
+                'identity' => $user->email,
+                'password' => 'password-salah',
+            ]);
+        }
+
+        $this->assertTrue(
+            LoginActivity::where('user_id', $user->id)
+                ->where('event', 'login_failed')
+                ->where('is_suspicious', true)
+                ->exists()
+        );
+    }
+
+    public function test_riwayat_otp_reset_password_tersimpan_dan_tampil(): void
+    {
+        $admin = User::factory()->create(['is_system_admin' => true, 'is_active' => true]);
+        $user = User::factory()->create(['is_active' => true]);
+
+        $this->post('/password/forgot', ['email' => $user->email])
+            ->assertRedirect(route('password.otp.form'));
+
+        $this->assertDatabaseHas('login_activities', [
+            'user_id' => $user->id,
+            'event' => 'password_otp_requested',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('user.sa.password-reset-logs.index', ['userId' => $admin->id]))
+            ->assertOk()
+            ->assertSee('OTP Diminta')
+            ->assertSee($user->email);
     }
 
     public function test_super_admin_dapat_melihat_dan_mengelola_aktivitas_login(): void

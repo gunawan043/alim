@@ -115,6 +115,16 @@ class AuthController extends Controller
                 'method' => 'mobile_password',
             ]);
 
+            if ($user && ($user->isLocked() || $user->failed_login_attempts === SecurityPolicy::compromisedThreshold())) {
+                app(SecurityNotificationService::class)->failedLogin(
+                    $user,
+                    $request,
+                    $user->failed_login_attempts,
+                    $user->isLocked(),
+                    'Login mobile gagal berulang',
+                );
+            }
+
             throw ValidationException::withMessages([
                 'email' => ['Email atau password yang Anda masukkan salah.'],
             ]);

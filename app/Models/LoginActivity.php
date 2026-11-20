@@ -23,6 +23,11 @@ class LoginActivity extends Model
         '2fa_failed' => 'Verifikasi 2FA Gagal',
         'logout' => 'Logout',
         'password_reset' => 'Reset Password',
+        'password_otp_requested' => 'OTP Reset Diminta',
+        'password_otp_resent' => 'OTP Reset Dikirim Ulang',
+        'password_otp_failed' => 'OTP Reset Gagal',
+        'password_otp_verified' => 'OTP Reset Terverifikasi',
+        'password_reset_completed' => 'Password Direset',
     ];
 
     protected $primaryKey = 'id';
@@ -92,9 +97,11 @@ class LoginActivity extends Model
     public function getEventColorAttribute(): string
     {
         return match ($this->event) {
-            'login_success', 'account_unlocked', 'ip_unblocked', 'otp_verified' => 'success',
-            'login_failed', '2fa_failed', 'otp_failed' => 'danger',
+            'login_success', 'account_unlocked', 'ip_unblocked', 'otp_verified',
+            'password_otp_verified', 'password_reset_completed' => 'success',
+            'login_failed', '2fa_failed', 'otp_failed', 'password_otp_failed' => 'danger',
             'account_locked', 'ip_blocked', 'login_blocked' => 'warning',
+            'password_otp_requested', 'password_otp_resent' => 'info',
             default => 'secondary',
         };
     }

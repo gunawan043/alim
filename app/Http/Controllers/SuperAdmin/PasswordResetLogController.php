@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
+use App\Models\LoginActivity;
 use App\Models\PasswordOtp;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,29 +13,46 @@ class PasswordResetLogController extends Controller
     public function index(Request $request)
     {
         $userId = $request->route('userId');
-        $query = AuditLog::with('user')
-            ->where('action', 'PASSWORD_OTP_VERIFIED');
+        $events = [
+            'password_otp_requested' => 'OTP Diminta',
+            'password_otp_resent' => 'OTP Dikirim Ulang',
+            'password_otp_failed' => 'OTP Gagal',
+            'password_otp_verified' => 'OTP Terverifikasi',
+            'password_reset_completed' => 'Password Direset',
+        ];
 
-        if ($request->has('search') && $request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$request->search}%"))
-                    ->orWhere('record_id', 'like', "%{$request->search}%");
+        $query = LoginActivity::with('user')->whereIn('event', array_keys($events));
+
+        if ($request->filled('search')) {
+            $search = '%'.trim((string) $request->search).'%';
+            $query->where(function ($q) use ($search) {
+                $q->where('identity', 'like', $search)
+                    ->orWhere('email', 'like', $search)
+                    ->orWhere('ip_address', 'like', $search)
+                    ->orWhere('reason', 'like', $search)
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', $search)->orWhere('email', 'like', $search);
+                    });
             });
         }
 
-        if ($request->has('user_id') && $request->user_id) {
+        if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
-        if ($request->has('from_date') && $request->from_date) {
+        if ($request->filled('event')) {
+            $query->where('event', $request->event);
+        }
+
+        if ($request->filled('from_date')) {
             $query->whereDate('created_at', '>=', $request->from_date);
         }
 
-        if ($request->has('to_date') && $request->to_date) {
+        if ($request->filled('to_date')) {
             $query->whereDate('created_at', '<=', $request->to_date);
         }
 
-        $otpVerifiedLogs = $query->orderBy('created_at', 'desc')->paginate(30);
+        $otpLogs = $query->orderByDesc('created_at')->paginate(30)->withQueryString();
 
         // OTP records (unused/expired)
         $otpQuery = PasswordOtp::with('user');
@@ -51,14 +68,19 @@ class PasswordResetLogController extends Controller
         $users = User::orderBy('name')->get();
 
         $stats = [
-            'verified' => AuditLog::where('action', 'PASSWORD_OTP_VERIFIED')->count(),
-            'verified_today' => AuditLog::where('action', 'PASSWORD_OTP_VERIFIED')->whereDate('created_at', today())->count(),
+            'requested' => LoginActivity::whereIn('event', ['password_otp_requested', 'password_otp_resent'])->count(),
+            'requested_today' => LoginActivity::whereIn('event', ['password_otp_requested', 'password_otp_resent'])->whereDate('created_at', today())->count(),
+            'verified' => LoginActivity::where('event', 'password_otp_verified')->count(),
+            'verified_today' => LoginActivity::where('event', 'password_otp_verified')->whereDate('created_at', today())->count(),
+            'failed' => LoginActivity::where('event', 'password_otp_failed')->count(),
+            'failed_today' => LoginActivity::where('event', 'password_otp_failed')->whereDate('created_at', today())->count(),
+            'completed' => LoginActivity::where('event', 'password_reset_completed')->count(),
             'otp_total' => PasswordOtp::count(),
             'otp_today' => PasswordOtp::whereDate('created_at', today())->count(),
         ];
 
         return view('super-admin.password-reset-logs.index', compact(
-            'otpVerifiedLogs', 'otpRecords', 'users', 'userId', 'stats'
+            'otpLogs', 'otpRecords', 'users', 'userId', 'stats', 'events'
         ));
     }
 }
