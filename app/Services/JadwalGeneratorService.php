@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\JadwalKbm;
+use App\Models\GradeLevelSubject;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
+use App\Models\User;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use Illuminate\Support\Collection;
@@ -16,6 +19,9 @@ class JadwalGeneratorService
 
     /** Catatan penanda baris blok tahfidz (bukan guru tunggal). */
     public const TAHFIDZ_NOTE = 'TIM TAHFIDZ';
+
+    /** Catatan penanda mapel kurikulum yang belum punya guru di SK. */
+    public const NO_TEACHER_NOTE = 'GURU BELUM DITETAPKAN';
 
     /** @var array<string, bool> "teacherId|day|slot" yang terkunci blok tahfidz */
     private array $tahfidzBusy = [];
@@ -781,17 +787,20 @@ class JadwalGeneratorService
             'requested' => 0,
             'has_assignments' => $assignments->isNotEmpty(),
             'shortages' => [],
+            'warnings' => [],
             'conflicts' => [],
             'tahfidz' => $block,
         ];
 
-        if ($assignments->isEmpty()) {
+        $curriculum = $this->curriculumSubjects($studyGroup);
+
+        if ($assignments->isEmpty() && $curriculum === []) {
             $summary['conflicts'][] = 'Tidak ada assignment (SK guru) aktif untuk rombel ini.';
 
             return $summary;
         }
 
-        $plans = $this->resolvePlans($this->regularAssignments($assignments), $studyGroup);
+        $plans = $this->resolvePlans($this->regularAssignments($assignments), $studyGroup, $curriculum);
         $masterDays = $this->masterSlotsByDay($studyGroup->school_id);
         $summary['requested'] = (int) array_sum(array_column($plans, 'hours')) + (int) ($block['total'] ?? 0);
 
@@ -800,6 +809,10 @@ class JadwalGeneratorService
         foreach ($plans as $plan) {
             $placed = $this->placePlan($studyGroup, $academicYearId, $plan, $masterDays);
             $generated += $placed;
+
+            if (! empty($plan['no_teacher'])) {
+                $summary['warnings'][] = "{$plan['subject_name']} dijadwalkan {$plan['hours']} JP tanpa guru karena belum ada di SK penugasan.";
+            }
 
             if ($placed < $plan['hours']) {
                 $summary['shortages'][] = [
@@ -830,6 +843,7 @@ class JadwalGeneratorService
             'requested' => 0,
             'has_assignments' => false,
             'shortages' => [],
+            'warnings' => [],
             'conflicts' => [$error],
             'tahfidz' => null,
         ];
@@ -984,16 +998,79 @@ class JadwalGeneratorService
     }
 
     /**
-     * Daftar rencana mapel × guru × JP dari assignment, diurutkan JP terbesar dulu.
+     * Daftar rencana mapel × guru × JP dari kurikulum + assignment, diurutkan JP terbesar dulu.
      *
-     * @return array<int, array{subject_id:string, subject_name:string, teacher_id:?string, teacher_name:string, hours:int}>
+     * Kurikulum (study_group_subjects / grade_level_subjects) menjadi sumber
+     * daftar mapel dan JP. Jika mapel belum ada di SK, tetap dijadwalkan dengan
+     * guru kosong agar JP kurikulum tidak hilang, lalu dilaporkan sebagai warning.
+     *
+     * @param  array<string, array{subject:Subject,hours:int}>|null  $curriculum
+     * @return array<int, array<string, mixed>>
      */
-    protected function resolvePlans(Collection $assignments, StudyGroup $studyGroup): array
+    protected function resolvePlans(Collection $assignments, StudyGroup $studyGroup, ?array $curriculum = null): array
     {
+        $curriculum ??= $this->curriculumSubjects($studyGroup);
         $plans = [];
+        $assignmentsBySubject = $assignments->groupBy('subject_id');
 
+        foreach ($curriculum as $subjectId => $row) {
+            if ($this->isTahfidzSubject($subjectId)) {
+                continue;
+            }
+
+            /** @var Subject $subject */
+            $subject = $row['subject'];
+            $curriculumHours = (int) ($row['hours'] ?? 0);
+            $subjectAssignments = $assignmentsBySubject->get($subjectId, collect());
+
+            if ($subjectAssignments->isNotEmpty()) {
+                $assignment = $subjectAssignments
+                    ->sortByDesc(fn (TeachingAssignment $a) => $this->resolveWeeklyHours($a, $studyGroup))
+                    ->first();
+
+                $hours = $curriculumHours > 0
+                    ? $curriculumHours
+                    : $this->resolveWeeklyHours($assignment, $studyGroup);
+
+                $key = $subjectId.'|'.($assignment->teacher_id ?? 'none');
+                $plans[$key] = [
+                    'subject_id' => $subjectId,
+                    'subject_name' => $subject->name,
+                    'teacher_id' => $assignment->teacher_id,
+                    'teacher_name' => $assignment->teacher?->name ?? '-',
+                    'hours' => $hours,
+                    'no_teacher' => false,
+                ];
+
+                continue;
+            }
+
+            $hours = $curriculumHours > 0
+                ? $curriculumHours
+                : app(TeachingHoursResolver::class)->resolve($studyGroup, $subject, null);
+
+            if ($hours <= 0) {
+                continue;
+            }
+
+            $teacherId = $row['teacher_id'] ?? null;
+            $teacher = $teacherId ? User::find($teacherId) : null;
+            $key = $subjectId.'|'.($teacher?->id ?? 'none');
+
+            $plans[$key] = [
+                'subject_id' => $subjectId,
+                'subject_name' => $subject->name,
+                'teacher_id' => $teacher?->id,
+                'teacher_name' => $teacher?->name ?? 'Guru belum ditetapkan',
+                'hours' => $hours,
+                'no_teacher' => ! $teacher,
+                'notes' => $teacher ? null : self::NO_TEACHER_NOTE,
+            ];
+        }
+
+        // Assignment yang tidak tercatat di kurikulum tetap dihormati (data lama).
         foreach ($assignments as $assignment) {
-            if (! $assignment->subject) {
+            if (! $assignment->subject || isset($curriculum[$assignment->subject_id])) {
                 continue;
             }
 
@@ -1012,12 +1089,58 @@ class JadwalGeneratorService
                 'teacher_id' => $assignment->teacher_id,
                 'teacher_name' => $assignment->teacher?->name ?? '-',
                 'hours' => $hours,
+                'no_teacher' => false,
             ];
         }
 
         usort($plans, fn ($a, $b) => $b['hours'] <=> $a['hours']);
 
         return $plans;
+    }
+
+    /**
+     * Daftar mapel dan JP dari kurikulum rombel.
+     * Prioritas: study_group_subjects → grade_level_subjects.
+     *
+     * @return array<string, array{subject:Subject,hours:int}>
+     */
+    private function curriculumSubjects(StudyGroup $studyGroup): array
+    {
+        $rows = StudyGroupSubject::with('subject')
+            ->where('study_group_id', $studyGroup->id)
+            ->where('is_active', true)
+            ->get();
+
+        if ($rows->isEmpty() && $studyGroup->grade_level_id) {
+            $rows = GradeLevelSubject::with('subject')
+                ->where('grade_level_id', $studyGroup->grade_level_id)
+                ->where('is_active', true)
+                ->forAcademicYear($studyGroup->academic_year_id)
+                ->orderByAcademicYearFirst()
+                ->get()
+                ->groupBy('subject_id')
+                ->map(fn (Collection $group) => $group->first())
+                ->values();
+        }
+
+        $subjects = [];
+
+        foreach ($rows as $row) {
+            $subject = $row->subject ?? null;
+
+            if (! $subject) {
+                continue;
+            }
+
+            $hours = (int) ($row->weekly_hours ?? $row->allocation_hours ?? 0);
+            $subjects[(string) $subject->id] = [
+                'subject' => $subject,
+                'hours' => $hours,
+                'teacher_id' => $row->teacher_id ?? null,
+            ];
+        }
+
+        return $subjects;
     }
 
     /**
@@ -1254,6 +1377,7 @@ class JadwalGeneratorService
             'end_time' => $slot['end_time'],
             'room' => $studyGroup->room,
             'is_active' => true,
+            'notes' => $plan['notes'] ?? null,
         ]);
     }
 

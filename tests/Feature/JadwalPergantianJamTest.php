@@ -11,6 +11,7 @@ use App\Models\QrClassToken;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TeacherClassAttendance;
 use App\Models\TeachingAssignment;
@@ -928,6 +929,47 @@ class JadwalPergantianJamTest extends TestCase
                 'Slot dalam satu hari harus berurutan tanpa lubang.'
             );
         }
+    }
+
+    public function test_generator_schedules_curriculum_subjects_missing_from_sk(): void
+    {
+        $this->actingAs($this->admin);
+
+        $subject = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'FIK',
+            'name' => 'Fikih',
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        StudyGroupSubject::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'study_group_id' => $this->sgA->id,
+            'subject_id' => $subject->id,
+            'weekly_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        $result = app(JadwalGeneratorService::class)->generateForStudyGroup(
+            $this->sgA->id,
+            $this->ay->id,
+            'ganjil',
+            true,
+        );
+
+        // Math 6 + Bahasa Arab 4 + Fikih 2 = 12 JP.
+        $this->assertSame(12, $result['generated']);
+        $this->assertNotEmpty($result['warnings']);
+
+        $fikih = JadwalKbm::where('study_group_id', $this->sgA->id)
+            ->where('subject_id', $subject->id)
+            ->get();
+
+        $this->assertCount(2, $fikih);
+        $this->assertNull($fikih->first()->teacher_id);
+        $this->assertSame(JadwalGeneratorService::NO_TEACHER_NOTE, $fikih->first()->notes);
     }
 
     private function seedFixture(): void
