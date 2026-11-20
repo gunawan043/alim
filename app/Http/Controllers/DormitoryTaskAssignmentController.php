@@ -6,7 +6,6 @@ use App\Models\AcademicYear;
 use App\Models\AdditionalTaskType;
 use App\Models\Dormitory;
 use App\Models\DormitoryStaffAssignment;
-use App\Models\GtkEmployment;
 use App\Models\GtkWorkUnit;
 use App\Models\Role;
 use App\Models\StructuralPosition;
@@ -50,7 +49,7 @@ class DormitoryTaskAssignmentController extends Controller
             'rows' => $rows,
             'availableUsers' => $availableUsers,
             'positions' => $this->asramaPositions(),
-            'taskTypes' => $this->taskTypesFor($dormitory),
+            'taskTypes' => $this->taskTypesFor(),
             'duties' => DormitoryPosition::duties(),
             'shifts' => DormitoryPosition::shiftOptions(),
             'stats' => [
@@ -222,21 +221,18 @@ class DormitoryTaskAssignmentController extends Controller
     }
 
     /**
-     * Master jenis tugas tambahan yang relevan untuk staf asrama ini,
-     * ditentukan dari jenis GTK yang ditempatkan pada satuan kerja asrama.
+     * Master jenis tugas tambahan yang relevan, ditentukan dari jenis GTK
+     * jabatan-jabatan asrama (Tenaga Pengasuhan & Keasramaan), bukan dari
+     * seluruh staf satuan pendidikan.
      *
      * @return Collection<int, AdditionalTaskType>
      */
-    private function taskTypesFor(Dormitory $dormitory): Collection
+    private function taskTypesFor(): Collection
     {
-        $jenisIds = $dormitory->work_unit_id
-            ? GtkEmployment::whereIn('user_id', GtkWorkUnit::query()
-                ->where('work_unit_id', $dormitory->work_unit_id)
-                ->select('user_id'))
-                ->pluck('jenis_gtk_id')
-                ->filter()
-                ->unique()
-            : collect();
+        $jenisIds = $this->asramaPositions()
+            ->pluck('jenis_gtk_id')
+            ->filter()
+            ->unique();
 
         return AdditionalTaskType::active()
             ->when($jenisIds->isNotEmpty(), fn ($query) => $query->whereIn('jenis_gtk_id', $jenisIds))

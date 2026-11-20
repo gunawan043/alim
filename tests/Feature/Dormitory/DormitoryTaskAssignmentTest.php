@@ -67,8 +67,8 @@ class DormitoryTaskAssignmentTest extends TestCase
 
         $asramaRole = Role::firstOrCreate(['name' => 'Asrama', 'guard_name' => 'web']);
 
-        $this->kepalaPosition = $this->makePosition($asramaRole->id, 'Kepala Asrama', 'KEPALA-ASR', 1);
-        $this->wakilPosition = $this->makePosition($asramaRole->id, 'Wakil Kepala Asrama', 'WAKIL-ASR', 2);
+        $this->kepalaPosition = $this->makePosition($asramaRole->id, $jenisGtk->id, 'Kepala Asrama', 'KEPALA-ASR', 1);
+        $this->wakilPosition = $this->makePosition($asramaRole->id, $jenisGtk->id, 'Wakil Kepala Asrama', 'WAKIL-ASR', 2);
 
         $this->waliKamarTask = AdditionalTaskType::create([
             'jenis_gtk_id' => $jenisGtk->id,
@@ -112,7 +112,7 @@ class DormitoryTaskAssignmentTest extends TestCase
         }
     }
 
-    private function makePosition(string $roleId, string $name, string $code, int $urutan): StructuralPosition
+    private function makePosition(string $roleId, string $jenisGtkId, string $name, string $code, int $urutan): StructuralPosition
     {
         return StructuralPosition::create([
             'code' => $code,
@@ -121,6 +121,7 @@ class DormitoryTaskAssignmentTest extends TestCase
             'hierarchy_level' => $urutan,
             'is_active' => true,
             'role_id' => $roleId,
+            'jenis_gtk_id' => $jenisGtkId,
             'kategori' => 'Jabatan',
             'urutan' => $urutan,
         ]);
