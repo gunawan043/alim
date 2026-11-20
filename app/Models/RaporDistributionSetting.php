@@ -173,7 +173,7 @@ class RaporDistributionSetting extends Model
         $jenis = strtolower((string) $jenis);
         $bahasa = strtolower((string) $bahasa);
 
-        if (! in_array($jenis, ['sts', 'sas'], true) || ! in_array($bahasa, ['id', 'ar'], true)) {
+        if (! in_array($jenis, ['sts', 'sas'], true) || ! in_array($bahasa, ['id', 'ar', 'id-ar'], true)) {
             return null;
         }
 

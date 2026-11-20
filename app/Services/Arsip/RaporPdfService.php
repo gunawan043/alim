@@ -11,6 +11,7 @@ use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\TeacherAdminBook;
 use App\Services\ArabicName\ArabicNameResolver;
 use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
@@ -40,6 +41,19 @@ class RaporPdfService
 
     public const BAHASA_AR = 'ar';
 
+    /** Satu lembar berisi dua bahasa: Indonesia (kiri) dan Arab (kanan). */
+    public const BAHASA_BILINGUAL = 'id-ar';
+
+    /**
+     * Normalisasi kode bahasa dari request.
+     */
+    public static function normalizeBahasa(?string $bahasa): string
+    {
+        return in_array($bahasa, [self::BAHASA_AR, self::BAHASA_BILINGUAL], true)
+            ? $bahasa
+            : self::BAHASA_ID;
+    }
+
     /**
      * Label dokumen per bahasa. Teks Arab di-shape saat dirender oleh view.
      *
@@ -61,7 +75,11 @@ class RaporPdfService
                 'no' => 'الرقم',
                 'mapel' => 'المادة الدراسية',
                 'kktp' => 'الحد الأدنى',
+                'bobot' => 'الوزن',
                 'nilai' => 'الدرجة',
+                'jumlah_bobot_nilai' => 'حاصل الضرب',
+                'total_bobot' => 'مجموع الأوزان',
+                'nilai_tertimbang' => 'مجموع الدرجات الموزونة',
                 'keterangan' => 'الملاحظة',
                 'jumlah_nilai' => 'مجموع الدرجات',
                 'predikat' => 'التقدير',
@@ -95,7 +113,11 @@ class RaporPdfService
             'no' => 'No',
             'mapel' => 'Mata Pelajaran',
             'kktp' => 'KKTP',
+            'bobot' => 'Bobot',
             'nilai' => 'Nilai',
+            'jumlah_bobot_nilai' => 'Jumlah (Bobot × Nilai)',
+            'total_bobot' => 'Jumlah Bobot',
+            'nilai_tertimbang' => 'Jumlah (Bobot × Nilai)',
             'keterangan' => 'Keterangan',
             'jumlah_nilai' => 'Jumlah Nilai',
             'predikat' => 'Predikat',
@@ -203,6 +225,8 @@ class RaporPdfService
             $schoolId, $studyGroup->id, $selectedAyId, $selectedSem, $reportSubjectIds
         );
 
+        $bobotMap = $this->bobotMap($studyGroup->id, $selectedAyId, $subjectMap->pluck('id')->all());
+
         $students = collect($students)->filter(fn ($s) => $s instanceof Student)->values();
         $studentIds = $students->pluck('id')->all();
 
@@ -220,6 +244,8 @@ class RaporPdfService
             $nilaiMap = $nilaiRows->get($student->id, collect())->keyBy('admin_book_id');
             $total = 0.0;
             $count = 0;
+            $totalBobot = 0.0;
+            $tertimbang = 0.0;
 
             foreach ($subjectMap as $subject) {
                 $book = $bookMap[$subject->id] ?? null;
@@ -250,12 +276,17 @@ class RaporPdfService
                 }
 
                 if ($score !== null) {
+                    $bobot = (float) ($bobotMap[$subject->id] ?? 0);
                     $total += (float) $score;
                     $count++;
+                    $totalBobot += $bobot;
+                    $tertimbang += $bobot * (float) $score;
                 }
             }
 
-            $average = $count > 0 ? round($total / $count, 1) : null;
+            $average = $totalBobot > 0
+                ? round($tertimbang / $totalBobot, 1)
+                : ($count > 0 ? round($total / $count, 1) : null);
             $summaries[$student->id] = [
                 'nilai' => $average,
                 'predikat' => AcademicNilai::predikat($average),
@@ -291,6 +322,8 @@ class RaporPdfService
             $schoolId, $studyGroupId, $selectedAyId, $selectedSem, $reportSubjectIds
         );
 
+        $bobotMap = $this->bobotMap($studyGroupId, $selectedAyId, $subjectMap->pluck('id')->all());
+
         $nilaiMap = [];
         $studentNilaiRows = NilaiSumatif::whereIn('admin_book_id', $bookMap->pluck('id'))
             ->where('student_id', $studentId)
@@ -313,6 +346,9 @@ class RaporPdfService
         $mapelRows = [];
         $jumlahNilai = 0;
         $jumlahMapel = 0;
+        $jumlahBobot = 0.0;
+        $bobotTerisi = 0.0;
+        $jumlahTertimbang = 0.0;
 
         foreach ($subjectMap as $idx => $subject) {
             $book = $bookMap[$subject->id] ?? null;
@@ -321,9 +357,14 @@ class RaporPdfService
                 ? app(TahfidzRaporService::class)->scoreFor($studentId, $book, $selectedAyId, $selectedSem, $jenis, $n)
                 : AcademicNilai::resolveTampil($jenis, $n);
 
+            $bobot = (float) ($bobotMap[$subject->id] ?? 0);
+            $jumlahBobot += $bobot;
+
             if ($nilai !== null) {
                 $jumlahNilai += $nilai;
                 $jumlahMapel++;
+                $bobotTerisi += $bobot;
+                $jumlahTertimbang += $bobot * (float) $nilai;
             }
 
             $mapelRows[] = [
@@ -331,12 +372,21 @@ class RaporPdfService
                 'mapel' => $subject->name,
                 'mapel_ar' => app(ArabicNameResolver::class)->subjectName($subject),
                 'kkm' => AcademicNilai::kkmLabel($book),
+                'bobot' => $this->formatBobot($bobot),
                 'nilai' => $nilai !== null ? number_format($nilai, 1) : '',
+                'jumlah' => $nilai !== null ? number_format($bobot * (float) $nilai, 1) : '',
                 'keterangan' => AcademicNilai::keterangan($nilai, $book),
             ];
         }
 
-        $rata = $jumlahMapel > 0 ? round($jumlahNilai / $jumlahMapel, 1) : null;
+        // SAS memakai rata-rata berbobot (Σ bobot×nilai ÷ Σ bobot).
+        // Bila bobot belum tersedia sama sekali, kembali ke rata-rata biasa.
+        $rata = null;
+        if ($jenis === 'sas' && $bobotTerisi > 0) {
+            $rata = round($jumlahTertimbang / $bobotTerisi, 1);
+        } elseif ($jumlahMapel > 0) {
+            $rata = round($jumlahNilai / $jumlahMapel, 1);
+        }
         $predikat = AcademicNilai::predikat($rata);
 
         $registration = RaportRegistration::where('student_id', $studentId)
@@ -385,6 +435,8 @@ class RaporPdfService
                 'Jenis' => $jenis,
                 'Mapel' => $mapelRows,
                 'Jumlah' => $jumlahMapel > 0 ? number_format($jumlahNilai, 1) : '-',
+                'JumlahBobot' => $this->formatBobot($jumlahBobot),
+                'JumlahTertimbang' => $jumlahMapel > 0 ? number_format($jumlahTertimbang, 1) : '-',
                 'Rata' => $rata !== null ? number_format($rata, 1) : '-',
                 'Predikat' => $predikat,
                 'Sakit' => $sCount,
@@ -393,6 +445,44 @@ class RaporPdfService
                 'CatatanWali' => $catatanWali,
             ],
         ];
+    }
+
+    /**
+     * Bobot efektif per subject_id: override manual (study_group_subjects.bobot),
+     * atau JP rombel (weekly_hours) sebagai default.
+     *
+     * @param  array<int, string>  $subjectIds
+     * @return array<string, float>
+     */
+    private function bobotMap(string $studyGroupId, string $selectedAyId, array $subjectIds): array
+    {
+        $subjectIds = array_values(array_filter($subjectIds));
+
+        if ($subjectIds === []) {
+            return [];
+        }
+
+        return StudyGroupSubject::query()
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $selectedAyId)
+            ->whereIn('subject_id', $subjectIds)
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                $row->subject_id => $row->bobot !== null
+                    ? (float) $row->bobot
+                    : (float) $row->weekly_hours,
+            ])
+            ->all();
+    }
+
+    /**
+     * Tampilkan bobot tanpa nol desimal yang tidak perlu: 2 → "2", 2,5 → "2.5".
+     */
+    private function formatBobot(float $bobot): string
+    {
+        $text = rtrim(rtrim(number_format($bobot, 2, '.', ''), '0'), '.');
+
+        return $text === '' || $text === '-' ? '0' : $text;
     }
 
     /**
@@ -426,7 +516,8 @@ class RaporPdfService
         ?array $layout = null,
         array $verificationByStudent = [],
     ): string {
-        $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
+        $bahasa = self::normalizeBahasa($bahasa);
+        $isBilingual = $bahasa === self::BAHASA_BILINGUAL;
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
@@ -435,12 +526,14 @@ class RaporPdfService
         $resolver = app(ArabicNameResolver::class);
         $ownerSchool = app(SchoolUnitService::class)->dataOwnerSchool($studyGroup->school_id) ?? $studyGroup->school;
 
-        return view('nilai-kelas.rapor-cetak', [
+        return view($isBilingual ? 'nilai-kelas.rapor-cetak-bilingual' : 'nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
             'kopBase64' => $this->schoolKopBase64($ownerSchool),
-            'bahasa' => $bahasa,
-            'labels' => $this->labels($bahasa),
+            'bahasa' => $isBilingual ? self::BAHASA_ID : $bahasa,
+            'labels' => $this->labels($isBilingual ? self::BAHASA_ID : $bahasa),
+            'labelsId' => $this->labels(self::BAHASA_ID),
+            'labelsAr' => $this->labels(self::BAHASA_AR),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
             'layout' => $layout,
@@ -507,7 +600,8 @@ class RaporPdfService
         iterable $students,
         string $bahasa = self::BAHASA_ID,
     ): string {
-        $bahasa = $bahasa === self::BAHASA_AR ? self::BAHASA_AR : self::BAHASA_ID;
+        $bahasa = self::normalizeBahasa($bahasa);
+        $isBilingual = $bahasa === self::BAHASA_BILINGUAL;
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $students = collect($students)->filter(fn ($student) => $student instanceof Student)->values();
@@ -537,12 +631,14 @@ class RaporPdfService
         $resolver = app(ArabicNameResolver::class);
         $ownerSchool = app(SchoolUnitService::class)->dataOwnerSchool($studyGroup->school_id) ?? $studyGroup->school;
 
-        $html = view('nilai-kelas.rapor-cetak', [
+        $html = view($isBilingual ? 'nilai-kelas.rapor-cetak-bilingual' : 'nilai-kelas.rapor-cetak', [
             'santri' => $santri,
             'studyGroup' => $studyGroup,
             'kopBase64' => $this->schoolKopBase64($ownerSchool),
-            'bahasa' => $bahasa,
-            'labels' => $this->labels($bahasa),
+            'bahasa' => $isBilingual ? self::BAHASA_ID : $bahasa,
+            'labels' => $this->labels($isBilingual ? self::BAHASA_ID : $bahasa),
+            'labelsId' => $this->labels(self::BAHASA_ID),
+            'labelsAr' => $this->labels(self::BAHASA_AR),
             'distributionDate' => $setting?->distribution_date,
             'distributionCity' => $setting?->city,
             'layout' => $layout,

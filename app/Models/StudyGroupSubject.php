@@ -48,12 +48,14 @@ class StudyGroupSubject extends Model
         'subject_id',
         'teacher_id',
         'weekly_hours',
+        'bobot',
         'is_active',
         'notes',
     ];
 
     protected $casts = [
         'weekly_hours' => 'float',
+        'bobot' => 'float',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

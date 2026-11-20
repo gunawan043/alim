@@ -32,11 +32,13 @@
         ? \App\Support\ArabicText::cityName((string) $value)
         : (string) $value;
     $printDate = $distributionDate ?? now();
-    $printCity = $distributionCity ?: ($studyGroup->school?->city ?? 'Mataram');
+    $printCity = $distributionCity ?: ($studyGroup->school?->city?->display_name ?? 'Mataram');
     $hijriDate = $isArabic
         ? (\App\Support\ArabicText::formatHijriDate($printDate) ?: \App\Support\ArabicText::formatDate($printDate))
         : '';
     $layout = array_merge(\App\Models\RaporDistributionSetting::defaultLayout(), $layout ?? []);
+    // Kolom Bobot & Jumlah hanya untuk rapor SAS (nilai akhir).
+    $showBobot = (($santri[array_key_first($santri)]['Jenis'] ?? 'sts') === 'sas');
     $paperSize = $layout['paper_size'] ?? 'a4';
     $paperCss = match ($paperSize) {
         'folio' => '215mm 330mm',
@@ -302,7 +304,7 @@
         table.nilai th,
         table.nilai td {
             border: 1px solid #000;
-            padding: 4px 6px;
+            padding: 2px 6px;
             font-size: {{ $layout['table_font_size'] }}pt;
         }
         table.nilai th {
@@ -327,6 +329,20 @@
             text-align: center;
             width: 8%;
         }
+        table.nilai td.bobot-col {
+            text-align: center;
+            width: 8%;
+        }
+        table.nilai td.jumlah-col {
+            text-align: center;
+            width: 12%;
+        }
+        table.nilai.with-bobot td.mapel {
+            width: 28%;
+        }
+        table.nilai.with-bobot td.ket-col {
+            width: 16%;
+        }
         table.nilai td.ket-col {
             text-align: center;
             width: 20%;
@@ -337,11 +353,11 @@
             width: 100%;
             border: 1px solid #000;
             border-collapse: collapse;
-            margin-top: 8px;
+            margin-top: 5px;
         }
         .ringkasan-box td {
             border: 1px solid #000;
-            padding: 4px 8px;
+            padding: 3px 8px;
             font-size: {{ $layout['table_font_size'] }}pt;
             font-weight: bold;
         }
@@ -379,7 +395,7 @@
         }
         .catatan-box td {
             border: 1px solid #000;
-            padding: 6px 8px;
+            padding: 4px 8px;
             font-size: {{ $layout['table_font_size'] }}pt;
             vertical-align: top;
         }
@@ -396,7 +412,7 @@
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 12px;
         }
         .ttd-grid td {
             border: none;
@@ -527,12 +543,18 @@
     </table>
 
     {{-- Tabel Nilai: urutan kolom dibalik eksplisit untuk RTL. --}}
-    <table class="nilai">
+    <table class="nilai {{ $showBobot ? 'with-bobot' : '' }}">
         <thead>
             <tr>
                 @if($isArabic)
                     <th class="ket-col">{!! $text($label('keterangan')) !!}</th>
+                    @if($showBobot)
+                        <th class="jumlah-col">{!! $text($label('jumlah_bobot_nilai')) !!}</th>
+                    @endif
                     <th class="nilai-col">{!! $text($label('nilai')) !!}</th>
+                    @if($showBobot)
+                        <th class="bobot-col">{!! $text($label('bobot')) !!}</th>
+                    @endif
                     <th class="kkm">{!! $text($label('kktp')) !!}</th>
                     <th class="mapel">{!! $text($label('mapel')) !!}</th>
                     <th class="no">{!! $text($label('no')) !!}</th>
@@ -540,7 +562,13 @@
                     <th class="no">{!! $text($label('no')) !!}</th>
                     <th class="mapel">{!! $text($label('mapel')) !!}</th>
                     <th class="kkm">{!! $text($label('kktp')) !!}</th>
+                    @if($showBobot)
+                        <th class="bobot-col">{!! $text($label('bobot')) !!}</th>
+                    @endif
                     <th class="nilai-col">{!! $text($label('nilai')) !!}</th>
+                    @if($showBobot)
+                        <th class="jumlah-col">{!! $text($label('jumlah_bobot_nilai')) !!}</th>
+                    @endif
                     <th class="ket-col">{!! $text($label('keterangan')) !!}</th>
                 @endif
             </tr>
@@ -550,7 +578,13 @@
             <tr>
                 @if($isArabic)
                     <td class="ket-col">{!! $text($ket($row['keterangan'])) !!}</td>
+                    @if($showBobot)
+                        <td class="jumlah-col">{{ $num($row['jumlah'] ?? '') }}</td>
+                    @endif
                     <td class="nilai-col">{{ $num($row['nilai']) }}</td>
+                    @if($showBobot)
+                        <td class="bobot-col">{{ $num($row['bobot'] ?? '') }}</td>
+                    @endif
                     <td class="kkm">{{ $num($row['kkm']) }}</td>
                     <td class="mapel">{!! $text(($isArabic && ! empty($row['mapel_ar'])) ? $row['mapel_ar'] : $row['mapel']) !!}</td>
                     <td class="no">{{ $num($row['no']) }}</td>
@@ -558,7 +592,13 @@
                     <td class="no">{{ $num($row['no']) }}</td>
                     <td class="mapel">{!! $text(($isArabic && ! empty($row['mapel_ar'])) ? $row['mapel_ar'] : $row['mapel']) !!}</td>
                     <td class="kkm">{{ $num($row['kkm']) }}</td>
+                    @if($showBobot)
+                        <td class="bobot-col">{{ $num($row['bobot'] ?? '') }}</td>
+                    @endif
                     <td class="nilai-col">{{ $num($row['nilai']) }}</td>
+                    @if($showBobot)
+                        <td class="jumlah-col">{{ $num($row['jumlah'] ?? '') }}</td>
+                    @endif
                     <td class="ket-col">{!! $text($ket($row['keterangan'])) !!}</td>
                 @endif
             </tr>
@@ -569,9 +609,9 @@
     {{-- Ringkasan --}}
     <table class="ringkasan-box" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
-            <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('jumlah_nilai')) !!}</td>
+            <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label($showBobot ? 'total_bobot' : 'jumlah_nilai')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $num($data['Jumlah'] ?? '-') }}</td>
+            <td class="val">{{ $num($showBobot ? ($data['JumlahBobot'] ?? '-') : ($data['Jumlah'] ?? '-')) }}</td>
             <td class="empty"></td>
             <td class="empty"></td>
             <td class="empty"></td>
@@ -579,6 +619,14 @@
             <td class="colon">:</td>
             <td class="pred-val">{!! $text($pred($data['Predikat'] ?? '-')) !!}</td>
         </tr>
+        @if($showBobot)
+            <tr>
+                <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('nilai_tertimbang')) !!}</td>
+                <td class="colon">:</td>
+                <td class="val">{{ $num($data['JumlahTertimbang'] ?? '-') }}</td>
+                <td class="empty" colspan="6"></td>
+            </tr>
+        @endif
         <tr>
             <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('rata_rata')) !!}</td>
             <td class="colon">:</td>

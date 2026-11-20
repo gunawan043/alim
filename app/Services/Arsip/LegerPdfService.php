@@ -7,6 +7,7 @@ use App\Models\AdminPresensiHarian;
 use App\Models\NilaiSumatif;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Services\TahfidzRaporService;
@@ -112,11 +113,25 @@ class LegerPdfService
             }
         }
 
+        // Bobot per mapel (khusus SAS): override manual, jatuh ke JP bila kosong.
+        $bobotMap = StudyGroupSubject::query()
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $selectedAyId)
+            ->whereIn('subject_id', $subjectMap->pluck('id')->all())
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                $row->subject_id => $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours,
+            ])
+            ->all();
+
         $legerAggMap = [];
+        $legerJumlahMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
             $total = 0;
             $count = 0;
+            $bobotTerisi = 0.0;
+            $tertimbang = 0.0;
             foreach ($subjectMap as $subject) {
                 $book = $bookMap[$subject->id] ?? null;
                 if (! $book) {
@@ -126,9 +141,20 @@ class LegerPdfService
                 if ($val !== null) {
                     $total += $val;
                     $count++;
+                    $bobot = (float) ($bobotMap[$subject->id] ?? 0);
+                    $bobotTerisi += $bobot;
+                    $tertimbang += $bobot * (float) $val;
                 }
             }
-            $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
+
+            $legerJumlahMap[$sid] = $tertimbang;
+
+            if ($jenis === 'sas' && $bobotTerisi > 0) {
+                // Rata-rata SAS berbobot, sejalan dengan rapor: Σ(bobot×nilai) ÷ Σbobot.
+                $legerAggMap[$sid] = round($tertimbang / $bobotTerisi, 1);
+            } else {
+                $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
+            }
         }
 
         $rankMap = [];
@@ -161,6 +187,8 @@ class LegerPdfService
             'selectedAy' => $selectedAy,
             'presensiMap' => $presensiMap,
             'legerAggMap' => $legerAggMap,
+            'legerJumlahMap' => $legerJumlahMap,
+            'bobotMap' => $bobotMap,
             'rankMap' => $rankMap,
             'jenis' => $jenis,
             'nilaiResolved' => $nilaiResolved,

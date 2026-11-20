@@ -8,16 +8,19 @@ use App\Models\AcademicYear;
 use App\Models\AuditLog;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
+use App\Models\NilaiSumatif;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\Arsip\RaporPdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -318,6 +321,179 @@ class BukuNilaiKonsolidasiTest extends TestCase
 
         $this->assertSame(85.0, (float) $row->sts_murni);
         $this->assertSame(85.0, (float) $row->sts);
+    }
+
+    public function test_tahfidz_tidak_wajib_nilai_murni_saat_menyimpan(): void
+    {
+        $subject = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'THF',
+            'name' => "Tahfidzul Qur'an",
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        (new ProvisionStudyGroupSubjectAcademicStructureJob(
+            (string) Str::uuid(), $this->studyGroup->id, $subject->id,
+            $this->guruA->id, $this->school->id, $this->ay->id, $this->grade->id
+        ))->handle();
+
+        $book = TeacherAdminBook::where('subject_id', $subject->id)->firstOrFail();
+
+        $studentId = (string) Str::uuid();
+        DB::table('students')->insert([
+            'id' => $studentId,
+            'school_id' => $this->school->id,
+            'nisn' => '9998887775',
+            'name' => 'Santri Tahfidz',
+            'gender' => 'L',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // STS diisi tanpa Nilai Murni → tetap tersimpan untuk mapel Tahfidz.
+        $this->actingAs($this->guruA)
+            ->post("/{$this->guruA->id}/schools/guru-mapel/{$book->id}/w3", [
+                'sumatif' => [$studentId => ['sts' => 80]],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $row = \App\Models\NilaiSumatif::where('admin_book_id', $book->id)
+            ->where('student_id', $studentId)
+            ->firstOrFail();
+
+        $this->assertNull($row->sts_murni);
+        $this->assertSame(80.0, (float) $row->sts);
+    }
+
+    public function test_rapor_sas_memakai_bobot_dan_rata_rata_tertimbang(): void
+    {
+        $this->provisionBook();
+        $book = TeacherAdminBook::firstOrFail();
+
+        $arab = Subject::create([
+            'school_id' => $this->school->id,
+            'code' => 'ARB',
+            'name' => 'Bahasa Arab',
+            'credit_hours' => 2,
+            'is_active' => true,
+        ]);
+
+        $arabBook = TeacherAdminBook::create([
+            'teacher_id' => $this->guruA->id,
+            'subject_id' => $arab->id,
+            'study_group_id' => $this->studyGroup->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'is_active' => true,
+        ]);
+
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'SANTRI BOBOT',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        StudentClassHistory::create([
+            'student_id' => $student->id,
+            'study_group_id' => $this->studyGroup->id,
+            'academic_year_id' => $this->ay->id,
+            'attendance_number' => 1,
+            'is_active' => true,
+        ]);
+
+        // Bobot: Matematika 3, Bahasa Arab 1.
+        foreach ([[$this->subject->id, 3.0], [$arab->id, 1.0]] as [$subjectId, $bobot]) {
+            StudyGroupSubject::updateOrCreate(
+                [
+                    'study_group_id' => $this->studyGroup->id,
+                    'subject_id' => $subjectId,
+                    'academic_year_id' => $this->ay->id,
+                ],
+                [
+                    'school_id' => $this->school->id,
+                    'weekly_hours' => $bobot,
+                    'bobot' => $bobot,
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        NilaiSumatif::create([
+            'admin_book_id' => $book->id,
+            'student_id' => $student->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'sas' => 90,
+        ]);
+
+        NilaiSumatif::create([
+            'admin_book_id' => $arabBook->id,
+            'student_id' => $student->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'sas' => 60,
+        ]);
+
+        $data = app(RaporPdfService::class)->buildSantriData(
+            $this->school->id,
+            $this->studyGroup,
+            $this->ay,
+            (string) $this->ay->id,
+            'ganjil',
+            'sas',
+            $student,
+        );
+
+        $row = array_values($data)[0];
+
+        // (3×90 + 1×60) ÷ 4 = 82,5
+        $this->assertSame('4', $row['JumlahBobot']);
+        $this->assertSame('330.0', $row['JumlahTertimbang']);
+        $this->assertSame('82.5', $row['Rata']);
+    }
+
+    public function test_rapor_bilingual_merender_dua_tabel_bahasa(): void
+    {
+        $this->provisionBook();
+        $book = TeacherAdminBook::firstOrFail();
+
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'SANTRI BILINGUAL',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        StudentClassHistory::create([
+            'student_id' => $student->id,
+            'study_group_id' => $this->studyGroup->id,
+            'academic_year_id' => $this->ay->id,
+            'attendance_number' => 1,
+            'is_active' => true,
+        ]);
+
+        $html = app(RaporPdfService::class)->renderHtml(
+            $this->school->id,
+            $this->studyGroup,
+            $this->ay,
+            (string) $this->ay->id,
+            'ganjil',
+            'sas',
+            $student,
+            RaporPdfService::BAHASA_BILINGUAL,
+        );
+
+        // Satu tabel memuat dua bahasa (kolom kiri Indonesia, kanan Arab).
+        $this->assertSame(1, substr_count($html, 'class="nilai dual"'), 'Kedua bahasa berada dalam satu tabel agar barisnya sejajar.');
+        $this->assertStringContainsString('Mata Pelajaran', $html);
+        $this->assertStringContainsString(\App\Support\ArabicText::toHtml('المادة', false), $html, 'Header mapel versi Arab harus ada.');
+        $this->assertStringContainsString(\App\Support\ArabicText::toHtml('مجموع الأوزان', false), $html, 'Label total bobot versi Arab harus ada.');
+        $this->assertGreaterThanOrEqual(3, substr_count($html, 'num-ar'), 'Sel angka Arab memakai font Arab.');
+        $this->assertStringContainsString('Jumlah Bobot', $html);
+        $this->assertStringContainsString('Bobot', $html);
     }
 
     public function test_tambah_kolom_sumatif_dengan_id_aman_tersimpan(): void

@@ -24,6 +24,7 @@ use App\Models\TujuanPembelajaran;
 use App\Services\GuardianGradeColumnService;
 use App\Services\NilaiPublishNotificationService;
 use App\Services\SumatifHarianService;
+use App\Support\NilaiMurniRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -496,9 +497,20 @@ class NilaiGuruController extends Controller
         $guardianVisibleColumns = $book['adminBook']->guardianVisibleColumns()
             ?? GuardianGradeColumnService::keys();
 
+        $adminBook = $book['adminBook'];
+        $studyGroup = $adminBook->studyGroup;
+
+        // Mapel tertentu (Tahfidz, Hadits, Bahasa Inggris kelas 1–3 SD) tidak
+        // mewajibkan Nilai Murni sebagai gerbang pengisian STS/SAS.
+        $murniOptional = NilaiMurniRule::optionalFor(
+            $adminBook->subject?->name,
+            $studyGroup?->school?->school_level,
+            $studyGroup?->gradeLevel?->level ?? (int) ($studyGroup?->name ?? 0),
+        );
+
         return view('nilai-guru.wizard3', compact(
             'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap', 'paketOptions', 'selectedPaketId', 'formatifMap',
-            'guardianColumns', 'guardianVisibleColumns',
+            'guardianColumns', 'guardianVisibleColumns', 'murniOptional',
         ));
     }
 
@@ -624,6 +636,9 @@ class NilaiGuruController extends Controller
         ]);
 
         // Aturan: Nilai Murni STS/SAS (hasil ujian) WAJIB diisi sebelum kolom STS/SAS diisi.
+        // Pengecualian: Tahfidz, Hadits, dan Bahasa Inggris kelas 1–3 SD.
+        $murniOptional = NilaiMurniRule::optionalForAdminBook($book['adminBook']);
+
         $policyErrors = [];
         foreach ((array) $request->input('sumatif', []) as $studentId => $row) {
             $hasSts = isset($row['sts']) && $row['sts'] !== '' && $row['sts'] !== null;
@@ -631,10 +646,10 @@ class NilaiGuruController extends Controller
             $hasStsMurni = isset($row['sts_murni']) && $row['sts_murni'] !== '' && $row['sts_murni'] !== null;
             $hasSasMurni = isset($row['sas_murni']) && $row['sas_murni'] !== '' && $row['sas_murni'] !== null;
 
-            if ($hasSts && ! $hasStsMurni) {
+            if (! $murniOptional && $hasSts && ! $hasStsMurni) {
                 $policyErrors["sumatif.{$studentId}.sts"] = 'Isi Nilai Murni STS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS.';
             }
-            if ($hasSas && ! $hasSasMurni) {
+            if (! $murniOptional && $hasSas && ! $hasSasMurni) {
                 $policyErrors["sumatif.{$studentId}.sas"] = 'Isi Nilai Murni SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom SAS.';
             }
         }
@@ -1125,6 +1140,8 @@ class NilaiGuruController extends Controller
                 case 'sumatif':
                     $service = app(SumatifHarianService::class);
                     $savedRows = [];
+                    // Pengecualian: Tahfidz, Hadits, dan Bahasa Inggris kelas 1–3 SD.
+                    $murniOptional = NilaiMurniRule::optionalForAdminBook($book['adminBook']);
 
                     foreach ($data['sumatif'] ?? [] as $sid => $flds) {
                         $hasAny = collect($flds)->filter(fn ($v) => ! is_array($v) && $v !== '' && is_numeric(trim((string) $v)))->isNotEmpty()
@@ -1156,7 +1173,7 @@ class NilaiGuruController extends Controller
                         $hasStsMurni = isset($flds['sts_murni']) && $flds['sts_murni'] !== '' && $flds['sts_murni'] !== null;
                         $hasSasMurni = isset($flds['sas_murni']) && $flds['sas_murni'] !== '' && $flds['sas_murni'] !== null;
 
-                        if (($hasSts && ! $hasStsMurni) || ($hasSas && ! $hasSasMurni)) {
+                        if (! $murniOptional && (($hasSts && ! $hasStsMurni) || ($hasSas && ! $hasSasMurni))) {
                             return response()->json([
                                 'saved' => false,
                                 'message' => 'Isi Nilai Murni STS/SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS/SAS.',

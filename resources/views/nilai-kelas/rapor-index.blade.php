@@ -281,10 +281,12 @@
                                         <li><h6 class="dropdown-header">SAS — Nilai Akhir</h6></li>
                                         <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
                                         <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                        <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li><h6 class="dropdown-header">STS — Tengah Semester</h6></li>
                                         <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
                                         <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                        <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
                                     </ul>
                                 </div>
                             @else
@@ -401,10 +403,12 @@
                                                     <li><h6 class="dropdown-header">STS — Tengah Semester</h6></li>
                                                     <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
                                                     <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sts', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
                                                     <li><hr class="dropdown-divider"></li>
                                                     <li><h6 class="dropdown-header">SAS — Nilai Akhir</h6></li>
                                                     <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
                                                     <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                                                    <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'studentId' => $student->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSem, 'jenis' => 'sas', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
                                                 </ul>
                                             </div>
                                             <button type="button" class="btn btn-outline-secondary btn-sm ms-1 js-note"
@@ -455,13 +459,15 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
                             <h5 class="card-title mb-0"><i class="ri-settings-3-line text-success me-1"></i>Pengaturan &amp; Preview PDF</h5>
-                            <p class="text-muted mb-0 small">Pengaturan disimpan per varian dokumen: STS/SAS dan Indonesia/Arab.</p>
+                            <p class="text-muted mb-0 small">Pengaturan disimpan per varian dokumen: STS/SAS dan Indonesia/Arab/Bilingual.</p>
                             <div class="d-flex flex-wrap gap-1 mt-2">
                                 @foreach([
                                     ['sts', 'id', 'STS — Indonesia'],
                                     ['sts', 'ar', 'STS — Arab'],
+                                    ['sts', 'id-ar', 'STS — Bilingual'],
                                     ['sas', 'id', 'SAS — Indonesia'],
                                     ['sas', 'ar', 'SAS — Arab'],
+                                    ['sas', 'id-ar', 'SAS — Bilingual'],
                                 ] as [$variantJenis, $variantBahasa, $variantLabel])
                                     <button type="button"
                                             class="btn btn-sm js-variant-settings {{ $docJenis === $variantJenis && $docBahasa === $variantBahasa ? 'btn-primary' : 'btn-outline-secondary' }}"
@@ -535,6 +541,7 @@
                                 <select id="previewBahasa" class="form-select form-select-sm">
                                     <option value="id" @selected($docBahasa === 'id')>Indonesia</option>
                                     <option value="ar" @selected($docBahasa === 'ar')>Arab</option>
+                                    <option value="id-ar" @selected($docBahasa === 'id-ar')>Bilingual</option>
                                 </select>
                             </div>
                             <div class="col-3">
@@ -588,6 +595,7 @@
                                         <tr>
                                             <th style="width:70px;" class="text-center">Masuk</th>
                                             <th>Mata Pelajaran</th>
+                                            <th style="width:120px;" class="text-center">Bobot <span class="text-muted fw-normal">(SAS)</span></th>
                                             <th style="width:140px;" class="text-center">Urutan</th>
                                         </tr>
                                     </thead>
@@ -607,6 +615,23 @@
                                                     @if($subject->category)
                                                         <small class="text-muted ms-1">({{ $subject->category }})</small>
                                                     @endif
+                                                </td>
+                                                <td class="text-center">
+                                                    @php
+                                                        $bobotRow = ($subjectBobotMap ?? [])[$subject->id] ?? ['bobot' => null, 'jp' => null, 'efektif' => null];
+                                                        $bobotVal = $bobotRow['bobot'] !== null
+                                                            ? rtrim(rtrim(number_format((float) $bobotRow['bobot'], 2, '.', ''), '0'), '.')
+                                                            : '';
+                                                    @endphp
+                                                    <input type="text" inputmode="decimal"
+                                                           name="subject_bobot[{{ $subject->id }}]"
+                                                           value="{{ old('subject_bobot.'.$subject->id, $bobotVal) }}"
+                                                           placeholder="{{ $bobotRow['jp'] !== null ? rtrim(rtrim(number_format((float) $bobotRow['jp'], 2, '.', ''), '0'), '.') : '0' }}"
+                                                           class="form-control form-control-sm text-center mx-auto"
+                                                           style="max-width:90px;">
+                                                    <small class="text-muted d-block" style="font-size:10px;">
+                                                        JP: {{ $bobotRow['jp'] !== null ? rtrim(rtrim(number_format((float) $bobotRow['jp'], 2, '.', ''), '0'), '.') : '—' }}
+                                                    </small>
                                                 </td>
                                                 <td class="text-center">
                                                     <input type="hidden" name="subject_order[{{ $subject->id }}]"
@@ -632,9 +657,9 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Urutan mengikuti posisi baris; tombol panah langsung memindahkan mapel.</small>
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Bobot kosong = memakai JP rombel; boleh desimal (mis. 2,5). Urutan mengikuti posisi baris.</small>
                                 <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="ri-save-3-line me-1"></i>Simpan Mapel &amp; Urutan
+                                    <i class="ri-save-3-line me-1"></i>Simpan Mapel, Urutan &amp; Bobot
                                 </button>
                             </div>
                         </form>
@@ -975,8 +1000,10 @@ renumberSubjectRows();
     const labels = {
         'sts:id': 'STS — Indonesia',
         'sts:ar': 'STS — Arab',
+        'sts:id-ar': 'STS — Bilingual',
         'sas:id': 'SAS — Indonesia',
         'sas:ar': 'SAS — Arab',
+        'sas:id-ar': 'SAS — Bilingual',
     };
 
     function setFormValue(form, key, value) {

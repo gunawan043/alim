@@ -172,10 +172,26 @@
                             @endif
                         @endif
                     @endif
-                    <a href="{{ route('user.schools.nilai-kelas.rapor', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester]) }}"
-                    class="btn btn-outline-primary btn-md me-1">
-                        <i class="ri-file-paper-2-line me-1"></i> Cetak Rapor
-                    </a>
+                    <div class="btn-group me-1">
+                        <a href="{{ route('user.schools.nilai-kelas.rapor', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester]) }}"
+                           class="btn btn-outline-primary btn-md">
+                            <i class="ri-file-paper-2-line me-1"></i> Cetak Rapor
+                        </a>
+                        <button type="button" class="btn btn-outline-primary btn-md dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="visually-hidden">Pilih format rapor</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header">Rapor Massal — STS</h6></li>
+                            <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sts', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
+                            <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sts', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                            <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sts', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Rapor Massal — SAS</h6></li>
+                            <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sas', 'bahasa' => 'id']) }}">Indonesia (LTR)</a></li>
+                            <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sas', 'bahasa' => 'ar']) }}">Arab (RTL)</a></li>
+                            <li><a class="dropdown-item" target="_blank" href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sas', 'bahasa' => 'id-ar']) }}">Bilingual (ID + AR)</a></li>
+                        </ul>
+                    </div>
                     <!-- <a href="{{ route('user.schools.nilai-kelas.rapor.cetak-massal', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'academic_year_id' => $selectedAyId, 'semester' => $selectedSemester, 'jenis' => 'sas']) }}"
                     class="btn btn-success btn-md me-1" target="_blank">
                         <i class="ri-printer-line me-1"></i> Rapor Massal
@@ -388,20 +404,25 @@
                                         @if($umumCount > 0)
                                             <th colspan="{{ $umumCount }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
-                                        <th rowspan="4" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
-                                        <th rowspan="4" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="avg">Rata-rata</th>
-                                        <th rowspan="4" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="rank">Peringkat</th>
-                                        <th rowspan="4" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="pred">Predikat</th>
+                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
+                                        @if($isSasLeger)
+                                            <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" title="Jumlah (Bobot × Nilai)">
+                                                Jumlah<br><small style="font-size:9px;font-weight:400;">B×N</small>
+                                            </th>
+                                        @endif
+                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="avg">Rata-rata</th>
+                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="rank">Peringkat</th>
+                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="pred">Predikat</th>
                                         <th class="bg-secondary-subtle text-secondary" colspan="3">PRESENSI</th>
                                     </tr>
                                     <tr class="text-center">
                                         @if($isSasLeger)
-                                            <th rowspan="3" style="background:var(--bs-warning-bg-subtle);" data-sort="doa">Do'a</th>
-                                            <th rowspan="3" style="background:var(--bs-warning-bg-subtle);" data-sort="hiwar">Hiwar</th>
-                                            <th rowspan="3" style="background:var(--bs-warning-bg-subtle);" data-sort="conv">Conversation</th>
-                                            <th rowspan="3" style="background:var(--bs-primary-bg-subtle);" data-sort="juz">Juz</th>
-                                            <th rowspan="3" style="background:var(--bs-primary-bg-subtle);" data-sort="jumlah_juz">Jml Juz</th>
-                                            <th rowspan="3" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
+                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="doa">Do'a</th>
+                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="hiwar">Hiwar</th>
+                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="conv">Conversation</th>
+                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="juz">Juz</th>
+                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="jumlah_juz">Jml Juz</th>
+                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
                                         @endif
                                         @foreach($subjectMap as $subject)
                                             <th rowspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
@@ -413,9 +434,9 @@
                                         <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
                                     </tr>
                                     <tr class="text-center">
-                                        <th rowspan="2" class="bg-success-subtle text-success" data-sort="s">S</th>
-                                        <th rowspan="2" class="bg-warning-subtle text-warning" data-sort="i">I</th>
-                                        <th rowspan="2" class="bg-danger-subtle text-danger" data-sort="a">A</th>
+                                        <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-success-subtle text-success" data-sort="s">S</th>
+                                        <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-warning-subtle text-warning" data-sort="i">I</th>
+                                        <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-danger-subtle text-danger" data-sort="a">A</th>
                                     </tr>
                                     <tr>
                                         <th colspan="{{ 3 }}" class="text-center fw-bold" style="background:var(--bs-tertiary-bg);vertical-align:middle;" data-col="name">
@@ -439,6 +460,26 @@
                                             </th>
                                         @endforeach
                                     </tr>
+                                    @if($isSasLeger)
+                                        <tr>
+                                            <th colspan="3" class="text-center fw-bold" style="background:var(--bs-secondary-bg);vertical-align:middle;" data-col="name">
+                                                <span class="bg-secondary-subtle text-secondary">
+                                                    <i class="ri-scales-3-line me-1"></i>Bobot
+                                                </span>
+                                            </th>
+                                            @foreach($subjectMap as $subject)
+                                                @php
+                                                    $bobotVal = $bobotMap[$subject->id] ?? null;
+                                                    $bobotText = $bobotVal === null
+                                                        ? '—'
+                                                        : (fmod((float) $bobotVal, 1.0) === 0.0
+                                                            ? (string) (int) $bobotVal
+                                                            : rtrim(rtrim(number_format((float) $bobotVal, 2, '.', ''), '0'), '.'));
+                                                @endphp
+                                                <th style="font-weight:700;" title="Bobot {{ $subject->name }}">{{ $bobotText }}</th>
+                                            @endforeach
+                                        </tr>
+                                    @endif
                                 </thead>
                                 <tbody>
 
@@ -530,6 +571,12 @@
                                             <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
                                                 {{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}
                                             </td>
+                                            @if(($legerMode ?? 'sts') === 'sas')
+                                                {{-- Jumlah (Bobot × Nilai) --}}
+                                                <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total_bobot">
+                                                    {{ isset($legerJumlahMap[$sid]) ? number_format($legerJumlahMap[$sid], 1) : '—' }}
+                                                </td>
+                                            @endif
                                             {{-- Rata-rata --}}
                                             <td class="text-center fw-bold" style="color:var(--bs-primary);" data-col="avg">
                                                 {{ $avgVal !== null ? number_format($avgVal, 1) : '—' }}
@@ -571,7 +618,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $subjectMap->count() + 10 + ((($legerMode ?? 'sts') === 'sas') ? 5 : 0) }}" class="text-center text-muted py-4">
+                                            <td colspan="{{ $subjectMap->count() + 10 + ((($legerMode ?? 'sts') === 'sas') ? 6 : 0) }}" class="text-center text-muted py-4">
                                                 <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                             </td>
                                         </tr>
@@ -755,7 +802,7 @@
                                                    value="{{ $existing?->sts ?? '' }}"
                                                    oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
                                                    min="0" max="100" step="0.01" placeholder="---"
-                                                   @if($existing?->sts_murni === null) readonly @endif>
+                                                   @if(! ($murniOptional ?? false) && $existing?->sts_murni === null) readonly @endif>
                                         </td>
                                         @php $ph = $penghargaanMap[$student->id] ?? null; @endphp
                                         <td class="p-0" data-col="sas-murni">
@@ -773,7 +820,7 @@
                                                    value="{{ $existing?->sas ?? '' }}"
                                                    oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
                                                    min="0" max="100" step="0.01" placeholder="---"
-                                                   @if($existing?->sas_murni === null) readonly @endif>
+                                                   @if(! ($murniOptional ?? false) && $existing?->sas_murni === null) readonly @endif>
                                         </td>
                                         <td class="text-center" id="rsa-{{ $student->id }}">{{ $existing?->rsa !== null ? number_format($existing->rsa, 1) : '---' }}</td>
                                         <td class="text-center" id="nrm-{{ $student->id }}">{{ $existing?->nr_murni !== null ? number_format($existing->nr_murni, 1) : '---' }}</td>
@@ -949,6 +996,7 @@
     #tab-leger th[data-sort="jumlah_juz"], #tab-leger td[data-col="jumlah_juz"] { width: 58px; min-width: 58px; max-width: 58px; }
     #tab-leger th[data-sort="halaqoh"], #tab-leger td[data-col="halaqoh"] { width: 84px; min-width: 84px; max-width: 84px; }
     #tab-leger th[data-sort="total"], #tab-leger td[data-col="total"] { width: 76px; min-width: 76px; max-width: 76px; }
+    #tab-leger th[data-sort="total_bobot"], #tab-leger td[data-col="total_bobot"] { width: 76px; min-width: 76px; max-width: 76px; }
     #tab-leger th[data-sort="avg"], #tab-leger td[data-col="avg"] { width: 82px; min-width: 82px; max-width: 82px; }
     #tab-leger th[data-sort="rank"], #tab-leger td[data-col="rank"] { width: 64px; min-width: 64px; max-width: 64px; }
     #tab-leger th[data-sort="pred"], #tab-leger td[data-col="pred"] { width: 150px; min-width: 150px; max-width: 150px; }
@@ -1165,10 +1213,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Gating: kolom STS/SAS terkunci sampai Nilai Murni terisi (readonly → klik memunculkan modal)
+        // Pengecualian: Tahfidz, Hadits, dan Bahasa Inggris kelas 1–3 SD tidak wajib.
+        var MURNI_OPTIONAL = @json($murniOptional ?? false);
+
         function refreshGate(inp) {
+            if (inp.disabled) return;
             var row = inp.closest('tr');
             var need = inp.getAttribute('data-requires');
             if (!row || !need) return;
+            if (MURNI_OPTIONAL) {
+                inp.readOnly = false;
+                inp.title = '';
+                return;
+            }
             var src = row.querySelector('input[data-key="' + need + '"]');
             var has = src && String(src.value).trim() !== '';
             inp.readOnly = !has;
@@ -1178,6 +1235,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Klik pada kolom terkunci → modal peringatan
         table.addEventListener('click', function (e) {
             var inp = e.target;
+            if (MURNI_OPTIONAL) return;
             if (!inp.classList || !inp.classList.contains('js-gated') || !inp.readOnly) return;
 
             var need = inp.getAttribute('data-requires');

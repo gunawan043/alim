@@ -15,6 +15,7 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\SubjectKktp;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
@@ -31,6 +32,7 @@ use App\Services\Pdf\DocumentPdfService;
 use App\Services\SumatifHarianService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
+use App\Support\NilaiMurniRule;
 use App\Support\UserJabatan;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -383,11 +385,25 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Bobot per mapel (khusus SAS): override manual, jatuh ke JP bila kosong.
+        $bobotMap = StudyGroupSubject::query()
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $selectedAyId)
+            ->whereIn('subject_id', $subjectMap->pluck('id')->all())
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                $row->subject_id => $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours,
+            ])
+            ->all();
+
         $legerAggMap = [];
+        $legerJumlahMap = [];
         foreach ($students as $history) {
             $sid = $history->student_id;
             $total = 0;
             $count = 0;
+            $bobotTerisi = 0.0;
+            $tertimbang = 0.0;
             foreach ($subjectMap as $subject) {
                 $book = $bookMap[$subject->id] ?? null;
                 if (! $book) {
@@ -401,9 +417,20 @@ class NilaiKelasController extends Controller
                 if ($val !== null) {
                     $total += $val;
                     $count++;
+                    $bobot = (float) ($bobotMap[$subject->id] ?? 0);
+                    $bobotTerisi += $bobot;
+                    $tertimbang += $bobot * (float) $val;
                 }
             }
-            $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
+
+            $legerJumlahMap[$sid] = $tertimbang;
+
+            if ($legerMode === 'sas' && $bobotTerisi > 0) {
+                // Rata-rata SAS berbobot, sejalan dengan rapor: Σ(bobot×nilai) ÷ Σbobot.
+                $legerAggMap[$sid] = round($tertimbang / $bobotTerisi, 1);
+            } else {
+                $legerAggMap[$sid] = $count > 0 ? $total / $count : null;
+            }
         }
 
         // Hitung peringkat berdasarkan rata-rata (nilai tertinggi = rank 1)
@@ -426,13 +453,22 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Mapel tertentu (Tahfidz, Hadits, Bahasa Inggris kelas 1–3 SD) tidak
+        // mewajibkan Nilai Murni sebagai gerbang pengisian STS/SAS.
+        $murniOptional = NilaiMurniRule::optionalFor(
+            $activeBook?->subject?->name,
+            $studyGroup->school?->school_level,
+            $studyGroup->gradeLevel?->level ?? (int) $studyGroup->name,
+        );
+
         return view('nilai-kelas.sts', compact(
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId'
+            'bobotMap', 'legerJumlahMap',
+            'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional'
         ));
     }
 
@@ -459,6 +495,9 @@ class NilaiKelasController extends Controller
             $service = app(SumatifHarianService::class);
 
             // Aturan: Nilai Murni STS/SAS (hasil ujian) WAJIB diisi sebelum kolom STS/SAS diisi.
+            // Pengecualian: Tahfidz, Hadits, dan Bahasa Inggris kelas 1–3 SD.
+            $murniOptional = NilaiMurniRule::optionalForAdminBook($adminBook);
+
             $policyErrors = [];
             foreach ((array) $nilaiData as $studentId => $row) {
                 $existingRow = NilaiSumatif::where('admin_book_id', $bookId)
@@ -473,10 +512,10 @@ class NilaiKelasController extends Controller
                 $hasSasMurni = (isset($row['sas_murni']) && $row['sas_murni'] !== '' && $row['sas_murni'] !== null)
                     || ($existingRow?->sas_murni !== null);
 
-                if ($hasSts && ! $hasStsMurni) {
+                if (! $murniOptional && $hasSts && ! $hasStsMurni) {
                     $policyErrors["nilai.{$studentId}.sts"] = 'Isi Nilai Murni STS (hasil ujian) terlebih dahulu sebelum mengisi kolom STS.';
                 }
-                if ($hasSas && ! $hasSasMurni) {
+                if (! $murniOptional && $hasSas && ! $hasSasMurni) {
                     $policyErrors["nilai.{$studentId}.sas"] = 'Isi Nilai Murni SAS (hasil ujian) terlebih dahulu sebelum mengisi kolom SAS.';
                 }
             }
@@ -957,12 +996,12 @@ class NilaiKelasController extends Controller
         // (per sekolah + TA + semester; berlaku untuk STS dan SAS).
         $distributionSetting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
         $docJenis = in_array($request->input('doc_jenis'), ['sts', 'sas'], true) ? $request->input('doc_jenis') : 'sts';
-        $docBahasa = in_array($request->input('doc_bahasa'), ['id', 'ar'], true) ? $request->input('doc_bahasa') : 'id';
+        $docBahasa = in_array($request->input('doc_bahasa'), ['id', 'ar', 'id-ar'], true) ? $request->input('doc_bahasa') : 'id';
         $layout = $distributionSetting?->variantLayoutSettings($docJenis, $docBahasa) ?? RaporDistributionSetting::defaultLayout();
 
         $variantLayouts = [];
         foreach (['sts', 'sas'] as $variantJenis) {
-            foreach (['id', 'ar'] as $variantBahasa) {
+            foreach (['id', 'ar', 'id-ar'] as $variantBahasa) {
                 $variantLayouts[$variantJenis.':'.$variantBahasa] = $distributionSetting?->variantLayoutSettings($variantJenis, $variantBahasa)
                     ?? RaporDistributionSetting::defaultLayout();
             }
@@ -998,10 +1037,23 @@ class NilaiKelasController extends Controller
             )
             : [];
 
+        // Bobot efektif tiap mapel: override manual, atau JP rombel sebagai default.
+        $subjectBobotMap = StudyGroupSubject::query()
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $selectedAyId)
+            ->whereIn('subject_id', $availableSubjectIds)
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->subject_id => [
+                'bobot' => $row->bobot,
+                'jp' => $row->weekly_hours,
+                'efektif' => $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours,
+            ]])
+            ->all();
+
         return view('nilai-kelas.rapor-index', compact(
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
             'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'variantLayouts', 'docJenis', 'docBahasa',
-            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish',
+            'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap',
         ));
     }
 
@@ -1476,7 +1528,7 @@ class NilaiKelasController extends Controller
             'line_height' => 'required|numeric|min:1|max:2.5',
             'paper_size' => 'required|in:a4,folio,letter',
             'doc_jenis' => 'nullable|in:sts,sas',
-            'doc_bahasa' => 'nullable|in:id,ar',
+            'doc_bahasa' => 'nullable|in:id,ar,id-ar',
             'show_kop' => 'nullable|boolean',
             'show_ttd_ksp' => 'nullable|boolean',
             'show_ttd_wali' => 'nullable|boolean',
@@ -1583,7 +1635,7 @@ class NilaiKelasController extends Controller
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester' => 'required|in:ganjil,genap',
             'doc_jenis' => 'nullable|in:sts,sas',
-            'doc_bahasa' => 'nullable|in:id,ar',
+            'doc_bahasa' => 'nullable|in:id,ar,id-ar',
             'show_kop' => 'nullable|boolean',
             'show_ttd_ksp' => 'nullable|boolean',
             'show_ttd_wali' => 'nullable|boolean',
@@ -1735,6 +1787,7 @@ class NilaiKelasController extends Controller
             'semester' => 'required|in:ganjil,genap',
             'subject_ids' => 'required|array|min:1',
             'subject_order' => 'nullable|array',
+            'subject_bobot' => 'nullable|array',
         ]);
 
         $available = app(RaporPdfService::class)
@@ -1768,7 +1821,30 @@ class NilaiKelasController extends Controller
             ]
         );
 
-        return back()->with('success', 'Mapel rapor dan urutannya berhasil disimpan.');
+        // Bobot rapor SAS per mapel. Kosong = kembali ke JP rombel.
+        // Menerima koma desimal (mis. "2,5") karena diisi manual oleh TU.
+        $bobotInput = (array) $request->input('subject_bobot', []);
+        foreach ($bobotInput as $subjectId => $raw) {
+            if (! in_array($subjectId, $available, true)) {
+                continue;
+            }
+
+            $raw = trim((string) $raw);
+            $bobot = null;
+
+            if ($raw !== '') {
+                $raw = str_replace(',', '.', $raw);
+                $bobot = is_numeric($raw) && (float) $raw >= 0 ? round((float) $raw, 2) : null;
+            }
+
+            StudyGroupSubject::query()
+                ->where('study_group_id', $studyGroup->id)
+                ->where('academic_year_id', $validated['academic_year_id'])
+                ->where('subject_id', $subjectId)
+                ->update(['bobot' => $bobot]);
+        }
+
+        return back()->with('success', 'Mapel rapor, urutan, dan bobot berhasil disimpan.');
     }
 
     /**
@@ -1836,7 +1912,7 @@ class NilaiKelasController extends Controller
 
         // Jenis dokumen: STS (tengah semester) atau SAS (akhir semester / nilai akhir).
         $jenis = $request->input('jenis') === 'sas' ? 'sas' : 'sts';
-        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
+        $bahasa = RaporPdfService::normalizeBahasa($request->input('bahasa'));
 
         $this->assertLegerAccess($userId, $studyGroup);
 
@@ -1884,7 +1960,11 @@ class NilaiKelasController extends Controller
             $bahasa,
         );
 
-        $filename = 'Rapor-'.($bahasa === 'ar' ? 'AR-' : '').str_replace(' ', '-', $student->name)
+        $filename = 'Rapor-'.match ($bahasa) {
+            'ar' => 'AR-',
+            'id-ar' => 'BILINGUAL-',
+            default => '',
+        }.str_replace(' ', '-', $student->name)
             .'-'.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
@@ -1975,7 +2055,7 @@ class NilaiKelasController extends Controller
             : AcademicYear::where('is_active', true)->first()?->id;
         $selectedSem = $request->filled('semester') ? $request->semester : (AcademicYear::where('is_active', true)->first()?->semester === 'genap' ? 'genap' : 'ganjil');
         $jenis = $request->input('jenis') === 'sts' ? 'sts' : 'sas';
-        $bahasa = $request->input('bahasa') === 'ar' ? 'ar' : 'id';
+        $bahasa = RaporPdfService::normalizeBahasa($request->input('bahasa'));
 
         $this->assertLegerAccess($userId, $studyGroup);
 
@@ -2011,7 +2091,11 @@ class NilaiKelasController extends Controller
             $bahasa,
         );
 
-        $filename = 'Rapor-MASSAL-'.($bahasa === 'ar' ? 'AR-' : '').str_replace(' ', '-', $studyGroup->name)
+        $filename = 'Rapor-MASSAL-'.match ($bahasa) {
+            'ar' => 'AR-',
+            'id-ar' => 'BILINGUAL-',
+            default => '',
+        }.str_replace(' ', '-', $studyGroup->name)
             .'-'.strtoupper($selectedSem)
             .'-'.str_replace(['/', ' '], '-', $selectedAy?->name ?? '').'.pdf';
 

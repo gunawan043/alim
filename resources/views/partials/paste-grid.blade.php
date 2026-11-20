@@ -60,6 +60,8 @@
 
         event.preventDefault();
 
+        var before = window.AlimGridUndo ? window.AlimGridUndo.snapshot(table) : null;
+
         var grid = text
             .replace(/\r/g, '')
             .replace(/\n+$/, '')
@@ -103,6 +105,10 @@
             });
         });
 
+        if (filled > 0 && before && window.AlimGridUndo) {
+            window.AlimGridUndo.commitSnapshot(table, before);
+        }
+
         if (filled === 0 && blocked > 0) {
             toast('Kolom masih terkunci. Isi Nilai Murni terlebih dahulu.');
 
@@ -128,3 +134,5 @@
     window.addEventListener('load', init);
 })();
 </script>
+
+@include('partials.grid-undo')

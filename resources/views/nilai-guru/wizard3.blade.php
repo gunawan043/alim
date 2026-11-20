@@ -212,9 +212,9 @@
                                         <span id="rs-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rs ?? '-' }}</span>
                                     </td>
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][sts_murni]" value="{{ $n->sts_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sts" title="Nilai hasil ujian STS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" @if(($n->sts_murni ?? null) === null) readonly @endif title="Wajib isi Nilai Murni STS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" @if(! ($murniOptional ?? false) && ($n->sts_murni ?? null) === null) readonly @endif title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni STS terlebih dahulu' }}" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][sas_murni]" value="{{ $n->sas_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sas" title="Nilai hasil ujian SAS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" @if(($n->sas_murni ?? null) === null) readonly @endif title="Wajib isi Nilai Murni SAS terlebih dahulu" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" @if(! ($murniOptional ?? false) && ($n->sas_murni ?? null) === null) readonly @endif title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni SAS terlebih dahulu' }}" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
                                         <span id="rsa-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rsa ?? '-' }}</span>
                                     </td>
@@ -736,6 +736,9 @@ document.getElementById('kolomModal')?.addEventListener('show.bs.modal', functio
 });
 
 // ─── Gerbang Nilai Murni: STS/SAS terkunci sampai Nilai Murni terisi ───
+// Pengecualian: Tahfidz, Hadits, dan Bahasa Inggris kelas 1–3 SD tidak wajib.
+var MURNI_OPTIONAL = @json($murniOptional ?? false);
+
 function applyMurniGate() {
     document.querySelectorAll('#form-nilai tbody tr').forEach(function (row) {
         [['murni-sts', 'input-sts'], ['murni-sas', 'input-sas']].forEach(function (pair) {
@@ -743,12 +746,12 @@ function applyMurniGate() {
             const target = row.querySelector('.' + pair[1]);
             if (!murni || !target) return;
 
-            const locked = murni.value === '';
+            const locked = !MURNI_OPTIONAL && murni.value === '';
             target.readOnly = locked;
             target.classList.toggle('bg-light', locked);
 
             // Bantu isi otomatis dengan nilai murni (tetap bisa disesuaikan).
-            if (!locked && target.value === '') {
+            if (!locked && target.value === '' && murni.value !== '') {
                 target.value = murni.value;
             }
         });
@@ -770,9 +773,9 @@ applyMurniGate();
     function refresh(row) {
         if (!row || !row.querySelector) return;
         var ms = row.querySelector('.murni-sts'), sts = row.querySelector('.input-sts');
-        if (sts) sts.readOnly = !(ms && String(ms.value).trim() !== '');
+        if (sts) sts.readOnly = !MURNI_OPTIONAL && !(ms && String(ms.value).trim() !== '');
         var ma = row.querySelector('.murni-sas'), sas = row.querySelector('.input-sas');
-        if (sas) sas.readOnly = !(ma && String(ma.value).trim() !== '');
+        if (sas) sas.readOnly = !MURNI_OPTIONAL && !(ma && String(ma.value).trim() !== '');
     }
 
     document.querySelectorAll('#form-nilai tbody tr').forEach(function (row) {
@@ -787,6 +790,7 @@ applyMurniGate();
     document.addEventListener('click', function (e) {
         var inp = e.target;
         if (!inp.classList) return;
+        if (MURNI_OPTIONAL) return;
         var isSts = inp.classList.contains('input-sts');
         var isSas = inp.classList.contains('input-sas');
         if ((!isSts && !isSas) || !inp.readOnly) return;

@@ -5,21 +5,22 @@
     <title>Leger Nilai {{ strtoupper($jenis ?? 'sts') }} — {{ $studyGroup->name ?? '' }}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #000; background: #fff; padding: 15mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9px; color: #000; background: #fff; padding: 10mm; }
         @media print {
-            body { padding: 10mm; }
+            body { padding: 8mm; }
             .no-print { display: none !important; }
-            @page { size: A4 landscape; margin: 10mm; }
+            @page { size: A4 landscape; margin: 8mm; }
         }
-        .header { text-align: center; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; }
-        .header h2 { font-size: 14px; margin-bottom: 4px; }
-        .header p { font-size: 10px; color: #555; }
-        .info-row { display: flex; gap: 20px; margin-bottom: 10px; font-size: 10px; }
+        .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 6px; }
+        .header h2 { font-size: 13px; margin-bottom: 3px; }
+        .header p { font-size: 9px; color: #555; }
+        .info-row { display: flex; gap: 20px; margin-bottom: 8px; font-size: 9px; }
         .info-row span { color: #555; }
-        table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 15px; }
-        th, td { border: 1px solid #333; padding: 3px 5px; text-align: center; }
+        table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 8.5px; margin-bottom: 12px; }
+        th, td { border: 1px solid #333; padding: 2px 2px; text-align: center; }
+        th { font-size: 6.6px; line-height: 1.15; white-space: normal; word-wrap: break-word; overflow: hidden; }
         th { background: #e0e0e0; font-weight: 600; }
-        td.name { text-align: left; white-space: nowrap; font-weight: 500; }
+        td.name { text-align: left; font-weight: 500; word-wrap: break-word; }
         td.empty { color: #aaa; }
         td.aggregate { background: #f0f0f0; font-weight: 600; }
         td.sub { background: #e8f5e9; color: #1b5e20; }
@@ -53,25 +54,47 @@
     <div>Wali Kelas: <strong>{{ $studyGroup->homeroomTeacher?->name ?? '-' }}</strong></div>
 </div>
 
+@php
+    $isSas = ($jenis ?? 'sts') === 'sas';
+    // Lebar kolom memakai persentase agar tabel selalu muat satu halaman landscape.
+    $fixedPct = $isSas ? 37.8 : 34.2;
+    $subjPct = round((100 - $fixedPct) / max(1, $subjectMap->count()), 3);
+    // Bobot per mapel: override manual, jatuh ke JP bila belum diatur.
+    $bobotOf = function ($subjectId) use ($bobotMap) {
+        $v = $bobotMap[$subjectId] ?? null;
+        if ($v === null) {
+            return '—';
+        }
+        $v = (float) $v;
+
+        return fmod($v, 1.0) === 0.0
+            ? (string) (int) $v
+            : rtrim(rtrim(number_format($v, 2, '.', ''), '0'), '.');
+    };
+@endphp
+
 <table>
     <thead>
         <tr>
-            <th style="width:25px;">No</th>
-            <th style="width:55px;">NIS</th>
-            <th class="name" style="width:150px;">Nama Santri</th>
+            <th style="width:2.2%;">No</th>
+            <th style="width:4%;">NIS</th>
+            <th class="name" style="width:9.6%;">Nama Santri</th>
             @foreach($subjectMap as $subject)
-                <th style="width:50px;background:#f5f5f5;" title="{{ $subject->name }}">
-                    {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
+                <th style="width:{{ $subjPct }}%;background:#f5f5f5;" title="{{ $subject->name }}">
+                    {{ \App\Support\AcademicNilai::shortSubjectName($subject->name, 20) }}
                 </th>
             @endforeach
-            <th class="aggregate" style="width:45px;">Jml Juz</th>
-            <th class="aggregate" style="width:45px;">Jml</th>
-            <th class="aggregate" style="width:45px;">Rata</th>
-            <th style="width:35px;">Rank</th>
-            <th style="width:70px;">Predikat</th>
-            <th style="width:30px;background:#e8f5e9;">S</th>
-            <th style="width:30px;background:#fff8e1;">I</th>
-            <th style="width:30px;background:#ffebee;">A</th>
+            <th class="aggregate" style="width:2.6%;">Jml Juz</th>
+            <th class="aggregate" style="width:2.6%;">Jml</th>
+            @if($isSas)
+                <th class="aggregate" style="width:3.2%;" title="Jumlah (Bobot × Nilai)">Jumlah</th>
+            @endif
+            <th class="aggregate" style="width:2.6%;">Rata</th>
+            <th style="width:2.4%;">Rank</th>
+            <th style="width:3.8%;">Predikat</th>
+            <th style="width:1.6%;background:#e8f5e9;">S</th>
+            <th style="width:1.6%;background:#fff8e1;">I</th>
+            <th style="width:1.6%;background:#ffebee;">A</th>
         </tr>
         <tr>
             <th colspan="3" class="name" style="background:#f0f0f0;font-size:9px;text-align:center;">KKTP</th>
@@ -79,8 +102,17 @@
                 @php $book = $bookMap[$subject->id] ?? null; @endphp
                 <th style="background:#f0f0f0;font-weight:700;">{{ \App\Support\AcademicNilai::kkmLabel($book) }}</th>
             @endforeach
-            <th class="aggregate" colspan="8"></th>
+            <th class="aggregate" colspan="{{ $isSas ? 9 : 8 }}"></th>
         </tr>
+        @if($isSas)
+            <tr>
+                <th colspan="3" class="name" style="background:#eef7ee;font-size:9px;text-align:center;">Bobot</th>
+                @foreach($subjectMap as $subject)
+                    <th style="background:#eef7ee;font-weight:700;">{{ $bobotOf($subject->id) }}</th>
+                @endforeach
+                <th class="aggregate" colspan="9"></th>
+            </tr>
+        @endif
     </thead>
     <tbody>
         @php $rank = 1; @endphp
@@ -121,6 +153,9 @@
                 @endforeach
                 <td class="aggregate">{{ $jumlahJuzMap[$sid] ?? 0 }}</td>
                 <td class="aggregate">{{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}</td>
+                @if($isSas)
+                    <td class="aggregate">{{ isset($legerJumlahMap[$sid]) ? number_format($legerJumlahMap[$sid], 1) : '—' }}</td>
+                @endif
                 <td class="aggregate">{{ $avgVal !== null ? number_format($avgVal, 1) : '—' }}</td>
                 <td class="aggregate">{{ $rankVal ?? '—' }}</td>
                 <td class="predikat">{{ $predikat }}</td>
@@ -129,7 +164,7 @@
                 <td style="background:#ffebee;">{{ $pres['a'] ?? '—' }}</td>
             </tr>
         @empty
-            <tr><td colspan="{{ $subjectMap->count() + 11 }}" style="text-align:center;color:#888;">Tidak ada data.</td></tr>
+            <tr><td colspan="{{ $subjectMap->count() + 11 + ($isSas ? 1 : 0) }}" style="text-align:center;color:#888;">Tidak ada data.</td></tr>
         @endforelse
     </tbody>
 </table>

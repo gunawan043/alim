@@ -153,6 +153,33 @@
                     window.scrollBy(deltaX, deltaY);
                 }
             }, { passive: false, capture: true });
+
+            {{-- Panah atas/bawah jangan menambah atau mengurangi nilai pada sel
+                 tabel nilai. Navigasi pindah baris tetap jalan karena handler
+                 tabel berjalan setelah ini dan memindahkan fokus. --}}
+            document.addEventListener('keydown', function (event) {
+                if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+                    return;
+                }
+
+                var target = event.target;
+
+                if (! target || target.tagName !== 'INPUT' || target.type !== 'number') {
+                    return;
+                }
+
+                // Hanya sel tabel nilai; input lain (mis. bobot NR di luar tabel)
+                // dibiarkan memakai panah seperti biasa.
+                var inNilaiGrid = target.classList.contains('sheet-input')
+                    || target.closest('table.js-tools-table')
+                    || target.closest('table[data-paste-grid]');
+
+                if (! inNilaiGrid) {
+                    return;
+                }
+
+                event.preventDefault();
+            }, { capture: true });
         })();
     </script>
 </body>
