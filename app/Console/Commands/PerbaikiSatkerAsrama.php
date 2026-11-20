@@ -100,9 +100,8 @@ class PerbaikiSatkerAsrama extends Command
             'HENDRA HERMAYADI' => ['ma_plus', 'staf'],
             'FATHUL ULUM' => ['ma_plus', 'staf'],
 
-            // ── Asrama SMP Putra & PPS Diniyah ──────────────────────────
+            // ── Asrama SMP Putra ────────────────────────────────────────
             'JAMALUDIN' => ['smp_putra', 'kepala'],
-            'LALU WIRABUANA' => ['pps', 'kepala'],
 
             // ── Satuan Keamanan ─────────────────────────────────────────
             'FIKY SETIAWAN' => ['keamanan', null],
