@@ -24,7 +24,7 @@ class StudyGroup extends Model
 
     protected $fillable = [
         'school_id', 'unit_type', 'data_owner_school_id', 'academic_year_id', 'grade_level_id',
-        'homeroom_teacher_id', 'name', 'code',
+        'homeroom_teacher_id', 'homeroom_name', 'name', 'code',
         'capacity', 'room', 'curriculum_type', 'shift',
         'is_active', 'notes',
     ];
@@ -89,6 +89,39 @@ class StudyGroup extends Model
     {
         // Nama rombel sudah memuat tingkat (mis. "1A", "7B") — jangan menempelkan tingkat dua kali.
         return $this->name;
+    }
+
+    /**
+     * Nama wali kelas untuk dokumen rombel (rapor/leger).
+     *
+     * Memakai nama khusus rombel bila diisi (mis. lengkap dengan gelar), atau
+     * nama GTK dengan kapital di awal kata. Tidak mengubah data pribadi wali.
+     */
+    public function homeroomDisplayName(): ?string
+    {
+        if (filled($this->homeroom_name)) {
+            return trim((string) $this->homeroom_name);
+        }
+
+        $name = $this->homeroomTeacher?->name;
+
+        if (! filled($name)) {
+            return null;
+        }
+
+        $name = trim((string) $name);
+
+        // Data GTK sering tersimpan HURUF BESAR semua → jadikan kapital di
+        // awal kata tanpa merusak gelar yang sudah ditulis benar.
+        if ($name === mb_strtoupper($name)) {
+            $name = Str::title(Str::lower($name));
+        }
+
+        return preg_replace_callback(
+            '/(^|[\s\-])(\p{Ll})/u',
+            fn ($m) => $m[1].mb_strtoupper($m[2]),
+            $name
+        ) ?? $name;
     }
 
     // ── Scopes ─────────────────────────────────────────────────

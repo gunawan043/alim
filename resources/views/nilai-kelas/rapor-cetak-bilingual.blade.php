@@ -767,7 +767,7 @@
                                  alt="TTD Wali Kelas">
                         @endif
                     </div>
-                    <div class="sig-name">{{ $studyGroup->homeroomTeacher?->name ?? '................................' }}</div>
+                    <div class="sig-name">{{ $waliName ?? '................................' }}</div>
                     <div class="sig-detail">{{ $li('nip') }} {{ $waliNupy ?? '...................' }}</div>
                 </td>
                 <td>

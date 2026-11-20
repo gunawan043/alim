@@ -626,7 +626,9 @@ class ArsipInventarisTest extends TestCase
             ->assertSee('id="layoutTabPage"', false)
             ->assertSee('id="layoutTabFont"', false)
             ->assertSee('id="layoutTabTitle"', false)
-            ->assertSee('id="layoutTabTable"', false);
+            ->assertSee('id="layoutTabTable"', false)
+            ->assertSee('id="waliNameForm"', false)
+            ->assertSee('name="homeroom_name"', false);
     }
 
     public function test_kktp_dari_peta_kurikulum_tampil_walau_buku_belum_terhubung(): void

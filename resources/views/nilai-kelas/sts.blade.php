@@ -62,7 +62,7 @@
                             <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Kelas</p>
                             <h3 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ $studyGroup->name }}</h3>
                             @if($studyGroup->homeroomTeacher)
-                                <small class="text-muted"><i class="ri-user-line me-1"></i>{{ $studyGroup->homeroomTeacher->name }}</small>
+                                <small class="text-muted"><i class="ri-user-line me-1"></i>{{ $studyGroup->homeroomDisplayName() }}</small>
                             @endif
                         </div>
                     </div>

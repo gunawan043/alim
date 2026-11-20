@@ -1948,11 +1948,27 @@ class NilaiKelasController extends Controller
         );
 
         $request->validate([
+            'homeroom_name' => 'nullable|string|max:150',
             'ttd_wali_file' => 'nullable|image|mimes:png,jpg,jpeg|max:1024',
             'remove_ttd_wali' => 'nullable|boolean',
         ]);
 
         $teacher = $studyGroup->homeroomTeacher;
+
+        // Nama wali khusus rombel (boleh dengan gelar) — hanya untuk dokumen
+        // rombel ini, tidak mengubah data pribadi GTK.
+        if ($request->has('homeroom_name')) {
+            $studyGroup->update([
+                'homeroom_name' => filled($request->input('homeroom_name'))
+                    ? trim((string) $request->input('homeroom_name'))
+                    : null,
+            ]);
+
+            if (! $request->hasFile('ttd_wali_file') && ! $request->boolean('remove_ttd_wali')) {
+                return back()->with('success', 'Nama wali kelas untuk rapor disimpan.');
+            }
+        }
+
         if (! $teacher) {
             return back()->with('error', 'Rombel ini belum memiliki wali kelas.');
         }
@@ -2280,6 +2296,10 @@ class NilaiKelasController extends Controller
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            // Preview memakai URL yang sama dengan parameter berbeda; jangan
+            // biarkan browser memakai PDF lama dari cache.
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
         ]);
     }
 
@@ -2410,6 +2430,10 @@ class NilaiKelasController extends Controller
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            // Preview memakai URL yang sama dengan parameter berbeda; jangan
+            // biarkan browser memakai PDF lama dari cache.
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
         ]);
     }
 

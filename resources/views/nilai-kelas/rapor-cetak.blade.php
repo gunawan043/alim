@@ -744,7 +744,7 @@
                     @endif
                 </div>
                 <div class="signature-line">____________________</div>
-                <div class="ttd-name"><strong>{!! $text(($isArabic && ! empty($waliNameAr)) ? $waliNameAr : ($studyGroup->homeroomTeacher?->name ?? '................................')) !!}</strong></div>
+                <div class="ttd-name"><strong>{!! $text(($isArabic && ! empty($waliNameAr)) ? $waliNameAr : ($waliName ?? '................................')) !!}</strong></div>
                 <div class="ttd-nip">{!! $text($label('nip')) !!} {{ $num($waliNupy ?? '...................') }}</div>
             </td>
             <td class="ttd-col">

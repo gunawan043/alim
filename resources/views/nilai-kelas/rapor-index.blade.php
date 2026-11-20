@@ -741,7 +741,7 @@
 
     {{-- Modal: Pengaturan Margin, Font & Kertas --}}
     <div class="modal fade" id="layoutSettingsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form id="layoutSettingsForm" method="POST"
                       action="{{ route('user.schools.nilai-kelas.rapor.layout', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
@@ -1118,12 +1118,31 @@
                     <hr class="my-4">
 
                     <h6 class="mb-2"><i class="ri-pen-nib-line me-1"></i>TTD Wali Kelas</h6>
+
+                    {{-- Nama wali untuk rapor rombel ini (boleh dengan gelar). --}}
+                    <form id="waliNameForm" method="POST" class="mb-3"
+                          action="{{ route('user.schools.nilai-kelas.rapor.wali-ttd', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}">
+                        @csrf
+                        <label class="form-label small mb-1" for="homeroomName">Nama wali kelas + gelar (khusus rapor rombel ini)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="homeroom_name" id="homeroomName" class="form-control" maxlength="150"
+                                   value="{{ $studyGroup->homeroom_name }}"
+                                   placeholder="{{ $studyGroup->homeroomDisplayName() ?? 'Nama wali kelas' }}">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="ri-save-3-line me-1"></i>Simpan Nama
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Kosongkan untuk memakai nama GTK otomatis (kapital di awal kata). Nama ini hanya dipakai pada rapor rombel ini dan tidak mengubah data pribadi wali.
+                        </div>
+                    </form>
+
                     @if($studyGroup->homeroomTeacher)
                         @if($studyGroup->homeroomTeacher->ttd_path)
                             <div class="mb-2 p-2 border rounded bg-light d-flex align-items-center gap-2">
                                 <img src="{{ asset('storage/'.$studyGroup->homeroomTeacher->ttd_path) }}"
                                      alt="TTD wali kelas" style="max-height:70px;max-width:160px;object-fit:contain;">
-                                <small class="text-muted">{{ $studyGroup->homeroomTeacher->name }}</small>
+                                <small class="text-muted">{{ $studyGroup->homeroomDisplayName() }}</small>
                             </div>
                         @endif
                         <form id="waliTtdForm" method="POST" enctype="multipart/form-data"
@@ -1391,7 +1410,7 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
 });
 
 (function () {
-    const iframe = document.getElementById('raporPreview');
+    let iframe = document.getElementById('raporPreview');
     const student = document.getElementById('previewStudent');
     const open = document.getElementById('previewOpen');
     const refresh = document.getElementById('previewRefresh');
@@ -1463,8 +1482,16 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
     function refreshPreview() {
         const url = buildPreviewUrl();
         if (!url) return;
-        iframe.src = url;
         if (open) open.href = url;
+
+        // Viewer PDF di iframe kadang mempertahankan dokumen lama saat hanya
+        // query berubah (STS → SAS, ID → AR). Ganti elemen iframe dengan
+        // penanda waktu agar PDF benar-benar dibuat ulang tanpa perlu F5.
+        const bust = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+        const next = iframe.cloneNode(false);
+        next.src = bust;
+        iframe.parentNode.replaceChild(next, iframe);
+        iframe = next;
     }
 
     function selectVariant(jenis, bahasa) {

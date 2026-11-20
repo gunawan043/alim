@@ -564,6 +564,7 @@ class RaporPdfService
             'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
             'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
+            'waliName' => $studyGroup->homeroomDisplayName(),
             'waliNameAr' => $this->arabicName(
                 $studyGroup->homeroomTeacher?->name_ar,
                 $studyGroup->homeroomTeacher?->name
@@ -670,6 +671,7 @@ class RaporPdfService
             'ttdKspBase64' => $this->imageDataUri($ownerSchool?->ttd_ksp_path),
             'stampBase64' => $this->imageDataUri($ownerSchool?->stamp_path),
             'ttdWaliBase64' => $this->imageDataUri($studyGroup->homeroomTeacher?->ttd_path),
+            'waliName' => $studyGroup->homeroomDisplayName(),
             'waliNameAr' => $this->arabicName(
                 $studyGroup->homeroomTeacher?->name_ar,
                 $studyGroup->homeroomTeacher?->name
@@ -726,7 +728,7 @@ class RaporPdfService
             if ($studyGroup->homeroomTeacher?->name) {
                 $signers[] = [
                     'user_id' => $studyGroup->homeroomTeacher->id,
-                    'name' => $studyGroup->homeroomTeacher->name,
+                    'name' => $studyGroup->homeroomDisplayName() ?? $studyGroup->homeroomTeacher->name,
                     'role' => 'Wali Kelas',
                     'signer_order' => 2,
                 ];

@@ -1427,6 +1427,36 @@ class SumatifHarianDinamisTest extends TestCase
         $this->assertStringNotContainsString('Catatan baru', $htmlAr);
     }
 
+    public function test_nama_wali_kelas_rapor_kapital_dan_bisa_diatur_per_rombel(): void
+    {
+        $this->actingAs($this->teacher);
+
+        // Default: nama GTK ditampilkan kapital di awal kata.
+        $this->teacher->forceFill(['name' => 'AHMAD FAUZI'])->save();
+        $this->studyGroup->forceFill([
+            'homeroom_teacher_id' => $this->teacher->id,
+            'homeroom_name' => null,
+        ])->save();
+
+        $this->assertSame('Ahmad Fauzi', $this->studyGroup->fresh()->homeroomDisplayName());
+
+        // Nama khusus rombel (dengan gelar) — data pribadi wali tidak berubah.
+        $this->post(
+            "/{$this->teacher->id}/schools/nilai-kelas/{$this->studyGroup->id}/rapor/ttd-wali",
+            ['homeroom_name' => 'Ahmad Fauzi, S.Pd.']
+        )->assertRedirect();
+
+        $this->assertSame('Ahmad Fauzi, S.Pd.', $this->studyGroup->fresh()->homeroom_name);
+        $this->assertSame('AHMAD FAUZI', $this->teacher->fresh()->name);
+
+        $html = app(\App\Services\Arsip\RaporPdfService::class)->renderHtml(
+            $this->school->id, $this->studyGroup->fresh(), $this->ay,
+            (string) $this->ay->id, 'ganjil', 'sas', $this->students[0]->fresh(), 'id',
+        );
+
+        $this->assertStringContainsString('Ahmad Fauzi, S.Pd.', $html);
+    }
+
     public function test_semester_genap_otomatis_dibuatkan_buku(): void
     {
         $this->assertFalse(
