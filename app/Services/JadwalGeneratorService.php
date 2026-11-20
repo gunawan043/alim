@@ -1386,7 +1386,19 @@ class JadwalGeneratorService
             ->map(fn ($total) => (int) $total)
             ->toArray();
 
-        $quotas = $this->distributeQuota($hours, $days, $studyGroup, $plan, $currentLoads);
+        $capacities = [];
+
+        foreach ($days as $day) {
+            $capacities[$day] = $this->availableSlotCount(
+                $studyGroup,
+                $academicYearId,
+                $plan['teacher_id'],
+                $day,
+                $masterDays[$day] ?? []
+            );
+        }
+
+        $quotas = $this->distributeQuota($hours, $days, $studyGroup, $plan, $currentLoads, $capacities);
         $targetDays = array_values(array_filter($days, fn ($day) => (int) ($quotas[$day] ?? 0) > 0));
         $remaining = $hours;
         $placed = 0;
@@ -1501,8 +1513,14 @@ class JadwalGeneratorService
      * @param  array<int, int>  $currentLoads
      * @return array<int, int>
      */
-    private function distributeQuota(int $hours, array $days, StudyGroup $studyGroup, array $plan, array $currentLoads = []): array
-    {
+    private function distributeQuota(
+        int $hours,
+        array $days,
+        StudyGroup $studyGroup,
+        array $plan,
+        array $currentLoads = [],
+        array $capacities = [],
+    ): array {
         $maxDays = min(2, count($days), $hours);
 
         if ($maxDays <= 0) {
@@ -1513,7 +1531,14 @@ class JadwalGeneratorService
         $rotation = $seed % count($days);
 
         $ordered = $days;
-        usort($ordered, function (int $a, int $b) use ($currentLoads, $days, $rotation) {
+        usort($ordered, function (int $a, int $b) use ($currentLoads, $capacities, $days, $rotation) {
+            $capacityA = (int) ($capacities[$a] ?? 0);
+            $capacityB = (int) ($capacities[$b] ?? 0);
+
+            if ($capacityA !== $capacityB) {
+                return $capacityB <=> $capacityA;
+            }
+
             $loadA = (int) ($currentLoads[$a] ?? 0);
             $loadB = (int) ($currentLoads[$b] ?? 0);
 
@@ -1527,16 +1552,84 @@ class JadwalGeneratorService
             return $indexA <=> $indexB;
         });
 
-        $selected = array_slice($ordered, 0, $maxDays);
+        $selected = array_values(array_filter(
+            array_slice($ordered, 0, $maxDays),
+            fn (int $day) => (int) ($capacities[$day] ?? 0) > 0
+        ));
+
+        if ($selected === []) {
+            return array_fill_keys($days, 0);
+        }
+
         $quotas = array_fill_keys($days, 0);
-        $base = intdiv($hours, $maxDays);
-        $extra = $hours % $maxDays;
+        $remaining = $hours;
+
+        // Bagi proporsional terhadap kapasitas slot yang benar-benar bebas,
+        // lalu pastikan tidak melebihi kapasitas hari tersebut.
+        $totalCapacity = max(1, array_sum(array_map(fn ($day) => (int) ($capacities[$day] ?? 0), $selected)));
 
         foreach ($selected as $index => $day) {
-            $quotas[$day] = $base + ($index < $extra ? 1 : 0);
+            $isLast = $index === count($selected) - 1;
+            $capacity = (int) ($capacities[$day] ?? 0);
+            $quota = $isLast
+                ? $remaining
+                : (int) floor($hours * $capacity / $totalCapacity);
+
+            $quota = max(0, min($quota, $capacity));
+            $quotas[$day] = $quota;
+            $remaining -= $quota;
+        }
+
+        // Jika masih ada sisa, tambahkan ke hari yang kapasitasnya belum penuh.
+        foreach ($selected as $day) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $capacity = (int) ($capacities[$day] ?? 0);
+            $space = max(0, $capacity - (int) $quotas[$day]);
+            $add = min($space, $remaining);
+            $quotas[$day] += $add;
+            $remaining -= $add;
         }
 
         return $quotas;
+    }
+
+    /**
+     * Hitung slot yang benar-benar bisa dipakai untuk satu mapel/guru pada hari tertentu.
+     *
+     * @param  array<int, array{slot:int, start:string, end:string, is_break:bool}>  $slots
+     */
+    private function availableSlotCount(StudyGroup $studyGroup, string $academicYearId, ?string $teacherId, int $day, array $slots): int
+    {
+        $count = 0;
+
+        foreach ($slots as $slot) {
+            if ($slot['is_break'] ?? false) {
+                continue;
+            }
+
+            if (! $this->availability->isAllowed($teacherId, $studyGroup->school_id, $day, $slot['slot'])) {
+                continue;
+            }
+
+            if ($teacherId && isset($this->tahfidzBusy[$teacherId.'|'.$day.'|'.$slot['slot']])) {
+                continue;
+            }
+
+            if ($this->isTeacherBusy($teacherId, $day, $slot['slot'], $academicYearId)) {
+                continue;
+            }
+
+            if ($this->isStudyGroupBusy($studyGroup->id, $day, $slot['slot'], $academicYearId)) {
+                continue;
+            }
+
+            $count++;
+        }
+
+        return $count;
     }
 
     /**
