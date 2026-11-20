@@ -1475,6 +1475,64 @@ class JadwalGeneratorService
                 break;
             }
         }
+
+        $this->compactStudyGroupDays($studyGroup, $academicYearId, $masterDays);
+    }
+
+    /**
+     * Rapatkan entri ke slot paling awal pada hari yang sama tanpa mengubah
+     * jumlah JP per hari. Dipakai setelah balancing untuk menutup lubang.
+     *
+     * @param  array<int, array<int, array{slot:int, start:string, end:string, is_break:bool}>>  $masterDays
+     */
+    private function compactStudyGroupDays(StudyGroup $studyGroup, string $academicYearId, array $masterDays): void
+    {
+        foreach ($this->teachingDays($masterDays) as $day) {
+            for ($iteration = 0; $iteration < 30; $iteration++) {
+                $entries = JadwalKbm::query()
+                    ->where('study_group_id', $studyGroup->id)
+                    ->where('academic_year_id', $academicYearId)
+                    ->where('day_of_week', $day)
+                    ->where('is_active', true)
+                    ->where(function ($q) {
+                        $q->whereNull('notes')->orWhere('notes', '!=', self::TAHFIDZ_NOTE);
+                    })
+                    ->orderByDesc('slot_index')
+                    ->get();
+
+                $moved = false;
+
+                foreach ($entries as $entry) {
+                    $slot = $this->findFreeSlotOnDay(
+                        $studyGroup->id,
+                        $studyGroup->school_id,
+                        $entry->teacher_id,
+                        $academicYearId,
+                        $day,
+                        $masterDays[$day] ?? [],
+                        null
+                    );
+
+                    if ($slot === null || $slot['slot_index'] >= (int) $entry->slot_index) {
+                        continue;
+                    }
+
+                    $entry->update([
+                        'slot_index' => $slot['slot_index'],
+                        'start_time' => $slot['start_time'],
+                        'end_time' => $slot['end_time'],
+                    ]);
+
+                    $moved = true;
+
+                    break;
+                }
+
+                if (! $moved) {
+                    break;
+                }
+            }
+        }
     }
 
     protected function createJadwal(StudyGroup $studyGroup, string $academicYearId, array $plan, array $slot): JadwalKbm
