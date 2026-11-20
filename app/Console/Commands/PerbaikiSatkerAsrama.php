@@ -42,12 +42,25 @@ class PerbaikiSatkerAsrama extends Command
         'tu' => 'tenaga_pengasuhan_keasramaan_tata_usaha_asrama',
     ];
 
+    private const JENIS_PENGASUHAN = 'dc268a18-ae2b-4dcb-8f32-c796eb9316b9';
+
+    /**
+     * Unit di luar target yang tetap perlu ikut dicari, karena stafnya akan
+     * dipindahkan (mis. staf asrama diniyah yang masih tercatat di unit
+     * akademik PPS Diniyah).
+     *
+     * @var list<string>
+     */
+    private const INDEX_EXTRA_UNITS = [
+        '69729627-5638-407b-88f4-cce6d3b6dd22',
+    ];
+
     private const JENIS_KEAMANAN = '8b797fa5-c1a7-410c-bd82-687a55e65bf6';
 
     private const ROLE_KEAMANAN = 'Satuan Keamanan';
 
     /**
-     * @return array<string, array{0: string, 1: string|null}>
+     * @return array<string, array{0: string, 1: string|null, 2?: string}>
      */
     private function targets(): array
     {
@@ -62,9 +75,6 @@ class PerbaikiSatkerAsrama extends Command
             'Istiqomah' => ['smp_putri', 'staf'],
             'Baiq Siti Patmah' => ['smp_putri', 'staf'],
             'Mimma Humaira Az Zahra’' => ['smp_putri', 'staf'],
-            'ZAINUDDIN' => ['smp_putri', 'perizinan'],
-            'M. THORIQ ABDUL AZIZ' => ['smp_putri', 'perizinan'],
-            'Ibnu Kaldun' => ['smp_putri', 'perizinan'],
 
             // ── Asrama SMA Putri ────────────────────────────────────────
             'SAPARUDDIN' => ['sma_putri', 'kepala'],
@@ -81,27 +91,39 @@ class PerbaikiSatkerAsrama extends Command
 
             // ── Asrama MA Plus (putra) ──────────────────────────────────
             'SAEFUDDIN JAZA' => ['ma_plus', 'kepala'],
-            'CHAIRUL AMIN' => ['ma_plus', 'staf'],
-            'Mahardika Putra Emas' => ['ma_plus', 'staf'],
-            'HENDRI EFENDI' => ['ma_plus', 'staf'],
             'MUHAMMAD FAYSAL' => ['ma_plus', 'staf'],
-            'EZRA AMARIL' => ['ma_plus', 'staf'],
-            'DIDIK INDRAJATI HAKIKI' => ['ma_plus', 'staf'],
-            'IMAM SAPII' => ['ma_plus', 'staf'],
-            'UMAR RAHMAT ALAM RAMADHAN' => ['ma_plus', 'staf'],
-            'MUHAMMAD ALFIN HIDAYAT' => ['ma_plus', 'staf'],
-            'FITRAH WAHYU MAHARAJA' => ['ma_plus', 'staf'],
-            'RIAN RAHMANDI' => ['ma_plus', 'staf'],
             'ANANDA PATRURENDRA' => ['ma_plus', 'staf'],
             'REDHO APREZA PUTRA' => ['ma_plus', 'staf'],
+            'UMAR RAHMAT ALAM RAMADHAN' => ['ma_plus', 'staf'],
+            'IMAM SAPII' => ['ma_plus', 'staf'],
             'H. MUHAZZAM' => ['ma_plus', 'staf'],
-            'UTUH ARYA GUNA' => ['ma_plus', 'staf'],
-            'DANIAL' => ['ma_plus', 'staf'],
-            'HENDRA HERMAYADI' => ['ma_plus', 'staf'],
-            'FATHUL ULUM' => ['ma_plus', 'staf'],
+            'Mahardika Putra Emas' => ['ma_plus', 'staf'],
 
             // ── Asrama SMP Putra ────────────────────────────────────────
             'JAMALUDIN' => ['smp_putra', 'kepala'],
+            'FATHUL ULUM' => ['smp_putra', 'staf'],
+            'EZRA AMARIL' => ['smp_putra', 'staf'],
+            'DANIAL' => ['smp_putra', 'staf'],
+            'RIAN RAHMANDI' => ['smp_putra', 'staf'],
+            'CHAIRUL AMIN' => ['smp_putra', 'staf'],
+            'HENDRA HERMAYADI' => ['smp_putra', 'staf'],
+            'FITRAH WAHYU MAHARAJA' => ['smp_putra', 'staf'],
+            'DIDIK INDRAJATI HAKIKI' => ['smp_putra', 'staf'],
+            'MUHAMMAD ALFIN HIDAYAT' => ['smp_putra', 'staf'],
+            'HENDRI EFENDI' => ['smp_putra', 'staf'],
+            'UTUH ARYA GUNA' => ['smp_putra', 'staf'],
+
+            // Perizinan putra (bukan putri)
+            'ZAINUDDIN' => ['smp_putra', 'perizinan'],
+            'M. THORIQ ABDUL AZIZ' => ['smp_putra', 'perizinan'],
+            'Ibnu Kaldun' => ['smp_putra', 'perizinan'],
+
+            // ── Asrama PPS Diniyah ──────────────────────────────────────
+            'ASSHONANY FAJRIN' => ['pps', 'staf', 'pengasuhan'],
+            'LALU ZANZABIL' => ['pps', 'staf', 'pengasuhan'],
+            'IMAN RAHMADI' => ['pps', 'staf', 'pengasuhan'],
+            'JUMAWARDIN' => ['pps', 'staf', 'pengasuhan'],
+
 
             // ── Satuan Keamanan ─────────────────────────────────────────
             'FIKY SETIAWAN' => ['keamanan', null],
@@ -153,7 +175,10 @@ class PerbaikiSatkerAsrama extends Command
         $duplicates = 0;
         $moved = 0;
 
-        foreach ($this->targets() as $name => [$unitKey, $positionKey]) {
+        foreach ($this->targets() as $name => $target) {
+            [$unitKey, $positionKey] = $target;
+            $jenisKey = $target[2] ?? null;
+
             $user = $this->resolveUser($index, $name);
 
             if (! $user) {
@@ -194,7 +219,13 @@ class PerbaikiSatkerAsrama extends Command
             ];
 
             if ($commit) {
-                $this->apply($user, $unitId, $unitName, $jabatan, $position?->id, $unitKey, $employment);
+                $jenisId = match (true) {
+                    $jenisKey === 'pengasuhan' => self::JENIS_PENGASUHAN,
+                    $unitKey === 'keamanan' => self::JENIS_KEAMANAN,
+                    default => null,
+                };
+
+                $this->apply($user, $unitId, $unitName, $jabatan, $position?->id, $unitKey, $employment, $jenisId);
             }
         }
 
@@ -232,8 +263,9 @@ class PerbaikiSatkerAsrama extends Command
         ?string $positionId,
         string $unitKey,
         ?GtkEmployment $employment,
+        ?string $jenisId = null,
     ): void {
-        DB::transaction(function () use ($user, $unitId, $unitName, $jabatan, $positionId, $unitKey, $employment) {
+        DB::transaction(function () use ($user, $unitId, $unitName, $jabatan, $positionId, $unitKey, $employment, $jenisId) {
             // Hapus baris satker lain, lalu pastikan satu baris primary di unit target.
             GtkWorkUnit::where('user_id', $user->id)
                 ->where('work_unit_id', '!=', $unitId)
@@ -253,8 +285,8 @@ class PerbaikiSatkerAsrama extends Command
                 $employment->jabatan_id = $positionId;
                 $employment->satuan_kerja = $unitName;
 
-                if ($unitKey === 'keamanan') {
-                    $employment->jenis_gtk_id = self::JENIS_KEAMANAN;
+                if ($jenisId) {
+                    $employment->jenis_gtk_id = $jenisId;
                 }
 
                 $employment->save();
@@ -262,6 +294,10 @@ class PerbaikiSatkerAsrama extends Command
 
             if ($unitKey === 'keamanan' && ! $user->hasRole(self::ROLE_KEAMANAN)) {
                 $user->syncRoles([self::ROLE_KEAMANAN]);
+            }
+
+            if ($unitKey === 'pps' && ! $user->hasRole('Asrama')) {
+                $user->assignRole('Asrama');
             }
         });
     }
@@ -271,7 +307,10 @@ class PerbaikiSatkerAsrama extends Command
      */
     private function userIndex(): array
     {
-        $userIds = GtkWorkUnit::whereIn('work_unit_id', array_values(self::UNIT))->pluck('user_id');
+        $userIds = GtkWorkUnit::whereIn(
+            'work_unit_id',
+            array_merge(array_values(self::UNIT), self::INDEX_EXTRA_UNITS),
+        )->pluck('user_id');
 
         return User::whereIn('id', $userIds)
             ->get()
