@@ -2,31 +2,43 @@
 
 @section('title') Laporan Keuangan @endsection
 
+@section('css')
+    @include('user.laporan.partials._css')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
-        @slot('li_1') Laporan @endslot
-        @slot('li_2') <a href="{{ route('user.laporan.index', ['userId' => $userId]) }}">Semua Laporan</a> @endslot
-        @slot('title') Laporan Keuangan @endslot
+        @slot('li_1') <a href="{{ route('user.laporan.index', ['userId' => $userId]) }}">Laporan</a> @endslot
+        @slot('title') Keuangan @endslot
     @endcomponent
 
-    <div class="card">
-        <div class="card-body">
-            <x-empty-state
-                icon="https://cdn.lordicon.com/gqzfzudq.json"
-                title="Modul keuangan pondok belum tersedia"
-                message="Menu ini akan aktif setelah modul keuangan (tagihan, pembayaran, dan kas pondok) diimplementasikan. Sementara itu, gunakan laporan yang sudah tersedia di bawah.">
-                <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
-                    <a href="{{ route('user.laporan.santri', ['userId' => $userId]) }}" class="btn btn-primary">
-                        <i class="ri-user-star-line me-1"></i>Laporan Santri
-                    </a>
-                    <a href="{{ route('user.laporan.gtk', ['userId' => $userId]) }}" class="btn btn-outline-primary">
-                        <i class="ri-contacts-book-2-line me-1"></i>Laporan GTK
-                    </a>
-                    <a href="{{ route('user.laporan.index', ['userId' => $userId]) }}" class="btn btn-light">
-                        <i class="ri-arrow-go-back-line me-1"></i>Semua Laporan
-                    </a>
+    <div class="laporan-page">
+        <div class="lap-head">
+            <div>
+                <h1 class="lap-head-title">Keuangan</h1>
+                <p class="lap-head-desc">Laporan tagihan, pembayaran, dan kas pondok.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="lap-empty" style="min-height: 220px;">
+                    <div class="lap-empty-title">Modul keuangan belum tersedia</div>
+                    <div class="lap-empty-desc">
+                        Menu ini aktif setelah modul tagihan, pembayaran, dan kas pondok diimplementasikan.
+                        Untuk sementara, gunakan laporan yang sudah tersedia.
+                    </div>
                 </div>
-            </x-empty-state>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a href="{{ route('user.laporan.santri', ['userId' => $userId]) }}" class="lap-btn">Data santri</a>
+                    <a href="{{ route('user.laporan.gtk', ['userId' => $userId]) }}" class="lap-btn">Data GTK</a>
+                    <a href="{{ route('user.laporan.index', ['userId' => $userId]) }}" class="lap-btn lap-btn-primary">Semua laporan</a>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    @include('user.laporan.partials._script')
+@endpush

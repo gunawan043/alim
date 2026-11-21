@@ -2,151 +2,309 @@
 
 @section('title') Laporan Profil dan Sebaran Santri @endsection
 
+@section('css')
+    @include('user.laporan.partials._css')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.laporan.index', ['userId' => $userId]) }}">Laporan</a> @endslot
-        @slot('li_2') Mutasi & Populasi @endslot
-        @slot('title') Profil & Sebaran Santri @endslot
+        @slot('li_2') Mutasi &amp; populasi @endslot
+        @slot('title') Profil &amp; sebaran @endslot
     @endcomponent
 
-    @include('user.laporan.partials.population-tabs')
+    @php
+        $summary = $report['summary'];
+        $male = (int) $summary['male'];
+        $female = (int) $summary['female'];
+        $genderTotal = $male + $female;
+        $maleShare = $genderTotal > 0 ? round($male / $genderTotal * 100, 1) : 0;
+        $femaleShare = $genderTotal > 0 ? round($female / $genderTotal * 100, 1) : 0;
+        $ages = collect($report['age_groups'] ?? []);
+        $ageMax = (int) ($ages->max('count') ?: 0);
+        $hasAges = $ages->sum('count') > 0;
+        $growthRate = $summary['growth_rate'];
+    @endphp
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-        <p class="text-muted mb-0 small">Jumlah santri aktif per unit, jenjang, kelas, dan rombel; sebaran usia dan jenis kelamin bila data tersedia.</p>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('user.laporan.populasi.profil.export', array_merge(['userId' => $userId], request()->query())) }}" class="btn btn-success btn-sm"><i class="ri-file-excel-2-line me-1"></i>Excel</a>
-            <a href="{{ route('user.laporan.populasi.profil.pdf', array_merge(['userId' => $userId], request()->query())) }}" target="_blank" class="btn btn-danger btn-sm"><i class="ri-file-pdf-2-line me-1"></i>PDF</a>
-        </div>
-    </div>
-
-    <div class="card mb-3"><div class="card-body">
-        @include('user.laporan.partials.population-filters', ['filterRoute' => 'user.laporan.populasi.profil', 'showGender' => true])
-    </div></div>
-
-    <div class="row g-3 mb-3">
-        @php
-            $cards = [
-                ['label' => 'Santri Aktif', 'value' => $report['summary']['total'], 'note' => $report['academic_year']->name, 'class' => 'text-primary'],
-                ['label' => 'Laki-laki', 'value' => $report['summary']['male'], 'note' => 'jenis kelamin L', 'class' => 'text-info'],
-                ['label' => 'Perempuan', 'value' => $report['summary']['female'], 'note' => 'jenis kelamin P', 'class' => 'text-danger'],
-                ['label' => 'Rombel', 'value' => $report['summary']['rombel'], 'note' => 'kelas aktif', 'class' => 'text-secondary'],
-                ['label' => 'Rata-rata / Rombel', 'value' => $report['summary']['average_per_rombel'] !== null ? number_format($report['summary']['average_per_rombel'], 2) : '—', 'note' => 'santri per rombel', 'class' => 'text-success'],
-                ['label' => 'Perubahan Populasi', 'value' => $report['summary']['growth_rate'] !== null ? (($report['summary']['growth_rate'] > 0 ? '+' : '').number_format($report['summary']['growth_rate'], 2).'%') : '—', 'note' => $report['previous_year']?->name ?? 'belum ada pembanding', 'class' => ($report['summary']['growth_rate'] ?? 0) < 0 ? 'text-danger' : 'text-success'],
-            ];
-        @endphp
-        @foreach($cards as $card)
-            <div class="col-6 col-xl-2">
-                <div class="card h-100"><div class="card-body py-3">
-                    <div class="text-muted small text-uppercase fw-semibold">{{ $card['label'] }}</div>
-                    <div class="fs-3 fw-bold {{ $card['class'] }}">{{ is_numeric($card['value']) ? number_format($card['value']) : $card['value'] }}</div>
-                    <div class="small text-muted">{{ $card['note'] }}</div>
-                </div></div>
+    <div class="laporan-page">
+        <div class="lap-head">
+            <div>
+                <h1 class="lap-head-title">Profil &amp; sebaran santri</h1>
+                <p class="lap-head-desc">Jumlah santri aktif per unit, jenjang, kelas, dan rombel, beserta sebaran usia dan jenis kelamin bila data tersedia.</p>
             </div>
-        @endforeach
-    </div>
-
-    <div class="row g-3 mb-3">
-        <div class="col-xl-5">
-            <div class="card h-100">
-                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-pie-chart-line me-1 text-primary"></i>Sebaran Jenis Kelamin</h5></div>
-                <div class="card-body"><div id="genderChart"></div></div>
+            <div class="lap-head-actions">
+                <a href="{{ route('user.laporan.populasi.profil.export', array_merge(['userId' => $userId], request()->query())) }}" class="lap-btn">
+                    <i class="ri-download-2-line"></i>Unduh Excel
+                </a>
+                <a href="{{ route('user.laporan.populasi.profil.pdf', array_merge(['userId' => $userId], request()->query())) }}" target="_blank" class="lap-btn">
+                    <i class="ri-printer-line"></i>Cetak PDF
+                </a>
             </div>
         </div>
-        <div class="col-xl-7">
-            <div class="card h-100">
-                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-bar-chart-2-line me-1 text-info"></i>Sebaran Usia</h5></div>
-                <div class="card-body"><div id="ageChart"></div></div>
-            </div>
-        </div>
-    </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-xl-6">
-            <div class="card h-100">
-                <div class="card-header"><h5 class="card-title mb-0">Per Unit</h5></div>
-                <div class="table-responsive"><table class="table table-sm mb-0">
-                    <thead class="table-light"><tr><th>Unit</th><th class="text-center">Santri</th><th class="text-center">L</th><th class="text-center">P</th><th class="text-center">Perubahan</th></tr></thead>
-                    <tbody>
-                        @forelse($report['by_unit'] as $row)
-                            @php $composition = $report['composition']->firstWhere('id', $row['id']); @endphp
-                            <tr><td>{{ $row['name'] }}</td><td class="text-center">{{ number_format($row['total']) }}</td><td class="text-center">{{ number_format($row['male']) }}</td><td class="text-center">{{ number_format($row['female']) }}</td><td class="text-center {{ ($composition['delta'] ?? 0) < 0 ? 'text-danger' : 'text-success' }}">{{ ($composition['delta'] ?? 0) > 0 ? '+' : '' }}{{ number_format($composition['delta'] ?? 0) }}</td></tr>
-                        @empty
-                            <tr><td colspan="5" class="text-center text-muted py-4">Belum ada data.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table></div>
-            </div>
-        </div>
-        <div class="col-xl-6">
-            <div class="card h-100">
-                <div class="card-header"><h5 class="card-title mb-0">Per Jenjang</h5></div>
-                <div class="table-responsive"><table class="table table-sm mb-0">
-                    <thead class="table-light"><tr><th>Jenjang</th><th class="text-center">Santri</th><th class="text-center">L</th><th class="text-center">P</th></tr></thead>
-                    <tbody>
-                        @forelse($report['by_grade'] as $row)
-                            <tr><td>{{ $row['name'] }}</td><td class="text-center">{{ number_format($row['total']) }}</td><td class="text-center">{{ number_format($row['male']) }}</td><td class="text-center">{{ number_format($row['female']) }}</td></tr>
-                        @empty
-                            <tr><td colspan="4" class="text-center text-muted py-4">Belum ada data.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table></div>
-            </div>
-        </div>
-    </div>
+        @include('user.laporan.partials.population-tabs')
 
-    <div class="card">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <h5 class="card-title mb-0"><i class="ri-building-2-line me-1 text-primary"></i>Sebaran per Kelas / Rombel</h5>
-            <span class="small text-muted">{{ number_format($report['by_class']->count()) }} rombel</span>
+        <div class="card">
+            <div class="card-body">
+                @include('user.laporan.partials.population-filters', [
+                    'filterRoute' => 'user.laporan.populasi.profil',
+                    'showGender' => true,
+                ])
+            </div>
         </div>
-        <div class="table-responsive"><table class="table table-sm mb-0">
-            <thead class="table-light"><tr><th>Rombel</th><th>Unit</th><th>Jenjang</th><th class="text-center">Santri</th><th class="text-center">Kapasitas</th><th class="text-center">Keterisian</th></tr></thead>
-            <tbody>
-                @forelse($report['by_class'] as $row)
-                    <tr><td>{{ $row['name'] }}</td><td>{{ $row['school_name'] }}</td><td>{{ $row['grade_name'] }}</td><td class="text-center">{{ number_format($row['total']) }}</td><td class="text-center">{{ $row['capacity'] ?: '—' }}</td><td class="text-center">{{ $row['fill_rate'] !== null ? number_format($row['fill_rate'], 2).'%' : '—' }}</td></tr>
-                @empty
-                    <tr><td colspan="6" class="text-center text-muted py-4">Belum ada data rombel.</td></tr>
-                @endforelse
-            </tbody>
-        </table></div>
+
+        @include('user.laporan.partials.period', [
+            'period' => $report['academic_year']->name,
+            'note' => 'Santri aktif dihitung satu kali per tahun ajaran, mengikuti rombel terakhir yang tercatat.',
+        ])
+
+        @include('user.laporan.partials.kpi', ['items' => [
+            ['label' => 'Santri aktif', 'value' => $summary['total'], 'note' => $report['academic_year']->name],
+            ['label' => 'Laki-laki', 'value' => $male, 'note' => $genderTotal > 0 ? number_format($maleShare, 1, ',', '.').'% dari santri' : 'belum ada data'],
+            ['label' => 'Perempuan', 'value' => $female, 'note' => $genderTotal > 0 ? number_format($femaleShare, 1, ',', '.').'% dari santri' : 'belum ada data'],
+            ['label' => 'Rombel', 'value' => $summary['rombel'], 'note' => 'kelas aktif'],
+            [
+                'label' => 'Rata-rata per rombel',
+                'value' => $summary['average_per_rombel'] !== null ? number_format($summary['average_per_rombel'], 1, ',', '.') : '—',
+                'note' => 'santri per rombel',
+            ],
+            [
+                'label' => 'Perubahan populasi',
+                'value' => $growthRate !== null ? (($growthRate > 0 ? '+' : '').number_format($growthRate, 2, ',', '.').'%') : '—',
+                'note' => $report['previous_year']?->name ?? 'belum ada pembanding',
+                'tone' => $growthRate === null ? null : ($growthRate < 0 ? 'bad' : 'ok'),
+            ],
+        ]])
+
+        <div class="lap-grid lap-grid-top" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr);">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Komposisi jenis kelamin</h2>
+                    <span class="lap-meta">{{ number_format($genderTotal, 0, ',', '.') }} santri</span>
+                </div>
+                <div class="card-body">
+                    @if ($genderTotal === 0)
+                        @include('user.laporan.partials.empty', [
+                            'title' => 'Data jenis kelamin belum tersedia',
+                            'desc' => 'Isi jenis kelamin pada data santri untuk melihat komposisi.',
+                            'height' => 200,
+                        ])
+                    @else
+                        <div class="lap-stack" role="img" aria-label="Laki-laki {{ number_format($maleShare, 1, ',', '.') }} persen, perempuan {{ number_format($femaleShare, 1, ',', '.') }} persen">
+                            <span style="width: {{ $maleShare }}%; background:#00416c;"></span>
+                            <span style="width: {{ $femaleShare }}%; background:#c3c9d1;"></span>
+                        </div>
+                        <div class="lap-list mt-3">
+                            <div class="lap-list-row">
+                                <span class="lap-list-label"><span class="lap-legend-swatch d-inline-block me-1" style="background:#00416c"></span>Laki-laki</span>
+                                <span class="lap-list-value">{{ number_format($male, 0, ',', '.') }} <span class="muted">· {{ number_format($maleShare, 1, ',', '.') }}%</span></span>
+                            </div>
+                            <div class="lap-list-row">
+                                <span class="lap-list-label"><span class="lap-legend-swatch d-inline-block me-1" style="background:#c3c9d1"></span>Perempuan</span>
+                                <span class="lap-list-value">{{ number_format($female, 0, ',', '.') }} <span class="muted">· {{ number_format($femaleShare, 1, ',', '.') }}%</span></span>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Sebaran usia</h2>
+                    <span class="lap-meta">{{ $ages->count() }} kelompok</span>
+                </div>
+                @if (! $hasAges)
+                    @include('user.laporan.partials.empty', [
+                        'title' => 'Data usia belum tersedia',
+                        'desc' => 'Isi tanggal lahir santri untuk melihat sebaran usia.',
+                        'height' => 260,
+                    ])
+                @else
+                    <div class="card-body">
+                        <div id="ageChart" class="lap-chart"></div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="lap-grid lap-grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Per unit</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (blank($report['by_unit']))
+                        @include('user.laporan.partials.empty', ['title' => 'Belum ada data', 'desc' => 'Tidak ada santri aktif pada unit ini.', 'height' => 160])
+                    @else
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Unit</th>
+                                        <th class="text-end">Santri</th>
+                                        <th class="text-end">L</th>
+                                        <th class="text-end">P</th>
+                                        <th class="text-end">Perubahan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($report['by_unit'] as $row)
+                                        @php
+                                            $composition = $report['composition']->firstWhere('id', $row['id']);
+                                            $delta = $composition['delta'] ?? 0;
+                                        @endphp
+                                        <tr>
+                                            <td>{{ $row['name'] }}</td>
+                                            <td class="text-end">{{ number_format($row['total'], 0, ',', '.') }}</td>
+                                            <td class="text-end">{{ number_format($row['male'], 0, ',', '.') }}</td>
+                                            <td class="text-end">{{ number_format($row['female'], 0, ',', '.') }}</td>
+                                            <td class="text-end {{ $delta < 0 ? 'text-danger' : ($delta > 0 ? 'text-success' : 'muted') }}">
+                                                {{ $delta > 0 ? '+' : '' }}{{ number_format($delta, 0, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Per jenjang</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (blank($report['by_grade']))
+                        @include('user.laporan.partials.empty', ['title' => 'Belum ada data', 'desc' => 'Tidak ada santri aktif pada jenjang ini.', 'height' => 160])
+                    @else
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Jenjang</th>
+                                        <th class="text-end">Santri</th>
+                                        <th class="text-end">L</th>
+                                        <th class="text-end">P</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($report['by_grade'] as $row)
+                                        <tr>
+                                            <td>{{ $row['name'] }}</td>
+                                            <td class="text-end">{{ number_format($row['total'], 0, ',', '.') }}</td>
+                                            <td class="text-end">{{ number_format($row['male'], 0, ',', '.') }}</td>
+                                            <td class="text-end">{{ number_format($row['female'], 0, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Sebaran per kelas</h2>
+                <span class="lap-meta">{{ number_format($report['by_class']->count(), 0, ',', '.') }} rombel</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Rombel</th>
+                                <th>Unit</th>
+                                <th>Jenjang</th>
+                                <th class="text-end">Santri</th>
+                                <th class="text-end">Kapasitas</th>
+                                <th class="text-end" style="width:160px">Keterisian</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($report['by_class'] as $row)
+                                @php
+                                    $fill = $row['fill_rate'];
+                                    $fillTone = $fill === null ? '' : ($fill > 100 ? 'is-full' : ($fill < 60 ? 'is-low' : ''));
+                                @endphp
+                                <tr>
+                                    <td class="lap-table-name">{{ $row['name'] }}</td>
+                                    <td>{{ $row['school_name'] }}</td>
+                                    <td>{{ $row['grade_name'] }}</td>
+                                    <td class="text-end">{{ number_format($row['total'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ $row['capacity'] ?: '—' }}</td>
+                                    <td class="text-end">
+                                        @if ($fill === null)
+                                            <span class="muted">—</span>
+                                        @else
+                                            <span class="lap-mini">
+                                                <span class="lap-mini-track">
+                                                    <span class="lap-mini-fill {{ $fillTone }}" data-lap-bar="{{ min(1, $fill / 100) }}"></span>
+                                                </span>
+                                                <span>{{ number_format($fill, 1, ',', '.') }}%</span>
+                                            </span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6">
+                                        @include('user.laporan.partials.empty', [
+                                            'title' => 'Belum ada data rombel',
+                                            'desc' => 'Data muncul setelah santri ditempatkan ke rombel.',
+                                        ])
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection
 
 @section('script')
-<script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
-<script>
-    (function () {
-        const genderEl = document.querySelector('#genderChart');
-        const ageEl = document.querySelector('#ageChart');
-        const gender = [{{ $report['summary']['male'] }}, {{ $report['summary']['female'] }}];
-        const ages = @json($report['age_groups']);
+    @include('user.laporan.partials._script')
+    <script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
+    @if ($hasAges)
+        <script>
+            (function () {
+                var rows = @json($report['age_groups']);
 
-        if (genderEl && gender.some(v => v > 0)) {
-            new ApexCharts(genderEl, {
-                chart: { type: 'donut', height: 300 },
-                series: gender,
-                labels: ['Laki-laki', 'Perempuan'],
-                colors: ['#116891', '#dc3545'],
-                legend: { position: 'bottom' },
-                dataLabels: { enabled: true }
-            }).render();
-        } else if (genderEl) {
-            genderEl.innerHTML = '<div class="text-center text-muted py-5">Data jenis kelamin belum tersedia.</div>';
-        }
-
-        if (ageEl && ages.length) {
-            new ApexCharts(ageEl, {
-                chart: { type: 'bar', height: 300, toolbar: { show: false } },
-                series: [{ name: 'Santri', data: ages.map(r => r.count) }],
-                xaxis: { categories: ages.map(r => r.label) },
-                colors: ['#20c997'],
-                plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
-                dataLabels: { enabled: false },
-                grid: { borderColor: '#e2e8f0' }
-            }).render();
-        } else if (ageEl) {
-            ageEl.innerHTML = '<div class="text-center text-muted py-5">Data usia belum tersedia.</div>';
-        }
-    })();
-</script>
+                window.lapChart('ageChart', {
+                    chart: { type: 'bar', height: 260 },
+                    series: [{ name: 'Santri', data: rows.map(function (r) { return r.count; }) }],
+                    colors: ['#c3c9d1'],
+                    plotOptions: {
+                        bar: {
+                            columnWidth: '52%',
+                            borderRadius: 2,
+                            borderRadiusApplication: 'end',
+                            colors: {
+                                ranges: [{ from: {{ max(1, $ageMax) }}, to: {{ max(1, $ageMax) }}, color: '#00416c' }]
+                            }
+                        }
+                    },
+                    xaxis: {
+                        categories: rows.map(function (r) { return r.label; }),
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                        labels: { rotate: 0, hideOverlappingLabels: true, style: { colors: window.lapMuted(), fontSize: '11px' } }
+                    },
+                    yaxis: {
+                        labels: { style: { colors: window.lapMuted(), fontSize: '11px' }, formatter: function (v) { return window.lapFormat(v); } }
+                    },
+                    tooltip: {
+                        custom: function (ctx) {
+                            var row = rows[ctx.dataPointIndex] || {};
+                            return window.lapTooltip(row.label + ' tahun', [['Santri', window.lapFormat(row.count)]]);
+                        }
+                    }
+                });
+            })();
+        </script>
+    @endif
 @endsection

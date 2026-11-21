@@ -615,7 +615,7 @@ class AcademicReportController extends Controller
             $teachers = User::query()->whereIn('id', $teacherIds)->orderBy('name')->get();
         }
 
-        return compact('academicYears', 'gradeLevels', 'studyGroups', 'subjects', 'teachers');
+        return compact('academicYear', 'academicYears', 'gradeLevels', 'studyGroups', 'subjects', 'teachers');
     }
 
     private function schoolId(Request $request): ?string

@@ -2,148 +2,308 @@
 
 @section('title') Laporan Pertumbuhan Populasi Santri @endsection
 
+@section('css')
+    @include('user.laporan.partials._css')
+@endsection
+
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.laporan.index', ['userId' => $userId]) }}">Laporan</a> @endslot
-        @slot('li_2') Mutasi & Populasi @endslot
-        @slot('title') Pertumbuhan Populasi @endslot
+        @slot('li_2') Mutasi &amp; populasi @endslot
+        @slot('title') Pertumbuhan populasi @endslot
     @endcomponent
 
-    @include('user.laporan.partials.population-tabs')
+    @php
+        $summary = $report['summary'];
+        $series = collect($report['series'] ?? []);
+        $hasPopulation = ((int) $summary['opening'] + (int) $summary['closing']) > 0;
+        $growthNote = $summary['growth_rate'] !== null
+            ? number_format($summary['growth_rate'], 2, ',', '.').'% dari awal tahun'
+            : ($summary['opening'] == 0 ? 'tahun pertama data' : 'persentase belum tersedia');
+    @endphp
 
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-        <p class="text-muted mb-0 small">
-            Rekonsiliasi populasi awal dan akhir tahun ajaran. Santri dihitung satu kali berdasarkan riwayat kelas unik.
-        </p>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('user.laporan.populasi.pertumbuhan.export', array_merge(['userId' => $userId], request()->query())) }}" class="btn btn-success btn-sm"><i class="ri-file-excel-2-line me-1"></i>Excel</a>
-            <a href="{{ route('user.laporan.populasi.pertumbuhan.pdf', array_merge(['userId' => $userId], request()->query())) }}" target="_blank" class="btn btn-danger btn-sm"><i class="ri-file-pdf-2-line me-1"></i>PDF</a>
+    <div class="laporan-page">
+        <div class="lap-head">
+            <div>
+                <h1 class="lap-head-title">Pertumbuhan populasi</h1>
+                <p class="lap-head-desc">Rekonsiliasi populasi awal dan akhir tahun ajaran. Santri dihitung satu kali berdasarkan riwayat kelas unik.</p>
+            </div>
+            <div class="lap-head-actions">
+                <a href="{{ route('user.laporan.populasi.pertumbuhan.export', array_merge(['userId' => $userId], request()->query())) }}" class="lap-btn">
+                    <i class="ri-download-2-line"></i>Unduh Excel
+                </a>
+                <a href="{{ route('user.laporan.populasi.pertumbuhan.pdf', array_merge(['userId' => $userId], request()->query())) }}" target="_blank" class="lap-btn">
+                    <i class="ri-printer-line"></i>Cetak PDF
+                </a>
+            </div>
         </div>
-    </div>
 
-    <div class="card mb-3"><div class="card-body">
-        @include('user.laporan.partials.population-filters', ['filterRoute' => 'user.laporan.populasi.pertumbuhan'])
-    </div></div>
+        @include('user.laporan.partials.population-tabs')
 
-    <div class="alert alert-light border small">
-        <strong>Definisi:</strong> awal tahun = populasi pada tahun sebelumnya (atau santri yang sudah terdaftar sebelum tahun ajaran pada tahun pertama data);
-        santri baru = riwayat kelas pertama pada tahun ajaran ini dan bukan mutasi masuk; akhir = rumus awal + baru + mutasi masuk − mutasi keluar − berhenti − lulusan.
-        Selisih rekonsiliasi dibandingkan dengan populasi terdaftar yang tersisa.
-    </div>
+        <div class="card">
+            <div class="card-body">
+                @include('user.laporan.partials.population-filters', ['filterRoute' => 'user.laporan.populasi.pertumbuhan'])
+            </div>
+        </div>
 
-    <div class="row g-3 mb-3">
-        @php
-            $cards = [
-                ['label' => 'Awal Tahun', 'value' => $report['summary']['opening'], 'note' => $report['previous_year']?->name ?? 'awal data', 'class' => 'text-primary'],
-                ['label' => 'Santri Baru', 'value' => $report['summary']['new'], 'note' => 'pendaftaran baru', 'class' => 'text-success'],
-                ['label' => 'Mutasi Masuk', 'value' => $report['summary']['mutation_in'], 'note' => 'disetujui', 'class' => 'text-success'],
-                ['label' => 'Mutasi Keluar', 'value' => $report['summary']['mutation_out'], 'note' => 'disetujui', 'class' => 'text-danger'],
-                ['label' => 'Berhenti', 'value' => $report['summary']['dropout'], 'note' => 'drop out', 'class' => 'text-warning'],
-                ['label' => 'Lulusan', 'value' => $report['summary']['graduates'], 'note' => 'keluar karena lulus', 'class' => 'text-info'],
-                ['label' => 'Akhir Tahun', 'value' => $report['summary']['closing'], 'note' => 'hasil rekonsiliasi', 'class' => 'text-primary'],
-                ['label' => 'Pertumbuhan', 'value' => ($report['summary']['net_growth'] > 0 ? '+' : '').$report['summary']['net_growth'], 'note' => $report['summary']['growth_rate'] !== null ? number_format($report['summary']['growth_rate'], 2).'%' : 'persentase belum tersedia', 'class' => $report['summary']['net_growth'] < 0 ? 'text-danger' : 'text-success'],
-            ];
-        @endphp
-        @foreach($cards as $card)
-            <div class="col-6 col-xl-3">
-                <div class="card h-100"><div class="card-body py-3">
-                    <div class="text-muted small text-uppercase fw-semibold">{{ $card['label'] }}</div>
-                    <div class="fs-3 fw-bold {{ $card['class'] }}">{{ number_format($card['value']) }}</div>
-                    <div class="small text-muted">{{ $card['note'] }}</div>
-                </div></div>
+        @include('user.laporan.partials.period', [
+            'period' => $report['academic_year']->name,
+            'note' => 'Awal tahun = populasi tahun sebelumnya. Akhir tahun = awal + baru + mutasi masuk − mutasi keluar − berhenti − lulusan.',
+        ])
+
+        @include('user.laporan.partials.kpi', ['items' => [
+            ['label' => 'Awal tahun', 'value' => $summary['opening'], 'note' => $report['previous_year']?->name ?? 'awal data'],
+            ['label' => 'Santri baru', 'value' => $summary['new'], 'note' => 'pendaftaran baru'],
+            ['label' => 'Akhir tahun', 'value' => $summary['closing'], 'note' => 'hasil rekonsiliasi'],
+            [
+                'label' => 'Pertumbuhan bersih',
+                'value' => ($summary['net_growth'] > 0 ? '+' : '').$summary['net_growth'],
+                'note' => $growthNote,
+                'tone' => $summary['net_growth'] > 0 ? 'ok' : ($summary['net_growth'] < 0 ? 'bad' : null),
+            ],
+        ]])
+
+        <div class="lap-grid lap-grid-main">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Populasi per tahun ajaran</h2>
+                    <span class="lap-meta">{{ $series->count() }} tahun</span>
+                </div>
+
+                @if (! $hasPopulation)
+                    @include('user.laporan.partials.empty', [
+                        'title' => 'Belum ada riwayat tahun ajaran',
+                        'desc' => 'Data muncul setelah populasi tercatat pada suatu tahun ajaran.',
+                        'height' => 300,
+                    ])
+                @else
+                    <div class="lap-chart-legend">
+                        <span class="lap-legend-item"><span class="lap-legend-swatch" style="background:#8b949f"></span>Awal tahun <span class="lap-legend-value">{{ number_format($summary['opening'], 0, ',', '.') }}</span></span>
+                        <span class="lap-legend-item"><span class="lap-legend-swatch" style="background:#00416c"></span>Akhir tahun <span class="lap-legend-value">{{ number_format($summary['closing'], 0, ',', '.') }}</span></span>
+                    </div>
+                    <div class="card-body pt-2">
+                        <div id="growthChart" class="lap-chart"></div>
+                    </div>
+                @endif
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Rekonsiliasi</h2>
+                </div>
+                <div class="card-body">
+                    <div class="lap-list">
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Populasi awal</span>
+                            <span class="lap-list-value">{{ number_format($summary['opening'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Santri baru</span>
+                            <span class="lap-list-value">+{{ number_format($summary['new'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Mutasi masuk</span>
+                            <span class="lap-list-value">+{{ number_format($summary['mutation_in'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Mutasi keluar</span>
+                            <span class="lap-list-value">−{{ number_format($summary['mutation_out'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Berhenti</span>
+                            <span class="lap-list-value">−{{ number_format($summary['dropout'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Lulusan</span>
+                            <span class="lap-list-value">−{{ number_format($summary['graduates'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label"><strong>Hasil rumus</strong></span>
+                            <span class="lap-list-value">{{ number_format($summary['closing'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Populasi terdaftar</span>
+                            <span class="lap-list-value">{{ number_format($summary['current_population'], 0, ',', '.') }}</span>
+                        </div>
+                        <div class="lap-list-row">
+                            <span class="lap-list-label">Selisih</span>
+                            <span class="lap-list-value {{ $summary['reconciliation_difference'] != 0 ? 'is-warn' : 'is-ok' }}">
+                                {{ number_format($summary['reconciliation_difference'], 0, ',', '.') }}
+                            </span>
+                        </div>
+                    </div>
+                    <p class="lap-note mt-3">Selisih bukan otomatis kesalahan. Dapat berasal dari riwayat kelas atau mutasi yang belum lengkap.</p>
+                </div>
+            </div>
+        </div>
+
+        @if ($report['findings']->isNotEmpty())
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Catatan data</h2>
+                    <span class="lap-meta">{{ $report['findings']->count() }} temuan</span>
+                </div>
+                <div class="card-body">
+                    <div class="lap-list">
+                        @foreach ($report['findings'] as $finding)
+                            <div class="lap-list-row">
+                                <span class="lap-list-label">
+                                    {{ $finding['title'] }}
+                                    @if (! empty($finding['description']))
+                                        <span class="lap-table-sub d-block">{{ $finding['description'] }}</span>
+                                    @endif
+                                </span>
+                                <span class="lap-list-value">{{ number_format($finding['count'], 0, ',', '.') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @foreach (['unit' => 'unit', 'grade' => 'jenjang', 'level' => 'kelompok pendidikan'] as $key => $label)
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Pertumbuhan per {{ $label }}</h2>
+                </div>
+                <div class="card-body p-0">
+                    @if (blank($report['breakdown'][$key]))
+                        @include('user.laporan.partials.empty', [
+                            'title' => 'Belum ada data',
+                            'desc' => 'Tidak ada populasi tercatat pada kelompok ini.',
+                            'height' => 140,
+                        ])
+                    @else
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>{{ ucfirst($label) }}</th>
+                                        <th class="text-end">Awal</th>
+                                        <th class="text-end">Akhir</th>
+                                        <th class="text-end">Bersih</th>
+                                        <th class="text-end">Pertumbuhan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($report['breakdown'][$key] as $row)
+                                        <tr>
+                                            <td>{{ $row['name'] }}</td>
+                                            <td class="text-end">{{ number_format($row['opening'], 0, ',', '.') }}</td>
+                                            <td class="text-end">{{ number_format($row['closing'], 0, ',', '.') }}</td>
+                                            <td class="text-end {{ $row['net'] < 0 ? 'text-danger' : ($row['net'] > 0 ? 'text-success' : 'muted') }}">
+                                                {{ $row['net'] > 0 ? '+' : '' }}{{ number_format($row['net'], 0, ',', '.') }}
+                                            </td>
+                                            <td class="text-end muted">{{ $row['rate'] !== null ? number_format($row['rate'], 2, ',', '.').'%' : '—' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
             </div>
         @endforeach
-    </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-xl-8">
-            <div class="card h-100">
-                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-line-chart-line me-1 text-primary"></i>Grafik Pertumbuhan per Tahun Ajaran</h5></div>
-                <div class="card-body"><div id="growthChart"></div></div>
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Riwayat pertumbuhan</h2>
+                <span class="lap-meta">{{ $series->count() }} tahun ajaran</span>
             </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="card h-100">
-                <div class="card-header"><h5 class="card-title mb-0"><i class="ri-scales-3-line me-1 text-info"></i>Rekonsiliasi</h5></div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between border-bottom py-2"><span class="text-muted small">Populasi terdaftar</span><strong>{{ number_format($report['summary']['current_population']) }}</strong></div>
-                    <div class="d-flex justify-content-between border-bottom py-2"><span class="text-muted small">Hasil rumus</span><strong>{{ number_format($report['summary']['closing']) }}</strong></div>
-                    <div class="d-flex justify-content-between border-bottom py-2"><span class="text-muted small">Tersisa setelah keluar</span><strong>{{ number_format($report['summary']['closing_direct']) }}</strong></div>
-                    <div class="d-flex justify-content-between py-2"><span class="text-muted small">Selisih</span>
-                        <strong class="{{ $report['summary']['reconciliation_difference'] != 0 ? 'text-warning' : 'text-success' }}">{{ number_format($report['summary']['reconciliation_difference']) }}</strong>
-                    </div>
-                    <div class="small text-muted mt-2">Selisih bukan otomatis kesalahan; dapat berasal dari riwayat kelas atau mutasi yang belum lengkap.</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Tahun ajaran</th>
+                                <th class="text-end">Awal</th>
+                                <th class="text-end">Baru</th>
+                                <th class="text-end">Masuk</th>
+                                <th class="text-end">Keluar</th>
+                                <th class="text-end">Berhenti</th>
+                                <th class="text-end">Lulus</th>
+                                <th class="text-end">Akhir</th>
+                                <th class="text-end">Bersih</th>
+                                <th class="text-end">Pertumbuhan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($series as $row)
+                                <tr class="{{ $row['id'] === $report['academic_year']->name ? 'table-active' : '' }}">
+                                    <td>{{ $row['name'] }}</td>
+                                    <td class="text-end">{{ number_format($row['opening'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($row['new'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($row['mutation_in'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($row['mutation_out'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($row['dropout'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($row['graduates'], 0, ',', '.') }}</td>
+                                    <td class="text-end">{{ number_format($row['closing'], 0, ',', '.') }}</td>
+                                    <td class="text-end {{ $row['net_growth'] < 0 ? 'text-danger' : ($row['net_growth'] > 0 ? 'text-success' : 'muted') }}">
+                                        {{ $row['net_growth'] > 0 ? '+' : '' }}{{ number_format($row['net_growth'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="text-end muted">{{ $row['growth_rate'] !== null ? number_format($row['growth_rate'], 2, ',', '.').'%' : '—' }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="10">
+                                        @include('user.laporan.partials.empty', [
+                                            'title' => 'Belum ada riwayat',
+                                            'desc' => 'Data muncul setelah populasi tercatat.',
+                                        ])
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
-
-    @if($report['findings']->isNotEmpty())
-        <div class="card mb-3"><div class="card-body">
-            @foreach($report['findings'] as $finding)
-                <div class="d-flex justify-content-between border-bottom py-2"><div><strong>{{ $finding['title'] }}</strong><div class="small text-muted">{{ $finding['description'] }}</div></div><span class="badge bg-warning-subtle text-warning">{{ number_format($finding['count']) }}</span></div>
-            @endforeach
-        </div></div>
-    @endif
-
-    @foreach(['unit' => 'Unit / Satuan', 'grade' => 'Jenjang', 'level' => 'Kelompok Pendidikan'] as $key => $label)
-        <div class="card mb-3">
-            <div class="card-header"><h5 class="card-title mb-0">Pertumbuhan per {{ $label }}</h5></div>
-            <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead class="table-light"><tr><th>{{ $label }}</th><th class="text-center">Awal</th><th class="text-center">Akhir</th><th class="text-center">Net</th><th class="text-center">%</th></tr></thead>
-                <tbody>
-                    @forelse($report['breakdown'][$key] as $row)
-                        <tr><td>{{ $row['name'] }}</td><td class="text-center">{{ number_format($row['opening']) }}</td><td class="text-center">{{ number_format($row['closing']) }}</td><td class="text-center {{ $row['net'] < 0 ? 'text-danger' : 'text-success' }}">{{ $row['net'] > 0 ? '+' : '' }}{{ number_format($row['net']) }}</td><td class="text-center">{{ $row['rate'] !== null ? number_format($row['rate'], 2).'%' : '—' }}</td></tr>
-                    @empty
-                        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada data.</td></tr>
-                    @endforelse
-                </tbody>
-            </table></div>
-        </div>
-    @endforeach
-
-    <div class="card">
-        <div class="card-header"><h5 class="card-title mb-0">Riwayat Pertumbuhan</h5></div>
-        <div class="table-responsive"><table class="table table-sm mb-0">
-            <thead class="table-light"><tr><th>Tahun Ajaran</th><th class="text-center">Awal</th><th class="text-center">Baru</th><th class="text-center">Masuk</th><th class="text-center">Keluar</th><th class="text-center">Berhenti</th><th class="text-center">Lulus</th><th class="text-center">Akhir</th><th class="text-center">Net</th><th class="text-center">%</th></tr></thead>
-            <tbody>
-                @forelse($report['series'] as $row)
-                    <tr class="{{ $row['id'] === $report['academic_year']->name ? 'table-active' : '' }}">
-                        <td>{{ $row['name'] }}</td><td class="text-center">{{ number_format($row['opening']) }}</td><td class="text-center">{{ number_format($row['new']) }}</td><td class="text-center">{{ number_format($row['mutation_in']) }}</td><td class="text-center">{{ number_format($row['mutation_out']) }}</td><td class="text-center">{{ number_format($row['dropout']) }}</td><td class="text-center">{{ number_format($row['graduates']) }}</td><td class="text-center">{{ number_format($row['closing']) }}</td><td class="text-center {{ $row['net_growth'] < 0 ? 'text-danger' : 'text-success' }}">{{ $row['net_growth'] > 0 ? '+' : '' }}{{ number_format($row['net_growth']) }}</td><td class="text-center">{{ $row['growth_rate'] !== null ? number_format($row['growth_rate'], 2).'%' : '—' }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="10" class="text-center text-muted py-4">Belum ada data.</td></tr>
-                @endforelse
-            </tbody>
-        </table></div>
-    </div>
 @endsection
 
 @section('script')
-<script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
-<script>
-    (function () {
-        const series = @json($report['series']);
-        const el = document.querySelector('#growthChart');
-        if (!el) return;
-        if (!series.length) {
-            el.innerHTML = '<div class="text-center text-muted py-5">Belum ada data.</div>';
-            return;
-        }
-        new ApexCharts(el, {
-            chart: { type: 'line', height: 320, toolbar: { show: false } },
-            series: [
-                { name: 'Awal', data: series.map(r => r.opening) },
-                { name: 'Akhir', data: series.map(r => r.closing) },
-                { name: 'Pertumbuhan bersih', data: series.map(r => r.net_growth) }
-            ],
-            xaxis: { categories: series.map(r => r.name) },
-            colors: ['#116891', '#20c997', '#ffc107'],
-            stroke: { curve: 'smooth', width: [2, 2, 2] },
-            dataLabels: { enabled: false },
-            legend: { position: 'top' },
-            grid: { borderColor: '#e2e8f0' }
-        }).render();
-    })();
-</script>
+    @include('user.laporan.partials._script')
+    <script src="{{ URL::asset('build/libs/apexcharts/apexcharts.min.js') }}"></script>
+    @if ($hasPopulation)
+        <script>
+            (function () {
+                var rows = @json($report['series']);
+
+                window.lapChart('growthChart', {
+                    chart: { type: 'area', height: 300 },
+                    series: [
+                        { name: 'Awal tahun', data: rows.map(function (r) { return r.opening; }) },
+                        { name: 'Akhir tahun', data: rows.map(function (r) { return r.closing; }) }
+                    ],
+                    colors: ['#8b949f', '#00416c'],
+                    stroke: { curve: 'smooth', width: [1.5, 2.5], dashArray: [4, 0] },
+                    fill: {
+                        type: ['solid', 'gradient'],
+                        opacity: [0, 0.16],
+                        gradient: { shadeIntensity: 1, opacityFrom: .16, opacityTo: .02, stops: [0, 90, 100] }
+                    },
+                    xaxis: {
+                        categories: rows.map(function (r) { return r.name; }),
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                        labels: { rotate: 0, style: { colors: window.lapMuted(), fontSize: '11px' } }
+                    },
+                    yaxis: {
+                        labels: { style: { colors: window.lapMuted(), fontSize: '11px' }, formatter: function (v) { return window.lapFormat(v); } }
+                    },
+                    markers: { size: 3, strokeWidth: 0, hover: { size: 5 } },
+                    tooltip: {
+                        custom: function (ctx) {
+                            var row = rows[ctx.dataPointIndex] || {};
+                            return window.lapTooltip(row.name, [
+                                ['Awal tahun', window.lapFormat(row.opening)],
+                                ['Akhir tahun', window.lapFormat(row.closing)],
+                                ['Bersih', (row.net_growth > 0 ? '+' : '') + window.lapFormat(row.net_growth)]
+                            ]);
+                        }
+                    }
+                });
+            })();
+        </script>
+    @endif
 @endsection
