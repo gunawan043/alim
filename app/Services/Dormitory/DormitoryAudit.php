@@ -6,7 +6,7 @@ use App\Models\AuditLog;
 
 final class DormitoryAudit
 {
-    public static function log(string $action, string $table, ?string $recordId = null): void
+    public static function log(string $action, string $table, ?string $recordId = null, array $metadata = []): void
     {
         try {
             AuditLog::create([
@@ -16,6 +16,7 @@ final class DormitoryAudit
                 'record_id' => $recordId,
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
+                'metadata' => $metadata === [] ? null : $metadata,
             ]);
         } catch (\Throwable) {
             // Audit tidak boleh memblokir aksi utama.

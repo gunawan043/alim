@@ -42,6 +42,7 @@ use App\Http\Middleware\ShareRoleId;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustHosts;
 use App\Http\Middleware\TrustProxies;
+use App\Http\Middleware\VerifyConnectApprovalApiKey;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Http\Middleware\VerifyPosApiKey;
 use App\Http\Middleware\VerifyRecruitmentApiKey;
@@ -162,6 +163,7 @@ class Kernel extends HttpKernel
         'satuan.feature' => EnsureSatuanPendidikanFeature::class,
         'pos.api-key' => VerifyPosApiKey::class,
         'recruitment.api-key' => VerifyRecruitmentApiKey::class,
+        'connect.approval-key' => VerifyConnectApprovalApiKey::class,
         'api.user-scope' => EnsureApiUserScope::class,
         'gtk.access' => EnsureGtkAccess::class,
         'keamanan.access' => EnsureSecurityAccess::class,

@@ -30,6 +30,38 @@ class DormitoryPolicyAccess
         return $this->canManageQuota($user, $dormitoryId);
     }
 
+    /**
+     * Aturan ketat khusus command persetujuan dari ALIM Connect.
+     *
+     * Berbeda dari `canApprovePermit()` milik UI web, jalur ini HANYA menerima
+     * Kepala Asrama dengan penugasan aktif pada asrama terkait. Wakil Kepala
+     * Asrama, Super Admin/System Admin, dan pencocokan teks `employment.jabatan`
+     * sengaja tidak berlaku sampai pemilik sistem memutuskan sebaliknya.
+     */
+    public function canApprovePermitCommand(User $user, string $dormitoryId): bool
+    {
+        if (! $user->is_active) {
+            return false;
+        }
+
+        $dormitory = Dormitory::withTrashed()->find($dormitoryId);
+
+        if (! $dormitory) {
+            return false;
+        }
+
+        if ((string) $dormitory->head_id === (string) $user->id) {
+            return true;
+        }
+
+        return DormitoryStaffAssignment::query()
+            ->active()
+            ->forUser($user->id)
+            ->forDormitory($dormitoryId)
+            ->where('position', 'kepala_asrama')
+            ->exists();
+    }
+
     public function canManageQuota(User $user, string $dormitoryId): bool
     {
         if ($user->isSystemAdmin()) {
