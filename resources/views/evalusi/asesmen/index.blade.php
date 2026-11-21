@@ -35,6 +35,15 @@
                         <a href="{{ route('user.kisi-kisi-soal.create', ['userId' => $userId]) }}" class="btn btn-success">
                             <i class="ri-add-line me-1"></i> Buat Asesmen
                         </a>
+                        <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}" class="btn btn-soft-success">
+                            <i class="ri-file-edit-line me-1"></i> Soal Saya
+                        </a>
+                        <a href="{{ route('user.soal-saya.search', ['userId' => $userId]) }}" class="btn btn-soft-info">
+                            <i class="ri-search-line me-1"></i> Cari Soal
+                        </a>
+                        <a href="{{ route('user.soal-saya.import-form', ['userId' => $userId]) }}" class="btn btn-soft-secondary">
+                            <i class="ri-file-word-line me-1"></i> Import Word
+                        </a>
                         <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}" class="btn btn-soft-primary">
                             <i class="ri-archive-2-line me-1"></i> Bank Soal
                         </a>

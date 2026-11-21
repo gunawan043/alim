@@ -44,6 +44,7 @@ class Soal extends Model
         'waktu_estimasi_menit',
         'status',
         'workflow_status',
+        'jenis_asesmen',
         'dibuat_oleh',
         'direview_oleh',
         'approved_by',
@@ -86,6 +87,31 @@ class Soal extends Model
         self::WORKFLOW_REVISI => 'Perlu Perbaikan',
         self::WORKFLOW_APPROVED => 'Approved',
     ];
+
+    public const JENIS_ASESMEN_HARIAN = 'harian';
+
+    public const JENIS_ASESMEN_FORMATIF = 'formatif';
+
+    public const JENIS_ASESMEN_STS = 'sts';
+
+    public const JENIS_ASESMEN_SAS = 'sas';
+
+    public const JENIS_ASESMEN_OPTIONS = [
+        self::JENIS_ASESMEN_HARIAN => 'Tugas Harian',
+        self::JENIS_ASESMEN_FORMATIF => 'Formatif',
+        self::JENIS_ASESMEN_STS => 'STS',
+        self::JENIS_ASESMEN_SAS => 'SAS',
+    ];
+
+    public function requiresValidation(): bool
+    {
+        return in_array($this->jenis_asesmen, [self::JENIS_ASESMEN_STS, self::JENIS_ASESMEN_SAS], true);
+    }
+
+    public function isValidated(): bool
+    {
+        return $this->workflow_status === self::WORKFLOW_APPROVED || $this->status === 'approved';
+    }
 
     protected $casts = [
         'tags' => 'array',

@@ -154,6 +154,28 @@ class ReviewWorkflowService
             return;
         }
 
+        // Soal STS/SAS: cukup mayoritas reviewer (ceil(n/2)) yang menyetujui.
+        // Soal harian/formatif tidak wajib melewati review.
+        if ($reviewable instanceof Soal && $reviewable->requiresValidation()) {
+            $total = $assignments->count();
+            $approved = $assignments->where('status', ReviewAssignment::STATUS_APPROVED)->count();
+            $quorum = max(1, (int) ceil($total / 2));
+
+            if ($total > 0 && $approved >= $quorum) {
+                $approver = $assignments->where('status', ReviewAssignment::STATUS_APPROVED)
+                    ->sortByDesc('decided_at')->first()?->reviewer_id;
+                $this->applyWorkflow($reviewable, Soal::WORKFLOW_APPROVED, $approver);
+
+                return;
+            }
+
+            if ($total > 0) {
+                $this->applyWorkflow($reviewable, Soal::WORKFLOW_REVIEW);
+
+                return;
+            }
+        }
+
         if ($assignments->isNotEmpty()
             && $assignments->every(fn (ReviewAssignment $a) => $a->status === ReviewAssignment::STATUS_APPROVED)) {
             $approver = $assignments->sortByDesc('decided_at')->first()?->reviewer_id;
@@ -241,18 +263,24 @@ class ReviewWorkflowService
             ->values()
             ->all();
 
-        // Fallback 1: mapel sama lintas tahun ajaran (tetap lintas satuan pendidikan).
-        if ($ids === []) {
-            $ids = $this->extractTeacherIds(
-                TeachingAssignment::query()
-                    ->whereIn('subject_id', $subjectIds)
-                    ->where('status', 'active'),
-                $submitter,
-                $limit
-            );
+        // Tingkat 2 (umum): rumpun yang sama pada jenjang yang sama.
+        if ($ids === [] && $group) {
+            $groupSubjectIds = $resolver->subjectIdsInGroup($group);
+
+            if ($groupSubjectIds !== []) {
+                $ids = $this->extractTeacherIds(
+                    TeachingAssignment::query()
+                        ->whereIn('subject_id', $groupSubjectIds)
+                        ->where('status', 'active')
+                        ->when($context['academic_year_id'], fn ($q) => $q->where('academic_year_id', $context['academic_year_id']))
+                        ->when($context['grade_level_id'], fn ($q) => $q->whereHas('studyGroup', fn ($q2) => $q2->where('grade_level_id', $context['grade_level_id']))),
+                    $submitter,
+                    $limit
+                );
+            }
         }
 
-        // Fallback 2: guru lain dalam rumpun yang sama (mapel berbeda satu rumpun).
+        // Tingkat 3 (universal): seluruh guru dalam rumpun yang sama, semua jenjang.
         if ($ids === [] && $group) {
             $ids = collect($resolver->teacherIdsForGroup($group))
                 ->map(fn ($id) => (string) $id)

@@ -113,6 +113,7 @@ use App\Http\Controllers\Evaluasi\PaketSoalController;
 use App\Http\Controllers\Evaluasi\PaketSoalTuController;
 use App\Http\Controllers\Evaluasi\ReviewSoalController;
 use App\Http\Controllers\Evaluasi\SoalController;
+use App\Http\Controllers\Evaluasi\SoalSayaController;
 use App\Http\Controllers\FacilityReferralController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GlobalSearchController;
@@ -952,6 +953,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/{studyGroupId}/sts', [NilaiKelasController::class, 'sts'])->name('sts');
                     Route::post('/{studyGroupId}/sts', [NilaiKelasController::class, 'stsStore'])->name('sts.store');
                     Route::post('/{studyGroupId}/sts/kolom', [NilaiKelasController::class, 'stsColumns'])->name('sts.kolom');
+                    Route::post('/{studyGroupId}/sts/komponen', [NilaiKelasController::class, 'stsKomponen'])->name('sts.komponen');
                     Route::get('/{studyGroupId}/leger/cetak', [NilaiKelasController::class, 'legerCetak'])->name('leger.cetak');
                     Route::get('/{studyGroupId}/leger/download', [NilaiKelasController::class, 'legerDownload'])->name('leger.download');
                     Route::get('/{studyGroupId}/rapor', [NilaiKelasController::class, 'rapor'])->name('rapor');
@@ -989,6 +991,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                         Route::post('/{adminBookId}/w3', [NilaiGuruController::class, 'wizard3Store'])->name('w3.store');
                         Route::post('/{adminBookId}/w3/bobot', [NilaiGuruController::class, 'wizard3Bobot'])->name('w3.bobot');
                         Route::post('/{adminBookId}/w3/kolom', [NilaiGuruController::class, 'wizard3Columns'])->name('w3.columns');
+                        Route::post('/{adminBookId}/w3/komponen', [NilaiGuruController::class, 'wizard3Components'])->name('w3.komponen');
                         Route::post('/{adminBookId}/w3/visibilitas', [NilaiGuruController::class, 'wizard3Visibility'])->name('w3.visibility');
                         Route::post('/{adminBookId}/w3/mode-publish', [NilaiGuruController::class, 'wizard3PublishMode'])->name('w3.publish-mode');
                         Route::post('/{adminBookId}/w4', [NilaiGuruController::class, 'wizard4Store'])->name('w4.store');
@@ -1967,6 +1970,18 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/', [AsesmenController::class, 'index'])->name('index');
                 Route::get('/cetak', [AsesmenController::class, 'cetak'])->name('cetak');
                 Route::get('/{kisiUuid}', [AsesmenController::class, 'show'])->name('show');
+            });
+
+            // ── SOAL SAYA: JALUR CEPAT GURU ─────────────────────────
+            Route::prefix('soal-saya')->name('soal-saya.')->group(function () {
+                Route::get('/', [SoalSayaController::class, 'index'])->name('index');
+                Route::get('/create', [SoalSayaController::class, 'create'])->name('create');
+                Route::post('/', [SoalSayaController::class, 'store'])->name('store');
+                Route::get('/cari', [SoalSayaController::class, 'search'])->name('search');
+                Route::get('/import-word', [SoalSayaController::class, 'importForm'])->name('import-form');
+                Route::post('/import-word', [SoalSayaController::class, 'importStore'])->name('import-store');
+                Route::post('/cetak', [SoalSayaController::class, 'print'])->name('print');
+                Route::post('/{id}/clone', [SoalSayaController::class, 'clone'])->name('clone');
             });
 
             // ── EVALUASI: KISI-KISI SOAL ────────────────────────────
