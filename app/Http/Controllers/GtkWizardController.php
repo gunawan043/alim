@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\Village;
 use App\Models\WorkUnit;
 use App\Services\GtkFamilyService;
+use App\Services\GtkPlacementLifecycleService;
 use App\Services\SchoolGroupService;
 use App\Support\GtkAccess;
 use App\Support\GtkRoleResolver;
@@ -1749,21 +1750,61 @@ class GtkWizardController extends Controller
 
     private function syncWorkUnit(string $userId, string $workUnitId, ?string $jabatan = null): void
     {
-        $workUnit = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
+        if (! config('gtk_work_unit.lifecycle.enabled', false)) {
+            // Legacy behavior, retained while the lifecycle flag is off.
+            $workUnit = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
 
-        $workUnit
-            ? $workUnit->update([
-                'work_unit_id' => $workUnitId,
-                'jabatan' => $jabatan,
-                'position_id' => $this->positionIdForName($jabatan),
-            ])
-            : GtkWorkUnit::create([
-                'user_id' => $userId,
-                'work_unit_id' => $workUnitId,
-                'jabatan' => $jabatan,
-                'position_id' => $this->positionIdForName($jabatan),
-                'is_primary' => true,
-            ]);
+            $workUnit
+                ? $workUnit->update([
+                    'work_unit_id' => $workUnitId,
+                    'jabatan' => $jabatan,
+                    'position_id' => $this->positionIdForName($jabatan),
+                ])
+                : GtkWorkUnit::create([
+                    'user_id' => $userId,
+                    'work_unit_id' => $workUnitId,
+                    'jabatan' => $jabatan,
+                    'position_id' => $this->positionIdForName($jabatan),
+                    'is_primary' => true,
+                ]);
+
+            // Refresh StructuralAssignment so domain-based permissions stay in sync.
+            $this->refreshStructuralAssignment($userId, $workUnitId, $jabatan);
+
+            return;
+        }
+
+        $lifecycle = app(GtkPlacementLifecycleService::class);
+        $positionId = $this->positionIdForName($jabatan);
+        $primary = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
+
+        if ($primary && (string) $primary->work_unit_id !== (string) $workUnitId) {
+            // Never mutate work_unit_id on the existing row. End the old period
+            // and start/reactivate the destination row.
+            $lifecycle->transfer(
+                $userId,
+                $primary->work_unit_id,
+                $workUnitId,
+                $positionId,
+                today()->toDateString(),
+                auth()->id(),
+                null,
+                $jabatan
+            );
+        } elseif ($primary) {
+            $lifecycle->updatePosition($primary, $positionId, $jabatan, auth()->id());
+        } else {
+            $lifecycle->start(
+                $userId,
+                $workUnitId,
+                $positionId,
+                today()->toDateString(),
+                auth()->id(),
+                null,
+                true,
+                $jabatan
+            );
+        }
 
         // Refresh StructuralAssignment so domain-based permissions stay in sync.
         $this->refreshStructuralAssignment($userId, $workUnitId, $jabatan);

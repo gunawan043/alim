@@ -50,6 +50,23 @@ class GtkWorkUnit extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Immutable period history for this placement.
+     */
+    public function periods()
+    {
+        return $this->hasMany(GtkWorkUnitPeriod::class, 'placement_id')
+            ->orderBy('start_date');
+    }
+
+    public function activePeriod()
+    {
+        return $this->hasOne(GtkWorkUnitPeriod::class, 'placement_id')
+            ->where('status', GtkWorkUnitPeriod::STATUS_ACTIVE)
+            ->whereNull('end_date')
+            ->orderByDesc('start_date');
+    }
+
     public function workUnit()
     {
         return $this->belongsTo(WorkUnit::class);
