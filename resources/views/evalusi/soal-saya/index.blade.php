@@ -72,8 +72,7 @@
                 <p class="text-muted mb-0 small">Soal yang Anda buat. STS/SAS wajib validasi mayoritas guru serumpun sebelum dicetak.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a href="{{ route('user.soal-saya.search', ['userId' => $userId]) }}" class="btn btn-soft-info"><i class="ri-search-line me-1"></i>Cari Soal</a>
-                <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-primary"><i class="ri-search-eye-line me-1"></i>Pencarian</a>
+                <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-info"><i class="ri-search-eye-line me-1"></i>Cari Soal &amp; RPM</a>
                 <a href="{{ route('user.soal-saya.import-form', ['userId' => $userId]) }}" class="btn btn-soft-secondary"><i class="ri-file-word-line me-1"></i>Import Word</a>
                 <a href="{{ route('user.soal-saya.create', ['userId' => $userId]) }}" class="btn btn-success"><i class="ri-add-line me-1"></i>Buat Soal</a>
             </div>

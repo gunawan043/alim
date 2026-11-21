@@ -38,11 +38,8 @@
                         <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}" class="btn btn-soft-success">
                             <i class="ri-file-edit-line me-1"></i> Soal Saya
                         </a>
-                        <a href="{{ route('user.soal-saya.search', ['userId' => $userId]) }}" class="btn btn-soft-info">
-                            <i class="ri-search-line me-1"></i> Cari Soal
-                        </a>
-                        <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-primary">
-                            <i class="ri-search-eye-line me-1"></i> Pencarian
+                        <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-info">
+                            <i class="ri-search-eye-line me-1"></i> Cari Soal &amp; RPM
                         </a>
                         <a href="{{ route('user.soal-saya.import-form', ['userId' => $userId]) }}" class="btn btn-soft-secondary">
                             <i class="ri-file-word-line me-1"></i> Import Word

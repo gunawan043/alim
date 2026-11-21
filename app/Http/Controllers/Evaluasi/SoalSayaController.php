@@ -153,26 +153,14 @@ class SoalSayaController extends Controller
 
     public function search(Request $request, string $userId)
     {
-        $school = $this->school($request);
-        $bankIds = BankSoal::accessibleBy($userId, $school->id)->pluck('id');
-
-        $questions = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'bankSoal.creator:id,name', 'options', 'creator:id,name'])
-            ->whereIn('bank_soal_id', $bankIds)
-            ->when($request->filled('q'), fn ($q) => $q->where(function ($q) use ($request) {
-                $q->where('pertanyaan', 'like', '%'.$request->q.'%')
-                    ->orWhere('materi', 'like', '%'.$request->q.'%');
-            }))
-            ->when($request->filled('subject_id'), fn ($q) => $q->whereHas('bankSoal', fn ($b) => $b->where('subject_id', $request->subject_id)))
-            ->when($request->filled('jenis_asesmen'), fn ($q) => $q->where('jenis_asesmen', $request->jenis_asesmen))
-            ->when($request->filled('tipe_soal'), fn ($q) => $q->where('tipe_soal', $request->tipe_soal))
-            ->when($request->filled('tingkat_kesulitan'), fn ($q) => $q->where('tingkat_kesulitan_estimasi', $request->tingkat_kesulitan))
-            ->orderByDesc('created_at')
-            ->paginate(20)
-            ->withQueryString();
-
-        $subjects = $this->subjects($school);
-
-        return view('evalusi.soal-saya.search', compact('userId', 'school', 'questions', 'subjects'));
+        // Menu lama "Cari Soal" kini diarahkan ke mesin pencari terpadu
+        // (Soal, RPM, Bank Soal, Paket Soal, AI, dan Internet).
+        return redirect()->route('user.pencarian.index', [
+            'userId' => $userId,
+            'q' => $request->input('q'),
+            'source' => 'db',
+            'type' => 'all',
+        ]);
     }
 
     public function clone(Request $request, string $userId, string $id)

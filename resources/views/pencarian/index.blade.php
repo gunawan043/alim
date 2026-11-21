@@ -104,7 +104,7 @@
             <div class="card mb-3">
                 <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="ri-question-line text-primary me-1"></i>Soal <span class="badge bg-primary-subtle text-primary ms-1">{{ $soalResults->count() }}</span></h6>
-                    <a href="{{ route('user.soal-saya.search', ['userId' => $userId, 'q' => $query]) }}" class="small text-decoration-none">Cari khusus soal <i class="ri-arrow-right-line"></i></a>
+                    <a href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'db', 'type' => 'soal']) }}" class="small text-decoration-none">Cari khusus soal <i class="ri-arrow-right-line"></i></a>
                 </div>
                 <div class="card-body">
                     @foreach($soalResults as $soal)
@@ -127,7 +127,11 @@
                                     @if($soal->requiresValidation() && ! $soal->isValidated())
                                         <span class="badge bg-warning-subtle text-warning align-self-center">Belum valid</span>
                                     @endif
-                                    <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}" class="btn btn-sm btn-soft-primary"><i class="ri-arrow-right-line"></i></a>
+                                    <form method="POST" action="{{ route('user.soal-saya.clone', ['userId' => $userId, 'id' => $soal->id]) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-soft-success" title="Klon ke Soal Saya"><i class="ri-file-copy-line"></i></button>
+                                    </form>
+                                    <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka soal"><i class="ri-arrow-right-line"></i></a>
                                 </div>
                             </div>
                         </div>
