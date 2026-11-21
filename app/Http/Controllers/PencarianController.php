@@ -66,7 +66,8 @@ class PencarianController extends Controller
                     })
                     ->where(function ($q) use ($query) {
                         $q->where('judul', 'like', '%'.$query.'%')
-                            ->orWhere('catatan', 'like', '%'.$query.'%');
+                            ->orWhere('catatan', 'like', '%'.$query.'%')
+                            ->orWhere('desain', 'like', '%'.$query.'%');
                     })
                     ->orderByDesc('created_at')
                     ->limit(20)

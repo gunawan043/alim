@@ -114,7 +114,7 @@
                                     <a class="result-title" href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}">
                                         {{ \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 170) }}
                                     </a>
-                                    <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags($soal->materi ?: $soal->pembahasan), 180) }}</div>
+                                    <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags((string) ($soal->materi ?: $soal->pembahasan)), 180) }}</div>
                                     <div class="search-meta mt-2">
                                         {{ $soal->bankSoal?->subject?->name ?? '-' }}
                                         @if($soal->bankSoal?->gradeLevel?->name) · {{ $soal->bankSoal->gradeLevel->name }}@endif
@@ -143,7 +143,7 @@
                     @foreach($rpmResults as $rpm)
                         <div class="result-card p-3 mb-2">
                             <a class="result-title" href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $rpm->id]) }}">{{ $rpm->judul }}</a>
-                            <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags($rpm->catatan), 180) }}</div>
+                            <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags((string) $rpm->catatan), 180) }}</div>
                             <div class="search-meta mt-2">{{ $rpm->subject?->name ?? '-' }} · {{ $rpm->gradeLevel?->name ?? '-' }} · {{ $rpm->teacher?->name ?? '-' }} · {{ \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$rpm->status] ?? $rpm->status }}</div>
                         </div>
                     @endforeach
@@ -158,7 +158,7 @@
                     @foreach($bankResults as $bank)
                         <div class="result-card p-3 mb-2">
                             <a class="result-title" href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}">{{ $bank->nama }}</a>
-                            <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags($bank->deskripsi), 180) }}</div>
+                            <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags((string) $bank->deskripsi), 180) }}</div>
                             <div class="search-meta mt-2">{{ $bank->subject?->name ?? '-' }} · {{ $bank->gradeLevel?->name ?? '-' }} · {{ $bank->owner?->name ?? '-' }}</div>
                         </div>
                     @endforeach
