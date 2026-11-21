@@ -2,32 +2,495 @@
 @section('title', 'Pencarian')
 
 @section('css')
-    @include('kurikulum._styles')
-    <style>
-        .search-hero {
-            background: linear-gradient(135deg, #eef6ff 0%, #f8fbff 55%, #ffffff 100%);
-            border: 1px solid #dbeafe;
-            border-radius: 18px;
-            padding: 26px 22px;
+<style>
+    .cat-page {
+        --cat-paper: #f4f0e6;
+        --cat-surface: #fffdf8;
+        --cat-line: #e1dacb;
+        --cat-ink: #202a2a;
+        --cat-muted: #68706d;
+        --cat-soft: #8b918c;
+        --cat-accent: #1f5c52;
+        --cat-accent-soft: #e8efeb;
+        --cat-warn: #8a5a1f;
+        color: var(--cat-ink);
+        padding-bottom: 40px;
+    }
+    .cat-page * { box-sizing: border-box; }
+    .cat-page-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+    }
+    .cat-kicker {
+        font-size: 11px;
+        line-height: 1.4;
+        color: var(--cat-soft);
+        margin-bottom: 6px;
+    }
+    .cat-title {
+        font-size: 26px;
+        line-height: 1.2;
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        color: var(--cat-ink);
+        margin: 0;
+    }
+    .cat-sub {
+        max-width: 620px;
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--cat-muted);
+    }
+    .cat-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .cat-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        font-size: 12px;
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .cat-btn-quiet {
+        background: var(--cat-surface);
+        border-color: var(--cat-line);
+        color: var(--cat-ink);
+    }
+    .cat-btn-quiet:hover {
+        background: #faf7f0;
+        border-color: #cbc3b5;
+        color: var(--cat-ink);
+    }
+    .cat-btn-primary {
+        background: var(--cat-accent);
+        color: #fff;
+    }
+    .cat-btn-primary:hover { background: #174940; color: #fff; }
+    .cat-btn:focus-visible,
+    .cat-source:focus-visible,
+    .cat-tab:focus-visible,
+    .cat-suggestion:focus-visible,
+    .cat-action:focus-visible {
+        outline: 2px solid var(--cat-accent);
+        outline-offset: 2px;
+    }
+    .cat-search-panel {
+        margin-top: 20px;
+        padding: 20px;
+        border: 1px solid var(--cat-line);
+        border-radius: 14px;
+        background: var(--cat-paper);
+    }
+    .cat-search-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: var(--cat-muted);
+    }
+    .cat-search-box {
+        display: flex;
+        align-items: stretch;
+        min-height: 50px;
+        overflow: hidden;
+        border: 1px solid var(--cat-line);
+        border-radius: 10px;
+        background: var(--cat-surface);
+    }
+    .cat-search-box:focus-within {
+        border-color: var(--cat-accent);
+        box-shadow: 0 0 0 3px rgba(31, 92, 82, 0.1);
+    }
+    .cat-search-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        flex-shrink: 0;
+        color: var(--cat-soft);
+        font-size: 16px;
+    }
+    .cat-search-box input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--cat-ink);
+        font-size: 15px;
+        padding: 0 12px 0 0;
+    }
+    .cat-search-box input::placeholder { color: #9a9f99; }
+    .cat-search-box button {
+        border: 0;
+        background: var(--cat-accent);
+        color: #fff;
+        padding: 0 22px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .cat-search-box button:hover { background: #174940; }
+    .cat-hint {
+        margin-top: 8px;
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--cat-soft);
+    }
+    .cat-layout {
+        display: grid;
+        grid-template-columns: 232px minmax(0, 1fr);
+        gap: 32px;
+        align-items: start;
+        margin-top: 24px;
+    }
+    .cat-rail { position: sticky; top: 16px; }
+    .cat-rail-block + .cat-rail-block {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--cat-line);
+    }
+    .cat-rail-title {
+        margin: 0 0 8px;
+        font-size: 11px;
+        color: var(--cat-soft);
+    }
+    .cat-source {
+        display: flex;
+        gap: 10px;
+        padding: 9px 10px;
+        border-left: 2px solid transparent;
+        border-radius: 0 8px 8px 0;
+        color: var(--cat-ink);
+        text-decoration: none;
+    }
+    .cat-source + .cat-source { margin-top: 2px; }
+    .cat-source:hover { background: rgba(32, 42, 42, 0.035); }
+    .cat-source.active {
+        border-left-color: var(--cat-accent);
+        background: var(--cat-accent-soft);
+    }
+    .cat-source > i {
+        width: 16px;
+        margin-top: 1px;
+        flex-shrink: 0;
+        font-size: 16px;
+        color: var(--cat-soft);
+        text-align: center;
+    }
+    .cat-source.active > i { color: var(--cat-accent); }
+    .cat-source-label {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 500;
+        line-height: 1.35;
+    }
+    .cat-source-desc {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        line-height: 1.45;
+        color: var(--cat-muted);
+    }
+    .cat-scope {
+        font-size: 12px;
+        line-height: 1.65;
+        color: var(--cat-muted);
+    }
+    .cat-scope strong { color: var(--cat-ink); font-weight: 500; }
+    .cat-results { min-width: 0; }
+    .cat-results-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--cat-line);
+    }
+    .cat-result-label {
+        margin-bottom: 3px;
+        font-size: 11px;
+        color: var(--cat-soft);
+    }
+    .cat-result-count {
+        font-size: 13px;
+        color: var(--cat-muted);
+        font-variant-numeric: tabular-nums;
+    }
+    .cat-result-count strong { color: var(--cat-ink); font-weight: 500; }
+    .cat-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+    }
+    .cat-tab {
+        padding: 8px 10px 10px;
+        margin-bottom: -13px;
+        border-bottom: 2px solid transparent;
+        color: var(--cat-muted);
+        font-size: 12px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .cat-tab:hover { color: var(--cat-ink); }
+    .cat-tab.active {
+        border-bottom-color: var(--cat-accent);
+        color: var(--cat-accent);
+        font-weight: 500;
+    }
+    .cat-group { margin-top: 28px; }
+    .cat-group-head {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--cat-line);
+    }
+    .cat-group-index {
+        font-size: 11px;
+        color: var(--cat-soft);
+        font-variant-numeric: tabular-nums;
+    }
+    .cat-group-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--cat-ink);
+    }
+    .cat-group-count {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--cat-soft);
+        font-variant-numeric: tabular-nums;
+    }
+    .cat-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--cat-line);
+    }
+    .cat-item:last-child { border-bottom: 0; }
+    .cat-item-main { min-width: 0; }
+    .cat-item-title {
+        display: inline;
+        color: var(--cat-ink);
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.45;
+        text-decoration: none;
+    }
+    .cat-item-title:hover {
+        color: var(--cat-accent);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+    .cat-item-excerpt {
+        max-width: 760px;
+        margin: 4px 0 0;
+        color: var(--cat-muted);
+        font-size: 12.5px;
+        line-height: 1.55;
+    }
+    .cat-item-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0;
+        margin-top: 8px;
+        color: var(--cat-soft);
+        font-size: 11.5px;
+        font-variant-numeric: tabular-nums;
+    }
+    .cat-item-meta .sep { margin: 0 7px; color: #c5bdae; }
+    .cat-actions {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .cat-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 8px;
+        color: var(--cat-warn);
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .cat-status::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #ad772b;
+    }
+    .cat-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 1px solid var(--cat-line);
+        border-radius: 8px;
+        background: var(--cat-surface);
+        color: var(--cat-muted);
+        font-size: 15px;
+    }
+    .cat-action:hover {
+        border-color: #c5bdae;
+        background: #faf7f0;
+        color: var(--cat-ink);
+    }
+    .cat-empty,
+    .cat-panel {
+        margin-top: 24px;
+        border: 1px solid var(--cat-line);
+        border-radius: 12px;
+        background: var(--cat-surface);
+    }
+    .cat-empty {
+        display: grid;
+        grid-template-columns: 168px minmax(0, 1fr);
+        gap: 32px;
+        align-items: center;
+        padding: 32px;
+        text-align: left;
+    }
+    .cat-empty-plain {
+        display: block;
+        padding: 28px;
+    }
+    .cat-empty-drawer {
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+    }
+    .cat-empty-drawer span {
+        height: 40px;
+        padding-left: 16px;
+        border: 1px solid var(--cat-line);
+        border-bottom: 0;
+        background: var(--cat-paper);
+        color: var(--cat-soft);
+        font-size: 10px;
+        line-height: 40px;
+    }
+    .cat-empty-drawer span:first-child { border-radius: 8px 8px 0 0; }
+    .cat-empty-drawer span:last-child {
+        border-bottom: 1px solid var(--cat-line);
+        border-radius: 0 0 8px 8px;
+    }
+    .cat-empty-title {
+        margin: 0;
+        color: var(--cat-ink);
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .cat-empty-text {
+        max-width: none;
+        margin: 6px 0 0;
+        color: var(--cat-muted);
+        font-size: 12.5px;
+        line-height: 1.6;
+    }
+    .cat-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 8px 16px;
+        margin-top: 18px;
+    }
+    .cat-suggestion {
+        padding: 3px 0;
+        border-bottom: 1px solid var(--cat-line);
+        color: var(--cat-muted);
+        font-size: 12px;
+        text-decoration: none;
+    }
+    .cat-suggestion:hover { border-bottom-color: var(--cat-accent); color: var(--cat-accent); }
+    .cat-panel { padding: 22px 24px; }
+    .cat-panel-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--cat-line);
+    }
+    .cat-panel-title {
+        margin: 0;
+        color: var(--cat-ink);
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .cat-note { color: var(--cat-soft); font-size: 11px; }
+    .cat-ai-answer {
+        white-space: pre-wrap;
+        color: var(--cat-ink);
+        font-size: 13.5px;
+        line-height: 1.75;
+    }
+    .cat-notice {
+        padding: 12px 14px;
+        border-left: 2px solid #ad772b;
+        border-radius: 0 8px 8px 0;
+        background: #faf4e8;
+        color: #694717;
+        font-size: 12.5px;
+        line-height: 1.6;
+    }
+    .cat-web-title {
+        color: var(--cat-ink);
+        font-size: 13.5px;
+        font-weight: 500;
+        text-decoration: none;
+    }
+    .cat-web-title:hover { color: var(--cat-accent); text-decoration: underline; text-underline-offset: 3px; }
+    .cat-web-domain { color: var(--cat-soft); font-size: 11px; }
+    @media (max-width: 991.98px) {
+        .cat-page-head { flex-direction: column; gap: 16px; }
+        .cat-layout { grid-template-columns: 1fr; gap: 24px; }
+        .cat-rail { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .cat-rail-block + .cat-rail-block { margin-top: 0; padding-top: 0; border-top: 0; }
+        .cat-results-head { align-items: flex-start; flex-direction: column; gap: 12px; }
+        .cat-tab { margin-bottom: -1px; }
+    }
+    @media (max-width: 575.98px) {
+        .cat-page-head { gap: 12px; }
+        .cat-title { font-size: 22px; }
+        .cat-search-panel { padding: 16px; }
+        .cat-search-box { min-height: 46px; }
+        .cat-search-box button { padding: 0 16px; }
+        .cat-rail { grid-template-columns: 1fr; gap: 20px; }
+        .cat-empty { grid-template-columns: 1fr; gap: 20px; padding: 24px; }
+        .cat-empty-drawer { flex-direction: row; }
+        .cat-empty-drawer span {
+            flex: 1;
+            height: 34px;
+            padding-left: 0;
+            line-height: 34px;
+            text-align: center;
         }
-        .search-hero h2 { font-weight: 700; letter-spacing: -.02em; }
-        .search-input { height: 54px; font-size: 16px; border-radius: 12px; }
-        .source-pill {
-            display: inline-flex; align-items: center; gap: 7px;
-            padding: 8px 16px; border-radius: 999px;
-            border: 1px solid #dbe3ee; background: #fff; color: #475569;
-            text-decoration: none; font-size: 13px; font-weight: 500;
-        }
-        .source-pill:hover { border-color: #0a5f9e; color: #0a5f9e; }
-        .source-pill.active { background: #0a5f9e; border-color: #0a5f9e; color: #fff; }
-        .result-card { border: 1px solid #e5eaf1; border-radius: 12px; transition: all .2s ease; }
-        .result-card:hover { border-color: #b9d4ec; box-shadow: 0 8px 24px rgba(15, 23, 42, .07); }
-        .result-title { font-weight: 650; color: #16324f; text-decoration: none; }
-        .result-title:hover { color: #0a5f9e; }
-        .result-snippet { color: #64748b; font-size: 13px; line-height: 1.55; }
-        .search-meta { color: #94a3b8; font-size: 12px; }
-        .ai-answer { white-space: pre-wrap; line-height: 1.7; font-size: 14px; }
-    </style>
+        .cat-item { flex-direction: column; gap: 10px; }
+        .cat-actions { align-items: center; }
+        .cat-status { margin-top: 0; }
+        .cat-panel { padding: 18px; }
+    }
+</style>
 @endsection
 
 @section('content')
@@ -38,187 +501,310 @@
         @slot('title') Pencarian @endslot
     @endcomponent
 
-    <div class="search-hero mb-3">
-        <div class="row justify-content-center">
-            <div class="col-xl-9">
-                <div class="text-center mb-3">
-                    <h2 class="mb-1">Cari Soal, RPM, dan Sumber Belajar</h2>
-                    <p class="text-muted mb-0">Telusuri database sekolah, minta rekomendasi AI, atau cari referensi di internet.</p>
-                </div>
+    <div class="cat-page">
+        <div class="cat-page-head">
+            <div>
+                <div class="cat-kicker">Katalog sekolah</div>
+                <h1 class="cat-title">Cari soal, RPM, dan bahan ajar</h1>
+                <p class="cat-sub">Satu tempat untuk menelusuri soal, perangkat pembelajaran, bank soal, dan paket asesmen di lingkungan sekolah Anda.</p>
+            </div>
+            <div class="cat-head-actions">
+                <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}" class="cat-btn cat-btn-quiet">Soal Saya</a>
+                <a href="{{ route('user.soal-saya.create', ['userId' => $userId]) }}" class="cat-btn cat-btn-primary">
+                    <i class="ri-add-line"></i>Buat soal
+                </a>
+            </div>
+        </div>
 
-                <form method="GET" action="{{ route('user.pencarian.index', ['userId' => $userId]) }}">
-                    <input type="hidden" name="source" value="{{ $source }}">
-                    <input type="hidden" name="type" value="{{ $type }}">
-                    <div class="input-group input-group-lg mb-3">
-                        <span class="input-group-text bg-white border-end-0 rounded-start-3"><i class="ri-search-line text-muted"></i></span>
-                        <input type="search" name="q" class="form-control search-input border-start-0" value="{{ $query }}" placeholder="Contoh: bilangan bulat kelas 7, RPM teks eksposisi, soal tahfidz..." autofocus>
-                        <button class="btn btn-primary px-4" type="submit">Cari</button>
+        <form method="GET" action="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="cat-search-panel" role="search">
+            <input type="hidden" name="source" value="{{ $source }}">
+            <input type="hidden" name="type" value="{{ $type }}">
+            <label class="cat-search-label" for="cat-q">Kata kunci</label>
+            <div class="cat-search-box">
+                <span class="cat-search-icon"><i class="ri-search-line"></i></span>
+                <input id="cat-q" type="search" name="q" value="{{ $query }}" placeholder="Mapel, topik, atau judul" autofocus>
+                <button type="submit">Cari</button>
+            </div>
+            <div class="cat-hint">Gunakan kata kunci singkat. Pilih sumber di bawah untuk mengubah cakupan pencarian.</div>
+        </form>
+
+        <div class="cat-layout">
+            <aside class="cat-rail">
+                <div class="cat-rail-block">
+                    <p class="cat-rail-title">Sumber</p>
+                    <a class="cat-source {{ $source === 'db' ? 'active' : '' }}"
+                       href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'db', 'type' => $type]) }}">
+                        <i class="ri-archive-line"></i>
+                        <span>
+                            <span class="cat-source-label">Database sekolah</span>
+                            <span class="cat-source-desc">Soal, RPM, bank, paket</span>
+                        </span>
+                    </a>
+                    <a class="cat-source {{ $source === 'ai' ? 'active' : '' }}"
+                       href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'ai', 'type' => $type]) }}">
+                        <i class="ri-lightbulb-line"></i>
+                        <span>
+                            <span class="cat-source-label">Rekomendasi AI</span>
+                            <span class="cat-source-desc">Saran materi dan kata kunci</span>
+                        </span>
+                    </a>
+                    <a class="cat-source {{ $source === 'internet' ? 'active' : '' }}"
+                       href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'internet', 'type' => $type]) }}">
+                        <i class="ri-global-line"></i>
+                        <span>
+                            <span class="cat-source-label">Internet</span>
+                            <span class="cat-source-desc">Referensi dari web</span>
+                        </span>
+                    </a>
+                </div>
+                <div class="cat-rail-block">
+                    <p class="cat-rail-title">Ruang lingkup</p>
+                    <div class="cat-scope">
+                        <strong>{{ $school->name }}</strong><br>
+                        Data yang dapat Anda akses di satuan pendidikan ini.
                     </div>
-                </form>
-
-                <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
-                    @foreach(['db' => ['Database', 'ri-database-2-line'], 'ai' => ['Rekomendasi AI', 'ri-sparkling-2-line'], 'internet' => ['Internet', 'ri-global-line']] as $value => [$label, $icon])
-                        <a class="source-pill {{ $source === $value ? 'active' : '' }}"
-                           href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => $value, 'type' => $type]) }}">
-                            <i class="{{ $icon }}"></i>{{ $label }}
-                        </a>
-                    @endforeach
                 </div>
+            </aside>
 
-                @if($source === 'db')
-                    <div class="text-center">
-                        @foreach(['all' => 'Semua', 'soal' => 'Soal', 'rpm' => 'RPM', 'bank' => 'Bank Soal', 'paket' => 'Paket Soal'] as $value => $label)
-                            <a class="filter-badge {{ $type === $value ? 'active' : '' }}"
-                               href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'db', 'type' => $value]) }}">{{ $label }}</a>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    @if($query === '')
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <i class="ri-search-eye-line fs-1 text-muted d-block mb-2"></i>
-                <h5>Mulai pencarian</h5>
-                <p class="text-muted mb-3">Ketik kata kunci, lalu pilih sumber: Database, AI, atau Internet.</p>
-                <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <a href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'bilangan bulat', 'source' => 'db']) }}" class="filter-badge">bilangan bulat</a>
-                    <a href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'teks eksposisi', 'source' => 'db']) }}" class="filter-badge">teks eksposisi</a>
-                    <a href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'tahfidz', 'source' => 'db']) }}" class="filter-badge">tahfidz</a>
-                    <a href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'asesmen formatif', 'source' => 'ai']) }}" class="filter-badge">rekomendasi AI</a>
-                </div>
-            </div>
-        </div>
-    @elseif($source === 'db')
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
-            <div class="text-muted small">{{ $total }} hasil untuk <strong>{{ $query }}</strong> di {{ $school->name }}</div>
-            <div class="d-flex gap-2">
-                <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}" class="btn btn-sm btn-soft-success"><i class="ri-file-edit-line me-1"></i>Soal Saya</a>
-                <a href="{{ route('user.soal-saya.create', ['userId' => $userId]) }}" class="btn btn-sm btn-success"><i class="ri-add-line me-1"></i>Buat Soal</a>
-            </div>
-        </div>
-
-        @if(in_array($type, ['all', 'soal'], true) && $soalResults->isNotEmpty())
-            <div class="card mb-3">
-                <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="ri-question-line text-primary me-1"></i>Soal <span class="badge bg-primary-subtle text-primary ms-1">{{ $soalResults->count() }}</span></h6>
-                    <a href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'db', 'type' => 'soal']) }}" class="small text-decoration-none">Cari khusus soal <i class="ri-arrow-right-line"></i></a>
-                </div>
-                <div class="card-body">
-                    @foreach($soalResults as $soal)
-                        <div class="result-card p-3 mb-2">
-                            <div class="d-flex flex-wrap justify-content-between gap-2">
-                                <div class="flex-grow-1">
-                                    <a class="result-title" href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}">
-                                        {{ \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 170) }}
-                                    </a>
-                                    <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags((string) ($soal->materi ?: $soal->pembahasan)), 180) }}</div>
-                                    <div class="search-meta mt-2">
-                                        {{ $soal->bankSoal?->subject?->name ?? '-' }}
-                                        @if($soal->bankSoal?->gradeLevel?->name) · {{ $soal->bankSoal->gradeLevel->name }}@endif
-                                        · {{ \App\Models\Soal::JENIS_ASESMEN_OPTIONS[$soal->jenis_asesmen] ?? $soal->jenis_asesmen }}
-                                        · {{ strtoupper($soal->tipe_soal) }}
-                                        · {{ $soal->creator?->name ?? '-' }}
-                                    </div>
-                                </div>
-                                <div class="d-flex align-items-start gap-2">
-                                    @if($soal->requiresValidation() && ! $soal->isValidated())
-                                        <span class="badge bg-warning-subtle text-warning align-self-center">Belum valid</span>
-                                    @endif
-                                    <form method="POST" action="{{ route('user.soal-saya.clone', ['userId' => $userId, 'id' => $soal->id]) }}">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-soft-success" title="Klon ke Soal Saya"><i class="ri-file-copy-line"></i></button>
-                                    </form>
-                                    <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}" class="btn btn-sm btn-soft-primary" title="Buka soal"><i class="ri-arrow-right-line"></i></a>
-                                </div>
+            <main class="cat-results">
+                @if($query === '')
+                    <div class="cat-empty">
+                        <div class="cat-empty-drawer" aria-hidden="true">
+                            <span>Soal</span><span>RPM</span><span>Referensi</span>
+                        </div>
+                        <div class="cat-empty-copy">
+                            <h2 class="cat-empty-title">Belum ada kata kunci</h2>
+                            <p class="cat-empty-text">Mulai dengan topik, judul, atau nama mapel. Anda dapat mencari di database sekolah, meminta saran AI, atau menelusuri internet.</p>
+                            <div class="cat-suggestions">
+                                <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'bilangan bulat', 'source' => 'db']) }}">bilangan bulat</a>
+                                <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'teks eksposisi', 'source' => 'db']) }}">teks eksposisi</a>
+                                <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'tahfidz', 'source' => 'db']) }}">tahfidz</a>
+                                <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => 'asesmen formatif', 'source' => 'ai']) }}">rekomendasi AI</a>
                             </div>
                         </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        @if(in_array($type, ['all', 'rpm'], true) && $rpmResults->isNotEmpty())
-            <div class="card mb-3">
-                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-file-paper-2-line text-success me-1"></i>RPM / Perangkat <span class="badge bg-success-subtle text-success ms-1">{{ $rpmResults->count() }}</span></h6></div>
-                <div class="card-body">
-                    @foreach($rpmResults as $rpm)
-                        <div class="result-card p-3 mb-2">
-                            <a class="result-title" href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $rpm->id]) }}">{{ $rpm->judul }}</a>
-                            <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags((string) $rpm->catatan), 180) }}</div>
-                            <div class="search-meta mt-2">{{ $rpm->subject?->name ?? '-' }} · {{ $rpm->gradeLevel?->name ?? '-' }} · {{ $rpm->teacher?->name ?? '-' }} · {{ \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$rpm->status] ?? $rpm->status }}</div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        @if(in_array($type, ['all', 'bank'], true) && $bankResults->isNotEmpty())
-            <div class="card mb-3">
-                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-archive-2-line text-info me-1"></i>Bank Soal <span class="badge bg-info-subtle text-info ms-1">{{ $bankResults->count() }}</span></h6></div>
-                <div class="card-body">
-                    @foreach($bankResults as $bank)
-                        <div class="result-card p-3 mb-2">
-                            <a class="result-title" href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}">{{ $bank->nama }}</a>
-                            <div class="result-snippet mt-1">{{ \Illuminate\Support\Str::limit(strip_tags((string) $bank->deskripsi), 180) }}</div>
-                            <div class="search-meta mt-2">{{ $bank->subject?->name ?? '-' }} · {{ $bank->gradeLevel?->name ?? '-' }} · {{ $bank->owner?->name ?? '-' }}</div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        @if(in_array($type, ['all', 'paket'], true) && $paketResults->isNotEmpty())
-            <div class="card mb-3">
-                <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-stack-line text-warning me-1"></i>Paket Soal <span class="badge bg-warning-subtle text-warning ms-1">{{ $paketResults->count() }}</span></h6></div>
-                <div class="card-body">
-                    @foreach($paketResults as $paket)
-                        <div class="result-card p-3 mb-2">
-                            <a class="result-title" href="{{ route('user.paket-soal.show', ['userId' => $userId, 'paketUuid' => $paket->id]) }}">{{ $paket->judul }}</a>
-                            <div class="search-meta mt-2">{{ $paket->kode_paket }} · {{ $paket->kisiKisi?->subject?->name ?? '-' }} · {{ $paket->kisiKisi?->gradeLevel?->name ?? '-' }}</div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-
-        @if($total === 0)
-            <div class="card"><div class="card-body text-center py-5 text-muted"><i class="ri-search-line fs-1 d-block mb-2"></i>Tidak ada hasil di database untuk <strong>{{ $query }}</strong>. Coba sumber AI atau Internet.</div></div>
-        @endif
-    @elseif($source === 'ai')
-        <div class="card">
-            <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-sparkling-2-line text-primary me-1"></i>Rekomendasi AI untuk "{{ $query }}"</h6></div>
-            <div class="card-body">
-                @if($aiError)
-                    <div class="alert alert-warning mb-0">{{ $aiError }}</div>
+                    </div>
                 @else
-                    <div class="ai-answer">{{ $aiAnswer ?: 'AI belum memberikan jawaban.' }}</div>
-                @endif
-            </div>
-        </div>
-    @else
-        <div class="card">
-            <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="ri-global-line text-info me-1"></i>Hasil Internet untuk "{{ $query }}"</h6>
-                <span class="small text-muted">Buka tautan di tab baru</span>
-            </div>
-            <div class="card-body">
-                @if($webError)
-                    <div class="alert alert-warning mb-0">{{ $webError }}</div>
-                @elseif(empty($webResults))
-                    <div class="text-center text-muted py-4">Tidak ada hasil internet.</div>
-                @else
-                    @foreach($webResults as $result)
-                        <div class="result-card p-3 mb-2">
-                            <a class="result-title" href="{{ $result['url'] ?? '#' }}" target="_blank" rel="noopener noreferrer">{{ $result['title'] ?? 'Sumber' }}</a>
-                            <div class="result-snippet mt-1">{{ $result['snippet'] ?? '' }}</div>
-                            <div class="search-meta mt-1 text-truncate">{{ $result['url'] ?? '' }}</div>
+                    <div class="cat-results-head">
+                        <div>
+                            <div class="cat-result-label">
+                                @if($source === 'db') Database sekolah
+                                @elseif($source === 'ai') Rekomendasi AI
+                                @else Hasil internet
+                                @endif
+                            </div>
+                            <div class="cat-result-count">
+                                @if($source === 'db')
+                                    <strong>{{ $total }}</strong> hasil untuk &ldquo;{{ $query }}&rdquo;
+                                @elseif($source === 'ai')
+                                    Saran untuk &ldquo;{{ $query }}&rdquo;
+                                @else
+                                    {{ count($webResults) }} tautan untuk &ldquo;{{ $query }}&rdquo;
+                                @endif
+                            </div>
                         </div>
-                    @endforeach
+                        @if($source === 'db')
+                            <nav class="cat-tabs" aria-label="Jenis data">
+                                @foreach(['all' => 'Semua', 'soal' => 'Soal', 'rpm' => 'RPM', 'bank' => 'Bank soal', 'paket' => 'Paket soal'] as $value => $label)
+                                    <a class="cat-tab {{ $type === $value ? 'active' : '' }}"
+                                       href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'db', 'type' => $value]) }}"
+                                       @if($type === $value) aria-current="page" @endif>{{ $label }}</a>
+                                @endforeach
+                            </nav>
+                        @else
+                            <span class="cat-note">{{ $source === 'ai' ? 'Periksa kembali' : 'Tautan eksternal' }}</span>
+                        @endif
+                    </div>
+
+                    @if($source === 'db')
+                        @if(in_array($type, ['all', 'soal'], true) && $soalResults->isNotEmpty())
+                            <section class="cat-group" aria-labelledby="cat-group-soal">
+                                <div class="cat-group-head">
+                                    <span class="cat-group-index">01</span>
+                                    <h2 class="cat-group-title" id="cat-group-soal">Soal</h2>
+                                    <span class="cat-group-count">{{ $soalResults->count() }} entri</span>
+                                </div>
+                                @foreach($soalResults as $soal)
+                                    @php
+                                        $jenis = \App\Models\Soal::JENIS_ASESMEN_OPTIONS[$soal->jenis_asesmen] ?? $soal->jenis_asesmen;
+                                        $tipe = ucfirst(strtolower(str_replace('_', ' ', $soal->tipe_soal ?? '')));
+                                        $excerpt = \Illuminate\Support\Str::limit(strip_tags((string) ($soal->materi ?: $soal->pembahasan)), 180);
+                                    @endphp
+                                    <article class="cat-item">
+                                        <div class="cat-item-main">
+                                            <a class="cat-item-title" href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}">
+                                                {{ \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 170) }}
+                                            </a>
+                                            @if($excerpt !== '')
+                                                <p class="cat-item-excerpt">{{ $excerpt }}</p>
+                                            @endif
+                                            <div class="cat-item-meta">
+                                                <span>{{ $soal->bankSoal?->subject?->name ?? '-' }}</span>
+                                                @if($soal->bankSoal?->gradeLevel?->name)
+                                                    <span class="sep">&middot;</span><span>{{ $soal->bankSoal->gradeLevel->name }}</span>
+                                                @endif
+                                                @if($jenis)
+                                                    <span class="sep">&middot;</span><span>{{ $jenis }}</span>
+                                                @endif
+                                                @if($tipe !== '')
+                                                    <span class="sep">&middot;</span><span>{{ $tipe }}</span>
+                                                @endif
+                                                @if($soal->creator?->name)
+                                                    <span class="sep">&middot;</span><span>{{ $soal->creator->name }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="cat-actions">
+                                            @if($soal->requiresValidation() && ! $soal->isValidated())
+                                                <span class="cat-status">Perlu validasi</span>
+                                            @endif
+                                            <form method="POST" action="{{ route('user.soal-saya.clone', ['userId' => $userId, 'id' => $soal->id]) }}">
+                                                @csrf
+                                                <button type="submit" class="cat-action" title="Klon ke Soal Saya" aria-label="Klon ke Soal Saya"><i class="ri-file-copy-line"></i></button>
+                                            </form>
+                                            <a class="cat-action" href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}" title="Buka soal" aria-label="Buka soal"><i class="ri-arrow-right-line"></i></a>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </section>
+                        @endif
+
+                        @if(in_array($type, ['all', 'rpm'], true) && $rpmResults->isNotEmpty())
+                            <section class="cat-group" aria-labelledby="cat-group-rpm">
+                                <div class="cat-group-head">
+                                    <span class="cat-group-index">02</span>
+                                    <h2 class="cat-group-title" id="cat-group-rpm">RPM / Perangkat</h2>
+                                    <span class="cat-group-count">{{ $rpmResults->count() }} entri</span>
+                                </div>
+                                @foreach($rpmResults as $rpm)
+                                    @php $rpmStatus = \App\Models\PerangkatPembelajaran::STATUS_OPTIONS[$rpm->status] ?? $rpm->status; @endphp
+                                    <article class="cat-item">
+                                        <div class="cat-item-main">
+                                            <a class="cat-item-title" href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $rpm->id]) }}">{{ $rpm->judul }}</a>
+                                            @if(filled($rpm->catatan))
+                                                <p class="cat-item-excerpt">{{ \Illuminate\Support\Str::limit(strip_tags((string) $rpm->catatan), 180) }}</p>
+                                            @endif
+                                            <div class="cat-item-meta">
+                                                <span>{{ $rpm->subject?->name ?? '-' }}</span>
+                                                @if($rpm->gradeLevel?->name)<span class="sep">&middot;</span><span>{{ $rpm->gradeLevel->name }}</span>@endif
+                                                @if($rpm->teacher?->name)<span class="sep">&middot;</span><span>{{ $rpm->teacher->name }}</span>@endif
+                                                @if($rpmStatus)<span class="sep">&middot;</span><span>{{ $rpmStatus }}</span>@endif
+                                            </div>
+                                        </div>
+                                        <div class="cat-actions">
+                                            <a class="cat-action" href="{{ route('user.kurikulum.perangkat.show', ['userId' => $userId, 'id' => $rpm->id]) }}" title="Buka RPM" aria-label="Buka RPM"><i class="ri-arrow-right-line"></i></a>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </section>
+                        @endif
+
+                        @if(in_array($type, ['all', 'bank'], true) && $bankResults->isNotEmpty())
+                            <section class="cat-group" aria-labelledby="cat-group-bank">
+                                <div class="cat-group-head">
+                                    <span class="cat-group-index">03</span>
+                                    <h2 class="cat-group-title" id="cat-group-bank">Bank soal</h2>
+                                    <span class="cat-group-count">{{ $bankResults->count() }} entri</span>
+                                </div>
+                                @foreach($bankResults as $bank)
+                                    <article class="cat-item">
+                                        <div class="cat-item-main">
+                                            <a class="cat-item-title" href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}">{{ $bank->nama }}</a>
+                                            @if(filled($bank->deskripsi))
+                                                <p class="cat-item-excerpt">{{ \Illuminate\Support\Str::limit(strip_tags((string) $bank->deskripsi), 180) }}</p>
+                                            @endif
+                                            <div class="cat-item-meta">
+                                                <span>{{ $bank->subject?->name ?? '-' }}</span>
+                                                @if($bank->gradeLevel?->name)<span class="sep">&middot;</span><span>{{ $bank->gradeLevel->name }}</span>@endif
+                                                @if($bank->owner?->name)<span class="sep">&middot;</span><span>{{ $bank->owner->name }}</span>@endif
+                                            </div>
+                                        </div>
+                                        <div class="cat-actions">
+                                            <a class="cat-action" href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}" title="Buka bank soal" aria-label="Buka bank soal"><i class="ri-arrow-right-line"></i></a>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </section>
+                        @endif
+
+                        @if(in_array($type, ['all', 'paket'], true) && $paketResults->isNotEmpty())
+                            <section class="cat-group" aria-labelledby="cat-group-paket">
+                                <div class="cat-group-head">
+                                    <span class="cat-group-index">04</span>
+                                    <h2 class="cat-group-title" id="cat-group-paket">Paket soal</h2>
+                                    <span class="cat-group-count">{{ $paketResults->count() }} entri</span>
+                                </div>
+                                @foreach($paketResults as $paket)
+                                    <article class="cat-item">
+                                        <div class="cat-item-main">
+                                            <a class="cat-item-title" href="{{ route('user.paket-soal.show', ['userId' => $userId, 'paketUuid' => $paket->id]) }}">{{ $paket->judul }}</a>
+                                            <div class="cat-item-meta">
+                                                <span>{{ $paket->kode_paket }}</span>
+                                                @if($paket->kisiKisi?->subject?->name)<span class="sep">&middot;</span><span>{{ $paket->kisiKisi->subject->name }}</span>@endif
+                                                @if($paket->kisiKisi?->gradeLevel?->name)<span class="sep">&middot;</span><span>{{ $paket->kisiKisi->gradeLevel->name }}</span>@endif
+                                            </div>
+                                        </div>
+                                        <div class="cat-actions">
+                                            <a class="cat-action" href="{{ route('user.paket-soal.show', ['userId' => $userId, 'paketUuid' => $paket->id]) }}" title="Buka paket soal" aria-label="Buka paket soal"><i class="ri-arrow-right-line"></i></a>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </section>
+                        @endif
+
+                        @if($total === 0)
+                            <div class="cat-empty cat-empty-plain">
+                                <h2 class="cat-empty-title">Tidak ada hasil di database</h2>
+                                <p class="cat-empty-text">Belum ada data yang cocok untuk &ldquo;{{ $query }}&rdquo; di {{ $school->name }}. Coba kata kunci lain atau telusuri sumber lain.</p>
+                                <div class="cat-suggestions">
+                                    <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'ai']) }}">Coba rekomendasi AI</a>
+                                    <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'internet']) }}">Cari di internet</a>
+                                </div>
+                            </div>
+                        @endif
+                    @elseif($source === 'ai')
+                        <section class="cat-panel" aria-label="Rekomendasi AI">
+                            @if($aiError)
+                                <div class="cat-notice">{{ $aiError }}</div>
+                            @else
+                                <div class="cat-ai-answer">{{ $aiAnswer ?: 'AI belum memberikan jawaban.' }}</div>
+                                <p class="cat-hint">Rekomendasi AI bersifat saran. Verifikasi ke sumber asli sebelum digunakan.</p>
+                                <div class="cat-suggestions" style="justify-content:flex-start; margin-top:20px;">
+                                    <a class="cat-suggestion" href="{{ route('user.pencarian.index', ['userId' => $userId, 'q' => $query, 'source' => 'db']) }}">Telusuri &ldquo;{{ $query }}&rdquo; di database sekolah</a>
+                                </div>
+                            @endif
+                        </section>
+                    @else
+                        <section class="cat-panel" aria-label="Hasil internet">
+                            @if($webError)
+                                <div class="cat-notice">{{ $webError }}</div>
+                            @elseif(empty($webResults))
+                                <p class="cat-empty-text" style="margin:0;">Tidak ada tautan internet yang ditemukan untuk kata kunci ini.</p>
+                            @else
+                                @foreach($webResults as $result)
+                                    @php
+                                        $url = $result['url'] ?? '';
+                                        $host = $url !== '' ? parse_url($url, PHP_URL_HOST) : '';
+                                    @endphp
+                                    <article class="cat-item">
+                                        <div class="cat-item-main">
+                                            <a class="cat-web-title" href="{{ $url ?: '#' }}" target="_blank" rel="noopener noreferrer">{{ $result['title'] ?? 'Sumber' }}</a>
+                                            @if(filled($result['snippet'] ?? null))
+                                                <p class="cat-item-excerpt">{{ $result['snippet'] }}</p>
+                                            @endif
+                                            @if($host)
+                                                <div class="cat-web-domain">{{ $host }}</div>
+                                            @endif
+                                        </div>
+                                        <div class="cat-actions">
+                                            <a class="cat-action" href="{{ $url ?: '#' }}" target="_blank" rel="noopener noreferrer" title="Buka tautan" aria-label="Buka tautan"><i class="ri-external-link-line"></i></a>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            @endif
+                        </section>
+                    @endif
                 @endif
-            </div>
+            </main>
         </div>
-    @endif
+    </div>
 @endsection
