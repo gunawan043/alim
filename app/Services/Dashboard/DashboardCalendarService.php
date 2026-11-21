@@ -68,8 +68,8 @@ class DashboardCalendarService
                 'start_date' => $clampedFrom->toDateString(),
                 'end_date' => $clampedTo->toDateString(),
                 'date_label' => $clampedFrom->isSameDay($clampedTo)
-                    ? $clampedFrom->translatedFormat('d M')
-                    : $clampedFrom->translatedFormat('d M').' – '.$clampedTo->translatedFormat('d M'),
+                    ? $clampedFrom->locale('id')->translatedFormat('d M')
+                    : $clampedFrom->locale('id')->translatedFormat('d M').' – '.$clampedTo->locale('id')->translatedFormat('d M'),
                 'is_ongoing' => $from->lte(now()) && $to->gte(now()->startOfDay()),
                 'is_past' => $to->lt(now()->startOfDay()),
                 'days_left' => $to->gte(now()) ? (int) now()->startOfDay()->diffInDays($to, false) : null,
@@ -78,7 +78,7 @@ class DashboardCalendarService
         })->values();
 
         return [
-            'month_label' => now()->translatedFormat('F Y'),
+            'month_label' => now()->locale('id')->translatedFormat('F Y'),
             'items' => $items->all(),
             'total' => $items->count(),
             'ongoing' => $items->where('is_ongoing', true)->count(),
@@ -102,7 +102,7 @@ class DashboardCalendarService
         $empty = [
             'available' => false,
             'city' => $city,
-            'date_label' => now()->translatedFormat('l, d F Y'),
+            'date_label' => now()->locale('id')->translatedFormat('l, d F Y'),
             'hijri' => null,
             'times' => [],
             'next' => null,
@@ -192,7 +192,7 @@ class DashboardCalendarService
         return [
             'available' => true,
             'city' => $city,
-            'date_label' => now()->translatedFormat('l, d F Y'),
+            'date_label' => now()->locale('id')->translatedFormat('l, d F Y'),
             'hijri' => $hijri,
             'times' => $times,
             'next' => $next,

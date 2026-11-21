@@ -56,13 +56,25 @@ class DashboardPresenter
             'academic_year_id' => $filters['academic_year_id'],
         ], array_filter($extra)));
 
+        // Kalau seluruh santri aktif memang terdaftar pada tahun ajaran ini,
+        // katakan apa adanya — kalau tidak, kartu "Santri Baru" hanya mengulang
+        // angka "Santri Aktif" tanpa memberi informasi.
+        $newNote = (($students['new'] ?? null) !== null && ($students['new'] ?? null) === ($students['total'] ?? null))
+            ? 'Seluruh santri aktif terdaftar tahun ini'
+            : 'Terdaftar pada tahun ajaran ini';
+
+        // Mutasi masuk dan keluar digabung menjadi satu kartu: angkanya saling
+        // menjelaskan, dan memisahkannya hanya menambah dua kartu berisi 0.
+        $mutationNote = isset($mutations['total_in'], $mutations['total_out'])
+            ? 'Masuk '.number_format((int) $mutations['total_in'], 0, ',', '.')
+                .' · keluar '.number_format((int) $mutations['total_out'], 0, ',', '.').' dalam 12 bulan'
+            : '12 bulan terakhir';
+
         $studentKpis = [
             $this->kpi('Santri Aktif', $students['total'] ?? null, 'ri-user-3-line', 'primary', 'Santri berstatus aktif', $report('user.laporan.santri')),
-            $this->kpi('Santri Baru', $students['new'] ?? null, 'ri-user-add-line', 'success', 'Periode terpilih', $report('user.laporan.santri'), $students['growth_rate'] ?? null, 'Belum ada data pendaftaran'),
-            $this->kpi('Mutasi Masuk (12 Bln)', $mutations['total_in'] ?? null, 'ri-login-box-line', 'info', '12 bulan terakhir', $report('user.laporan.populasi.mutasi')),
-            $this->kpi('Mutasi Keluar (12 Bln)', $mutations['total_out'] ?? null, 'ri-logout-box-line', 'danger', '12 bulan terakhir', $report('user.laporan.populasi.mutasi')),
-            $this->kpi('Pertumbuhan Bersih', $mutations['net'] ?? null, 'ri-line-chart-line', ($mutations['net'] ?? 0) < 0 ? 'danger' : 'success', 'Masuk − keluar', $report('user.laporan.populasi.pertumbuhan')),
-            $this->kpi('Kehadiran Hari Ini', $attendance['today_rate'] ?? null, 'ri-calendar-check-line', 'success', 'Persen hadir', $report('user.laporan.akademik.kehadiran'), null, 'Presensi belum diisi'),
+            $this->kpi('Santri Baru', $students['new'] ?? null, 'ri-user-add-line', 'success', $newNote, $report('user.laporan.santri'), $students['growth_rate'] ?? null, 'Belum ada data pendaftaran'),
+            $this->kpi('Kehadiran Hari Ini', $attendance['today_rate'] ?? null, 'ri-calendar-check-line', 'success', 'Santri hadir hari ini', $report('user.laporan.akademik.kehadiran'), null, 'Presensi belum diisi', '%'),
+            $this->kpi('Mutasi bersih', $mutations['net'] ?? null, 'ri-swap-box-line', 'info', $mutationNote, $report('user.laporan.populasi.mutasi')),
         ];
 
         return match ($role) {
@@ -86,13 +98,13 @@ class DashboardPresenter
                 $this->kpi('Tagihan Bulan Ini', $finance['tagihan'] ?? null, 'ri-file-list-3-line', 'primary', 'Total tagihan'),
                 $this->kpi('Terbayar', $finance['terbayar'] ?? null, 'ri-money-dollar-circle-line', 'success', 'Total penerimaan'),
                 $this->kpi('Tunggakan', $finance['tunggakan'] ?? null, 'ri-error-warning-line', 'danger', 'Tagihan belum lunas'),
-                $this->kpi('Rasio Penerimaan', $finance['collection_rate'] ?? null, 'ri-pie-chart-line', 'info', 'Persen'),
+                $this->kpi('Rasio Penerimaan', $finance['collection_rate'] ?? null, 'ri-pie-chart-line', 'info', 'Dari total tagihan', null, null, null, '%'),
             ],
             'asrama' => [
                 $this->kpi('Santri Asrama', $boarding['santri'] ?? null, 'ri-home-smile-2-line', 'primary', 'Penghuni aktif'),
-                $this->kpi('Kamar Aktif', $boarding['kamar'] ?? null, 'ri-door-open-line', 'info', 'Kamar tersedia'),
-                $this->kpi('Izin Aktif', $boarding['izin_aktif'] ?? null, 'ri-walk-line', 'success', 'Sedang di luar'),
-                $this->kpi('Pelanggaran Bulan Ini', $boarding['pelanggaran_bulan'] ?? null, 'ri-shield-star-line', 'danger', 'Catatan tata tertib'),
+                $this->kpi('Di Asrama', $boarding['di_asrama'] ?? null, 'ri-user-location-line', 'success', 'Masih di dalam asrama'),
+                $this->kpi('Izin Sedang Keluar', $boarding['izin_aktif'] ?? null, 'ri-walk-line', 'warning', 'Sudah keluar asrama'),
+                $this->kpi('Izin Belum Berangkat', $boarding['belum_keluar'] ?? null, 'ri-file-check-line', 'info', 'Disetujui, belum keluar'),
             ],
             'tahfidz' => [
                 $this->kpi('Halaqah Aktif', $tahfidz['halaqah'] ?? null, 'ri-group-line', 'primary', 'Kelompok aktif'),
@@ -126,7 +138,7 @@ class DashboardPresenter
             'wali-kelas' => [
                 $this->kpi('Kelas Binaan', $homeroom['classes'] ?? null, 'ri-building-2-line', 'primary', 'Rombel aktif'),
                 $this->kpi('Santri Kelas', $homeroom['students'] ?? null, 'ri-user-3-line', 'info', 'Santri unik'),
-                $this->kpi('Kehadiran Hari Ini', $attendance['today_rate'] ?? null, 'ri-calendar-check-line', 'success', 'Persen hadir', null, null, 'Presensi belum diisi'),
+                $this->kpi('Kehadiran Hari Ini', $attendance['today_rate'] ?? null, 'ri-calendar-check-line', 'success', 'Santri hadir hari ini', null, null, 'Presensi belum diisi', '%'),
             ],
             default => $studentKpis,
         };
@@ -158,7 +170,6 @@ class DashboardPresenter
                 'count' => $rombel['without_homeroom'],
                 'severity' => 'danger',
                 'url' => route('user.study-groups.index', ['userId' => $user->id]),
-                'rule' => 'study_groups.homeroom_teacher_id kosong',
             ];
         }
 
@@ -168,7 +179,6 @@ class DashboardPresenter
                 'description' => 'Jumlah santri melampaui kapasitas rombel yang tercatat.',
                 'count' => $rombel['over_capacity'],
                 'severity' => 'warning',
-                'rule' => 'santri aktif > kapasitas rombel',
             ];
         }
 
@@ -179,7 +189,6 @@ class DashboardPresenter
                 'count' => $academic['jurnal_kosong'],
                 'severity' => 'warning',
                 'url' => $report('user.laporan.akademik.keterlaksanaan'),
-                'rule' => 'tidak ada baris admin_jurnal_pembelajaran',
             ];
         }
 
@@ -189,7 +198,6 @@ class DashboardPresenter
                 'description' => 'Perlu ditinjau untuk perpanjangan atau proses rekrutmen pengganti.',
                 'count' => $gtk['contract_ending'],
                 'severity' => 'warning',
-                'rule' => 'gtk_employments.end_date ≤ hari ini + 60 hari',
             ];
         }
 
@@ -199,7 +207,6 @@ class DashboardPresenter
                 'description' => 'Tiket terbuka lebih dari 7 hari tanpa penyelesaian.',
                 'count' => $sarpras['tiket_lewat_sla'],
                 'severity' => 'danger',
-                'rule' => 'status belum selesai dan created_at > 7 hari',
             ];
         }
 
@@ -209,7 +216,6 @@ class DashboardPresenter
                 'description' => 'Proses latar belakang gagal dan perlu ditinjau pada log antrean.',
                 'count' => $system['failed_job'],
                 'severity' => 'danger',
-                'rule' => 'failed_jobs memiliki baris',
             ];
         }
 
@@ -219,7 +225,6 @@ class DashboardPresenter
                 'description' => 'Pengguna tanpa role tidak dapat mengakses modul sesuai jabatan.',
                 'count' => $system['tanpa_role'],
                 'severity' => 'warning',
-                'rule' => 'users tanpa model_has_roles',
             ];
         }
 
@@ -260,7 +265,7 @@ class DashboardPresenter
         ];
     }
 
-    private function kpi(string $label, $value, string $icon, string $color, ?string $note = null, ?string $url = null, ?float $compare = null, ?string $empty = null): array
+    private function kpi(string $label, $value, string $icon, string $color, ?string $note = null, ?string $url = null, ?float $compare = null, ?string $empty = null, ?string $unit = null): array
     {
         return [
             'label' => $label,
@@ -271,6 +276,7 @@ class DashboardPresenter
             'url' => $url,
             'compare' => $compare,
             'empty' => $empty,
+            'unit' => $unit,
         ];
     }
 }

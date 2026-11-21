@@ -2,62 +2,74 @@
     /**
      * @var array $kpis  Daftar KPI:
      *   ['label' => string, 'value' => mixed, 'note' => ?string, 'compare' => ?float,
-     *    'color' => string, 'icon' => string, 'url' => ?string, 'empty' => ?string]
+     *    'url' => ?string, 'empty' => ?string, 'unit' => ?string]
+     *
+     * Kartu hanya memuat tiga hal: label, angka, dan keterangan pembanding.
+     * Ikon dan warna dekoratif dihapus — angka itu sendiri yang menjadi isi.
      */
     $format = function ($value) {
-        if ($value === null) {
-            return null;
-        }
-        if (is_numeric($value)) {
-            return number_format((float) $value, 0, ',', '.');
+        if ($value === null || ! is_numeric($value)) {
+            return $value;
         }
 
-        return $value;
+        $number = (float) $value;
+
+        // Desimal hanya ditampilkan kalau memang ada (mis. 96,5%).
+        return floor($number) === $number
+            ? number_format($number, 0, ',', '.')
+            : number_format($number, 1, ',', '.');
     };
 @endphp
 
-<div class="row g-3 mb-3">
+<div class="dash-kpi-grid">
     @foreach($kpis as $kpi)
         @php
-            $display = $format($kpi['value'] ?? null);
-            $color = $kpi['color'] ?? 'primary';
+            $raw = $kpi['value'] ?? null;
+            $display = $format($raw);
             $compare = $kpi['compare'] ?? null;
+            $unit = $kpi['unit'] ?? null;
+            $isNumber = is_numeric($raw);
+            $canCount = $isNumber && floor((float) $raw) === (float) $raw;
+            $deltaClass = $compare === null ? 'is-flat' : ($compare > 0 ? 'is-up' : ($compare < 0 ? 'is-down' : 'is-flat'));
         @endphp
-        <div class="col-6 col-lg-3">
+
+        <div class="dash-kpi-cell">
             @if(! empty($kpi['url']))
-                <a href="{{ $kpi['url'] }}" class="card card-animate h-100 text-decoration-none dash-kpi">
+                <a href="{{ $kpi['url'] }}" class="card dash-kpi text-decoration-none {{ $display === null ? 'is-empty' : '' }}">
             @else
-                <div class="card card-animate h-100 dash-kpi">
+                <div class="card dash-kpi {{ $display === null ? 'is-empty' : '' }}">
             @endif
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div style="min-width: 0;">
-                            <p class="text-muted text-uppercase fw-semibold small mb-1">{{ $kpi['label'] }}</p>
-                            @if($display === null)
-                                <h4 class="mb-1 text-muted">—</h4>
-                                <p class="mb-0 small text-warning">
-                                    {{ $kpi['empty'] ?? 'Data belum tersedia' }}
-                                </p>
+                    <p class="dash-kpi-label">{{ $kpi['label'] }}</p>
+
+                    @if($display === null)
+                        <p class="dash-kpi-value">—</p>
+                        <p class="dash-kpi-note is-warning">{{ $kpi['empty'] ?? 'Data belum tersedia' }}</p>
+                    @else
+                        <p class="dash-kpi-value">
+                            @if($canCount)
+                                <span data-dash-count="{{ (float) $raw }}">0</span>
                             @else
-                                <h4 class="mb-1">
-                                    {{ $display }}
-                                    @if($compare !== null)
-                                        <small class="fs-13 {{ $compare > 0 ? 'text-success' : ($compare < 0 ? 'text-danger' : 'text-muted') }}">
-                                            <i class="ri-arrow-{{ $compare > 0 ? 'up' : ($compare < 0 ? 'down' : 'right') }}-line"></i>
-                                            {{ abs($compare) }}%
-                                        </small>
-                                    @endif
-                                </h4>
-                                @if(! empty($kpi['note']))
-                                    <p class="mb-0 small text-muted">{{ $kpi['note'] }}</p>
-                                @endif
+                                {{ $display }}
                             @endif
-                        </div>
-                        <span class="avatar-title bg-{{ $color }}-subtle rounded flex-shrink-0">
-                            <i class="{{ $kpi['icon'] ?? 'ri-bar-chart-line' }} text-{{ $color }}"></i>
-                        </span>
-                    </div>
-                </div>
+                            @if($unit)
+                                <span class="dash-kpi-unit">{{ $unit }}</span>
+                            @endif
+                        </p>
+
+                        @if($compare !== null || ! empty($kpi['note']))
+                            <p class="dash-kpi-note">
+                                @if($compare !== null)
+                                    <span class="dash-kpi-delta {{ $deltaClass }}">
+                                        <i class="ri-arrow-{{ $compare > 0 ? 'up' : ($compare < 0 ? 'down' : 'right') }}-line"></i>{{ number_format(abs($compare), 1, ',', '.') }}%
+                                    </span>
+                                    @if(! empty($kpi['note']))
+                                        <span aria-hidden="true">·</span>
+                                    @endif
+                                @endif
+                                {{ $kpi['note'] }}
+                            </p>
+                        @endif
+                    @endif
             @if(! empty($kpi['url']))
                 </a>
             @else

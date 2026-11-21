@@ -24,7 +24,7 @@ return [
     'name'     => $user->name ?? 'Pengguna',
     'jabatan'  => $jabatan ?: 'Dashboard',
     'school'   => $schoolName,
-    'date'     => now()->translatedFormat('l, d F Y'),
+    'date'     => now()->locale('id')->translatedFormat('l, d F Y'),
     'tasks'    => method_exists($this, 'detectTugasTambahan')
         ? $this->detectTugasTambahan($user)
         : [],

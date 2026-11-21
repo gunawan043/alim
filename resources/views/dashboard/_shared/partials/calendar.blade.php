@@ -9,80 +9,78 @@
 <div class="row g-3 mb-3">
     {{-- KALDIK BULAN BERJALAN --}}
     <div class="col-xl-6">
-        <div class="card h-100 dash-animate" data-dash-animate>
+        <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="ri-calendar-event-line me-1 text-primary"></i>
-                    Kalender Pendidikan · {{ $kaldik['month_label'] }}
-                </h5>
-                <span class="badge bg-primary-subtle text-primary">{{ $kaldik['total'] }} kegiatan</span>
+                <h5 class="card-title">Kalender pendidikan · {{ $kaldik['month_label'] }}</h5>
+                <span class="small text-muted">{{ $kaldik['total'] }} kegiatan</span>
             </div>
             <div class="card-body" style="max-height:340px;overflow:auto;">
                 @forelse($items as $item)
-                    <div class="d-flex align-items-start gap-2 border-bottom py-2 kaldik-row">
+                    <div class="kaldik-row">
                         <span class="kaldik-dot" style="background: {{ $item['color'] }}"></span>
                         <div class="flex-grow-1">
-                            <div class="fw-semibold d-flex flex-wrap align-items-center gap-2">
-                                {{ $item['name'] }}
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="kaldik-name">{{ $item['name'] }}</span>
                                 @if($item['is_ongoing'])
-                                    <span class="badge bg-success-subtle text-success">Berlangsung</span>
+                                    <span class="badge" style="background: var(--dash-navy-soft); color: var(--dash-navy-2);">Berlangsung</span>
                                 @elseif($item['is_past'])
-                                    <span class="badge bg-secondary-subtle text-secondary">Selesai</span>
+                                    <span class="badge" style="background: var(--dash-surface-2); color: var(--dash-ink-3);">Selesai</span>
                                 @elseif($item['days_left'] !== null && $item['days_left'] <= 7)
-                                    <span class="badge bg-warning-subtle text-warning">{{ $item['days_left'] }} hari lagi</span>
+                                    <span class="badge" style="background: var(--dash-surface-2); color: var(--dash-gold-ink);">{{ $item['days_left'] }} hari lagi</span>
                                 @endif
                             </div>
-                            <div class="small text-muted">
-                                <i class="ri-calendar-2-line me-1"></i>{{ $item['date_label'] }}
+                            <div class="kaldik-meta">
+                                {{ $item['date_label'] }}
                                 @if($item['type'])
-                                    · <span class="text-capitalize">{{ $item['type'] }}</span>
+                                    · {{ ucfirst($item['type']) }}
                                 @endif
                             </div>
                         </div>
                     </div>
                 @empty
-                    <div class="text-center text-muted py-5">
-                        <i class="ri-calendar-2-line fs-2 d-block mb-1"></i>
-                        Tidak ada kegiatan kaldik pada {{ $kaldik['month_label'] }}.
+                    <div class="dash-empty">
+                        <i class="ri-calendar-2-line"></i>
+                        <p>Tidak ada kegiatan pada {{ $kaldik['month_label'] }}</p>
                     </div>
                 @endforelse
             </div>
         </div>
     </div>
 
-    {{-- JADWAL SHALAT --}}
+    {{-- JADWAL SHALAT — garis waktu hari ini --}}
     <div class="col-xl-6">
-        <div class="card h-100 dash-animate" data-dash-animate>
+        <div class="card" style="height: auto;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="ri-moon-clear-line me-1 text-primary"></i>Jadwal Shalat
-                </h5>
+                <h5 class="card-title">Jadwal shalat</h5>
                 @if(! empty($prayer['city']))
-                    <span class="badge bg-info-subtle text-info"><i class="ri-map-pin-line me-1"></i>{{ $prayer['city'] }}</span>
+                    <span class="small text-muted">{{ $prayer['city'] }}</span>
                 @endif
             </div>
-            <div class="card-body">
+            <div class="card-body d-flex flex-column">
                 @if(empty($prayer['available']))
-                    <div class="text-center text-muted py-5">
-                        <i class="ri-moon-line fs-2 d-block mb-1"></i>
-                        {{ $prayer['reason'] ?? 'Jadwal shalat belum tersedia.' }}
+                    <div class="dash-empty">
+                        <i class="ri-moon-line"></i>
+                        <p>{{ $prayer['reason'] ?? 'Jadwal shalat belum tersedia' }}</p>
                     </div>
                 @else
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-baseline mb-3 gap-3">
                         <div class="small text-muted">
-                            <i class="ri-calendar-line me-1"></i>{{ $prayer['date_label'] }}
+                            {{ $prayer['date_label'] }}
                             @if($prayer['hijri'])
                                 <span class="d-block">{{ $prayer['hijri'] }}</span>
                             @endif
                         </div>
                         @if($nextPrayer)
                             <div class="text-end">
-                                <div class="text-muted small">Shalat berikutnya</div>
-                                <div class="fw-bold text-primary">{{ $nextPrayer['label'] }} · {{ $nextPrayer['time'] }}</div>
+                                <span class="small text-muted">Berikutnya</span>
+                                <span class="fw-semibold ms-1" style="color: var(--dash-navy-2);">
+                                    {{ $nextPrayer['label'] }} {{ $nextPrayer['time'] }}
+                                </span>
                             </div>
                         @endif
                     </div>
-                    <div class="prayer-grid">
+
+                    <div class="prayer-track">
                         @foreach($prayer['times'] as $time)
                             <div class="prayer-item {{ $time['is_next'] ? 'is-next' : ($time['is_past'] ? 'is-past' : '') }}">
                                 <div class="prayer-label">{{ $time['label'] }}</div>
@@ -90,8 +88,9 @@
                             </div>
                         @endforeach
                     </div>
+
                     <div class="small text-muted mt-3">
-                        Sumber: {{ $prayer['source'] }} · diperbarui {{ now()->format('H:i') }}
+                        Sumber {{ $prayer['source'] }} · diperbarui {{ now()->format('H:i') }}
                     </div>
                 @endif
             </div>

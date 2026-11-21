@@ -153,21 +153,26 @@ class DashboardAnalyticsService
                 ->when($gradeId, fn ($q) => $q->where('sg.grade_level_id', $gradeId))
                 ->where('h.is_active', 1)
                 ->where('s.status', 'active')
-                ->selectRaw('gl.name as grade_name, gl.level as grade_level, sg.name as class_name, sg.capacity, h.student_id, s.gender')
+                ->selectRaw('sg.id as class_id, gl.name as grade_name, gl.level as grade_level, sg.name as class_name, sg.capacity, h.student_id, s.gender')
                 ->get();
 
-            $result['by_grade'] = $rows->groupBy('grade_name')
-                ->map(fn ($group, $name) => [
-                    'name' => $name,
+            // Dikelompokkan per level, bukan per nama: tabel grade_levels bisa
+            // punya lebih dari satu baris untuk jenjang yang sama (mis. dua
+            // "Kelas 7"), sehingga grafik sempat menampilkan label ganda.
+            $result['by_grade'] = $rows->groupBy('grade_level')
+                ->map(fn ($group) => [
+                    'name' => $group->first()->grade_name,
                     'total' => $group->pluck('student_id')->unique()->count(),
                 ])
-                ->sortByDesc('total')
+                ->sortKeys()
                 ->values()
                 ->all();
 
-            $result['by_class'] = $rows->groupBy('class_name')
-                ->map(fn ($group, $name) => [
-                    'name' => $name,
+            // Dikelompokkan per id rombel supaya rombel bernama sama di unit
+            // berbeda tidak tergabung menjadi satu baris.
+            $result['by_class'] = $rows->groupBy('class_id')
+                ->map(fn ($group) => [
+                    'name' => $group->first()->class_name,
                     'total' => $group->pluck('student_id')->unique()->count(),
                     'capacity' => $group->first()->capacity,
                 ])
@@ -216,7 +221,7 @@ class DashboardAnalyticsService
                 $hadir = (int) ($row->hadir ?? 0);
 
                 $series[] = [
-                    'label' => now()->subDays($i)->translatedFormat('d M'),
+                    'label' => now()->subDays($i)->locale('id')->translatedFormat('d M'),
                     'hadir' => $hadir,
                     'total' => $total,
                     'rate' => $total > 0 ? round(($hadir / $total) * 100, 2) : null,
@@ -272,7 +277,7 @@ class DashboardAnalyticsService
                 $totalOut += $keluar;
 
                 $series[] = [
-                    'label' => $start->translatedFormat('M Y'),
+                    'label' => $start->locale('id')->translatedFormat('M Y'),
                     'masuk' => $masuk,
                     'keluar' => $keluar,
                 ];
@@ -451,11 +456,11 @@ class DashboardAnalyticsService
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @return array{santri: ?int, kamar: ?int, izin_aktif: ?int, di_luar: ?int, pelanggaran_bulan: ?int, source: string}
+     * @return array{santri: ?int, kamar: ?int, di_asrama: ?int, izin_aktif: ?int, belum_keluar: ?int, di_luar: ?int, pelanggaran_bulan: ?int, source: string}
      */
     public function boardingStats(array $schoolIds): array
     {
-        $result = ['santri' => null, 'kamar' => null, 'izin_aktif' => null, 'di_luar' => null, 'pelanggaran_bulan' => null, 'source' => 'dormitories, dormitory_permits'];
+        $result = ['santri' => null, 'kamar' => null, 'di_asrama' => null, 'izin_aktif' => null, 'belum_keluar' => null, 'di_luar' => null, 'pelanggaran_bulan' => null, 'source' => 'dormitories, dormitory_residents, dormitory_permits'];
 
         try {
             $dormitoryIds = DB::table('dormitories')
@@ -464,17 +469,51 @@ class DashboardAnalyticsService
                 ->pluck('id')
                 ->all();
 
-            $result['kamar'] = count($dormitoryIds);
+            // Jumlah kamar aktif, bukan jumlah unit asrama.
+            $result['kamar'] = DB::table('dormitory_rooms')
+                ->when($dormitoryIds !== [], fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds))
+                ->where('is_active', 1)
+                ->count();
 
-            $result['santri'] = DB::table('dormitory_residents')
+            $residentIds = DB::table('dormitory_residents')
                 ->when($dormitoryIds !== [], fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds))
                 ->where('is_active', 1)
                 ->distinct()
-                ->count('student_id');
+                ->pluck('student_id');
 
+            $result['santri'] = $residentIds->count();
+
+            // Yang benar-benar di luar: izin sudah dijemput/terlambat, rawat,
+            // atau kegiatan resmi. Izin yang baru disetujui tidak dihitung.
+            $permitOutIds = DB::table('dormitory_permits')
+                ->whereIn('dormitory_id', $dormitoryIds)
+                ->whereIn('status', ['picked_up', 'overdue'])
+                ->whereNull('actual_return_datetime')
+                ->distinct()
+                ->pluck('student_id');
+
+            $statusOutIds = DB::table('student_boarding_statuses')
+                ->whereIn('student_id', $residentIds->all() ?: ['-'])
+                ->whereIn('status', ['AT_HOSPITAL', 'OFFICIAL_ACTIVITY'])
+                ->distinct()
+                ->pluck('student_id');
+
+            $outCount = $permitOutIds->merge($statusOutIds)->unique()->intersect($residentIds)->count();
+
+            $result['di_asrama'] = max(0, $result['santri'] - $outCount);
+            $result['di_luar'] = $outCount;
+
+            // Hanya izin yang benar-benar sudah keluar.
             $result['izin_aktif'] = DB::table('dormitory_permits')
                 ->whereIn('dormitory_id', $dormitoryIds)
-                ->whereIn('status', ['approved', 'out', 'permitted'])
+                ->whereIn('status', ['picked_up', 'overdue'])
+                ->whereNull('actual_return_datetime')
+                ->count();
+
+            // Disetujui tetapi belum berangkat — bukan "sedang di luar".
+            $result['belum_keluar'] = DB::table('dormitory_permits')
+                ->whereIn('dormitory_id', $dormitoryIds)
+                ->where('status', 'approved')
                 ->whereNull('actual_return_datetime')
                 ->count();
 

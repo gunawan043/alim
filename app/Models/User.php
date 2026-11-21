@@ -835,7 +835,7 @@ class User extends Authenticatable
         // Wali Asrama ditetapkan sebagai supervisor gedung (wing), bukan
         // selalu tercatat sebagai staf asrama. Akses mengikuti gedungnya.
         if (\App\Models\DormitoryWing::query()
-            ->where('supervisor_user_id', $this->id)
+            ->where('supervisor_id', $this->id)
             ->where('dormitory_id', $dormitoryId)
             ->exists()) {
             return true;

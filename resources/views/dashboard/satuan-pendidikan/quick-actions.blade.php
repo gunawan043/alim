@@ -73,7 +73,6 @@
 @if(! empty($links))
     <section class="dash-section">
         <div class="dash-section-header">
-            <span class="dash-section-icon"><i class="ri-flashlight-line"></i></span>
             <h6 class="dash-section-title">Akses Harian</h6>
             <span class="dash-section-line"></span>
             <span class="dash-section-count">Paling sering dipakai</span>
@@ -82,14 +81,13 @@
         <div class="row g-2">
             @foreach($links as $link)
                 <div class="col-6 col-md-4 col-xl-3">
-                    <a href="{{ $link['url'] }}"
-                       class="card h-100 text-decoration-none border-0 shadow-sm quick-access-card">
-                        <div class="card-body py-3 d-flex align-items-center gap-2">
-                            <span class="quick-access-icon bg-{{ $link['color'] }}-subtle text-{{ $link['color'] }}">
+                    <a href="{{ $link['url'] }}" class="card h-100 text-decoration-none quick-access-card">
+                        <div class="card-body py-2 d-flex align-items-center gap-2">
+                            <span class="quick-access-icon">
                                 <i class="{{ $link['icon'] }}"></i>
                             </span>
-                            <span class="fw-semibold text-body small flex-grow-1">{{ $link['label'] }}</span>
-                            <i class="ri-arrow-right-s-line text-muted"></i>
+                            <span class="fw-semibold flex-grow-1" style="font-size: 13px; color: var(--dash-ink);">{{ $link['label'] }}</span>
+                            <i class="ri-arrow-right-s-line quick-access-arrow"></i>
                         </div>
                     </a>
                 </div>

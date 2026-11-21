@@ -31,7 +31,11 @@
         }
     @endphp
     @if ($bannerReady)
-        @include($bannerView, ['data' => $bannerData, 'user' => $user])
+        @include($bannerView, [
+            'data' => $bannerData,
+            'user' => $user,
+            'calendar' => $dashboard['calendar'] ?? [],
+        ])
     @endif
 
 
@@ -41,7 +45,11 @@
     @endif
 
     {{-- ANALYSIS — tren utama lintas jabatan --}}
-    @include('dashboard._shared.partials.analytics-charts', ['charts' => $dashboard['charts'] ?? [], 'user' => $user])
+    @include('dashboard._shared.partials.analytics-charts', [
+        'charts' => $dashboard['charts'] ?? [],
+        'analytics' => $dashboard['analytics'] ?? [],
+        'user' => $user,
+    ])
 
     {{-- DRILL-DOWN — distribusi & keterisian rombel --}}
     @include('dashboard._shared.partials.distribution', ['dashboard' => $dashboard, 'user' => $user])
@@ -76,15 +84,11 @@
 
         <section class="dash-section">
             <div class="dash-section-header">
-                <span class="dash-section-icon">
-                    <i class="{{ $section['icon'] ?: 'ri-apps-2-line' }}"></i>
-                </span>
                 <h6 class="dash-section-title">{{ $section['title'] }}</h6>
                 <span class="dash-section-line"></span>
-                <span class="dash-section-count">{{ count($sectionWidgets) }} widget</span>
             </div>
 
-            <div class="dash-grid">
+            <div class="dash-grid {{ count($sectionWidgets) === 1 ? 'dash-grid-single' : '' }}">
                 @foreach ($sectionWidgets as $widgetKey)
                     @php
                         $widgetData = $data[$widgetKey] ?? [];

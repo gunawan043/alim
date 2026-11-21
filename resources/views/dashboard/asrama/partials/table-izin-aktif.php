@@ -8,7 +8,7 @@ $items = $this->scopeAsramaQuery(
     DB::table('dormitory_permits as p')
         ->join('students as s', 's.id', '=', 'p.student_id')
         ->leftJoin('dormitory_rooms as r', 'r.id', '=', 'p.room_id')
-        ->whereIn('p.status', ['approved', 'picked_up'])
+        ->whereIn('p.status', ['picked_up', 'overdue'])
         ->whereNull('p.actual_return_datetime'),
     $user,
     'p.room_id',

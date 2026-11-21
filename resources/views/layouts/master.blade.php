@@ -89,9 +89,10 @@
     @unless(request()->routeIs('user.sa.ai-chat.*') || request()->routeIs('user.ai.*') || (auth()->check() && auth()->user()->isStudentOperator()))
         @include('layouts.partials.ai-chat-widget')
     @endunless
-    {{-- Skrip khusus halaman: @yield('script') dirender di vendor-scripts (jangan ganda!) --}}
+    {{-- Skrip khusus halaman: @yield('script') dirender di vendor-scripts (jangan ganda!)
+         @stack('scripts') juga sudah dirender di vendor-scripts — jangan diulang di sini,
+         kalau tidak setiap push('scripts') dieksekusi dua kali (grafik tergambar ganda). --}}
     @stack('script')
-    @stack('scripts')
     @yield('js')
 
     {{-- Cegah roda mouse mengubah nilai input angka (leger, buku nilai, dsb.).

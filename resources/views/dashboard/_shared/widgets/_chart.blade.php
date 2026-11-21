@@ -24,13 +24,16 @@
             @push('scripts')
                 <script>
                     document.addEventListener('DOMContentLoaded', function () {
-                        var el = document.getElementById(@json($chartId));
-                        if (!el || !window.ApexCharts) return;
-
                         var options = @json($data['options'] ?? []);
                         options.chart = options.chart || {};
                         options.chart.type = options.chart.type || @json($data['type'] ?? 'line');
                         options.chart.height = options.chart.height || 250;
+                        options.chart.animations = options.chart.animations || {
+                            enabled: true,
+                            easing: 'easeout',
+                            speed: 800,
+                            animateGradually: { enabled: true, delay: 80 }
+                        };
                         options.series = options.series || @json($series);
                         @if (! empty($data['labels']))
                             options.labels = @json($data['labels']);
@@ -39,7 +42,7 @@
                             options.colors = @json($data['colors']);
                         @endif
 
-                        new ApexCharts(el, options).render();
+                        window.dashChart(@json($chartId), options);
                     });
                 </script>
             @endpush

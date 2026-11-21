@@ -18,7 +18,7 @@
     $showAll = $isSystemAdmin ?? false;
 
     /* ── Blok/gedung yang diawasi user ───────────────────────────────── */
-    $waliAsramaWings = \App\Models\DormitoryWing::where('supervisor_user_id', auth()->id())
+    $waliAsramaWings = \App\Models\DormitoryWing::where('supervisor_id', auth()->id())
         ->with('dormitory')
         ->get();
     $isActuallyWaliAsrama = $waliAsramaWings->isNotEmpty();
