@@ -290,4 +290,97 @@ class GtkWorkUnitLifecycleTest extends TestCase
         $this->assertSame(1, GtkWorkUnit::where('user_id', $user->id)->count());
         $this->assertSame(0, GtkWorkUnitPeriod::where('user_id', $user->id)->count());
     }
+
+    public function test_current_scope_excludes_ended_placement_but_keeps_legacy_rows(): void
+    {
+        config()->set('gtk_work_unit.lifecycle.enabled', true);
+
+        $lifecycle = app(GtkPlacementLifecycleService::class);
+
+        // Sudah dipindahkan: periode lama ditutup.
+        $moved = $this->makeUser();
+        $unitA = $this->makeUnit('A');
+        $unitB = $this->makeUnit('B');
+        $oldRow = $this->placement($moved, $unitA);
+        $lifecycle->start($moved, $unitA, null, '2026-01-01');
+        $lifecycle->transfer($moved, $unitA, $unitB, null, '2026-02-01');
+
+        $this->assertFalse($oldRow->fresh()->is_primary);
+        $this->assertSame(0, GtkWorkUnit::where('user_id', $moved->id)->where('work_unit_id', $unitA->id)->current()->count());
+        $this->assertSame(1, GtkWorkUnit::where('user_id', $moved->id)->where('work_unit_id', $unitB->id)->current()->count());
+
+        // Baris legacy tanpa periode tetap terlihat agar data lama tidak hilang.
+        $legacy = $this->makeUser();
+        $unitC = $this->makeUnit('C');
+        $this->placement($legacy, $unitC);
+
+        $this->assertSame(1, GtkWorkUnit::where('user_id', $legacy->id)->current()->count());
+    }
+
+    public function test_current_scope_is_noop_when_flag_disabled(): void
+    {
+        config()->set('gtk_work_unit.lifecycle.enabled', false);
+
+        $user = $this->makeUser();
+        $unitA = $this->makeUnit('A');
+        $unitB = $this->makeUnit('B');
+        $this->placement($user, $unitA);
+        app(GtkPlacementLifecycleService::class)->start($user, $unitA, null, '2026-01-01');
+
+        // Flag mati: scope tidak menyaring apa pun.
+        $this->assertSame(1, GtkWorkUnit::where('user_id', $user->id)->current()->count());
+    }
+
+    public function test_transfer_request_approval_uses_lifecycle_when_enabled(): void
+    {
+        config()->set('gtk_work_unit.lifecycle.enabled', true);
+
+        $user = $this->makeUser();
+        $approver = $this->makeUser();
+        $unitA = $this->makeUnit('A');
+        $unitB = $this->makeUnit('B');
+
+        $oldRow = $this->placement($user, $unitA);
+        app(GtkPlacementLifecycleService::class)->start($user, $unitA, null, '2026-01-01');
+
+        $request = \App\Models\GtkTransferRequest::create([
+            'user_id' => $user->id,
+            'from_work_unit_id' => $unitA->id,
+            'to_work_unit_id' => $unitB->id,
+            'jabatan' => 'Guru',
+            'reason' => 'Mutasi',
+            'status' => 'PENDING',
+            'requested_by' => $approver->id,
+        ]);
+
+        $request->approve($approver->id);
+
+        $oldRow->refresh();
+
+        $this->assertSame($unitA->id, $oldRow->work_unit_id, 'work_unit_id baris lama tidak boleh berubah');
+        $this->assertFalse($oldRow->is_primary);
+
+        $destination = GtkWorkUnit::where('user_id', $user->id)
+            ->where('work_unit_id', $unitB->id)
+            ->first();
+
+        $this->assertNotNull($destination);
+        $this->assertTrue($destination->is_primary);
+
+        $this->assertDatabaseHas('gtk_work_unit_periods', [
+            'user_id' => $user->id,
+            'work_unit_id' => $unitA->id,
+            'status' => GtkWorkUnitPeriod::STATUS_ENDED,
+        ]);
+        $this->assertDatabaseHas('gtk_work_unit_periods', [
+            'user_id' => $user->id,
+            'work_unit_id' => $unitB->id,
+            'status' => GtkWorkUnitPeriod::STATUS_ACTIVE,
+        ]);
+        $this->assertDatabaseHas('gtk_work_unit_histories', [
+            'user_id' => $user->id,
+            'to_work_unit_id' => $unitB->id,
+            'action' => 'TRANSFER',
+        ]);
+    }
 }

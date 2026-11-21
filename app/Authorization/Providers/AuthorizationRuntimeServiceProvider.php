@@ -147,6 +147,8 @@ class AuthorizationRuntimeServiceProvider extends ServiceProvider
             \App\Models\Subject::class,
             \App\Models\SubjectGroup::class,
             \App\Models\GtkAdditionalTask::class,
+            \App\Models\GtkWorkUnit::class,
+            \App\Models\GtkWorkUnitPeriod::class,
         ];
         foreach ($assignmentModels as $assignmentModel) {
             if (class_exists($assignmentModel)) {

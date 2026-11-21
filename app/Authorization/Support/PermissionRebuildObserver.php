@@ -8,6 +8,8 @@ use App\Authorization\Jobs\BuildSnapshotJob;
 use App\Authorization\Models\RevokedPermission;
 use App\Models\GTKEmployment;
 use App\Models\GtkAdditionalTask;
+use App\Models\GtkWorkUnit;
+use App\Models\GtkWorkUnitPeriod;
 use App\Models\Permission;
 use App\Models\Subject;
 use App\Models\SubjectGroup;
@@ -64,6 +66,12 @@ final class PermissionRebuildObserver
             $model instanceof TeachingAssignment => collect([$model->teacher_id, $model->getOriginal('teacher_id')])
                 ->filter()->unique()->map(fn ($id) => (string) $id)->values()->all(),
             $model instanceof GtkAdditionalTask => collect([$model->user_id, $model->getOriginal('user_id')])
+                ->filter()->unique()->map(fn ($id) => (string) $id)->values()->all(),
+            // Perpindahan/penutupan penempatan mengubah satuan kerja dan
+            // jabatan yang menjadi dasar snapshot izin.
+            $model instanceof GtkWorkUnit => collect([$model->user_id, $model->getOriginal('user_id')])
+                ->filter()->unique()->map(fn ($id) => (string) $id)->values()->all(),
+            $model instanceof GtkWorkUnitPeriod => collect([$model->user_id, $model->getOriginal('user_id')])
                 ->filter()->unique()->map(fn ($id) => (string) $id)->values()->all(),
             $model instanceof Subject => $this->userIdsForSubject($model),
             $model instanceof SubjectGroup => $this->userIdsForSubjectGroup($model),

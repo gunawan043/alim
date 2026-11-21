@@ -95,4 +95,27 @@ class GtkWorkUnit extends Model
     {
         return $query->where('user_id', $userId);
     }
+
+    /**
+     * Penempatan yang dianggap masih berlaku.
+     *
+     * Saat lifecycle aktif, baris yang seluruh periodenya sudah ditutup tidak
+     * lagi dihitung sebagai penempatan berjalan. Baris legacy yang belum punya
+     * periode sama sekali tetap dipertahankan agar data lama tidak hilang
+     * sebelum dimigrasikan (tidak ada backfill pada Batch 1).
+     *
+     * Saat flag mati, scope ini sengaja tidak mengubah query apa pun sehingga
+     * perilaku pembaca lama tetap sama.
+     */
+    public function scopeCurrent($query)
+    {
+        if (! config('gtk_work_unit.lifecycle.enabled', false)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) {
+            $q->whereHas('activePeriod')
+                ->orWhereDoesntHave('periods');
+        });
+    }
 }
