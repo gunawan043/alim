@@ -3,6 +3,12 @@
 
 @section('css')
     @include('kurikulum._styles')
+    <style>
+        .table-container { position: relative; width: 100%; overflow-x: auto; }
+        .table-freeze { table-layout: auto; min-width: max-content; width: 100%; }
+        .table-freeze th, .table-freeze td { white-space: normal; vertical-align: middle; padding: 12px 16px; word-break: break-word; }
+        .table-freeze thead th { position: sticky; top: 0; z-index: 20; font-weight: 600; border-bottom: 2px solid #dee2e6; }
+    </style>
 @endsection
 
 @section('content')
@@ -30,19 +36,29 @@
         </div>
     @endif
 
-    <div class="row g-2 mb-3">
+    <div class="row g-3 mb-3">
         @foreach([
-            'total' => ['Total Soal', 'primary'],
-            'draft' => ['Draft', 'secondary'],
-            'review' => ['Review/Revisi', 'warning'],
-            'approved' => ['Tervalidasi', 'success'],
-            'formal' => ['STS/SAS', 'info'],
-        ] as $key => [$label, $color])
-            <div class="col-6 col-md-3 col-xl-2">
-                <div class="card card-animate h-100">
-                    <div class="card-body py-2">
-                        <div class="text-muted stat-label text-uppercase">{{ $label }}</div>
-                        <h4 class="mb-0 fw-bold text-{{ $color }}">{{ (int) ($stats[$key] ?? 0) }}</h4>
+            'total' => ['Total Soal', 'primary', 'ri-file-list-3-line', 'Semua soal yang Anda buat'],
+            'draft' => ['Draft', 'secondary', 'ri-draft-line', 'Belum diajukan validasi'],
+            'review' => ['Review/Revisi', 'warning', 'ri-time-line', 'Menunggu guru serumpun'],
+            'approved' => ['Tervalidasi', 'success', 'ri-shield-check-line', 'Siap dicetak sebagai STS/SAS'],
+            'formal' => ['STS/SAS', 'info', 'ri-award-line', 'Soal asesmen formal'],
+        ] as $key => [$label, $color, $icon, $desc])
+            <div class="col-xl-3 col-md-6">
+                <div class="card card-animate h-90">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="avatar-sm flex-shrink-0">
+                                <span class="avatar-title bg-{{ $color }}-subtle rounded fs-2">
+                                    <i class="{{ $icon }} text-{{ $color }}"></i>
+                                </span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase fw-medium text-muted mb-0 stat-label">{{ $label }}</p>
+                                <h3 class="fw-bold ff-secondary mb-0">{{ (int) ($stats[$key] ?? 0) }}</h3>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0 stat-label">{{ $desc }}</p>
                     </div>
                 </div>
             </div>
@@ -57,8 +73,19 @@
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('user.soal-saya.search', ['userId' => $userId]) }}" class="btn btn-soft-info"><i class="ri-search-line me-1"></i>Cari Soal</a>
+                <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-primary"><i class="ri-search-eye-line me-1"></i>Pencarian</a>
                 <a href="{{ route('user.soal-saya.import-form', ['userId' => $userId]) }}" class="btn btn-soft-secondary"><i class="ri-file-word-line me-1"></i>Import Word</a>
                 <a href="{{ route('user.soal-saya.create', ['userId' => $userId]) }}" class="btn btn-success"><i class="ri-add-line me-1"></i>Buat Soal</a>
+            </div>
+        </div>
+        <div class="card-header py-2 bg-light border-bottom">
+            <div class="d-flex flex-wrap align-items-center">
+                <span class="text-muted small me-2">Filter Cepat:</span>
+                <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}" class="filter-badge {{ ! request('jenis_asesmen') ? 'active' : '' }}"><i class="ri-apps-line"></i>Semua</a>
+                @foreach(['harian' => 'Harian', 'formatif' => 'Formatif', 'sts' => 'STS', 'sas' => 'SAS'] as $value => $label)
+                    <a href="{{ route('user.soal-saya.index', ['userId' => $userId, 'jenis_asesmen' => $value]) }}" class="filter-badge {{ request('jenis_asesmen') === $value ? 'active' : '' }}">{{ $label }}</a>
+                @endforeach
+                <a href="{{ route('user.soal-saya.index', ['userId' => $userId, 'jenis_asesmen' => 'sts']) }}" class="filter-badge {{ request('jenis_asesmen') === 'sts' ? 'active' : '' }}"><i class="ri-shield-check-line"></i>Perlu Validasi</a>
             </div>
         </div>
         <div class="card-body">
@@ -95,8 +122,8 @@
                     <button type="submit" class="btn btn-sm btn-soft-secondary"><i class="ri-printer-line me-1"></i>Cetak PDF</button>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover table-freeze align-middle mb-0">
+                <div class="table-container">
+                    <table class="table table-hover align-middle table-freeze mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th style="width:36px;"><input type="checkbox" class="form-check-input" onclick="document.querySelectorAll('.soal-check').forEach(c=>c.checked=this.checked)"></th>

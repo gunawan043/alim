@@ -171,6 +171,7 @@ use App\Http\Controllers\MasterData\MataPelajaranController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\MumtazMurtafiCandidateController;
 use App\Http\Controllers\NilaiController;
+use App\Http\Controllers\PencarianController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Http\Controllers\NotificationPageController;
@@ -1982,6 +1983,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/import-word', [SoalSayaController::class, 'importStore'])->name('import-store');
                 Route::post('/cetak', [SoalSayaController::class, 'print'])->name('print');
                 Route::post('/{id}/clone', [SoalSayaController::class, 'clone'])->name('clone');
+            });
+
+            Route::prefix('pencarian')->name('pencarian.')->group(function () {
+                Route::get('/', [PencarianController::class, 'index'])->name('index');
             });
 
             // ── EVALUASI: KISI-KISI SOAL ────────────────────────────

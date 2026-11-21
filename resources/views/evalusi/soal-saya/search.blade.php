@@ -28,6 +28,7 @@
                     <p class="text-muted mb-0 small">Cari soal yang dibagikan guru lain, lalu ambil ke Soal Saya.</p>
                 </div>
                 <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}" class="btn btn-light"><i class="ri-arrow-left-line me-1"></i>Kembali</a>
+                <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-primary"><i class="ri-search-eye-line me-1"></i>Pencarian Terpadu</a>
             </div>
         </div>
         <div class="card-body">
