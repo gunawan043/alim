@@ -169,7 +169,7 @@
     .cat-source {
         display: flex;
         gap: 10px;
-        padding: 9px 10px;
+        padding: 10px 12px;
         border-left: 2px solid transparent;
         border-radius: 0 8px 8px 0;
         color: var(--cat-ink);
