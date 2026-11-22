@@ -46,7 +46,7 @@ class DormitoryPolicyAccess
 
         $dormitory = Dormitory::withTrashed()->find($dormitoryId);
 
-        if (! $dormitory) {
+        if (! $dormitory || $dormitory->trashed() || ! $dormitory->is_active) {
             return false;
         }
 

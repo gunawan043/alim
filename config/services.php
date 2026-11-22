@@ -135,6 +135,10 @@ return [
         // pengaman operasional, bukan aturan bisnis baru: tanggal tetap
         // dihitung dari waktu keberangkatan yang sudah tercatat di Core.
         'max_duration_days' => (int) env('CONNECT_APPROVAL_MAX_DURATION_DAYS', 365),
+
+        // Redaksi/retensi awal pesan WhatsApp: simpan hanya cuplikan terbatas.
+        // Kebijakan retensi final tetap memerlukan keputusan pemilik sistem.
+        'message_text_max_length' => (int) env('CONNECT_APPROVAL_MESSAGE_TEXT_MAX_LENGTH', 500),
     ],
 
     /*

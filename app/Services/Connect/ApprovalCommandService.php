@@ -50,7 +50,7 @@ class ApprovalCommandService
         $source = (string) $payload['source'];
         $externalMessageId = trim((string) $payload['external_message_id']);
         $externalIdentity = ConnectActorIdentity::normalizeIdentity((string) $payload['actor_external_id']);
-        $messageText = $payload['message_text'] ?? null;
+        $messageText = $this->redactMessageText($payload['message_text'] ?? null);
         $note = $payload['notes'] ?? null;
 
         $payloadHash = $this->payloadHash($payload, $externalIdentity);
@@ -142,6 +142,12 @@ class ApprovalCommandService
         }
 
         // ── 8. Terapkan dalam satu transaksi ───────────────────────────────
+        // Gunakan setUser + restore, bukan login: endpoint ini stateless dan
+        // dapat berjalan pada worker/Octane. Jangan meninggalkan guard user
+        // aktif setelah request selesai.
+        $previousUser = Auth::user();
+        Auth::setUser($actor);
+
         try {
             return DB::transaction(function () use (
                 $permit, $decision, $days, $actor, $externalIdentity,
@@ -166,9 +172,7 @@ class ApprovalCommandService
                 }
 
                 // LeaveWorkflowService memakai auth()->id() untuk approved_by
-                // dan audit, jadi aktor terverifikasi dipasang sebagai user.
-                Auth::login($actor);
-
+                // dan audit; guard sudah menunjuk aktor terverifikasi.
                 if ($decision === self::DECISION_APPROVED) {
                     $locked->expected_return_datetime = CarbonImmutable::instance($locked->departure_datetime)
                         ->addDays($days);
@@ -202,7 +206,7 @@ class ApprovalCommandService
                     'message_text_hash' => $messageText !== null
                         ? hash('sha256', (string) $messageText)
                         : null,
-                ]);
+                ], required: true);
 
                 $body = $this->appliedBody(
                     $decided,
@@ -242,7 +246,25 @@ class ApprovalCommandService
             // Balapan unik (command_id / external_message_id) → jawab sebagai
             // duplikat/konflik tanpa mengubah status izin.
             return $this->resolveRace($commandId, $externalMessageId, $payloadHash, $e);
+        } finally {
+            if ($previousUser) {
+                Auth::setUser($previousUser);
+            } else {
+                Auth::guard('web')->forgetUser();
+            }
         }
+    }
+
+    private function redactMessageText(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $normalized = trim((string) preg_replace('/\s+/', ' ', $value));
+        $max = max(1, (int) config('services.connect_approval.message_text_max_length', 500));
+
+        return mb_substr($normalized, 0, $max);
     }
 
     /**

@@ -16,6 +16,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Services\Boarding\LeaveWorkflowService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -613,5 +614,51 @@ class ConnectApprovalCommandTest extends TestCase
             ->assertJsonPath('data.outcome', 'cancelled');
 
         $this->assertSame('cancelled', $permit->fresh()->secondary_status);
+    }
+
+    public function test_inactive_dormitory_is_rejected(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+        $this->dormitory->update(['is_active' => false]);
+
+        $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload())
+            ->assertStatus(403)
+            ->assertJsonPath('errors.code', 'actor_not_authorized');
+    }
+
+    public function test_message_text_is_truncated_for_storage_and_response(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $longText = str_repeat('A', 800);
+        $response = $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload([
+                'message_text' => $longText,
+            ]));
+
+        $response->assertOk();
+        $this->assertSame(500, mb_strlen(ApprovalCommand::firstOrFail()->message_text));
+        $this->assertSame(500, mb_strlen($response->json('data.message_text')));
+    }
+
+    public function test_guard_is_restored_after_command(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $previous = User::factory()->create(['is_active' => true]);
+        $this->actingAs($previous);
+
+        $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload())
+            ->assertOk();
+
+        $this->assertSame($previous->id, Auth::id());
     }
 }
