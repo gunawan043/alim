@@ -57,6 +57,11 @@ if [ -z "${EXPORT_DIR}" ] || [ ! -d "${EXPORT_DIR}" ]; then
     exit 1
 fi
 
+# mktemp membuat direktori 700. rsync -a menyalin izin direktori root ke
+# server, dan web server tidak bisa menembus direktori 700 -> seluruh situs
+# jadi 404. Paksa 755 supaya docroot tetap dapat diakses.
+chmod 755 "${EXPORT_DIR}"
+
 cleanup() {
     rm -rf "${EXPORT_DIR}"
 }
@@ -83,6 +88,9 @@ rsync "${RSYNC_FLAGS[@]}" \
     --exclude='.git/' \
     --exclude='.env' \
     --exclude='.env.backup' \
+    --exclude='.env.testing' \
+    --exclude='.phpunit.result.cache' \
+    --exclude='PROJECT/' \
     --exclude='node_modules/' \
     --exclude='vendor/' \
     --exclude='storage/' \
@@ -112,6 +120,9 @@ if [ "${DRY_RUN}" = "1" ]; then
     log "MODE UJI selesai: tidak ada perubahan di server."
     exit 0
 fi
+
+# Jaring pengaman: docroot harus 755 agar web server bisa menembusnya.
+ssh -o BatchMode=yes "${REMOTE_ALIAS}" "chmod 755 ${REMOTE_APP}" >>"${LOG_FILE}" 2>&1 || true
 
 log "rsync selesai; menjalankan deploy di server..."
 ssh -o BatchMode=yes "${REMOTE_ALIAS}" "bash ${REMOTE_DEPLOY}" >>"${LOG_FILE}" 2>&1
