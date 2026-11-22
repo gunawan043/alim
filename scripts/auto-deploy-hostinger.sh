@@ -91,6 +91,8 @@ rsync "${RSYNC_FLAGS[@]}" \
     --exclude='.env.testing' \
     --exclude='.phpunit.result.cache' \
     --exclude='PROJECT/' \
+    --exclude='* 2.php' \
+    --exclude='* 2.md' \
     --exclude='node_modules/' \
     --exclude='vendor/' \
     --exclude='storage/' \

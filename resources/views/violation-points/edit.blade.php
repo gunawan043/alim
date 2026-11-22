@@ -86,7 +86,7 @@
                                     <input type="text" name="violation_type"
                                            class="form-control @error('violation_type') is-invalid @enderror"
                                            value="{{ old('violation_type', $violation->violation_type) }}"
-                                           maxlength="100" required>
+                                           maxlength="191" required>
                                     @error('violation_type')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
