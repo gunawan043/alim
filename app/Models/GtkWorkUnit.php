@@ -50,6 +50,23 @@ class GtkWorkUnit extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Immutable period history for this placement.
+     */
+    public function periods()
+    {
+        return $this->hasMany(GtkWorkUnitPeriod::class, 'placement_id')
+            ->orderBy('start_date');
+    }
+
+    public function activePeriod()
+    {
+        return $this->hasOne(GtkWorkUnitPeriod::class, 'placement_id')
+            ->where('status', GtkWorkUnitPeriod::STATUS_ACTIVE)
+            ->whereNull('end_date')
+            ->orderByDesc('start_date');
+    }
+
     public function workUnit()
     {
         return $this->belongsTo(WorkUnit::class);
@@ -80,8 +97,15 @@ class GtkWorkUnit extends Model
     }
 
     /**
-     * Penempatan yang masih berlaku. Tanpa siklus hidup penempatan aktif,
-     * scope ini tidak menyaring apa pun supaya perilaku lama tidak berubah.
+     * Penempatan yang dianggap masih berlaku.
+     *
+     * Saat lifecycle aktif, baris yang seluruh periodenya sudah ditutup tidak
+     * lagi dihitung sebagai penempatan berjalan. Baris legacy yang belum punya
+     * periode sama sekali tetap dipertahankan agar data lama tidak hilang
+     * sebelum dimigrasikan (tidak ada backfill pada Batch 1).
+     *
+     * Saat flag mati, scope ini sengaja tidak mengubah query apa pun sehingga
+     * perilaku pembaca lama tetap sama.
      */
     public function scopeCurrent($query)
     {

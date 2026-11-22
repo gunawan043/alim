@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\Village;
 use App\Models\WorkUnit;
 use App\Services\GtkFamilyService;
+use App\Services\GtkPlacementLifecycleService;
 use App\Services\SchoolGroupService;
 use App\Support\GtkAccess;
 use App\Support\GtkRoleResolver;
@@ -1537,19 +1538,68 @@ class GtkWizardController extends Controller
         return GtkEmployment::create(array_merge($employmentData, ['user_id' => $userId]));
     }
 
+    /**
+     * Jalur import/wizard saat lifecycle aktif: identitas baris
+     * (user_id, work_unit_id) tidak pernah diubah. Perpindahan menutup periode
+     * lama dan membuka periode pada baris tujuan.
+     */
+    private function assignWorkUnitWithLifecycle(string $userId, string $workUnitId, ?string $jabatan = null): void
+    {
+        $lifecycle = app(GtkPlacementLifecycleService::class);
+        $positionId = $this->positionIdForName($jabatan);
+
+        $primary = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
+
+        if ($primary && (string) $primary->work_unit_id === (string) $workUnitId) {
+            $lifecycle->updatePosition($primary, $positionId, $jabatan, auth()->id());
+
+            return;
+        }
+
+        if ($primary) {
+            $lifecycle->transfer(
+                $userId,
+                $primary->work_unit_id,
+                $workUnitId,
+                $positionId,
+                today()->toDateString(),
+                auth()->id(),
+                null,
+                $jabatan
+            );
+
+            return;
+        }
+
+        $lifecycle->start(
+            $userId,
+            $workUnitId,
+            $positionId,
+            today()->toDateString(),
+            auth()->id(),
+            null,
+            true,
+            $jabatan
+        );
+    }
+
     private function assignWorkUnit(string $userId, string $workUnitId, ?string $jabatan = null): void
     {
-        GtkWorkUnit::where('user_id', $userId)->update(['is_primary' => false]);
+        if (config('gtk_work_unit.lifecycle.enabled', false)) {
+            $this->assignWorkUnitWithLifecycle($userId, $workUnitId, $jabatan);
+        } else {
+            GtkWorkUnit::where('user_id', $userId)->update(['is_primary' => false]);
 
-        // updateOrCreate supaya import ulang tidak menumpuk baris penempatan.
-        GtkWorkUnit::updateOrCreate(
-            ['user_id' => $userId, 'work_unit_id' => $workUnitId],
-            [
-                'jabatan' => $jabatan,
-                'position_id' => $this->positionIdForName($jabatan),
-                'is_primary' => true,
-            ]
-        );
+            // updateOrCreate supaya import ulang tidak menumpuk baris penempatan.
+            GtkWorkUnit::updateOrCreate(
+                ['user_id' => $userId, 'work_unit_id' => $workUnitId],
+                [
+                    'jabatan' => $jabatan,
+                    'position_id' => $this->positionIdForName($jabatan),
+                    'is_primary' => true,
+                ]
+            );
+        }
 
         // Create StructuralAssignment so domain-based permissions work correctly.
         // Use the work unit's domain (not the position's seeder domain) so GTK placed
@@ -1749,21 +1799,61 @@ class GtkWizardController extends Controller
 
     private function syncWorkUnit(string $userId, string $workUnitId, ?string $jabatan = null): void
     {
-        $workUnit = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
+        if (! config('gtk_work_unit.lifecycle.enabled', false)) {
+            // Legacy behavior, retained while the lifecycle flag is off.
+            $workUnit = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
 
-        $workUnit
-            ? $workUnit->update([
-                'work_unit_id' => $workUnitId,
-                'jabatan' => $jabatan,
-                'position_id' => $this->positionIdForName($jabatan),
-            ])
-            : GtkWorkUnit::create([
-                'user_id' => $userId,
-                'work_unit_id' => $workUnitId,
-                'jabatan' => $jabatan,
-                'position_id' => $this->positionIdForName($jabatan),
-                'is_primary' => true,
-            ]);
+            $workUnit
+                ? $workUnit->update([
+                    'work_unit_id' => $workUnitId,
+                    'jabatan' => $jabatan,
+                    'position_id' => $this->positionIdForName($jabatan),
+                ])
+                : GtkWorkUnit::create([
+                    'user_id' => $userId,
+                    'work_unit_id' => $workUnitId,
+                    'jabatan' => $jabatan,
+                    'position_id' => $this->positionIdForName($jabatan),
+                    'is_primary' => true,
+                ]);
+
+            // Refresh StructuralAssignment so domain-based permissions stay in sync.
+            $this->refreshStructuralAssignment($userId, $workUnitId, $jabatan);
+
+            return;
+        }
+
+        $lifecycle = app(GtkPlacementLifecycleService::class);
+        $positionId = $this->positionIdForName($jabatan);
+        $primary = GtkWorkUnit::where('user_id', $userId)->where('is_primary', true)->first();
+
+        if ($primary && (string) $primary->work_unit_id !== (string) $workUnitId) {
+            // Never mutate work_unit_id on the existing row. End the old period
+            // and start/reactivate the destination row.
+            $lifecycle->transfer(
+                $userId,
+                $primary->work_unit_id,
+                $workUnitId,
+                $positionId,
+                today()->toDateString(),
+                auth()->id(),
+                null,
+                $jabatan
+            );
+        } elseif ($primary) {
+            $lifecycle->updatePosition($primary, $positionId, $jabatan, auth()->id());
+        } else {
+            $lifecycle->start(
+                $userId,
+                $workUnitId,
+                $positionId,
+                today()->toDateString(),
+                auth()->id(),
+                null,
+                true,
+                $jabatan
+            );
+        }
 
         // Refresh StructuralAssignment so domain-based permissions stay in sync.
         $this->refreshStructuralAssignment($userId, $workUnitId, $jabatan);
@@ -3465,23 +3555,30 @@ class GtkWizardController extends Controller
 
                     // Work unit change
                     if ($validated['work_unit_id'] !== null) {
-                        $wu = WorkUnit::find($validated['work_unit_id']);
-                        $existing = GtkWorkUnit::where('user_id', $user->id)->first();
                         $position = $validated['jabatan_id'] ? StructuralPosition::find($validated['jabatan_id']) : null;
-                        if ($existing) {
-                            $existing->update([
-                                'work_unit_id' => $validated['work_unit_id'],
-                                'jabatan' => $position?->name ?? $existing->jabatan,
-                                'position_id' => $position?->id ?? $existing->position_id,
-                            ]);
+
+                        if (config('gtk_work_unit.lifecycle.enabled', false)) {
+                            // Jangan pernah mengubah work_unit_id pada baris yang
+                            // sudah ada; tutup periode lama lalu buka periode baru.
+                            $this->assignWorkUnitWithLifecycle($user->id, $validated['work_unit_id'], $position?->name);
                         } else {
-                            GtkWorkUnit::create([
-                                'user_id' => $user->id,
-                                'work_unit_id' => $validated['work_unit_id'],
-                                'is_primary' => true,
-                                'jabatan' => $position?->name,
-                                'position_id' => $position?->id,
-                            ]);
+                            $existing = GtkWorkUnit::where('user_id', $user->id)->first();
+
+                            if ($existing) {
+                                $existing->update([
+                                    'work_unit_id' => $validated['work_unit_id'],
+                                    'jabatan' => $position?->name ?? $existing->jabatan,
+                                    'position_id' => $position?->id ?? $existing->position_id,
+                                ]);
+                            } else {
+                                GtkWorkUnit::create([
+                                    'user_id' => $user->id,
+                                    'work_unit_id' => $validated['work_unit_id'],
+                                    'is_primary' => true,
+                                    'jabatan' => $position?->name,
+                                    'position_id' => $position?->id,
+                                ]);
+                            }
                         }
                     }
 

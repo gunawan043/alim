@@ -227,7 +227,7 @@ class AnnouncementScopeTest extends TestCase
             $announcement->update(['status' => 'published', 'published_at' => now()]);
         }
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $response = $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/announcements');
         $response->assertOk();
@@ -379,7 +379,7 @@ class AnnouncementScopeTest extends TestCase
             'reference_id' => $broadcast->id,
         ]);
 
-        Sanctum::actingAs($waliA);
+        Sanctum::actingAs($waliA, ['*']);
 
         $feed = $this->getJson('/api/mobile/v1/'.$waliA->id.'/wali/announcements');
         $feed->assertOk();
@@ -472,7 +472,7 @@ class AnnouncementScopeTest extends TestCase
 
         $announcement->update(['status' => 'published', 'published_at' => now()]);
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $response = $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/announcements');
         $response->assertOk();
@@ -598,7 +598,7 @@ class AnnouncementScopeTest extends TestCase
             'published_at' => now(),
         ]);
 
-        Sanctum::actingAs($waliA);
+        Sanctum::actingAs($waliA, ['*']);
         $responseA = $this->getJson('/api/mobile/v1/'.$waliA->id.'/wali/announcements');
         $responseA->assertOk();
         $item = collect($responseA->json('data.announcements'))->firstWhere('id', $broadcast->id);
@@ -607,7 +607,7 @@ class AnnouncementScopeTest extends TestCase
         $this->assertTrue($item['ack_required']);
         $this->assertSame('urgent', $item['severity']);
 
-        Sanctum::actingAs($waliB);
+        Sanctum::actingAs($waliB, ['*']);
         $responseB = $this->getJson('/api/mobile/v1/'.$waliB->id.'/wali/announcements');
         $responseB->assertOk();
         $this->assertNull(collect($responseB->json('data.announcements'))->firstWhere('id', $broadcast->id));
@@ -679,12 +679,12 @@ class AnnouncementScopeTest extends TestCase
             'published_at' => now(),
         ]);
 
-        Sanctum::actingAs($waliA);
+        Sanctum::actingAs($waliA, ['*']);
         $responseA = $this->getJson('/api/mobile/v1/'.$waliA->id.'/wali/announcements');
         $responseA->assertOk();
         $this->assertNotNull(collect($responseA->json('data.announcements'))->firstWhere('id', $broadcast->id));
 
-        Sanctum::actingAs($waliB);
+        Sanctum::actingAs($waliB, ['*']);
         $responseB = $this->getJson('/api/mobile/v1/'.$waliB->id.'/wali/announcements');
         $responseB->assertOk();
         $this->assertNull(collect($responseB->json('data.announcements'))->firstWhere('id', $broadcast->id));
@@ -769,7 +769,7 @@ class AnnouncementScopeTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
         $response = $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/announcements');
         $response->assertOk();
 

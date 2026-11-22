@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Connect\V1\ApprovalCommandController;
 use App\Http\Controllers\Api\Mobile\V1\AcademicController;
 use App\Http\Controllers\Api\Mobile\V1\AnnouncementController;
 use App\Http\Controllers\Api\Mobile\V1\AuthController;
@@ -24,8 +25,10 @@ use App\Http\Controllers\Api\Mobile\V1\Sarpras\SarprasIntelligenceApiController;
 use App\Http\Controllers\Api\Mobile\V1\StudentController;
 use App\Http\Controllers\Api\Mobile\V1\TahfidzController;
 use App\Http\Controllers\Api\Mobile\V1\VersionController;
+use App\Http\Controllers\Api\Mobile\V1\WaliChildInformationController;
 use App\Http\Controllers\Api\Mobile\V1\WaliComplaintController;
 use App\Http\Controllers\Api\Mobile\V1\WaliDocumentController;
+use App\Http\Controllers\Api\Mobile\V1\WaliInformationController;
 use App\Http\Controllers\Api\Mobile\V1\WaliLinkAdminController;
 use App\Http\Controllers\Api\Mobile\V1\WaliLinkController;
 use App\Http\Controllers\Api\Mobile\V1\WaliReportController;
@@ -108,8 +111,8 @@ Route::prefix('mobile/v1')->group(function () {
 
         // Authenticated routes
         Route::middleware('auth:sanctum')->group(function () {
-            Route::get('me', [AuthController::class, 'me'])->middleware('wali.school.context');
-            Route::put('me', [AuthController::class, 'updateProfile']);
+            Route::get('me', [AuthController::class, 'me'])->middleware(['wali.school.context', 'ability:profile.read']);
+            Route::put('me', [AuthController::class, 'updateProfile'])->middleware('ability:profile.write');
 
             // ── SESSION MANAGEMENT (Sprint 2) ────────────────────────────────
             Route::get('sessions', [AuthController::class, 'sessions']);
@@ -123,153 +126,174 @@ Route::prefix('mobile/v1')->group(function () {
     Route::prefix('{userId}/wali')->middleware(['auth:sanctum', 'api.user-scope', 'wali.mobile'])->group(function () {
         // Pilihan sekolah untuk wali multi-sekolah.
         Route::get('schools', [WaliSchoolController::class, 'index'])
-            ->middleware('wali.school.context');
+            ->middleware(['wali.school.context', 'ability:school.read']);
 
         // Penghubungan wali–santri
         Route::prefix('links')->group(function () {
-            Route::post('preview', [WaliLinkController::class, 'preview'])->middleware('throttle:wali-link');
-            Route::post('confirm', [WaliLinkController::class, 'confirm']);
-            Route::get('children', [WaliLinkController::class, 'children']);
-            Route::get('siblings/{student}', [WaliLinkController::class, 'siblings'])->whereUuid('student');
-            Route::post('siblings/preview', [WaliLinkController::class, 'siblingPreview'])->middleware('throttle:wali-link');
+            Route::post('preview', [WaliLinkController::class, 'preview'])->middleware(['throttle:wali-link', 'ability:wali.link.write']);
+            Route::post('confirm', [WaliLinkController::class, 'confirm'])->middleware('ability:wali.link.write');
+            Route::get('children', [WaliLinkController::class, 'children'])->middleware('ability:wali.link.read');
+            Route::get('siblings/{student}', [WaliLinkController::class, 'siblings'])->whereUuid('student')->middleware('ability:wali.link.read');
+            Route::post('siblings/preview', [WaliLinkController::class, 'siblingPreview'])->middleware(['throttle:wali-link', 'ability:wali.link.write']);
 
             Route::prefix('admin')->group(function () {
-                Route::get('pending', [WaliLinkAdminController::class, 'pending']);
-                Route::post('{id}/approve', [WaliLinkAdminController::class, 'approve'])->whereUuid('id');
-                Route::post('{id}/reject', [WaliLinkAdminController::class, 'reject'])->whereUuid('id');
-                Route::post('{id}/suspend', [WaliLinkAdminController::class, 'suspend'])->whereUuid('id');
-                Route::post('{id}/revoke', [WaliLinkAdminController::class, 'revoke'])->whereUuid('id');
+                Route::get('pending', [WaliLinkAdminController::class, 'pending'])->middleware('ability:wali.link.manage');
+                Route::post('{id}/approve', [WaliLinkAdminController::class, 'approve'])->whereUuid('id')->middleware('ability:wali.link.manage');
+                Route::post('{id}/reject', [WaliLinkAdminController::class, 'reject'])->whereUuid('id')->middleware('ability:wali.link.manage');
+                Route::post('{id}/suspend', [WaliLinkAdminController::class, 'suspend'])->whereUuid('id')->middleware('ability:wali.link.manage');
+                Route::post('{id}/revoke', [WaliLinkAdminController::class, 'revoke'])->whereUuid('id')->middleware('ability:wali.link.manage');
             });
         });
 
         // Survei kepuasan
-        Route::get('surveys', [WaliSurveyController::class, 'index']);
-        Route::get('surveys/{id}', [WaliSurveyController::class, 'show'])->whereUuid('id');
-        Route::post('surveys/{id}', [WaliSurveyController::class, 'submit'])->whereUuid('id');
+        Route::get('surveys', [WaliSurveyController::class, 'index'])->middleware('ability:survey.read');
+        Route::get('surveys/{id}', [WaliSurveyController::class, 'show'])->whereUuid('id')->middleware('ability:survey.read');
+        Route::post('surveys/{id}', [WaliSurveyController::class, 'submit'])->whereUuid('id')->middleware('ability:survey.write');
 
         // Kritik & saran
-        Route::get('complaints', [WaliComplaintController::class, 'index']);
-        Route::post('complaints', [WaliComplaintController::class, 'store']);
-        Route::get('complaints/{id}', [WaliComplaintController::class, 'show'])->whereUuid('id');
+        Route::get('complaints', [WaliComplaintController::class, 'index'])->middleware('ability:complaint.read');
+        Route::post('complaints', [WaliComplaintController::class, 'store'])->middleware('ability:complaint.write');
+        Route::get('complaints/{id}', [WaliComplaintController::class, 'show'])->whereUuid('id')->middleware('ability:complaint.read');
 
         // Laporan ringkas
-        Route::get('reports', [WaliReportController::class, 'index']);
+        Route::get('reports', [WaliReportController::class, 'index'])->middleware('ability:report.read');
 
         // Export dokumen
-        Route::get('raport/{student}/pdf', [WaliDocumentController::class, 'raport'])->whereUuid('student');
-        Route::get('achievements/{id}/certificate', [WaliDocumentController::class, 'achievementCertificate'])->whereUuid('id');
-        Route::get('tahfidz/certificates/{student}', [WaliDocumentController::class, 'tahfidzCertificates'])->whereUuid('student');
-        Route::get('tahfidz/certificates/{certificate}/pdf', [WaliDocumentController::class, 'tahfidzCertificate'])->whereUuid('certificate');
+        Route::get('raport/{student}/pdf', [WaliDocumentController::class, 'raport'])->whereUuid('student')->middleware('ability:raport.read');
+        Route::get('achievements/{id}/certificate', [WaliDocumentController::class, 'achievementCertificate'])->whereUuid('id')->middleware('ability:achievement.read');
+        Route::get('tahfidz/certificates/{student}', [WaliDocumentController::class, 'tahfidzCertificates'])->whereUuid('student')->middleware('ability:tahfidz.read');
+        Route::get('tahfidz/certificates/{certificate}/pdf', [WaliDocumentController::class, 'tahfidzCertificate'])->whereUuid('certificate')->middleware('ability:tahfidz.read');
 
         // Pengumuman & broadcast (sekolah/asrama/global)
-        Route::get('announcements', [AnnouncementController::class, 'index']);
-        Route::get('announcements/{id}', [AnnouncementController::class, 'show'])->whereUuid('id');
-        Route::post('announcements/{id}/read', [AnnouncementController::class, 'markRead'])->whereUuid('id');
-        Route::post('announcements/{id}/ack', [AnnouncementController::class, 'acknowledge'])->whereUuid('id');
+        Route::get('announcements', [AnnouncementController::class, 'index'])->middleware('ability:announcement.read');
+        Route::get('announcements/{id}', [AnnouncementController::class, 'show'])->whereUuid('id')->middleware('ability:announcement.read');
+        Route::post('announcements/{id}/read', [AnnouncementController::class, 'markRead'])->whereUuid('id')->middleware('ability:announcement.read');
+        Route::post('announcements/{id}/ack', [AnnouncementController::class, 'acknowledge'])->whereUuid('id')->middleware('ability:announcement.read');
     });
 
     // ── SANTRI ───────────────────────────────────────────────��────────────────
     Route::middleware(['auth:sanctum', 'wali.mobile', 'wali.school.context', 'organization.context'])->group(function () {
-        Route::get('santri', [StudentController::class, 'index']);
-        Route::get('santri/verify-nik', [StudentController::class, 'verifyNik']);
-        Route::get('santri/{id}', [StudentController::class, 'show']);
-        Route::post('santri', [StudentController::class, 'store']);
+        Route::get('santri', [StudentController::class, 'index'])->middleware('ability:child.read');
+        Route::get('santri/verify-nik', [StudentController::class, 'verifyNik'])->middleware('ability:child.read');
+        Route::get('santri/{id}', [StudentController::class, 'show'])->middleware('ability:child.read');
+        Route::post('santri', [StudentController::class, 'store'])->middleware('ability:child.write');
 
         // ── WALI-SANTRI LINKS ─────────────────────────────────────────────────
         Route::prefix('wali-santri')->group(function () {
-            Route::post('start-registration', [WaliSantriController::class, 'startRegistration']);
-            Route::post('link', [WaliSantriController::class, 'link']);
-            Route::post('request', [WaliSantriController::class, 'requestWaliRole']);
-            Route::get('requests', [WaliSantriController::class, 'listRequests']);
-            Route::put('requests/{token}', [WaliSantriController::class, 'approveReject']);
-            Route::delete('{id}', [WaliSantriController::class, 'destroy']);
+            Route::post('start-registration', [WaliSantriController::class, 'startRegistration'])->middleware('ability:wali.link.write');
+            Route::post('link', [WaliSantriController::class, 'link'])->middleware('ability:wali.link.write');
+            Route::post('request', [WaliSantriController::class, 'requestWaliRole'])->middleware('ability:wali.link.write');
+            Route::get('requests', [WaliSantriController::class, 'listRequests'])->middleware('ability:wali.link.read');
+            Route::put('requests/{token}', [WaliSantriController::class, 'approveReject'])->middleware('ability:wali.link.write');
+            Route::delete('{id}', [WaliSantriController::class, 'destroy'])->middleware('ability:wali.link.write');
         });
 
         // ── MAHROM MANAGEMENT (Sprint 5) ──────────────────────
         Route::prefix('students/{student}/mahrom')->group(function () {
-            Route::get('/', [MobileMahromController::class, 'index']);
-            Route::post('/', [MobileMahromController::class, 'store']);
-            Route::put('/{mahrom}', [MobileMahromController::class, 'update']);
-            Route::patch('/{mahrom}', [MobileMahromController::class, 'update']);
-            Route::delete('/{mahrom}', [MobileMahromController::class, 'destroy']);
+            Route::get('/', [MobileMahromController::class, 'index'])->middleware('ability:mahrom.read');
+            Route::post('/', [MobileMahromController::class, 'store'])->middleware('ability:mahrom.write');
+            Route::put('/{mahrom}', [MobileMahromController::class, 'update'])->middleware('ability:mahrom.write');
+            Route::patch('/{mahrom}', [MobileMahromController::class, 'update'])->middleware('ability:mahrom.write');
+            Route::delete('/{mahrom}', [MobileMahromController::class, 'destroy'])->middleware('ability:mahrom.write');
         });
 
         // ── SANTRI DATA ───────────────────────────────────────────────────��──
         Route::prefix('santri/{id}')->group(function () {
-            Route::get('attendance', [SantriDataController::class, 'attendance']);
-            Route::get('attendance/history', [SantriDataController::class, 'attendanceHistory']);
-            Route::get('grades', [SantriDataController::class, 'grades']);
-            Route::get('violations', [SantriDataController::class, 'violations']);
-            Route::get('dormitory', [SantriDataController::class, 'dormitoryInfo']);
-            Route::get('dormitory-attendance', [SantriDataController::class, 'dormitoryAttendance']);
-            Route::get('dormitory-violations', [SantriDataController::class, 'dormitoryViolations']);
-            Route::get('health', [SantriDataController::class, 'health']);
-            Route::get('tahfidz', [SantriDataController::class, 'tahfidz']);
-            Route::get('classes', [SantriDataController::class, 'currentClasses']);
-            Route::get('achievements', [SantriDataController::class, 'achievements']);
-            Route::get('mahroms', [SantriDataController::class, 'mahroms']);
+            Route::get('attendance', [SantriDataController::class, 'attendance'])->middleware('ability:attendance.read');
+            Route::get('attendance/history', [SantriDataController::class, 'attendanceHistory'])->middleware('ability:attendance.read');
+            Route::get('grades', [SantriDataController::class, 'grades'])->middleware('ability:grades.read');
+            Route::get('violations', [SantriDataController::class, 'violations'])->middleware('ability:violation.read');
+            Route::get('dormitory', [SantriDataController::class, 'dormitoryInfo'])->middleware('ability:dormitory.read');
+            Route::get('dormitory-attendance', [SantriDataController::class, 'dormitoryAttendance'])->middleware('ability:dormitory.read');
+            Route::get('dormitory-violations', [SantriDataController::class, 'dormitoryViolations'])->middleware('ability:dormitory.read');
+            Route::get('health', [SantriDataController::class, 'health'])->middleware('ability:health.read');
+            Route::get('tahfidz', [SantriDataController::class, 'tahfidz'])->middleware('ability:tahfidz.read');
+            Route::get('classes', [SantriDataController::class, 'currentClasses'])->middleware('ability:class.read');
+            Route::get('achievements', [SantriDataController::class, 'achievements'])->middleware('ability:achievement.read');
+            Route::get('mahroms', [SantriDataController::class, 'mahroms'])->middleware('ability:mahrom.read');
+
+            // Informasi lanjutan per anak.
+            Route::get('health/history', [WaliChildInformationController::class, 'healthHistory'])->middleware('ability:health.read');
+            Route::get('library/loans', [WaliChildInformationController::class, 'libraryLoans'])->middleware('ability:library.read');
+            Route::get('library/visits', [WaliChildInformationController::class, 'libraryVisits'])->middleware('ability:library.read');
+            Route::get('library/member-card', [WaliChildInformationController::class, 'libraryMemberCard'])->middleware('ability:library.read');
+            Route::get('class-history', [WaliChildInformationController::class, 'classHistory'])->middleware('ability:class.read');
+            Route::get('dormitory/history', [WaliChildInformationController::class, 'dormitoryHistory'])->middleware('ability:dormitory.read');
+            Route::get('dormitory/rewards', [WaliChildInformationController::class, 'dormitoryRewards'])->middleware('ability:dormitory.read');
+            Route::get('extracurricular', [WaliChildInformationController::class, 'extracurricular'])->middleware('ability:extracurricular.read');
+            Route::get('competitions', [WaliChildInformationController::class, 'competitions'])->middleware('ability:achievement.read');
+            Route::get('teachers', [WaliChildInformationController::class, 'teachers'])->middleware('ability:school.read');
+            Route::get('exam-schedules', [WaliChildInformationController::class, 'examSchedules'])->middleware('ability:schedule.read');
         });
 
         // ── NOTIFICATIONS ──────────────────────────────────────────────────
-        Route::get('notifications', [NotificationController::class, 'index']);
-        Route::put('notifications/{id}/read', [NotificationController::class, 'markRead']);
+        Route::get('notifications', [NotificationController::class, 'index'])->middleware('ability:notification.read');
+        Route::put('notifications/{id}/read', [NotificationController::class, 'markRead'])->middleware('ability:notification.write');
 
         // ── DORMITORY PERMIT ─────────────────────────────────────────────
-        Route::get('dormitory-permits', [DormitoryPermitController::class, 'index']);
-        Route::post('dormitory/permit', [DormitoryPermitController::class, 'store']);
+        Route::get('dormitory-permits', [DormitoryPermitController::class, 'index'])->middleware('ability:permit.read');
+        Route::post('dormitory/permit', [DormitoryPermitController::class, 'store'])->middleware('ability:permit.create');
 
         // ── DORMITORY VISIT (Sprint 4) ─────────────────────────────────────
-        Route::get('dormitory/visits', [DormitoryVisitController::class, 'index']);
-        Route::post('dormitory/visit', [DormitoryVisitController::class, 'store']);
-        Route::get('dormitory/visits/{id}', [DormitoryVisitController::class, 'show']);
-        Route::patch('dormitory/visits/{id}/check-in', [DormitoryVisitController::class, 'checkIn']);
-        Route::patch('dormitory/visits/{id}/check-out', [DormitoryVisitController::class, 'checkOut']);
+        Route::get('dormitory/visits', [DormitoryVisitController::class, 'index'])->middleware('ability:dormitory.read');
+        Route::post('dormitory/visit', [DormitoryVisitController::class, 'store'])->middleware('ability:dormitory.write');
+        Route::get('dormitory/visits/{id}', [DormitoryVisitController::class, 'show'])->middleware('ability:dormitory.read');
+        Route::patch('dormitory/visits/{id}/check-in', [DormitoryVisitController::class, 'checkIn'])->middleware('ability:dormitory.write');
+        Route::patch('dormitory/visits/{id}/check-out', [DormitoryVisitController::class, 'checkOut'])->middleware('ability:dormitory.write');
 
         // ── DORMITORY RETURN (Sprint 4) ────────────────────────────────────
-        Route::get('dormitory/returns', [DormitoryReturnController::class, 'index']);
-        Route::post('dormitory/return', [DormitoryReturnController::class, 'store']);
+        Route::get('dormitory/returns', [DormitoryReturnController::class, 'index'])->middleware('ability:dormitory.read');
+        Route::post('dormitory/return', [DormitoryReturnController::class, 'store'])->middleware('ability:dormitory.write');
+
+        // ── INFORMASI UMUM ─────────────────────────────────────────────────
+        Route::get('library/books', [WaliInformationController::class, 'libraryBooks'])->middleware('ability:library.read');
+        Route::get('library/programs', [WaliInformationController::class, 'libraryPrograms'])->middleware('ability:library.read');
+        Route::get('schools/{id}/profile', [WaliInformationController::class, 'schoolProfile'])->middleware('ability:school.read');
+        Route::get('agendas', [WaliInformationController::class, 'agendas'])->middleware('ability:calendar.read');
+        Route::get('regulations', [WaliInformationController::class, 'regulations'])->middleware('ability:regulation.read');
+        Route::get('prayer-times', [WaliInformationController::class, 'prayerTimes'])->middleware('ability:calendar.read');
 
         // ── DASHBOARD ──────────────────────────────────────────────────────
         Route::prefix('dashboard')->group(function () {
-            Route::get('/', [DashboardController::class, 'index']);
-            Route::get('attendance', [DashboardController::class, 'attendance']);
+            Route::get('/', [DashboardController::class, 'index'])->middleware('ability:dashboard.read');
+            Route::get('attendance', [DashboardController::class, 'attendance'])->middleware('ability:dashboard.read');
         });
 
         // ── JADWAL KBM (Sprint 3) ─────────────────────────────────────────
         Route::prefix('jadwal')->group(function () {
-            Route::get('/', [JadwalController::class, 'index']);
-            Route::get('week', [JadwalController::class, 'week']);
+            Route::get('/', [JadwalController::class, 'index'])->middleware('ability:schedule.read');
+            Route::get('week', [JadwalController::class, 'week'])->middleware('ability:schedule.read');
         });
 
         // ── IZIN / SAKIT (Sprint 3) ───────────────────────────────────────
         Route::prefix('permit')->group(function () {
-            Route::post('request', [PermitController::class, 'request']);
-            Route::get('/', [PermitController::class, 'myPermits']);
+            Route::post('request', [PermitController::class, 'request'])->middleware('ability:permit.create');
+            Route::get('/', [PermitController::class, 'myPermits'])->middleware('ability:permit.read');
         });
 
         // ── RAPORT (Sprint 3) ─────────────────────────────────────────────
         Route::prefix('raport')->group(function () {
-            Route::get('status', [RaportController::class, 'status']);
-            Route::get('{student_id}', [RaportController::class, 'show']);
+            Route::get('status', [RaportController::class, 'status'])->middleware('ability:raport.read');
+            Route::get('{student_id}', [RaportController::class, 'show'])->middleware('ability:raport.read');
         });
 
         // ── TAHFIDZ (Sprint 3) ────────────────────────────────────────────
         Route::prefix('tahfidz')->group(function () {
-            Route::get('/', [TahfidzController::class, 'index']);
-            Route::get('progress', [TahfidzController::class, 'progress']);
+            Route::get('/', [TahfidzController::class, 'index'])->middleware('ability:tahfidz.read');
+            Route::get('progress', [TahfidzController::class, 'progress'])->middleware('ability:tahfidz.read');
         });
 
         // ── KALENDER KALDIK (Sprint 3) ────────────────────────────────────
-        Route::get('kalender', [KalenderController::class, 'index']);
+        Route::get('kalender', [KalenderController::class, 'index'])->middleware('ability:calendar.read');
 
         // ── ACADEMIC SUMMARY (Sprint 3) ───────────────────────────────────
         Route::prefix('academic')->group(function () {
-            Route::get('summary', [AcademicController::class, 'summary']);
-            Route::get('rewards', [AcademicController::class, 'rewards']);
+            Route::get('summary', [AcademicController::class, 'summary'])->middleware('ability:academic.read');
+            Route::get('rewards', [AcademicController::class, 'rewards'])->middleware('ability:academic.read');
         });
 
         // ── NOTIFICATIONS — mark-all-read (Sprint 3) ──────────────────────
-        Route::patch('notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+        Route::patch('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->middleware('ability:notification.write');
     });
 });
 
@@ -469,3 +493,13 @@ Route::middleware('recruitment.api-key')->prefix('recruitment/v1')->group(functi
 
     Route::get('role', [RecruitmentRoleController::class, 'index']);
 });
+
+// ── ALIM CONNECT APPROVAL COMMAND API v1 ────────────────────────────────────
+// Dedicated service-to-service command endpoint. It is intentionally separate
+// from the read-only organization/master API and from POS/Recruitment.
+// Auth: dedicated approval key (default X-ALIM-CONNECT-APPROVAL-KEY) or Bearer.
+Route::middleware(['connect.approval-key', 'throttle:60,1'])
+    ->prefix('connect/v1')
+    ->group(function () {
+        Route::post('approval-commands', [ApprovalCommandController::class, 'store']);
+    });

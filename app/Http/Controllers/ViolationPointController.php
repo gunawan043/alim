@@ -73,10 +73,12 @@ class ViolationPointController extends Controller
             'student_id' => 'required|exists:students,id',
             'study_group_id' => 'required|exists:study_groups,id',
             'violation_date' => 'required|date',
-            'violation_type' => 'required|string|max:100',
+            'violation_type' => 'required|string|max:191',
             'points' => 'required|integer|min:0|max:100',
             'description' => 'nullable|string|max:1000',
             'action_taken' => 'nullable|string|max:1000',
+        ], [
+            'violation_type.max' => 'Nama pelanggaran maksimal 191 karakter.',
         ]);
 
         ViolationPoint::create([
@@ -122,10 +124,12 @@ class ViolationPointController extends Controller
             'student_id' => 'required|exists:students,id',
             'study_group_id' => 'required|exists:study_groups,id',
             'violation_date' => 'required|date',
-            'violation_type' => 'required|string|max:100',
+            'violation_type' => 'required|string|max:191',
             'points' => 'required|integer|min:0|max:100',
             'description' => 'nullable|string|max:1000',
             'action_taken' => 'nullable|string|max:1000',
+        ], [
+            'violation_type.max' => 'Nama pelanggaran maksimal 191 karakter.',
         ]);
 
         $violation->update($validated);

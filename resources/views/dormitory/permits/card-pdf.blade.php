@@ -247,7 +247,11 @@
             @php
                 $token = $permit->scan_token ?: $permit->getOrCreateScanToken();
                 $qrPayload = json_encode($permit->qrPayload() ?? ['token' => $token]);
-                $qrImage = \App\Services\Ljk\LjkQrRenderer::pngDataUri($qrPayload, 420, 5, 'Q');
+                $qrImage = \App\Services\Ljk\LjkQrRenderer::pngDataUri(
+                    $qrPayload, 420, 5, 'Q',
+                    \App\Support\Qr\QrBranding::logoPath(),
+                    \App\Support\Qr\QrBranding::ratio()
+                );
             @endphp
             <img src="{{ $qrImage }}" alt="QR">
         </div>

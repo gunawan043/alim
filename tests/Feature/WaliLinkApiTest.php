@@ -121,7 +121,7 @@ class WaliLinkApiTest extends TestCase
         $superAdmin = $this->superAdmin();
         $tu = $this->tataUsaha($school);
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $preview = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/preview', $this->previewPayload($student));
 
@@ -169,7 +169,7 @@ class WaliLinkApiTest extends TestCase
         $student = $this->student($school);
         $wali = $this->wali();
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $response = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/preview', $this->previewPayload($student, 'Nama Ibu Lain'));
 
@@ -187,7 +187,7 @@ class WaliLinkApiTest extends TestCase
         $student = $this->student($school);
         $wali = $this->wali();
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $payload = $this->previewPayload($student);
         $payload['identity_number'] = (string) $student->nik;
@@ -204,7 +204,7 @@ class WaliLinkApiTest extends TestCase
         $wali = $this->wali();
         $tu = $this->tataUsaha($school, 'Staf Tata Usaha');
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $preview = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/preview', $this->previewPayload($student, 'Siti Aisyah', 'wali'));
         $preview->assertOk()->assertJsonPath('data.requires_approval', true);
@@ -221,7 +221,7 @@ class WaliLinkApiTest extends TestCase
         // Wali biasa tidak boleh approve.
         $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/links/admin/pending')->assertForbidden();
 
-        Sanctum::actingAs($tu);
+        Sanctum::actingAs($tu, ['*']);
 
         $this->getJson('/api/mobile/v1/'.$tu->id.'/wali/links/admin/pending')
             ->assertOk()
@@ -256,7 +256,7 @@ class WaliLinkApiTest extends TestCase
             ]);
         }
 
-        Sanctum::actingAs($newWali);
+        Sanctum::actingAs($newWali, ['*']);
 
         $this->postJson('/api/mobile/v1/'.$newWali->id.'/wali/links/preview', $this->previewPayload($student))
             ->assertStatus(422)
@@ -276,7 +276,7 @@ class WaliLinkApiTest extends TestCase
         ]);
         $wali = $this->wali();
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $preview = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/preview', $this->previewPayload($first));
         $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/confirm', [
@@ -316,7 +316,7 @@ class WaliLinkApiTest extends TestCase
         $student = $this->student($school);
         $wali = $this->wali();
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $preview = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/preview', $this->previewPayload($student));
         $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/confirm', [
@@ -336,7 +336,7 @@ class WaliLinkApiTest extends TestCase
         $wali = $this->wali();
         $tu = $this->tataUsaha($school, 'Admin Tata Usaha');
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $preview = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/preview', $this->previewPayload($student));
         $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/links/confirm', [
@@ -345,7 +345,7 @@ class WaliLinkApiTest extends TestCase
 
         $link = WaliSantri::where('user_id', $wali->id)->where('student_id', $student->id)->firstOrFail();
 
-        Sanctum::actingAs($tu);
+        Sanctum::actingAs($tu, ['*']);
 
         $this->postJson("/api/mobile/v1/{$tu->id}/wali/links/admin/{$link->id}/suspend")
             ->assertOk()

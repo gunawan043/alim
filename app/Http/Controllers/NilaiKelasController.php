@@ -32,6 +32,7 @@ use App\Services\NilaiPublishNotificationService;
 use App\Services\NotificationUniversalService;
 use App\Services\Pdf\DocumentPdfService;
 use App\Services\SumatifHarianService;
+use App\Services\SumatifKomponenService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use App\Support\NilaiMurniRule;
@@ -398,9 +399,11 @@ class NilaiKelasController extends Controller
         $bobotManualMap = [];
         $bobotJpMap = [];
         foreach ($bobotRows as $row) {
-            $bobotMap[$row->subject_id] = $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours;
+            $bobotMap[$row->subject_id] = $row->effectiveBobot();
             $bobotManualMap[$row->subject_id] = $row->bobot !== null ? (float) $row->bobot : null;
-            $bobotJpMap[$row->subject_id] = $row->weekly_hours !== null ? (float) $row->weekly_hours : null;
+            $bobotJpMap[$row->subject_id] = $row->weekly_hours !== null
+                ? StudyGroupSubject::bobotDariJp($row->weekly_hours)
+                : null;
         }
 
         $legerAggMap = [];
@@ -474,6 +477,27 @@ class NilaiKelasController extends Controller
             (string) $selectedAyId,
             (string) $selectedSemester,
         );
+        $predicateNotesAr = RaporPredicateNote::mapForArabic(
+            (string) $studyGroup->id,
+            (string) $selectedAyId,
+            (string) $selectedSemester,
+        );
+
+        // Komponen STS/SAS buku aktif (mis. Praktik & Tulis). Kosong = fitur mati.
+        $komponenService = app(SumatifKomponenService::class);
+        $stsColumns = $activeBook ? $komponenService->columnsFor($activeBook, 'sts') : [];
+        $sasColumns = $activeBook ? $komponenService->columnsFor($activeBook, 'sas') : [];
+        $stsComponentMap = [];
+        $sasComponentMap = [];
+
+        if ($activeBook) {
+            foreach ($students as $history) {
+                $sid = $history->student_id;
+                $row = $nilaiMap[$sid][$activeBook->id] ?? null;
+                $stsComponentMap[$sid] = $komponenService->valuesFor($row, $stsColumns, 'sts');
+                $sasComponentMap[$sid] = $komponenService->valuesFor($row, $sasColumns, 'sas');
+            }
+        }
 
         return view('nilai-kelas.sts', compact(
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
@@ -481,8 +505,9 @@ class NilaiKelasController extends Controller
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'predicateNotes',
-            'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional'
+            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'predicateNotes', 'predicateNotesAr',
+            'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional',
+            'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap'
         ));
     }
 
@@ -526,6 +551,20 @@ class NilaiKelasController extends Controller
 
                 $hasSts = isset($row['sts']) && $row['sts'] !== '' && $row['sts'] !== null;
                 $hasSas = isset($row['sas']) && $row['sas'] !== '' && $row['sas'] !== null;
+
+                foreach ((array) ($row['sts_components'] ?? []) as $value) {
+                    if ($value !== '' && $value !== null) {
+                        $hasSts = true;
+                        break;
+                    }
+                }
+                foreach ((array) ($row['sas_components'] ?? []) as $value) {
+                    if ($value !== '' && $value !== null) {
+                        $hasSas = true;
+                        break;
+                    }
+                }
+
                 $hasStsMurni = (isset($row['sts_murni']) && $row['sts_murni'] !== '' && $row['sts_murni'] !== null)
                     || ($existingRow?->sts_murni !== null);
                 $hasSasMurni = (isset($row['sas_murni']) && $row['sas_murni'] !== '' && $row['sas_murni'] !== null)
@@ -570,6 +609,13 @@ class NilaiKelasController extends Controller
                     $input['sh'] = $data['sh'];
                 }
 
+                if (array_key_exists('sts_components', $data) && is_array($data['sts_components'])) {
+                    $input['sts_components'] = $data['sts_components'];
+                }
+                if (array_key_exists('sas_components', $data) && is_array($data['sas_components'])) {
+                    $input['sas_components'] = $data['sas_components'];
+                }
+
                 if (array_key_exists('sts_murni', $data)) {
                     $input['sts_murni'] = $data['sts_murni'];
                 }
@@ -578,6 +624,14 @@ class NilaiKelasController extends Controller
                 }
                 if (array_key_exists('sas_murni', $data)) {
                     $input['sas_murni'] = $data['sas_murni'];
+                }
+                // RSA manual (boleh dikosongkan → kembali otomatis).
+                if (array_key_exists('rsa', $data)) {
+                    $input['rsa'] = $data['rsa'];
+                }
+                // NR Murni manual (boleh dikosongkan → kembali otomatis).
+                if (array_key_exists('nr_murni', $data)) {
+                    $input['nr_murni'] = $data['nr_murni'];
                 }
 
                 // S6 otomatis = rata-rata Penilaian Asesmen Formatif (bila sudah ada).
@@ -724,10 +778,13 @@ class NilaiKelasController extends Controller
                 $request->validate([
                     'predicate_notes' => 'nullable|array',
                     'predicate_notes.*' => 'nullable|string|max:500',
+                    'predicate_notes_ar' => 'nullable|array',
+                    'predicate_notes_ar.*' => 'nullable|string|max:500',
                 ]);
 
                 foreach (RaporPredicateNote::PREDICATES as $predicate) {
                     $note = trim((string) ($request->input('predicate_notes.'.$predicate) ?? ''));
+                    $noteAr = trim((string) ($request->input('predicate_notes_ar.'.$predicate) ?? ''));
 
                     RaporPredicateNote::updateOrCreate(
                         [
@@ -739,6 +796,7 @@ class NilaiKelasController extends Controller
                         [
                             'school_id' => $studyGroup->school_id,
                             'note' => $note !== '' ? $note : null,
+                            'note_ar' => $noteAr !== '' ? $noteAr : null,
                             'updated_by' => $userId,
                         ]
                     );
@@ -759,6 +817,12 @@ class NilaiKelasController extends Controller
                 foreach ($books as $bookId => $fields) {
                     $book = $allBooks->get((string) $bookId);
                     if (! $book) {
+                        continue;
+                    }
+
+                    // Bila mapel memakai komponen (Praktik/Tulis), nilai akhir
+                    // dihitung dari komponen — jangan ditimpa input tunggal.
+                    if (app(SumatifKomponenService::class)->hasColumns($book, $legerMode)) {
                         continue;
                     }
 
@@ -880,6 +944,46 @@ class NilaiKelasController extends Controller
             'success' => true,
             'columns' => $columns,
             'message' => 'Kolom sumatif disimpan.',
+        ]);
+    }
+
+    /**
+     * Kelola komponen STS/SAS dari halaman Leger/Mapel (mis. Praktik & Tulis).
+     */
+    public function stsKomponen(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $this->assertLegerAccess($userId, StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->findOrFail($studyGroupId));
+
+        $book = TeacherAdminBook::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('study_group_id', $studyGroupId)
+            ->findOrFail($request->input('admin_book_id'));
+
+        $this->assertNotArchivedAcademicYear($book->academic_year_id);
+        abort_if($book->isLocked(), 403, 'Buku nilai sudah dikunci.');
+        abort_if($book->isPublished(), 403, 'Nilai mapel sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+
+        $validated = $request->validate([
+            'jenis' => 'required|in:sts,sas',
+            'columns' => 'nullable|array',
+            'columns.*.id' => 'required|string|max:64',
+            'columns.*.label' => 'required|string|max:60',
+        ]);
+
+        $columns = app(SumatifKomponenService::class)->saveColumns(
+            $book,
+            $validated['jenis'],
+            $validated['columns'] ?? [],
+        );
+
+        return response()->json([
+            'success' => true,
+            'jenis' => $validated['jenis'],
+            'columns' => $columns,
+            'message' => $columns === []
+                ? 'Komponen dimatikan; kolom tunggal '.strtoupper($validated['jenis']).' dipakai kembali.'
+                : 'Komponen '.strtoupper($validated['jenis']).' disimpan.',
         ]);
     }
 
@@ -1180,7 +1284,7 @@ class NilaiKelasController extends Controller
             )
             : [];
 
-        // Bobot efektif tiap mapel: override manual, atau JP rombel sebagai default.
+        // Bobot efektif tiap mapel: override manual, atau JP ÷ 2 sebagai default.
         $subjectBobotMap = StudyGroupSubject::query()
             ->where('study_group_id', $studyGroup->id)
             ->where('academic_year_id', $selectedAyId)
@@ -1189,7 +1293,8 @@ class NilaiKelasController extends Controller
             ->mapWithKeys(fn ($row) => [$row->subject_id => [
                 'bobot' => $row->bobot,
                 'jp' => $row->weekly_hours,
-                'efektif' => $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours,
+                'default' => StudyGroupSubject::bobotDariJp($row->weekly_hours),
+                'efektif' => $row->effectiveBobot(),
             ]])
             ->all();
 

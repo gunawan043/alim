@@ -80,7 +80,7 @@ class MobileMahromApiTest extends TestCase
 
     private function asWali(User $user): void
     {
-        Sanctum::actingAs($user, [], 'sanctum');
+        Sanctum::actingAs($user, ['*'], 'sanctum');
         config(['auth.defaults.guard' => 'sanctum']);
         app()->refresh('auth', app()['auth'], 'guards');
     }

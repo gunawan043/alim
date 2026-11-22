@@ -121,7 +121,7 @@ class WaliSurveyComplaintTest extends TestCase
         $global = $this->survey($schoolA, 'Survei Global');
         $global->update(['school_id' => null]);
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $response = $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/surveys');
         $response->assertOk();
@@ -156,7 +156,7 @@ class WaliSurveyComplaintTest extends TestCase
 
         $humas = $this->humas();
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $response = $this->postJson('/api/mobile/v1/'.$wali->id.'/wali/complaints', [
             'student_id' => $student->id,
@@ -204,7 +204,7 @@ class WaliSurveyComplaintTest extends TestCase
             'status' => 'open',
         ]);
 
-        Sanctum::actingAs($waliB);
+        Sanctum::actingAs($waliB, ['*']);
 
         $this->getJson("/api/mobile/v1/{$waliB->id}/wali/complaints/{$complaint->id}")
             ->assertNotFound();
@@ -253,7 +253,7 @@ class WaliSurveyComplaintTest extends TestCase
             ]);
         }
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $response = $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/reports');
 
@@ -313,7 +313,7 @@ class WaliSurveyComplaintTest extends TestCase
             $mock->shouldReceive('renderSingle')->once()->andReturn('%PDF-1.4 test');
         });
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $this->get("/api/mobile/v1/{$wali->id}/wali/raport/{$student->id}/pdf")
             ->assertOk()
@@ -353,12 +353,12 @@ class WaliSurveyComplaintTest extends TestCase
             'created_by' => $wali->id,
         ]);
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $this->get("/api/mobile/v1/{$wali->id}/wali/achievements/{$achievement->id}/certificate")
             ->assertOk();
 
-        Sanctum::actingAs($otherWali);
+        Sanctum::actingAs($otherWali, ['*']);
 
         $this->get("/api/mobile/v1/{$otherWali->id}/wali/achievements/{$achievement->id}/certificate")
             ->assertNotFound();
@@ -390,7 +390,7 @@ class WaliSurveyComplaintTest extends TestCase
             'predikat' => 'mumtaz',
         ]);
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $this->getJson("/api/mobile/v1/{$wali->id}/wali/tahfidz/certificates/{$student->id}")
             ->assertOk()
@@ -409,7 +409,7 @@ class WaliSurveyComplaintTest extends TestCase
         $wali = $this->wali('Wali Scope');
         $other = $this->wali('Wali Lain');
 
-        Sanctum::actingAs($wali);
+        Sanctum::actingAs($wali, ['*']);
 
         $this->getJson("/api/mobile/v1/{$other->id}/wali/surveys")
             ->assertForbidden()

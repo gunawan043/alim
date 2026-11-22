@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\GradeLevel;
 use App\Models\School;
 use App\Models\Student;
+use App\Models\StudyGroup;
+use App\Models\Subject;
+use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Models\WaliSantri;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,7 +103,7 @@ class WaliSantriApiTest extends TestCase
 
     private function asSanctumUser(User $user): self
     {
-        Sanctum::actingAs($user, [], 'sanctum');
+        Sanctum::actingAs($user, ['*'], 'sanctum');
         // Override auth default guard so controllers (auth()->user()) resolve correctly
         config(['auth.defaults.guard' => 'sanctum']);
         app()->refresh('auth', app()['auth'], 'guards');
@@ -161,30 +165,53 @@ class WaliSantriApiTest extends TestCase
             ->assertJsonCount(2, 'data.records');
     }
 
-    private function insertAttendance(string $studentId, string $date, string $status): void
+    /**
+     * @return array{year: AcademicYear, group: StudyGroup, teacher: User}
+     */
+    private function academicContext(Student $student): array
     {
-        $ay = AcademicYear::create([
+        $year = AcademicYear::create([
             'id' => (string) Str::uuid(),
             'name' => '2026/2027',
             'semester' => 'ganjil',
             'is_active' => true,
         ]);
 
-        $waliId = (string) Str::uuid();
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        $grade = GradeLevel::firstOrCreate(
+            ['school_id' => $student->school_id, 'level' => 10],
+            ['name' => 'X', 'is_active' => true],
+        );
+
+        $group = StudyGroup::create([
+            'school_id' => $student->school_id,
+            'academic_year_id' => $year->id,
+            'grade_level_id' => $grade->id,
+            'name' => 'X-'.Str::upper(Str::random(3)),
+            'is_active' => true,
+        ]);
+
+        $teacher = User::factory()->create();
+
+        return compact('year', 'group', 'teacher');
+    }
+
+    private function insertAttendance(string $studentId, string $date, string $status): void
+    {
+        $student = Student::findOrFail($studentId);
+        $context = $this->academicContext($student);
+
         DB::table('student_attendances')->insert([
             'id' => (string) Str::uuid(),
-            'student_id' => $studentId,
-            'school_id' => (string) Str::uuid(),
-            'academic_year_id' => $ay->id,
-            'study_group_id' => (string) Str::uuid(),
+            'student_id' => $student->id,
+            'school_id' => $student->school_id,
+            'academic_year_id' => $context['year']->id,
+            'study_group_id' => $context['group']->id,
             'attendance_date' => $date,
             'status' => $status,
-            'recorded_by' => $waliId,
+            'recorded_by' => $context['teacher']->id,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
 
     // ── Grades ─────────────────────────────────────────────────────────────
@@ -196,19 +223,29 @@ class WaliSantriApiTest extends TestCase
         $this->linkWaliToStudent($wali, $stu);
         $this->asSanctumUser($wali);
 
-        $ay = AcademicYear::create([
-            'id' => (string) Str::uuid(),
-            'name' => '2026/2027',
-            'semester' => 'ganjil',
+        $context = $this->academicContext($stu);
+        $subject = Subject::create([
+            'school_id' => $stu->school_id,
+            'name' => 'Fiqih',
+            'code' => 'FQH-'.Str::upper(Str::random(3)),
             'is_active' => true,
         ]);
+        $book = TeacherAdminBook::create([
+            'teacher_id' => $context['teacher']->id,
+            'subject_id' => $subject->id,
+            'study_group_id' => $context['group']->id,
+            'school_id' => $stu->school_id,
+            'academic_year_id' => $context['year']->id,
+            'semester' => 'ganjil',
+            'is_active' => true,
+            'published_at' => now(),
+        ]);
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
         DB::table('admin_nilai_sumatif')->insert([
             'id' => (string) Str::uuid(),
-            'admin_book_id' => (string) Str::uuid(),
+            'admin_book_id' => $book->id,
             'student_id' => $stu->id,
-            'academic_year_id' => $ay->id,
+            'academic_year_id' => $context['year']->id,
             'semester' => 'ganjil',
             's1' => 85,
             's2' => 90,
@@ -216,7 +253,6 @@ class WaliSantriApiTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         $response = $this->getJson("/api/mobile/v1/santri/{$stu->id}/grades");
 
@@ -303,11 +339,15 @@ class WaliSantriApiTest extends TestCase
     public function test_request_wali_fails_for_unknown_student(): void
     {
         $wali = $this->createWali();
+        $student = $this->createStudent();
+        $this->linkWaliToStudent($wali, $student);
         $this->asSanctumUser($wali);
 
         $response = $this->postJson('/api/mobile/v1/wali-santri/request', [
             'nik_santri' => '0000000000000001',
             'role' => 'ayah',
+        ], [
+            'X-Active-School-Id' => $student->school_id,
         ]);
 
         $response->assertStatus(404)

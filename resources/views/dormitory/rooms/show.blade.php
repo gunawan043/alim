@@ -197,6 +197,7 @@
                                         @php
                                             $permit = $activePermits->get($resident->student_id);
                                             $isOverdue = $permit && $permit->status === 'overdue';
+                                            $isOut = $permit && in_array($permit->status, ['picked_up', 'overdue'], true);
                                             $expectedReturn = $permit?->expected_return_datetime;
                                         @endphp
                                         <tr id="resident-row-{{ $resident->id }}" class="{{ $isOverdue ? 'table-warning' : '' }}">
@@ -224,9 +225,9 @@
                                             <td>{{ $resident->bed_number ?? '-' }}</td>
                                             <td>
                                                 @if($permit)
-                                                    <span class="badge bg-{{ $isOverdue ? 'danger' : 'warning' }}-subtle text-{{ $isOverdue ? 'danger' : 'warning' }}" title="Kembali: {{ $expectedReturn?->format('d M Y H:i') }}">
-                                                        <i class="ri-{{ $isOverdue ? 'alarm-warning-line' : 'route-line' }} me-1"></i>
-                                                        {{ $isOverdue ? 'Terlambat' : 'Izin Pulang' }}
+                                                    <span class="badge bg-{{ $isOverdue ? 'danger' : ($isOut ? 'warning' : 'info') }}-subtle text-{{ $isOverdue ? 'danger' : ($isOut ? 'warning' : 'info') }}" title="Kembali: {{ $expectedReturn?->format('d M Y H:i') }}">
+                                                        <i class="ri-{{ $isOverdue ? 'alarm-warning-line' : ($isOut ? 'route-line' : 'file-check-line') }} me-1"></i>
+                                                        {{ $isOverdue ? 'Terlambat' : ($isOut ? 'Izin Pulang' : 'Izin Disetujui') }}
                                                     </span>
                                                     @if($expectedReturn)
                                                         <div class="small text-muted mt-1">

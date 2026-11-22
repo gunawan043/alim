@@ -104,6 +104,45 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | ALIM Connect Approval Command API (inbound)
+    |--------------------------------------------------------------------------
+    |
+    | Dedicated key for POST /api/connect/v1/approval-commands. It is separate
+    | from POS/Recruitment and from the future read-only organization API.
+    | The key grants approval-command access only; it is not a generic write
+    | credential.
+    |
+    */
+    'connect_approval' => [
+        'api_key' => env('CONNECT_APPROVAL_API_KEY', ''),
+        'header' => env('CONNECT_APPROVAL_API_HEADER', 'X-ALIM-CONNECT-APPROVAL-KEY'),
+        'allowed_ips' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CONNECT_APPROVAL_ALLOWED_IPS', ''))
+        ))),
+        'require_https' => env('CONNECT_APPROVAL_REQUIRE_HTTPS', true),
+        'auth_fail_limit' => env('CONNECT_APPROVAL_AUTH_FAIL_LIMIT', 10),
+
+        // Cakupan key. Hanya `approval:command` yang diizinkan; key ini tidak
+        // boleh dipakai untuk membaca master organisasi atau menulis entitas
+        // Core lainnya.
+        'scopes' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CONNECT_APPROVAL_SCOPES', 'approval:command'))
+        ))),
+
+        // Batas atas durasi izin yang boleh diputuskan lewat command. Ini
+        // pengaman operasional, bukan aturan bisnis baru: tanggal tetap
+        // dihitung dari waktu keberangkatan yang sudah tercatat di Core.
+        'max_duration_days' => (int) env('CONNECT_APPROVAL_MAX_DURATION_DAYS', 365),
+
+        // Redaksi/retensi awal pesan WhatsApp: simpan hanya cuplikan terbatas.
+        // Kebijakan retensi final tetap memerlukan keputusan pemilik sistem.
+        'message_text_max_length' => (int) env('CONNECT_APPROVAL_MESSAGE_TEXT_MAX_LENGTH', 500),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | POS Procurement (ALIM → POS)
     |--------------------------------------------------------------------------
     |

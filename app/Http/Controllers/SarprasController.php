@@ -40,6 +40,7 @@ class SarprasController extends Controller
         } // fallback
 
         $hasRumahTangga = GtkWorkUnit::where('user_id', $user->id)
+            ->current()
             ->whereHas('workUnit', fn ($q) => $q->where('code', 'PAH-ADM-003'))
             ->exists();
 

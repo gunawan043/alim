@@ -690,15 +690,18 @@
                                                 </td>
                                                 <td class="text-center">
                                                     @php
-                                                        $bobotRow = ($subjectBobotMap ?? [])[$subject->id] ?? ['bobot' => null, 'jp' => null, 'efektif' => null];
+                                                        $bobotRow = ($subjectBobotMap ?? [])[$subject->id] ?? ['bobot' => null, 'jp' => null, 'default' => null, 'efektif' => null];
                                                         $bobotVal = $bobotRow['bobot'] !== null
                                                             ? rtrim(rtrim(number_format((float) $bobotRow['bobot'], 2, '.', ''), '0'), '.')
                                                             : '';
+                                                        // `default` hanya ada pada controller versi baru;
+                                                        // jatuh ke `jp` agar tetap aman di versi lama.
+                                                        $bobotDefault = $bobotRow['default'] ?? $bobotRow['jp'] ?? null;
                                                     @endphp
                                                     <input type="text" inputmode="decimal"
                                                            name="subject_bobot[{{ $subject->id }}]"
                                                            value="{{ old('subject_bobot.'.$subject->id, $bobotVal) }}"
-                                                           placeholder="{{ $bobotRow['jp'] !== null ? rtrim(rtrim(number_format((float) $bobotRow['jp'], 2, '.', ''), '0'), '.') : '0' }}"
+                                                           placeholder="{{ $bobotDefault !== null ? rtrim(rtrim(number_format((float) $bobotDefault, 2, '.', ''), '0'), '.') : '0' }}"
                                                            class="form-control form-control-sm text-center mx-auto"
                                                            style="max-width:90px;"
                                                            aria-label="Bobot {{ $subject->name }}">
@@ -727,7 +730,7 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Bobot kosong = memakai JP rombel; boleh desimal (mis. 2,5). Nama Latin/Arab disimpan ke master mapel sehingga berlaku untuk semua rombel. KKTP kosong = tidak diubah. Urutan mengikuti posisi baris.</small>
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Bobot kosong = JP ÷ 2 (JP 1 tetap 1); boleh desimal (mis. 2,5). Nama Latin/Arab disimpan ke master mapel sehingga berlaku untuk semua rombel. KKTP kosong = tidak diubah. Urutan mengikuti posisi baris.</small>
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="ri-save-3-line me-1"></i>Simpan Mapel, Nama, KKTP &amp; Bobot
                                 </button>
@@ -1039,7 +1042,7 @@
                                         <input type="hidden" name="{{ $field }}" value="0">
                                         <input class="form-check-input" type="checkbox" role="switch"
                                                id="modal_{{ $field }}" name="{{ $field }}" value="1"
-                                               {{ old($field, $layout[$field] ?? true) ? 'checked' : '' }}>
+                                               {{ old($field, $layout[$field] ?? ($field === 'show_kop')) ? 'checked' : '' }}>
                                         <label class="form-check-label small" for="modal_{{ $field }}">{{ $label }}</label>
                                     </div>
                                 </div>
@@ -1463,12 +1466,27 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
         }
     }
 
+    // Penanda varian aktif di address bar, mis. #SAS-Indonesia, agar
+    // perubahan varian langsung terlihat pada link.
+    const bahasaLabel = { id: 'Indonesia', ar: 'Arab', 'id-ar': 'Bilingual' };
+
+    function variantHash() {
+        return activeJenis.toUpperCase() + '-' + (bahasaLabel[activeBahasa] || activeBahasa);
+    }
+
+    function syncHash() {
+        const pageUrl = new URL(window.location.href);
+        pageUrl.hash = variantHash();
+        window.history.replaceState({}, '', pageUrl.toString());
+    }
+
     function syncUrl() {
         // Simpan varian di URL agar refresh (F5) dan redirect setelah simpan
         // tetap membuka preview yang sama.
         const pageUrl = new URL(window.location.href);
         pageUrl.searchParams.set('doc_jenis', activeJenis);
         pageUrl.searchParams.set('doc_bahasa', activeBahasa);
+        pageUrl.hash = variantHash();
         window.history.replaceState({}, '', pageUrl.toString());
 
         try {
@@ -1518,6 +1536,7 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
     if (refresh) refresh.addEventListener('click', refreshPreview);
 
     paintVariantButtons();
+    syncHash();
 
     if (!initialUrl.searchParams.has('doc_jenis')) {
         if (typeof window.applyRaporVariant === 'function') {

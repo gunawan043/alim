@@ -16,6 +16,7 @@ use App\Support\AsramaConfig;
 use App\Support\FcmConfig;
 use App\Support\PosApiConfig;
 use App\Support\PosProcurementConfig;
+use App\Support\Qr\QrBranding;
 use App\Support\RecruitmentApiConfig;
 use App\Support\RecruitmentOutboundConfig;
 use App\Support\WebPushConfig;
@@ -80,8 +81,10 @@ class SystemSettingController extends Controller
             ->limit(15)
             ->get();
 
+        $qrLogoUrl = QrBranding::logoUrl();
+
         return response()
-            ->view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings', 'push', 'webPush'))
+            ->view('super-admin.system-settings.index', compact('settings', 'tab', 'userId', 'waLogs', 'mailSettings', 'push', 'webPush', 'qrLogoUrl'))
             ->header('Cache-Control', 'no-store, private')
             ->header('Pragma', 'no-cache');
     }
@@ -199,6 +202,11 @@ class SystemSettingController extends Controller
             'google_drive_folder_url' => 'nullable|url|max:500',
             'google_drive_shared_drive_id' => 'nullable|string|max:191',
             'google_drive_service_account_json' => 'nullable|string',
+            'qr_settings' => 'nullable|boolean',
+            'qr_logo_enabled' => 'boolean',
+            'qr_logo_ratio' => 'nullable|numeric|min:0.12|max:0.28',
+            'qr_logo' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048',
+            'qr_logo_remove' => 'boolean',
         ]);
 
         // Normalisasi: perbaiki typo umum domain Fonnte + trim token/URL.
@@ -364,6 +372,21 @@ class SystemSettingController extends Controller
             $validated['web_push_vapid_subject'],
             $validated['generate_web_push_keys'],
             $validated['web_push_vapid_clear']
+        );
+
+        // ── Tab QR: logo di tengah QR aset/kelas/perizinan/kunjungan ──────
+        if ($request->boolean('qr_settings')) {
+            $this->persistQrLogo($request);
+            QrBranding::forget();
+            $this->writeSettingsAudit($request, 'QR_SETTINGS_UPDATED');
+        }
+
+        unset(
+            $validated['qr_settings'],
+            $validated['qr_logo_enabled'],
+            $validated['qr_logo_ratio'],
+            $validated['qr_logo'],
+            $validated['qr_logo_remove']
         );
 
         foreach ($validated as $key => $value) {
@@ -800,10 +823,70 @@ class SystemSettingController extends Controller
     }
 
     /**
-     * Normalisasi daftar IP/CIDR (dipisah koma) untuk whitelist POS.
+     * Simpan pengaturan logo QR (tab QR di Pengaturan Sistem).
      *
-     * @return array{0: string, 1: list<string>} [nilai ternormalisasi, item tidak valid]
+     * Urutan penting: hapus logo lama SETELAH logo baru berhasil dipindah,
+     * supaya unggahan yang gagal tidak menghilangkan logo yang sedang dipakai.
      */
+    private function persistQrLogo(Request $request): void
+    {
+        $dir = QrBranding::storageDir();
+
+        SystemSetting::set('qr_logo_enabled', $request->boolean('qr_logo_enabled') ? '1' : '0', 'qr');
+
+        if ($request->filled('qr_logo_ratio')) {
+            SystemSetting::set('qr_logo_ratio', (string) $request->input('qr_logo_ratio'), 'qr');
+        }
+
+        if ($request->boolean('qr_logo_remove')) {
+            $this->deleteStoredQrLogo();
+            SystemSetting::set('qr_logo_path', '', 'qr');
+        }
+
+        $file = $request->file('qr_logo');
+
+        if (! $file) {
+            return;
+        }
+
+        if (! is_dir($dir) && ! @mkdir($dir, 0775, true) && ! is_dir($dir)) {
+            throw ValidationException::withMessages([
+                'qr_logo' => 'Folder logo QR tidak dapat dibuat di server.',
+            ]);
+        }
+
+        $extension = strtolower($file->getClientOriginalExtension() ?: 'png');
+        $name = 'logo-'.now()->format('YmdHis').'-'.bin2hex(random_bytes(3)).'.'.$extension;
+
+        try {
+            $file->move($dir, $name);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal menyimpan logo QR: '.$e->getMessage());
+
+            throw ValidationException::withMessages([
+                'qr_logo' => 'Logo gagal disimpan. Coba unggah ulang.',
+            ]);
+        }
+
+        $this->deleteStoredQrLogo();
+        SystemSetting::set('qr_logo_path', $name, 'qr');
+    }
+
+    private function deleteStoredQrLogo(): void
+    {
+        $current = (string) SystemSetting::get('qr_logo_path', '');
+
+        if ($current === '') {
+            return;
+        }
+
+        $path = QrBranding::storageDir().'/'.basename($current);
+
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
+
     private function persistMailSettings(Request $request, bool $validate = false): void
     {
         if ($validate) {
@@ -848,6 +931,11 @@ class SystemSettingController extends Controller
         app(SystemMailSettingsService::class)->apply();
     }
 
+    /**
+     * Normalisasi daftar IP/CIDR (dipisah koma) untuk whitelist POS.
+     *
+     * @return array{0: string, 1: list<string>} [nilai ternormalisasi, item tidak valid]
+     */
     private function normalizeIpAllowlist(string $input): array
     {
         $items = array_values(array_filter(

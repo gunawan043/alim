@@ -10,7 +10,7 @@ use App\Http\Requests\Mobile\LinkWaliSantriRequest;
 use App\Http\Requests\Mobile\RequestWaliRoleRequest;
 use App\Http\Services\WaliSantriService;
 use App\Models\Student;
-use App\Models\WaliRegistrationToken;
+use App\Models\WaliLinkVerification;
 use App\Models\WaliSantri;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -292,31 +292,30 @@ class WaliSantriController extends Controller
             ]);
         }
 
-        // Ambil pending tokens yang mengarah ke student miliknya
-        $tokens = WaliRegistrationToken::with(['user:id,name,email,no_hp', 'student:id,name,nik'])
+        // Ambil pengajuan wali kedua yang masih menunggu persetujuan.
+        $verifications = WaliLinkVerification::with(['user:id,name,email,no_hp', 'student:id,name,nik'])
             ->whereIn('student_id', $studentIds)
-            ->whereNull('used_at')
-            ->where('expires_at', '>', now())
-            ->where('intent', 'add_wali')
+            ->where('method', 'wali_approval')
+            ->valid()
             ->orderByDesc('created_at')
             ->get();
 
-        $requests = $tokens->map(fn ($token) => [
-            'id' => $token->id,
-            'token' => $token->token,
+        $requests = $verifications->map(fn (WaliLinkVerification $verification) => [
+            'id' => $verification->id,
+            'approval_id' => $verification->id,
             'student' => [
-                'id' => $token->student->id,
-                'name' => $token->student->name,
-                'nik' => $token->student->nik,
+                'id' => $verification->student->id,
+                'name' => $verification->student->name,
+                'nik' => $verification->student->nik,
             ],
             'requester' => [
-                'id' => $token->user->id,
-                'name' => $token->user->name,
-                'email' => $token->user->email,
-                'no_hp' => $token->user->no_hp,
+                'id' => $verification->user->id,
+                'name' => $verification->user->name,
+                'email' => $verification->user->email,
+                'no_hp' => $verification->user->no_hp,
             ],
-            'expires_at' => $token->expires_at->toIso8601String(),
-            'created_at' => $token->created_at->toIso8601String(),
+            'expires_at' => $verification->expires_at->toIso8601String(),
+            'created_at' => $verification->created_at->toIso8601String(),
         ]);
 
         return response()->json([
@@ -494,10 +493,12 @@ class WaliSantriController extends Controller
             'DB_ERROR' => 'SERVER_ERROR',
         ];
 
+        $detailCode = is_array($details) ? ($details['code'] ?? null) : null;
+
         return response()->json([
             'success' => false,
             'error' => [
-                'code' => $errorMessages[$message] ?? $message,
+                'code' => $detailCode ?? ($errorMessages[$message] ?? $message),
                 'message' => $message,
                 'details' => $details,
             ],

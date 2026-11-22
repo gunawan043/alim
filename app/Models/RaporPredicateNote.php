@@ -29,6 +29,7 @@ class RaporPredicateNote extends Model
         'semester',
         'predicate',
         'note',
+        'note_ar',
         'updated_by',
     ];
 
@@ -49,6 +50,26 @@ class RaporPredicateNote extends Model
             ->whereNotNull('note')
             ->where('note', '!=', '')
             ->pluck('note', 'predicate')
+            ->all();
+    }
+
+    /**
+     * Peta predikat => catatan bahasa Arab untuk satu rombel/TA/semester.
+     *
+     * @return array<string, string>
+     */
+    public static function mapForArabic(
+        string $studyGroupId,
+        string $academicYearId,
+        string $semester,
+    ): array {
+        return static::query()
+            ->where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester', $semester)
+            ->whereNotNull('note_ar')
+            ->where('note_ar', '!=', '')
+            ->pluck('note_ar', 'predicate')
             ->all();
     }
 }

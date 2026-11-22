@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\WaliRegistrationToken;
+use App\Models\WaliLinkVerification;
 use App\Models\WaliSantri;
 use Illuminate\Foundation\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,7 +107,7 @@ class TenantIsolationRegressionTest extends TestCase
 
     private function asSanctumUser(User $user): self
     {
-        Sanctum::actingAs($user, [], 'sanctum');
+        Sanctum::actingAs($user, ['*'], 'sanctum');
         config(['auth.defaults.guard' => 'sanctum']);
         app()->refresh('auth', app()['auth'], 'guards');
 
@@ -284,7 +284,7 @@ class TenantIsolationRegressionTest extends TestCase
         // (because guardian A has no link to school B).
         // The link endpoint calls WaliSantriService which asserts school_id
         // matches the active tenant. Student B belongs to school B → 404.
-        $response->assertStatus(422)
+        $response->assertStatus(404)
             ->assertJsonPath('error.code', 'STUDENT_NOT_FOUND');
     }
 
@@ -311,7 +311,7 @@ class TenantIsolationRegressionTest extends TestCase
         ]);
 
         // Tenant guard fires → 404 with LINK_NOT_FOUND
-        $response->assertStatus(422)
+        $response->assertStatus(404)
             ->assertJsonPath('error.code', 'LINK_NOT_FOUND');
     }
 
@@ -329,14 +329,13 @@ class TenantIsolationRegressionTest extends TestCase
         $anotherWali = $this->createWali(['name' => 'Another Wali']);
 
         $token = bin2hex(random_bytes(32));
-        WaliRegistrationToken::create([
-            'token' => $token,
+        WaliLinkVerification::create([
             'user_id' => $anotherWali->id,
             'school_id' => $schoolB->id,
-            'nik_santri' => $studentB->nik,
-            'no_kk' => null,
-            'intent' => 'add_wali',
             'student_id' => $studentB->id,
+            'token_hash' => hash('sha256', $token),
+            'relationship' => 'wali',
+            'method' => 'wali_approval',
             'expires_at' => now()->addHours(24),
             'used_at' => null,
         ]);
@@ -364,13 +363,13 @@ class TenantIsolationRegressionTest extends TestCase
         $otherWali = $this->createWali(['name' => 'Wali Tiga']);
 
         $goodToken = bin2hex(random_bytes(32));
-        WaliRegistrationToken::create([
-            'token' => $goodToken,
+        WaliLinkVerification::create([
             'user_id' => $otherWali->id,
             'school_id' => $schoolA->id,
-            'nik_santri' => $studentA->nik,
-            'intent' => 'add_wali',
             'student_id' => $studentA->id,
+            'token_hash' => hash('sha256', $goodToken),
+            'relationship' => 'wali',
+            'method' => 'wali_approval',
             'expires_at' => now()->addHours(24),
             'used_at' => null,
         ]);
@@ -389,13 +388,13 @@ class TenantIsolationRegressionTest extends TestCase
         // Now generate a fake cross-tenant token (school B) and try to approve
         $crossWali = $this->createWali(['name' => 'Cross Wali']);
         $crossToken = bin2hex(random_bytes(32));
-        WaliRegistrationToken::create([
-            'token' => $crossToken,
+        WaliLinkVerification::create([
             'user_id' => $crossWali->id,
             'school_id' => $schoolB->id,
-            'nik_santri' => $studentB->nik,
-            'intent' => 'add_wali',
             'student_id' => $studentB->id,
+            'token_hash' => hash('sha256', $crossToken),
+            'relationship' => 'wali',
+            'method' => 'wali_approval',
             'expires_at' => now()->addHours(24),
             'used_at' => null,
         ]);
@@ -407,7 +406,7 @@ class TenantIsolationRegressionTest extends TestCase
         ]);
 
         // Must be rejected — tenant mismatch
-        $response->assertStatus(422)
+        $response->assertStatus(404)
             ->assertJsonPath('error.code', 'TOKEN_INVALID');
     }
 
@@ -460,7 +459,7 @@ class TenantIsolationRegressionTest extends TestCase
         ]);
 
         // Tenant guard fires: student A belongs to school A, not school B
-        $response->assertStatus(422)
+        $response->assertStatus(404)
             ->assertJsonPath('error.code', 'STUDENT_NOT_FOUND');
     }
 

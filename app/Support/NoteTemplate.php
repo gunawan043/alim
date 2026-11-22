@@ -13,6 +13,12 @@ final class NoteTemplate
 {
     public const NAME_PLACEHOLDER = '{nama}';
 
+    /** Alias yang diterima: {nama} dan {santri} (case-insensitive). */
+    private const NAME_VARIANTS = [
+        '{nama}', '{Nama}', '{NAMA}',
+        '{santri}', '{Santri}', '{SANTRI}',
+    ];
+
     /**
      * Ganti seluruh placeholder nama. Null/teks kosong dikembalikan apa adanya.
      */
@@ -23,7 +29,7 @@ final class NoteTemplate
         }
 
         return str_replace(
-            [self::NAME_PLACEHOLDER, '{Nama}', '{NAMA}'],
+            self::NAME_VARIANTS,
             (string) ($name ?? ''),
             $note
         );
@@ -38,8 +44,12 @@ final class NoteTemplate
             return false;
         }
 
-        return str_contains($note, self::NAME_PLACEHOLDER)
-            || str_contains($note, '{Nama}')
-            || str_contains($note, '{NAMA}');
+        foreach (self::NAME_VARIANTS as $placeholder) {
+            if (str_contains($note, $placeholder)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

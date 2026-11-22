@@ -270,21 +270,73 @@ class SumatifHarianService
             $values = $this->valuesFor($row, $columns);
         }
 
+        // Komponen STS/SAS per buku (mis. Praktik & Tulis). Bila aktif,
+        // nilai akhir sts/sas dihitung dari rata-rata komponen.
+        $komponen = app(SumatifKomponenService::class);
+        $stsColumns = $komponen->columnsFor($book, 'sts');
+        $sasColumns = $komponen->columnsFor($book, 'sas');
+
         if (array_key_exists('sts_murni', $input)) {
             $row->sts_murni = $this->numericOrNull($input['sts_murni']);
         }
-        if (array_key_exists('sts', $input)) {
+        if (array_key_exists('sts', $input) && $stsColumns === []) {
             $row->sts = $this->numericOrNull($input['sts']);
         }
         if (array_key_exists('sas_murni', $input)) {
             $row->sas_murni = $this->numericOrNull($input['sas_murni']);
         }
-        if (array_key_exists('sas', $input)) {
+        if (array_key_exists('sas', $input) && $sasColumns === []) {
             $row->sas = $this->numericOrNull($input['sas']);
         }
+
+        foreach (['sts' => $stsColumns, 'sas' => $sasColumns] as $jenis => $columns) {
+            if ($columns === []) {
+                continue;
+            }
+
+            $key = $jenis.'_components';
+            $hasInput = array_key_exists($key, $input) && is_array($input[$key]);
+            $current = $row->{$key};
+            $current = is_array($current) ? $current : [];
+
+            $values = [];
+            foreach ($columns as $col) {
+                $raw = $hasInput
+                    ? ($input[$key][$col['id']] ?? null)
+                    : ($current[$col['id']] ?? null);
+                $values[$col['id']] = $this->numericOrNull($raw);
+            }
+
+            $filled = array_filter($values, fn ($v) => $v !== null);
+            $row->{$key} = $filled !== [] ? $filled : null;
+            $row->{$jenis} = $komponen->average($values);
+        }
+
         if (array_key_exists('raport_sts', $input)) {
             $row->raport_sts = $this->numericOrNull($input['raport_sts']);
         }
+
+        // RSA manual: nilai yang diketik guru dipakai apa adanya dan tidak
+        // ditimpa rumus. Isian kosong = kembali ke perhitungan otomatis.
+        if (array_key_exists('rsa', $input)) {
+            $rsaManual = $this->numericOrNull($input['rsa']);
+            $row->rsa_manual = $rsaManual !== null;
+
+            if ($rsaManual !== null) {
+                $row->rsa = $rsaManual;
+            }
+        }
+
+        // NR Murni manual — aturan sama seperti RSA.
+        if (array_key_exists('nr_murni', $input)) {
+            $nrManual = $this->numericOrNull($input['nr_murni']);
+            $row->nr_murni_manual = $nrManual !== null;
+
+            if ($nrManual !== null) {
+                $row->nr_murni = $nrManual;
+            }
+        }
+
         if (array_key_exists('ket', $input)) {
             $ket = trim((string) ($input['ket'] ?? ''));
             $row->ket = $ket !== '' ? $ket : null;
@@ -311,6 +363,11 @@ class SumatifHarianService
 
         $columns = $this->columnsFor($book);
         $values = $this->valuesFor($row, $columns);
+
+        // Jaga konsistensi bila komponen STS/SAS berubah di luar jalur upsert.
+        $komponen = app(SumatifKomponenService::class);
+        $komponen->recalcRow($row, $book, 'sts');
+        $komponen->recalcRow($row, $book, 'sas');
 
         $this->applyDerived($row, $book, $values);
 
@@ -381,8 +438,8 @@ class SumatifHarianService
     /**
      * Terapkan rumus turunan yang sama untuk semua jalur:
      *  RS = rata-rata SH terisi
-     *  RSA = (raport_sts|sts + sas) / 2
-     *  NR Murni = (RS + RSA) / 2
+     *  RSA = (raport_sts|sts + sas) / 2 — kecuali diisi manual (rsa_manual)
+     *  NR Murni = (RS + RSA) / 2 — kecuali diisi manual (nr_murni_manual)
      *  NR Final = (RS×wRs + raport_sts|sts×wSts + SAS×wSas) / 100
      *
      * @param  array<string, float|null>  $values
@@ -403,8 +460,17 @@ class SumatifHarianService
         $raportSts = $row->raport_sts !== null ? (float) $row->raport_sts : null;
 
         $row->rs = $rs;
-        $row->rsa = NilaiSumatif::calcRsa($sts, $sas, $raportSts);
-        $row->nr_murni = NilaiSumatif::calcNrMurni($rs, $row->rsa !== null ? (float) $row->rsa : null);
+
+        // RSA manual tidak boleh ditimpa rumus; kosongkan isian untuk
+        // mengembalikannya ke perhitungan otomatis.
+        if (! $row->rsa_manual) {
+            $row->rsa = NilaiSumatif::calcRsa($sts, $sas, $raportSts);
+        }
+
+        // NR Murni manual juga tidak ditimpa rumus.
+        if (! $row->nr_murni_manual) {
+            $row->nr_murni = NilaiSumatif::calcNrMurni($rs, $row->rsa !== null ? (float) $row->rsa : null);
+        }
         $row->nr_final = NilaiSumatif::calcNrFinal($rs, $sts, $sas, $wRs, $wSts, $wSas, $raportSts);
     }
 

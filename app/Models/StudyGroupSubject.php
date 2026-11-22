@@ -94,6 +94,30 @@ class StudyGroupSubject extends Model
         return $this->hasMany(TeacherAdminBook::class, 'study_group_subject_id');
     }
 
+    /**
+     * Bobot bawaan dari JP: JP ÷ 2, tetapi JP 1 tetap 1 (tidak dibagi).
+     */
+    public static function bobotDariJp(float|int|null $jp): float
+    {
+        if ($jp === null) {
+            return 0.0;
+        }
+
+        $jp = (float) $jp;
+
+        return $jp > 1 ? $jp / 2 : $jp;
+    }
+
+    /**
+     * Bobot efektif: override manual bila diisi, selain itu JP ÷ 2.
+     */
+    public function effectiveBobot(): float
+    {
+        return $this->bobot !== null
+            ? (float) $this->bobot
+            : self::bobotDariJp($this->weekly_hours);
+    }
+
     // ── Scopes ─────────────────────────────────────────────────
 
     public function scopeActive($q)

@@ -26,6 +26,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'qr' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'qr']) }}">
+                                <i class="ri-qr-code-line me-1"></i> QR Code
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'email' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'email']) }}">
                                 <i class="ri-mail-settings-line me-1"></i> Email
@@ -83,8 +89,70 @@
                 </div>
 
                 <div class="card-body">
-                    <form method="POST" action="{{ route('user.sa.system-settings.update', ['userId' => $userId]) }}">
+                    <form method="POST" action="{{ route('user.sa.system-settings.update', ['userId' => $userId]) }}" enctype="multipart/form-data">
                         @csrf
+
+                        {{-- TAB: QR --}}
+                        @if($tab === 'qr')
+                            <input type="hidden" name="qr_settings" value="1">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label d-block">Logo pada QR Code</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                            name="qr_logo_enabled" id="qr_logo_enabled" value="1"
+                                            {{ ($settings['qr_logo_enabled'] ?? '1') === '1' ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="qr_logo_enabled">
+                                            Tampilkan logo di tengah QR
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        Berlaku untuk QR aset, QR kelas, QR perizinan, dan QR kunjungan.
+                                        Error correction otomatis dinaikkan ke level H agar tetap terbaca.
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Ukuran logo</label>
+                                    <select name="qr_logo_ratio" class="form-select">
+                                        @foreach([0.18, 0.20, 0.22, 0.25] as $ratioOption)
+                                            <option value="{{ $ratioOption }}"
+                                                {{ (string) ($settings['qr_logo_ratio'] ?? '0.22') === (string) $ratioOption ? 'selected' : '' }}>
+                                                {{ (int) round($ratioOption * 100) }}% lebar QR
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text">Semakin besar logo, semakin kecil toleransi kerusakan QR.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Upload logo baru</label>
+                                    <input type="file" name="qr_logo" class="form-control" accept="image/png,image/jpeg,image/webp">
+                                    <div class="form-text">PNG/JPG/WebP, maksimal 2 MB. Sebaiknya persegi dan berlatar transparan.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label d-block">Logo aktif</label>
+                                    <div class="d-flex align-items-center gap-3">
+                                        @if($qrLogoUrl)
+                                            <img src="{{ $qrLogoUrl }}" alt="Logo QR aktif"
+                                                style="height:56px;width:56px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px;padding:4px;background:#fff;">
+                                        @else
+                                            <span class="text-muted small">Belum ada logo.</span>
+                                        @endif
+
+                                        @if(!empty($settings['qr_logo_path']))
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="qr_logo_remove" value="1" id="qr_logo_remove">
+                                                <label class="form-check-label" for="qr_logo_remove">
+                                                    Hapus logo upload, kembali ke default
+                                                </label>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- TAB: General --}}
                         @if($tab === 'general')

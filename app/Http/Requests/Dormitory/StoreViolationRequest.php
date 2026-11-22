@@ -26,7 +26,7 @@ class StoreViolationRequest extends FormRequest
             ],
             'violation_date' => 'required|date',
             'violation_category' => 'nullable|in:ringan,sedang,berat',
-            'violation_type' => 'nullable|string|max:100',
+            'violation_type' => 'nullable|string|max:191',
             'description' => 'nullable|string',
             'points' => 'nullable|integer|min:0',
             'action_taken' => 'nullable|string',
@@ -44,6 +44,7 @@ class StoreViolationRequest extends FormRequest
             'point_catalog_id.exists' => 'Katalog pelanggaran tidak aktif atau tidak ditemukan.',
             'violation_category.required' => 'Kategori pelanggaran wajib dipilih.',
             'violation_type.required' => 'Jenis pelanggaran wajib diisi.',
+            'violation_type.max' => 'Nama pelanggaran maksimal 191 karakter.',
             'points.min' => 'Poin tidak boleh negatif.',
         ];
     }

@@ -146,9 +146,12 @@ class RoomSupervisorController extends Controller
                 ->get();
 
             $studentIds = $residents->pluck('student_id')->filter()->all();
+            // Hanya santri yang benar-benar sudah keluar yang dihitung izin pulang;
+            // izin yang baru disetujui belum mengurangi penghuni kamar.
             $onPermitIds = DormitoryPermit::whereIn('student_id', $studentIds)
-                ->whereIn('status', ['approved', 'overdue'])
+                ->whereIn('status', ['picked_up', 'overdue'])
                 ->whereNull('actual_return_datetime')
+                ->distinct()
                 ->pluck('student_id')
                 ->all();
 
@@ -271,7 +274,7 @@ class RoomSupervisorController extends Controller
     private function gtkCandidates(?Dormitory $dormitory = null)
     {
         return User::query()
-            ->when($dormitory?->work_unit_id, fn ($q) => $q->whereHas('workUnits', fn ($qq) => $qq->where('gtk_work_unit.work_unit_id', $dormitory->work_unit_id)))
+            ->when($dormitory?->work_unit_id, fn ($q) => $q->whereHas('workUnits', fn ($qq) => $qq->current()->where('gtk_work_unit.work_unit_id', $dormitory->work_unit_id)))
             ->orderBy('name')
             ->limit(200)
             ->get(['id', 'name', 'email']);

@@ -12,7 +12,6 @@ use App\Models\HumasSatisfactionSurvey;
 use App\Models\NotificationUniversal;
 use App\Models\Student;
 use App\Models\StudentHealthPermit;
-use App\Models\WaliRegistrationToken;
 use App\Models\WaliSantri;
 use App\Services\Boarding\HealthWorkflowService;
 use App\Services\Boarding\LeaveWorkflowService;
@@ -24,7 +23,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Wali Santri Portal.
  *
- * Wali masuk via access_token (issued by admin via WaliRegistrationToken flow),
+ * Wali masuk via access_token pada relasi WaliSantri,
  * then dapat:
  *   - Lihat daftar anak yang diasuh
  *   - Lihat status permohonan mereka

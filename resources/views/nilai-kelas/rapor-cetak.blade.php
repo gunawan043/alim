@@ -50,6 +50,13 @@
         'letter' => 'letter',
         default => 'A4',
     };
+    // Tinggi baris body dikunci agar seragam di semua baris; header dibiarkan
+    // menyesuaikan isinya sendiri.
+    $tableRowPad = (float) ($layout['table_row_padding'] ?? 0.5);
+    $tableLineHeight = (float) ($layout['table_line_height'] ?? 1.05);
+    $rowHeight = round((float) $layout['table_font_size'] * 0.3528 * $tableLineHeight + 2 * $tableRowPad, 2);
+    // Rapor Arab memakai 7,5pt dengan padding 1px (lihat aturan body.ar).
+    $rowHeightAr = round(7.5 * 0.3528 * 1.05 + 2 * 0.2646, 2);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ $isArabic ? 'ar' : 'id' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
@@ -114,6 +121,11 @@
             padding: 1px 3px;
             font-size: 7.5pt;
             line-height: 1.05;
+        }
+
+        body.ar table.nilai tbody td,
+        body.ar table.nilai tbody tr {
+            height: {{ $rowHeightAr }}mm;
         }
 
         body.ar .ringkasan-box {
@@ -186,16 +198,19 @@
             direction: rtl;
         }
         body.ar table.nilai th,
-        body.ar table.nilai td,
-        body.ar .info-grid td,
-        body.ar .ringkasan-box td,
-        body.ar .catatan-box td {
+        body.ar table.nilai td {
+            /* Kolom angka (No, KKTP, Bobot, Nilai, Jumlah) dan Keterangan
+               rata tengah; hanya kolom mata pelajaran yang rata kanan. */
+            text-align: center;
+        }
+        body.ar table.nilai th.mapel,
+        body.ar table.nilai td.mapel {
             text-align: right;
         }
-        body.ar table.nilai td.no,
-        body.ar table.nilai td.kkm,
-        body.ar table.nilai td.nilai-col,
-        body.ar table.nilai td.ket-col,
+        body.ar .info-grid td,
+        body.ar .ringkasan-box td {
+            text-align: right;
+        }
         body.ar .ringkasan-box td.colon,
         body.ar .ringkasan-box td.val {
             text-align: center;
@@ -345,15 +360,62 @@
             text-align: center;
             width: 12%;
         }
-        table.nilai.with-bobot td.mapel {
-            width: 28%;
+        /* Lebar kolom rapor SAS disamakan dengan separuh tabel bilingual
+           agar format SAS Indonesia/Arab identik dengan versi bilingual. */
+        table.nilai.with-bobot {
+            table-layout: fixed;
         }
+        table.nilai.with-bobot th.no,
+        table.nilai.with-bobot td.no {
+            width: 5.1%;
+        }
+        table.nilai.with-bobot th.mapel,
+        table.nilai.with-bobot td.mapel {
+            width: 31.6%;
+        }
+        table.nilai.with-bobot th.kkm,
+        table.nilai.with-bobot td.kkm {
+            width: 8.2%;
+        }
+        table.nilai.with-bobot th.bobot-col,
+        table.nilai.with-bobot td.bobot-col {
+            width: 8.2%;
+        }
+        table.nilai.with-bobot th.nilai-col,
+        table.nilai.with-bobot td.nilai-col {
+            width: 8.2%;
+        }
+        table.nilai.with-bobot th.jumlah-col,
+        table.nilai.with-bobot td.jumlah-col {
+            width: 13.3%;
+        }
+        table.nilai.with-bobot th.ket-col,
         table.nilai.with-bobot td.ket-col {
-            width: 16%;
+            width: 25.4%;
         }
         table.nilai td.ket-col {
             text-align: center;
             width: 20%;
+        }
+
+        /* Baris ringkasan SAS menempel pada tabel nilai (sama seperti bilingual). */
+        table.nilai tr.summary td {
+            font-weight: bold;
+            text-align: center;
+        }
+        table.nilai tr.summary td.summary-label {
+            text-align: {{ $isArabic ? 'right' : 'left' }};
+            padding-{{ $isArabic ? 'right' : 'left' }}: 6px;
+        }
+
+        /* Tinggi baris body dikunci agar seragam; header tetap menyesuaikan. */
+        table.nilai tbody td,
+        table.nilai tbody tr {
+            height: {{ $rowHeight }}mm;
+        }
+        table.nilai tbody td {
+            vertical-align: middle;
+            white-space: nowrap;
         }
 
         /* ── Ringkasan ── */
@@ -406,10 +468,14 @@
             padding: 4px 8px;
             font-size: {{ $layout['table_font_size'] }}pt;
             vertical-align: top;
+            /* Header dan isi tabel catatan rata tengah, sejajar dengan
+               header tabel nilai di atasnya. */
+            text-align: center;
         }
         .catatan-box td.hdr {
             font-weight: bold;
             background: #f0f0f0;
+            text-align: center;
         }
         .catatan-box td.lbl-col {
             width: 40%;
@@ -440,6 +506,13 @@
             text-align: right;
             padding: 0 8px 14px 8px;
             font-size: {{ $layout['footer_font_size'] + 1 }}pt;
+        }
+        /* Dua baris tanggal (Masehi & Hijriah) rata pada kolom tanggal.
+           Jangan memakai float: Dompdf mengabaikan tinggi float di dalam sel
+           sehingga tanggal menimpa baris tanda tangan di bawahnya. */
+        .date-lines {
+            line-height: 1.25;
+            white-space: nowrap;
         }
         .ttd-grid td.ttd-col {
             width: 33.33%;
@@ -618,15 +691,51 @@
                 @endif
             </tr>
             @endforeach
+
+            @if($showBobot)
+                {{-- Ringkasan SAS: menempel pada tabel, urutan sel mengikuti arah kolom. --}}
+                @if($isArabic)
+                    <tr class="summary">
+                        <td></td>
+                        <td colspan="2">{{ $num($data['JumlahTertimbang'] ?? '-') }}</td>
+                        <td>{{ $num($data['JumlahBobot'] ?? '-') }}</td>
+                        <td colspan="3" class="summary-label">{!! $text($label('total_bobot')) !!}</td>
+                    </tr>
+                    <tr class="summary">
+                        <td colspan="4">{{ $num($data['Rata'] ?? '-') }}</td>
+                        <td colspan="3" class="summary-label">{!! $text($label('rata_rata')) !!}</td>
+                    </tr>
+                    <tr class="summary">
+                        <td colspan="4">{!! $text($pred($data['Predikat'] ?? '—')) !!}</td>
+                        <td colspan="3" class="summary-label">{!! $text($label('predikat')) !!}</td>
+                    </tr>
+                @else
+                    <tr class="summary">
+                        <td colspan="3" class="summary-label">{!! $text($label('total_bobot')) !!}</td>
+                        <td>{{ $num($data['JumlahBobot'] ?? '-') }}</td>
+                        <td colspan="2">{{ $num($data['JumlahTertimbang'] ?? '-') }}</td>
+                        <td></td>
+                    </tr>
+                    <tr class="summary">
+                        <td colspan="3" class="summary-label">{!! $text($label('rata_rata')) !!}</td>
+                        <td colspan="4">{{ $num($data['Rata'] ?? '-') }}</td>
+                    </tr>
+                    <tr class="summary">
+                        <td colspan="3" class="summary-label">{!! $text($label('predikat')) !!}</td>
+                        <td colspan="4">{!! $text($pred($data['Predikat'] ?? '—')) !!}</td>
+                    </tr>
+                @endif
+            @endif
         </tbody>
     </table>
 
-    {{-- Ringkasan --}}
+    {{-- Ringkasan STS (rapor SAS memakai baris ringkasan di dalam tabel). --}}
+    @if(! $showBobot)
     <table class="ringkasan-box" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
-            <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label($showBobot ? 'total_bobot' : 'jumlah_nilai')) !!}</td>
+            <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('jumlah_nilai')) !!}</td>
             <td class="colon">:</td>
-            <td class="val">{{ $num($showBobot ? ($data['JumlahBobot'] ?? '-') : ($data['Jumlah'] ?? '-')) }}</td>
+            <td class="val">{{ $num($data['Jumlah'] ?? '-') }}</td>
             <td class="empty"></td>
             <td class="empty"></td>
             <td class="empty"></td>
@@ -634,14 +743,6 @@
             <td class="colon">:</td>
             <td class="pred-val">{!! $text($pred($data['Predikat'] ?? '-')) !!}</td>
         </tr>
-        @if($showBobot)
-            <tr>
-                <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('nilai_tertimbang')) !!}</td>
-                <td class="colon">:</td>
-                <td class="val">{{ $num($data['JumlahTertimbang'] ?? '-') }}</td>
-                <td class="empty" colspan="6"></td>
-            </tr>
-        @endif
         <tr>
             <td class="lbl" style="text-align:left; padding-left:16px;">{!! $text($label('rata_rata')) !!}</td>
             <td class="colon">:</td>
@@ -649,6 +750,7 @@
             <td class="empty" colspan="6"></td>
         </tr>
     </table>
+    @endif
 
     {{-- Catatan --}}
     <table class="catatan-box" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
@@ -661,8 +763,8 @@
                 <td>
                     @if(filled($data['CatatanWaliAr'] ?? null) || filled($data['CatatanWali'] ?? null))
                         {!! \App\Support\ArabicText::toHtml($data['CatatanWaliAr'] ?? $data['CatatanWali']) !!}
-                    @elseif(! empty($data['CatatanPredikat']))
-                        {!! \App\Support\ArabicText::toHtml($data['CatatanPredikat']) !!}
+                    @elseif(filled($data['CatatanPredikatAr'] ?? null) || ! empty($data['CatatanPredikat']))
+                        {!! \App\Support\ArabicText::toHtml($data['CatatanPredikatAr'] ?? $data['CatatanPredikat']) !!}
                     @else
                         <span style="color:#94a3b8;">—</span>
                     @endif
@@ -722,11 +824,17 @@
     <table class="ttd-grid" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
         <tr>
             <td colspan="3" class="ttd-date" style="text-align: {{ $isArabic ? 'center' : 'right' }};">
-                @if($isArabic)
-                    {!! $text($hijriDate) !!}، {!! $text($cityText($printCity)) !!}
-                @else
-                    {!! $text($cityText($printCity)) !!}, {{ $printDate->translatedFormat('d F Y') }} M{{ filled($hijriDateLatin) ? ' / '.$hijriDateLatin : '' }}
-                @endif
+                @php
+                    $masehiDate = $isArabic
+                        ? \App\Support\ArabicText::formatDate($printDate).' مـ'
+                        : $printDate->translatedFormat('d F Y').' M';
+                    $hijriLine = $isArabic ? $hijriDate : $hijriDateLatin;
+                @endphp
+                <div class="date-lines">
+                    <span class="date-city">{!! $text($cityText($printCity)) !!}{{ $isArabic ? '،' : ',' }}</span>
+                    {!! $text($masehiDate) !!}<br>
+                    {!! $text($hijriLine) !!}
+                </div>
             </td>
         </tr>
         <tr>
@@ -739,7 +847,7 @@
             <td class="ttd-col">
                 <div class="ttd-title">{!! $text($label('wali_kelas')) !!}</div>
                 <div class="ttd-sig-area" style="height: {{ $sigAreaHeight }}mm;">
-                    @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_wali'] ?? true) && ! empty($ttdWaliBase64))
+                    @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_wali'] ?? false) && ! empty($ttdWaliBase64))
                         <img src="{{ $ttdWaliBase64 }}" class="signature-image"
                              style="width: {{ $layout['ttd_wali_width'] }}mm; height: {{ $layout['ttd_wali_height'] }}mm;"
                              alt="TTD Wali Kelas">
@@ -754,12 +862,12 @@
                 <div class="ttd-sig-area" style="height: {{ $sigAreaHeight }}mm;">
                     <div class="signature-stack"
                          style="width: {{ max((float) $layout['ttd_ksp_width'], (float) $layout['stamp_width']) }}mm; height: {{ max((float) $layout['ttd_ksp_height'], (float) $layout['stamp_height']) }}mm;">
-                        @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? true) && ! empty($stampBase64))
+                        @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? false) && ! empty($stampBase64))
                             <img src="{{ $stampBase64 }}" class="stamp-image"
                                  style="width: {{ $layout['stamp_width'] }}mm; height: {{ $layout['stamp_height'] }}mm;"
                                  alt="Stempel Sekolah">
                         @endif
-                        @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
+                        @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? false) && ! empty($ttdKspBase64))
                             <img src="{{ $ttdKspBase64 }}" class="ttd-image"
                                  style="width: {{ $layout['ttd_ksp_width'] }}mm; height: {{ $layout['ttd_ksp_height'] }}mm;"
                                  alt="TTD Kepala Sekolah">
@@ -773,7 +881,7 @@
         </tr>
     </table>
 
-    @if($layout['show_qr'] ?? true)
+    @if($layout['show_qr'] ?? false)
         @include('documents._qr-footer', ['verification' => $verificationByStudent[$key] ?? null])
     @endif
 

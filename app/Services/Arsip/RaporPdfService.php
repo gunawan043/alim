@@ -411,6 +411,12 @@ class RaporPdfService
             (string) $selectedSem,
         )[$predikat] ?? null;
 
+        $catatanPredikatAr = RaporPredicateNote::mapForArabic(
+            (string) $studyGroupId,
+            (string) $selectedAyId,
+            (string) $selectedSem,
+        )[$predikat] ?? null;
+
         // Final score & predikat hanya disimpan untuk dokumen SAS (nilai akhir) pada TA aktif
         // — cetak/arsip TA arsip tidak menulis apa pun ke data periode lama.
         if ($jenis === 'sas') {
@@ -442,6 +448,8 @@ class RaporPdfService
         // nama Arab untuk catatan Arab.
         $catatanWali = NoteTemplate::render($catatanWali, $student->name);
         $catatanWaliAr = NoteTemplate::render($catatanWaliAr, $namaAr);
+        $catatanPredikat = NoteTemplate::render($catatanPredikat, $student->name);
+        $catatanPredikatAr = NoteTemplate::render($catatanPredikatAr, $namaAr);
 
         return [
             $studentId => [
@@ -466,6 +474,7 @@ class RaporPdfService
                 'CatatanWali' => $catatanWali,
                 'CatatanWaliAr' => $catatanWaliAr,
                 'CatatanPredikat' => $catatanPredikat,
+                'CatatanPredikatAr' => $catatanPredikatAr,
             ],
         ];
     }
@@ -491,9 +500,7 @@ class RaporPdfService
             ->whereIn('subject_id', $subjectIds)
             ->get()
             ->mapWithKeys(fn ($row) => [
-                $row->subject_id => $row->bobot !== null
-                    ? (float) $row->bobot
-                    : (float) $row->weekly_hours,
+                $row->subject_id => $row->effectiveBobot(),
             ])
             ->all();
     }

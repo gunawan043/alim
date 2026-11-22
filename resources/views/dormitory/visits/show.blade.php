@@ -388,13 +388,22 @@
                             'visitUuid' => $visit->id,
                         ]
                     );
+
+                    $qrImage = \App\Services\Ljk\LjkQrRenderer::pngDataUri(
+                        $scanUrl,
+                        420,
+                        4,
+                        'Q',
+                        \App\Support\Qr\QrBranding::logoPath(),
+                        \App\Support\Qr\QrBranding::ratio()
+                    );
                 @endphp
                 <div class="card mt-3">
                     <div class="card-header bg-transparent">
                         <h5 class="mb-0"><i class="ri-qr-code-line me-2 text-primary"></i>QR Code Kunjungan</h5>
                     </div>
                     <div class="card-body text-center">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ urlencode($scanUrl) }}"
+                        <img src="{{ $qrImage }}"
                              alt="QR Code Kunjungan"
                              class="img-fluid rounded border"
                              style="max-width: 200px;">

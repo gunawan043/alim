@@ -67,6 +67,26 @@ class AssetQrTest extends TestCase
     }
 
     /** @test */
+    public function pdf_qr_aset_memakai_layout_kartu_a4(): void
+    {
+        $admin = $this->admin();
+        $asset = $this->createAsset();
+
+        $response = $this->actingAs($admin)->get(route('sarpras.qr.pdf', [
+            'userId' => $admin->id,
+            'asset_id' => $asset->id,
+        ]));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        $pdf = (string) $response->getContent();
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertSame(1, preg_match_all('/\/Type\s*\/Page\b/', $pdf));
+        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*595\.?[0-9]*\s+84[12]\.?[0-9]*\]?/', $pdf);
+    }
+
+    /** @test */
     public function aset_sejenis_di_ruang_sama_berbagi_satu_qr_kelompok(): void
     {
         $admin = $this->admin();

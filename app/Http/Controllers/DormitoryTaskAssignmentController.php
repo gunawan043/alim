@@ -348,6 +348,19 @@ class DormitoryTaskAssignmentController extends Controller
             return;
         }
 
+        if (config('gtk_work_unit.lifecycle.enabled', false)) {
+            $placement = GtkWorkUnit::where('user_id', $targetUserId)
+                ->where('work_unit_id', $dormitory->work_unit_id)
+                ->first();
+
+            if ($placement) {
+                app(\App\Services\GtkPlacementLifecycleService::class)
+                    ->updatePosition($placement, $position->id, $position->name, auth()->id());
+            }
+
+            return;
+        }
+
         GtkWorkUnit::where('user_id', $targetUserId)
             ->where('work_unit_id', $dormitory->work_unit_id)
             ->update([

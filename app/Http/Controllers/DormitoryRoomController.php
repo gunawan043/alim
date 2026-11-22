@@ -188,10 +188,15 @@ class DormitoryRoomController extends Controller
 
         $activePermits = DormitoryPermit::with(['student'])
             ->whereIn('student_id', $residentIds)
-            ->whereIn('status', ['approved', 'overdue'])
+            ->whereIn('status', ['approved', 'picked_up', 'overdue'])
             ->whereNull('actual_return_datetime')
             ->get()
             ->keyBy('student_id');
+
+        // Hanya izin yang benar-benar sudah keluar yang mengurangi hunian.
+        $outPermitIds = $activePermits
+            ->filter(fn ($permit) => in_array($permit->status, ['picked_up', 'overdue'], true))
+            ->keys();
 
         $stats = [
             'total_residents' => $activeResidents->count(),
@@ -199,8 +204,8 @@ class DormitoryRoomController extends Controller
             'occupancy_rate' => $room->capacity > 0
                 ? round($activeResidents->count() / $room->capacity * 100, 1)
                 : 0,
-            'on_permit' => $activePermits->count(),
-            'in_dormitory' => $activeResidents->count() - $activePermits->count(),
+            'on_permit' => $outPermitIds->count(),
+            'in_dormitory' => $activeResidents->count() - $outPermitIds->count(),
         ];
 
         return view('dormitory.rooms.show', compact('room', 'dormitory', 'userId', 'stats', 'activeResidents', 'activePermits'));

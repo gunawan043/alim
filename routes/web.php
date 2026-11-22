@@ -215,6 +215,7 @@ use App\Http\Controllers\Personalia\RaporGtkController;
 use App\Http\Controllers\PositionProposalController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileSecurityController;
+use App\Http\Controllers\QrLogoController;
 use App\Http\Controllers\RecruitmentPipelineController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoomSupervisorController;
@@ -4377,6 +4378,9 @@ Route::post('/webhook/deploy', [DeployController::class, 'handle']);
 Route::get('/health', [DeployController::class, 'health']);
 
 Route::view('/offline', 'offline')->name('offline');
+
+// ── LOGO QR (pratinjau di Pengaturan Sistem) ─────────────────────────────────
+Route::get('/qr-logo', [QrLogoController::class, 'show'])->name('qr.logo');
 
 // ── VERIFIKASI PUBLIK SURAT (QR) ─────────────────────────────────────────────
 Route::get('/verifikasi-surat/{token}', [SuratVerificationController::class, 'show'])

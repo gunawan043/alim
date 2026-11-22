@@ -175,28 +175,32 @@ class GtkTransferRequest extends Model
 
         $fromWorkUnitId = $currentPrimary?->work_unit_id ?: $this->from_work_unit_id;
 
-        // If GTK already has an assignment at the destination unit, just promote it
-        // to primary (and demote the existing primary). Otherwise create a new record.
-        $destination = GtkWorkUnit::where('user_id', $userId)
-            ->where('work_unit_id', $this->to_work_unit_id)
-            ->first();
-
-        if ($destination) {
-            $destination->is_primary = true;
-            $destination->jabatan = $this->jabatan ?: $destination->jabatan;
-            $destination->save();
+        if (config('gtk_work_unit.lifecycle.enabled', false)) {
+            $this->applyTransferWithLifecycle($userId, $fromWorkUnitId, $approverId);
         } else {
-            GtkWorkUnit::create([
-                'user_id' => $userId,
-                'work_unit_id' => $this->to_work_unit_id,
-                'jabatan' => $this->jabatan,
-                'is_primary' => true,
-            ]);
-        }
+            // If GTK already has an assignment at the destination unit, just promote it
+            // to primary (and demote the existing primary). Otherwise create a new record.
+            $destination = GtkWorkUnit::where('user_id', $userId)
+                ->where('work_unit_id', $this->to_work_unit_id)
+                ->first();
 
-        if ($currentPrimary && $currentPrimary->work_unit_id !== $this->to_work_unit_id) {
-            $currentPrimary->is_primary = false;
-            $currentPrimary->save();
+            if ($destination) {
+                $destination->is_primary = true;
+                $destination->jabatan = $this->jabatan ?: $destination->jabatan;
+                $destination->save();
+            } else {
+                GtkWorkUnit::create([
+                    'user_id' => $userId,
+                    'work_unit_id' => $this->to_work_unit_id,
+                    'jabatan' => $this->jabatan,
+                    'is_primary' => true,
+                ]);
+            }
+
+            if ($currentPrimary && $currentPrimary->work_unit_id !== $this->to_work_unit_id) {
+                $currentPrimary->is_primary = false;
+                $currentPrimary->save();
+            }
         }
 
         GtkWorkUnitHistory::create([
@@ -210,6 +214,45 @@ class GtkTransferRequest extends Model
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
+    }
+
+    /**
+     * Jalur transfer saat lifecycle aktif: tutup periode lama, buka periode
+     * tujuan. `work_unit_id` pada baris lama tidak pernah diubah.
+     */
+    protected function applyTransferWithLifecycle(string $userId, ?string $fromWorkUnitId, string $approverId): void
+    {
+        $lifecycle = app(\App\Services\GtkPlacementLifecycleService::class);
+
+        $positionId = $this->jabatan
+            ? StructuralPosition::whereRaw('LOWER(TRIM(name)) = LOWER(?)', [$this->jabatan])->value('id')
+            : null;
+
+        if ($fromWorkUnitId && (string) $fromWorkUnitId !== (string) $this->to_work_unit_id) {
+            $lifecycle->transfer(
+                $userId,
+                $fromWorkUnitId,
+                $this->to_work_unit_id,
+                $positionId,
+                today()->toDateString(),
+                $approverId,
+                null,
+                $this->jabatan
+            );
+
+            return;
+        }
+
+        $lifecycle->start(
+            $userId,
+            $this->to_work_unit_id,
+            $positionId,
+            today()->toDateString(),
+            $approverId,
+            null,
+            true,
+            $this->jabatan
+        );
     }
 
     public function reject($approverId, $note = null)
