@@ -78,6 +78,25 @@ final class ReportScope
     }
 
     /**
+     * Salinan dengan label tampilan berbeda.
+     *
+     * Dipakai saat pemegang akses global memilih satu unit lewat saringan:
+     * cakupannya tetap global (saringan unit lain masih boleh dipilih), tetapi
+     * chip harus menyebut unit yang sedang ditampilkan.
+     */
+    public function withLabel(string $label): self
+    {
+        return new self(
+            $this->type,
+            $this->schoolId,
+            $this->dormitoryIds,
+            $this->workUnitId,
+            $label,
+            $this->reason,
+        );
+    }
+
+    /**
      * Cakupan yang hanya boleh membaca laporan akademik dan populasi.
      * Laporan itu disusun per satuan pendidikan, bukan per asrama.
      */

@@ -505,7 +505,18 @@ class StudentPopulationReportController extends Controller
     {
         $scope = $this->reportScope($request);
         $schoolIds = $this->schoolIds($request);
-        $selectedSchool = $scope->isSchool() ? $scope->schoolId : $request->input('school_id');
+        $selectedSchool = $scope->isSchool()
+            ? $scope->schoolId
+            : ($scope->isGlobal() ? $request->input('school_id') : null);
+
+        // Pemegang akses global yang menyaring satu unit: chip harus menyebut
+        // unit itu, bukan "seluruh pondok".
+        if ($scope->isGlobal() && $selectedSchool) {
+            $name = School::whereKey($selectedSchool)->value('name');
+            if ($name) {
+                $scope = $scope->withLabel($name);
+            }
+        }
 
         $schools = School::query()
             ->whereIn('id', $schoolIds)
@@ -552,7 +563,9 @@ class StudentPopulationReportController extends Controller
     private function schoolLabel(Request $request): ?School
     {
         $scope = $this->reportScope($request);
-        $selected = $scope->isSchool() ? $scope->schoolId : $request->input('school_id');
+        $selected = $scope->isSchool()
+            ? $scope->schoolId
+            : ($scope->isGlobal() ? $request->input('school_id') : null);
 
         if ($selected) {
             return School::find($selected);

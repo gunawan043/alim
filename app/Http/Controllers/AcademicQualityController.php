@@ -27,7 +27,18 @@ class AcademicQualityController extends Controller
                 ? School::where('is_active', true)->orderBy('name')->get(['id', 'name'])
                 : collect());
 
-        $selectedSchoolId = $scope->isSchool() ? $scope->schoolId : $request->input('school_id');
+        $selectedSchoolId = $scope->isSchool()
+            ? $scope->schoolId
+            : ($scope->isGlobal() ? $request->input('school_id') : null);
+
+        // Pemegang akses global boleh menyaring satu unit; chip ikut menyebut
+        // unit itu supaya tidak terbaca "seluruh pondok" padahal sudah disaring.
+        if ($scope->isGlobal() && $selectedSchoolId) {
+            $selected = $schools->firstWhere('id', $selectedSchoolId);
+            abort_unless($selected, 403, 'Unit tidak dapat diakses.');
+            $scope = $scope->withLabel($selected->name);
+        }
+
         $schoolIds = $selectedSchoolId
             ? [$selectedSchoolId]
             : $schools->pluck('id')->all();
