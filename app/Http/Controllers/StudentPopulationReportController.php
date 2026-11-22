@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\AcademicOperationsExport;
+use App\Http\Controllers\Concerns\ResolvesReportScope;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\School;
@@ -21,6 +22,8 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class StudentPopulationReportController extends Controller
 {
+    use ResolvesReportScope;
+
     public function mutations(Request $request, string $userId, StudentPopulationService $service)
     {
         $filters = $this->filters($request);
@@ -447,9 +450,12 @@ class StudentPopulationReportController extends Controller
             $validated[$key] = $validated[$key] ?? null;
         }
 
-        $lockedSchoolId = $this->lockedSchoolId($request);
-        if ($lockedSchoolId) {
-            $validated['school_id'] = $lockedSchoolId;
+        $scope = $this->reportScope($request);
+        if ($scope->isSchool()) {
+            $validated['school_id'] = $scope->schoolId;
+        } elseif (! $scope->isGlobal()) {
+            // Asrama dan cakupan kosong tidak boleh memilih unit mana pun.
+            $validated['school_id'] = null;
         } elseif ($validated['school_id'] && ! in_array($validated['school_id'], $this->allSchoolIds(), true)) {
             abort(403, 'Unit tidak dapat diakses.');
         }
@@ -471,9 +477,15 @@ class StudentPopulationReportController extends Controller
 
     private function schoolIds(Request $request): array
     {
-        $locked = $this->lockedSchoolId($request);
-        if ($locked) {
-            return [$locked];
+        $scope = $this->reportScope($request);
+
+        if ($scope->isSchool()) {
+            return [$scope->schoolId];
+        }
+
+        if (! $scope->isGlobal()) {
+            // Asrama dan cakupan kosong tidak membaca laporan per satuan pendidikan.
+            return [];
         }
 
         $selected = $request->input('school_id');
@@ -484,12 +496,6 @@ class StudentPopulationReportController extends Controller
         return $this->allSchoolIds();
     }
 
-    private function lockedSchoolId(Request $request): ?string
-    {
-        return $request->attributes->get('schoolContextId')
-            ?: $request->user()?->employment?->school_id;
-    }
-
     private function allSchoolIds(): array
     {
         return School::query()->where('is_active', true)->orderBy('name')->pluck('id')->all();
@@ -497,9 +503,9 @@ class StudentPopulationReportController extends Controller
 
     private function options(Request $request, AcademicYear $academicYear): array
     {
-        $locked = $this->lockedSchoolId($request);
-        $schoolIds = $locked ? [$locked] : $this->allSchoolIds();
-        $selectedSchool = $locked ?: $request->input('school_id');
+        $scope = $this->reportScope($request);
+        $schoolIds = $this->schoolIds($request);
+        $selectedSchool = $scope->isSchool() ? $scope->schoolId : $request->input('school_id');
 
         $schools = School::query()
             ->whereIn('id', $schoolIds)
@@ -538,14 +544,15 @@ class StudentPopulationReportController extends Controller
             'schools' => $schools,
             'gradeLevels' => $gradeLevels,
             'studyGroups' => $studyGroups,
-            'schoolLocked' => (bool) $locked,
+            'schoolLocked' => $scope->isSchool(),
+            'scope' => $scope,
         ];
     }
 
     private function schoolLabel(Request $request): ?School
     {
-        $locked = $this->lockedSchoolId($request);
-        $selected = $locked ?: $request->input('school_id');
+        $scope = $this->reportScope($request);
+        $selected = $scope->isSchool() ? $scope->schoolId : $request->input('school_id');
 
         if ($selected) {
             return School::find($selected);

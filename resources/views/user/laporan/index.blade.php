@@ -20,6 +20,8 @@
             </div>
         </div>
 
+        @include('user.laporan.partials.scope')
+
         @include('user.laporan.partials.kpi', ['items' => [
             ['label' => 'Santri aktif', 'value' => $stats['total_siswa'] ?? 0, 'note' => 'status aktif'],
             ['label' => 'GTK aktif', 'value' => $stats['total_gtk'] ?? 0, 'note' => 'akun kepegawaian'],
@@ -31,7 +33,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Jenis laporan</h2>
+                <h2 class="card-title"><i class="ri-file-list-3-line"></i>Jenis laporan</h2>
                 <span class="lap-meta">11 laporan</span>
             </div>
             <div class="lap-links">
@@ -62,7 +64,7 @@
         <div class="lap-grid lap-grid-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Santri terbaru</h2>
+                    <h2 class="card-title"><i class="ri-user-3-line"></i>Santri terbaru</h2>
                     <a href="{{ route('user.laporan.santri', ['userId' => $userId]) }}" class="lap-btn lap-btn-sm">Lihat semua</a>
                 </div>
                 <div class="card-body p-0">
@@ -101,7 +103,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">GTK terbaru</h2>
+                    <h2 class="card-title"><i class="ri-team-line"></i>GTK terbaru</h2>
                     <a href="{{ route('user.laporan.gtk', ['userId' => $userId]) }}" class="lap-btn lap-btn-sm">Lihat semua</a>
                 </div>
                 <div class="card-body p-0">

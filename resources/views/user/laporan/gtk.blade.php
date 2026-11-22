@@ -28,12 +28,6 @@
             </div>
         </div>
 
-        @include('user.laporan.partials.kpi', ['items' => [
-            ['label' => 'Total GTK', 'value' => $summary['total'], 'note' => 'seluruh status akun'],
-            ['label' => 'Akun aktif', 'value' => $summary['aktif'], 'note' => 'dapat masuk aplikasi'],
-            ['label' => 'Akun nonaktif', 'value' => $summary['nonaktif'], 'note' => 'akses ditutup'],
-        ]])
-
         <div class="card">
             <div class="card-body">
                 <form method="GET" action="{{ route('user.laporan.gtk', ['userId' => $userId]) }}" class="lap-filters">
@@ -68,9 +62,18 @@
             </div>
         </div>
 
+
+        @include('user.laporan.partials.scope')
+
+        @include('user.laporan.partials.kpi', ['items' => [
+            ['label' => 'Total GTK', 'value' => $summary['total'], 'note' => 'seluruh status akun'],
+            ['label' => 'Akun aktif', 'value' => $summary['aktif'], 'note' => 'dapat masuk aplikasi'],
+            ['label' => 'Akun nonaktif', 'value' => $summary['nonaktif'], 'note' => 'akses ditutup'],
+        ]])
+
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Daftar GTK</h2>
+                <h2 class="card-title"><i class="ri-team-line"></i>Daftar GTK</h2>
                 <span class="lap-meta">{{ number_format($gtk->total(), 0, ',', '.') }} baris</span>
             </div>
             <div class="card-body p-0">

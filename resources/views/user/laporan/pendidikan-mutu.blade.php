@@ -58,7 +58,7 @@
                             <option value="genap" @selected($semester === 'genap')>Genap</option>
                         </select>
                     </div>
-                    @if (! $schoolId)
+                    @if ($scope->isGlobal())
                         <div class="lap-field">
                             <label class="form-label" for="lap-school">Unit</label>
                             <select id="lap-school" name="school_id" class="form-select" onchange="this.form.submit()">
@@ -101,7 +101,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Keterhubungan dokumen kurikulum</h2>
+                    <h2 class="card-title"><i class="ri-node-tree-line"></i>Keterhubungan dokumen kurikulum</h2>
                     <span class="lap-meta">8 tahap</span>
                 </div>
                 <div class="card-body">
@@ -125,7 +125,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Kesiapan rapor</h2>
+                    <h2 class="card-title"><i class="ri-file-chart-2-line"></i>Kesiapan rapor</h2>
                 </div>
                 <div class="card-body">
                     <div class="lap-list">
@@ -155,7 +155,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Konsistensi JP: rombel, SK, jadwal, dan prota</h2>
+                <h2 class="card-title"><i class="ri-scales-3-line"></i>Konsistensi JP: rombel, SK, jadwal, dan prota</h2>
                 <span class="lap-meta">{{ number_format($report['counts']['warning'], 0, ',', '.') }} perlu diperbaiki</span>
             </div>
             <div class="card-body p-0">
@@ -203,7 +203,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Beban guru</h2>
+                <h2 class="card-title"><i class="ri-team-line"></i>Beban guru</h2>
                 <span class="lap-meta">{{ count($report['teacher_workload']) }} guru</span>
             </div>
             <div class="card-body p-0">

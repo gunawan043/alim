@@ -31,13 +31,6 @@
             </div>
         </div>
 
-        @include('user.laporan.partials.kpi', ['items' => [
-            ['label' => 'Asrama', 'value' => $summary['total'], 'note' => 'unit terdaftar'],
-            ['label' => 'Kapasitas', 'value' => $summary['kapasitas'], 'note' => 'tempat tidur'],
-            ['label' => 'Penghuni aktif', 'value' => $summary['penghuni'], 'note' => $hunian !== null ? number_format($hunian, 1, ',', '.').'% terisi' : 'belum ada kapasitas'],
-            ['label' => 'Sisa kapasitas', 'value' => $summary['kosong'], 'note' => 'tempat tersedia', 'tone' => $summary['kosong'] > 0 ? 'ok' : 'warn'],
-        ]])
-
         <div class="card">
             <div class="card-body">
                 <form method="GET" action="{{ route('user.laporan.asrama', ['userId' => $userId]) }}" class="lap-filters">
@@ -55,9 +48,19 @@
             </div>
         </div>
 
+
+        @include('user.laporan.partials.scope')
+
+        @include('user.laporan.partials.kpi', ['items' => [
+            ['label' => 'Asrama', 'value' => $summary['total'], 'note' => 'unit terdaftar'],
+            ['label' => 'Kapasitas', 'value' => $summary['kapasitas'], 'note' => 'tempat tidur'],
+            ['label' => 'Penghuni aktif', 'value' => $summary['penghuni'], 'note' => $hunian !== null ? number_format($hunian, 1, ',', '.').'% terisi' : 'belum ada kapasitas'],
+            ['label' => 'Sisa kapasitas', 'value' => $summary['kosong'], 'note' => 'tempat tersedia', 'tone' => $summary['kosong'] > 0 ? 'ok' : 'warn'],
+        ]])
+
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Daftar asrama</h2>
+                <h2 class="card-title"><i class="ri-hotel-line"></i>Daftar asrama</h2>
                 <span class="lap-meta">{{ number_format($dormitories->total(), 0, ',', '.') }} asrama</span>
             </div>
             <div class="card-body p-0">

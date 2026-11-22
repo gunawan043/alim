@@ -38,13 +38,6 @@
             </div>
         </div>
 
-        @include('user.laporan.partials.kpi', ['items' => [
-            ['label' => 'Total santri', 'value' => $summary['total'], 'note' => 'seluruh status'],
-            ['label' => 'Aktif', 'value' => $summary['aktif'], 'note' => 'terdaftar di rombel'],
-            ['label' => 'Laki-laki', 'value' => $summary['laki'], 'note' => 'dari total'],
-            ['label' => 'Perempuan', 'value' => $summary['perempuan'], 'note' => 'dari total'],
-        ]])
-
         <div class="card">
             <div class="card-body">
                 <form method="GET" action="{{ route('user.laporan.santri', ['userId' => $userId]) }}" class="lap-filters">
@@ -88,9 +81,19 @@
             </div>
         </div>
 
+
+        @include('user.laporan.partials.scope')
+
+        @include('user.laporan.partials.kpi', ['items' => [
+            ['label' => 'Total santri', 'value' => $summary['total'], 'note' => 'seluruh status'],
+            ['label' => 'Aktif', 'value' => $summary['aktif'], 'note' => 'terdaftar di rombel'],
+            ['label' => 'Laki-laki', 'value' => $summary['laki'], 'note' => 'dari total'],
+            ['label' => 'Perempuan', 'value' => $summary['perempuan'], 'note' => 'dari total'],
+        ]])
+
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Daftar santri</h2>
+                <h2 class="card-title"><i class="ri-user-3-line"></i>Daftar santri</h2>
                 <span class="lap-meta">{{ number_format($students->total(), 0, ',', '.') }} baris</span>
             </div>
             <div class="card-body p-0">
@@ -103,7 +106,7 @@
                                 <th>Nama</th>
                                 <th style="width:64px">JK</th>
                                 <th>Rombel</th>
-                                @if (! $schoolId)
+                                @if ($scope->isGlobal())
                                     <th>Sekolah</th>
                                 @endif
                                 <th style="width:110px">Status</th>
@@ -131,14 +134,14 @@
                                     <td>{{ $student->name }}</td>
                                     <td>{{ $student->gender === 'L' ? 'L' : ($student->gender === 'P' ? 'P' : '—') }}</td>
                                     <td>{{ $student->currentClassHistory?->studyGroup?->name ?? '—' }}</td>
-                                    @if (! $schoolId)
+                                    @if ($scope->isGlobal())
                                         <td class="muted">{{ $student->school?->name ?? '—' }}</td>
                                     @endif
                                     <td><span class="badge bg-{{ $tone }}-subtle">{{ $statusLabels[$student->status] ?? ucfirst($student->status) }}</span></td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $schoolId ? 6 : 7 }}">
+                                    <td colspan="{{ $scope->isGlobal() ? 7 : 6 }}">
                                         @include('user.laporan.partials.empty', [
                                             'title' => 'Tidak ada santri yang cocok',
                                             'desc' => 'Ubah atau atur ulang saringan untuk melihat data lain.',

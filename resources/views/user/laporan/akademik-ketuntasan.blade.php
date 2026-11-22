@@ -141,7 +141,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Kelengkapan &amp; ketuntasan per kelas</h2>
+                    <h2 class="card-title"><i class="ri-checkbox-circle-line"></i>Kelengkapan &amp; ketuntasan per kelas</h2>
                     <span class="lap-meta">klik batang untuk memfilter</span>
                 </div>
 
@@ -164,7 +164,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Perbandingan periode</h2>
+                    <h2 class="card-title"><i class="ri-arrow-left-right-line"></i>Perbandingan periode</h2>
                 </div>
                 <div class="card-body">
                     @if ($analysis['previous_label'])
@@ -206,7 +206,7 @@
         <div class="lap-grid lap-grid-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap kelas</h2>
+                    <h2 class="card-title"><i class="ri-group-line"></i>Rekap kelas</h2>
                 </div>
                 <div class="card-body p-0">
                     @if ($classStats->isEmpty())
@@ -242,7 +242,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap mata pelajaran</h2>
+                    <h2 class="card-title"><i class="ri-book-open-line"></i>Rekap mata pelajaran</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($analysis['subject_stats']))
@@ -279,7 +279,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Detail nilai &amp; ketuntasan</h2>
+                <h2 class="card-title"><i class="ri-checkbox-circle-line"></i>Detail nilai &amp; ketuntasan</h2>
                 <span class="lap-meta">{{ number_format($analysis['row_count'], 0, ',', '.') }} baris</span>
             </div>
             <div class="card-body p-0">

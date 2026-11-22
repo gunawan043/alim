@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesReportScope;
 use App\Models\AbsensiGtk;
 use App\Models\AcademicYear;
 use App\Models\Alumni;
@@ -12,34 +13,35 @@ use App\Models\School;
 use App\Models\Student;
 use App\Models\StudyGroup;
 use App\Models\User;
+use App\Support\Reports\ReportScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class UserLaporanController extends Controller
 {
+    use ResolvesReportScope;
+
     /**
      * Dashboard Laporan Pondok untuk Mudir, Wadir, Satuan Pendidikan.
      */
     public function index(Request $request, string $userId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
 
-        $stats = $this->buildStats($schoolId);
+        $stats = $this->buildStats($scope);
 
-        $recentStudents = Student::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        $recentStudents = $this->applyStudentScope(Student::query(), $scope)
             ->latest()
             ->limit(5)
             ->get();
 
-        $recentGtk = User::query()
+        $recentGtk = $this->applyGtkScope(User::query(), $scope)
             ->with(['gtkProfile', 'employment'])
-            ->whereHas('employment', fn ($q) => $q->when($schoolId, fn ($x) => $x->where('school_id', $schoolId)))
             ->latest()
             ->limit(5)
             ->get();
 
-        return view('user.laporan.index', compact('userId', 'stats', 'recentStudents', 'recentGtk'));
+        return view('user.laporan.index', compact('userId', 'stats', 'recentStudents', 'recentGtk', 'scope'));
     }
 
     /**
@@ -47,10 +49,10 @@ class UserLaporanController extends Controller
      */
     public function presensi(Request $request, string $userId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
         [$dari, $sampai] = $this->dateRange($request);
 
-        $base = $this->presensiQuery($request, $schoolId);
+        $base = $this->presensiQuery($request, $scope);
 
         $statusCounts = (clone $base)
             ->select('status')
@@ -98,7 +100,7 @@ class UserLaporanController extends Controller
             ->values();
 
         return view('user.laporan.presensi', compact(
-            'userId', 'absensi', 'summary', 'dari', 'sampai', 'trend',
+            'userId', 'absensi', 'summary', 'dari', 'sampai', 'trend', 'scope',
         ));
     }
 
@@ -107,9 +109,9 @@ class UserLaporanController extends Controller
      */
     public function santri(Request $request, string $userId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
 
-        $base = $this->santriQuery($request, $schoolId);
+        $base = $this->santriQuery($request, $scope);
 
         $summary = [
             'total' => (clone $base)->count(),
@@ -124,14 +126,13 @@ class UserLaporanController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $studyGroups = StudyGroup::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        $studyGroups = $this->applySchoolScope(StudyGroup::query(), $scope)
             ->when($this->activeYearId(), fn ($q, $ay) => $q->where('academic_year_id', $ay))
             ->orderBy('name')
             ->get();
 
         return view('user.laporan.santri', compact(
-            'userId', 'students', 'summary', 'studyGroups', 'schoolId',
+            'userId', 'students', 'summary', 'studyGroups', 'scope',
         ));
     }
 
@@ -140,9 +141,9 @@ class UserLaporanController extends Controller
      */
     public function gtk(Request $request, string $userId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
 
-        $base = $this->gtkQuery($request, $schoolId);
+        $base = $this->gtkQuery($request, $scope);
 
         $summary = [
             'total' => (clone $base)->count(),
@@ -156,15 +157,14 @@ class UserLaporanController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $jenisOptions = GtkEmployment::query()
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+        $jenisOptions = $this->applySchoolScope(GtkEmployment::query(), $scope)
             ->whereNotNull('jenis_gtk')
             ->distinct()
             ->orderBy('jenis_gtk')
             ->pluck('jenis_gtk');
 
         return view('user.laporan.gtk', compact(
-            'userId', 'gtk', 'summary', 'jenisOptions', 'schoolId',
+            'userId', 'gtk', 'summary', 'jenisOptions', 'scope',
         ));
     }
 
@@ -173,9 +173,9 @@ class UserLaporanController extends Controller
      */
     public function keuangan(Request $request, string $userId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
 
-        return view('user.laporan.keuangan', compact('userId', 'schoolId'));
+        return view('user.laporan.keuangan', compact('userId', 'scope'));
     }
 
     /**
@@ -183,11 +183,13 @@ class UserLaporanController extends Controller
      */
     public function asrama(Request $request, string $userId)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
         $q = trim((string) $request->input('q'));
 
         $base = Dormitory::query()
-            ->when($schoolId, fn ($x) => $x->where('school_id', $schoolId))
+            ->when($scope->isSchool(), fn ($x) => $x->where('school_id', $scope->schoolId))
+            ->when($scope->isDormitory(), fn ($x) => $x->whereIn('id', $scope->dormitoryIds))
+            ->when($scope->isEmpty(), fn ($x) => $x->whereRaw('1 = 0'))
             ->when($q !== '', fn ($x) => $x->where('name', 'like', "%{$q}%"));
 
         $summary = [
@@ -195,7 +197,9 @@ class UserLaporanController extends Controller
             'kapasitas' => (int) (clone $base)->sum('capacity'),
             'penghuni' => DormitoryResident::query()
                 ->where('is_active', true)
-                ->when($schoolId, fn ($x) => $x->whereHas('dormitory', fn ($d) => $d->where('school_id', $schoolId)))
+                ->when($scope->isSchool(), fn ($x) => $x->whereHas('dormitory', fn ($d) => $d->where('school_id', $scope->schoolId)))
+                ->when($scope->isDormitory(), fn ($x) => $x->whereIn('dormitory_id', $scope->dormitoryIds))
+                ->when($scope->isEmpty(), fn ($x) => $x->whereRaw('1 = 0'))
                 ->count(),
         ];
         $summary['kosong'] = max(0, $summary['kapasitas'] - $summary['penghuni']);
@@ -210,7 +214,7 @@ class UserLaporanController extends Controller
             ->withQueryString();
 
         return view('user.laporan.asrama', compact(
-            'userId', 'dormitories', 'summary', 'schoolId',
+            'userId', 'dormitories', 'summary', 'scope',
         ));
     }
 
@@ -221,11 +225,12 @@ class UserLaporanController extends Controller
     {
         abort_unless(in_array($type, ['presensi', 'santri', 'gtk', 'asrama'], true), 404);
 
-        $schoolId = $this->resolveSchoolId($request);
-        $school = $schoolId ? School::find($schoolId) : null;
+        $scope = $this->reportScope($request);
+        $school = $scope->isSchool() ? School::find($scope->schoolId) : null;
         $data = [
             'userId' => $userId,
             'school' => $school,
+            'scope' => $scope,
             'printedAt' => now(),
         ];
 
@@ -233,20 +238,20 @@ class UserLaporanController extends Controller
             [$dari, $sampai] = $this->dateRange($request);
             $data['dari'] = $dari;
             $data['sampai'] = $sampai;
-            $data['rows'] = $this->presensiQuery($request, $schoolId)
+            $data['rows'] = $this->presensiQuery($request, $scope)
                 ->with(['gtk.user'])
                 ->orderByDesc('tanggal')
                 ->orderBy('jam_masuk')
                 ->limit(2000)
                 ->get();
         } elseif ($type === 'santri') {
-            $data['rows'] = $this->santriQuery($request, $schoolId)
+            $data['rows'] = $this->santriQuery($request, $scope)
                 ->with(['currentClassHistory.studyGroup', 'school'])
                 ->orderBy('name')
                 ->limit(2000)
                 ->get();
         } elseif ($type === 'gtk') {
-            $data['rows'] = $this->gtkQuery($request, $schoolId)
+            $data['rows'] = $this->gtkQuery($request, $scope)
                 ->with(['employment'])
                 ->orderBy('name')
                 ->limit(2000)
@@ -254,7 +259,9 @@ class UserLaporanController extends Controller
         } else {
             $q = trim((string) $request->input('q'));
             $data['rows'] = Dormitory::query()
-                ->when($schoolId, fn ($x) => $x->where('school_id', $schoolId))
+                ->when($scope->isSchool(), fn ($x) => $x->where('school_id', $scope->schoolId))
+                ->when($scope->isDormitory(), fn ($x) => $x->whereIn('id', $scope->dormitoryIds))
+                ->when($scope->isEmpty(), fn ($x) => $x->whereRaw('1 = 0'))
                 ->when($q !== '', fn ($x) => $x->where('name', 'like', "%{$q}%"))
                 ->withCount([
                     'rooms',
@@ -281,17 +288,17 @@ class UserLaporanController extends Controller
      */
     public function export(Request $request, string $userId, string $type)
     {
-        $schoolId = $this->resolveSchoolId($request);
+        $scope = $this->reportScope($request);
         $filename = 'laporan-'.$type.'-'.now()->format('Ymd-His').'.csv';
 
-        return response()->streamDownload(function () use ($request, $schoolId, $type) {
+        return response()->streamDownload(function () use ($request, $scope, $type) {
             $out = fopen('php://output', 'w');
             // BOM agar Excel membaca UTF-8 dengan benar.
             fwrite($out, "\xEF\xBB\xBF");
 
             if ($type === 'santri') {
                 fputcsv($out, ['NISN', 'NIS', 'Nama', 'JK', 'Rombel', 'Status', 'Sekolah']);
-                $this->santriQuery($request, $schoolId)
+                $this->santriQuery($request, $scope)
                     ->with(['currentClassHistory.studyGroup', 'school'])
                     ->orderBy('name')
                     ->chunk(500, function ($students) use ($out) {
@@ -309,7 +316,7 @@ class UserLaporanController extends Controller
                     });
             } elseif ($type === 'gtk') {
                 fputcsv($out, ['Nama', 'Jabatan', 'Jenis GTK', 'Status Kepegawaian', 'Status Akun']);
-                $this->gtkQuery($request, $schoolId)
+                $this->gtkQuery($request, $scope)
                     ->with(['employment'])
                     ->orderBy('name')
                     ->chunk(500, function ($users) use ($out) {
@@ -325,7 +332,7 @@ class UserLaporanController extends Controller
                     });
             } else {
                 fputcsv($out, ['Tanggal', 'GTK', 'Status', 'Jam Masuk', 'Jam Pulang', 'Terlambat (menit)', 'Keterangan']);
-                $this->presensiQuery($request, $schoolId)
+                $this->presensiQuery($request, $scope)
                     ->with(['gtk.user'])
                     ->orderByDesc('tanggal')
                     ->chunk(500, function ($rows) use ($out) {
@@ -349,12 +356,11 @@ class UserLaporanController extends Controller
 
     // ── Query builders (dipakai halaman & export) ────────────────────
 
-    private function santriQuery(Request $request, ?string $schoolId)
+    private function santriQuery(Request $request, ReportScope $scope)
     {
         $q = trim((string) $request->input('q'));
 
-        return Student::query()
-            ->when($schoolId, fn ($x) => $x->where('school_id', $schoolId))
+        return $this->applyStudentScope(Student::query(), $scope)
             ->when($q !== '', fn ($x) => $x->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
                     ->orWhere('nisn', 'like', "%{$q}%")
@@ -368,12 +374,11 @@ class UserLaporanController extends Controller
             ));
     }
 
-    private function gtkQuery(Request $request, ?string $schoolId)
+    private function gtkQuery(Request $request, ReportScope $scope)
     {
         $q = trim((string) $request->input('q'));
 
-        return User::query()
-            ->whereHas('employment', fn ($e) => $e->when($schoolId, fn ($x) => $x->where('school_id', $schoolId)))
+        return $this->applyGtkScope(User::query(), $scope)
             ->when($q !== '', fn ($x) => $x->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
                     ->orWhere('email', 'like', "%{$q}%");
@@ -388,18 +393,24 @@ class UserLaporanController extends Controller
             ));
     }
 
-    private function presensiQuery(Request $request, ?string $schoolId)
+    private function presensiQuery(Request $request, ReportScope $scope)
     {
         [$dari, $sampai] = $this->dateRange($request);
         $q = trim((string) $request->input('q'));
+        $staffIds = $this->scopeStaffIds($scope);
 
         return AbsensiGtk::query()
             ->whereDate('tanggal', '>=', $dari)
             ->whereDate('tanggal', '<=', $sampai)
-            ->when($schoolId, fn ($x) => $x->whereHas(
+            ->when($scope->isSchool(), fn ($x) => $x->whereHas(
                 'gtk.user.employment',
-                fn ($e) => $e->where('school_id', $schoolId)
+                fn ($e) => $e->where('school_id', $scope->schoolId)
             ))
+            ->when($scope->isDormitory(), fn ($x) => $x->whereHas(
+                'gtk.user',
+                fn ($u) => $u->whereIn('id', $staffIds ?? [])
+            ))
+            ->when($scope->isEmpty(), fn ($x) => $x->whereRaw('1 = 0'))
             ->when($request->filled('status'), fn ($x) => $x->where('status', $request->input('status')))
             ->when($q !== '', fn ($x) => $x->whereHas(
                 'gtk.user',
@@ -409,32 +420,32 @@ class UserLaporanController extends Controller
 
     // ── Helpers ──────────────────────────────────────────────────────
 
-    private function buildStats(?string $schoolId): array
+    private function buildStats(ReportScope $scope): array
     {
-        $studentQuery = Student::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
-
-        $gtkQuery = User::query()
-            ->whereHas('employment', fn ($q) => $q->when($schoolId, fn ($x) => $x->where('school_id', $schoolId)));
-
-        $alumniQuery = Alumni::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId));
-
         $activeYearId = $this->activeYearId();
+        $staffIds = $this->scopeStaffIds($scope);
+
+        $alumniQuery = $this->applySchoolScope(Alumni::query(), $scope);
 
         return [
-            'total_siswa' => (clone $studentQuery)->where('status', 'active')->count(),
-            'total_gtk' => (clone $gtkQuery)->where('is_active', true)->count(),
+            'total_siswa' => $this->applyStudentScope(Student::query(), $scope)->where('status', 'active')->count(),
+            'total_gtk' => $this->applyGtkScope(User::query(), $scope)->where('is_active', true)->count(),
             'total_alumni' => (clone $alumniQuery)->count(),
             'alumni_aktif' => (clone $alumniQuery)->whereIn('working_status', ['sedang', 'sudah'])->count(),
-            'total_rombel' => StudyGroup::query()
-                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            'total_rombel' => $this->applySchoolScope(StudyGroup::query(), $scope)
                 ->when($activeYearId, fn ($q, $ay) => $q->where('academic_year_id', $ay))
                 ->count(),
             'presensi_hari_ini' => AbsensiGtk::query()
                 ->whereDate('tanggal', now()->toDateString())
-                ->when($schoolId, fn ($q) => $q->whereHas(
+                ->when($scope->isSchool(), fn ($q) => $q->whereHas(
                     'gtk.user.employment',
-                    fn ($e) => $e->where('school_id', $schoolId)
+                    fn ($e) => $e->where('school_id', $scope->schoolId)
                 ))
+                ->when($scope->isDormitory(), fn ($q) => $q->whereHas(
+                    'gtk.user',
+                    fn ($u) => $u->whereIn('id', $staffIds ?? [])
+                ))
+                ->when($scope->isEmpty(), fn ($q) => $q->whereRaw('1 = 0'))
                 ->count(),
         ];
     }
@@ -470,16 +481,5 @@ class UserLaporanController extends Controller
     private function activeYearId(): ?string
     {
         return AcademicYear::where('is_active', true)->value('id');
-    }
-
-    private function resolveSchoolId(Request $request): ?string
-    {
-        $schoolId = $request->attributes->get('schoolContextId');
-
-        if ($schoolId) {
-            return $schoolId;
-        }
-
-        return $request->user()?->employment?->school_id;
     }
 }

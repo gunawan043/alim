@@ -79,7 +79,7 @@
         <div class="lap-grid lap-grid-top" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr);">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Komposisi jenis kelamin</h2>
+                    <h2 class="card-title"><i class="ri-pie-chart-line"></i>Komposisi jenis kelamin</h2>
                     <span class="lap-meta">{{ number_format($genderTotal, 0, ',', '.') }} santri</span>
                 </div>
                 <div class="card-body">
@@ -110,7 +110,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Sebaran usia</h2>
+                    <h2 class="card-title"><i class="ri-pie-chart-line"></i>Sebaran usia</h2>
                     <span class="lap-meta">{{ $ages->count() }} kelompok</span>
                 </div>
                 @if (! $hasAges)
@@ -130,7 +130,7 @@
         <div class="lap-grid lap-grid-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Per unit</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Per unit</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['by_unit']))
@@ -172,7 +172,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Per jenjang</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Per jenjang</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['by_grade']))
@@ -207,7 +207,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Sebaran per kelas</h2>
+                <h2 class="card-title"><i class="ri-pie-chart-line"></i>Sebaran per kelas</h2>
                 <span class="lap-meta">{{ number_format($report['by_class']->count(), 0, ',', '.') }} rombel</span>
             </div>
             <div class="card-body p-0">
