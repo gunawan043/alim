@@ -277,7 +277,7 @@
                                     dari {{ $notifications->total() }} notifikasi
                                 </div>
                                 <div>
-                                    {{ $notifications->withQueryString()->links('pagination.bootstrap5') }}
+                                    {{ $notifications->withQueryString()->links('pagination::bootstrap-5') }}
                                 </div>
                             </div>
                         </div>
