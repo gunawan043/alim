@@ -27,6 +27,7 @@ use App\Services\Dormitory\DormitoryAudit;
 use App\Services\Dormitory\DormitoryQrAudit;
 use App\Services\DormitoryService;
 use App\Services\Ljk\LjkQrRenderer;
+use App\Support\Qr\QrBranding;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\NotificationUniversalService;
 use App\Support\AsramaConfig;
@@ -515,7 +516,7 @@ class DormitoryPermitController extends Controller
             $permit->getOrCreateScanToken();
         }
 
-        $qrImage = LjkQrRenderer::png(json_encode($permit->qrPayload()), 520, 5, 'Q');
+        $qrImage = LjkQrRenderer::png(json_encode($permit->qrPayload()), 520, 5, 'Q', QrBranding::logoPath(), QrBranding::ratio());
 
         return response($qrImage, 200, [
             'Content-Type' => 'image/png',

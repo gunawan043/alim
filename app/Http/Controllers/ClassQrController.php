@@ -8,6 +8,7 @@ use App\Models\StudyGroup;
 use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Pdf\DocumentPdfService;
 use App\Services\QrTokenService;
+use App\Support\Qr\QrBranding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -76,7 +77,7 @@ class ClassQrController extends Controller
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
         $payload = $this->qrTokenService->buildQrPayload($token);
 
-        $qrImage = LjkQrRenderer::png(json_encode($payload), 520, 5, 'Q');
+        $qrImage = LjkQrRenderer::png(json_encode($payload), 520, 5, 'Q', QrBranding::logoPath(), QrBranding::ratio());
 
         return response($qrImage, 200, [
             'Content-Type' => 'image/png',
@@ -134,7 +135,7 @@ class ClassQrController extends Controller
         $academicYear = AcademicYear::where('is_active', true)->first();
         $token = $this->qrTokenService->findOrCreate($studyGroup, $academicYear?->id);
         $qrData = LjkQrRenderer::pngDataUri(
-            json_encode($this->qrTokenService->buildQrPayload($token)), 1000, 2, 'Q'
+            json_encode($this->qrTokenService->buildQrPayload($token)), 1000, 2, 'Q', QrBranding::logoPath(), QrBranding::ratio()
         );
         $backgroundData = $this->imageDataUri(null, storage_path('app/public/templates/qr-template-a6.png'));
 
@@ -186,7 +187,7 @@ class ClassQrController extends Controller
                 'studyGroup' => $studyGroup,
                 'token' => $token,
                 'qrData' => LjkQrRenderer::pngDataUri(
-                    json_encode($this->qrTokenService->buildQrPayload($token)), 1000, 2, 'Q'
+                    json_encode($this->qrTokenService->buildQrPayload($token)), 1000, 2, 'Q', QrBranding::logoPath(), QrBranding::ratio()
                 ),
             ];
         })->all();

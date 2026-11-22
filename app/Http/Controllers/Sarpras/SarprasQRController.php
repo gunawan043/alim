@@ -12,6 +12,7 @@ use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Pdf\DocumentPdfService;
 use App\Services\Sarpras\AssetEventLogger;
 use App\Services\Sarpras\PhotoProofService;
+use App\Support\Qr\QrBranding;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -184,7 +185,7 @@ class SarprasQRController extends SarprasBaseController
         }
 
         foreach ($labels as $index => $label) {
-            $labels[$index]['qr'] = LjkQrRenderer::pngDataUri($label['url'], 1000, 2, 'Q');
+            $labels[$index]['qr'] = LjkQrRenderer::pngDataUri($label['url'], 1000, 2, 'Q', QrBranding::logoPath(), QrBranding::ratio());
         }
 
         return $labels;
@@ -199,7 +200,7 @@ class SarprasQRController extends SarprasBaseController
         $this->authorizeAssetAccess($asset, $request);
 
         $size = max(240, min(800, (int) $request->query('size', 480)));
-        $png = LjkQrRenderer::png($asset->qrScanUrl(), $size, 5, 'Q');
+        $png = LjkQrRenderer::png($asset->qrScanUrl(), $size, 5, 'Q', QrBranding::logoPath(), QrBranding::ratio());
 
         return response($png, 200, [
             'Content-Type' => 'image/png',
