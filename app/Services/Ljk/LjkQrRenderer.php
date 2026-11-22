@@ -94,6 +94,13 @@ final class LjkQrRenderer
      */
     private static function drawLogo($image, int $size, string $logoPath, ?float $ratio): void
     {
+        $logo = self::loadImage($logoPath);
+
+        // Tanpa logo yang bisa dibaca, jangan tinggalkan kotak putih kosong di tengah QR.
+        if ($logo === null) {
+            return;
+        }
+
         $ratio = $ratio ?? 0.22;
         $ratio = max(0.10, min(0.30, $ratio));
 
@@ -106,12 +113,6 @@ final class LjkQrRenderer
 
         $white = imagecolorallocate($image, 255, 255, 255);
         imagefilledrectangle($image, $x - $pad, $y - $pad, $x + $logoSize + $pad, $y + $logoSize + $pad, $white);
-
-        $logo = self::loadImage($logoPath);
-
-        if ($logo === null) {
-            return;
-        }
 
         imagealphablending($image, true);
         imagecopyresampled(
@@ -126,8 +127,6 @@ final class LjkQrRenderer
             imagesx($logo),
             imagesy($logo)
         );
-
-        unset($logo);
     }
 
     private static function loadImage(string $path)
