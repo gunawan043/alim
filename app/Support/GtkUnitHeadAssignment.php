@@ -52,13 +52,32 @@ class GtkUnitHeadAssignment
             'placement_position_id' => $placement->position_id,
         ];
 
-        if (! $placement->exists) {
-            $placement->is_primary = ! GtkWorkUnit::where('user_id', $user->id)->exists();
-        }
+        if (config('gtk_work_unit.lifecycle.enabled', false)) {
+            $lifecycle = app(\App\Services\GtkPlacementLifecycleService::class);
 
-        $placement->jabatan = $title;
-        $placement->position_id = $position?->id;
-        $placement->save();
+            if ($placement->exists) {
+                $lifecycle->updatePosition($placement, $position?->id, $title, auth()->id());
+            } else {
+                $lifecycle->start(
+                    $user->id,
+                    $unit->id,
+                    $position?->id,
+                    today()->toDateString(),
+                    auth()->id(),
+                    null,
+                    ! GtkWorkUnit::where('user_id', $user->id)->exists(),
+                    $title
+                );
+            }
+        } else {
+            if (! $placement->exists) {
+                $placement->is_primary = ! GtkWorkUnit::where('user_id', $user->id)->exists();
+            }
+
+            $placement->jabatan = $title;
+            $placement->position_id = $position?->id;
+            $placement->save();
+        }
 
         if ($employment) {
             $employment->update([
