@@ -157,9 +157,39 @@
                                     </th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">RS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_rs ?? 50.0 }}%</small></th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:75px;text-align:center;">Nilai Murni<br>STS</th>
-                                    <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">STS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sts ?? 25.0 }}%</small></th>
+                                    @if($stsColumns === [])
+                                        <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">STS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sts ?? 25.0 }}%</small>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1 py-0 px-1 d-block mx-auto" style="font-size:.6rem;"
+                                                    onclick="komponenOpen('sts')" title="Aktifkan komponen Praktik/Tulis">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @else
+                                        <th colspan="{{ count($stsColumns) + 1 }}" style="vertical-align:middle;text-align:center;">
+                                            STS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sts ?? 25.0 }}%</small>
+                                            <button type="button" class="btn btn-outline-primary btn-sm ms-2 py-0 px-2" style="font-size:.65rem;"
+                                                    onclick="komponenOpen('sts')">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @endif
                                     <th rowspan="2" style="vertical-align:middle;min-width:75px;text-align:center;">Nilai Murni<br>SAS</th>
-                                    <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">SAS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sas ?? 25.0 }}%</small></th>
+                                    @if($sasColumns === [])
+                                        <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">SAS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sas ?? 25.0 }}%</small>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1 py-0 px-1 d-block mx-auto" style="font-size:.6rem;"
+                                                    onclick="komponenOpen('sas')" title="Aktifkan komponen Praktik/Tulis">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @else
+                                        <th colspan="{{ count($sasColumns) + 1 }}" style="vertical-align:middle;text-align:center;">
+                                            SAS<br><small style="vertical-align:middle;font-size:.65rem;font-style:italic;color:#6c757d;">{{ $book['adminBook']->nr_final_weight_sas ?? 25.0 }}%</small>
+                                            <button type="button" class="btn btn-outline-primary btn-sm ms-2 py-0 px-2" style="font-size:.65rem;"
+                                                    onclick="komponenOpen('sas')">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @endif
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">RSA</th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:65px;text-align:center;">NR Murni</th>
                                     <th rowspan="2" style="vertical-align:middle;min-width:70px;text-align:center;">Raport STS</th>
@@ -172,6 +202,18 @@
                                             {{ $col['label'] }}
                                         </th>
                                     @endforeach
+                                    @if($stsColumns !== [])
+                                        @foreach($stsColumns as $col)
+                                            <th style="text-align:center;min-width:60px;" title="Komponen STS — {{ $col['label'] }}">{{ $col['label'] }}</th>
+                                        @endforeach
+                                        <th style="text-align:center;min-width:60px;" title="Nilai akhir STS = rata-rata komponen">Nilai</th>
+                                    @endif
+                                    @if($sasColumns !== [])
+                                        @foreach($sasColumns as $col)
+                                            <th style="text-align:center;min-width:60px;" title="Komponen SAS — {{ $col['label'] }}">{{ $col['label'] }}</th>
+                                        @endforeach
+                                        <th style="text-align:center;min-width:60px;" title="Nilai akhir SAS = rata-rata komponen">Nilai</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -212,14 +254,60 @@
                                         <span id="rs-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rs ?? '-' }}</span>
                                     </td>
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][sts_murni]" value="{{ $n->sts_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sts" title="Nilai hasil ujian STS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" @if(! ($murniOptional ?? false) && ($n->sts_murni ?? null) === null) readonly @endif title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni STS terlebih dahulu' }}" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    @if($stsColumns === [])
+                                        <td><input type="number" name="sumatif[{{ $s->student_id }}][sts]" value="{{ $n->sts ?? '' }}" min="0" max="100" placeholder="---" class="input-sts" @if(! ($murniOptional ?? false) && ($n->sts_murni ?? null) === null) readonly @endif title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni STS terlebih dahulu' }}" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    @else
+                                        @php $stsVals = $stsComponentMap[$s->student_id] ?? []; @endphp
+                                        @foreach($stsColumns as $col)
+                                            <td><input type="number" name="sumatif[{{ $s->student_id }}][sts_components][{{ $col['id'] }}]"
+                                                       value="{{ $stsVals[$col['id']] ?? '' }}" min="0" max="100" placeholder="---"
+                                                       class="komponen-input komponen-sts" data-jenis="sts" data-student="{{ $s->student_id }}"
+                                                       @if(! ($murniOptional ?? false) && ($n->sts_murni ?? null) === null) readonly @endif
+                                                       title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni STS terlebih dahulu' }}"
+                                                       style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                        @endforeach
+                                        <td class="bg-light text-center" style="font-weight:600;color:#0d6efd;">
+                                            <span id="sts-final-{{ $s->student_id }}">{{ $n->sts ?? '—' }}</span>
+                                        </td>
+                                    @endif
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][sas_murni]" value="{{ $n->sas_murni ?? '' }}" min="0" max="100" placeholder="---" class="murni-sas" title="Nilai hasil ujian SAS (tanpa elemen lain)" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
-                                    <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" @if(! ($murniOptional ?? false) && ($n->sas_murni ?? null) === null) readonly @endif title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni SAS terlebih dahulu' }}" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    @if($sasColumns === [])
+                                        <td><input type="number" name="sumatif[{{ $s->student_id }}][sas]" value="{{ $n->sas ?? '' }}" min="0" max="100" placeholder="---" class="input-sas" @if(! ($murniOptional ?? false) && ($n->sas_murni ?? null) === null) readonly @endif title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni SAS terlebih dahulu' }}" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                    @else
+                                        @php $sasVals = $sasComponentMap[$s->student_id] ?? []; @endphp
+                                        @foreach($sasColumns as $col)
+                                            <td><input type="number" name="sumatif[{{ $s->student_id }}][sas_components][{{ $col['id'] }}]"
+                                                       value="{{ $sasVals[$col['id']] ?? '' }}" min="0" max="100" placeholder="---"
+                                                       class="komponen-input komponen-sas" data-jenis="sas" data-student="{{ $s->student_id }}"
+                                                       @if(! ($murniOptional ?? false) && ($n->sas_murni ?? null) === null) readonly @endif
+                                                       title="{{ ($murniOptional ?? false) ? '' : 'Wajib isi Nilai Murni SAS terlebih dahulu' }}"
+                                                       style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
+                                        @endforeach
+                                        <td class="bg-light text-center" style="font-weight:600;color:#0d6efd;">
+                                            <span id="sas-final-{{ $s->student_id }}">{{ $n->sas ?? '—' }}</span>
+                                        </td>
+                                    @endif
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
-                                        <span id="rsa-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->rsa ?? '-' }}</span>
+                                        {{-- RSA bisa diisi manual; kosong = otomatis (rata-rata STS & SAS). --}}
+                                        <input type="number" id="rsa-{{ $s->student_id }}" data-student="{{ $s->student_id }}"
+                                               name="sumatif[{{ $s->student_id }}][rsa]"
+                                               value="{{ $n?->rsa_manual ? rtrim(rtrim(number_format((float) $n->rsa, 2, '.', ''), '0'), '.') : '' }}"
+                                               placeholder="{{ $n?->rsa !== null ? number_format((float) $n->rsa, 1) : '---' }}"
+                                               min="0" max="100" step="0.01"
+                                               class="rsa-input"
+                                               title="RSA manual — kosongkan untuk kembali otomatis (rata-rata STS &amp; SAS)"
+                                               style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;font-style:italic;font-weight:600;">
                                     </td>
                                     <td class="bg-light text-center" style="font-style:italic;color:#6c757d;">
-                                        <span id="nrm-{{ $s->student_id }}" data-student="{{ $s->student_id }}">{{ $n->nr_murni ?? '-' }}</span>
+                                        {{-- NR Murni bisa diisi manual; kosong = otomatis (rata-rata RS & RSA). --}}
+                                        <input type="number" id="nrm-{{ $s->student_id }}" data-student="{{ $s->student_id }}"
+                                               name="sumatif[{{ $s->student_id }}][nr_murni]"
+                                               value="{{ $n?->nr_murni_manual ? rtrim(rtrim(number_format((float) $n->nr_murni, 2, '.', ''), '0'), '.') : '' }}"
+                                               placeholder="{{ $n?->nr_murni !== null ? number_format((float) $n->nr_murni, 1) : '---' }}"
+                                               min="0" max="100" step="0.01"
+                                               class="rsa-input"
+                                               title="NR Murni manual — kosongkan untuk kembali otomatis (rata-rata RS &amp; RSA)"
+                                               style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;font-style:italic;font-weight:600;">
                                     </td>
                                     <td><input type="number" name="sumatif[{{ $s->student_id }}][raport_sts]" value="{{ $n->raport_sts ?? '' }}" min="0" max="100" placeholder="---" style="width:100%;text-align:center;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                     <td class="bg-light text-center fw-bold" style="font-style:italic;color:#0d6efd;">
@@ -228,7 +316,7 @@
                                     <td><input type="text" name="sumatif[{{ $s->student_id }}][ket]" value="{{ $n->ket ?? '' }}" placeholder="---" style="width:100%;text-align:left;background:#f8f9fa00;border:none;text-align-last:center;"></td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="{{ 12 + count($columns) }}" class="text-center text-muted py-3">Belum ada siswa.</td></tr>
+                                <tr><td colspan="{{ 13 + count($columns) + count($stsColumns) + count($sasColumns) }}" class="text-center text-muted py-3">Belum ada siswa.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -344,6 +432,8 @@
     }
     #sumatif-table input::placeholder { text-align: center; opacity: .45; }
     #sumatif-table input:focus { outline: none; border: 0; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
+    /* RSA manual: angka otomatis hanya tampil sebagai placeholder */
+    #sumatif-table input.rsa-input::placeholder { opacity: .6; font-weight: 500; }
 </style>
     @if(session('success'))
         <script>
@@ -377,6 +467,39 @@
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-primary" onclick="kolomSave()">
                         <i class="ri-save-line me-1"></i>Simpan Kolom
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{-- Modal: Komponen STS/SAS (mis. Praktik & Tulis) --}}
+    <div class="modal fade" id="komponenModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="komponen-title"><i class="ri-layout-column-line me-1"></i> Kelola Komponen STS</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="komponen-jenis" value="sts">
+                    <div class="alert alert-info small py-2">
+                        Nilai akhir <strong>STS/SAS</strong> = rata-rata komponen yang terisi.
+                        Kosongkan semua komponen lalu simpan untuk mematikan fitur dan kembali ke satu kolom nilai.
+                    </div>
+                    <div id="komponen-list"></div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="komponenAdd()">
+                        <i class="ri-add-line me-1"></i>Tambah Komponen
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <span id="komponen-status" class="text-muted small me-auto"></span>
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="komponen-reset" onclick="komponenReset()"
+                            title="Hapus semua komponen dan kembalikan ke satu kolom nilai">
+                        <i class="ri-arrow-go-back-line me-1"></i>Reset ke 1 Kolom
+                    </button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="komponenSave()">
+                        <i class="ri-save-line me-1"></i>Simpan Komponen
                     </button>
                 </div>
             </div>
@@ -464,9 +587,21 @@
             const el = document.getElementById(prefix + studentId);
             if (el) el.textContent = (val !== null && val !== undefined) ? val : '-';
         };
+        // Sel yang kini berupa input manual (RSA, NR Murni): jangan timpa
+        // isian guru, cukup perbarui angka otomatis pada placeholder.
+        const setPlaceholder = (prefix, val) => {
+            const el = document.getElementById(prefix + studentId);
+            if (!el) return;
+            const text = (val !== null && val !== undefined) ? Number(val).toFixed(1) : '---';
+            if (el.tagName === 'INPUT') {
+                el.placeholder = text;
+            } else {
+                el.textContent = (val !== null && val !== undefined) ? val : '-';
+            }
+        };
         if (data.rs !== undefined)        set('rs-', data.rs);
-        if (data.rsa !== undefined)       set('rsa-', data.rsa);
-        if (data.nr_murni !== undefined) set('nrm-', data.nr_murni);
+        if (data.rsa !== undefined)       setPlaceholder('rsa-', data.rsa);
+        if (data.nr_murni !== undefined)  setPlaceholder('nrm-', data.nr_murni);
         if (data.nr_final !== undefined)  set('nrf-', data.nr_final);
     }
 
@@ -735,25 +870,194 @@ document.getElementById('kolomModal')?.addEventListener('show.bs.modal', functio
     document.getElementById('kolom-status').textContent = '';
 });
 
+// ─── Komponen STS/SAS (Praktik/Tulis) ───────────────────────────
+const komponenUrl = @json(route('user.schools.guru-mapel.w3.komponen', ['userId' => $userId, 'adminBookId' => $book['adminBook']->id]));
+const komponenPreset = [{ id: 'praktik', label: 'Praktik' }, { id: 'tulis', label: 'Tulis' }];
+let komponenJenis = 'sts';
+let komponenData = { sts: @json($stsColumns), sas: @json($sasColumns) };
+// Status tersimpan di server: tombol reset hanya aktif bila fitur memang sedang dipakai.
+const komponenTersimpan = { sts: (@json($stsColumns)).length > 0, sas: (@json($sasColumns)).length > 0 };
+
+function komponenEscape(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function komponenRender() {
+    const wrap = document.getElementById('komponen-list');
+    if (!wrap) return;
+
+    const rows = komponenData[komponenJenis] || [];
+    const resetBtn = document.getElementById('komponen-reset');
+    if (resetBtn) resetBtn.disabled = ! komponenTersimpan[komponenJenis];
+
+    if (rows.length === 0) {
+        wrap.innerHTML = '<div class="text-muted small mb-2">Belum ada komponen. Tambahkan komponen untuk mengaktifkan fitur.</div>';
+        return;
+    }
+
+    wrap.innerHTML = rows.map(function (c, i) {
+        return '<div class="input-group input-group-sm mb-2">' +
+            '<span class="input-group-text" style="width:42px;">' + (i + 1) + '</span>' +
+            '<input type="text" class="form-control" maxlength="60" value="' + komponenEscape(c.label) + '" oninput="komponenData[\'' + komponenJenis + '\'][' + i + '].label = this.value">' +
+            '<button type="button" class="btn btn-outline-secondary" onclick="komponenMove(' + i + ', -1)" ' + (i === 0 ? 'disabled' : '') + '><i class="ri-arrow-up-line"></i></button>' +
+            '<button type="button" class="btn btn-outline-secondary" onclick="komponenMove(' + i + ', 1)" ' + (i === rows.length - 1 ? 'disabled' : '') + '><i class="ri-arrow-down-line"></i></button>' +
+            '<button type="button" class="btn btn-outline-danger" onclick="komponenRemove(' + i + ')" title="Hapus komponen"><i class="ri-delete-bin-line"></i></button>' +
+            '</div>';
+    }).join('');
+}
+
+function komponenUuid() {
+    if (window.crypto && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function komponenOpen(jenis) {
+    komponenJenis = jenis === 'sas' ? 'sas' : 'sts';
+
+    // Fitur belum aktif: tawarkan preset Praktik + Tulis.
+    if (!komponenData[komponenJenis] || komponenData[komponenJenis].length === 0) {
+        komponenData[komponenJenis] = komponenPreset.map(function (c) {
+            return { id: c.id, label: c.label };
+        });
+    }
+
+    document.getElementById('komponen-jenis').value = komponenJenis;
+    document.getElementById('komponen-title').textContent = 'Kelola Komponen ' + komponenJenis.toUpperCase();
+    document.getElementById('komponen-status').textContent = '';
+    komponenRender();
+
+    if (window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('komponenModal')).show();
+    }
+}
+
+function komponenAdd() {
+    komponenData[komponenJenis].push({ id: komponenUuid(), label: 'Komponen Baru' });
+    komponenRender();
+}
+
+function komponenRemove(i) {
+    komponenData[komponenJenis].splice(i, 1);
+    komponenRender();
+}
+
+function komponenMove(i, dir) {
+    const rows = komponenData[komponenJenis];
+    const j = i + dir;
+    if (j < 0 || j >= rows.length) return;
+    const tmp = rows[i];
+    rows[i] = rows[j];
+    rows[j] = tmp;
+    komponenRender();
+}
+
+/**
+ * Reset ke satu kolom: hapus seluruh komponen jenis ini.
+ * Nilai akhir STS/SAS yang sudah tersimpan tetap dipakai pada kolom tunggal.
+ */
+function komponenReset() {
+    const jenis = komponenJenis.toUpperCase();
+    const labels = (komponenData[komponenJenis] || []).map(function (c) { return c.label; }).join(', ');
+
+    if (!confirm('Kembalikan ' + jenis + ' ke satu kolom nilai?\n\nKomponen (' + (labels || 'semua') + ') akan dihapus beserta nilai komponennya.\nNilai akhir ' + jenis + ' yang sudah tersimpan tetap dipertahankan pada kolom tunggal.')) {
+        return;
+    }
+
+    komponenData[komponenJenis] = [];
+    komponenRender();
+    komponenSave();
+}
+
+function komponenSave() {
+    const status = document.getElementById('komponen-status');
+    status.textContent = 'Menyimpan…';
+
+    fetch(komponenUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+        },
+        body: JSON.stringify({
+            jenis: komponenJenis,
+            columns: (komponenData[komponenJenis] || []).map(function (c) {
+                return { id: c.id, label: c.label };
+            }),
+        }),
+    })
+    .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+
+        if (! res.ok) {
+            status.textContent = data.message || ('Gagal menyimpan komponen (HTTP ' + res.status + ')');
+            return;
+        }
+
+        if (data.success) {
+            window.location.reload();
+        } else {
+            status.textContent = data.message || 'Gagal menyimpan komponen';
+        }
+    })
+    .catch(() => { status.textContent = 'Gagal menyimpan komponen'; });
+}
+
+// Nilai akhir STS/SAS ditampilkan langsung saat komponen diisi.
+document.addEventListener('input', function (event) {
+    const input = event.target;
+    if (! input.classList || ! input.classList.contains('komponen-input')) return;
+
+    const jenis = input.dataset.jenis;
+    const studentId = input.dataset.student;
+    let sum = 0;
+    let count = 0;
+
+    document.querySelectorAll('.komponen-input[data-jenis="' + jenis + '"][data-student="' + studentId + '"]').forEach(function (el) {
+        const value = parseFloat(el.value);
+        if (! isNaN(value)) { sum += value; count++; }
+    });
+
+    const output = document.getElementById(jenis + '-final-' + studentId);
+    if (output) {
+        output.textContent = count > 0 ? String(parseFloat((sum / count).toFixed(2))) : '—';
+    }
+});
+
 // ─── Gerbang Nilai Murni: STS/SAS terkunci sampai Nilai Murni terisi ───
 // Pengecualian: Tahfidz, Hadits, dan Bahasa Inggris kelas 1–3 SD tidak wajib.
 var MURNI_OPTIONAL = @json($murniOptional ?? false);
 
 function applyMurniGate() {
     document.querySelectorAll('#form-nilai tbody tr').forEach(function (row) {
-        [['murni-sts', 'input-sts'], ['murni-sas', 'input-sas']].forEach(function (pair) {
+        [['murni-sts', 'input-sts', 'komponen-sts'], ['murni-sas', 'input-sas', 'komponen-sas']].forEach(function (pair) {
             const murni = row.querySelector('.' + pair[0]);
-            const target = row.querySelector('.' + pair[1]);
-            if (!murni || !target) return;
+            if (!murni) return;
 
             const locked = !MURNI_OPTIONAL && murni.value === '';
-            target.readOnly = locked;
-            target.classList.toggle('bg-light', locked);
+            const target = row.querySelector('.' + pair[1]);
 
-            // Bantu isi otomatis dengan nilai murni (tetap bisa disesuaikan).
-            if (!locked && target.value === '' && murni.value !== '') {
-                target.value = murni.value;
+            if (target) {
+                target.readOnly = locked;
+                target.classList.toggle('bg-light', locked);
+
+                // Bantu isi otomatis dengan nilai murni (tetap bisa disesuaikan).
+                if (!locked && target.value === '' && murni.value !== '') {
+                    target.value = murni.value;
+                }
             }
+
+            // Komponen mengikuti gerbang yang sama, tanpa isi otomatis.
+            row.querySelectorAll('.' + pair[2]).forEach(function (el) {
+                el.readOnly = locked;
+                el.classList.toggle('bg-light', locked);
+            });
         });
     });
 }

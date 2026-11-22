@@ -72,12 +72,23 @@ class PositionController
 
             // Jabatan pada satuan kerja ini ikut disinkronkan agar SK & halaman lain
             // membaca nilai yang sama dengan struktur organisasi.
-            GtkWorkUnit::where('user_id', $userModel->id)
-                ->where('work_unit_id', $workUnitId)
-                ->update([
-                    'position_id' => $jabatan?->id,
-                    'jabatan' => $jabatan?->name,
-                ]);
+            if (config('gtk_work_unit.lifecycle.enabled', false)) {
+                $placement = GtkWorkUnit::where('user_id', $userModel->id)
+                    ->where('work_unit_id', $workUnitId)
+                    ->first();
+
+                if ($placement) {
+                    app(\App\Services\GtkPlacementLifecycleService::class)
+                        ->updatePosition($placement, $jabatan?->id, $jabatan?->name, auth()->id());
+                }
+            } else {
+                GtkWorkUnit::where('user_id', $userModel->id)
+                    ->where('work_unit_id', $workUnitId)
+                    ->update([
+                        'position_id' => $jabatan?->id,
+                        'jabatan' => $jabatan?->name,
+                    ]);
+            }
         });
 
         return response()->json([
@@ -113,12 +124,23 @@ class PositionController
                     'jabatan' => $jabatan?->name,
                 ]);
 
-                GtkWorkUnit::where('user_id', $userModel->id)
-                    ->where('work_unit_id', $workUnitId)
-                    ->update([
-                        'position_id' => $jabatan?->id,
-                        'jabatan' => $jabatan?->name,
-                    ]);
+                if (config('gtk_work_unit.lifecycle.enabled', false)) {
+                    $placement = GtkWorkUnit::where('user_id', $userModel->id)
+                        ->where('work_unit_id', $workUnitId)
+                        ->first();
+
+                    if ($placement) {
+                        app(\App\Services\GtkPlacementLifecycleService::class)
+                            ->updatePosition($placement, $jabatan?->id, $jabatan?->name, auth()->id());
+                    }
+                } else {
+                    GtkWorkUnit::where('user_id', $userModel->id)
+                        ->where('work_unit_id', $workUnitId)
+                        ->update([
+                            'position_id' => $jabatan?->id,
+                            'jabatan' => $jabatan?->name,
+                        ]);
+                }
 
                 $updated++;
             }

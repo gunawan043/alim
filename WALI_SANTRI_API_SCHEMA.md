@@ -58,6 +58,54 @@ Error dari framework memakai envelope:
 Kode umum: `UNAUTHENTICATED`, `FORBIDDEN`, `NOT_FOUND`, `VALIDATION_ERROR`,
 `CONFLICT`, `TOO_MANY_REQUESTS`, `SERVER_ERROR`.
 
+### Ability token
+
+Endpoint data anak dilindungi ability per domain. Contoh:
+
+```text
+child.read, child.write
+school.read
+wali.link.read, wali.link.write
+attendance.read
+grades.read
+raport.read
+tahfidz.read
+violation.read
+achievement.read
+class.read
+schedule.read
+calendar.read
+academic.read
+dormitory.read, dormitory.write
+health.read
+permit.read, permit.create
+notification.read, notification.write
+announcement.read
+survey.read, survey.write
+complaint.read, complaint.write
+report.read
+document.read
+mahrom.read, mahrom.write
+profile.read, profile.write
+```
+
+Token yang tidak memiliki ability yang sesuai menerima HTTP 403:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INSUFFICIENT_ABILITY",
+    "message": "Token tidak memiliki izin untuk aksi ini.",
+    "ability": "grades.read",
+    "reauth_required": true
+  }
+}
+```
+
+Setelah deploy ability baru, klien lama harus login ulang agar token
+memperoleh daftar ability terbaru.
+
 ---
 
 ## 1. Profil User (users)
@@ -1127,3 +1175,109 @@ Sama dengan poin 13 — ambil dari `student_class_histories`:
 | Target Hafalan | `GET /santri/{id}/tahfidz-targets` | tahfidz_student_targets |
 | Riwayat Absensi Bulanan | `GET /santri/{id}/attendance/recap` | student_attendances |
 | Riwayat Kelas | `GET /santri/{id}/class-history` | student_class_histories |
+
+---
+
+## 27. Informasi Lanjutan Wali
+
+Endpoint berikut ditambahkan untuk melengkapi informasi peserta didik.
+Semua endpoint memakai Bearer token wali, school context, dan ability sesuai domain.
+
+### Riwayat kesehatan
+
+```text
+GET /santri/{id}/health/history
+```
+
+Mengembalikan:
+
+- riwayat pemeriksaan kesehatan
+- pertumbuhan tinggi/berat/BMI
+- riwayat izin sakit
+- riwayat kunjungan/rawat UKS
+- riwayat pemberian obat
+
+### Perpustakaan
+
+```text
+GET /santri/{id}/library/loans
+GET /santri/{id}/library/visits
+GET /santri/{id}/library/member-card
+GET /library/books?search=
+GET /library/programs
+```
+
+Mengembalikan:
+
+- peminjaman aktif dan riwayat
+- jatuh tempo dan denda
+- riwayat kunjungan perpustakaan
+- nomor anggota dan kartu
+- katalog buku dan ketersediaan
+- program literasi
+
+### Profil sekolah dan guru
+
+```text
+GET /schools/{id}/profile
+GET /santri/{id}/teachers
+```
+
+Mengembalikan profil sekolah, kontak, akreditasi, kepala sekolah, wali kelas,
+dan guru mata pelajaran.
+
+### Riwayat pendidikan
+
+```text
+GET /santri/{id}/class-history
+GET /santri/{id}/exam-schedules
+```
+
+Mengembalikan riwayat kelas, wali kelas, tahun ajaran, dan jadwal ujian.
+
+### Asrama
+
+```text
+GET /santri/{id}/dormitory/history
+GET /santri/{id}/dormitory/rewards
+```
+
+Mengembalikan riwayat kamar/asrama, check-in/check-out, dan penghargaan asrama.
+
+### Ekstrakurikuler dan lomba
+
+```text
+GET /santri/{id}/extracurricular
+GET /santri/{id}/competitions
+GET /santri/{id}/achievements
+```
+
+Mengembalikan kegiatan ekstrakurikuler, pembimbing, jadwal, status keanggotaan,
+serta data lomba/prestasi dan sertifikat.
+
+### Agenda, peraturan, dan jadwal shalat
+
+```text
+GET /agendas
+GET /regulations
+GET /prayer-times
+```
+
+Mengembalikan agenda sekolah, dokumen peraturan aktif, dan jadwal shalat
+berdasarkan kota sekolah/wali.
+
+### Ability terkait
+
+```text
+health.read
+library.read
+school.read
+class.read
+schedule.read
+dormitory.read
+extracurricular.read
+achievement.read
+calendar.read
+regulation.read
+mahrom.read
+```

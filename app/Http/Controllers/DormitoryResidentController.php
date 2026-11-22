@@ -76,19 +76,35 @@ class DormitoryResidentController extends Controller
         $residents = $query->orderByDesc('is_active')->orderBy('bed_number')->paginate(20)->withQueryString();
         $rooms = DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->orderBy('code')->get();
 
-        $residentIds = $residents->pluck('student_id')->all();
+        // Izin harus diambil dari seluruh penghuni asrama, bukan hanya baris
+        // pada halaman yang sedang tampil — kalau tidak, kartu ringkasan dan
+        // badge per baris saling bertentangan.
+        $allResidentIds = DormitoryResident::where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true)
+            ->pluck('student_id');
 
-        $activePermits = DormitoryPermit::whereIn('student_id', $residentIds)
-            ->whereIn('status', ['approved', 'overdue'])
+        $activePermits = DormitoryPermit::whereIn('student_id', $allResidentIds)
+            ->whereIn('status', ['approved', 'picked_up', 'overdue'])
             ->whereNull('actual_return_datetime')
             ->get()
             ->keyBy('student_id');
 
+        // "Sedang izin pulang" hanya bila santri benar-benar sudah keluar.
+        $outPermitIds = $activePermits
+            ->filter(fn ($permit) => in_array($permit->status, ['picked_up', 'overdue'], true))
+            ->keys();
+
+        $totalActive = DormitoryResident::where('dormitory_id', $asramaUuid)
+            ->where('academic_year_id', $activeYear?->id)
+            ->where('is_active', true)
+            ->count();
+
         $stats = [
-            'total' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
-            'active' => DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->count(),
-            'on_permit' => $activePermits->count(),
-            'in_dormitory' => max(0, DormitoryResident::where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true)->whereNotIn('student_id', $activePermits->keys()->all())->count()),
+            'total' => $totalActive,
+            'active' => $totalActive,
+            'on_permit' => $outPermitIds->count(),
+            'in_dormitory' => max(0, $totalActive - $outPermitIds->count()),
             'occupied_rooms' => DormitoryRoom::where('dormitory_id', $asramaUuid)->where('is_active', true)->whereHas('residents', function ($q) use ($asramaUuid, $activeYear) {
                 $q->where('dormitory_id', $asramaUuid)->where('academic_year_id', $activeYear?->id)->where('is_active', true);
             })->count(),

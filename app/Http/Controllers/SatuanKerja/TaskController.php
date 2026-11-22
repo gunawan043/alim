@@ -25,6 +25,7 @@ class TaskController
             ->firstOrFail();
 
         $userWorkUnits = GtkWorkUnit::where('user_id', $user->id)
+            ->current()
             ->whereHas('workUnit', fn($q) => $q->where('id', $workUnitId))
             ->exists();
 
@@ -62,7 +63,7 @@ class TaskController
         $workUnit = WorkUnit::where('id', $workUnitId)->where('is_active', true)->firstOrFail();
         $this->authorizeWorkUnit($workUnitId);
 
-        $userIds = GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id');
+        $userIds = GtkWorkUnit::where('work_unit_id', $workUnitId)->current()->pluck('user_id');
         $jenisIds = GtkEmployment::whereIn('user_id', $userIds)
             ->pluck('jenis_gtk_id')
             ->filter()
@@ -115,7 +116,7 @@ class TaskController
      */
     private function taskTypesForWorkUnit(string $workUnitId)
     {
-        $userIds = GtkWorkUnit::where('work_unit_id', $workUnitId)->pluck('user_id');
+        $userIds = GtkWorkUnit::where('work_unit_id', $workUnitId)->current()->pluck('user_id');
 
         $jenisIds = GtkEmployment::whereIn('user_id', $userIds)
             ->pluck('jenis_gtk_id')
@@ -139,6 +140,7 @@ class TaskController
     {
         $user = auth()->user();
         $allowed = GtkWorkUnit::where('user_id', $user->id)
+            ->current()
             ->where('work_unit_id', $workUnitId)
             ->exists();
 
@@ -233,6 +235,7 @@ class TaskController
             ->firstOrFail();
 
         $userWorkUnits = GtkWorkUnit::where('user_id', $user->id)
+            ->current()
             ->whereHas('workUnit', fn($q) => $q->where('id', $workUnitId))
             ->exists();
 

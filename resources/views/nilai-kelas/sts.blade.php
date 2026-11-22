@@ -399,9 +399,13 @@
                                         <div class="col-md-6 col-xl-4">
                                             <label class="form-label mb-1" style="font-size:11px;font-weight:600;">{{ $predicate }}</label>
                                             <textarea name="predicate_notes[{{ $predicate }}]" rows="2" maxlength="500"
-                                                      class="form-control form-control-sm"
+                                                      class="form-control form-control-sm mb-1"
                                                       style="font-size:12px;"
-                                                      placeholder="Catatan untuk predikat {{ $predicate }}">{{ $predicateNotes[$predicate] ?? '' }}</textarea>
+                                                      placeholder="Catatan Indonesia untuk predikat {{ $predicate }} — gunakan {santri} untuk nama santri">{{ $predicateNotes[$predicate] ?? '' }}</textarea>
+                                            <textarea name="predicate_notes_ar[{{ $predicate }}]" rows="2" maxlength="500" dir="rtl"
+                                                      class="form-control form-control-sm"
+                                                      style="font-size:12px;font-family:inherit;"
+                                                      placeholder="الملاحظة العربية — استخدم {santri} لاسم الطالب">{{ $predicateNotesAr[$predicate] ?? '' }}</textarea>
                                         </div>
                                     @endforeach
                                 </div>
@@ -410,6 +414,7 @@
                                     <small class="text-muted" style="font-size:11px;">
                                         <i class="ri-information-line me-1"></i>
                                         Catatan ini tercetak pada rapor santri yang predikatnya sesuai, hanya bila catatan wali kelas masih kosong.
+                                        Gunakan <strong>{santri}</strong> untuk menyebut nama santri; teks Arab dipakai saat mencetak rapor Arab.
                                     </small>
                                     <button type="submit" class="btn btn-outline-primary btn-sm">
                                         <i class="ri-save-3-line me-1"></i>Simpan Catatan Predikat
@@ -445,10 +450,10 @@
                                             <th colspan="3" class="align-middle" style="background:var(--bs-primary-bg-subtle);color:var(--bs-primary-text-emphasis);letter-spacing:0.4px;">TAHFIDZ</th>
                                         @endif
                                         @if(($agamaCount ?? 0) > 0)
-                                            <th colspan="{{ $isSasLeger ? $agamaCount * 2 : $agamaCount }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
+                                            <th colspan="{{ $agamaCount * 2 }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
                                         @endif
                                         @if($umumCount > 0)
-                                            <th colspan="{{ $isSasLeger ? $umumCount * 2 : $umumCount }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
+                                            <th colspan="{{ $umumCount * 2 }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
                                         <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
                                         @if($isSasLeger)
@@ -471,7 +476,7 @@
                                             <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
                                         @endif
                                         @foreach($subjectMap as $subject)
-                                            <th rowspan="{{ $isSasLeger ? 1 : 2 }}" colspan="{{ $isSasLeger ? 2 : 1 }}" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
+                                            <th rowspan="1" colspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
                                                 <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px;">
                                                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                                                 </div>
@@ -480,25 +485,23 @@
                                         <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
                                     </tr>
                                     <tr class="text-center">
-                                        @if($isSasLeger)
-                                            @foreach($subjectMap as $subject)
-                                                <th class="sub-n" style="background:var(--bs-tertiary-bg);font-size:9px;" title="Nilai {{ $subject->name }}">N</th>
-                                                <th class="sub-bn" style="background:var(--bs-secondary-bg);font-size:9px;" title="Nilai × Bobot {{ $subject->name }}">B×N</th>
-                                            @endforeach
-                                        @endif
+                                        @foreach($subjectMap as $subject)
+                                            <th class="sub-n" style="background:var(--bs-tertiary-bg);font-size:9px;" title="Nilai {{ $subject->name }}">N</th>
+                                            <th class="sub-bn" style="background:var(--bs-secondary-bg);font-size:9px;" title="Jumlah = Nilai × Bobot {{ $subject->name }}">Jumlah</th>
+                                        @endforeach
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-success-subtle text-success" data-sort="s">S</th>
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-warning-subtle text-warning" data-sort="i">I</th>
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-danger-subtle text-danger" data-sort="a">A</th>
                                     </tr>
                                     <tr>
-                                        <th colspan="{{ 3 }}" class="text-center fw-bold" style="background:var(--bs-tertiary-bg);vertical-align:middle;" data-col="name">
+                                        <th colspan="{{ 3 }}" class="text-center fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;" data-col="name">
                                             <span class="bg-primary-subtle text-primary">
                                                 <i class="ri-checkbox-circle-line me-1"></i>KKTP
                                             </span>
                                         </th>
                                         @foreach($subjectMap as $subject)
                                             @php $book = $bookMap[$subject->id] ?? null; @endphp
-                                            <th @if($isSasLeger) colspan="2" @endif>
+                                            <th colspan="2" class="kktp-cell">
                                                 @if($book)
                                                     <input type="number" class="kktp-input"
                                                            name="leger_kkm[{{ $book->id }}]"
@@ -514,7 +517,7 @@
                                     </tr>
                                     @if($isSasLeger)
                                         <tr>
-                                            <th colspan="3" class="text-center fw-bold" style="background:var(--bs-secondary-bg);vertical-align:middle;" data-col="name">
+                                            <th colspan="3" class="text-center fw-bold bobot-cell" style="background:var(--bs-secondary-bg);vertical-align:middle;" data-col="name">
                                                 <span class="bg-secondary-subtle text-secondary">
                                                     <i class="ri-scales-3-line me-1"></i>Bobot
                                                 </span>
@@ -530,7 +533,7 @@
                                                         ? rtrim(rtrim(number_format((float) $bobotJp, 2, '.', ''), '0'), '.')
                                                         : '';
                                                 @endphp
-                                                <th @if($isSasLeger) colspan="2" @endif title="Bobot {{ $subject->name }} — kosong berarti memakai JP ({{ $bobotJpText ?: '—' }})">
+                                                <th @if($isSasLeger) colspan="2" @endif class="bobot-cell" title="Bobot {{ $subject->name }} — kosong berarti JP ÷ 2 ({{ $bobotJpText ?: '—' }}); JP 1 tetap 1">
                                                     <input type="number" class="bobot-input"
                                                            name="leger_bobot[{{ $subject->id }}]"
                                                            value="{{ $bobotVal }}"
@@ -606,7 +609,13 @@
                                                 <td class="text-center" style="background:var(--bs-warning-bg-subtle);" data-col="conv">{{ $pembRow && $pembRow->skor_conversation !== null ? number_format($pembRow->skor_conversation, 1) : '—' }}</td>
                                                 <td class="text-center" style="background:var(--bs-primary-bg-subtle);" data-col="juz">{{ $tjuzRow?->juz_number ?? '—' }}</td>
                                                 <td class="text-center fw-semibold" style="background:var(--bs-primary-bg-subtle);" data-col="jumlah_juz">{{ $jumlahJuzMap[$sid] ?? 0 }}</td>
-                                                <td class="text-center" style="background:var(--bs-primary-bg-subtle);" data-col="halaqoh">{{ $hqRow?->name ?? '—' }}</td>
+                                                <td class="text-center" style="background:var(--bs-primary-bg-subtle);" data-col="halaqoh">
+                                                    @if($hqRow?->name)
+                                                        <span class="d-inline-block text-truncate" style="max-width:76px;" title="{{ $hqRow->name }}">{{ $hqRow->name }}</span>
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </td>
                                             @endif
                                             @foreach($subjectMap as $subject)
                                                 @php
@@ -630,15 +639,13 @@
                                                         <span class="text-muted">—</span>
                                                     @endif
                                                 </td>
-                                                @if($isSasLeger)
-                                                    <td class="sub-bn" style="text-align:center;background:var(--bs-secondary-bg);" data-col="subject-{{ $subject->id }}-bn">
-                                                        @if($nilaiTertimbang !== null)
-                                                            <span class="fw-semibold">{{ number_format($nilaiTertimbang, 1, '.', '') }}</span>
-                                                        @else
-                                                            <span class="text-muted">—</span>
-                                                        @endif
-                                                    </td>
-                                                @endif
+                                                <td class="sub-bn" style="text-align:center;background:var(--bs-secondary-bg);" data-col="subject-{{ $subject->id }}-bn">
+                                                    @if($nilaiTertimbang !== null)
+                                                        <span class="fw-semibold">{{ number_format($nilaiTertimbang, 1, '.', '') }}</span>
+                                                    @else
+                                                        <span class="text-muted">—</span>
+                                                    @endif
+                                                </td>
                                             @endforeach
                                             {{-- Jumlah --}}
                                             <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
@@ -691,7 +698,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $subjectMap->count() * ($isSasLeger ? 2 : 1) + ($isSasLeger ? 17 : 10) }}" class="text-center text-muted py-4">
+                                            <td colspan="{{ $subjectMap->count() * 2 + ($isSasLeger ? 17 : 10) }}" class="text-center text-muted py-4">
                                                 <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                             </td>
                                         </tr>
@@ -772,19 +779,48 @@
                                     <th rowspan="2" class="align-middle bg-warning-subtle" width="80" data-sort="sts-murni">
                                         N. Murni<br><small class="fw-normal">STS</small>
                                     </th>
-                                    <th rowspan="2" class="align-middle bg-warning-subtle" width="80" data-sort="sts">
-                                        STS<br><small class="fw-normal">({{ $activeBook?->nr_final_weight_sts ?? 25 }}%)</small>
-                                    </th>
+                                    @if($stsColumns === [])
+                                        <th rowspan="2" class="align-middle bg-warning-subtle" width="80" data-sort="sts">
+                                            STS<br><small class="fw-normal">({{ $activeBook?->nr_final_weight_sts ?? 25 }}%)</small>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1 py-0 px-1 d-block mx-auto" style="font-size:9px;"
+                                                    onclick="komponenOpen('sts')" title="Aktifkan komponen Praktik/Tulis">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @else
+                                        <th colspan="{{ count($stsColumns) + 1 }}" class="align-middle bg-warning-subtle">
+                                            STS<br><small class="fw-normal">({{ $activeBook?->nr_final_weight_sts ?? 25 }}%)</small>
+                                            <button type="button" class="btn btn-outline-primary btn-sm ms-1 py-0 px-1" style="font-size:9px;"
+                                                    onclick="komponenOpen('sts')">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @endif
                                     <th rowspan="2" class="align-middle bg-info-subtle" width="80" data-sort="sas-murni">
                                         N. Murni<br><small class="fw-normal">SAS</small>
                                     </th>
-                                    <th rowspan="2" class="align-middle bg-info-subtle" width="80" data-sort="sas">
-                                        SAS<br><small class="fw-normal">(25%)</small>
-                                    </th>
+                                    @if($sasColumns === [])
+                                        <th rowspan="2" class="align-middle bg-info-subtle" width="80" data-sort="sas">
+                                            SAS<br><small class="fw-normal">(25%)</small>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mt-1 py-0 px-1 d-block mx-auto" style="font-size:9px;"
+                                                    onclick="komponenOpen('sas')" title="Aktifkan komponen Praktik/Tulis">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @else
+                                        <th colspan="{{ count($sasColumns) + 1 }}" class="align-middle bg-info-subtle">
+                                            SAS<br><small class="fw-normal">(25%)</small>
+                                            <button type="button" class="btn btn-outline-primary btn-sm ms-1 py-0 px-1" style="font-size:9px;"
+                                                    onclick="komponenOpen('sas')">
+                                                <i class="ri-settings-3-line"></i> Komponen
+                                            </button>
+                                        </th>
+                                    @endif
                                     <th rowspan="2" class="align-middle bg-info-subtle" width="80">RSA</th>
                                     <th rowspan="2" class="align-middle bg-info-subtle" width="80">NR<br>Murni</th>
                                     <th colspan="6" class="align-middle bg-success-subtle">Penghargaan Akademik</th>
                                     <th rowspan="2" class="align-middle bg-success-subtle" width="80">NR Final</th>
+                                    <th rowspan="2" class="align-middle bg-secondary-subtle" width="80" title="Jumlah = NR Final × Bobot">Jumlah</th>
                                     <th colspan="4" class="align-middle bg-secondary-subtle">Penilaian Asesmen Formatif</th>
                                     <th rowspan="2" class="align-middle bg-secondary-subtle" width="80">RATA-<br>RATA</th>
                                 </tr>
@@ -798,6 +834,18 @@
                                             data-sort="sh-{{ $col['id'] }}"
                                             style="width:{{ $colW }}px;min-width:{{ $colW }}px;white-space:nowrap;">{{ $colLabel }}</th>
                                     @endforeach
+                                    @if($stsColumns !== [])
+                                        @foreach($stsColumns as $col)
+                                            <th style="min-width:60px;white-space:nowrap;" title="Komponen STS — {{ $col['label'] }}">{{ $col['label'] }}</th>
+                                        @endforeach
+                                        <th style="min-width:60px;" title="Nilai akhir STS = rata-rata komponen">Nilai</th>
+                                    @endif
+                                    @if($sasColumns !== [])
+                                        @foreach($sasColumns as $col)
+                                            <th style="min-width:60px;white-space:nowrap;" title="Komponen SAS — {{ $col['label'] }}">{{ $col['label'] }}</th>
+                                        @endforeach
+                                        <th style="min-width:60px;" title="Nilai akhir SAS = rata-rata komponen">Nilai</th>
+                                    @endif
                                     <th width="52">Jujur</th>
                                     <th width="52">Disiplin</th>
                                     <th width="52">Peduli</th>
@@ -814,6 +862,10 @@
                                 @forelse($students as $i => $history)
                                     @php $student = $history->student; @endphp
                                     @php $existing = $nilaiMap[$student->id][$activeBook->id] ?? null; @endphp
+                                    @php
+                                        $bobotAktif = (float) ($bobotMap[$activeBook->subject_id] ?? 0);
+                                        $jumlahNilai = $existing?->nr_final !== null ? $bobotAktif * (float) $existing->nr_final : null;
+                                    @endphp
                                     <tr data-inactive="{{ (($isArchiveAy ?? false) || (! $history->is_active && ! $fallbackRoster)) ? '1' : '0' }}">
                                         <td class="text-center text-muted fw-semibold" data-col="no">{{ $i + 1 }}</td>
                                         <td class="text-center" data-col="nis">{{ $student->nis ?? '-' }}</td>
@@ -868,6 +920,7 @@
                                                    oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
                                                    min="0" max="100" step="0.01" placeholder="---">
                                         </td>
+                                        @if($stsColumns === [])
                                         <td class="p-0" data-col="sts">
                                             <input type="number" class="sheet-input sts-input js-gated"
                                                    data-requires="sts-murni"
@@ -877,6 +930,23 @@
                                                    min="0" max="100" step="0.01" placeholder="---"
                                                    @if(! ($murniOptional ?? false) && $existing?->sts_murni === null) readonly @endif>
                                         </td>
+                                        @else
+                                            @php $stsVals = $stsComponentMap[$student->id] ?? []; @endphp
+                                            @foreach($stsColumns as $col)
+                                                <td class="p-0" data-col="sts-komponen-{{ $col['id'] }}">
+                                                    <input type="number" class="sheet-input komponen-input komponen-sts"
+                                                           data-jenis="sts" data-student="{{ $student->id }}"
+                                                           name="nilai[{{ $student->id }}][sts_components][{{ $col['id'] }}]"
+                                                           value="{{ $stsVals[$col['id']] ?? '' }}"
+                                                           oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
+                                                           min="0" max="100" step="0.01" placeholder="---"
+                                                           @if(! ($murniOptional ?? false) && $existing?->sts_murni === null) readonly @endif>
+                                                </td>
+                                            @endforeach
+                                            <td class="text-center fw-semibold" id="sts-final-{{ $student->id }}">
+                                                {{ $existing?->sts !== null ? number_format((float) $existing->sts, 1) : '---' }}
+                                            </td>
+                                        @endif
                                         @php $ph = $penghargaanMap[$student->id] ?? null; @endphp
                                         <td class="p-0" data-col="sas-murni">
                                             <input type="number" class="sheet-input"
@@ -886,6 +956,7 @@
                                                    oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
                                                    min="0" max="100" step="0.01" placeholder="---">
                                         </td>
+                                        @if($sasColumns === [])
                                         <td class="p-0" data-col="sas">
                                             <input type="number" class="sheet-input sas-input js-gated"
                                                    data-requires="sas-murni"
@@ -895,8 +966,41 @@
                                                    min="0" max="100" step="0.01" placeholder="---"
                                                    @if(! ($murniOptional ?? false) && $existing?->sas_murni === null) readonly @endif>
                                         </td>
-                                        <td class="text-center" id="rsa-{{ $student->id }}">{{ $existing?->rsa !== null ? number_format($existing->rsa, 1) : '---' }}</td>
-                                        <td class="text-center" id="nrm-{{ $student->id }}">{{ $existing?->nr_murni !== null ? number_format($existing->nr_murni, 1) : '---' }}</td>
+                                        @else
+                                            @php $sasVals = $sasComponentMap[$student->id] ?? []; @endphp
+                                            @foreach($sasColumns as $col)
+                                                <td class="p-0" data-col="sas-komponen-{{ $col['id'] }}">
+                                                    <input type="number" class="sheet-input komponen-input komponen-sas"
+                                                           data-jenis="sas" data-student="{{ $student->id }}"
+                                                           name="nilai[{{ $student->id }}][sas_components][{{ $col['id'] }}]"
+                                                           value="{{ $sasVals[$col['id']] ?? '' }}"
+                                                           oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
+                                                           min="0" max="100" step="0.01" placeholder="---"
+                                                           @if(! ($murniOptional ?? false) && $existing?->sas_murni === null) readonly @endif>
+                                                </td>
+                                            @endforeach
+                                            <td class="text-center fw-semibold" id="sas-final-{{ $student->id }}">
+                                                {{ $existing?->sas !== null ? number_format((float) $existing->sas, 1) : '---' }}
+                                            </td>
+                                        @endif
+                                        {{-- RSA bisa diisi manual; kosong = otomatis (rata-rata STS & SAS). --}}
+                                        <td class="p-0 text-center" data-col="rsa">
+                                            <input type="number" class="rsa-input" id="rsa-{{ $student->id }}" data-student="{{ $student->id }}"
+                                                   name="nilai[{{ $student->id }}][rsa]"
+                                                   value="{{ $existing?->rsa_manual ? rtrim(rtrim(number_format((float) $existing->rsa, 2, '.', ''), '0'), '.') : '' }}"
+                                                   placeholder="{{ $existing?->rsa !== null ? number_format((float) $existing->rsa, 1) : '---' }}"
+                                                   min="0" max="100" step="0.01"
+                                                   title="RSA manual — kosongkan untuk kembali otomatis (rata-rata STS & SAS)">
+                                        </td>
+                                        {{-- NR Murni bisa diisi manual; kosong = otomatis (rata-rata RS & RSA). --}}
+                                        <td class="p-0 text-center" data-col="nr_murni">
+                                            <input type="number" class="rsa-input" id="nrm-{{ $student->id }}" data-student="{{ $student->id }}"
+                                                   name="nilai[{{ $student->id }}][nr_murni]"
+                                                   value="{{ $existing?->nr_murni_manual ? rtrim(rtrim(number_format((float) $existing->nr_murni, 2, '.', ''), '0'), '.') : '' }}"
+                                                   placeholder="{{ $existing?->nr_murni !== null ? number_format((float) $existing->nr_murni, 1) : '---' }}"
+                                                   min="0" max="100" step="0.01"
+                                                   title="NR Murni manual — kosongkan untuk kembali otomatis (rata-rata RS & RSA)">
+                                        </td>
                                         <td class="text-center">{{ $ph?->jujur ?? '---' }}</td>
                                         <td class="text-center">{{ $ph?->disiplin ?? '---' }}</td>
                                         <td class="text-center">{{ $ph?->peduli ?? '---' }}</td>
@@ -904,6 +1008,7 @@
                                         <td class="text-center">{{ $ph?->kehadiran ?? '---' }}</td>
                                         <td class="text-center">{{ $ph?->keaktifan ?? '---' }}</td>
                                         <td class="text-center fw-bold" id="nrf-{{ $student->id }}">{{ $existing?->nr_final !== null ? number_format($existing->nr_final, 1) : '---' }}</td>
+                                        <td class="text-center fw-semibold bg-light" id="jml-{{ $student->id }}" data-bobot="{{ $bobotAktif }}" title="Jumlah = NR Final × Bobot ({{ rtrim(rtrim(number_format($bobotAktif, 2, '.', ''), '0'), '.') }})">{{ $jumlahNilai !== null ? number_format($jumlahNilai, 1) : '---' }}</td>
                                         @php
                                             $fm = $formatifMap[$student->id] ?? null;
                                             $fmVals = $fm ? array_filter([$fm->skor_lkpd, $fm->skor_diskusi, $fm->skor_kuis, $fm->skor_antarteman], fn ($v) => $v !== null) : [];
@@ -917,7 +1022,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ 20 + count($columns) }}" class="text-center text-muted py-4">
+                                        <td colspan="{{ 23 + count($columns) + count($stsColumns) + count($sasColumns) }}" class="text-center text-muted py-4">
                                             <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                         </td>
                                     </tr>
@@ -1010,6 +1115,40 @@
         </div>
     </div>
 
+{{-- Modal: Komponen STS/SAS (mis. Praktik & Tulis) --}}
+    <div class="modal fade" id="komponenModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="komponen-title"><i class="ri-layout-column-line me-1"></i>Kelola Komponen STS</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="komponen-jenis" value="sts">
+                    <p class="text-muted mb-3" style="font-size:12px;">
+                        Nilai akhir <strong>STS/SAS</strong> = rata-rata komponen yang terisi.
+                        Kosongkan semua komponen lalu simpan untuk mematikan fitur.
+                    </p>
+                    <div id="komponen-list"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-1" onclick="komponenAdd()">
+                        <i class="ri-add-line me-1"></i>Tambah Komponen
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <span id="komponen-status" class="me-auto text-muted" style="font-size:12px;"></span>
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="komponen-reset" onclick="komponenReset()"
+                            title="Hapus semua komponen dan kembalikan ke satu kolom nilai">
+                        <i class="ri-arrow-go-back-line me-1"></i>Reset ke 1 Kolom
+                    </button>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="komponenSave()">
+                        <i class="ri-save-line me-1"></i>Simpan Komponen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('script')
@@ -1083,17 +1222,23 @@
     }
 
     /* ── Lebar kolom konsisten ── */
-    #tab-leger th[data-sort^="subject-"], #tab-leger td[data-col^="subject-"] { width: 92px; min-width: 92px; max-width: 92px; }
-    /* Leger SAS: sub-kolom Nilai | B×N lebih ramping */
-    #tab-leger th[data-sort^="subject-"][colspan="2"] { width: 124px; min-width: 124px; max-width: 124px; }
-    #tab-leger th.sub-n { width: 56px; min-width: 56px; max-width: 56px; }
+    /* Satu mapel = 2 sub-kolom: N (64px) + Jumlah berbobot (68px) = 132px. */
+    #tab-leger th[data-sort^="subject-"] { width: 132px; min-width: 132px; max-width: 132px; }
+    #tab-leger td[data-col^="subject-"] { width: 64px; min-width: 64px; max-width: 64px; }
+    #tab-leger th.sub-n { width: 64px; min-width: 64px; max-width: 64px; }
     #tab-leger th.sub-bn, #tab-leger td.sub-bn { width: 68px; min-width: 68px; max-width: 68px; }
-    #tab-leger th[data-sort="doa"], #tab-leger td[data-col="doa"] { width: 46px; min-width: 46px; max-width: 46px; }
-    #tab-leger th[data-sort="hiwar"], #tab-leger td[data-col="hiwar"] { width: 50px; min-width: 50px; max-width: 50px; }
-    #tab-leger th[data-sort="conv"], #tab-leger td[data-col="conv"] { width: 84px; min-width: 84px; max-width: 84px; }
-    #tab-leger th[data-sort="juz"], #tab-leger td[data-col="juz"] { width: 46px; min-width: 46px; max-width: 46px; }
-    #tab-leger th[data-sort="jumlah_juz"], #tab-leger td[data-col="jumlah_juz"] { width: 58px; min-width: 58px; max-width: 58px; }
-    #tab-leger th[data-sort="halaqoh"], #tab-leger td[data-col="halaqoh"] { width: 84px; min-width: 84px; max-width: 84px; }
+    /* PEMBIASAAN PAGI (Do'a/Hiwar/Conversation) & TAHFIDZ (Juz/Jml Juz/Halaqoh):
+       lebar seragam + isi rata tengah (horizontal & vertikal). */
+    #tab-leger th[data-sort="doa"], #tab-leger td[data-col="doa"],
+    #tab-leger th[data-sort="hiwar"], #tab-leger td[data-col="hiwar"],
+    #tab-leger th[data-sort="conv"], #tab-leger td[data-col="conv"],
+    #tab-leger th[data-sort="juz"], #tab-leger td[data-col="juz"],
+    #tab-leger th[data-sort="jumlah_juz"], #tab-leger td[data-col="jumlah_juz"],
+    #tab-leger th[data-sort="halaqoh"], #tab-leger td[data-col="halaqoh"] {
+        width: 84px; min-width: 84px; max-width: 84px;
+        text-align: center; vertical-align: middle;
+    }
+    #tab-leger td[data-col="halaqoh"] { overflow: hidden; text-overflow: ellipsis; }
     #tab-leger th[data-sort="total"], #tab-leger td[data-col="total"] { width: 76px; min-width: 76px; max-width: 76px; }
     #tab-leger th[data-sort="total_bobot"], #tab-leger td[data-col="total_bobot"] { width: 76px; min-width: 76px; max-width: 76px; }
     #tab-leger th[data-sort="avg"], #tab-leger td[data-col="avg"] { width: 82px; min-width: 82px; max-width: 82px; }
@@ -1103,6 +1248,10 @@
     #tab-leger th[data-sort="i"], #tab-leger td[data-col="i"],
     #tab-leger th[data-sort="a"], #tab-leger td[data-col="a"] { width: 42px; min-width: 42px; max-width: 42px; }
     #tab-mapel th[data-sort^="sh-"], #tab-mapel td[data-col^="sh-"] { min-width: 56px; }
+    /* Sub-kolom komponen STS/SAS + kolom Nilai akhir: lebar seragam */
+    #tab-mapel th[title^="Komponen"], #tab-mapel th[title^="Nilai akhir"],
+    #tab-mapel td[data-col^="sts-komponen-"], #tab-mapel td[data-col^="sas-komponen-"] { min-width: 64px; }
+    #tab-mapel td[id^="sts-final-"], #tab-mapel td[id^="sas-final-"] { min-width: 60px; }
 
     /* ── Input nilai ── */
     #tab-leger input[type="number"],
@@ -1134,6 +1283,16 @@
         font-size: 12px;
     }
     #tab-mapel input.sh-input:focus { border: 0; box-shadow: none; outline: none; background: rgba(var(--bs-primary-rgb), .06); }
+    /* RSA manual: tampil seperti spreadsheet, angka otomatis hanya di placeholder */
+    #tab-mapel input.rsa-input {
+        width: 100%; height: 30px; padding: 0 4px;
+        border: 0; border-radius: 0; box-shadow: none;
+        background: transparent; color: var(--bs-body-color);
+        font-size: 12px; font-style: italic; font-weight: 600;
+        text-align: center; text-align-last: center;
+    }
+    #tab-mapel input.rsa-input:focus { outline: none; border: 0; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
+    #tab-mapel input.rsa-input::placeholder { color: var(--bs-secondary-color); font-weight: 500; opacity: .75; }
     #tab-mapel input.sts-input { background: var(--bs-warning-bg-subtle); font-weight: 600; }
     #tab-mapel input.sts-input:focus { border: 0; box-shadow: none; outline: none; background: rgba(var(--bs-warning-rgb), .18); }
 
@@ -1173,24 +1332,33 @@
     #tab-mapel input.sheet-input[readonly] { background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); opacity: .75; }
     #tab-mapel input.sheet-input[readonly] { cursor: pointer; }
     #tab-leger th input.kktp-input {
-        width: 100%; height: 26px; padding: 0 4px;
+        width: 100%; height: 21px; padding: 0 4px;
         border: 0; border-radius: 0; box-shadow: none;
         background: transparent; color: var(--bs-body-color);
-        font-weight: 700; font-size: 12px; text-align: center;
+        font-weight: 700; font-size: 11px; text-align: center;
     }
     #tab-leger th input.kktp-input:focus { border: 0; outline: none; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
 
     #tab-leger th input.bobot-input {
-        width: 100%; min-width: 46px; height: 26px; padding: 0 2px;
+        width: 100%; min-width: 46px; height: 21px; padding: 0 2px;
         border: 0; border-radius: 0; box-shadow: none;
         background: transparent; color: var(--bs-body-color);
-        font-weight: 700; font-size: 12px; text-align: center;
+        font-weight: 700; font-size: 11px; text-align: center;
         -moz-appearance: textfield;
     }
     #tab-leger th input.bobot-input::-webkit-outer-spin-button,
     #tab-leger th input.bobot-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     #tab-leger th input.bobot-input::placeholder { color: var(--bs-secondary-color); font-weight: 500; }
     #tab-leger th input.bobot-input:focus { border: 0; outline: none; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
+
+    /* ── Baris KKTP & Bobot: tinggi diringkas ── */
+    #tab-leger thead th.kktp-cell,
+    #tab-leger thead th.bobot-cell { padding: 0 2px; line-height: 1; vertical-align: middle; }
+    #tab-leger thead th[data-col="name"].kktp-cell,
+    #tab-leger thead th[data-col="name"].bobot-cell { padding: 0 6px; }
+    #tab-leger thead th[data-col="name"] > span {
+        display: inline-block; padding: 1px 6px; line-height: 1.2;
+    }
 </style>
 <script>
 function syncSearchInput(val) {
@@ -1223,10 +1391,32 @@ function updateRowCells(studentId, data) {
         if (!el) return;
         el.textContent = (val === null || val === undefined || val === '') ? '-' : Number(val).toFixed(1);
     };
+    // Sel yang kini berupa input manual (RSA, NR Murni): jangan timpa isian
+    // guru, cukup perbarui angka otomatis pada placeholder.
+    var setPlaceholder = function (prefix, val) {
+        var el = document.getElementById(prefix + studentId);
+        if (!el) return;
+        var text = (val === null || val === undefined || val === '') ? '---' : Number(val).toFixed(1);
+        if (el.tagName === 'INPUT') {
+            el.placeholder = text;
+        } else {
+            el.textContent = text;
+        }
+    };
     if (data.rs !== undefined) set('rs-', data.rs);
-    if (data.rsa !== undefined) set('rsa-', data.rsa);
-    if (data.nr_murni !== undefined) set('nrm-', data.nr_murni);
-    if (data.nr_final !== undefined) set('nrf-', data.nr_final);
+    if (data.rsa !== undefined) setPlaceholder('rsa-', data.rsa);
+    if (data.nr_murni !== undefined) setPlaceholder('nrm-', data.nr_murni);
+    if (data.nr_final !== undefined) {
+        set('nrf-', data.nr_final);
+
+        // Jumlah = NR Final × bobot mapel (dibulatkan 1 desimal).
+        var jml = document.getElementById('jml-' + studentId);
+        if (jml) {
+            var bobot = parseFloat(jml.dataset.bobot || '0');
+            var nrf = parseFloat(data.nr_final);
+            jml.textContent = (isNaN(nrf) || !bobot) ? '---' : (bobot * nrf).toFixed(1);
+        }
+    }
 }
 
 /* ── Header multi-baris: hitung posisi sticky tiap baris ── */
@@ -1627,6 +1817,161 @@ function kolomSave() {
 
 document.addEventListener('DOMContentLoaded', function () {
     kolomRender();
+});
+
+// ─── Komponen STS/SAS (Praktik/Tulis) ───────────────────────────
+const komponenUrl = "{{ route('user.schools.nilai-kelas.sts.komponen', ['userId' => $userId, 'studyGroupId' => $studyGroup->id, 'admin_book_id' => $activeBook?->id]) }}";
+const komponenPreset = [{ id: 'praktik', label: 'Praktik' }, { id: 'tulis', label: 'Tulis' }];
+let komponenJenis = 'sts';
+let komponenData = { sts: @json($stsColumns ?? []), sas: @json($sasColumns ?? []) };
+// Status tersimpan di server: tombol reset hanya aktif bila fitur memang sedang dipakai.
+const komponenTersimpan = { sts: (@json($stsColumns ?? [])).length > 0, sas: (@json($sasColumns ?? [])).length > 0 };
+
+function komponenEscape(value) {
+    return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function komponenRender() {
+    const wrap = document.getElementById('komponen-list');
+    if (!wrap) return;
+
+    const rows = komponenData[komponenJenis] || [];
+    const resetBtn = document.getElementById('komponen-reset');
+    if (resetBtn) resetBtn.disabled = ! komponenTersimpan[komponenJenis];
+
+    if (rows.length === 0) {
+        wrap.innerHTML = '<div class="text-muted small mb-2">Belum ada komponen. Tambahkan komponen untuk mengaktifkan fitur.</div>';
+        return;
+    }
+
+    wrap.innerHTML = rows.map(function (c, i) {
+        return '<div class="input-group input-group-sm mb-2">' +
+            '<span class="input-group-text" style="width:42px;">' + (i + 1) + '</span>' +
+            '<input type="text" class="form-control" maxlength="60" value="' + komponenEscape(c.label) + '" oninput="komponenData[\'' + komponenJenis + '\'][' + i + '].label = this.value">' +
+            '<button type="button" class="btn btn-outline-secondary" onclick="komponenMove(' + i + ', -1)" ' + (i === 0 ? 'disabled' : '') + '><i class="ri-arrow-up-line"></i></button>' +
+            '<button type="button" class="btn btn-outline-secondary" onclick="komponenMove(' + i + ', 1)" ' + (i === rows.length - 1 ? 'disabled' : '') + '><i class="ri-arrow-down-line"></i></button>' +
+            '<button type="button" class="btn btn-outline-danger" onclick="komponenRemove(' + i + ')" title="Hapus komponen"><i class="ri-delete-bin-line"></i></button>' +
+            '</div>';
+    }).join('');
+}
+
+function komponenUuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function komponenOpen(jenis) {
+    komponenJenis = jenis === 'sas' ? 'sas' : 'sts';
+
+    if (!komponenData[komponenJenis] || komponenData[komponenJenis].length === 0) {
+        komponenData[komponenJenis] = komponenPreset.map(function (c) {
+            return { id: c.id, label: c.label };
+        });
+    }
+
+    document.getElementById('komponen-jenis').value = komponenJenis;
+    document.getElementById('komponen-title').textContent = 'Kelola Komponen ' + komponenJenis.toUpperCase();
+    document.getElementById('komponen-status').textContent = '';
+    komponenRender();
+
+    if (window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('komponenModal')).show();
+    }
+}
+
+function komponenAdd() {
+    komponenData[komponenJenis].push({ id: komponenUuid(), label: 'Komponen Baru' });
+    komponenRender();
+}
+
+function komponenRemove(i) {
+    if (!confirm('Hapus komponen "' + komponenData[komponenJenis][i].label + '"? Nilai komponen ini ikut terhapus.')) return;
+    komponenData[komponenJenis].splice(i, 1);
+    komponenRender();
+}
+
+function komponenMove(i, dir) {
+    const rows = komponenData[komponenJenis];
+    const j = i + dir;
+    if (j < 0 || j >= rows.length) return;
+    const tmp = rows[i];
+    rows[i] = rows[j];
+    rows[j] = tmp;
+    komponenRender();
+}
+
+/**
+ * Reset ke satu kolom: hapus seluruh komponen jenis ini.
+ * Nilai akhir STS/SAS yang sudah tersimpan tetap dipakai pada kolom tunggal.
+ */
+function komponenReset() {
+    const jenis = komponenJenis.toUpperCase();
+    const labels = (komponenData[komponenJenis] || []).map(function (c) { return c.label; }).join(', ');
+
+    if (!confirm('Kembalikan ' + jenis + ' ke satu kolom nilai?\n\nKomponen (' + (labels || 'semua') + ') akan dihapus beserta nilai komponennya.\nNilai akhir ' + jenis + ' yang sudah tersimpan tetap dipertahankan pada kolom tunggal.')) {
+        return;
+    }
+
+    komponenData[komponenJenis] = [];
+    komponenRender();
+    komponenSave();
+}
+
+function komponenSave() {
+    const status = document.getElementById('komponen-status');
+    status.textContent = 'Menyimpan…';
+
+    fetch(komponenUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+        },
+        body: JSON.stringify({
+            jenis: komponenJenis,
+            columns: (komponenData[komponenJenis] || []).map(function (c) {
+                return { id: c.id, label: c.label };
+            }),
+        }),
+    })
+    .then(res => res.ok ? res.json() : Promise.reject(res))
+    .then(function (data) {
+        if (data && data.success) {
+            status.textContent = 'Tersimpan! Memuat ulang…';
+            window.location.reload();
+        } else {
+            status.textContent = (data && data.message) ? data.message : 'Gagal menyimpan komponen.';
+        }
+    })
+    .catch(function () {
+        status.textContent = 'Gagal menyimpan komponen.';
+    });
+}
+
+// Nilai akhir STS/SAS ditampilkan langsung saat komponen diisi.
+document.addEventListener('input', function (event) {
+    const input = event.target;
+    if (! input.classList || ! input.classList.contains('komponen-input')) return;
+
+    const jenis = input.dataset.jenis;
+    const studentId = input.dataset.student;
+    let sum = 0;
+    let count = 0;
+
+    document.querySelectorAll('.komponen-input[data-jenis="' + jenis + '"][data-student="' + studentId + '"]').forEach(function (el) {
+        const value = parseFloat(el.value);
+        if (! isNaN(value)) { sum += value; count++; }
+    });
+
+    const output = document.getElementById(jenis + '-final-' + studentId);
+    if (output) {
+        output.textContent = count > 0 ? String(parseFloat((sum / count).toFixed(2))) : '---';
+    }
 });
 </script>
 @include('partials.paste-grid')

@@ -10,10 +10,12 @@ use App\Mail\WaliRequestRejectedMail;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\WaliRegistrationToken;
+use App\Models\WaliLinkVerification;
 use App\Models\WaliSantri;
+use App\Services\StudentEnrollmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class WaliSantriService
 {
@@ -134,7 +136,7 @@ class WaliSantriService
     /**
      * Throw when a registration token belongs to a different tenant.
      */
-    private function assertTokenSameTenant(WaliRegistrationToken $token): void
+    private function assertTokenSameTenant(WaliLinkVerification $token): void
     {
         $schoolId = $this->currentSchoolId(true);
         if ($token->school_id === null || $token->school_id !== $schoolId) {
@@ -234,9 +236,9 @@ class WaliSantriService
             ]);
 
             // Registrasi oleh wali = jalur masuk non-mutasi; catat sumbernya.
-            app(\App\Services\StudentEnrollmentService::class)->recordEntry(
+            app(StudentEnrollmentService::class)->recordEntry(
                 $student,
-                \App\Services\StudentEnrollmentService::SOURCE_GUARDIAN,
+                StudentEnrollmentService::SOURCE_GUARDIAN,
                 null,
                 $wali->id,
                 ['registered_by' => 'wali'],
@@ -359,9 +361,10 @@ class WaliSantriService
 
             // Santri sudah punya wali → proses otorisasi
             // ── STEP 4: Cek tidak ada pending request (tenant-scoped) ────────────
-            $pending = WaliRegistrationToken::where('user_id', $wali->id)
-                ->where('nik_santri', $data['nik_santri'])
+            $pending = WaliLinkVerification::where('user_id', $wali->id)
+                ->where('student_id', $student->id)
                 ->where('school_id', $schoolId)
+                ->where('method', 'wali_approval')
                 ->whereNull('used_at')
                 ->where('expires_at', '>', now())
                 ->first();
@@ -395,14 +398,15 @@ class WaliSantriService
             // ── STEP 6: Generate token otorisasi (tenant-scoped) ────────────────────
             $token = bin2hex(random_bytes(32));
 
-            $regToken = WaliRegistrationToken::create([
-                'token' => $token,
+            $regToken = WaliLinkVerification::create([
                 'user_id' => $wali->id,
-                'school_id' => $schoolId,
-                'nik_santri' => $data['nik_santri'],
-                'no_kk' => $data['no_kk'] ?? null,
-                'intent' => 'add_wali',
                 'student_id' => $student->id,
+                'school_id' => $schoolId,
+                'token_hash' => hash('sha256', $token),
+                'relationship' => $role,
+                'method' => 'wali_approval',
+                'ip_address' => request()?->ip(),
+                'user_agent' => Str::limit((string) request()?->userAgent(), 1000),
                 'expires_at' => now()->addHours(self::TOKEN_EXPIRY_HOURS),
             ]);
 
@@ -422,7 +426,8 @@ class WaliSantriService
 
             return [
                 'student' => $student,
-                'registration_token' => $regToken,
+                'verification' => $regToken,
+                'verification_token' => $token,
                 'needs_approval' => true,
                 'message' => 'Permintaan telah dikirim ke wali utama. '
                     .'Anda akan notified ketika permintaan disetujui.',
@@ -442,10 +447,17 @@ class WaliSantriService
     {
         return DB::transaction(function () use ($token, $wali, $action, $note) {
             // ── STEP 1: Cari token ──────────────────────────────────────────────
-            $regToken = WaliRegistrationToken::where('token', $token)
+            $verificationQuery = WaliLinkVerification::where('method', 'wali_approval')
                 ->whereNull('used_at')
-                ->where('expires_at', '>', now())
-                ->first();
+                ->where('expires_at', '>', now());
+
+            if (Str::isUuid($token)) {
+                $verificationQuery->where('id', $token);
+            } else {
+                $verificationQuery->where('token_hash', hash('sha256', $token));
+            }
+
+            $regToken = $verificationQuery->first();
 
             if (! $regToken) {
                 throw new ServiceErrorCode(
@@ -521,7 +533,7 @@ class WaliSantriService
                     'user_id' => $regToken->user_id,
                     'student_id' => $regToken->student_id,
                     'school_id' => $tokenSchoolId,
-                    'role' => 'wali',
+                    'role' => $regToken->relationship ?: 'wali',
                     'is_primary' => false,
                     'status' => WaliSantri::STATUS_ACTIVE,
                     'verified_at' => now(),

@@ -1,3 +1,7 @@
+> **Catatan implementasi (Nov 2026):** flow token lama `wali_registration_tokens`
+> sudah dimigrasikan ke `wali_link_verifications` dengan token hash. Dokumen ini
+> adalah desain awal; kontrak aktif ada di `WALI_SANTRI_API_SCHEMA.md`.
+
 # ALIM Mobile API — Desain Arsitektur Backend & Mobile
 
 > **Latar belakang:** ALIM adalah aplikasi Laravel (PHP) existing. Opsi A dipilih — extend Laravel dengan API route + controller/service baru, reuse existing User model.

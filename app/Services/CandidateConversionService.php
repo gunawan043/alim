@@ -226,14 +226,27 @@ class CandidateConversionService
                 ->first();
 
             if (! $existingAssignment) {
-                GtkWorkUnit::where('user_id', $user->id)->update(['is_primary' => false]);
+                if (config('gtk_work_unit.lifecycle.enabled', false)) {
+                    app(GtkPlacementLifecycleService::class)->start(
+                        $user->id,
+                        $workUnitId,
+                        null,
+                        today()->toDateString(),
+                        auth()->id(),
+                        null,
+                        true,
+                        $employmentPayload['jabatan'] ?? null
+                    );
+                } else {
+                    GtkWorkUnit::where('user_id', $user->id)->update(['is_primary' => false]);
 
-                GtkWorkUnit::create([
-                    'user_id' => $user->id,
-                    'work_unit_id' => $workUnitId,
-                    'jabatan' => $employmentPayload['jabatan'] ?? null,
-                    'is_primary' => true,
-                ]);
+                    GtkWorkUnit::create([
+                        'user_id' => $user->id,
+                        'work_unit_id' => $workUnitId,
+                        'jabatan' => $employmentPayload['jabatan'] ?? null,
+                        'is_primary' => true,
+                    ]);
+                }
 
                 GtkWorkUnitHistory::create([
                     'user_id' => $user->id,

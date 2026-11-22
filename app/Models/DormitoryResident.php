@@ -20,6 +20,51 @@ class DormitoryResident extends Model
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
+    protected static function booted(): void
+    {
+        // Setiap penempatan/checkout harus tercermin di tabel status boarding,
+        // supaya dashboard & laporan tidak lagi menghitung "di asrama" dari
+        // tabel yang hanya berisi santri yang sedang keluar.
+        static::saved(function (self $resident) {
+            $resident->syncBoardingStatus();
+        });
+    }
+
+    /**
+     * Jaga `student_boarding_statuses` tetap sejalan dengan data penghuni.
+     * Status keluar (izin/UKS/kegiatan) tidak pernah ditimpa di sini.
+     */
+    public function syncBoardingStatus(): void
+    {
+        if (! $this->student_id) {
+            return;
+        }
+
+        $status = StudentBoardingStatus::firstOrNew(['student_id' => $this->student_id]);
+
+        if ($this->is_active) {
+            if (! $status->exists) {
+                $status->status = StudentBoardingStatus::IN_DORM;
+                $status->effective_from = $this->check_in_date ?? now();
+            }
+
+            if ($status->status === StudentBoardingStatus::IN_DORM) {
+                $status->dormitory_id = $this->dormitory_id;
+                $status->room_id = $this->room_id;
+            } else {
+                $status->dormitory_id ??= $this->dormitory_id;
+                $status->room_id ??= $this->room_id;
+            }
+        } elseif ($status->exists && $status->status === StudentBoardingStatus::IN_DORM) {
+            $status->status = StudentBoardingStatus::CHECKED_OUT;
+        } else {
+            return;
+        }
+
+        $status->last_event_at = now();
+        $status->save();
+    }
+
     protected $fillable = [
         'student_id',
         'room_id',

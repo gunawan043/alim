@@ -113,6 +113,49 @@ class LegerPdfService
             }
         }
 
+        // Komponen STS/SAS per mapel (mis. Praktik & Tulis). Hanya mapel yang
+        // punya komponen yang mendapat sub-kolom tambahan di leger.
+        $komponenService = app(\App\Services\SumatifKomponenService::class);
+        $componentColumns = [];
+        $componentValues = [];
+
+        foreach ($subjectMap as $subject) {
+            $book = $bookMap[$subject->id] ?? null;
+            if (! $book) {
+                continue;
+            }
+
+            $stsCols = $komponenService->columnsFor($book, 'sts');
+            $sasCols = $komponenService->columnsFor($book, 'sas');
+
+            if ($stsCols === [] && $sasCols === []) {
+                continue;
+            }
+
+            $componentColumns[$subject->id] = ['sts' => $stsCols, 'sas' => $sasCols];
+
+            foreach ($students as $history) {
+                $sid = $history->student_id;
+                $row = $nilaiMap[$sid][$book->id] ?? null;
+                $componentValues[$sid][$book->id] = [
+                    'sts' => $komponenService->valuesFor($row, $stsCols, 'sts'),
+                    'sas' => $komponenService->valuesFor($row, $sasCols, 'sas'),
+                ];
+            }
+        }
+
+        // Catatan rapor per predikat (dipakai bila catatan wali kosong).
+        $predicateNotes = \App\Models\RaporPredicateNote::mapFor(
+            (string) $studyGroup->id,
+            (string) $selectedAyId,
+            (string) $selectedSem,
+        );
+        $predicateNotesAr = \App\Models\RaporPredicateNote::mapForArabic(
+            (string) $studyGroup->id,
+            (string) $selectedAyId,
+            (string) $selectedSem,
+        );
+
         // Bobot per mapel (khusus SAS): override manual, jatuh ke JP bila kosong.
         $bobotMap = StudyGroupSubject::query()
             ->where('study_group_id', $studyGroupId)
@@ -120,7 +163,7 @@ class LegerPdfService
             ->whereIn('subject_id', $subjectMap->pluck('id')->all())
             ->get()
             ->mapWithKeys(fn ($row) => [
-                $row->subject_id => $row->bobot !== null ? (float) $row->bobot : (float) $row->weekly_hours,
+                $row->subject_id => $row->effectiveBobot(),
             ])
             ->all();
 
@@ -193,6 +236,10 @@ class LegerPdfService
             'jenis' => $jenis,
             'nilaiResolved' => $nilaiResolved,
             'jumlahJuzMap' => $jumlahJuzMap,
+            'componentColumns' => $componentColumns,
+            'componentValues' => $componentValues,
+            'predicateNotes' => $predicateNotes,
+            'predicateNotesAr' => $predicateNotesAr,
         ];
     }
 

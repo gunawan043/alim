@@ -377,6 +377,25 @@
         .issued .issued-sub { padding-right: 12mm; }
         .issued td.issued-ar .issued-sub { display: inline-block; padding-right: 12mm; }
 
+        /* Tanggal Arab: label dan dua baris tanggal rata kanan. */
+        .issued-ar-dates {
+            border-collapse: collapse;
+            float: right;
+        }
+        .issued-ar-dates td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+        .issued-ar-dates td.lbl {
+            padding-left: 1mm;
+            white-space: nowrap;
+        }
+        .issued-ar-dates td.val {
+            text-align: right;
+            line-height: 1.25;
+        }
+
         .num-ar {
             font-family: {!! \App\Services\Ljk\LjkPdfFonts::arabicStack() !!};
         }
@@ -672,8 +691,8 @@
                     <td rowspan="3" class="notes-ar">
                         @if(filled($data['CatatanWaliAr'] ?? null) || filled($data['CatatanWali'] ?? null))
                             {!! \App\Support\ArabicText::toHtml($data['CatatanWaliAr'] ?? $data['CatatanWali']) !!}
-                        @elseif(! empty($data['CatatanPredikat']))
-                            {!! \App\Support\ArabicText::toHtml($data['CatatanPredikat']) !!}
+                        @elseif(filled($data['CatatanPredikatAr'] ?? null) || ! empty($data['CatatanPredikat']))
+                            {!! \App\Support\ArabicText::toHtml($data['CatatanPredikatAr'] ?? $data['CatatanPredikat']) !!}
                         @else
                             —
                         @endif
@@ -732,8 +751,12 @@
                 </td>
                 <td class="issued-ar">
                     <div>{!! $ar($la('diberikan_di').' : '.\App\Support\ArabicText::cityName($printCity)) !!}</div>
-                    <div>{!! $ar($la('tanggal').' : '.$printDateAr.' مـ') !!}</div>
-                    <div class="issued-sub">{!! $ar($hijriDate) !!}</div>
+                    <table class="issued-ar-dates" dir="rtl">
+                        <tr>
+                            <td class="lbl">{!! $ar($la('tanggal').' :') !!}</td>
+                            <td class="val">{!! $ar($printDateAr.' مـ') !!}<br>{!! $ar($hijriDate) !!}</td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
@@ -761,7 +784,7 @@
                     <div class="role">{{ $li('wali_kelas') }}</div>
                     <div class="role-ar">{!! $ar($la('wali_kelas')) !!}</div>
                     <div class="sig-area" style="height: {{ $sigAreaHeight }}mm;">
-                        @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_wali'] ?? true) && ! empty($ttdWaliBase64))
+                        @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_wali'] ?? false) && ! empty($ttdWaliBase64))
                             <img src="{{ $ttdWaliBase64 }}"
                                  style="width: {{ $layout['ttd_wali_width'] }}mm; height: {{ $layout['ttd_wali_height'] }}mm; object-fit: contain;"
                                  alt="TTD Wali Kelas">
@@ -777,12 +800,12 @@
                         {{-- Wrapper ini sengaja absolute agar tinggi stempel/TTD
                              tidak menambah tinggi baris (sig-area sudah menyediakan ruang). --}}
                         <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
-                            @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? true) && ! empty($stampBase64))
+                            @if(! ($hideTtdStamp ?? false) && ($layout['show_stamp'] ?? false) && ! empty($stampBase64))
                                 <img src="{{ $stampBase64 }}"
                                      style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:{{ $layout['stamp_width'] }}mm;height:{{ $layout['stamp_height'] }}mm;object-fit:contain;opacity:.9;"
                                      alt="Stempel Sekolah">
                             @endif
-                            @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? true) && ! empty($ttdKspBase64))
+                            @if(! ($hideTtdStamp ?? false) && ($layout['show_ttd_ksp'] ?? false) && ! empty($ttdKspBase64))
                                 <img src="{{ $ttdKspBase64 }}"
                                      style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:{{ $layout['ttd_ksp_width'] }}mm;height:{{ $layout['ttd_ksp_height'] }}mm;object-fit:contain;"
                                      alt="TTD Kepala Sekolah">

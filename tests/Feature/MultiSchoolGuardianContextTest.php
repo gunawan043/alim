@@ -104,7 +104,7 @@ class MultiSchoolGuardianContextTest extends TestCase
 
     private function asSanctumUser(User $user): self
     {
-        Sanctum::actingAs($user, [], 'sanctum');
+        Sanctum::actingAs($user, ['*'], 'sanctum');
         config(['auth.defaults.guard' => 'sanctum']);
         app()->refresh('auth', app()['auth'], 'guards');
 

@@ -167,6 +167,7 @@ class User extends Authenticatable
         $ids = $ids->merge(
             GtkWorkUnit::query()
                 ->where('user_id', $this->id)
+                ->current()
                 ->where('jabatan', 'like', 'KEPALA%')
                 ->where('jabatan', 'not like', 'KEPALA TATA USAHA%')
                 ->pluck('work_unit_id')
@@ -849,6 +850,7 @@ class User extends Authenticatable
             if ($dormitory) {
                 $workUnitIds = \App\Models\GtkWorkUnit::query()
                     ->where('user_id', $this->id)
+                    ->current()
                     ->pluck('work_unit_id')
                     ->filter()
                     ->all();
@@ -862,6 +864,7 @@ class User extends Authenticatable
                 // dari satuan kerja user.
                 $workUnitSchoolIds = \App\Models\GtkWorkUnit::query()
                     ->where('user_id', $this->id)
+                    ->current()
                     ->with('workUnit.school')
                     ->get()
                     ->map(fn ($placement) => (string) ($placement->workUnit?->school?->id ?? ''))

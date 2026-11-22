@@ -109,7 +109,7 @@ class MobileWaliSecurityTest extends TestCase
         $this->link($wali, $this->student($schoolA, 'Santri A'));
         $this->link($wali, $this->student($schoolB, 'Santri B'));
 
-        Sanctum::actingAs($wali, ['dashboard.read'], 'sanctum');
+        Sanctum::actingAs($wali, ['*'], 'sanctum');
 
         $response = $this->getJson('/api/mobile/v1/'.$wali->id.'/wali/schools');
 
@@ -141,7 +141,7 @@ class MobileWaliSecurityTest extends TestCase
 
         $this->link($wali, $this->student($schoolA, 'Santri Aman'));
 
-        Sanctum::actingAs($wali, ['dashboard.read'], 'sanctum');
+        Sanctum::actingAs($wali, ['*'], 'sanctum');
 
         $response = $this->withHeader('X-Active-School-Id', $schoolB->id)
             ->getJson('/api/mobile/v1/'.$wali->id.'/wali/schools');
@@ -149,5 +149,48 @@ class MobileWaliSecurityTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.active_school_id', null)
             ->assertJsonPath('data.requires_selection', true);
+    }
+
+    public function test_wali_token_requires_domain_ability_and_cannot_overreach(): void
+    {
+        $school = $this->school('Sekolah Ability');
+        $student = $this->student($school, 'Santri Ability');
+        $wali = $this->wali();
+        $this->link($wali, $student);
+
+        Sanctum::actingAs($wali, ['dashboard.read'], 'sanctum');
+
+        $this->withHeader('X-Active-School-Id', $school->id)
+            ->getJson('/api/mobile/v1/santri/'.$student->id.'/grades')
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'INSUFFICIENT_ABILITY')
+            ->assertJsonPath('error.reauth_required', true);
+
+        Sanctum::actingAs($wali, ['grades.read'], 'sanctum');
+
+        $this->withHeader('X-Active-School-Id', $school->id)
+            ->getJson('/api/mobile/v1/santri/'.$student->id.'/grades')
+            ->assertOk();
+    }
+
+    public function test_legacy_guardian_with_active_link_receives_wali_abilities(): void
+    {
+        $school = $this->school('Sekolah Legacy');
+        $student = $this->student($school, 'Santri Legacy');
+        $guardian = $this->wali([
+            'email' => 'legacy-guardian@example.test',
+            'is_wali' => false,
+        ]);
+        $this->link($guardian, $student);
+
+        $response = $this->postJson('/api/mobile/v1/auth/login', [
+            'email' => $guardian->email,
+            'password' => 'password123',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonFragment(['child.read'])
+            ->assertJsonFragment(['grades.read']);
     }
 }

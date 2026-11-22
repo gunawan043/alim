@@ -24,6 +24,7 @@ use App\Models\TujuanPembelajaran;
 use App\Services\GuardianGradeColumnService;
 use App\Services\NilaiPublishNotificationService;
 use App\Services\SumatifHarianService;
+use App\Services\SumatifKomponenService;
 use App\Support\NilaiMurniRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -497,6 +498,17 @@ class NilaiGuruController extends Controller
         $guardianVisibleColumns = $book['adminBook']->guardianVisibleColumns()
             ?? GuardianGradeColumnService::keys();
 
+        // Komponen STS/SAS per buku (mis. Praktik & Tulis). Kosong = fitur mati.
+        $komponenService = app(SumatifKomponenService::class);
+        $stsColumns = $komponenService->columnsFor($book['adminBook'], 'sts');
+        $sasColumns = $komponenService->columnsFor($book['adminBook'], 'sas');
+        $stsComponentMap = $sumatifMap->map(
+            fn (NilaiSumatif $row) => $komponenService->valuesFor($row, $stsColumns, 'sts')
+        );
+        $sasComponentMap = $sumatifMap->map(
+            fn (NilaiSumatif $row) => $komponenService->valuesFor($row, $sasColumns, 'sas')
+        );
+
         $adminBook = $book['adminBook'];
         $studyGroup = $adminBook->studyGroup;
 
@@ -511,6 +523,7 @@ class NilaiGuruController extends Controller
         return view('nilai-guru.wizard3', compact(
             'userId', 'book', 'books', 'students', 'sumatifMap', 'columns', 'shMap', 'paketOptions', 'selectedPaketId', 'formatifMap',
             'guardianColumns', 'guardianVisibleColumns', 'murniOptional',
+            'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap',
         ));
     }
 
@@ -539,6 +552,39 @@ class NilaiGuruController extends Controller
             'success' => true,
             'columns' => $columns,
             'message' => 'Kolom Sumatif Harian berhasil disimpan.',
+        ]);
+    }
+
+    /**
+     * Simpan komponen STS/SAS per buku (mis. Praktik & Tulis).
+     * Kolom kosong = matikan fitur, kembali ke input tunggal STS/SAS.
+     */
+    public function wizard3Components(Request $request, string $userId, string $adminBookId)
+    {
+        $book = $this->loadAdminBook($userId, $adminBookId, true);
+
+        abort_if($book['adminBook']->isPublished() && ! $book['adminBook']->auto_publish, 403, 'Nilai buku ini sudah dipublikasikan ke wali. Batalkan publikasi terlebih dahulu.');
+
+        $validated = $request->validate([
+            'jenis' => 'required|in:sts,sas',
+            'columns' => 'nullable|array',
+            'columns.*.id' => 'required|string|max:64',
+            'columns.*.label' => 'required|string|max:60',
+        ]);
+
+        $columns = app(SumatifKomponenService::class)->saveColumns(
+            $book['adminBook'],
+            $validated['jenis'],
+            $validated['columns'] ?? [],
+        );
+
+        return response()->json([
+            'success' => true,
+            'jenis' => $validated['jenis'],
+            'columns' => $columns,
+            'message' => $columns === []
+                ? 'Komponen dimatikan; kolom tunggal '.strtoupper($validated['jenis']).' dipakai kembali.'
+                : 'Komponen '.strtoupper($validated['jenis']).' berhasil disimpan.',
         ]);
     }
 
@@ -625,7 +671,13 @@ class NilaiGuruController extends Controller
             'sumatif.*.sas_murni' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.sts' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.sas' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.sts_components' => 'nullable|array',
+            'sumatif.*.sts_components.*' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.sas_components' => 'nullable|array',
+            'sumatif.*.sas_components.*' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.raport_sts' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.rsa' => 'nullable|numeric|min:0|max:100',
+            'sumatif.*.nr_murni' => 'nullable|numeric|min:0|max:100',
             // Kompatibilitas form lama (tanpa sh[])
             'sumatif.*.s1' => 'nullable|numeric|min:0|max:100',
             'sumatif.*.s2' => 'nullable|numeric|min:0|max:100',
@@ -643,6 +695,21 @@ class NilaiGuruController extends Controller
         foreach ((array) $request->input('sumatif', []) as $studentId => $row) {
             $hasSts = isset($row['sts']) && $row['sts'] !== '' && $row['sts'] !== null;
             $hasSas = isset($row['sas']) && $row['sas'] !== '' && $row['sas'] !== null;
+
+            // Komponen (Praktik/Tulis) menggantikan input tunggal STS/SAS.
+            foreach ((array) ($row['sts_components'] ?? []) as $value) {
+                if ($value !== '' && $value !== null) {
+                    $hasSts = true;
+                    break;
+                }
+            }
+            foreach ((array) ($row['sas_components'] ?? []) as $value) {
+                if ($value !== '' && $value !== null) {
+                    $hasSas = true;
+                    break;
+                }
+            }
+
             $hasStsMurni = isset($row['sts_murni']) && $row['sts_murni'] !== '' && $row['sts_murni'] !== null;
             $hasSasMurni = isset($row['sas_murni']) && $row['sas_murni'] !== '' && $row['sas_murni'] !== null;
 
@@ -693,6 +760,23 @@ class NilaiGuruController extends Controller
 
             if (array_key_exists('sh', $data) && is_array($data['sh'])) {
                 $input['sh'] = $data['sh'];
+            }
+
+            if (array_key_exists('sts_components', $data) && is_array($data['sts_components'])) {
+                $input['sts_components'] = $data['sts_components'];
+            }
+            if (array_key_exists('sas_components', $data) && is_array($data['sas_components'])) {
+                $input['sas_components'] = $data['sas_components'];
+            }
+
+            // RSA manual (boleh dikosongkan → kembali otomatis).
+            if (array_key_exists('rsa', $data)) {
+                $input['rsa'] = $data['rsa'];
+            }
+
+            // NR Murni manual (boleh dikosongkan → kembali otomatis).
+            if (array_key_exists('nr_murni', $data)) {
+                $input['nr_murni'] = $data['nr_murni'];
             }
 
             // S6 otomatis = rata-rata Penilaian Asesmen Formatif (wizard 4).
@@ -1182,6 +1266,16 @@ class NilaiGuruController extends Controller
 
                         if (array_key_exists('sh', $flds) && is_array($flds['sh'])) {
                             $input['sh'] = $flds['sh'];
+                        }
+
+                        // RSA manual (boleh dikosongkan → kembali otomatis).
+                        if (array_key_exists('rsa', $flds)) {
+                            $input['rsa'] = $flds['rsa'];
+                        }
+
+                        // NR Murni manual (boleh dikosongkan → kembali otomatis).
+                        if (array_key_exists('nr_murni', $flds)) {
+                            $input['nr_murni'] = $flds['nr_murni'];
                         }
 
                         // Pertahankan S6 otomatis (rata-rata formatif) agar tidak terhapus saat autosave SH.

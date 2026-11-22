@@ -734,7 +734,16 @@ class AuthController extends Controller
             deviceFp: $deviceFp,
         );
 
-        $abilities = AbilityRegistry::forRoles($user->effectiveRoles());
+        $roles = $user->effectiveRoles();
+
+        // Legacy guardian accounts may have an active wali_santri link without
+        // the is_wali flag/role. Ensure they still receive the wali surface
+        // abilities now that endpoints enforce domain abilities.
+        if ($this->isWaliAccount($user)) {
+            $roles[] = 'wali';
+        }
+
+        $abilities = AbilityRegistry::forRoles($roles);
 
         $expiresAt = TokenExpiration::mobileDefaultExpiresAt();
 

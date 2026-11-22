@@ -42,6 +42,8 @@ class TeacherAdminBook extends Model
         'nr_final_weight_sts',
         'nr_final_weight_sas',
         'sumatif_columns',
+        'sts_columns',
+        'sas_columns',
         'formatif_columns',
     ];
 
@@ -50,6 +52,8 @@ class TeacherAdminBook extends Model
         'nr_final_weight_sts' => 'float',
         'nr_final_weight_sas' => 'float',
         'sumatif_columns' => 'array',
+        'sts_columns' => 'array',
+        'sas_columns' => 'array',
         'formatif_columns' => 'array',
         'locked_at' => 'datetime',
         'published_at' => 'datetime',
