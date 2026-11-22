@@ -78,4 +78,20 @@ class GtkWorkUnit extends Model
     {
         return $query->where('user_id', $userId);
     }
+
+    /**
+     * Penempatan yang masih berlaku. Tanpa siklus hidup penempatan aktif,
+     * scope ini tidak menyaring apa pun supaya perilaku lama tidak berubah.
+     */
+    public function scopeCurrent($query)
+    {
+        if (! config('gtk_work_unit.lifecycle.enabled', false)) {
+            return $query;
+        }
+
+        return $query->where(function ($q) {
+            $q->whereHas('activePeriod')
+                ->orWhereDoesntHave('periods');
+        });
+    }
 }
