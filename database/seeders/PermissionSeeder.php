@@ -20,6 +20,9 @@ class PermissionSeeder extends Seeder
             'dashboard_analytics_view',
             'dashboard_statistics_view',
 
+            // ALIM Connect SSO embed (granted explicitly by system owner).
+            'whatsapp_connect_view',
+
             // User Management
             'user_view',
             'user_create',
@@ -494,6 +497,9 @@ class PermissionSeeder extends Seeder
         }
         if (str_starts_with($permission, 'dashboard_')) {
             return 'Dashboard';
+        }
+        if ($permission === 'whatsapp_connect_view') {
+            return 'Integrasi';
         }
         if (str_starts_with($permission, 'user_')) {
             return 'User Management';

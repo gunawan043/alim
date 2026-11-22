@@ -590,6 +590,11 @@
        href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'recruitment-api']) }}">
         <i class="ri-user-search-line"></i> <span>Integrasi Recruitment</span>
     </a>
+
+    <a class="nav-link menu-link{{ $currentRoute === 'user.sa.system-settings.index' && request('tab') === 'qr' ? ' active' : '' }}"
+       href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'qr']) }}">
+        <i class="ri-qr-code-line"></i> <span>Logo QR</span>
+    </a>
 </li>
 
 {{-- ═══════════════════════════════════════════════════════════════════════════

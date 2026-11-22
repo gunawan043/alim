@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Connect\V1\ApprovalCommandController;
+use App\Http\Controllers\Api\Connect\V1\ConnectSsoExchangeController;
 use App\Http\Controllers\Api\Mobile\V1\AcademicController;
 use App\Http\Controllers\Api\Mobile\V1\AnnouncementController;
 use App\Http\Controllers\Api\Mobile\V1\AuthController;
@@ -498,6 +499,12 @@ Route::middleware('recruitment.api-key')->prefix('recruitment/v1')->group(functi
 // Dedicated service-to-service command endpoint. It is intentionally separate
 // from the read-only organization/master API and from POS/Recruitment.
 // Auth: dedicated approval key (default X-ALIM-CONNECT-APPROVAL-KEY) or Bearer.
+Route::middleware(['connect.sso-key', 'throttle:60,1'])
+    ->prefix('connect/v1')
+    ->group(function () {
+        Route::post('sso/exchange', [ConnectSsoExchangeController::class, '__invoke']);
+    });
+
 Route::middleware(['connect.approval-key', 'throttle:60,1'])
     ->prefix('connect/v1')
     ->group(function () {

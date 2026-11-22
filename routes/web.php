@@ -171,7 +171,6 @@ use App\Http\Controllers\MasterData\MataPelajaranController;
 use App\Http\Controllers\MasterDataController;
 use App\Http\Controllers\MumtazMurtafiCandidateController;
 use App\Http\Controllers\NilaiController;
-use App\Http\Controllers\PencarianController;
 use App\Http\Controllers\NilaiGuruController;
 use App\Http\Controllers\NilaiKelasController;
 use App\Http\Controllers\NotificationPageController;
@@ -179,6 +178,7 @@ use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\OtherTeacherTaskController;
 use App\Http\Controllers\PekanEfektifController as PekanEfektifOverviewController;
 use App\Http\Controllers\PekanEfektifPrintController;
+use App\Http\Controllers\PencarianController;
 use App\Http\Controllers\PengasuhDashboardController;
 use App\Http\Controllers\PensionController;
 use App\Http\Controllers\PermitTypeController;
@@ -316,16 +316,16 @@ use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\SuperAdmin\AiChatMonitorController;
 use App\Http\Controllers\SuperAdmin\AiProviderController;
 use App\Http\Controllers\SuperAdmin\AuditLogController;
-use App\Http\Controllers\SuperAdmin\LoginActivityController;
-use App\Http\Controllers\SuperAdmin\SystemLogController;
 use App\Http\Controllers\SuperAdmin\CurriculumStructureController;
 use App\Http\Controllers\SuperAdmin\FailedJobController;
+use App\Http\Controllers\SuperAdmin\LoginActivityController;
 use App\Http\Controllers\SuperAdmin\NotificationUniversalController;
 use App\Http\Controllers\SuperAdmin\PasswordResetLogController;
 use App\Http\Controllers\SuperAdmin\PermissionController;
 use App\Http\Controllers\SuperAdmin\RoleController;
 use App\Http\Controllers\SuperAdmin\SchoolSwitchController;
 use App\Http\Controllers\SuperAdmin\SidebarAccessController;
+use App\Http\Controllers\SuperAdmin\SystemLogController;
 use App\Http\Controllers\SuperAdmin\SystemSettingController;
 use App\Http\Controllers\SuperAdmin\TokenSesiController;
 use App\Http\Controllers\SuperAdmin\UserController;
@@ -392,6 +392,7 @@ use App\Http\Controllers\WaliLinkController;
 use App\Http\Controllers\WaliSantriController;
 use App\Http\Controllers\WaliSantriPortalController;
 use App\Http\Controllers\WebPushSubscriptionController;
+use App\Http\Controllers\WhatsAppConnectController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Http\Controllers\WorkUnitController;
 use App\Http\Middleware\DenyStudentOperatorAi;
@@ -3165,6 +3166,16 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/security/mobile-sessions/revoke-all', [ProfileSecurityController::class, 'revokeOtherMobileSessions'])->name('security.mobile-sessions.revoke-all');
                 Route::delete('/security/mobile-sessions/{tokenId}', [ProfileSecurityController::class, 'revokeMobileSession'])->name('security.mobile-sessions.revoke');
                 Route::get('/cv/{uuid}', [ProfileController::class, 'downloadCv'])->name('cv');
+            });
+
+            // ── WHATSAPP CONNECT (SSO EMBED) ───────────────────────
+            Route::prefix('whatsapp-connect')->name('whatsapp-connect.')->group(function () {
+                Route::get('/', [WhatsAppConnectController::class, 'index'])
+                    ->middleware('permission:whatsapp_connect_view')
+                    ->name('index');
+                Route::post('/handoff', [WhatsAppConnectController::class, 'handoff'])
+                    ->middleware(['permission:whatsapp_connect_view', 'throttle:10,1'])
+                    ->name('handoff');
             });
 
             // ── API INTERNAL ───────────────────────────────────────

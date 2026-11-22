@@ -540,6 +540,15 @@
                     </a>
                 </li>
 
+                @if(canPermission('whatsapp_connect_view'))
+                    <li class="nav-item">
+                        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.whatsapp-connect.']) ? ' active' : '' }}"
+                           href="{{ route('user.whatsapp-connect.index', ['userId' => $userId]) }}">
+                            <i class="ri-whatsapp-line"></i><span>WhatsApp Connect</span>
+                        </a>
+                    </li>
+                @endif
+
                 {{-- ═══════════════════════════════════════════════════════════
                      MODE 1 — VIEW-AS (Super Admin / impersonate)
                      Hanya render role yang sedang di-View-As, tanpa tugas tambahan.

@@ -143,6 +143,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | ALIM Connect SSO Handoff (inbound exchange)
+    |--------------------------------------------------------------------------
+    |
+    | Dedicated service key used by Connect to exchange a one-time handoff code
+    | server-side. It grants only sso:exchange and is not a generic write key.
+    |
+    */
+    'connect_sso' => [
+        'api_key' => env('CONNECT_SSO_API_KEY', ''),
+        'header' => env('CONNECT_SSO_API_HEADER', 'X-ALIM-CONNECT-SSO-KEY'),
+        'allowed_ips' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CONNECT_SSO_ALLOWED_IPS', ''))
+        ))),
+        'require_https' => env('CONNECT_SSO_REQUIRE_HTTPS', true),
+        'auth_fail_limit' => env('CONNECT_SSO_AUTH_FAIL_LIMIT', 10),
+        'scopes' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CONNECT_SSO_SCOPES', 'sso:exchange'))
+        ))),
+        'handoff_url' => env('CONNECT_SSO_HANDOFF_URL', ''),
+        'handoff_ttl' => (int) env('CONNECT_SSO_HANDOFF_TTL', 60),
+        'frame_origin' => env('CONNECT_SSO_FRAME_ORIGIN', ''),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | POS Procurement (ALIM → POS)
     |--------------------------------------------------------------------------
     |

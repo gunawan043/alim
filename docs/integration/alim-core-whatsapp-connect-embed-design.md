@@ -4,7 +4,7 @@ description: Desain integrasi WhatsApp ALIM Connect di dalam ALIM Core melalui S
 metadata:
   type: design
   version: 1
-  status: proposal-for-review
+  status: core-implemented-pending-connect
   scope: alim-core-only
   date: 2026-11-22
 ---
@@ -16,6 +16,8 @@ metadata:
 > Target: pengguna ALIM Core dapat membuka WhatsApp Connect di halaman terintegrasi, dengan **iframe + SSO handoff** dan fallback tab baru.
 >
 > ALIM Connect tetap aplikasi terpisah. Core tidak membagikan session cookie dan tidak menjadi sumber otorisasi internal Connect.
+
+> **Status implementasi:** komponen Core (migration, model, service, halaman, issue handoff, exchange API, permission, CSP route-specific, audit, test) sudah diimplementasikan di working tree dan diuji lokal. Endpoint/session/mapping di Connect **belum tersedia**. Lihat `docs/integration/alim-core-whatsapp-connect-implementation.md`.
 
 ## 1. Kondisi Aktual ALIM Core
 
