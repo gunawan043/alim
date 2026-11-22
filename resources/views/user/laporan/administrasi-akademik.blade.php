@@ -112,7 +112,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap per guru</h2>
+                    <h2 class="card-title"><i class="ri-team-line"></i>Rekap per guru</h2>
                     <span class="lap-meta">{{ $teacherStats->count() }} guru</span>
                 </div>
                 <div class="card-body p-0">
@@ -153,7 +153,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Komponen yang belum ada</h2>
+                    <h2 class="card-title"><i class="ri-checkbox-multiple-blank-line"></i>Komponen yang belum ada</h2>
                 </div>
                 <div class="card-body">
                     <div class="lap-list">
@@ -181,7 +181,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Checklist per buku</h2>
+                <h2 class="card-title"><i class="ri-checkbox-multiple-line-line"></i>Checklist per buku</h2>
                 <span class="lap-meta">{{ number_format($summary['total_books'], 0, ',', '.') }} buku</span>
             </div>
             <div class="card-body p-0">

@@ -112,7 +112,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Perangkat, jurnal, dan presensi per guru</h2>
+                    <h2 class="card-title"><i class="ri-book-2-line"></i>Perangkat, jurnal, dan presensi per guru</h2>
                     <span class="lap-meta">{{ $teacherStats->count() }} guru</span>
                 </div>
 
@@ -136,7 +136,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Temuan</h2>
+                    <h2 class="card-title"><i class="ri-alert-line"></i>Temuan</h2>
                 </div>
                 <div class="card-body">
                     @forelse ($report['findings'] as $finding)
@@ -156,7 +156,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Rekap per guru, mapel, dan kelas</h2>
+                <h2 class="card-title"><i class="ri-team-line"></i>Rekap per guru, mapel, dan kelas</h2>
                 <span class="lap-meta">{{ number_format($summary['total_scheduled_slots'], 0, ',', '.') }} slot per minggu</span>
             </div>
             <div class="card-body p-0">

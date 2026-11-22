@@ -131,7 +131,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rata-rata per kelas</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-2-line"></i>Rata-rata per kelas</h2>
                     <span class="lap-meta">klik batang untuk memfilter</span>
                 </div>
 
@@ -154,7 +154,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Perbandingan periode</h2>
+                    <h2 class="card-title"><i class="ri-arrow-left-right-line"></i>Perbandingan periode</h2>
                 </div>
                 <div class="card-body">
                     @if ($analysis['previous_label'])
@@ -217,7 +217,7 @@
         @if (filled($analysis['findings']))
             <div class="card" id="findings">
                 <div class="card-header">
-                    <h2 class="card-title">Temuan otomatis</h2>
+                    <h2 class="card-title"><i class="ri-alert-line"></i>Temuan otomatis</h2>
                     <span class="lap-meta">{{ count($analysis['findings']) }} temuan</span>
                 </div>
                 <div class="card-body">
@@ -246,7 +246,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Detail nilai murni</h2>
+                <h2 class="card-title"><i class="ri-list-check-2-line"></i>Detail nilai murni</h2>
                 <span class="lap-meta">{{ number_format($analysis['row_count'], 0, ',', '.') }} baris</span>
             </div>
             <div class="card-body p-0">

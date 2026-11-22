@@ -82,7 +82,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Tindakan per unit</h2>
+                    <h2 class="card-title"><i class="ri-git-branch-line"></i>Tindakan per unit</h2>
                     <span class="lap-meta">{{ $byUnit->count() }} unit</span>
                 </div>
 
@@ -107,7 +107,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Kelulusan per tahun</h2>
+                    <h2 class="card-title"><i class="ri-award-line"></i>Kelulusan per tahun</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['graduation_series']))
@@ -145,7 +145,7 @@
         <div class="lap-grid lap-grid-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap tindakan per unit</h2>
+                    <h2 class="card-title"><i class="ri-git-branch-line"></i>Rekap tindakan per unit</h2>
                 </div>
                 <div class="card-body p-0">
                     @if ($byUnit->isEmpty())
@@ -183,7 +183,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap tindakan per jenjang</h2>
+                    <h2 class="card-title"><i class="ri-git-branch-line"></i>Rekap tindakan per jenjang</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['by_grade']))
@@ -223,7 +223,7 @@
         <div class="lap-grid lap-grid-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Kelulusan per unit</h2>
+                    <h2 class="card-title"><i class="ri-award-line"></i>Kelulusan per unit</h2>
                     <span class="lap-meta">{{ $academicYear->name }}</span>
                 </div>
                 <div class="card-body p-0">
@@ -254,7 +254,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Kelulusan per jenjang</h2>
+                    <h2 class="card-title"><i class="ri-award-line"></i>Kelulusan per jenjang</h2>
                     <span class="lap-meta">{{ $academicYear->name }}</span>
                 </div>
                 <div class="card-body p-0">
@@ -287,7 +287,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Angkatan &amp; lama masa studi</h2>
+                    <h2 class="card-title"><i class="ri-calendar-2-line"></i>Angkatan &amp; lama masa studi</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['cohorts']))
@@ -319,7 +319,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Catatan metode</h2>
+                    <h2 class="card-title"><i class="ri-information-line"></i>Catatan metode</h2>
                 </div>
                 <div class="card-body">
                     <p class="lap-note mb-2">Perbandingan naik dan tinggal kelas memerlukan riwayat kelas tahun ajaran berikutnya. Bila belum tersedia, santri ditampilkan sebagai <strong>belum tercatat</strong>, bukan otomatis tinggal kelas.</p>
@@ -330,7 +330,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Detail kenaikan dan kelulusan</h2>
+                <h2 class="card-title"><i class="ri-list-check-2-line"></i>Detail kenaikan dan kelulusan</h2>
                 <span class="lap-meta">{{ number_format($report['details']->count(), 0, ',', '.') }} santri</span>
             </div>
             <div class="card-body p-0">

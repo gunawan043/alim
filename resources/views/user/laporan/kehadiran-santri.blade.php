@@ -134,7 +134,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Kehadiran per bulan</h2>
+                    <h2 class="card-title"><i class="ri-calendar-check-line"></i>Kehadiran per bulan</h2>
                     <span class="lap-meta">{{ $monthly->count() }} bulan</span>
                 </div>
 
@@ -153,7 +153,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Perlu perhatian</h2>
+                    <h2 class="card-title"><i class="ri-error-warning-line"></i>Perlu perhatian</h2>
                 </div>
                 <div class="card-body">
                     @forelse ($report['findings'] as $finding)
@@ -176,7 +176,7 @@
         <div class="lap-grid lap-grid-2">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap per kelas</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Rekap per kelas</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['class_stats']))
@@ -214,7 +214,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Hubungan dengan nilai</h2>
+                    <h2 class="card-title"><i class="ri-link-line"></i>Hubungan dengan nilai</h2>
                 </div>
                 <div class="card-body">
                     @if ($relation['has_data'])
@@ -244,7 +244,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Detail kehadiran</h2>
+                <h2 class="card-title"><i class="ri-list-check-2-line"></i>Detail kehadiran</h2>
                 <span class="lap-meta">{{ number_format($summary['total'], 0, ',', '.') }} catatan</span>
             </div>
             <div class="card-body p-0">

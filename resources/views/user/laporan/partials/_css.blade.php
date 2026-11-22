@@ -241,6 +241,67 @@
         margin-right: 6px;
     }
 
+    /* Penanda cakupan unit — hanya laporan ini yang punya. */
+    .laporan-page .lap-period-main .lap-scope {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0 14px 0 0;
+        padding: 3px 10px 3px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.5;
+        color: var(--lap-navy);
+        background: var(--lap-navy-soft);
+        border: 1px solid rgba(0, 65, 108, .14);
+        border-radius: 999px;
+        vertical-align: 1px;
+    }
+
+    .laporan-page .lap-period-main .lap-scope i {
+        font-size: 13px;
+        line-height: 1;
+    }
+
+    .laporan-page .lap-period-main .lap-period-label {
+        color: var(--lap-ink-3);
+        font-weight: 400;
+        margin-right: 6px;
+    }
+
+    /* Baris cakupan untuk halaman tanpa kop periode. */
+    .laporan-page .lap-scope-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 10px;
+        margin: 0 0 14px;
+    }
+
+    .laporan-page .lap-scope {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 11px 4px 9px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.5;
+        color: var(--lap-navy);
+        background: var(--lap-navy-soft);
+        border: 1px solid rgba(0, 65, 108, .14);
+        border-radius: 999px;
+    }
+
+    .laporan-page .lap-scope i {
+        font-size: 13px;
+        line-height: 1;
+    }
+
+    .laporan-page .lap-scope-hint {
+        font-size: 12px;
+        color: var(--lap-ink-3);
+    }
+
     .laporan-page .lap-period-note {
         font-size: 12px;
         line-height: 1.5;
@@ -254,23 +315,24 @@
         margin-top: 0;
     }
 
-    /* ---------- KPI ---------- */
-    .laporan-page .lap-kpi {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1px;
-        background: var(--lap-line);
-        border: 1px solid var(--lap-line);
-        border-radius: var(--lap-radius);
-        overflow: hidden;
+    /* ---------- KPI (kartu Velzon) ---------- */
+    .laporan-page .lap-kpi-row {
         margin-bottom: 16px;
     }
 
-    .laporan-page .lap-kpi-cell {
-        flex: 1 1 0;
-        min-width: 168px;
-        background: var(--lap-surface);
-        padding: 16px 18px 18px;
+    .laporan-page .lap-kpi-card {
+        border: 1px solid var(--lap-line);
+        border-radius: var(--lap-radius);
+        transition: border-color .18s var(--lap-ease), box-shadow .18s var(--lap-ease);
+    }
+
+    .laporan-page .lap-kpi-card:hover {
+        border-color: var(--lap-line-2);
+        box-shadow: 0 6px 18px -12px rgba(23, 33, 43, .35);
+    }
+
+    .laporan-page .lap-kpi-card .card-body {
+        padding: 18px 18px 16px;
     }
 
     .laporan-page .lap-kpi-label {
@@ -286,7 +348,7 @@
         align-items: baseline;
         gap: 4px;
         font-size: 26px;
-        font-weight: 500;
+        font-weight: 600;
         line-height: 1.1;
         letter-spacing: -.01em;
         color: var(--lap-ink);
@@ -347,10 +409,29 @@
         line-height: 1.35;
     }
 
-    /* Ikon dekoratif di judul kartu tidak dipakai lagi */
+    /* Ikon kecil di judul kartu mengikuti konvensi Velzon */
     .laporan-page .card-title > i,
     .laporan-page .card-header > i {
-        display: none;
+        font-size: 16px;
+        margin-right: 6px;
+        color: var(--lap-ink-3);
+        vertical-align: -2px;
+    }
+
+    .laporan-page .card-header {
+        gap: 10px;
+    }
+
+    .laporan-page .lap-card-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        margin-right: 8px;
+        font-size: 15px;
+        vertical-align: -7px;
     }
 
     .laporan-page .card-title small,
@@ -524,18 +605,18 @@
     }
 
     /* ---------- BADGE / STATUS ---------- */
+    /* Bentuk diseragamkan, warna tetap mengikuti bg-*-subtle milik Velzon
+       supaya status terbaca sekilas. */
     .laporan-page .badge {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 2px 8px;
+        padding: 3px 9px;
         font-size: 11px;
         font-weight: 500;
         line-height: 1.6;
         border-radius: 6px;
-        border: 1px solid var(--lap-line-2);
-        background: var(--lap-surface-2);
-        color: var(--lap-ink-2);
+        border: 1px solid transparent;
     }
 
     .laporan-page .badge::before {
@@ -544,44 +625,34 @@
         height: 5px;
         border-radius: 50%;
         background: currentColor;
-        opacity: .7;
+        opacity: .75;
     }
 
     .laporan-page .badge:empty::before {
         display: none;
     }
 
-    .laporan-page .badge.bg-success,
-    .laporan-page .badge.bg-success-subtle {
-        background: var(--lap-surface-2);
-        border-color: var(--lap-line-2);
-        color: var(--lap-ok);
-    }
+    .laporan-page .badge.bg-success-subtle { background: #e9f3ee; border-color: rgba(47, 125, 79, .18); color: var(--lap-ok); }
+    .laporan-page .badge.bg-warning-subtle { background: #fbf2dd; border-color: rgba(154, 106, 0, .18); color: var(--lap-warn); }
+    .laporan-page .badge.bg-danger-subtle { background: #f8eae6; border-color: rgba(164, 70, 47, .18); color: var(--lap-bad); }
+    .laporan-page .badge.bg-info-subtle { background: #e8f0f7; border-color: rgba(0, 89, 129, .16); color: var(--lap-navy-2); }
+    .laporan-page .badge.bg-primary-subtle { background: #e8eef5; border-color: rgba(0, 65, 108, .16); color: var(--lap-navy); }
+    .laporan-page .badge.bg-secondary-subtle { background: var(--lap-surface-2); border-color: var(--lap-line-2); color: var(--lap-ink-2); }
 
-    .laporan-page .badge.bg-warning,
-    .laporan-page .badge.bg-warning-subtle {
-        background: var(--lap-surface-2);
-        border-color: var(--lap-line-2);
-        color: var(--lap-warn);
-    }
+    /* Tile ikon: satu tint per makna, bukan biru semua. */
+    .laporan-page .avatar-title.bg-primary-subtle { background: #e8eef5 !important; }
+    .laporan-page .avatar-title.bg-info-subtle { background: #e2f1f6 !important; }
+    .laporan-page .avatar-title.bg-success-subtle { background: #e9f3ee !important; }
+    .laporan-page .avatar-title.bg-warning-subtle { background: #fbf2dd !important; }
+    .laporan-page .avatar-title.bg-danger-subtle { background: #f8eae6 !important; }
+    .laporan-page .avatar-title.bg-secondary-subtle { background: #eef1f4 !important; }
 
-    .laporan-page .badge.bg-danger,
-    .laporan-page .badge.bg-danger-subtle {
-        background: var(--lap-surface-2);
-        border-color: var(--lap-line-2);
-        color: var(--lap-bad);
-    }
-
-    .laporan-page .badge.bg-secondary,
-    .laporan-page .badge.bg-secondary-subtle,
-    .laporan-page .badge.bg-info,
-    .laporan-page .badge.bg-info-subtle,
-    .laporan-page .badge.bg-primary,
-    .laporan-page .badge.bg-primary-subtle {
-        background: var(--lap-surface-2);
-        border-color: var(--lap-line-2);
-        color: var(--lap-ink-2);
-    }
+    .laporan-page .avatar-title i.text-primary { color: var(--lap-navy) !important; }
+    .laporan-page .avatar-title i.text-info { color: #00698a !important; }
+    .laporan-page .avatar-title i.text-success { color: var(--lap-ok) !important; }
+    .laporan-page .avatar-title i.text-warning { color: var(--lap-warn) !important; }
+    .laporan-page .avatar-title i.text-danger { color: var(--lap-bad) !important; }
+    .laporan-page .avatar-title i.text-secondary { color: #5b6672 !important; }
 
     .laporan-page .text-success { color: var(--lap-ok) !important; }
     .laporan-page .text-danger { color: var(--lap-bad) !important; }
@@ -811,8 +882,12 @@
         max-width: 44ch;
     }
 
-    .laporan-page .lap-empty i {
+    .laporan-page .lap-empty > i {
         display: none;
+    }
+
+    .laporan-page .lap-empty .avatar-title i {
+        display: inline-flex;
     }
 
     /* ---------- CATATAN ---------- */

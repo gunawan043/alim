@@ -53,18 +53,6 @@
             </div>
         </div>
 
-        @include('user.laporan.partials.kpi', ['items' => [
-            ['label' => 'Total catatan', 'value' => $summary['total'], 'note' => 'satu baris per GTK per hari'],
-            [
-                'label' => 'Hadir',
-                'value' => $summary['hadir'],
-                'note' => $summary['total'] > 0 ? round($summary['hadir'] / $summary['total'] * 100).'% dari catatan' : 'belum ada catatan',
-                'tone' => $summary['total'] > 0 && $summary['hadir'] / $summary['total'] >= 0.9 ? 'ok' : null,
-            ],
-            ['label' => 'Terlambat', 'value' => $summary['terlambat'], 'note' => 'masuk melewati jam', 'tone' => $summary['terlambat'] > 0 ? 'warn' : null],
-            ['label' => 'Tidak hadir', 'value' => $tidakHadir, 'note' => 'Sakit '.$summary['sakit'].' · Izin '.$summary['izin'].' · Alpa '.$summary['alpa'], 'tone' => $tidakHadir > 0 ? 'bad' : null],
-        ]])
-
         <div class="card">
             <div class="card-body">
                 <form method="GET" action="{{ route('user.laporan.presensi', ['userId' => $userId]) }}" class="lap-filters">
@@ -104,9 +92,21 @@
             'note' => 'Hanya catatan presensi yang sudah tersimpan yang dihitung.',
         ])
 
+        @include('user.laporan.partials.kpi', ['items' => [
+            ['label' => 'Total catatan', 'value' => $summary['total'], 'note' => 'satu baris per GTK per hari'],
+            [
+                'label' => 'Hadir',
+                'value' => $summary['hadir'],
+                'note' => $summary['total'] > 0 ? round($summary['hadir'] / $summary['total'] * 100).'% dari catatan' : 'belum ada catatan',
+                'tone' => $summary['total'] > 0 && $summary['hadir'] / $summary['total'] >= 0.9 ? 'ok' : null,
+            ],
+            ['label' => 'Terlambat', 'value' => $summary['terlambat'], 'note' => 'masuk melewati jam', 'tone' => $summary['terlambat'] > 0 ? 'warn' : null],
+            ['label' => 'Tidak hadir', 'value' => $tidakHadir, 'note' => 'Sakit '.$summary['sakit'].' · Izin '.$summary['izin'].' · Alpa '.$summary['alpa'], 'tone' => $tidakHadir > 0 ? 'bad' : null],
+        ]])
+
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Tren harian</h2>
+                <h2 class="card-title"><i class="ri-line-chart-line"></i>Tren harian</h2>
                 <span class="lap-meta">{{ $trendRows->count() }} hari tercatat</span>
             </div>
 
@@ -132,7 +132,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Rekap presensi</h2>
+                <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Rekap presensi</h2>
                 <span class="lap-meta">{{ number_format($absensi->total(), 0, ',', '.') }} baris</span>
             </div>
             <div class="card-body p-0">

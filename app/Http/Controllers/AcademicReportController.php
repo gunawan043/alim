@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\AcademicAnalysisExport;
 use App\Exports\AcademicOperationsExport;
+use App\Http\Controllers\Concerns\ResolvesReportScope;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\NilaiSumatif;
@@ -28,6 +29,8 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class AcademicReportController extends Controller
 {
+    use ResolvesReportScope;
+
     public function index(Request $request, string $userId, AcademicAnalysisService $analysisService)
     {
         $filters = $this->filters($request);
@@ -56,8 +59,9 @@ class AcademicReportController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('user.laporan.akademik', compact(
-            'userId', 'filters', 'analysis', 'rows', 'academicYears', 'gradeLevels', 'studyGroups', 'subjects',
+        return view('user.laporan.akademik', array_merge(
+            compact('userId', 'filters', 'analysis', 'rows', 'academicYears', 'gradeLevels', 'studyGroups', 'subjects'),
+            ['scope' => $this->reportScope($request)],
         ));
     }
 
@@ -615,12 +619,14 @@ class AcademicReportController extends Controller
             $teachers = User::query()->whereIn('id', $teacherIds)->orderBy('name')->get();
         }
 
-        return compact('academicYear', 'academicYears', 'gradeLevels', 'studyGroups', 'subjects', 'teachers');
+        return compact('academicYear', 'academicYears', 'gradeLevels', 'studyGroups', 'subjects', 'teachers') + [
+            'scope' => $this->reportScope($request),
+        ];
     }
 
     private function schoolId(Request $request): ?string
     {
-        return $request->attributes->get('schoolContextId') ?: $request->user()?->employment?->school_id;
+        return $this->reportScope($request)->schoolFilter();
     }
 
     private function school(Request $request): ?School

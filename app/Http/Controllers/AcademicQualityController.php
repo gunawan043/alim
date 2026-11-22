@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesReportScope;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\School;
@@ -14,16 +15,19 @@ use Illuminate\Http\Request;
  */
 class AcademicQualityController extends Controller
 {
+    use ResolvesReportScope;
+
     public function index(Request $request, string $userId, CurriculumConsistencyService $service)
     {
-        $schoolId = $request->attributes->get('schoolContextId')
-            ?: $request->user()?->employment?->school_id;
+        $scope = $this->reportScope($request);
 
-        $schools = $schoolId
-            ? School::whereKey($schoolId)->get(['id', 'name'])
-            : School::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $schools = $scope->isSchool()
+            ? School::whereKey($scope->schoolId)->get(['id', 'name'])
+            : ($scope->isGlobal()
+                ? School::where('is_active', true)->orderBy('name')->get(['id', 'name'])
+                : collect());
 
-        $selectedSchoolId = $schoolId ?: $request->input('school_id');
+        $selectedSchoolId = $scope->isSchool() ? $scope->schoolId : $request->input('school_id');
         $schoolIds = $selectedSchoolId
             ? [$selectedSchoolId]
             : $schools->pluck('id')->all();
@@ -47,7 +51,7 @@ class AcademicQualityController extends Controller
         );
 
         return view('user.laporan.pendidikan-mutu', compact(
-            'userId', 'schools', 'years', 'year', 'semester', 'grades', 'report', 'schoolId'
+            'userId', 'schools', 'years', 'year', 'semester', 'grades', 'report', 'scope'
         ));
     }
 }

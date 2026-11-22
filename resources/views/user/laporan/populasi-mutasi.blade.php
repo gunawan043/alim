@@ -75,7 +75,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Mutasi bulanan</h2>
+                    <h2 class="card-title"><i class="ri-swap-box-line"></i>Mutasi bulanan</h2>
                     <span class="lap-meta">{{ $monthly->count() }} bulan</span>
                 </div>
 
@@ -99,7 +99,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Per tahun ajaran</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Per tahun ajaran</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['yearly']))
@@ -147,7 +147,7 @@
             ] as $block)
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">{{ $block['title'] }}</h2>
+                        <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>{{ $block['title'] }}</h2>
                     </div>
                     <div class="card-body p-0">
                         @if (blank($block['rows']))
@@ -188,7 +188,7 @@
         @if ($report['findings']->isNotEmpty())
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Catatan data</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Catatan data</h2>
                     <span class="lap-meta">{{ $report['findings']->count() }} temuan</span>
                 </div>
                 <div class="card-body">
@@ -211,7 +211,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Detail mutasi</h2>
+                <h2 class="card-title"><i class="ri-list-check-2-line"></i>Detail mutasi</h2>
                 <span class="lap-meta">{{ number_format($report['row_count'], 0, ',', '.') }} baris</span>
             </div>
             <div class="card-body p-0">

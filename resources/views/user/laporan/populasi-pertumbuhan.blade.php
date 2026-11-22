@@ -66,7 +66,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Populasi per tahun ajaran</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Populasi per tahun ajaran</h2>
                     <span class="lap-meta">{{ $series->count() }} tahun</span>
                 </div>
 
@@ -89,7 +89,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekonsiliasi</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Rekonsiliasi</h2>
                 </div>
                 <div class="card-body">
                     <div class="lap-list">
@@ -140,7 +140,7 @@
         @if ($report['findings']->isNotEmpty())
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Catatan data</h2>
+                    <h2 class="card-title"><i class="ri-bar-chart-box-line"></i>Catatan data</h2>
                     <span class="lap-meta">{{ $report['findings']->count() }} temuan</span>
                 </div>
                 <div class="card-body">
@@ -164,7 +164,7 @@
         @foreach (['unit' => 'unit', 'grade' => 'jenjang', 'level' => 'kelompok pendidikan'] as $key => $label)
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Pertumbuhan per {{ $label }}</h2>
+                    <h2 class="card-title"><i class="ri-line-chart-line"></i>Pertumbuhan per {{ $label }}</h2>
                 </div>
                 <div class="card-body p-0">
                     @if (blank($report['breakdown'][$key]))
@@ -207,7 +207,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Riwayat pertumbuhan</h2>
+                <h2 class="card-title"><i class="ri-line-chart-line"></i>Riwayat pertumbuhan</h2>
                 <span class="lap-meta">{{ $series->count() }} tahun ajaran</span>
             </div>
             <div class="card-body p-0">

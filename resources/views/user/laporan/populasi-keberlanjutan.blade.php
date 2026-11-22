@@ -69,7 +69,7 @@
         <div class="lap-grid lap-grid-main">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Angka keberlanjutan per tahun acuan</h2>
+                    <h2 class="card-title"><i class="ri-arrow-right-up-line"></i>Angka keberlanjutan per tahun acuan</h2>
                     <span class="lap-meta">{{ $charted->count() }} tahun</span>
                 </div>
                 @if ($charted->isEmpty())
@@ -87,7 +87,7 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title">Rekap per tahun</h2>
+                    <h2 class="card-title"><i class="ri-calendar-2-line"></i>Rekap per tahun</h2>
                 </div>
                 <div class="card-body p-0">
                     @if ($cohorts->isEmpty())
@@ -122,7 +122,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">Perjalanan santri</h2>
+                <h2 class="card-title"><i class="ri-route-line"></i>Perjalanan santri</h2>
                 <span class="lap-meta">{{ number_format($report['journey']->count(), 0, ',', '.') }} santri</span>
             </div>
             <div class="card-body p-0">
