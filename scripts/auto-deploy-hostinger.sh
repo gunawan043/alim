@@ -17,6 +17,10 @@ REMOTE_DEPLOY="alim-deploy-live.sh"
 LOG_FILE="${ALIM_DEPLOY_LOG:-/tmp/alim-auto-deploy.log}"
 DEPLOY_REF="${ALIM_DEPLOY_REF:-HEAD}"
 
+# Koneksi ke Hostinger diputus saat menganggur ~2 menit (rsync menghitung
+# checksum ribuan file di server). Keepalive menahan sesi tetap hidup.
+SSH_CMD="ssh -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
+
 timestamp() {
     date '+%Y-%m-%d %H:%M:%S'
 }
@@ -109,7 +113,7 @@ rsync "${RSYNC_FLAGS[@]}" \
     --exclude='tmp-*.html' \
     --exclude='*.log' \
     --exclude='.user.ini' \
-    -e 'ssh -o BatchMode=yes' \
+    -e "${SSH_CMD}" \
     "${EXPORT_DIR}/" "${REMOTE_ALIAS}:${REMOTE_APP}/" >>"${LOG_FILE}" 2>&1
 
 RSYNC_EXIT=$?
@@ -124,10 +128,10 @@ if [ "${DRY_RUN}" = "1" ]; then
 fi
 
 # Jaring pengaman: docroot harus 755 agar web server bisa menembusnya.
-ssh -o BatchMode=yes "${REMOTE_ALIAS}" "chmod 755 ${REMOTE_APP}" >>"${LOG_FILE}" 2>&1 || true
+${SSH_CMD} "${REMOTE_ALIAS}" "chmod 755 ${REMOTE_APP}" >>"${LOG_FILE}" 2>&1 || true
 
 log "rsync selesai; menjalankan deploy di server..."
-ssh -o BatchMode=yes "${REMOTE_ALIAS}" "bash ${REMOTE_DEPLOY}" >>"${LOG_FILE}" 2>&1
+${SSH_CMD} "${REMOTE_ALIAS}" "bash ${REMOTE_DEPLOY}" >>"${LOG_FILE}" 2>&1
 SSH_EXIT=$?
 
 if [ "${SSH_EXIT}" -eq 0 ]; then
