@@ -472,21 +472,27 @@ class BankSoalSkScopeTest extends TestCase
                 'hasArabic' => false,
                 'paper' => ['width_mm' => 210.0, 'height_mm' => 297.0, 'label' => 'A4'],
                 'marginMm' => ['top' => 5, 'right' => 20, 'bottom' => 10, 'left' => 25],
-                'letterhead' => ['kopBase64' => 'data:image/png;base64,AAA', 'kopWidthMm' => 145.0, 'kopHeightMm' => $kopHeightMm],
+                'letterhead' => [
+                    'kopBase64' => 'data:image/png;base64,AAA',
+                    'kopWidthMm' => 145.0,
+                    'kopHeightMm' => $kopHeightMm,
+                    'kopAspect' => $kopHeightMm / 145.0,
+                ],
+                'kopMaxHeightMm' => 40.0,
                 'showKop' => true,
                 'kopWidthPct' => $pct,
                 'kopRule' => $rule,
             ])->render();
         };
 
-        // 210 - 25 - 20 = 165 mm; proporsi 145:18 → 20,48 mm melebihi batas
-        // 20 mm, sehingga lebar menyusut agar tinggi tetap 20 mm.
+        // 210 - 25 - 20 = 165 mm. Kop rasio 145:18 → 165 mm lebar,
+        // 20,48 mm tinggi, masih di bawah batas 40 mm naskah.
         $full = $render(100, false);
-        $this->assertStringContainsString('width: 161.11mm', $full);
-        $this->assertStringContainsString('height: 20mm', $full);
+        $this->assertStringContainsString('width: 165mm', $full);
+        $this->assertStringContainsString('height: 20.48mm', $full);
         $this->assertStringNotContainsString('kop-rule"></div>', $full);
 
-        // Kop pendek (145:6) muat penuh 165 mm tanpa terpotong.
+        // Kop pendek (145:6) juga penuh 165 mm.
         $flat = $render(100, false, 6.0);
         $this->assertStringContainsString('width: 165mm', $flat);
         $this->assertStringContainsString('height: 6.83mm', $flat);

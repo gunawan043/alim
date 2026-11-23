@@ -189,6 +189,9 @@ class SoalNaskahPdfService
             'showKop' => (bool) ($settings['show_kop'] ?? true),
             'kopWidthPct' => (float) ($settings['kop_width_pct'] ?? 100),
             'kopRule' => (bool) ($settings['kop_rule'] ?? false),
+            // Kop naskah harian dibiarkan selebar area margin; batas tinggi
+            // dilonggarkan agar gambar kop lebar (rasio kecil) tidak menyusut.
+            'kopMaxHeightMm' => 40.0,
             'showKey' => (bool) ($settings['show_key'] ?? false),
             'optionIndent' => (int) ($settings['option_indent'] ?? 2),
             'identityRows' => $identityRows,

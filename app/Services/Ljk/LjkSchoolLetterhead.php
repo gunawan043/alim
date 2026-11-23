@@ -38,6 +38,7 @@ final class LjkSchoolLetterhead
                 'kopBase64' => null,
                 'kopWidthMm' => 145.0,
                 'kopHeightMm' => 0.0,
+                'kopAspect' => 0.0,
                 'logoBase64' => null,
                 'hasImage' => false,
             ];
@@ -52,9 +53,33 @@ final class LjkSchoolLetterhead
             'kopBase64' => $kopBase64,
             'kopWidthMm' => $kopWidthMm,
             'kopHeightMm' => $kopHeightMm,
+            // Rasio tinggi/lebar ASLI gambar (sebelum dibatasi), dipakai
+            // saat kop digambar ulang selebar area margin.
+            'kopAspect' => $this->kopAspect($school),
             'logoBase64' => $logoBase64,
             'hasImage' => $kopBase64 !== null || $logoBase64 !== null,
         ];
+    }
+
+    /**
+     * Rasio tinggi/lebar gambar kop asli (0 bila tidak ada).
+     */
+    private function kopAspect(School $school): float
+    {
+        if (! $school->kop_path) {
+            return 0.0;
+        }
+
+        $absolute = storage_path('app/public/'.$school->kop_path);
+        if (! is_file($absolute)) {
+            return 0.0;
+        }
+
+        $info = @getimagesize($absolute);
+
+        return $info && (int) $info[0] > 0 && (int) $info[1] > 0
+            ? (int) $info[1] / (int) $info[0]
+            : 0.0;
     }
 
     /**

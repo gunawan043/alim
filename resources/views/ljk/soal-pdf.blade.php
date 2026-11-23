@@ -174,10 +174,17 @@
             // Lebar kop mengikuti persentase area margin, tetapi TINGGI tetap
             // dibatasi agar kop tidak menghabiskan halaman. Bila tinggi
             // melebihi batas, lebar ikut menyusut (proporsi terjaga).
-            $kopAspect = (float) ($letterhead['kopHeightMm'] ?? 0) / max(0.0001, (float) ($letterhead['kopWidthMm'] ?? 145));
+            // Pakai rasio ASLI gambar (kopAspect), bukan rasio dari lebar/tinggi
+            // yang sudah dibatasi, agar skala kop tetap benar.
+            $kopAspect = (float) ($letterhead['kopAspect'] ?? 0);
+            if ($kopAspect <= 0) {
+                $kopAspect = (float) ($letterhead['kopHeightMm'] ?? 0) / max(0.0001, (float) ($letterhead['kopWidthMm'] ?? 145));
+            }
             $areaWidthMm = $paper['width_mm'] - $marginMm['left'] - $marginMm['right'];
             $kopWidthMm = $areaWidthMm * ($kopWidthPct / 100);
-            $kopMaxHeightMm = (float) config('ljk.template.max_kop_height_mm', 20.0);
+            // Naskah soal boleh mengirim batas tinggi sendiri (kop selebar
+            // margin tetap proporsional). Paket/LJK memakai batas bawaan.
+            $kopMaxHeightMm = (float) ($kopMaxHeightMm ?? config('ljk.template.max_kop_height_mm', 20.0));
 
             $kopHeightMm = $kopWidthMm * $kopAspect;
             if ($kopAspect > 0 && $kopHeightMm > $kopMaxHeightMm) {
