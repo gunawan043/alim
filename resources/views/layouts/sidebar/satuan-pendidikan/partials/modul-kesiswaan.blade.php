@@ -33,6 +33,20 @@
     </li>
 
     <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.photos.bulk-form', 'user.students.photos.bulk-process']) ? ' active' : '' }}"
+           href="{{ route('user.students.photos.bulk-form', ['userId' => $userId]) }}">
+            <i class="ri-image-add-line"></i><span>Upload Foto Masal</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.students.cards.']) ? ' active' : '' }}"
+           href="{{ route('user.students.cards.index', ['userId' => $userId]) }}">
+            <i class="ri-id-card-line"></i><span>Kartu Pelajar</span>
+        </a>
+    </li>
+
+    <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.alumni.']) ? ' active' : '' }}"
            href="{{ route('user.alumni.index', ['userId' => $userId]) }}">
             <i class="ri-group-2-line"></i><span>Data Alumni</span>
