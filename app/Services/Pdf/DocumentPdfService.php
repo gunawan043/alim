@@ -44,11 +44,19 @@ class DocumentPdfService
     /**
      * Render HTML menjadi bytes PDF tanpa membungkus response.
      * Dipakai alur tanda tangan dokumen yang perlu menghitung hash final.
+     *
+     * @param  array{margin?: array{top: float, right: float, bottom: float, left: float}}  $overrides
+     *                                                                                                  `margin` dalam milimeter; ukuran F4/Folio ikut ditangani.
      */
-    public function renderHtml(string $html, string $orientation = 'portrait', string $paper = 'A4'): string
+    public function renderHtml(string $html, string $orientation = 'portrait', string $paper = 'A4', array $overrides = []): string
     {
         // Toolbar browser tidak boleh ikut tercetak oleh Dompdf.
         $html = $this->withoutBrowserToolbar($html);
+        $margin = $overrides['margin'] ?? null;
+
+        if ($margin !== null) {
+            $html = $this->withoutDefaultPageMargin($html, $margin);
+        }
 
         $options = new Options;
         $options->set('isRemoteEnabled', true);
@@ -68,6 +76,12 @@ class DocumentPdfService
         $options->setFontDir($fontDir);
         $options->setFontCache($fontDir);
 
+        // Dompdf hanya mengenal ukuran kertas bawaan; F4/Folio dipetakan ke
+        // ukuran kustom 210x330mm agar margin halaman tidak terpotong.
+        if (in_array(strtoupper($paper), ['F4', 'FOLIO'], true)) {
+            $paper = [0, 0, (float) round(215.9 * 72 / 25.4, 2), (float) round(330 * 72 / 25.4, 2)];
+        }
+
         $dompdf = new Dompdf($options);
         app(CurriculumPdfStyle::class)->registerCambria($dompdf);
         $dompdf->loadHtml($html, 'UTF-8');
@@ -75,6 +89,25 @@ class DocumentPdfService
         $dompdf->render();
 
         return (string) $dompdf->output();
+    }
+
+    /**
+     * Terapkan margin halaman dari pengaturan cetak ke `@page`.
+     *
+     * @param  array{top: float, right: float, bottom: float, left: float}  $margin
+     */
+    private function withoutDefaultPageMargin(string $html, array $margin): string
+    {
+        $css = sprintf(
+            '@page { margin: %smm %smm %smm %smm; }',
+            $margin['top'], $margin['right'], $margin['bottom'], $margin['left']
+        );
+
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('/<\/head>/i', '<style>'.$css.'</style></head>', $html, 1) ?? $html;
+        }
+
+        return $css.$html;
     }
 
     private function withoutBrowserToolbar(string $html): string

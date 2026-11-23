@@ -11,9 +11,9 @@ use App\Models\KisiKisiItem;
 use App\Models\KisiKisiSoal;
 use App\Models\School;
 use App\Models\Subject;
-use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
 use App\Models\User;
+use App\Services\Evaluasi\TeachingScopeService;
 use App\Services\KurikulumAccess;
 use App\Services\Pdf\DocumentPdfService;
 use Illuminate\Http\Request;
@@ -28,9 +28,13 @@ class KisiKisiController extends Controller
      */
     /**
      * Konteks otomatis kisi-kisi:
-     * - Mapel & tingkat mengikuti penugasan guru (TeachingAssignment aktif).
+     * - Mapel & tingkat mengikuti SK Pembagian Tugas yang AKTIF
+     *   (`TeachingScopeService`) — aturan yang sama dengan bank soal.
      * - Tahun ajaran default = TA aktif; semester default = semester berjalan.
-     * - Kurikulum/TU/KSP/Waka melihat seluruh mapel & tingkat satuan pendidikan.
+     * - Menu jabatan dengan `lingkup=semua` (tim kurikulum) tetap melihat
+     *   seluruh mapel & tingkat satuan pendidikan. Menu guru selalu lingkup
+     *   pribadi, sehingga Waka yang merangkap guru tidak otomatis melihat
+     *   mapel guru lain.
      *
      * @return array<string, mixed>
      */
@@ -43,22 +47,27 @@ class KisiKisiController extends Controller
         $activeAyId = $activeYear?->id;
         $activeSemester = $activeYear?->semester ?: 'ganjil';
 
-        $isPrivileged = app(KurikulumAccess::class)->canAccessAllBankSoal($user);
+        $isPrivileged = app(KurikulumAccess::class)->isBroadScope($user, $request);
 
         $subjectIds = null;   // null = semua mapel sekolah
         $gradeLevelIds = null;
 
         if (! $isPrivileged) {
-            $assignments = TeachingAssignment::query()
-                ->where('teacher_id', $user->id)
-                ->where('status', 'active')
-                ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-                ->when($activeAyId, fn ($q) => $q->where('academic_year_id', $activeAyId))
-                ->with('studyGroup:id,grade_level_id')
-                ->get();
+            $scope = app(TeachingScopeService::class);
 
-            $subjectIds = $assignments->pluck('subject_id')->filter()->unique()->values()->all();
-            $gradeLevelIds = $assignments->pluck('studyGroup.grade_level_id')->filter()->unique()->values()->all();
+            $subjectIds = $scope->subjects($user, $schoolId, $activeAyId)
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->values()
+                ->all();
+
+            $gradeLevelIds = $scope->assignments($user, $schoolId, $activeAyId)
+                ->map(fn ($a) => $a->studyGroup?->grade_level_id)
+                ->filter()
+                ->map(fn ($id) => (string) $id)
+                ->unique()
+                ->values()
+                ->all();
         }
 
         $subjects = Subject::query()
@@ -87,8 +96,9 @@ class KisiKisiController extends Controller
     }
 
     /**
-     * Validasi backend: guru hanya boleh memakai mapel yang menjadi penugasannya.
-     * KSP/Waka/Kurikulum/TU (dan super admin) melihat seluruh mapel satuan.
+     * Validasi backend: mapel harus berada dalam lingkup SK guru.
+     * Tim kurikulum yang membuka menu jabatan (`lingkup=semua`) melihat
+     * seluruh mapel satuan; menu guru tetap terbatas pada SK.
      */
     protected function assertSubjectAccess(Request $request, string $subjectId): void
     {

@@ -18,7 +18,21 @@
         @slot('title') Daftar Paket Soal @endslot
     @endcomponent
 
-    <x-soal-flow current="paket" />
+    <x-soal-flow current="paket" :formal="true" />
+
+    <div class="card border mb-3">
+        <div class="card-body py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="small">
+                <strong>Paket soal untuk apa?</strong>
+                Hanya untuk <strong>STS/SAS</strong>: menyusun naskah ujian, meminta validasi guru serumpun,
+                dan mencetak beberapa versi. Soal harian <strong>tidak perlu</strong> paket —
+                cetak langsung saja.
+            </div>
+            <a href="{{ route('user.soal-saya.cetak', ['userId' => $userId]) }}" class="btn btn-sm btn-soft-primary">
+                <i class="ri-printer-line me-1"></i>Cetak soal harian langsung
+            </a>
+        </div>
+    </div>
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">

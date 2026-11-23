@@ -1,9 +1,13 @@
-@props(['current' => 'kisi', 'userId' => null, 'scope' => null])
+@props(['current' => 'kisi', 'userId' => null, 'scope' => null, 'formal' => null])
 
 @php
     $userId = $userId ?? request()->route('userId') ?? auth()->id();
 
-    // Langkah alur: kisi-kisi → soal → paket/validasi → cetak.
+    // `formal = true` menampilkan langkah paket & validasi; hanya relevan untuk
+    // STS/SAS. Soal harian dan latihan langsung ke cetak, sehingga guru tidak
+    // dipaksa membuat paket lebih dulu.
+    $isFormal = (bool) $formal;
+
     $steps = [
         'kisi' => [
             'label' => 'Kisi-kisi',
@@ -15,17 +19,30 @@
             'desc' => 'Tulis soal sesuai mapel SK',
             'route' => 'user.bank-soal.index',
         ],
-        'paket' => [
-            'label' => 'Paket & validasi',
-            'desc' => 'Susun paket, minta validasi',
-            'route' => 'user.paket-soal.index',
-        ],
         'cetak' => [
             'label' => 'Cetak naskah',
-            'desc' => 'Cetak paket yang disetujui',
-            'route' => 'user.paket-soal.index',
+            'desc' => 'Atur tata letak, cetak PDF',
+            'route' => 'user.soal-saya.cetak',
         ],
     ];
+
+    if ($isFormal) {
+        // Paket & validasi disisipkan sebelum cetak untuk STS/SAS.
+        $steps = [
+            'kisi' => $steps['kisi'],
+            'bank' => $steps['bank'],
+            'paket' => [
+                'label' => 'Paket & validasi',
+                'desc' => 'Khusus STS/SAS: validasi guru serumpun',
+                'route' => 'user.paket-soal.index',
+            ],
+            'cetak' => [
+                'label' => 'Cetak naskah',
+                'desc' => 'Cetak paket yang sudah disetujui',
+                'route' => 'user.paket-soal.index',
+            ],
+        ];
+    }
 
     $keys = array_keys($steps);
     $currentIndex = array_search($current, $keys, true);
@@ -62,6 +79,15 @@
         </ol>
 
         <div class="mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-2">
+            @if($isFormal)
+                <span class="badge bg-info-subtle text-info fw-medium">
+                    <i class="ri-shield-check-line me-1"></i>Alur STS/SAS: paket &amp; validasi wajib
+                </span>
+            @else
+                <span class="badge bg-light text-muted border fw-medium">
+                    <i class="ri-flashlight-line me-1"></i>Soal harian: langsung cetak, tanpa paket
+                </span>
+            @endif
             @if($scopeDecree)
                 <span class="badge bg-success-subtle text-success fw-medium">
                     <i class="ri-shield-check-line me-1"></i>SK aktif: {{ $scopeDecree['number'] }}

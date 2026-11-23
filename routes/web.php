@@ -1985,6 +1985,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/cari', [SoalSayaController::class, 'search'])->name('search');
                 Route::get('/import-word', [SoalSayaController::class, 'importForm'])->name('import-form');
                 Route::post('/import-word', [SoalSayaController::class, 'importStore'])->name('import-store');
+                Route::get('/cetak', [SoalSayaController::class, 'cetakPage'])->name('cetak');
+                Route::get('/cetak/preview', [SoalSayaController::class, 'previewPdf'])->name('preview');
                 Route::post('/cetak', [SoalSayaController::class, 'print'])->name('print');
                 Route::post('/{id}/clone', [SoalSayaController::class, 'clone'])->name('clone');
             });

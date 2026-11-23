@@ -203,11 +203,15 @@
                                 </div>
                                 <input type="text" name="judul" class="form-control form-control-sm" style="max-width:260px"
                                        value="NASKAH SOAL {{ strtoupper($bank->subject?->name ?? '') }}">
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="ri-printer-line me-1"></i>Buka PDF
+                                <button type="submit" class="btn btn-sm btn-light border">
+                                    <i class="ri-printer-line me-1"></i>Cetak cepat
                                 </button>
+                                <a href="{{ route('user.soal-saya.cetak', ['userId' => $userId, 'bank_id' => $bank->id]) }}"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="ri-settings-3-line me-1"></i>Atur tata letak
+                                </a>
                                 <span class="text-muted small">
-                                    Hanya soal yang dicentang yang dicetak.
+                                    Cetak cepat memakai format resmi. Untuk margin, kertas, dan pratinjau, pakai Atur tata letak.
                                 </span>
                             </div>
 

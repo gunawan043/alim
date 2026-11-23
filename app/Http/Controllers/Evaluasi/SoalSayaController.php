@@ -12,9 +12,10 @@ use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Evaluasi\DocxQuestionParser;
+use App\Services\Evaluasi\PrintSettingsService;
 use App\Services\Evaluasi\QuickSoalService;
+use App\Services\Evaluasi\SoalNaskahPdfService;
 use App\Services\Evaluasi\TeachingScopeService;
-use App\Services\Pdf\DocumentPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +29,7 @@ class SoalSayaController extends Controller
         private readonly QuickSoalService $quickSoal,
         private readonly DocxQuestionParser $docxParser,
         private readonly TeachingScopeService $teachingScope,
+        private readonly PrintSettingsService $printSettings,
     ) {}
 
     public function index(Request $request, string $userId)
@@ -277,6 +279,48 @@ class SoalSayaController extends Controller
             ->with('import_warnings', $warnings);
     }
 
+    /**
+     * Halaman cetak naskah: pilih soal, atur tata letak, lihat pratinjau,
+     * lalu cetak. Berdiri sendiri tanpa paket soal — dipakai untuk soal
+     * harian milik guru.
+     */
+    public function cetakPage(Request $request, string $userId)
+    {
+        $school = $this->school($request);
+        $settings = $this->printSettings->preview($request);
+
+        $bankIds = BankSoal::accessibleBy($userId, $school->id)->pluck('id');
+
+        $query = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options'])
+            ->whereIn('bank_soal_id', $bankIds)
+            ->when($request->filled('bank_id'), fn ($q) => $q->where('bank_soal_id', $request->bank_id))
+            ->when($request->filled('jenis_asesmen'), fn ($q) => $q->where('jenis_asesmen', $request->jenis_asesmen))
+            ->when($request->filled('subject_id'), fn ($q) => $q->whereHas('bankSoal', fn ($b) => $b->where('subject_id', $request->subject_id)))
+            ->orderByDesc('created_at');
+
+        $questions = $query->get();
+
+        $banks = BankSoal::query()
+            ->accessibleBy($userId, $school->id)
+            ->withCount('soal')
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'subject_id', 'school_id', 'owner_user_id', 'created_by']);
+
+        $subjects = $this->subjects($school);
+
+        // Soal yang sudah dipilih sebelumnya (dari daftar Soal Saya / bank soal).
+        $selectedIds = collect($request->input('ids', []))->filter()->map(fn ($id) => (string) $id)->all();
+
+        $blocked = $this->printSettings->blockedQuestions($questions);
+
+        $kop = app(DocumentVisualService::class)->imageDataUri($school->kop_path);
+
+        return view('evalusi.soal-saya.cetak', compact(
+            'userId', 'school', 'questions', 'banks', 'subjects',
+            'settings', 'selectedIds', 'blocked', 'kop'
+        ));
+    }
+
     public function print(Request $request, string $userId)
     {
         $school = $this->school($request);
@@ -300,34 +344,101 @@ class SoalSayaController extends Controller
             return back()->with('error', 'Sebagian soal tidak ditemukan atau tidak dapat diakses.');
         }
 
-        $blocked = $questions
-            ->filter(fn (Soal $soal) => $soal->requiresValidation() && ! $soal->isValidated())
-            ->map(fn (Soal $soal) => mb_substr(strip_tags($soal->pertanyaan), 0, 60))
-            ->values();
+        $blocked = $this->printSettings->blockedQuestions($questions);
 
-        if ($blocked->isNotEmpty()) {
-            return back()->with('error', 'Soal STS/SAS berikut belum tervalidasi mayoritas guru serumpun: '.$blocked->implode('; '));
+        if ($blocked !== []) {
+            return back()->with(
+                'error',
+                'Soal STS/SAS berikut belum tervalidasi mayoritas guru serumpun: '.implode('; ', $blocked)
+                .'. Untuk soal harian tidak diperlukan validasi — ubah jenis asesmennya bila memang soal harian.'
+            );
         }
 
-        $withKey = $request->boolean('with_key');
-        $kop = $request->boolean('kop')
-            ? app(DocumentVisualService::class)->imageDataUri($school->kop_path)
-            : null;
+        // Pengaturan tata letak dari halaman cetak (bila dikirim).
+        $settings = $this->printSettings->resolve($request);
 
-        $html = view('evalusi.soal-saya.print', [
-            'school' => $school,
-            'questions' => $questions,
-            'withKey' => $withKey,
-            'kop' => $kop,
-            'judul' => $data['judul'] ?? 'NASKAH SOAL',
-        ])->render();
+        $withKey = $request->has('with_key')
+            ? $request->boolean('with_key')
+            : (bool) $settings['show_key'];
+        $useKop = $request->has('kop')
+            ? $request->boolean('kop')
+            : (bool) $settings['show_kop'];
 
-        $pdf = app(DocumentPdfService::class)->renderHtml($html, 'portrait', 'A4');
+        // Naskah memakai format resmi yang sama dengan STS/SAS (ljk.soal-pdf):
+        // kop bergaris, tabel identitas, penanaman karakter, opsi sejajar.
+        $settings['show_kop'] = $useKop;
+
+        $pdf = app(SoalNaskahPdfService::class)->pdf(
+            $questions,
+            $school,
+            $request->user(),
+            $settings,
+            $this->resolvedTitle($data, $settings),
+            $request->filled('kelas_label') ? (string) $request->input('kelas_label') : null
+        );
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="soal-'.now()->format('Ymd-His').'.pdf"',
         ]);
+    }
+
+    /**
+     * Pratinjau PDF di halaman cetak. Memakai dokumen yang sama persis dengan
+     * hasil cetak, sehingga yang terlihat di layar adalah naskah sebenarnya.
+     */
+    public function previewPdf(Request $request, string $userId)
+    {
+        $school = $this->school($request);
+        $settings = $this->printSettings->preview($request);
+
+        $bankIds = BankSoal::accessibleBy($userId, $school->id)->pluck('id');
+
+        $questions = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options', 'wacana'])
+            ->whereIn('bank_soal_id', $bankIds)
+            ->when($request->filled('bank_id'), fn ($q) => $q->where('bank_soal_id', $request->bank_id))
+            ->when($request->filled('subject_id'), fn ($q) => $q->whereHas('bankSoal', fn ($b) => $b->where('subject_id', $request->subject_id)))
+            ->orderByDesc('created_at')
+            ->get()
+            ->reject(fn (Soal $soal) => $soal->requiresValidation() && ! $soal->isValidated())
+            ->values();
+
+        if ($questions->isEmpty()) {
+            return response('Belum ada soal yang dapat dicetak.', 200, ['Content-Type' => 'text/plain']);
+        }
+
+        $pdf = app(SoalNaskahPdfService::class)->pdf(
+            $questions,
+            $school,
+            $request->user(),
+            $settings,
+            $settings['judul'] ?: null
+        );
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="pratinjau-soal.pdf"',
+            'Cache-Control' => 'no-store, max-age=0',
+        ]);
+    }
+
+    /**
+     * Judul naskah: eksplisit dari form, pengaturan tersimpan, atau bawaan.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $settings
+     */
+    private function resolvedTitle(array $data, array $settings): string
+    {
+        $explicit = trim((string) ($data['judul'] ?? ''));
+
+        if ($explicit !== '') {
+            return $explicit;
+        }
+
+        $stored = trim((string) ($settings['judul'] ?? ''));
+
+        return $stored !== '' ? $stored : 'NASKAH SOAL';
     }
 
     private function school(Request $request): School

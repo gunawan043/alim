@@ -784,7 +784,7 @@
             'nilaiMode' => $manageSchool ? 'manage' : 'read',
         ])
         @if(! $showMengajar)
-            @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen')
+            @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen', ['asesmenBroad' => $manageSchool])
         @endif
     </x-sidebar-section>
 @endif

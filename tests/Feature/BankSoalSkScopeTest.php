@@ -9,6 +9,8 @@ use App\Models\GradeLevel;
 use App\Models\InstitutionDecree;
 use App\Models\Role;
 use App\Models\School;
+use App\Models\Soal;
+use App\Models\SoalOption;
 use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
@@ -270,6 +272,121 @@ class BankSoalSkScopeTest extends TestCase
             ->get("/{$this->guru->id}/bank-soal/{$bank->id}")
             ->assertOk()
             ->assertSee('Bank Matematika Kelas 4');
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // KISI-KISI & CETAK NASKAH
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_kisi_kisi_guru_hanya_menampilkan_mapel_sk(): void
+    {
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/kisi-kisi-soal/create")
+            ->assertOk()
+            ->assertViewHas('subjects', fn ($subjects) => $subjects->pluck('id')->map(fn ($id) => (string) $id)->all() === [(string) $this->math->id]);
+    }
+
+    public function test_kisi_kisi_menolak_mapel_di_luar_sk(): void
+    {
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/kisi-kisi-soal", [
+                'judul' => 'Kisi-kisi IPA',
+                'subject_id' => $this->ipa->id,
+                'grade_level_id' => $this->grade->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'jenis_ujian' => 'sts',
+                'tingkat_sekolah' => 'sd',
+            ]);
+        // Ditolak (422/redirect dengan error) — bukan tersimpan.
+        $this->assertDatabaseMissing('kisi_kisi_soal', ['judul' => 'Kisi-kisi IPA']);
+    }
+
+    public function test_halaman_cetak_naskah_tersedia(): void
+    {
+        $this->makeSoal();
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/soal-saya/cetak")
+            ->assertOk()
+            ->assertSee('Pengaturan naskah')
+            ->assertSee('Cetak / simpan PDF')
+            ->assertSee('Pratinjau naskah');
+    }
+
+    public function test_pratinjau_cetak_menghasilkan_pdf(): void
+    {
+        $this->makeSoal();
+
+        $response = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/soal-saya/cetak/preview");
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_cetak_pdf_soal_harian_tanpa_validasi(): void
+    {
+        $soal = $this->makeSoal();
+
+        $response = $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/soal-saya/cetak", [
+                'ids' => [$soal->id],
+                'paper' => 'F4',
+                'margin_top' => 15,
+                'margin_left' => 20,
+            ]);
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    private function makeSoal(): Soal
+    {
+        $bank = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Bank Matematika Kelas 4',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'internal_school',
+            'owner_user_id' => $this->guru->id,
+            'created_by' => $this->guru->id,
+            'total_soal' => 1,
+        ]);
+
+        $soal = Soal::create([
+            'bank_soal_id' => $bank->id,
+            'tipe_soal' => 'pg',
+            'bahasa' => 'latin',
+            'pertanyaan' => 'Berapakah hasil dari 12 x 4?',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'mudah',
+            'waktu_estimasi_menit' => 2,
+            'status' => 'draft',
+            'workflow_status' => Soal::WORKFLOW_DRAFT,
+            'jenis_asesmen' => Soal::JENIS_ASESMEN_HARIAN,
+            'dibuat_oleh' => $this->guru->id,
+            'content_hash' => hash('sha256', 'soal-uji-12x4'),
+        ]);
+
+        $opsi = [['48', true], ['46', false], ['52', false], ['56', false]];
+        foreach ($opsi as $i => [$teks, $benar]) {
+            SoalOption::create([
+                'soal_id' => $soal->id,
+                'label' => chr(65 + $i),
+                'teks_opsi' => $teks,
+                'is_correct' => $benar,
+                'urutan' => $i + 1,
+            ]);
+        }
+
+        return $soal;
     }
 
     private function seedSnapshot(User $user, School $school): void
