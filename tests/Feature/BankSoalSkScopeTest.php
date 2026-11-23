@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Authorization\ValueObjects\ScopeKey;
 use App\Models\AcademicYear;
+use App\Models\BankSoal;
 use App\Models\GradeLevel;
 use App\Models\InstitutionDecree;
 use App\Models\Role;
@@ -14,6 +15,7 @@ use App\Models\TeachingAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -238,6 +240,36 @@ class BankSoalSkScopeTest extends TestCase
             ->assertOk()
             ->assertSee('Matematika')
             ->assertDontSee('Ilmu Pengetahuan Alam');
+    }
+
+    public function test_tabel_pivot_bank_soal_tp_ada_di_sqlite(): void
+    {
+        // Migrasi asli melewati SQLite sehingga tabel ini hilang di produksi
+        // dan halaman detail bank soal gagal 500.
+        $this->assertTrue(Schema::hasTable('bank_soal_tp'));
+    }
+
+    public function test_halaman_detail_bank_soal_tidak_gagal(): void
+    {
+        $bank = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Bank Matematika Kelas 4',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'internal_school',
+            'owner_user_id' => $this->guru->id,
+            'created_by' => $this->guru->id,
+            'total_soal' => 0,
+        ]);
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/bank-soal/{$bank->id}")
+            ->assertOk()
+            ->assertSee('Bank Matematika Kelas 4');
     }
 
     private function seedSnapshot(User $user, School $school): void

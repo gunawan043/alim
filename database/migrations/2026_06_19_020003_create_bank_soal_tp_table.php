@@ -2,19 +2,20 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // Skip on SQLite: anonymous char(36) columns. Not needed for academic tests.
-        if (DB::connection()->getDriverName() === 'sqlite') {
+        // Pivot untuk BankSoal <-> TujuanPembelajaran.
+        // Tabel ini dibutuhkan juga di SQLite (produksi memakainya), jadi
+        // tidak boleh dilewati. Nama kolom ditulis eksplisit agar indeks
+        // gabungan tidak menghasilkan nama kolom ganda di SQLite.
+        if (Schema::hasTable('bank_soal_tp')) {
             return;
         }
 
-        // Pivot untuk BankSoal <-> TujuanPembelajaran
         Schema::create('bank_soal_tp', function (Blueprint $table) {
             $table->uuid('bank_soal_id');
             $table->uuid('tp_id');

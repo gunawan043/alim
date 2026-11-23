@@ -175,7 +175,8 @@
                     <div>
                         <h5 class="card-title mb-0">Daftar &amp; Edit Soal</h5>
                         <small class="text-muted">
-                            Klik <strong>Edit Soal</strong> pada baris untuk membuka halaman edit semua soal.
+                            Pilih soal lalu <strong>Preview &amp; cetak PDF</strong>, atau buka Edit Soal
+                            untuk mengubah semuanya sekaligus.
                         </small>
                     </div>
                     <div class="d-flex flex-wrap gap-1">
@@ -187,65 +188,96 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    @if($bank->soal->isEmpty())
+                    @if($bank->soal->isNotEmpty())
+                        <form method="POST" action="{{ route('user.soal-saya.print', ['userId' => $userId]) }}" target="_blank" class="mb-3">
+                            @csrf
+                            <div class="d-flex flex-wrap align-items-center gap-3 p-3 bg-light rounded border">
+                                <strong class="small mb-0">Preview &amp; cetak PDF</strong>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="checkbox" name="with_key" value="1" id="bankWithKey">
+                                    <label class="form-check-label small" for="bankWithKey">Sertakan kunci &amp; pembahasan</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="checkbox" name="kop" value="1" id="bankWithKop" checked>
+                                    <label class="form-check-label small" for="bankWithKop">Kop sekolah</label>
+                                </div>
+                                <input type="text" name="judul" class="form-control form-control-sm" style="max-width:260px"
+                                       value="NASKAH SOAL {{ strtoupper($bank->subject?->name ?? '') }}">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="ri-printer-line me-1"></i>Buka PDF
+                                </button>
+                                <span class="text-muted small">
+                                    Hanya soal yang dicentang yang dicetak.
+                                </span>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-striped align-middle mb-0">
+                                    <thead class="table-light text-muted">
+                                        <tr>
+                                            <th style="width:40px">
+                                                <input type="checkbox" class="form-check-input"
+                                                       onclick="document.querySelectorAll('.bank-soal-check').forEach(c=>c.checked=this.checked)">
+                                            </th>
+                                            <th style="width:60px">#</th>
+                                            <th>Jenis Soal</th>
+                                            <th>Bahasa</th>
+                                            <th>Level Bloom</th>
+                                            <th>Pertanyaan (singkat)</th>
+                                            <th>Bobot</th>
+                                            <th>Status</th>
+                                            <th style="width:150px">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($bank->soal as $i => $soal)
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" class="form-check-input bank-soal-check"
+                                                           name="ids[]" value="{{ $soal->id }}" checked>
+                                                </td>
+                                                <td>{{ $i + 1 }}</td>
+                                                <td><span class="badge bg-secondary-subtle text-secondary">{{ $soal->tipe_soal ?? '-' }}</span></td>
+                                                <td><span class="badge bg-info-subtle text-info">{{ \App\Models\Soal::BAHASA_OPTIONS[$soal->bahasa] ?? 'Latin' }}</span></td>
+                                                <td>
+                                                    @if($soal->level_kognitif)
+                                                        <span class="badge bg-primary-subtle text-primary" title="{{ $soal->level_kognitif_label }} · {{ $soal->level_kognitif_rumpun_label }}">
+                                                            {{ $soal->level_kognitif_code }} · {{ $soal->level_kognitif_rumpun }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border">Belum</span>
+                                                    @endif
+                                                </td>
+                                                <td style="max-width:300px">{{ Str::limit(strip_tags($soal->pertanyaan ?? ''), 60) }}</td>
+                                                <td>{{ $soal->bobot_default ?? '-' }}</td>
+                                                <td>
+                                                    @if($soal->status === 'approved')
+                                                        <span class="badge bg-success">Disetujui</span>
+                                                    @elseif($soal->status === 'draft')
+                                                        <span class="badge bg-warning">Draft</span>
+                                                    @else
+                                                        <span class="badge bg-info">{{ $soal->status ?? '-' }}</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
+                                                       class="btn btn-sm btn-soft-primary" title="Buka halaman edit semua soal">
+                                                        <i class="ri-edit-2-line me-1"></i> Edit Soal
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </form>
+                    @else
                         <div class="text-center py-4">
                             <p class="text-muted mb-2">Belum ada soal dalam bank ini.</p>
                             <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}"
                                class="btn btn-success btn-sm">
                                 <i class="ri-add-line me-1"></i> Input Soal Pertama
                             </a>
-                        </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-striped align-middle mb-0">
-                                <thead class="table-light text-muted">
-                                    <tr>
-                                        <th style="width:60px">#</th>
-                                        <th>Jenis Soal</th>
-                                        <th>Bahasa</th>
-                                        <th>Level Bloom</th>
-                                        <th>Pertanyaan (singkat)</th>
-                                        <th>Bobot</th>
-                                        <th>Status</th>
-                                        <th style="width:150px">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($bank->soal as $i => $soal)
-                                        <tr>
-                                            <td>{{ $i + 1 }}</td>
-                                            <td><span class="badge bg-secondary-subtle text-secondary">{{ $soal->tipe_soal ?? '-' }}</span></td>
-                                            <td><span class="badge bg-info-subtle text-info">{{ \App\Models\Soal::BAHASA_OPTIONS[$soal->bahasa] ?? 'Latin' }}</span></td>
-                                            <td>
-                                                @if($soal->level_kognitif)
-                                                    <span class="badge bg-primary-subtle text-primary" title="{{ $soal->level_kognitif_label }} · {{ $soal->level_kognitif_rumpun_label }}">
-                                                        {{ $soal->level_kognitif_code }} · {{ $soal->level_kognitif_rumpun }}
-                                                    </span>
-                                                @else
-                                                    <span class="badge bg-light text-muted border">Belum</span>
-                                                @endif
-                                            </td>
-                                            <td style="max-width:300px">{{ Str::limit(strip_tags($soal->pertanyaan ?? ''), 60) }}</td>
-                                            <td>{{ $soal->bobot_default ?? '-' }}</td>
-                                            <td>
-                                                @if($soal->status === 'approved')
-                                                    <span class="badge bg-success">Disetujui</span>
-                                                @elseif($soal->status === 'draft')
-                                                    <span class="badge bg-warning">Draft</span>
-                                                @else
-                                                    <span class="badge bg-info">{{ $soal->status ?? '-' }}</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
-                                                   class="btn btn-sm btn-soft-primary" title="Buka halaman edit semua soal">
-                                                    <i class="ri-edit-2-line me-1"></i> Edit Soal
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
                         </div>
                     @endif
                 </div>
