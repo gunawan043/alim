@@ -135,7 +135,22 @@ ${SSH_CMD} "${REMOTE_ALIAS}" "bash ${REMOTE_DEPLOY}" >>"${LOG_FILE}" 2>&1
 SSH_EXIT=$?
 
 if [ "${SSH_EXIT}" -eq 0 ]; then
+    # Skema dicek terhadap database sungguhan, bukan cuma migrate:status:
+    # migrasi pernah "Ran" padahal tabel belum ada, dan kolom baru yang
+    # hilang membuat endpoint balas 500 tanpa ketahuan dari health check.
+    log "Memverifikasi skema integrasi ALIM Connect di server..."
+    if ${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && /usr/bin/php artisan alim:verify-connect-schema" >>"${LOG_FILE}" 2>&1; then
+        log "Skema integrasi ALIM Connect lengkap."
+    else
+        log "PERINGATAN: skema integrasi ALIM Connect BELUM lengkap (lihat log di atas)."
+        log "Jalankan: ssh ${REMOTE_ALIAS} \"cd ${REMOTE_APP} && /usr/bin/php artisan migrate --force\""
+        SCHEMA_WARN=1
+    fi
+
     log "AUTO DEPLOY SELESAI (${COMMIT_SHORT})"
+    if [ "${SCHEMA_WARN:-0}" -eq 1 ]; then
+        log "PERHATIAN: deploy terpasang tetapi ada migrasi yang belum dijalankan."
+    fi
 else
     log "ERROR: deploy server gagal (${SSH_EXIT})"
 fi

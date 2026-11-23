@@ -248,6 +248,39 @@ npx jest --config test/jest-e2e.json test/approval-http.e2e-spec.ts
 
 ---
 
+## 7a. Verifikasi pasca-deploy (wajib)
+
+`migrate:status` dapat melaporkan `Ran` padahal objek database belum ada, dan sebaliknya
+migrasi yang sudah ikut ter-deploy tetap tampil `Pending`. Karena itu skema diverifikasi
+langsung ke database:
+
+```bash
+php artisan alim:verify-connect-schema
+```
+
+Exit `0` = lengkap; exit `1` = ada tabel/kolom hilang, jalankan `php artisan migrate --force`.
+
+Skrip deploy menjalankan pemeriksaan ini otomatis setelah deploy selesai dan menulis
+`Skema integrasi ALIM Connect lengkap.` atau `PERINGATAN: ... BELUM lengkap` ke
+`/tmp/alim-auto-deploy.log`.
+
+### Kejadian 2026-11-23 (alasan pemeriksaan ini ada)
+
+Deploy fitur ini sempat lolos 59 unit test, tetapi saat diuji end-to-end di lokal
+`POST /api/connect/v1/sso/exchange` membalas **500**, bukan 404. Penyebabnya tabel
+`connect_sso_handoffs` belum dibuat: `migrate:status` sudah menyebut beberapa migrasi
+`Ran`, sementara objeknya belum ada. Unit test tidak menangkapnya karena setiap test
+membangun ulang skema di database sementara.
+
+Akibat yang sama bisa terjadi di produksi: bila kolom `idempotency_key`/`api_version`
+hilang, setiap command dari Connect akan gagal 500. Karena itu setelah deploy selalu:
+
+1. `php artisan alim:verify-connect-schema` → exit 0
+2. `curl` kedua endpoint tanpa key → **503** (bukan 200)
+3. baru isi kredensial.
+
+---
+
 ## 8. Dependensi yang masih menunggu ALIM Connect
 
 | # | Butir | Status Core |
