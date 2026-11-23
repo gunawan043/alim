@@ -371,9 +371,9 @@
                                 </div>
                                 <div class="row g-2 mt-0">
                                     <div class="col-4 cetak-field">
-                                        <label class="form-label mb-1">Lekuk opsi (mm)</label>
+                                        <label class="form-label mb-1">Jarak antar opsi (mm)</label>
                                         <input type="number" name="option_indent" class="form-control form-control-sm"
-                                               min="0" max="15" value="{{ (int) $settings['option_indent'] }}">
+                                               min="0" max="15" step="0.5" value="{{ (float) $settings['option_indent'] }}">
                                     </div>
                                     <div class="col-4 cetak-field">
                                         <label class="form-label mb-1">Nomor mulai</label>

@@ -14,8 +14,21 @@
             $lebarMm = isset($opsiWidthMm) && $opsiWidthMm > 0
                 ? (float) $opsiWidthMm
                 : 157.58;
-            // Semua kolom SAMA PERSIS — tidak ada pilihan yang dilebarkan.
+
+            // Dompdf menambahkan padding DI LUAR `width` sel, jadi lebar
+            // sel harus dikurangi padding agar N sel tetap muat dalam
+            // `$lebarMm`. Tanpa ini total lebar = N x (unit + padding) dan
+            // kolom meluber hingga teks A menimpa B/C/D.
+            $jedaMm = max(0.0, (float) ($opsiIndentMm ?? 2.0));
             $unitMm = round($lebarMm / $kolom, 2);
+            $selMm = round(max(1.0, $unitMm - $jedaMm), 2);
+
+            // Jarak antar kolom = padding + lebar sel, sehingga N kolom
+            // tepat memenuhi `$lebarMm` (tanpa meluber / tumpang tindih).
+            $padStyle = $rtl
+                ? "0 0 0 {$jedaMm}mm"
+                : "0 {$jedaMm}mm 0 0";
+
             $align = $rtl ? 'right' : 'left';
         @endphp
         {{-- Satu tabel per baris. Dompdf membagi lebar tabel dari proporsi
@@ -28,16 +41,16 @@
                 <tr>
                     @foreach($row as $cell)
                         @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
-                        <td style="width: {{ $unitMm }}mm; text-align: {{ $align }};">
+                        <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }}; text-align: {{ $align }};">
                             @if($opsi)
                                 @if($rtl)
-                                    {{-- RTL: dibaca kanan-ke-kiri "ا. اسم". Dompdf selalu
-                                         mengalirkan isi sel kiri-ke-kanan, jadi teks
-                                         ditaruh dulu, baru penanda huruf — dengan
-                                         sel rata kanan hasil visualnya menjadi
-                                         "اسم .ا" yang terbaca benar dari kanan. --}}
-                                    {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
+                                    {{-- RTL: penanda huruf harus di tepi KANAN sel agar
+                                         keempat huruf ا/ب/ج/د sejajar pada posisi yang
+                                         sama di setiap kolom. Teks menyusul di kiri
+                                         huruf. Dompdf mengalirkan inline kiri-ke-kanan,
+                                         jadi huruf ditaruh lebih dulu lalu teks. --}}
                                     <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
+                                    {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
                                 @else
                                     <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
@@ -49,10 +62,10 @@
                     @endforeach
 
                     {{-- Sel kosong agar jumlah kolom baris ini tetap N.
-                         Padding-nya SAMA dengan sel berisi supaya lebar
-                         kolom tidak bergeser antar baris. --}}
+                         Lebar & padding SAMA dengan sel berisi supaya
+                         posisi kolom tidak bergeser antar baris. --}}
                     @for($i = 0; $i < $sisa; $i++)
-                        <td style="width: {{ $unitMm }}mm;">&nbsp;</td>
+                        <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }};">&nbsp;</td>
                     @endfor
                 </tr>
             </table>

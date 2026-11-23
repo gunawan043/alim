@@ -275,7 +275,9 @@ class PrintSettingsService
         $settings['option_columns'] = in_array((int) $settings['option_columns'], [0, 2, 3, 4, 5], true)
             ? (int) $settings['option_columns']
             : 0;
-        $settings['option_indent'] = (int) $this->number($settings['option_indent'] ?? null, 0, 15, 2);
+        // Jarak antar kolom opsi (mm). Dipakai sebagai padding tiap sel;
+        // lebar sel dikurangi nilai ini agar N kolom tetap muat sebaris.
+        $settings['option_indent'] = round($this->number($settings['option_indent'] ?? null, 0, 15, 2), 1);
         $settings['start_number'] = (int) $this->number($settings['start_number'] ?? null, 1, 999, 1);
 
         // Kunci

@@ -168,11 +168,9 @@
         font-size: {{ $fontSize }}pt;
         line-height: {{ $lineHeight }};
     }
-    /* RTL: padding pindah ke KIRI agar jarak antar kolom sama besarnya
-       dengan versi Latin (yang memakai padding kanan). Tanpa ini kolom
-       Arab bergeser tidak rata karena padding tetap di kanan. */
-    table.opts.opts-auto.rtl td,
-    table.opts.rtl td { padding: 0 0 0 {{ $optionIndent }}mm; }
+    /* Jarak antar kolom untuk naskah (LTR maupun RTL) diatur lewat inline
+       style di partial opsi, karena padding harus ikut diperhitungkan
+       dalam lebar sel agar kolom tidak meluber. */
     table.opts td .letter { font-weight: normal; }
 
     /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
@@ -330,7 +328,7 @@
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif
-                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null])
+                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null, 'opsiIndentMm' => $optionIndent ?? null])
                             </td>
                             <td class="qno" style="width: 4.5%; text-align: right;">
                                 @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
@@ -344,7 +342,7 @@
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif
-                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null])
+                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null, 'opsiIndentMm' => $optionIndent ?? null])
                             </td>
                         @endif
                     </tr>

@@ -704,6 +704,61 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertSame([2, 3], array_column($hasil['rows'][1], 'index'));
     }
 
+    public function test_total_lebar_kolom_tidak_meluber_dari_area_opsi(): void
+    {
+        // Regresi tumpang tindih: Dompdf menambah padding DI LUAR `width`
+        // sel, sehingga N x (sel + jarak) tidak boleh melebihi lebar area.
+        // Bila meluber, teks pilihan A menimpa B/C/D.
+        $opsi = $this->opsi(['48', '46', '52', '56']);
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout($opsi, 157.6, 11.0);
+
+        $html = view('ljk.partials.soal-opsi', [
+            'block' => ['opsi' => $opsi, 'opsiLayout' => $hasil],
+            'rtl' => false,
+            'maxOptions' => 4,
+            'colWidth' => 25,
+            'opsiWidthMm' => 157.6,
+            'opsiIndentMm' => 2.0,
+        ])->render();
+
+        preg_match('/<td[^>]*style="width: ([\d.]+)mm/', $html, $m);
+        $selMm = (float) $m[1];
+        $totalMm = ($selMm + 2.0) * $hasil['columns'];
+
+        $this->assertLessThanOrEqual(
+            157.6,
+            $totalMm,
+            'Total lebar kolom (sel + jarak) tidak boleh melebihi area opsi.'
+        );
+    }
+
+    public function test_opsi_arab_menaruh_huruf_di_tepi_kanan_sel(): void
+    {
+        // Naskah Arab: huruf ا/ب/ج/د harus berada di tepi KANAN tiap kolom
+        // agar keempatnya sejajar. Teks menyusul di kiri huruf.
+        $opsi = $this->opsi(['سبعة', 'ستة', 'ثمانية', 'خمسة']);
+        $layout = app(SoalOpsiLayout::class);
+
+        $html = view('ljk.partials.soal-opsi', [
+            'block' => ['opsi' => $opsi, 'opsiLayout' => $layout->layout($opsi, 157.6, 11.0)],
+            'rtl' => true,
+            'maxOptions' => 4,
+            'colWidth' => 25,
+            'opsiWidthMm' => 157.6,
+            'opsiIndentMm' => 2.0,
+        ])->render();
+
+        // Huruf lebih dulu, teks menyusul (Dompdf mengalir kiri-ke-kanan).
+        $this->assertMatchesRegularExpression(
+            '/<span class="letter">[^<]*<\/span>\s*<span class="ar">/u',
+            $html,
+            'Huruf opsi mendahului teks agar berada di tepi kanan sel.'
+        );
+        $this->assertStringContainsString('padding: 0 0 0 2mm', $html, 'Jarak antar kolom di kiri sel (RTL).');
+        $this->assertStringContainsString('text-align: right', $html);
+    }
+
     public function test_lebar_kolom_opsi_seragam_di_html(): void
     {
         $opsi = $this->opsi(['48', '46', '52', '56']);
@@ -719,11 +774,16 @@ class BankSoalSkScopeTest extends TestCase
 
         // Lebar dinyatakan dalam mm (bukan %): Dompdf menyesuaikan lebar kolom
         // mengikuti isi bila memakai persen, sehingga B/C bergeser antar soal.
+        //
+        // Dompdf menambah padding DI LUAR `width` sel, jadi lebar sel harus
+        // dikurangi jarak antar opsi (bawaan 2 mm). Tanpa ini 4 sel menjadi
+        // 4 x (39.4 + 2) = 165.6 mm dan meluber hingga teks saling menimpa.
         preg_match_all('/<td[^>]*style="width: ([\d.]+)mm/', $html, $m);
         $this->assertNotEmpty($m[1], 'Lebar kolom opsi memakai satuan mm.');
         $this->assertCount(1, array_unique($m[1]), 'Semua kolom memakai lebar yang sama.');
-        $this->assertSame('39.4', array_unique($m[1])[0], 'Empat opsi → tiap kolom 157,6/4 mm.');
-        $this->assertStringContainsString('style="width: 157.6mm;"', $html);
+        $this->assertSame('37.4', array_unique($m[1])[0], '157,6/4 dikurangi jarak 2 mm.');
+        $this->assertStringContainsString('style="width: 157.6mm;"', $html, 'Tabel tetap selebar area opsi.');
+        $this->assertStringContainsString('padding: 0 2mm 0 0', $html, 'Jarak antar kolom 2 mm.');
         $this->assertStringContainsString('opts-auto', $html);
     }
 
@@ -756,7 +816,9 @@ class BankSoalSkScopeTest extends TestCase
         foreach ($rows[1] as $i => $tr) {
             preg_match_all('/<td[^>]*style="width: ([\d.]+)mm/', $tr, $w);
             $this->assertCount(1, $w[1], 'Baris ke-'.($i + 1).' berisi tepat 1 kolom.');
-            $this->assertSame('157.6', $w[1][0], 'Kolom memakai lebar penuh.');
+            // Lebar penuh dikurangi jarak antar opsi (2 mm), karena padding
+            // Dompdf dihitung di luar `width` sel.
+            $this->assertSame('155.6', $w[1][0], 'Kolom memakai lebar penuh.');
         }
     }
 

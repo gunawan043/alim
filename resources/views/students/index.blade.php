@@ -396,18 +396,6 @@
                                             </li>
                                             <li>
                                                 <a class="dropdown-item"
-                                                   href="{{ route('user.students.photos.bulk-form', ['userId' => $userId] + (request('study_group_id') ? ['study_group_id' => request('study_group_id')] : [])) }}">
-                                                    <i class="ri-image-add-line me-1"></i>Upload Foto Masal
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item"
-                                                   href="{{ route('user.students.cards.index', ['userId' => $userId]) }}">
-                                                    <i class="ri-id-card-line me-1"></i>Kartu Pelajar
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item"
                                                    href="{{ route('user.students.import-nama-arab-form', ['userId' => $userId]) }}">
                                                     <i class="ri-translate-2 me-1"></i>Import Nama Arab
                                                 </a>
