@@ -477,23 +477,29 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertCount(1, $lima['rows']);
     }
 
-    public function test_opsi_panjang_tetap_berkolom_sama_lebar(): void
+    public function test_pilihan_panjang_membuat_semua_pilihan_satu_kolom(): void
     {
-        // Regresi aturan sekolah: "lebarnya harus seragam — A, B, C, D sama
-        // lebar". Pilihan panjang TIDAK boleh mendapat kolom lebih lebar;
-        // ia turun ke barisnya sendiri.
+        // Aturan sekolah: bila ada 1 pilihan yang memakan area cukup panjang,
+        // SEMUA pilihan menjadi 1 kolom per baris (lebar penuh), bukan hanya
+        // pilihan itu yang turun baris.
         $layout = app(SoalOpsiLayout::class);
         $hasil = $layout->layout(
-            $this->opsi(['seratus sepuluh milimeter panjangnya', 'ok', 'ya', 'tidak']),
+            $this->opsi([
+                'ini pilihan yang cukup panjang sekali ya',
+                'ini juga panjang sekali',
+                'pendek',
+                'ok',
+            ]),
             157.6,
             11.0
         );
 
-        $this->assertSame(4, $hasil['columns']);
+        $this->assertSame(1, $hasil['columns'], 'Ada pilihan panjang → 1 kolom per baris.');
         $this->assertSame([1, 1, 1, 1], $hasil['spans'], 'Tidak ada pilihan yang melebar.');
-        $this->assertCount(2, $hasil['rows'], 'Pilihan panjang turun ke baris sendiri.');
-        $this->assertSame([0], array_column($hasil['rows'][0], 'index'));
-        $this->assertSame([1, 2, 3], array_column($hasil['rows'][1], 'index'));
+        $this->assertCount(4, $hasil['rows'], 'Tiap pilihan satu baris.');
+        foreach ($hasil['rows'] as $row) {
+            $this->assertCount(1, $row);
+        }
     }
 
     public function test_lima_pilihan_pendek_muat_satu_baris(): void
@@ -515,30 +521,31 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertCount(4, $hasil['rows'][0]);
     }
 
-    public function test_pilihan_terlalu_panjang_mendapat_baris_penuh_sendiri(): void
+    public function test_pilihan_sedang_membuat_dua_kolom(): void
     {
-        // A lebih lebar dari satu kolom → A sendiri di barisnya, pilihan
-        // lain tetap rapat di baris berikutnya (tidak ikut jadi 1 kolom).
+        // Aturan sekolah: tidak muat 1 baris tetapi masih bisa 2 kolom →
+        // A B di baris 1, C D di baris 2.
         $layout = app(SoalOpsiLayout::class);
         $hasil = $layout->layout(
             $this->opsi([
-                'ini pilihan yang cukup panjang sekali ya',
-                'ini juga panjang sekali',
-                'pendek',
-                'ok',
+                'lima ratus empat puluh',
+                'enam ratus enam puluh',
+                'tujuh ratus dua puluh',
+                'empat ratus delapan',
             ]),
             157.6,
             11.0
         );
 
-        $this->assertCount(1, $hasil['rows'][0], 'Pilihan panjang berdiri sendiri.');
-        $this->assertGreaterThan(1, count($hasil['rows']), 'Sisa pilihan turun ke baris berikutnya.');
-        $this->assertGreaterThan(1, count(end($hasil['rows'])), 'Baris terakhir memuat lebih dari satu pilihan.');
+        $this->assertSame(2, $hasil['columns'], 'Tidak muat 4 kolom → 2 kolom.');
+        $this->assertCount(2, $hasil['rows']);
+        $this->assertSame([0, 1], array_column($hasil['rows'][0], 'index'));
+        $this->assertSame([2, 3], array_column($hasil['rows'][1], 'index'));
     }
 
     public function test_lebar_kolom_opsi_seragam_di_html(): void
     {
-        $opsi = $this->opsi(['48', 'tujuh puluh dua', 'lima puluh dua', 'sembilan']);
+        $opsi = $this->opsi(['48', '46', '52', '56']);
         $layout = app(SoalOpsiLayout::class);
 
         $html = view('ljk.partials.soal-opsi', [
@@ -559,12 +566,11 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('opts-auto', $html);
     }
 
-    public function test_tiap_baris_opsi_berisi_kolom_sama_lebar_tanpa_colspan(): void
+    public function test_pilihan_panjang_dirender_satu_kolom_penuh(): void
     {
         // Dompdf membagi lebar tabel dari proporsi `width` sel, bukan grid
-        // posisi. `colspan` / lebar berbeda membuat kolom baris lain bergeser.
-        // Satu-satunya bentuk yang menghasilkan kolom lurus sejajar adalah
-        // SATU TABEL PER BARIS berisi tepat N <td> berlebar SAMA PERSIS.
+        // posisi. `colspan` membuat kolom baris lain bergeser, jadi opsi
+        // otomatis tidak boleh memakainya.
         $opsi = $this->opsi([
             'Hasil dari 3.475 + 2.860 - 1.925 adalah ....',
             '4.410',
@@ -584,39 +590,33 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('colspan', $html, 'Opsi otomatis tidak memakai colspan.');
 
         preg_match_all('/<tr>(.*?)<\/tr>/s', $html, $rows);
-        $this->assertNotEmpty($rows[1]);
+        $this->assertCount(4, $rows[1], 'A panjang → tiap pilihan satu baris.');
 
         foreach ($rows[1] as $i => $tr) {
             preg_match_all('/<td[^>]*style="width: ([\d.]+)mm/', $tr, $w);
-            $this->assertCount(4, $w[1], 'Baris ke-'.($i + 1).' harus berisi tepat 4 kolom.');
-            $this->assertCount(1, array_unique($w[1]), 'Baris ke-'.($i + 1).' kolomnya sama lebar.');
-            $this->assertSame('39.4', array_unique($w[1])[0], 'Setiap kolom 157,6/4 mm.');
+            $this->assertCount(1, $w[1], 'Baris ke-'.($i + 1).' berisi tepat 1 kolom.');
+            $this->assertSame('157.6', $w[1][0], 'Kolom memakai lebar penuh.');
         }
-
-        // Pilihan A panjang → A turun baris sendiri, B/C/D di baris berikut.
-        $this->assertCount(2, $rows[1], 'A panjang memaksa dua baris.');
     }
 
     public function test_opsi_mulai_di_titik_yang_sama_lintas_baris(): void
     {
-        // "posisinya harus sejajar": pilihan pertama baris ke-2 dan seterusnya
-        // harus mulai di x yang sama dengan pilihan A di baris pertama.
+        // "posisinya harus sejajar": pilihan pertama baris ke-2 harus mulai
+        // di kolom yang sama dengan pilihan A di baris pertama.
         $layout = app(SoalOpsiLayout::class);
         $opsi = $this->opsi([
-            'enam puluh tiga koma lima milimeter',
-            '46',
-            '52',
-            '56',
-            '60',
+            'lima ratus empat puluh',
+            'enam ratus enam puluh',
+            'tujuh ratus dua puluh',
+            'empat ratus delapan',
         ]);
 
         $hasil = $layout->layout($opsi, 157.6, 11.0);
 
-        $this->assertSame(5, $hasil['columns'], 'Lima opsi → lima kolom (1/5 per opsi).');
-        $this->assertSame([1, 1, 1, 1, 1], $hasil['spans'], 'Tidak ada pilihan yang melebar.');
-        $this->assertGreaterThan(1, count($hasil['rows']), 'Opsi panjang memaksa baris kedua.');
-        $this->assertSame([0], array_column($hasil['rows'][0], 'index'), 'A panjang berdiri sendiri.');
-        $this->assertSame([1, 2, 3, 4], array_column($hasil['rows'][1], 'index'), 'Sisanya di baris kedua mulai kolom 1.');
+        $this->assertSame(2, $hasil['columns'], 'Tidak muat 1 baris → 2 kolom.');
+        $this->assertSame([1, 1, 1, 1], $hasil['spans'], 'Tidak ada pilihan yang melebar.');
+        $this->assertSame([0, 1], array_column($hasil['rows'][0], 'index'), 'A dan B di baris pertama.');
+        $this->assertSame([2, 3], array_column($hasil['rows'][1], 'index'), 'C dan D di baris kedua.');
     }
 
     public function test_pilihan_pada_naskah_tidak_pernah_terlipat(): void

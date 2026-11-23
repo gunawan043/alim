@@ -9,29 +9,32 @@ use App\Services\Ljk\LjkPdfFonts;
 /**
  * Tata letak pilihan jawaban pada naskah soal.
  *
- * Aturan (sesuai ketentuan sekolah):
- *  1. SEMUA kolom dalam satu soal lebarnya SAMA PERSIS. Tidak ada pilihan
- *     yang mendapat kolom lebih lebar dari yang lain — A, B, C, D sama.
- *  2. Jumlah kolom = jumlah opsi: A–D → 4 kolom, A–E → 5 kolom.
- *     Tidak perlu diatur manual.
- *  3. Satu baris memuat paling banyak sejumlah kolom itu. Pilihan yang
- *     teksnya tidak muat dalam satu kolom turun ke baris berikutnya
- *     (pilihan setelahnya ikut turun agar tidak ada baris yang isinya
- *     tidak sejajar).
- *  4. Tidak ada teks yang terlipat: lebar diukur dari berkas font asli
- *     (Cambria/Caladea/DejaVu) dengan GD, bukan taksiran jumlah huruf.
+ * Aturan (sesuai ketentuan sekolah): jumlah kolom per baris MENYESUAIKAN
+ * panjang pilihan. Semua kolom dalam satu soal selalu SAMA LEBAR.
  *
- * Contoh 4 opsi (kolom ¼ lebar area):
- *   semuanya pendek          → A B C D  (satu baris)
- *   A panjang, sisanya pendek → A  (baris 1)
- *                               B C D  (baris 2, mulai kolom 1)
+ *  1) Muat 1 baris penuh (4 opsi A–D / 5 opsi A–E)
+ *     |A.    |B.    |C.    |D.    |
+ *
+ *  2) Tidak muat 1 baris, tetapi masih bisa 2 kolom
+ *     |A.         |B.         |
+ *     |C.         |D.         |
+ *
+ *  3) Ada pilihan yang memakan area cukup panjang → semua pilihan
+ *     menjadi 1 kolom per baris (lebar penuh)
+ *     |A.                     |
+ *     |B.                     |
+ *     |C.                     |
+ *     |D.                     |
+ *
+ * Lebar kolom = lebar area / jumlah kolom, sehingga A, B, C, D selalu
+ * identik lebarnya.
  */
 class SoalOpsiLayout
 {
     /** Jarak aman agar teks tidak menyentuh kolom sebelah (mm). */
     private const SAFETY_MM = 1.2;
 
-    /** Batas atas jumlah kolom (A..E = 5 pilihan). */
+    /** Batas atas jumlah pilihan (A..E). */
     public const MAX_COLUMNS = 5;
 
     /**
@@ -40,7 +43,7 @@ class SoalOpsiLayout
      * @param  array<int, array{label?: string, teks?: string, display_label?: string}>  $opsi
      * @param  float  $availableMm  lebar area isi soal (setelah margin & nomor)
      * @param  float  $fontPt  ukuran font opsi dalam pt
-     * @param  int  $maxColumns  0 = ikut jumlah opsi; selain itu batas atas
+     * @param  int  $maxColumns  0 = otomatis; selain itu batas atas kolom
      * @return array{
      *     rows: array<int, array<int, array{index: int, span: int}>>,
      *     columns: int,
@@ -56,65 +59,76 @@ class SoalOpsiLayout
             return ['rows' => [], 'columns' => 0, 'widths' => [], 'spans' => []];
         }
 
-        // Jumlah kolom = jumlah opsi (maks 5), dibatasi pengaturan.
-        $columns = $maxColumns > 0
-            ? min(self::MAX_COLUMNS, $count, $maxColumns)
-            : min(self::MAX_COLUMNS, $count);
-        $columns = max(1, $columns);
-
-        // Lebar kolom SAMA untuk semuanya (bukan per pilihan).
-        $unitMm = $availableMm / $columns;
-
         $widths = [];
-        $spans = [];
         foreach ($opsi as $index => $option) {
             $widths[$index] = $this->textWidthMm($this->labelText($option), $fontPt);
-            // span selalu 1: pilihan tidak pernah melebar. Nilai dipertahankan
-            // agar bentuk keluaran tetap kompatibel dengan pemanggil lama.
-            $spans[$index] = 1;
         }
 
-        $rows = $this->packRows($widths, $unitMm, $columns);
+        $kolomMaks = max(1, min(self::MAX_COLUMNS, $count));
+        if ($maxColumns > 0) {
+            // Pengaturan manual: jumlah kolom tetap, tidak diturunkan otomatis.
+            $columns = max(1, min($kolomMaks, $maxColumns));
+        } else {
+            $columns = $this->kolomTerbaik($widths, $availableMm, $kolomMaks);
+        }
+
+        // Semua kolom sama lebar; tidak ada pilihan yang dilebarkan.
+        $rows = $this->packRows($widths, $availableMm / $columns, $columns);
 
         return [
             'rows' => $rows,
             'columns' => $columns,
             'widths' => $widths,
-            'spans' => $spans,
+            'spans' => array_fill(0, $count, 1),
         ];
     }
 
     /**
-     * Bagi pilihan ke baris: maksimal $columns per baris, dan pilihan yang
-     * teksnya tidak muat di satu kolom turun baris beserta sisanya.
+     * Pilih jumlah kolom terbanyak yang masih memuat SEMUA pilihan tanpa
+     * terlipat. Bila tidak ada yang muat, semua pilihan jadi 1 kolom per
+     * baris (lebar penuh).
      *
-     * @param  array<int, float>  $widths  lebar teks tiap pilihan (mm)
+     * @param  array<int, float>  $widths
+     */
+    private function kolomTerbaik(array $widths, float $availableMm, int $kolomMaks): int
+    {
+        for ($columns = $kolomMaks; $columns > 1; $columns--) {
+            $unitMm = $availableMm / $columns;
+            $muatSemua = true;
+
+            foreach ($widths as $width) {
+                if ($width + self::SAFETY_MM > $unitMm) {
+                    $muatSemua = false;
+                    break;
+                }
+            }
+
+            if ($muatSemua) {
+                return $columns;
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * Bagi pilihan ke baris, maksimal $columns per baris.
+     *
+     * @param  array<int, float>  $widths
      * @return array<int, array<int, array{index: int, span: int}>>
      */
     private function packRows(array $widths, float $unitMm, int $columns): array
     {
         $rows = [];
         $current = [];
-        // True bila baris yang sedang diisi sudah penuh: karena berisi
-        // pilihan yang tidak muat (berdiri sendiri) atau sudah N pilihan.
-        $currentFull = false;
 
-        foreach ($widths as $index => $width) {
-            $muat = $width + self::SAFETY_MM <= $unitMm;
-
-            // Tutup baris bila sudah penuh, atau bila pilihan panjang ini
-            // tidak muat dan baris sudah ada isinya.
-            if ($current !== [] && ($currentFull || ! $muat)) {
-                $rows[] = $current;
-                $current = [];
-                $currentFull = false;
-            }
-
+        foreach (array_keys($widths) as $index) {
             $current[] = ['index' => $index, 'span' => 1];
 
-            // Baris otomatis penuh setelah pilihan panjang (berdiri sendiri)
-            // atau setelah mencapai jumlah kolom.
-            $currentFull = ! $muat || count($current) >= $columns;
+            if (count($current) >= $columns) {
+                $rows[] = $current;
+                $current = [];
+            }
         }
 
         if ($current !== []) {
