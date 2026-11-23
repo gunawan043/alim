@@ -188,3 +188,53 @@ dapat merusak data nyata. Jangan pakai credential produksi.
 
 Integrasi **belum** dinyatakan berhasil: Connect belum menjalankan HTTP integration test
 nyata terhadap staging Core.
+
+---
+
+## 10. Hasil verifikasi insiden Cycle 9.1 (2026-11-23)
+
+### 10.1 Commit `1c069d99`
+
+Isinya: 4 file pekerjaan evaluasi milik proses lain, **plus** `ConnectSecret.php` dan
+satu baris `.gitignore` (`.env.staging`) yang ikut tersapu. Commit ini sudah ada di
+`origin/main` dan sudah ter-deploy ke produksi.
+
+### 10.2 Tidak ada artefak sensitif yang bocor
+
+| Yang diperiksa | Hasil |
+| --- | --- |
+| `.env.staging` pernah ter-track di commit mana pun | tidak (`git log --all` kosong) |
+| `staging.sqlite` / `connect-secrets.enc.json` pernah ter-track | tidak |
+| Nilai credential berpola panjang di riwayat file env | tidak ditemukan |
+| `git archive` + rsync exclude | hanya mengekspor isi commit; `.env*` dan `*.sqlite` tidak ikut |
+| Produksi: `.env.staging`, `database/staging.sqlite` | tidak ada |
+| Produksi: direktori `~/.alim` | tidak ada |
+
+### 10.3 Audit `ConnectSecret.php` — kondisi produksi
+
+| Butir | Sebelum perbaikan | Sesudah `bc75d397` |
+| --- | --- | --- |
+| Hanya berjalan saat dipanggil | ya, tidak ada constructor/boot side effect | sama |
+| Terdaftar di scheduler / hook deploy | tidak | tidak |
+| Enkripsi | `Crypt` dengan `APP_KEY` proses terkait | sama |
+| Nilai bisa tercetak | hanya via `get --stdout` / `export-env --stdout` | sama |
+| Kebocoran lewat exception/log | tidak ada `Log::`; exception ditelan tanpa memuat nilai | sama |
+| Fallback ke APP_KEY/konfigurasi produksi | tidak ada — `getenv('HOME')` bisa jatuh ke `sys_get_temp_dir()` | tetap; jalur kompromi utama ditutup |
+| Path di luar lokasi seharusnya | **cacat**: `--file` menerima path sembarang (bisa menimpa `.env`) | dibatasi ke `~/.alim/staging` |
+| Berjalan di produksi | **cacat**: tidak ada pengaman | menolak bila `APP_ENV=production` |
+
+Status produksi terbukti: `alim:connect-secret status` → kedua scope `BELUM ADA`,
+`services.connect_sso.api_key` dan `connect_approval.api_key` keduanya kosong, dan
+tidak ada key `CONNECT_*` di `.env` produksi. Penilaian risiko: **rendah**, karena
+command hanya bersifat opt-in dan produksi tidak memiliki secret staging.
+
+### 10.4 Bukti versi API
+
+| Uji | Hasil |
+| --- | --- |
+| `X-ALIM-API-Version: 1` dengan payload tidak sah | 422 `validation_failed` — artinya **versi lolos**, request sampai ke validasi payload |
+| `X-ALIM-API-Version: 1` dengan payload sah | 200 `applied`; `approval_commands.api_version = 1` |
+| `X-ALIM-API-Version: 2` | 422 `unsupported_api_version` |
+
+Staging lokal: 18/18 pemeriksaan lulus.
+
