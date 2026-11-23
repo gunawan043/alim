@@ -161,11 +161,9 @@
     }
     table.opts td .letter { font-weight: normal; }
 
-    /* Tata letak otomatis: kolom seragam, tiap pilihan tepat 1 baris.
-       Lebar sudah diukur dari font asli, jadi nowrap hanya mencegah
-       pelipatan tak terduga akibat pembulatan Dompdf. */
+    /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
+       tepat 1 baris. Lebar mm ditetapkan di partial opsi. */
     table.opts.opts-auto td { white-space: nowrap; }
-    table.opts.opts-auto td.qblank { padding: 0; }
 
     .paper-note { font-size: {{ max(6.0, $fontSize - 4) }}pt; color: #666; }
 </style>
@@ -296,7 +294,7 @@
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif
-                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null])
                             </td>
                             <td class="qno" style="text-align: right;">
                                 @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
@@ -310,7 +308,7 @@
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif
-                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                                @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null])
                             </td>
                         @endif
                     </tr>

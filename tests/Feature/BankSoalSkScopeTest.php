@@ -542,12 +542,39 @@ class BankSoalSkScopeTest extends TestCase
             'rtl' => false,
             'maxOptions' => 4,
             'colWidth' => 25,
+            'opsiWidthMm' => 157.6,
         ])->render();
 
-        preg_match_all('/width: ([\d.]+)%/', $html, $m);
+        // Lebar dinyatakan dalam mm (bukan %): Dompdf menyesuaikan lebar kolom
+        // mengikuti isi bila memakai persen, sehingga B/C bergeser antar soal.
+        preg_match_all('/<td[^>]*style="width: ([\d.]+)mm/', $html, $m);
+        $this->assertNotEmpty($m[1], 'Lebar kolom opsi memakai satuan mm.');
         $this->assertCount(1, array_unique($m[1]), 'Semua kolom memakai lebar yang sama.');
-        $this->assertSame('25', array_unique($m[1])[0], 'Empat opsi → tiap opsi 1/4.');
+        $this->assertSame('39.4', array_unique($m[1])[0], 'Empat opsi → tiap kolom 157,6/4 mm.');
+        $this->assertStringContainsString('style="width: 157.6mm;"', $html);
         $this->assertStringContainsString('opts-auto', $html);
+    }
+
+    public function test_opsi_mulai_di_titik_yang_sama_lintas_baris(): void
+    {
+        // "posisinya harus sejajar": pilihan pertama baris ke-2 dan seterusnya
+        // harus mulai di x yang sama dengan pilihan A di baris pertama.
+        $layout = app(SoalOpsiLayout::class);
+        $opsi = $this->opsi([
+            'enam puluh tiga koma lima milimeter',
+            '46',
+            '52',
+            '56',
+            '60',
+        ]);
+
+        $hasil = $layout->layout($opsi, 157.6, 11.0);
+
+        $this->assertGreaterThan(1, count($hasil['rows']), 'Opsi panjang memaksa baris kedua.');
+        $this->assertSame(5, $hasil['columns'], 'Lima opsi → lima kolom (1/5 per opsi).');
+        $this->assertSame(3, $hasil['spans'][0], 'Opsi pertama butuh 3 jatah (3/5).');
+        $this->assertSame([0, 1, 2], array_column($hasil['rows'][0], 'index'));
+        $this->assertSame(3, array_column($hasil['rows'][1], 'index')[0], 'Baris kedua dimulai kolom ke-4.');
     }
 
     public function test_pilihan_pada_naskah_tidak_pernah_terlipat(): void

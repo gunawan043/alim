@@ -147,6 +147,12 @@ class SoalNaskahPdfService
         $maxColumns = (int) ($settings['option_columns'] ?? 0);
         $maxColumns = $maxColumns > 0 ? min(SoalOpsiLayout::MAX_COLUMNS, $maxColumns) : 0;
 
+        // Lebar PASTI area opsi (mm). Dipakai juga di view agar lebar tabel
+        // opsi identik pada semua soal — bila dibiarkan 100% dari kolom
+        // qbody, lebar tiap soal sedikit berbeda (nomor 1. vs 10.) sehingga
+        // posisi kolom A/B/C tidak sejajar antar soal.
+        $opsiWidthMm = round($contentMm, 2);
+
         foreach ($blocks as &$block) {
             if ($block['type'] !== 'soal' || empty($block['opsi'])) {
                 continue;
@@ -227,6 +233,7 @@ class SoalNaskahPdfService
             'kopMaxHeightMm' => 40.0,
             'showKey' => (bool) ($settings['show_key'] ?? false),
             'optionIndent' => (int) ($settings['option_indent'] ?? 2),
+            'opsiWidthMm' => $opsiWidthMm,
             'identityRows' => $identityRows,
             'letterhead' => app(LjkSchoolLetterhead::class)->data($school),
             'paper' => $paper,

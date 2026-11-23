@@ -7,20 +7,34 @@
 @endphp
 @if(! empty($block['opsi']))
     @if($opsiLayout && ! empty($opsiLayout['rows']))
-        {{-- Satu tabel PER BARIS tanpa colspan: Dompdf kurang tepat
-             menghitung lebar bila colspan dipakai, sehingga lebar sel
-             diberikan langsung dalam persen dari total jatah baris. --}}
-        @foreach($opsiLayout['rows'] as $row)
-            @php
-                $totalSpan = array_sum(array_column($row, 'span')) ?: 1;
-                // Sel kosong penutup agar total baris selalu 100%.
-                $sisa = max(0, (int) $opsiLayout['columns'] - $totalSpan);
-            @endphp
-            <table class="opts opts-auto">
+        {{-- SATU tabel dengan <colgroup> berlebar TETAP 1/N.
+             Dompdf mengabaikan `table-layout: fixed` pada <td>, tetapi
+             MENGHORMATI <col style="width"> — sehingga lebar setiap kolom
+             selalu identik (mis. 4 opsi → tiap kolom tepat 25%, tidak ada
+             yang 100px lalu sisanya 150px).
+             Opsi yang lebih panjang memakai colspan = kelipatan kolom itu. --}}
+        @php
+            $kolom = max(1, (int) $opsiLayout['columns']);
+            // Lebar dalam MM, BUKAN persen: Dompdf menyesuaikan lebar kolom
+            // dengan isinya bila memakai %, sehingga B/C bergeser antar soal.
+            // Total lebar area opsi (mm) dikirim dari SoalNaskahPdfService.
+            $lebarMm = isset($opsiWidthMm) && $opsiWidthMm > 0
+                ? (float) $opsiWidthMm
+                : 157.58;
+            $unitMm = round($lebarMm / $kolom, 2);
+        @endphp
+        <table class="opts opts-auto" style="width: {{ $lebarMm }}mm;">
+            @foreach($opsiLayout['rows'] as $row)
+                @php $sisa = max(0, $kolom - array_sum(array_column($row, 'span'))); @endphp
                 <tr>
                     @foreach($row as $cell)
-                        @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
-                        <td style="width: {{ round(100 * (int) $cell['span'] / ($totalSpan + $sisa), 4) }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
+                        @php
+                            $opsi = $block['opsi'][$cell['index']] ?? null;
+                            $span = (int) $cell['span'];
+                            $wMm = round($unitMm * $span, 2);
+                        @endphp
+                        <td @if($span > 1) colspan="{{ $span }}" @endif
+                            style="width: {{ $wMm }}mm; text-align: {{ $rtl ? 'right' : 'left' }};">
                             @if($opsi)
                                 @if($rtl)
                                     {{-- RTL: teks dulu, lalu penanda ".ج" di ujung kanan. --}}
@@ -37,11 +51,11 @@
                     @endforeach
 
                     @if($sisa > 0)
-                        <td style="width: {{ round(100 * $sisa / ($totalSpan + $sisa), 4) }}%;">&nbsp;</td>
+                        <td colspan="{{ $sisa }}" style="width: {{ round($unitMm * $sisa, 2) }}mm;">&nbsp;</td>
                     @endif
                 </tr>
-            </table>
-        @endforeach
+            @endforeach
+        </table>
     @else
         <table class="opts">
             <tr>
