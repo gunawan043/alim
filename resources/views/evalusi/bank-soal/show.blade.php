@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Bank Soal - Detail @endsection
+@section('title') Paket Soal - Detail @endsection
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
 @endsection
@@ -7,7 +7,7 @@
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">Bank Soal</a> @endslot
+        @slot('li_2') <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">Paket Soal</a> @endslot
         @slot('title') {{ $bank->nama }} @endslot
     @endcomponent
 
@@ -58,7 +58,7 @@
         <div class="col-xl-8">
             <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
-                    <h5 class="card-title mb-0">Detail Bank Soal</h5>
+                    <h5 class="card-title mb-0">Detail Paket Soal</h5>
                     <div class="d-flex flex-wrap gap-1">
                         <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
                            class="btn btn-soft-primary btn-sm">
@@ -78,7 +78,7 @@
                 <div class="card-body">
                     <table class="table table-borderless mb-0">
                         <tr>
-                            <td class="text-muted" style="width:200px">Nama Bank Soal</td>
+                            <td class="text-muted" style="width:200px">Nama Paket Soal</td>
                             <td><strong>{{ $bank->nama }}</strong></td>
                         </tr>
                         <tr>

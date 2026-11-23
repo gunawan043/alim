@@ -7,16 +7,24 @@
 @endphp
 
 <li class="nav-item">
-    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.', 'user.ljk.']) ? ' active' : '' }}"
+    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.', 'user.kisi-kisi-soal.', 'user.bank-soal.', 'user.soal.', 'user.soal-saya.', 'user.paket-soal.', 'user.tu-paket-soal.', 'user.bank-soal-terpusat.', 'user.review-soal.', 'user.ljk.']) ? ' active' : '' }}"
        href="{{ route('user.asesmen.index', ['userId' => $userId]) }}">
         <i class="ri-file-edit-line"></i><span>Pusat Asesmen</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'review_pending', 'title' => 'Dokumen menunggu review Anda'])</a>
 </li>
 
 @if($asesmenFull)
+    {{-- Semua soal yang pernah dibuat guru, lintas semua paket/koleksi. --}}
+    <li class="nav-item">
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.soal-saya.']) ? ' active' : '' }}"
+           href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}"
+           title="Semua soal yang pernah Anda buat, dari semua paket">
+            <i class="ri-quill-pen-line"></i><span>Soal Saya</span>
+        </a>
+    </li>
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.bank-soal.']) ? ' active' : '' }}"
            href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">
-            <i class="ri-archive-2-line"></i><span>Bank Soal</span>
+            <i class="ri-archive-2-line"></i><span>Paket Soal</span>
         </a>
     </li>
     @if($asesmenBroad)

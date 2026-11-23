@@ -154,10 +154,13 @@ class BankSoalController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        // Scope daftar = SATU sumber dengan guard detail (accessibleBy):
-        // milik sendiri, publik/central/public_pool, internal satuan, dan rumpun kewenangan.
+        // Daftar koleksi = HANYA milik guru sendiri. Koleksi milik guru lain
+        // yang dibagikan (publik/sekolah/rumpun) tidak ditampilkan di sini;
+        // soalnya bisa diambil lewat fitur "Ambil Soal" pada detail koleksi.
         // Bank penyimpan otomatis milik Soal Saya tidak termasuk koleksi.
-        $baseQuery = BankSoal::query()->accessibleBy($userId, $schoolId)->koleksi();
+        $baseQuery = BankSoal::query()
+            ->where('owner_user_id', $userId)
+            ->koleksi();
 
         $query = (clone $baseQuery)
             ->withCount(['soal' => fn ($q) => $q->where('status', 'approved')])

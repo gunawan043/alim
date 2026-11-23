@@ -734,6 +734,71 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('ا.', $html, 'Soal Latin tidak memakai huruf Arab.');
     }
 
+    public function test_daftar_paket_soal_hanya_milik_sendiri(): void
+    {
+        // Menu Paket Soal tidak menampilkan koleksi guru lain, walau koleksi
+        // itu dibagikan (publik/sekolah/rumpun). Soalnya tetap bisa diambil
+        // lewat fitur "Ambil Soal" pada detail koleksi.
+        $milikSaya = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Paket Milik Sendiri',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'internal_school',
+            'owner_user_id' => $this->guru->id,
+            'created_by' => $this->guru->id,
+            'total_soal' => 0,
+        ]);
+
+        $guruLain = User::factory()->create(['name' => 'Guru Lain Uji']);
+
+        $milikOrangLain = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Paket Guru Lain',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => true,
+            'shared_scope' => 'public_pool',
+            'owner_user_id' => $guruLain->id,
+            'created_by' => $guruLain->id,
+            'total_soal' => 0,
+        ]);
+
+        $hanyaMilikSendiri = BankSoal::query()
+            ->where('owner_user_id', $this->guru->id)
+            ->koleksi();
+
+        $this->assertTrue((clone $hanyaMilikSendiri)->whereKey($milikSaya->id)->exists());
+        $this->assertFalse(
+            (clone $hanyaMilikSendiri)->whereKey($milikOrangLain->id)->exists(),
+            'Paket milik guru lain tidak boleh muncul di daftar.'
+        );
+
+        // Tetap bisa diakses untuk mengambil soalnya.
+        $this->assertTrue(
+            BankSoal::query()->accessibleBy($this->guru->id, $this->school->id)->whereKey($milikOrangLain->id)->exists(),
+            'Koleksi guru lain tetap bisa diakses lewat fitur ambil soal.'
+        );
+    }
+
+    public function test_menu_soal_saya_ada_di_sidebar(): void
+    {
+        // Semua soal lintas paket harus punya menu sendiri.
+        $sidebar = file_get_contents(resource_path('views/layouts/sidebar/satuan-pendidikan/partials/modul-asesmen.blade.php'));
+
+        $this->assertStringContainsString("route('user.soal-saya.index'", $sidebar);
+        $this->assertStringContainsString('Soal Saya', $sidebar);
+        $this->assertStringContainsString('Paket Soal', $sidebar);
+        $this->assertStringNotContainsString('<span>Bank Soal</span>', $sidebar, 'Label lama sudah diganti.');
+    }
+
     /**
      * @param  array<int, string>  $teks
      * @return array<int, array{label: string, teks: string, display_label: string}>

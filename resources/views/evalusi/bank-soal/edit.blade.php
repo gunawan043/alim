@@ -1,10 +1,10 @@
 @extends('layouts.master')
-@section('title') Bank Soal - Edit @endsection
+@section('title') Paket Soal - Edit @endsection
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">Bank Soal</a> @endslot
+        @slot('li_2') <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">Paket Soal</a> @endslot
         @slot('title') Edit: {{ $bank->nama }} @endslot
     @endcomponent
 
@@ -32,7 +32,7 @@
 
                         <div class="row g-3">
                             <div class="col-md-8">
-                                <label class="form-label">Nama Bank Soal <span class="text-danger">*</span></label>
+                                <label class="form-label">Nama Paket Soal <span class="text-danger">*</span></label>
                                 <input type="text" name="nama" class="form-control @error('nama') is-invalid @enderror"
                                        value="{{ old('nama', $bank->nama) }}" required>
                                 @error('nama') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -134,7 +134,7 @@
                                 <i class="ri-arrow-left-line me-1"></i> Kembali
                             </a>
                             <button type="submit" class="btn btn-success">
-                                <i class="ri-save-line me-1"></i> Perbarui Bank Soal
+                                <i class="ri-save-line me-1"></i> Perbarui Paket Soal
                             </button>
                         </div>
                     </form>

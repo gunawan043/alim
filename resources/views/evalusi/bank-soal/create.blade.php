@@ -1,11 +1,11 @@
 @extends('layouts.master')
-@section('title') Bank Soal - Buat @endsection
+@section('title') Paket Soal - Buat @endsection
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('li_2') <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">Bank Soal</a> @endslot
-        @slot('title') Buat Bank Soal @endslot
+        @slot('li_2') <a href="{{ route('user.bank-soal.index', ['userId' => $userId]) }}">Paket Soal</a> @endslot
+        @slot('title') Buat Paket Soal @endslot
     @endcomponent
 
     <x-soal-flow current="bank" :scope="$scope ?? null" />
@@ -73,7 +73,7 @@
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label">Nama Bank Soal <span class="text-danger">*</span></label>
+                                <label class="form-label">Nama Paket Soal <span class="text-danger">*</span></label>
                                 <input type="text" name="nama" class="form-control @error('nama') is-invalid @enderror"
                                        value="{{ old('nama') }}" placeholder="Contoh: Matematika Kelas 4 — Sumatif Akhir Semester" required>
                                 @error('nama') <div class="invalid-feedback">{{ $message }}</div> @enderror

@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title') Bank Soal @endsection
+@section('title') Paket Soal @endsection
 @section('css')
     <link href="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet" type="text/css" />
     @include('kurikulum._styles')
@@ -12,8 +12,8 @@
 
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('li_2') Bank Soal @endslot
-        @slot('title') Daftar Bank Soal @endslot
+        @slot('li_2') Paket Soal @endslot
+        @slot('title') Daftar Paket Soal @endslot
     @endcomponent
 
     <x-soal-flow current="bank" :scope="$scope ?? null" />
@@ -21,11 +21,10 @@
     <div class="alert alert-light border d-flex gap-2 align-items-start">
         <i class="ri-information-line fs-5 mt-1 text-primary"></i>
         <div class="small mb-0">
-            <strong>Bank Soal = koleksi bersama.</strong> Halaman ini menampung kumpulan soal yang dibagikan
-            dan dipakai bersama (per mapel/kelas, bisa dipinjam guru serumpun).
-            Soal pribadi yang Anda buat sendiri dikelola di
-            <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}">Soal Saya</a> — di sana soal
-            langsung bisa dicetak tanpa perlu membuat bank soal.
+            <strong>Paket Soal = kumpulan soal Anda.</strong> Halaman ini hanya menampilkan paket milik Anda
+            sendiri; daftar soalnya pun terpisah dari paket lain. Untuk melihat seluruh soal yang pernah
+            Anda buat lintas paket, buka
+            <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}">Soal Saya</a>.
         </div>
     </div>
 
@@ -118,7 +117,7 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
                         <div class="col-lg-4">
-                            <h5 class="card-title mb-0">Bank Soal</h5>
+                            <h5 class="card-title mb-0">Paket Soal</h5>
                             <p class="text-muted mb-0">
                                 <span class="badge bg-primary-subtle text-primary">{{ $banks->total() }} bank</span>
                                 <span class="text-muted small ms-2">Kelola kumpulan soal per mapel &amp; jenjang.</span>
@@ -160,7 +159,7 @@
                                 <a href="{{ url()->current() }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
                                 @if(! empty($scope['has_assignment']))
                                     <a href="{{ route('user.bank-soal.create', ['userId' => $userId]) }}" class="btn btn-success">
-                                        <i class="ri-add-line align-bottom me-1"></i> Tambah Bank Soal
+                                        <i class="ri-add-line align-bottom me-1"></i> Tambah Paket Soal
                                     </a>
                                 @endif
                             </form>
@@ -218,7 +217,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th class="text-center" style="width:48px">#</th>
-                                <th>Nama Bank Soal</th>
+                                <th>Nama Paket Soal</th>
                                 <th>Mapel</th>
                                 <th class="text-center">Jenis</th>
                                 <th class="text-center">Tingkat</th>
@@ -328,10 +327,10 @@
                                                 <i class="ri-question-line fs-1 text-muted"></i>
                                             </div>
                                         </div>
-                                        <h5 class="text-muted">Belum ada Bank Soal</h5>
+                                        <h5 class="text-muted">Belum ada Paket Soal</h5>
                                         <a href="{{ route('user.bank-soal.create', ['userId' => $userId]) }}"
                                            class="btn btn-success mt-2">
-                                            <i class="ri-add-line me-1"></i>Tambah Bank Soal
+                                            <i class="ri-add-line me-1"></i>Tambah Paket Soal
                                         </a>
                                     </td>
                                 </tr>
