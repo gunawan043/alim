@@ -181,7 +181,10 @@ class BankSoalController extends Controller
             ->koleksi();
 
         $query = (clone $baseQuery)
-            ->withCount(['soal' => fn ($q) => $q->where('status', 'approved')])
+            ->withCount([
+                'soal',
+                'soal as approved_soal_count' => fn ($q) => $q->where('status', 'approved'),
+            ])
             ->with(['school', 'subject', 'owner', 'creator']);
 
         if ($request->filled('search')) {
@@ -210,12 +213,13 @@ class BankSoalController extends Controller
         $activeYear = $academicYears->firstWhere('is_active', true);
         $scope = $this->scopeSummary($request);
 
+        // Statistik menghitung seluruh soal non-terhapus, bukan hanya yang
+        // approved, agar isi paket draft (hasil Import Word) tetap terlihat.
         $statistics = [
             'total' => (clone $baseQuery)->count(),
             'soal' => DB::table('soal')
                 ->whereIn('bank_soal_id', (clone $baseQuery)->select('id'))
                 ->whereNull('deleted_at')
-                ->where('status', 'approved')
                 ->count(),
             'publik' => (clone $baseQuery)->where(function ($q) {
                 $q->where('is_public', true)->orWhere('shared_scope', 'public_pool');

@@ -236,7 +236,10 @@
                                            class="fw-medium link-primary">
                                             {{ $bank->nama }}
                                         </a>
-                                        @if($bank->deskripsi)
+                                        @if($bank->isAutoBank())
+                                            <span class="badge bg-secondary-subtle text-secondary ms-1">Soal Saya</span>
+                                        @endif
+                                        @if($bank->deskripsi && ! $bank->isAutoBank())
                                             <br><small class="text-muted">{{ Str::limit($bank->deskripsi, 80) }}</small>
                                         @endif
                                     </td>
@@ -251,6 +254,9 @@
                                         <span class="badge bg-primary-subtle text-primary">
                                             {{ $bank->soal_count ?? 0 }} soal
                                         </span>
+                                        @if(($bank->soal_count ?? 0) > ($bank->approved_soal_count ?? 0))
+                                            <br><small class="text-muted">{{ $bank->approved_soal_count ?? 0 }} disetujui</small>
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         @if($bank->shared_scope === 'private')

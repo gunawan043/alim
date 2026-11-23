@@ -1477,7 +1477,7 @@ class BankSoalSkScopeTest extends TestCase
             ->assertSee('Bank Matematika Kelas 4');
     }
 
-    public function test_bank_penyimpan_soal_saya_disembunyikan_dari_koleksi(): void
+    public function test_bank_penyimpan_soal_saya_tampil_di_koleksi_dengan_label(): void
     {
         $bank = app(QuickSoalService::class)->bankFor(
             $this->guru,
@@ -1490,13 +1490,15 @@ class BankSoalSkScopeTest extends TestCase
 
         $this->assertTrue($bank->isAutoBank());
         $this->assertTrue(
-            BankSoal::query()->accessibleBy($this->guru->id, $this->school->id)->whereKey($bank->id)->exists(),
-            'Soal Saya tetap memakai bank penyimpan ini.'
-        );
-        $this->assertFalse(
             BankSoal::query()->accessibleBy($this->guru->id, $this->school->id)->koleksi()->whereKey($bank->id)->exists(),
-            'Bank penyimpan Soal Saya tidak boleh tampil sebagai koleksi Bank Soal.'
+            'Bank penyimpan Soal Saya harus tampil di Bank Soal agar soalnya bisa dilihat dan dihapus.'
         );
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/bank-soal")
+            ->assertOk()
+            ->assertSee($bank->nama)
+            ->assertSee('Soal Saya');
     }
 
     public function test_pratinjau_mengikuti_pengaturan_dari_url(): void
@@ -1720,6 +1722,40 @@ class BankSoalSkScopeTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('delete-bank', $html, 'Pemilik melihat tombol hapus.');
+    }
+
+    public function test_detail_paket_menyediakan_tombol_hapus_per_soal_untuk_pemilik(): void
+    {
+        $soal = $this->makeSoal();
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/bank-soal/{$soal->bank_soal_id}")
+            ->assertOk()
+            ->assertSee('btn-hapus-soal', false)
+            ->assertSee(route('user.soal.destroy', [
+                'userId' => $this->guru->id,
+                'bankId' => $soal->bank_soal_id,
+                'id' => '__ID__',
+            ]), false);
+
+        // Hapus dari detail paket memakai route soal, bukan route paket.
+        $this->actingAs($this->guru)
+            ->delete("/{$this->guru->id}/bank-soal/{$soal->bank_soal_id}/soal/{$soal->id}")
+            ->assertRedirect("/{$this->guru->id}/bank-soal/{$soal->bank_soal_id}");
+
+        $this->assertSoftDeleted('soal', ['id' => $soal->id]);
+        $this->assertNotSoftDeleted('bank_soal', ['id' => $soal->bank_soal_id]);
+    }
+
+    public function test_jumlah_soal_menghitung_semua_status(): void
+    {
+        $soal = $this->makeSoal(); // status draft
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/bank-soal")
+            ->assertOk()
+            ->assertSee('1 soal')
+            ->assertSee('0 disetujui');
     }
 
     private function makeSoal(): Soal

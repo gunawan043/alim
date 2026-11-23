@@ -267,6 +267,14 @@
                                                        class="btn btn-sm btn-soft-primary" title="Buka halaman edit semua soal">
                                                         <i class="ri-edit-2-line me-1"></i> Edit Soal
                                                     </a>
+                                                    @if($canDelete ?? false)
+                                                        <button type="button" class="btn btn-sm btn-soft-danger btn-hapus-soal"
+                                                                data-id="{{ $soal->id }}"
+                                                                data-label="{{ Str::limit(strip_tags($soal->pertanyaan ?? ''), 50) }}"
+                                                                title="Hapus soal ini">
+                                                            <i class="ri-delete-bin-line me-1"></i> Hapus
+                                                        </button>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -335,5 +343,43 @@
                 });
             });
         })();
+
+        // Hapus satu soal langsung dari daftar paket. Route soal memakai
+        // {bankId} + {id}, jadi URL dibangun dari paket yang sedang dibuka.
+        document.querySelectorAll('.btn-hapus-soal').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = this.dataset.id;
+                var label = this.dataset.label || 'ini';
+
+                Swal.fire({
+                    title: 'Yakin ingin menghapus?',
+                    text: 'Soal "' + label + '..." akan dihapus dari paket ini.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then(function (result) {
+                    if (! result.isConfirmed) return;
+
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{{ route('user.soal.destroy', ['userId' => $userId, 'bankId' => $bank->id, 'id' => '__ID__']) }}'
+                        .replace('__ID__', id);
+
+                    [['_token', '{{ csrf_token() }}'], ['_method', 'DELETE']].forEach(function (pair) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = pair[0];
+                        input.value = pair[1];
+                        form.appendChild(input);
+                    });
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            });
+        });
     </script>
 @endsection

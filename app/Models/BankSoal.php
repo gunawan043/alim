@@ -151,16 +151,14 @@ class BankSoal extends Model
     /**
      * Bank soal yang tampil sebagai koleksi bersama di menu Bank Soal.
      *
-     * Bank pribadi otomatis milik Soal Saya (dibuat QuickSoalService) bukan
-     * koleksi — soal pribadi dikelola di menu Soal Saya, sehingga bank
-     * penyimpan itu tidak boleh muncul ganda di daftar Bank Soal.
+     * Bank pribadi otomatis milik Soal Saya (dibuat QuickSoalService) tetap
+     * ditampilkan karena berisi soal hasil Import Word milik guru sendiri —
+     * tanpa itu soal-soalnya tidak terlihat di menu mana pun selain Soal Saya.
+     * Bank tersebut ditandai {@see isAutoBank()} agar UI bisa memberi label.
      */
     public function scopeKoleksi($query)
     {
-        return $query->where(function ($q) {
-            $q->whereNull('deskripsi')
-                ->orWhere('deskripsi', 'not like', self::AUTO_BANK_MARKER.'%');
-        });
+        return $query;
     }
 
     /**
@@ -169,6 +167,15 @@ class BankSoal extends Model
     public function isAutoBank(): bool
     {
         return str_starts_with((string) $this->deskripsi, self::AUTO_BANK_MARKER);
+    }
+
+    /**
+     * Label koleksi untuk UI: bank otomatis ditandai sebagai penyimpan
+     * Soal Saya agar tidak tertukar dengan paket yang dibuat manual.
+     */
+    public function labelOtomatis(): ?string
+    {
+        return $this->isAutoBank() ? 'Soal Saya' : null;
     }
 
     public function scopeAccessibleBy($query, string $userId, ?string $schoolId = null)
