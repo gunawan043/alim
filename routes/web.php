@@ -303,6 +303,7 @@ use App\Http\Controllers\StudentMedicineLogController;
 use App\Http\Controllers\StudentMoveController;
 use App\Http\Controllers\StudentMutationInController;
 use App\Http\Controllers\StudentMutationOutController;
+use App\Http\Controllers\StudentPhotoBulkController;
 use App\Http\Controllers\StudentPhotoController;
 use App\Http\Controllers\StudentPopulationReportController;
 use App\Http\Controllers\StudentPromotionController;
@@ -2017,6 +2018,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{id}', [BankSoalController::class, 'update'])->name('update');
                 Route::delete('/{id}', [BankSoalController::class, 'destroy'])->name('destroy');
                 Route::get('/{bankId}/soal', [BankSoalController::class, 'soalList'])->name('soal-list');
+                Route::get('/{id}/ambil-soal', [BankSoalController::class, 'ambilForm'])->name('ambil-soal');
+                Route::post('/{id}/ambil-soal', [BankSoalController::class, 'ambilStore'])->name('ambil-soal.store');
                 Route::post('/{id}/clone', [BankSoalController::class, 'clone'])->name('clone');
             });
 
@@ -2139,6 +2142,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/import', [StudentController::class, 'importForm'])->name('import-form')->middleware('dormitory.restrict:students');
                 Route::post('/import', [StudentController::class, 'importProcess'])->name('import-process')->middleware('dormitory.restrict:students');
                 Route::get('/template', [StudentController::class, 'downloadTemplate'])->name('template');
+                Route::get('/photos/bulk', [StudentPhotoBulkController::class, 'form'])
+                    ->name('photos.bulk-form')->middleware('dormitory.restrict:students');
+                Route::post('/photos/bulk', [StudentPhotoBulkController::class, 'process'])
+                    ->name('photos.bulk-process')->middleware('dormitory.restrict:students');
                 Route::get('/dapodik-export', [StudentDapodikExportController::class, 'export'])
                     ->name('dapodik-export');
                 Route::get('/dapodik-mapping', [StudentDapodikExportController::class, 'index'])

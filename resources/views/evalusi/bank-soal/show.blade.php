@@ -38,6 +38,10 @@
                 <span class="text-muted small ms-1">{{ $nextStep['desc'] }}</span>
             </div>
             <div class="d-flex gap-2">
+                {{-- Ambil soal dari paket lain yang bisa diakses (publik/sekolah/rumpun). --}}
+                <a href="{{ route('user.bank-soal.ambil-soal', ['userId' => $userId, 'id' => $bank->id]) }}" class="btn btn-soft-success btn-sm">
+                    <i class="ri-download-2-line me-1"></i>Ambil soal
+                </a>
                 @if($totalSoal === 0)
                     <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}" class="btn btn-success btn-sm">
                         <i class="ri-add-line me-1"></i>Input soal

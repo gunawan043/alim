@@ -9,8 +9,11 @@ use App\Models\BankSoal;
 use App\Models\GradeLevel;
 use App\Models\School;
 use App\Models\Soal;
+use App\Models\SoalCloneLog;
+use App\Models\SoalOption;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\Evaluasi\ContentHashEngine;
 use App\Services\Evaluasi\TeachingScopeService;
 use App\Services\KurikulumAccess;
 use App\Services\SubjectGroupResolver;
@@ -508,6 +511,148 @@ class BankSoalController extends Controller
 
         return redirect()
             ->route('user.bank-soal.show', ['userId' => $userId, 'id' => $cloned->id])
-            ->with('success', 'Bank Soal berhasil di-cloning.');
+            ->with('success', 'Paket Soal berhasil di-cloning.');
+    }
+
+    /**
+     * Halaman "Ambil Soal": pilih soal dari paket lain yang bisa diakses
+     * (publik/sekolah/rumpun) lalu salin ke paket ini.
+     */
+    public function ambilForm(Request $request, string $userId, string $id)
+    {
+        $bank = BankSoal::with('subject')->findOrFail($id);
+        $this->authorizeBankManage($request, $bank);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        // Koleksi sumber: SEMUA koleksi yang bisa diakses guru, kecuali paket
+        // ini sendiri dan bank penyimpan Soal Saya.
+        $sumber = BankSoal::query()
+            ->accessibleBy($userId, $schoolId)
+            ->koleksi()
+            ->whereKeyNot($bank->id)
+            ->with('subject:id,name')
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'subject_id']);
+
+        $query = Soal::query()
+            ->whereIn('bank_soal_id', $sumber->pluck('id'))
+            ->whereNull('deleted_at')
+            ->with(['bankSoal:id,nama', 'options:id,soal_id,label,teks_opsi,is_correct,urutan']);
+
+        if ($request->filled('q')) {
+            $cari = trim((string) $request->input('q'));
+            $query->where('pertanyaan', 'like', "%{$cari}%");
+        }
+        if ($request->filled('sumber_id')) {
+            $query->where('bank_soal_id', $request->input('sumber_id'));
+        }
+        if ($request->filled('subject_id')) {
+            $query->whereHas('bankSoal', fn ($w) => $w->where('subject_id', $request->input('subject_id')));
+        }
+
+        $soals = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+
+        $subjects = $sumber->map(fn ($b) => $b->subject)->filter()->unique('id')->sortBy('name')->values();
+
+        return view('evalusi.bank-soal.ambil-soal', compact(
+            'bank', 'soals', 'subjects', 'sumber', 'userId'
+        ));
+    }
+
+    /**
+     * Salin soal terpilih ke paket ini. Soal asal TIDAK dipindah.
+     */
+    public function ambilStore(Request $request, string $userId, string $id)
+    {
+        $bank = BankSoal::findOrFail($id);
+        $this->authorizeBankManage($request, $bank);
+
+        $validated = $request->validate([
+            'soal_ids' => 'required|array|min:1',
+            'soal_ids.*' => 'uuid',
+        ], [
+            'soal_ids.required' => 'Pilih minimal satu soal untuk diambil.',
+        ]);
+
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        // Hanya boleh mengambil dari koleksi yang memang bisa diakses guru —
+        // mencegah ID soal ditebak dari paket yang tidak berhak.
+        $sumberIds = BankSoal::query()
+            ->accessibleBy($userId, $schoolId)
+            ->koleksi()
+            ->whereKeyNot($bank->id)
+            ->pluck('id');
+
+        $sumberSoal = Soal::with('options')
+            ->whereIn('id', $validated['soal_ids'])
+            ->whereIn('bank_soal_id', $sumberIds)
+            ->get();
+
+        if ($sumberSoal->isEmpty()) {
+            return back()->with('error', 'Tidak ada soal yang bisa diambil dari pilihan tersebut.');
+        }
+
+        $engine = app(ContentHashEngine::class);
+        $jumlah = 0;
+
+        DB::transaction(function () use ($sumberSoal, $bank, $userId, $engine, &$jumlah) {
+            foreach ($sumberSoal as $asal) {
+                $copy = Soal::create([
+                    'bank_soal_id' => $bank->id,
+                    'tp_id' => $asal->tp_id,
+                    'wacana_id' => $asal->wacana_id,
+                    'materi' => $asal->materi,
+                    'tipe_soal' => $asal->tipe_soal,
+                    'bahasa' => $asal->bahasa,
+                    'pertanyaan' => $asal->pertanyaan,
+                    'pembahasan' => $asal->pembahasan,
+                    'gambar_path' => $asal->gambar_path,
+                    'gambar_keterangan' => $asal->gambar_keterangan,
+                    'audio_path' => $asal->audio_path,
+                    'bobot_default' => $asal->bobot_default,
+                    'tingkat_kesulitan_estimasi' => $asal->tingkat_kesulitan_estimasi,
+                    'waktu_estimasi_menit' => $asal->waktu_estimasi_menit,
+                    'tags' => $asal->tags,
+                    'status' => 'draft',
+                    'workflow_status' => Soal::WORKFLOW_DRAFT,
+                    'dibuat_oleh' => $userId,
+                    'derived_from_soal_id' => $asal->id,
+                    // Hash di-salt agar tidak dianggap duplikat persis.
+                    'content_hash' => hash('sha256', ($asal->content_hash ?? $asal->id).'|adopt|'.now()->timestamp.'|'.mt_rand()),
+                    'shingles_hash' => $engine->shinglesFromSoal($asal->pertanyaan),
+                ]);
+
+                foreach ($asal->options as $option) {
+                    SoalOption::create([
+                        'soal_id' => $copy->id,
+                        'label' => $option->label,
+                        'teks_opsi' => $option->teks_opsi,
+                        'gambar_path' => $option->gambar_path,
+                        'is_correct' => (bool) $option->is_correct,
+                        'urutan' => $option->urutan,
+                    ]);
+                }
+
+                SoalCloneLog::create([
+                    'soal_asli_id' => $asal->id,
+                    'soal_clone_id' => $copy->id,
+                    'cloned_by' => $userId,
+                    'from_school_id' => $asal->bankSoal?->school_id,
+                    'to_school_id' => $bank->school_id,
+                    'clone_type' => 'verbatim',
+                    'notes' => 'Diambil dari paket lain; soal asal tidak diubah.',
+                ]);
+
+                $jumlah++;
+            }
+
+            $bank->forceFill(['total_soal' => $bank->soal()->count()])->save();
+        });
+
+        return redirect()
+            ->route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id])
+            ->with('success', "{$jumlah} soal berhasil diambil ke paket \"{$bank->nama}\".");
     }
 }

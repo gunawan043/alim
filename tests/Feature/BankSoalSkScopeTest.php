@@ -984,6 +984,130 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('<span>Bank Soal</span>', $sidebar, 'Label lama sudah diganti.');
     }
 
+    public function test_ambil_soal_menyalin_dari_paket_lain(): void
+    {
+        // Poin 4: ambil soal dari paket lain → disalin ke paket tujuan,
+        // paket asal tidak berubah.
+        $guruLain = User::factory()->create(['name' => 'Guru Lain Uji']);
+
+        $paketAsal = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Paket Asal',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => true,
+            'shared_scope' => 'public_pool',
+            'owner_user_id' => $guruLain->id,
+            'created_by' => $guruLain->id,
+            'total_soal' => 1,
+        ]);
+
+        $asal = Soal::create([
+            'bank_soal_id' => $paketAsal->id,
+            'tipe_soal' => 'pg',
+            'bahasa' => 'latin',
+            'pertanyaan' => 'Ibu kota Indonesia adalah?',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'mudah',
+            'waktu_estimasi_menit' => 2,
+            'status' => 'approved',
+            'workflow_status' => Soal::WORKFLOW_APPROVED,
+            'jenis_asesmen' => Soal::JENIS_ASESMEN_HARIAN,
+            'dibuat_oleh' => $guruLain->id,
+            'content_hash' => hash('sha256', 'asal-ibu-kota'),
+        ]);
+        foreach (['Jakarta' => true, 'Bandung' => false] as $teks => $benar) {
+            SoalOption::create([
+                'soal_id' => $asal->id,
+                'label' => $benar ? 'A' : 'B',
+                'teks_opsi' => $teks,
+                'is_correct' => $benar,
+                'urutan' => $benar ? 1 : 2,
+            ]);
+        }
+
+        $paketTujuan = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Paket Tujuan',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'internal_school',
+            'owner_user_id' => $this->guru->id,
+            'created_by' => $this->guru->id,
+            'total_soal' => 0,
+        ]);
+
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/bank-soal/{$paketTujuan->id}/ambil-soal", [
+                'soal_ids' => [$asal->id],
+            ])
+            ->assertRedirect();
+
+        $salinan = Soal::where('bank_soal_id', $paketTujuan->id)->first();
+        $this->assertNotNull($salinan, 'Soal harus tersalin ke paket tujuan.');
+        $this->assertNotSame($asal->id, $salinan->id);
+        $this->assertSame($asal->pertanyaan, $salinan->pertanyaan);
+        $this->assertSame(2, $salinan->options()->count(), 'Opsi ikut tersalin.');
+        $this->assertSame($asal->id, $salinan->derived_from_soal_id);
+
+        // Paket asal tidak berubah.
+        $this->assertSame(1, Soal::where('bank_soal_id', $paketAsal->id)->count());
+        $this->assertSame('approved', $asal->fresh()->status);
+    }
+
+    public function test_ambil_soal_menolak_paket_yang_tidak_berhak(): void
+    {
+        $guruLain = User::factory()->create(['name' => 'Guru Lain Uji']);
+
+        // Paket privat milik guru lain → tidak boleh diambil.
+        $paketPrivat = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Paket Privat',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'private',
+            'owner_user_id' => $guruLain->id,
+            'created_by' => $guruLain->id,
+            'total_soal' => 1,
+        ]);
+
+        $soalPrivat = Soal::create([
+            'bank_soal_id' => $paketPrivat->id,
+            'tipe_soal' => 'uraian',
+            'pertanyaan' => 'Soal rahasia guru lain.',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'sedang',
+            'waktu_estimasi_menit' => 2,
+            'status' => 'draft',
+            'workflow_status' => Soal::WORKFLOW_DRAFT,
+            'jenis_asesmen' => Soal::JENIS_ASESMEN_HARIAN,
+            'dibuat_oleh' => $guruLain->id,
+            'content_hash' => hash('sha256', 'rahasia'),
+        ]);
+
+        $tujuan = $this->makeSoal()->bankSoal;
+
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/bank-soal/{$tujuan->id}/ambil-soal", [
+                'soal_ids' => [$soalPrivat->id],
+            ]);
+
+        $this->assertSame(0, Soal::where('bank_soal_id', $tujuan->id)
+            ->where('pertanyaan', 'Soal rahasia guru lain.')
+            ->count(), 'Soal paket privat guru lain tidak boleh tersalin.');
+    }
+
     /**
      * @param  array<int, string>  $teks
      * @return array<int, array{label: string, teks: string, display_label: string}>
