@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\Evaluasi\PrintSettingsService;
 use App\Services\Evaluasi\QuickSoalService;
 use App\Services\Evaluasi\SoalNaskahPdfService;
+use App\Services\Evaluasi\SoalOpsiLayout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -451,6 +452,101 @@ class BankSoalSkScopeTest extends TestCase
         // Kop selebar area margin dan tanpa garis (garis sudah ada di gambar).
         $this->assertSame(100, (int) $defaults['kop_width_pct'], 'Lebar kop penuh.');
         $this->assertFalse($defaults['kop_rule'], 'Kop tanpa garis tambahan.');
+    }
+
+    public function test_pilihan_pendek_empat_kolom_satu_baris(): void
+    {
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout($this->opsi(['48', '46', '52', '56']), 157.6, 11.0);
+
+        $this->assertSame(4, $hasil['columns']);
+        $this->assertCount(1, $hasil['rows'], 'A, B, C, D dalam satu baris.');
+    }
+
+    public function test_pilihan_sedang_dibagi_rata_tanpa_lubang(): void
+    {
+        // Empat pilihan tidak muat 4 kolom → pilih 2x2 (paling padat),
+        // bukan 3 kolom yang menyisakan satu baris berisi D saja.
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout(
+            $this->opsi(['48', 'tujuh puluh dua', 'lima puluh dua', 'sembilan']),
+            157.6,
+            11.0
+        );
+
+        $this->assertSame(2, $hasil['columns']);
+        $this->assertCount(2, $hasil['rows']);
+        $this->assertCount(2, $hasil['rows'][0]);
+        $this->assertCount(2, $hasil['rows'][1]);
+    }
+
+    public function test_pilihan_terlalu_panjang_mendapat_baris_penuh_sendiri(): void
+    {
+        // A lebih lebar dari satu kolom penuh → A sendiri di barisnya,
+        // pilihan lain menyesuaikan (tetap 1 baris masing-masing).
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout(
+            $this->opsi([
+                'ini pilihan yang cukup panjang sekali ya',
+                'ini juga panjang sekali',
+                'pendek',
+                'ok',
+            ]),
+            157.6,
+            11.0
+        );
+
+        $this->assertSame(1, $hasil['columns']);
+        $this->assertCount(4, $hasil['rows']);
+        foreach ($hasil['rows'] as $row) {
+            $this->assertCount(1, $row, 'Setiap pilihan satu baris penuh.');
+        }
+    }
+
+    public function test_lebar_kolom_opsi_seragam_di_html(): void
+    {
+        $opsi = $this->opsi(['48', 'tujuh puluh dua', 'lima puluh dua', 'sembilan']);
+        $layout = app(SoalOpsiLayout::class);
+
+        $html = view('ljk.partials.soal-opsi', [
+            'block' => ['opsi' => $opsi, 'opsiLayout' => $layout->layout($opsi, 157.6, 11.0)],
+            'rtl' => false,
+            'maxOptions' => 4,
+            'colWidth' => 25,
+        ])->render();
+
+        preg_match_all('/width: ([\d.]+)%/', $html, $m);
+        $this->assertCount(1, array_unique($m[1]), 'Semua kolom memakai lebar yang sama.');
+        $this->assertSame('50', array_unique($m[1])[0]);
+        $this->assertStringContainsString('opts-auto', $html);
+    }
+
+    public function test_pilihan_pada_naskah_tidak_pernah_terlipat(): void
+    {
+        $soal = $this->makeSoal();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana'])->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0]
+        );
+
+        $this->assertStringContainsString('opts-auto', $html);
+        $this->assertStringContainsString('white-space: nowrap', $html);
+    }
+
+    /**
+     * @param  array<int, string>  $teks
+     * @return array<int, array{label: string, teks: string, display_label: string}>
+     */
+    private function opsi(array $teks): array
+    {
+        return array_values(array_map(
+            fn (string $t, int $i) => ['label' => chr(65 + $i), 'teks' => $t, 'display_label' => chr(65 + $i)],
+            $teks,
+            array_keys($teks)
+        ));
     }
 
     public function test_kop_penuh_selebar_margin_dan_bisa_diperkecil(): void

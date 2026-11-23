@@ -161,6 +161,12 @@
     }
     table.opts td .letter { font-weight: normal; }
 
+    /* Tata letak otomatis: kolom seragam, tiap pilihan tepat 1 baris.
+       Lebar sudah diukur dari font asli, jadi nowrap hanya mencegah
+       pelipatan tak terduga akibat pembulatan Dompdf. */
+    table.opts.opts-auto td { white-space: nowrap; }
+    table.opts.opts-auto td.qblank { padding: 0; }
+
     .paper-note { font-size: {{ max(6.0, $fontSize - 4) }}pt; color: #666; }
 </style>
 </head>

@@ -374,8 +374,10 @@
                                     <div class="col-4 cetak-field">
                                         <label class="form-label mb-1">Kolom opsi</label>
                                         <select name="option_columns" class="form-select form-select-sm">
-                                            <option value="1" @selected((int) $settings['option_columns'] === 1)>1</option>
-                                            <option value="2" @selected((int) $settings['option_columns'] === 2)>2</option>
+                                            <option value="0" @selected((int) $settings['option_columns'] === 0)>Otomatis</option>
+                                            <option value="2" @selected((int) $settings['option_columns'] === 2)>Maks 2</option>
+                                            <option value="3" @selected((int) $settings['option_columns'] === 3)>Maks 3</option>
+                                            <option value="4" @selected((int) $settings['option_columns'] === 4)>Maks 4</option>
                                         </select>
                                     </div>
                                 </div>

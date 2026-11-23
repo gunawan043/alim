@@ -128,6 +128,38 @@ class SoalNaskahPdfService
             $maxOptions = max($maxOptions, count($butir['opsi']));
         }
 
+        // ── Tata letak pilihan jawaban ────────────────────────────────────
+        // Lebar area opsi = lebar kertas - margin kiri/kanan - kolom nomor
+        // soal (4,5%) agar pilihan A..D sejajar dengan teks soal.
+        $paperKeyForWidth = match (strtoupper((string) ($settings['paper'] ?? 'A4'))) {
+            'F4', 'FOLIO' => 'f4',
+            'LETTER' => 'letter',
+            default => 'a4',
+        };
+        $paperForWidth = $sheet->paper($paperKeyForWidth);
+        $contentMm = ($paperForWidth['width_mm']
+            - (float) ($settings['margin_left'] ?? 25)
+            - (float) ($settings['margin_right'] ?? 20)) * 0.955;
+
+        $layout = new SoalOpsiLayout;
+        // 0 = otomatis; selain itu menjadi batas atas jumlah kolom.
+        $maxColumns = (int) ($settings['option_columns'] ?? 0);
+        $maxColumns = $maxColumns > 0 ? min(4, $maxColumns) : 4;
+
+        foreach ($blocks as &$block) {
+            if ($block['type'] !== 'soal' || empty($block['opsi'])) {
+                continue;
+            }
+
+            $block['opsiLayout'] = $layout->layout(
+                $block['opsi'],
+                $contentMm,
+                (float) ($settings['font_size'] ?? 11),
+                $maxColumns
+            );
+        }
+        unset($block);
+
         $first = $questions->first();
         $academicYear = $first?->bankSoal?->academicYear
             ?? AcademicYear::query()->where('is_active', true)->first();
