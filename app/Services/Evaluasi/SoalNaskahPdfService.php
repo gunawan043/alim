@@ -187,6 +187,8 @@ class SoalNaskahPdfService
                 'spacing' => (float) ($settings['instruksi_spacing'] ?? 1.0),
             ],
             'showKop' => (bool) ($settings['show_kop'] ?? true),
+            'kopWidthPct' => (float) ($settings['kop_width_pct'] ?? 100),
+            'kopRule' => (bool) ($settings['kop_rule'] ?? false),
             'showKey' => (bool) ($settings['show_key'] ?? false),
             'optionIndent' => (int) ($settings['option_indent'] ?? 2),
             'identityRows' => $identityRows,

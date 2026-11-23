@@ -419,6 +419,20 @@
                                     <input type="checkbox" class="form-check-input" name="show_kop" value="1" id="showKop" @checked($settings['show_kop'])>
                                     <label class="form-check-label small" for="showKop">Kop sekolah</label>
                                 </div>
+                                <div class="row g-2 mt-0">
+                                    <div class="col-7 cetak-field">
+                                        <label class="form-label mb-1">Lebar kop (%)</label>
+                                        <input type="number" name="kop_width_pct" class="form-control form-control-sm"
+                                               min="30" max="100" step="5" value="{{ (int) $settings['kop_width_pct'] }}">
+                                        <div class="text-muted" style="font-size:.7rem">100% = selebar area margin</div>
+                                    </div>
+                                    <div class="col-5 d-flex align-items-end">
+                                        <div class="form-check form-switch mb-1">
+                                            <input type="checkbox" class="form-check-input" name="kop_rule" value="1" id="kopRule" @checked($settings['kop_rule'])>
+                                            <label class="form-check-label small" for="kopRule">Garis bawah kop</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </details>
 

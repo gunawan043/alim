@@ -25,6 +25,8 @@
     $karakterStyle = $karakterStyle ?? ['title' => 'PENANAMAN KARAKTER :', 'size' => $fontSizeBase ?? $fontSize, 'bold' => false, 'lineHeight' => 1.0, 'marker' => 'numbered'];
     $instruksiStyle = $instruksiStyle ?? ['show' => true, 'size' => $fontSizeBase ?? $fontSize, 'bold' => false, 'italic' => false, 'spacing' => 1.0];
     $showKop = (bool) ($showKop ?? true);
+    $kopWidthPct = (float) ($kopWidthPct ?? 100);
+    $kopRule = (bool) ($kopRule ?? true);
     $optionIndent = (float) ($optionIndent ?? 2);
 
     $marker = ['numbered' => 'decimal', 'bullet' => 'disc', 'dash' => 'none'][$karakterStyle['marker']] ?? 'decimal';
@@ -61,7 +63,7 @@
 
     /* Kop lembaga — HANYA gambar kop yang diunggah di pengaturan sekolah */
     .kop { text-align: center; }
-    .kop-image { width: 100%; display: block; margin: 0 auto; }
+    .kop-image { display: block; margin: 0 auto; }
     .kop-rule { border-top: 0.5mm solid #000; margin: 1.2mm 0 1.6mm; }
 
     .title {
@@ -168,10 +170,19 @@
          Hanya memakai gambar kop yang diunggah di Pengaturan Sekolah.
          Bila belum ada, area kop dikosongkan (tidak memakai teks). --}}
     @if($showKop && ! empty($letterhead['kopBase64']))
+        @php
+            // Lebar kop mengikuti persentase, TINGGI dihitung dari proporsi
+            // gambar asli agar tidak gepeng (Dompdf tidak menghormati height:auto).
+            $kopAspect = (float) ($letterhead['kopHeightMm'] ?? 0) / max(0.0001, (float) ($letterhead['kopWidthMm'] ?? 145));
+            $kopWidthMm = ($paper['width_mm'] - $marginMm['left'] - $marginMm['right']) * ($kopWidthPct / 100);
+            $kopHeightMm = round($kopWidthMm * $kopAspect, 2);
+        @endphp
         <div class="kop">
             <img class="kop-image" src="{{ $letterhead['kopBase64'] }}"
-                 style="width: {{ $letterhead['kopWidthMm'] ?? 145 }}mm; height: {{ $letterhead['kopHeightMm'] ?? 18 }}mm;">
-            <div class="kop-rule"></div>
+                 style="width: {{ round($kopWidthMm, 2) }}mm; height: {{ $kopHeightMm }}mm;">
+            @if($kopRule)
+                <div class="kop-rule"></div>
+            @endif
         </div>
     @endif
 

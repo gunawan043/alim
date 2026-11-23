@@ -23,7 +23,13 @@ use Illuminate\Http\Request;
  */
 class PrintSettingsService
 {
-    private const SESSION_KEY = 'soal_print_settings';
+    /**
+     * Versi skema pengaturan. Naikkan angka ini bila nilai bawaan sistem
+     * berubah, agar pengaturan lama di session tidak menimpa default baru.
+     */
+    private const VERSION = 'v2';
+
+    private const SESSION_KEY = 'soal_print_settings_'.self::VERSION;
 
     public const PAPERS = [
         'A4' => 'A4 (210 × 297 mm)',
@@ -48,9 +54,9 @@ class PrintSettingsService
             // Halaman
             'paper' => 'A4',
             'orientation' => 'portrait',
-            'margin_top' => 20,
+            'margin_top' => 5,
             'margin_right' => 20,
-            'margin_bottom' => 20,
+            'margin_bottom' => 10,
             'margin_left' => 25,
 
             // Judul & tahun ajaran
@@ -97,17 +103,22 @@ class PrintSettingsService
             'instruksi_spacing' => 1.0,
 
             // Soal & opsi
-            'font' => 'times',
+            'font' => 'cambria',
             'font_size' => 11,
-            'line_height' => 1.2,
-            'question_gap' => 1.5,
+            'line_height' => 1.0,
+            'question_gap' => 1.25,
             'option_columns' => 1,
             'option_indent' => 2,
             'start_number' => 1,
 
             // Kunci
             'show_key' => false,
+
+            // Kop: otomatis tampil, lebar penuh s.d. margin, tanpa garis.
+            // Gambar kop sekolah biasanya SUDAH memuat garis sendiri.
             'show_kop' => true,
+            'kop_width_pct' => 100,
+            'kop_rule' => false,
         ];
     }
 
@@ -176,7 +187,7 @@ class PrintSettingsService
             'show_identitas', 'identitas_border',
             'show_karakter', 'karakter_bold',
             'show_instruksi', 'instruksi_bold', 'instruksi_italic',
-            'show_key', 'show_kop',
+            'show_key', 'show_kop', 'kop_rule',
         ];
     }
 
@@ -261,7 +272,11 @@ class PrintSettingsService
 
         // Kunci
         $settings['show_key'] = (bool) $settings['show_key'];
+
+        // Kop
         $settings['show_kop'] = (bool) $settings['show_kop'];
+        $settings['kop_width_pct'] = (int) $this->number($settings['kop_width_pct'] ?? null, 30, 100, 100);
+        $settings['kop_rule'] = (bool) $settings['kop_rule'];
 
         return $settings;
     }

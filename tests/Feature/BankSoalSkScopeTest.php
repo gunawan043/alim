@@ -15,6 +15,7 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\Evaluasi\PrintSettingsService;
 use App\Services\Evaluasi\QuickSoalService;
 use App\Services\Evaluasi\SoalNaskahPdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -429,6 +430,64 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('<table class="identitas">', $html);
         $this->assertStringNotContainsString('PENANAMAN KARAKTER', $html);
         $this->assertStringNotContainsString('TAHUN AJARAN', $html);
+    }
+
+    public function test_default_sistem_soal_sesuai_ketentuan_sekolah(): void
+    {
+        $print = app(PrintSettingsService::class);
+        $defaults = $print->sanitize($print->defaults());
+
+        $this->assertSame('cambria', $defaults['font'], 'Font bawaan Cambria.');
+        $this->assertSame(11, $defaults['font_size'], 'Ukuran font soal 11 pt.');
+        $this->assertEqualsWithDelta(1.0, $defaults['line_height'], 0.001, 'Jarak baris 1.');
+        $this->assertEqualsWithDelta(1.25, $defaults['question_gap'], 0.001, 'Jarak antar soal 1,25.');
+        $this->assertSame(5, (int) $defaults['margin_top'], 'Margin atas 5 mm.');
+        $this->assertSame(10, (int) $defaults['margin_bottom'], 'Margin bawah 10 mm.');
+
+        // Kop & karakter otomatis aktif.
+        $this->assertTrue($defaults['show_kop'], 'Kop otomatis tampil.');
+        $this->assertTrue($defaults['show_karakter'], 'Penanaman karakter otomatis tampil.');
+
+        // Kop selebar area margin dan tanpa garis (garis sudah ada di gambar).
+        $this->assertSame(100, (int) $defaults['kop_width_pct'], 'Lebar kop penuh.');
+        $this->assertFalse($defaults['kop_rule'], 'Kop tanpa garis tambahan.');
+    }
+
+    public function test_kop_penuh_selebar_margin_dan_bisa_diperkecil(): void
+    {
+        $render = function (int $pct, bool $rule): string {
+            return view('ljk.soal-pdf', [
+                'judul' => ['NASKAH SOAL', ''],
+                'identityRows' => [],
+                'karakter' => [],
+                'instruksi' => '',
+                'blocks' => [],
+                'maxOptions' => 4,
+                'fontSize' => 11,
+                'fontSizeBase' => 11,
+                'fontStack' => 'Cambria',
+                'arabicStack' => 'Amiri',
+                'faceCss' => '',
+                'arabicFaceCss' => '',
+                'hasArabic' => false,
+                'paper' => ['width_mm' => 210.0, 'height_mm' => 297.0, 'label' => 'A4'],
+                'marginMm' => ['top' => 5, 'right' => 20, 'bottom' => 10, 'left' => 25],
+                'letterhead' => ['kopBase64' => 'data:image/png;base64,AAA', 'kopWidthMm' => 145.0, 'kopHeightMm' => 18.0],
+                'showKop' => true,
+                'kopWidthPct' => $pct,
+                'kopRule' => $rule,
+            ])->render();
+        };
+
+        // 210 - 25 - 20 = 165 mm penuh.
+        $full = $render(100, false);
+        $this->assertStringContainsString('width: 165mm', $full);
+        $this->assertStringContainsString('height: 20.48mm', $full); // proporsi 145:18 dijaga
+        $this->assertStringNotContainsString('kop-rule"></div>', $full);
+
+        $half = $render(60, true);
+        $this->assertStringContainsString('width: 99mm', $half);
+        $this->assertStringContainsString('kop-rule"></div>', $half);
     }
 
     public function test_naskah_paket_tetap_terbentuk_tanpa_pengaturan_baru(): void
