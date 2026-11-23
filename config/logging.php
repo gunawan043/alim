@@ -60,6 +60,14 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
         ],
 
+        // Dipakai `.env.staging` agar uji integrasi Connect tidak menumpuk ke
+        // laravel.log milik pengembangan/produksi.
+        'staging' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/staging.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
