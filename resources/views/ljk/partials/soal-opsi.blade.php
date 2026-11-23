@@ -44,12 +44,12 @@
                         <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }}; text-align: {{ $align }};">
                             @if($opsi)
                                 @if($rtl)
-                                    {{-- RTL: penanda huruf harus di tepi KANAN sel agar
-                                         keempat huruf ا/ب/ج/د sejajar pada posisi yang
-                                         sama di setiap kolom. Teks menyusul di kiri
-                                         huruf. Dompdf mengalirkan inline kiri-ke-kanan,
-                                         jadi huruf ditaruh lebih dulu lalu teks. --}}
-                                    <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
+                                    {{-- RTL: penanda huruf memakai lebar TETAP agar
+                                         tepi kanannya sejajar walau bentuk huruf
+                                         ا/ب/ج/د berbeda lebar setelah di-shape
+                                         (ﺍ lebih sempit dari ﺏ). Teks menyusul di
+                                         kiri penanda. --}}
+                                    <span class="letter letter-ar">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
                                 @else
                                     <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
@@ -82,10 +82,11 @@
                     <td style="width: {{ $colWidth }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
                         @if($opsi)
                             @if($rtl)
-                                {{-- RTL: teks dulu lalu penanda huruf; dengan sel rata
-                                     kanan hasilnya "اسم .ا" terbaca dari kanan. --}}
+                                {{-- RTL: penanda huruf lebih dulu (berlebar tetap agar
+                                     sejajar), teks menyusul di kirinya. Sama dengan
+                                     cabang opts-auto supaya naskah & LJK identik. --}}
+                                <span class="letter letter-ar">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
-                                <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                             @else
                                 <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}

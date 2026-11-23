@@ -173,6 +173,16 @@
        dalam lebar sel agar kolom tidak meluber. */
     table.opts td .letter { font-weight: normal; }
 
+    /* Penanda huruf Arab (ا/ب/ج/د) punya lebar bentuk berbeda setelah
+       di-shape (ﺍ sempit, ﺏ lebar). Lebar tetap + rata kanan membuat
+       keempat penanda berdiri di posisi yang sama di setiap kolom. */
+    table.opts td .letter-ar {
+        display: inline-block;
+        min-width: 6mm;
+        text-align: right;
+        white-space: nowrap;
+    }
+
     /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
        tepat 1 baris. Lebar mm ditetapkan di partial opsi. */
     table.opts.opts-auto td { white-space: nowrap; }
@@ -218,9 +228,17 @@
     @endif
 
     {{-- ── JUDUL UJIAN ─────────────────────────────────────────────────── --}}
-    <div class="title">{{ $line1 }}</div>
+    {{-- Judul dilewatkan LjkArabicText agar teks Arab benar-benar di-shape;
+         tanpa ini huruf Arab tampil sebagai kotak pada Dompdf. --}}
+    <div class="title">{!! LjkArabicText::toHtml($line1, false) !!}</div>
     @if($line2 !== '')
-        <div class="title-sub">{{ $line2 }}</div>
+        <div class="title-sub">{!! LjkArabicText::toHtml($line2, false) !!}</div>
+    @endif
+    @if(($tanggalArab ?? '') !== '')
+        {{-- Naskah Arab: tanggal Hijriah + Masehi, rata kanan.
+             LjkArabicText::toHtml() menyusun urutan visual RTL untuk Dompdf;
+             deret angka kini dijaga tetap urut oleh reverseClusters(). --}}
+        <div class="title-sub" style="text-align: right;">{!! LjkArabicText::toHtml($tanggalArab, false) !!}</div>
     @endif
 
     {{-- Identitas: tabel maksimal 3 baris ─────────────────────────────── --}}
@@ -268,7 +286,7 @@
 
     {{-- ── PENANAMAN KARAKTER ──────────────────────────────────────────── --}}
     @if(! empty($karakter))
-        <div class="karakter-title">{{ $karakterStyle['title'] }}</div>
+        <div class="karakter-title">{!! LjkArabicText::toHtml($karakterStyle['title'], false) !!}</div>
         <ol class="karakter">
             @foreach($karakter as $butir)
                 <li>

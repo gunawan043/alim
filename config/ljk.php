@@ -303,6 +303,7 @@ return [
             'peserta' => 'اسم الطالب',
         ],
         // Penanaman karakter versi Arab (dipakai bila guru belum mengisi).
+        'karakter_title_arab' => 'تنمية الشخصية :',
         'penanaman_karakter_arab' => [
             'ادعُ الله قبل أن تبدأ الإجابة!',
             'اتّقِ الله وكن صادقًا في إجابتك!',

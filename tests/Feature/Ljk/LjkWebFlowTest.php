@@ -2,31 +2,43 @@
 
 namespace Tests\Feature\Ljk;
 
+use App\Authorization\ValueObjects\ScopeKey;
+use App\Models\AcademicYear;
 use App\Models\BankSoal;
+use App\Models\GradeLevel;
 use App\Models\KisiKisiSoal;
 use App\Models\LjkExam;
 use App\Models\LjkParticipant;
+use App\Models\LjkScan;
 use App\Models\LjkScanAnswer;
 use App\Models\NilaiSumatif;
 use App\Models\PaketSoal;
 use App\Models\PaketSoalItem;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\School;
 use App\Models\Soal;
 use App\Models\SoalOption;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
+use App\Models\Subject;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
+use App\Models\WacanaSoal;
+use App\Models\WorkUnit;
 use App\Services\Evaluasi\PaketNaskahService;
-use App\Services\Ljk\LjkExamService;
+use App\Services\Ljk\LjkArabicText;
+use App\Services\Ljk\LjkGradingService;
+use App\Services\Ljk\LjkPdfFonts;
+use App\Services\Ljk\LjkSheetService;
+use App\Services\Ljk\LjkSoalPdfRenderer;
+use App\Services\Ljk\LjkSoalSheet;
 use App\Services\Ljk\LjkSyntheticRenderer;
-use App\Authorization\ValueObjects\ScopeKey;
-use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -56,7 +68,7 @@ class LjkWebFlowTest extends TestCase
     {
         parent::setUp();
 
-        $workUnit = \App\Models\WorkUnit::create([
+        $workUnit = WorkUnit::create([
             'id' => (string) Str::uuid(),
             'name' => 'Yayasan Alim',
             'code' => 'YYS-'.Str::random(6),
@@ -74,7 +86,7 @@ class LjkWebFlowTest extends TestCase
         $this->teacher = $this->makeUser('Guru Pengampu');
         $this->otherTeacher = $this->makeUser('Guru Lain');
 
-        $academicYear = \App\Models\AcademicYear::create([
+        $academicYear = AcademicYear::create([
             'id' => (string) Str::uuid(),
             'name' => '2026/2027',
             'start_date' => '2026-07-01',
@@ -82,14 +94,14 @@ class LjkWebFlowTest extends TestCase
             'is_active' => true,
         ]);
 
-        $subject = \App\Models\Subject::create([
+        $subject = Subject::create([
             'id' => (string) Str::uuid(),
             'name' => 'Fiqih',
             'code' => 'FQH',
             'school_id' => $this->school->id,
         ]);
 
-        $gradeLevel = \App\Models\GradeLevel::create([
+        $gradeLevel = GradeLevel::create([
             'id' => (string) Str::uuid(),
             'name' => 'X',
             'level' => 10,
@@ -279,7 +291,7 @@ class LjkWebFlowTest extends TestCase
      */
     private function correctSlots(LjkParticipant $participant): array
     {
-        $grading = app(\App\Services\Ljk\LjkGradingService::class);
+        $grading = app(LjkGradingService::class);
         $slots = [];
 
         foreach ($participant->mappingItems() as $item) {
@@ -373,7 +385,7 @@ class LjkWebFlowTest extends TestCase
         $response->assertOk()->assertJsonPath('success', true);
         $this->assertSame(5, count($response->json('data.answers')));
 
-        $scan = \App\Models\LjkScan::query()->latest('created_at')->firstOrFail();
+        $scan = LjkScan::query()->latest('created_at')->firstOrFail();
         $this->assertSame('processed', $scan->status);
         $this->assertSame(5, $scan->answers()->count());
 
@@ -561,9 +573,9 @@ class LjkWebFlowTest extends TestCase
     public function test_lembar_jawaban_memakai_header_identitas_dan_karakter(): void
     {
         $exam = $this->createExamViaHttp();
-        $participant = \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
+        $participant = LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
 
-        $html = app(\App\Services\Ljk\LjkSheetService::class)
+        $html = app(LjkSheetService::class)
             ->renderSheetHtml($exam->fresh(['school', 'subject', 'studyGroup', 'adminBook.teacher', 'template']), $participant, 1);
 
         // Judul dua baris seperti lembar soal.
@@ -590,7 +602,7 @@ class LjkWebFlowTest extends TestCase
         $this->assertGreaterThanOrEqual((float) $geometry['header_height_mm'], (float) collect($geometry['questions'])->min('y_mm'));
 
         // Master tetap tanpa nama.
-        $master = app(\App\Services\Ljk\LjkSheetService::class)
+        $master = app(LjkSheetService::class)
             ->renderSheetHtml($exam->fresh(['school', 'subject', 'studyGroup', 'adminBook.teacher', 'template']), $participant, 1, true);
         $this->assertStringContainsString('nama-line', $master);
         $this->assertStringNotContainsString('Santri Uji', $master);
@@ -620,8 +632,8 @@ class LjkWebFlowTest extends TestCase
         $this->assertStringNotContainsString('STS Fiqih', $html);
 
         // Master generik: tanpa QR/strip, semua isian identitas kosong.
-        $masterHtml = app(\App\Services\Ljk\LjkSheetService::class)
-            ->renderSheetHtml($exam->fresh(), \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail(), 1, true);
+        $masterHtml = app(LjkSheetService::class)
+            ->renderSheetHtml($exam->fresh(), LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail(), 1, true);
 
         $this->assertStringNotContainsString('MASTER FOTOKOPI', $masterHtml);
         $this->assertStringNotContainsString('Master', $masterHtml);
@@ -670,7 +682,7 @@ class LjkWebFlowTest extends TestCase
     {
         $exam = $this->createExamViaHttp();
 
-        $service = app(\App\Services\Ljk\LjkSoalSheet::class);
+        $service = app(LjkSoalSheet::class);
         $data = $service->data($exam->fresh());
         $html = $service->render($exam->fresh());
 
@@ -698,12 +710,13 @@ class LjkWebFlowTest extends TestCase
         $this->assertStringNotContainsString('Pembahasan', $html);
 
         // Opsi tersusun dalam kolom sejajar (A..D selalu pada posisi yang sama).
-        $this->assertStringContainsString('table class="opts"', $html);
+        // Kelas tabel opsi kini dapat diikuti "rtl" pada naskah berbahasa Arab.
+        $this->assertStringContainsString('table class="opts', $html);
         $this->assertStringContainsString('table-layout: fixed', $html);
         $this->assertStringContainsString('%', $html);
 
         // Empat kolom per baris opsi (maks opsi paket) — satu tabel per soal.
-        $this->assertSame(5, substr_count($html, 'table class="opts"'), 'Setiap soal punya tabel opsi sendiri.');
+        $this->assertSame(5, substr_count($html, 'table class="opts'), 'Setiap soal punya tabel opsi sendiri.');
         $this->assertSame(5 * 4, substr_count($html, '<td style="width: 25%'), 'Opsi harus dalam 4 kolom sejajar.');
 
         // Font Cambria dengan fallback serif.
@@ -728,7 +741,7 @@ class LjkWebFlowTest extends TestCase
 
         // Nomor & teks soal memakai tabel (hanging indent): baris lanjutan
         // sejajar dengan teks, bukan dengan nomor.
-        $this->assertStringContainsString('table class="qwrap"', $html);
+        $this->assertStringContainsString('table class="qwrap', $html);
         $this->assertStringContainsString('class="qbody"', $html);
         // Teks soal & opsi berada di kolom yang sama (tanpa indent tabel opsi).
         $this->assertStringContainsString('margin: 0.1em 0 0 0;', $html);
@@ -747,7 +760,7 @@ class LjkWebFlowTest extends TestCase
 
         // Identitas berupa tabel maksimal 3 baris (2 pasang per baris).
         $this->assertCount(3, $data['identityRows']);
-        $this->assertStringContainsString('table class="identitas"', $html);
+        $this->assertStringContainsString('table class="identitas', $html);
         $this->assertSame(3, substr_count($html, '<tr>') >= 3 ? 3 : 0, 'Tabel identitas harus 3 baris.');
 
         // Endpoint PDF.
@@ -766,18 +779,18 @@ class LjkWebFlowTest extends TestCase
     public function test_wacana_soal_cerita_dan_legenda_lembar_jawaban(): void
     {
         // Tautkan wacana ke soal nomor 2 & 3 (urutan paket, bukan urutan id).
-        $items = \App\Models\PaketSoalItem::query()
+        $items = PaketSoalItem::query()
             ->where('paket_soal_id', $this->paket->id)
             ->orderBy('urutan')
             ->limit(3)
             ->get();
 
-        $soalById = \App\Models\Soal::query()
+        $soalById = Soal::query()
             ->whereIn('id', $items->pluck('soal_id'))
             ->get()
             ->keyBy('id');
 
-        $wacana = \App\Models\WacanaSoal::create([
+        $wacana = WacanaSoal::create([
             'bank_soal_id' => $soalById->first()->bank_soal_id,
             'school_id' => $this->school->id,
             'judul' => 'Teks Bacaan Uji',
@@ -792,12 +805,12 @@ class LjkWebFlowTest extends TestCase
 
         // Naskah dibekukan ulang agar wacana ikut tersimpan di snapshot
         // (alur nyata: wacana dipasang sebelum paket dipublikasikan).
-        app(\App\Services\Evaluasi\PaketNaskahService::class)->snapshot($this->paket->fresh());
+        app(PaketNaskahService::class)->snapshot($this->paket->fresh());
         $this->paket = $this->paket->fresh();
 
         $exam = $this->createExamViaHttp();
 
-        $sheet = app(\App\Services\Ljk\LjkSoalSheet::class);
+        $sheet = app(LjkSoalSheet::class);
         $data = $sheet->data($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
         $wacanaBlocks = collect($data['blocks'])->where('type', 'wacana');
@@ -812,8 +825,8 @@ class LjkWebFlowTest extends TestCase
         $this->assertStringContainsString('Ini paragraf wacana untuk pengujian lembar soal.', $html);
 
         // Legenda wacana tampil di lembar jawaban.
-        $participant = \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
-        $sheetHtml = app(\App\Services\Ljk\LjkSheetService::class)
+        $participant = LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
+        $sheetHtml = app(LjkSheetService::class)
             ->renderSheetHtml($exam->fresh(), $participant, 1);
 
         $this->assertStringContainsString('Wacana/soal cerita:', $sheetHtml);
@@ -825,10 +838,10 @@ class LjkWebFlowTest extends TestCase
      */
     public function test_teks_arab_di_shaping_dan_dibungkus_span_arab(): void
     {
-        $arabic = \App\Services\Ljk\LjkArabicText::class;
+        $arabic = LjkArabicText::class;
 
         // Font Arab bawaan aplikasi (Amiri, OFL) terdeteksi & dipakai.
-        $fonts = \App\Services\Ljk\LjkPdfFonts::class;
+        $fonts = LjkPdfFonts::class;
         $this->assertStringContainsString('Amiri', $fonts::arabicFontLabel());
         $this->assertStringContainsString("font-family: 'LJK-Arabic'", $fonts::arabicFaceCss());
         $this->assertStringContainsString('LJK-Arabic', $fonts::arabicStack());
@@ -877,7 +890,7 @@ class LjkWebFlowTest extends TestCase
      */
     public function test_pemilihan_kertas_otomatis_a4_ke_f4(): void
     {
-        $renderer = app(\App\Services\Ljk\LjkSoalPdfRenderer::class);
+        $renderer = app(LjkSoalPdfRenderer::class);
 
         // Muat 1 halaman A4 → tetap A4.
         $this->assertSame('a4', $renderer->choosePaper(1, 1));
@@ -889,7 +902,7 @@ class LjkWebFlowTest extends TestCase
         $this->assertSame('a4', $renderer->choosePaper(4, 4));
 
         // Ukuran kertas dari konfigurasi.
-        $sheet = app(\App\Services\Ljk\LjkSoalSheet::class);
+        $sheet = app(LjkSoalSheet::class);
         $this->assertSame([215.0, 330.0], [$sheet->paper('f4')['width_mm'], $sheet->paper('f4')['height_mm']]);
         $this->assertSame([210.0, 297.0], [$sheet->paper('a4')['width_mm'], $sheet->paper('a4')['height_mm']]);
     }
@@ -903,19 +916,19 @@ class LjkWebFlowTest extends TestCase
         // Tambah satu soal Arab ke bank yang dipakai paket, lalu beku ulang naskah.
         $bankId = $this->paket->items()->first()?->soal?->bank_soal_id;
 
-        $soalArab = \App\Models\Soal::create([
+        $soalArab = Soal::create([
             'bank_soal_id' => $bankId,
             'tipe_soal' => 'pg',
             'pertanyaan' => 'مَا هَذَا؟',
             'bobot_default' => 1,
             'status' => 'approved',
-            'workflow_status' => \App\Models\Soal::WORKFLOW_APPROVED,
+            'workflow_status' => Soal::WORKFLOW_APPROVED,
             'content_hash' => hash('sha256', 'arab-uji-'.Str::random(8)),
             'dibuat_oleh' => $this->teacher->id,
         ]);
 
         foreach (['ا', 'ب', 'ج', 'د'] as $i => $huruf) {
-            \App\Models\SoalOption::create([
+            SoalOption::create([
                 'soal_id' => $soalArab->id,
                 'label' => chr(65 + $i),
                 'teks_opsi' => 'خيار '.$huruf,
@@ -924,7 +937,7 @@ class LjkWebFlowTest extends TestCase
             ]);
         }
 
-        \App\Models\PaketSoalItem::create([
+        PaketSoalItem::create([
             'paket_soal_id' => $this->paket->id,
             'soal_id' => $soalArab->id,
             'urutan' => 99,
@@ -933,12 +946,12 @@ class LjkWebFlowTest extends TestCase
         ]);
 
         $this->paket->recomputeTotals();
-        app(\App\Services\Evaluasi\PaketNaskahService::class)->snapshot($this->paket->fresh());
+        app(PaketNaskahService::class)->snapshot($this->paket->fresh());
         $this->paket = $this->paket->fresh();
 
         $exam = $this->createExamViaHttp(['bahasa' => 'arab']);
 
-        $sheet = app(\App\Services\Ljk\LjkSoalSheet::class);
+        $sheet = app(LjkSoalSheet::class);
         $data = $sheet->data($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
         $this->assertSame([1, 2, 3, 4, 5, 6], $sheet->arabicQuestionNumbers($exam->fresh(['paketSoal'])));
@@ -948,16 +961,20 @@ class LjkWebFlowTest extends TestCase
         $this->assertSame(['ا', 'ب', 'ج', 'د'], array_column($arab['opsi'], 'display_label'));
 
         $html = $sheet->render($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
-        // RTL: penanda ".ا" diletakkan SETELAH teks opsi (bukan "ا. teks").
-        $alef = \App\Services\Ljk\LjkArabicText::shape('ا');
-        $this->assertStringContainsString('<span class="letter">.<span class="ar">'.$alef.'</span></span>', $html);
+        // RTL: penanda huruf memakai lebar tetap (letter-ar) agar ا/ب/ج/د
+        // sejajar, dan diletakkan SEBELUM teks sehingga berdiri di tepi kanan.
+        $this->assertMatchesRegularExpression(
+            '/<span class="letter letter-ar">.*?<\/span>\.<\/span>\s*<span class="ar">/u',
+            $html,
+            'Penanda huruf berlebar tetap mendahului teks opsi.'
+        );
 
         // Ujian mode Arab → SELURUH lembar memakai huruf Arab (tanpa A.).
         $this->assertSame(0, substr_count($html, 'class="letter">A.'), 'Ujian Arab tidak boleh memakai huruf Latin.');
 
         // Lembar jawaban: label kotak nomor 6 memakai huruf Arab.
-        $participant = \App\Models\LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
-        $sheetHtml = app(\App\Services\Ljk\LjkSheetService::class)->renderSheetHtml($exam->fresh(), $participant, 1);
+        $participant = LjkParticipant::where('ljk_exam_id', $exam->id)->firstOrFail();
+        $sheetHtml = app(LjkSheetService::class)->renderSheetHtml($exam->fresh(), $participant, 1);
 
         $this->assertStringContainsString('<span class="ar">ا</span>', $sheetHtml);
     }
@@ -970,10 +987,10 @@ class LjkWebFlowTest extends TestCase
     {
         $relative = 'ljk-test/kop.png';
         $absolute = storage_path('app/public/'.$relative);
-        \Illuminate\Support\Facades\File::ensureDirectoryExists(dirname($absolute));
+        File::ensureDirectoryExists(dirname($absolute));
 
         // PNG 1x1 (hitam) — cukup untuk memastikan gambar ter-embed.
-        \Illuminate\Support\Facades\File::put($absolute, base64_decode(
+        File::put($absolute, base64_decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
         ));
 
@@ -981,14 +998,14 @@ class LjkWebFlowTest extends TestCase
 
         try {
             $exam = $this->createExamViaHttp();
-            $html = app(\App\Services\Ljk\LjkSoalSheet::class)
+            $html = app(LjkSoalSheet::class)
                 ->render($exam->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
             $this->assertStringContainsString('class="kop-image"', $html);
             $this->assertStringContainsString('data:image/png;base64,', $html);
             $this->assertStringNotContainsString('<div class="kop-school">', $html, 'Bila kop gambar ada, teks kop tidak dicetak.');
         } finally {
-            \Illuminate\Support\Facades\File::delete($absolute);
+            File::delete($absolute);
             $this->school->forceFill(['kop_path' => null])->save();
         }
     }
@@ -1003,20 +1020,20 @@ class LjkWebFlowTest extends TestCase
         $bankId = $this->paket->items()->first()?->soal?->bank_soal_id;
 
         $buat = function (string $bahasa, string $pertanyaan, array $opsi) use ($bankId) {
-            $soal = \App\Models\Soal::create([
+            $soal = Soal::create([
                 'bank_soal_id' => $bankId,
                 'tipe_soal' => 'pg',
                 'bahasa' => $bahasa,
                 'pertanyaan' => $pertanyaan,
                 'bobot_default' => 1,
                 'status' => 'approved',
-                'workflow_status' => \App\Models\Soal::WORKFLOW_APPROVED,
+                'workflow_status' => Soal::WORKFLOW_APPROVED,
                 'content_hash' => hash('sha256', 'mode-'.$bahasa.'-'.Str::random(8)),
                 'dibuat_oleh' => $this->teacher->id,
             ]);
 
             foreach ($opsi as $i => $teks) {
-                \App\Models\SoalOption::create([
+                SoalOption::create([
                     'soal_id' => $soal->id,
                     'label' => chr(65 + $i),
                     'teks_opsi' => $teks,
@@ -1028,25 +1045,25 @@ class LjkWebFlowTest extends TestCase
             return $soal;
         };
 
-        $arab = $buat(\App\Models\Soal::BAHASA_ARAB, 'مَا هَذَا؟', ['كِتَابٌ', 'قَلَمٌ', 'بَابٌ', 'كُرْسِيٌّ']);
-        $gabungan = $buat(\App\Models\Soal::BAHASA_GABUNGAN, 'Terjemahkan: الكِتَاب', ['Buku', 'Pena', 'Pintu', 'Kursi']);
+        $arab = $buat(Soal::BAHASA_ARAB, 'مَا هَذَا؟', ['كِتَابٌ', 'قَلَمٌ', 'بَابٌ', 'كُرْسِيٌّ']);
+        $gabungan = $buat(Soal::BAHASA_GABUNGAN, 'Terjemahkan: الكِتَاب', ['Buku', 'Pena', 'Pintu', 'Kursi']);
 
-        \App\Models\PaketSoalItem::create([
+        PaketSoalItem::create([
             'paket_soal_id' => $this->paket->id, 'soal_id' => $arab->id,
             'urutan' => 97, 'nomor' => 7, 'jenis_soal' => 'pg',
         ]);
-        \App\Models\PaketSoalItem::create([
+        PaketSoalItem::create([
             'paket_soal_id' => $this->paket->id, 'soal_id' => $gabungan->id,
             'urutan' => 98, 'nomor' => 8, 'jenis_soal' => 'pg',
         ]);
 
         $this->paket->recomputeTotals();
-        app(\App\Services\Evaluasi\PaketNaskahService::class)->snapshot($this->paket->fresh());
+        app(PaketNaskahService::class)->snapshot($this->paket->fresh());
         $this->paket = $this->paket->fresh();
 
         // (a) Ujian GABUNGAN → seluruh lembar LTR + huruf Latin.
         $examGabungan = $this->createExamViaHttp(['bahasa' => 'gabungan']);
-        $dataGabungan = app(\App\Services\Ljk\LjkSoalSheet::class)
+        $dataGabungan = app(LjkSoalSheet::class)
             ->data($examGabungan->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
         $this->assertSame('gabungan', $dataGabungan['examBahasa']);
@@ -1057,13 +1074,13 @@ class LjkWebFlowTest extends TestCase
             $this->assertSame(['A', 'B', 'C', 'D'], array_column($block['opsi'], 'display_label'));
         }
 
-        $htmlGabungan = app(\App\Services\Ljk\LjkSoalSheet::class)->render($examGabungan->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+        $htmlGabungan = app(LjkSoalSheet::class)->render($examGabungan->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
         $this->assertStringNotContainsString('class="qbody" style="text-align: right;"', $htmlGabungan);
         $this->assertStringContainsString('<span class="letter">A.</span>', $htmlGabungan);
 
         // (b) Ujian ARAB → seluruh lembar RTL, nomor Arab, huruf Arab.
         $examArab = $this->createExamViaHttp(['bahasa' => 'arab']);
-        $dataArab = app(\App\Services\Ljk\LjkSoalSheet::class)
+        $dataArab = app(LjkSoalSheet::class)
             ->data($examArab->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
         $this->assertSame('arab', $dataArab['examBahasa']);
@@ -1078,13 +1095,13 @@ class LjkWebFlowTest extends TestCase
         $pertama = collect($dataArab['blocks'])->firstWhere('type', 'soal');
         $this->assertSame('١.', $pertama['nomor_tampil']);
 
-        $htmlArab = app(\App\Services\Ljk\LjkSoalSheet::class)->render($examArab->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
+        $htmlArab = app(LjkSoalSheet::class)->render($examArab->fresh(['school', 'subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
 
-        // RTL: teks didahulukan, nomor di sel kanan, penanda ".ج" setelah teks.
-        $this->assertStringContainsString('class="qbody" style="text-align: right;"', $htmlArab);
-        $this->assertStringContainsString('class="qno" style="text-align: right;"', $htmlArab);
+        // RTL: nomor di sel kanan; penanda huruf berlebar tetap agar sejajar.
+        $this->assertStringContainsString('class="qbody" style="width: 95.5%; text-align: right;"', $htmlArab);
+        $this->assertStringContainsString('class="qno" style="width: 4.5%; text-align: right;"', $htmlArab);
         $this->assertStringContainsString('١.', $htmlArab);
-        $this->assertStringContainsString('<span class="letter">.<span class="ar">', $htmlArab);
+        $this->assertStringContainsString('<span class="letter letter-ar">', $htmlArab);
         $this->assertStringNotContainsString('<span class="letter">A.</span>', $htmlArab);
     }
 

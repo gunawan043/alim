@@ -14,7 +14,9 @@ use App\Services\Ljk\LjkSchoolLetterhead;
 use App\Services\Ljk\LjkSoalSheet;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Pharaonic\Hijri\Hijri;
 
 /**
  * Naskah soal dari daftar Soal langsung — tanpa paket soal.
@@ -230,7 +232,7 @@ class SoalNaskahPdfService
 
         $print = app(PrintSettingsService::class);
 
-        $judulLines = $this->judulLines($judul, $academicYear, $settings);
+        $judulLines = $this->judulLines($judul, $academicYear, $settings, $isArabicExam);
 
         $paperKey = match (strtoupper((string) ($settings['paper'] ?? 'A4'))) {
             'F4', 'FOLIO' => 'f4',
@@ -246,13 +248,20 @@ class SoalNaskahPdfService
             $paper['height_mm'] = $sheet->paper($paperKey)['width_mm'];
         }
 
-        $mapel = (string) ($first?->bankSoal?->subject?->name ?? '-');
+        // Nama mapel & guru diambil dari kolom Arab data master
+        // (`subjects.name_ar`, `users.name_ar`) karena data itu sudah ada di
+        // kurikulum/kepegawaian. Bila belum diisi, dipakai nama Latin agar
+        // naskah tidak kosong — guru melengkapinya di halaman master.
+        $subjectMaster = $first?->bankSoal?->subject;
+        $mapel = (string) ($subjectMaster?->name ?? '-');
+        $mapelAr = trim((string) ($subjectMaster?->name_ar ?? ''));
+        $guruAr = trim((string) ($user->name_ar ?? ''));
         $kelas = $kelasLabel ?: (string) ($first?->bankSoal?->gradeLevel?->name ?? '-');
 
         $identityRows = $this->identityRows($settings, [
-            'mapel' => $mapel,
+            'mapel' => $isArabicExam && $mapelAr !== '' ? $mapelAr : $mapel,
             'kelas' => $kelas,
-            'guru' => (string) $user->name,
+            'guru' => $isArabicExam && $guruAr !== '' ? $guruAr : (string) $user->name,
         ], $isArabicExam);
 
         $karakter = ! ($settings['show_karakter'] ?? true) ? [] : $print->karakterItems($settings);
@@ -265,6 +274,9 @@ class SoalNaskahPdfService
 
         return [
             'judul' => $judulLines,
+            // Tanggal dicetak di bawah judul HANYA pada naskah Arab, memakai
+            // Hijriah + Masehi (bulan berbahasa Arab).
+            'tanggalArab' => $isArabicExam ? $this->tanggalArab() : '',
             'identitas' => [
                 'show' => (bool) ($settings['show_identitas'] ?? true),
                 'border' => (bool) ($settings['identitas_border'] ?? true),
@@ -275,7 +287,7 @@ class SoalNaskahPdfService
             'judulStyle' => $this->judulStyle($settings),
             'tahunStyle' => $this->tahunStyle($settings),
             'karakterStyle' => [
-                'title' => (string) ($settings['karakter_title'] ?? 'PENANAMAN KARAKTER :'),
+                'title' => $this->karakterTitle($settings, $isArabicExam),
                 'size' => (int) ($settings['karakter_size'] ?? 11),
                 'bold' => (bool) ($settings['karakter_bold'] ?? false),
                 'lineHeight' => (float) ($settings['karakter_line_height'] ?? 1.0),
@@ -334,6 +346,24 @@ class SoalNaskahPdfService
     }
 
     /**
+     * Judul blok penanaman karakter. Pada naskah Arab dipakai judul Arab,
+     * kecuali guru mengetik judul sendiri (bukan bawaan Latin).
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    private function karakterTitle(array $settings, bool $isArabic): string
+    {
+        $default = 'PENANAMAN KARAKTER :';
+        $judul = trim((string) ($settings['karakter_title'] ?? ''));
+
+        if ($isArabic && ($judul === '' || $judul === $default)) {
+            return (string) config('ljk.soal.karakter_title_arab', 'تنمية الشخصية :');
+        }
+
+        return $judul !== '' ? $judul : $default;
+    }
+
+    /**
      * Bahasa naskah: setelan guru bila dipaksa, atau auto dari mayoritas soal.
      *
      * @param  array<string, mixed>  $settings
@@ -360,7 +390,7 @@ class SoalNaskahPdfService
      * @param  array<string, mixed>  $settings
      * @return array{0: string, 1: string}
      */
-    private function judulLines(?string $judul, ?AcademicYear $academicYear, array $settings): array
+    private function judulLines(?string $judul, ?AcademicYear $academicYear, array $settings, bool $isArabic = false): array
     {
         $line1 = trim((string) $judul);
 
@@ -369,7 +399,7 @@ class SoalNaskahPdfService
         }
 
         if ($line1 === '') {
-            $line1 = 'NASKAH SOAL';
+            $line1 = $isArabic ? 'أسئلة الاختبار' : 'NASKAH SOAL';
         }
 
         if (! ($settings['show_tahun_ajaran'] ?? true)) {
@@ -382,7 +412,75 @@ class SoalNaskahPdfService
             $tahun = trim((string) ($academicYear?->name ?? ''));
         }
 
+        if ($isArabic) {
+            return [$line1, $this->tahunAjaranArab($tahun)];
+        }
+
         return [$line1, $tahun !== '' ? (str_starts_with(mb_strtoupper($tahun), 'TAHUN AJARAN') ? $tahun : 'TAHUN AJARAN '.$tahun) : ''];
+    }
+
+    /**
+     * Baris tahun ajaran versi Arab: "السنة الدراسية ٢٠٢٦/٢٠٢٧ مـ".
+     */
+    private function tahunAjaranArab(string $tahun): string
+    {
+        $tahun = preg_replace('/^TAHUN\s+AJARAN\s*/iu', '', $tahun) ?? $tahun;
+        $tahun = trim($tahun);
+
+        if ($tahun === '') {
+            return '';
+        }
+
+        return 'السنة الدراسية '.$this->angkaArab($tahun).' مـ';
+    }
+
+    /**
+     * Ubah digit Latin pada teks menjadi digit Arab (١٢٣), tanpa menyentuh
+     * huruf atau tanda baca.
+     */
+    private function angkaArab(string $teks): string
+    {
+        return strtr($teks, [
+            '0' => '٠', '1' => '١', '2' => '٢', '3' => '٣', '4' => '٤',
+            '5' => '٥', '6' => '٦', '7' => '٧', '8' => '٨', '9' => '٩',
+        ]);
+    }
+
+    /**
+     * Tanggal naskah Arab: Hijriah lalu Masehi, keduanya dengan bulan Arab.
+     * Contoh: "٢٤ جمادى الآخرة ١٤٤٨ هـ / ٢٤ نوفمبر ٢٠٢٦ م".
+     */
+    public function tanggalArab(?string $isoDate = null): string
+    {
+        $tanggal = $isoDate ? Carbon::parse($isoDate) : now();
+
+        $bulanMasehi = [
+            1 => 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+            'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+        ];
+
+        $masehi = $this->angkaArab(
+            $tanggal->day.' '.$bulanMasehi[(int) $tanggal->month].' '.$tanggal->year
+        ).' م';
+
+        // Hijriah: pakai library pharaonic/hijri yang sudah dipakai modul
+        // kesiswaan. Bila gagal, cukup tampilkan Masehi.
+        $bulanHijri = [
+            1 => 'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر',
+            'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان',
+            'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة',
+        ];
+
+        try {
+            Hijri::getInstance();
+            $h = Hijri::parse($tanggal->toDateString());
+
+            $hijri = $this->angkaArab($h->day.' '.$bulanHijri[(int) $h->month].' '.$h->year).' هـ';
+
+            return $hijri.' / '.$masehi;
+        } catch (\Throwable $e) {
+            return $masehi;
+        }
     }
 
     /**

@@ -21,6 +21,7 @@ use App\Services\Evaluasi\QuickSoalService;
 use App\Services\Evaluasi\SoalNaskahPdfService;
 use App\Services\Evaluasi\SoalOpsiLayout;
 use App\Services\KurikulumAccess;
+use App\Services\Ljk\LjkArabicText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -704,6 +705,71 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertSame([2, 3], array_column($hasil['rows'][1], 'index'));
     }
 
+    public function test_angka_arab_tidak_dibalik_urutan_visual(): void
+    {
+        // Regresi: reverseClusters() ikut membalik deret angka sehingga
+        // "٢٠٢٦" tampil "٦٢٠٢" pada naskah Arab.
+        $html = LjkArabicText::toHtml('السنة الدراسية ٢٠٢٦/٢٠٢٧ مـ', false);
+
+        $this->assertStringContainsString('٢٠٢٦', $html, 'Tahun ajaran tetap urut.');
+        $this->assertStringContainsString('٢٠٢٧', $html);
+        $this->assertStringNotContainsString('٦٢٠٢', $html, 'Angka tidak boleh terbalik.');
+        $this->assertStringNotContainsString('٧٢٠٢', $html);
+
+        // Angka di dalam kalimat Arab juga tetap urut.
+        $this->assertStringContainsString('١٤٤٨', LjkArabicText::toHtml('سنة ١٤٤٨ هـ', false));
+    }
+
+    public function test_naskah_arab_memakai_nama_mapel_dan_guru_arab(): void
+    {
+        // Nama diambil dari kolom Arab data master: subjects.name_ar dan
+        // users.name_ar.
+        $this->math->forceFill(['name_ar' => 'الرياضيات'])->save();
+        $this->guru->forceFill(['name_ar' => 'أحمد فوزي'])->save();
+
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru->fresh(),
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $nilai = collect($data['identityRows'])->flatten(1)->map(fn ($pair) => $pair[1])->all();
+
+        $this->assertContains('الرياضيات', $nilai, 'Nama mapel dari subjects.name_ar.');
+        $this->assertContains('أحمد فوزي', $nilai, 'Nama guru dari users.name_ar.');
+    }
+
+    public function test_naskah_arab_mencetak_tanggal_hijriah_dan_masehi(): void
+    {
+        $tanggal = app(SoalNaskahPdfService::class)->tanggalArab('2026-11-24');
+
+        $this->assertStringContainsString('هـ', $tanggal, 'Bagian Hijriah ada.');
+        $this->assertStringContainsString('م', $tanggal, 'Bagian Masehi ada.');
+        $this->assertStringContainsString('نوفمبر', $tanggal, 'Bulan Masehi berbahasa Arab.');
+        $this->assertStringContainsString('٢٠٢٦', $tanggal, 'Tahun Masehi urut dan berdigit Arab.');
+        $this->assertStringNotContainsString('٦٢٠٢', $tanggal, 'Tahun tidak boleh terbalik.');
+    }
+
+    public function test_naskah_latin_tidak_mencetak_tanggal_arab(): void
+    {
+        $soal = $this->makeSoal();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'latin']
+        );
+
+        $this->assertSame('', $data['tanggalArab'], 'Naskah Latin tidak memakai baris tanggal Arab.');
+    }
+
     public function test_total_lebar_kolom_tidak_meluber_dari_area_opsi(): void
     {
         // Regresi tumpang tindih: Dompdf menambah padding DI LUAR `width`
@@ -749,11 +815,12 @@ class BankSoalSkScopeTest extends TestCase
             'opsiIndentMm' => 2.0,
         ])->render();
 
-        // Huruf lebih dulu, teks menyusul (Dompdf mengalir kiri-ke-kanan).
+        // Huruf lebih dulu, teks menyusul (Dompdf mengalir kiri-ke-kanan), dan
+        // penanda memakai kelas letter-ar berlebar tetap agar sejajar.
         $this->assertMatchesRegularExpression(
-            '/<span class="letter">[^<]*<\/span>\s*<span class="ar">/u',
+            '/<span class="letter letter-ar">[^<]*<\/span>\s*<span class="ar">/u',
             $html,
-            'Huruf opsi mendahului teks agar berada di tepi kanan sel.'
+            'Huruf opsi mendahului teks dan memakai lebar tetap agar sejajar.'
         );
         $this->assertStringContainsString('padding: 0 0 0 2mm', $html, 'Jarak antar kolom di kiri sel (RTL).');
         $this->assertStringContainsString('text-align: right', $html);

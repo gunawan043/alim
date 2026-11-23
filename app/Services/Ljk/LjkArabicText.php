@@ -185,6 +185,7 @@ final class LjkArabicText
             if ($currentArabic === null || $isArabic === $currentArabic) {
                 $current .= $char;
                 $currentArabic = $isArabic;
+
                 continue;
             }
 
@@ -227,11 +228,13 @@ final class LjkArabicText
             // Harakat: teruskan apa adanya (menempel pada huruf sebelumnya).
             if (in_array($code, self::TRANSPARENT, true)) {
                 $out[] = $chars[$i];
+
                 continue;
             }
 
             if (! isset(self::FORMS[$code])) {
                 $out[] = $chars[$i];
+
                 continue;
             }
 
@@ -243,6 +246,7 @@ final class LjkArabicText
                 $forms = self::LAM_ALEF[$codes[$i + 1]];
                 $out[] = mb_chr($prevJoins ? $forms[1] : $forms[0], 'UTF-8');
                 $i++; // lewati alef
+
                 continue;
             }
 
@@ -304,6 +308,9 @@ final class LjkArabicText
     /**
      * Balik urutan gugus (huruf + harakat) — harakat tetap menempel pada
      * hurufnya sehingga terbaca benar pada perender kiri-ke-kanan.
+     *
+     * Deret ANGKA diperlakukan sebagai satu gugus utuh dan digitnya TIDAK
+     * dibalik: pada teks Arab, "٢٠٢٦" harus tetap terbaca 2026, bukan 6202.
      */
     private static function reverseClusters(string $shaped): string
     {
@@ -316,6 +323,17 @@ final class LjkArabicText
 
             if (in_array($code, self::TRANSPARENT, true) && $current !== '') {
                 $current .= $char; // harakat menempel pada huruf sebelumnya
+
+                continue;
+            }
+
+            // Deret angka menempel menjadi satu gugus agar urutannya utuh.
+            $isDigit = self::isDigit($code);
+            $currentIsDigit = $current !== '' && self::isDigit(mb_ord(mb_substr($current, 0, 1), 'UTF-8'));
+
+            if ($isDigit && $currentIsDigit) {
+                $current .= $char;
+
                 continue;
             }
 
@@ -330,5 +348,16 @@ final class LjkArabicText
         }
 
         return implode('', array_reverse($clusters));
+    }
+
+    /**
+     * Angka Arab-Indic (٠-٩), Arab-Indic ekstensi (۰-۹), dan Latin (0-9).
+     * Deret angka tidak boleh dibalik saat menyusun urutan visual RTL.
+     */
+    private static function isDigit(int $code): bool
+    {
+        return ($code >= 0x0660 && $code <= 0x0669)   // ٠-٩
+            || ($code >= 0x06F0 && $code <= 0x06F9)   // ۰-۹
+            || ($code >= 0x0030 && $code <= 0x0039);  // 0-9
     }
 }
