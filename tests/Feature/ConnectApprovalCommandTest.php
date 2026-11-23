@@ -743,6 +743,94 @@ class ConnectApprovalCommandTest extends TestCase
             ->assertJsonPath('data.duplicate', true);
     }
 
+    public function test_idempotency_key_kosong_diperlakukan_sebagai_tidak_dikirim(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->withHeaders($this->headers(['Idempotency-Key' => '   ']))
+            ->postJson('/api/connect/v1/approval-commands', $this->payload())
+            ->assertOk()
+            ->assertJsonPath('data.outcome', 'applied');
+    }
+
+    public function test_idempotency_key_beda_satu_karakter_ditolak_bukan_dianggap_sama(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $payload = $this->payload();
+
+        // Nilai yang hanya berselisih satu karakter tetap harus ditolak: perbandingan
+        // memakai nilai penuh, sedangkan pemotongan hanya berlaku pada context respons.
+        $this->withHeaders($this->headers([
+            'Idempotency-Key' => $payload['command_id'].'x',
+        ]))->postJson('/api/connect/v1/approval-commands', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('errors.code', 'idempotency_key_mismatch');
+
+        $this->assertSame(0, ApprovalCommand::query()->count());
+    }
+
+    /**
+     * Header berbeda tetapi body identik: dua command_id untuk satu pesan WhatsApp
+     * yang sama. Pemeriksaan awal hanya melihat command_id, jadi yang menangkap ini
+     * adalah indeks unik `external_message_id` di dalam transaksi.
+     */
+    public function test_header_berbeda_dengan_body_sama_ditolak_tanpa_keputusan_ganda(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $permit = $this->makePermit();
+        $payload = $this->payload(['request_id' => $permit->id]);
+
+        // Baris "pemenang" dibuat langsung: ini keadaan yang ditinggalkan proses lain
+        // tepat sebelum pemeriksaan awal pemanggil berjalan. Payload di-hash dengan
+        // cara yang sama seperti service, karena replay yang sah harus lolos.
+        ApprovalCommand::create([
+            'command_id' => $payload['command_id'],
+            'idempotency_key' => $payload['command_id'],
+            'permit_id' => $permit->id,
+            'actor_user_id' => $head->id,
+            'actor_external_identity' => '628111222333',
+            'decision' => 'approved',
+            'source' => 'whatsapp',
+            'external_message_id' => $payload['external_message_id'],
+            'message_text' => $payload['message_text'],
+            'payload_hash' => hash('sha256', (string) json_encode([
+                'command_id' => $payload['command_id'],
+                'request_id' => $payload['request_id'],
+                'decision' => 'approved',
+                'approved_duration_days' => 2,
+                'actor_external_id' => '628111222333',
+                'actor_core_person_id' => null,
+                'source' => 'whatsapp',
+                'external_message_id' => $payload['external_message_id'],
+                'message_text' => $payload['message_text'],
+                'notes' => null,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)),
+            'response_code' => 200,
+            'response_body' => ['outcome' => 'applied', 'duplicate' => false, 'status' => 'approved'],
+            'processed_at' => now(),
+        ]);
+
+        $racedCommandId = (string) Str::uuid();
+
+        $this->withHeaders($this->headers(['Idempotency-Key' => $racedCommandId]))
+            ->postJson('/api/connect/v1/approval-commands', array_merge($payload, [
+                'command_id' => $racedCommandId,
+            ]))
+            ->assertStatus(409)
+            ->assertJsonPath('errors.code', 'external_message_replayed');
+
+        $this->assertSame(1, ApprovalCommand::query()->count());
+        $this->assertSame('pending', $permit->fresh()->status);
+    }
+
     // ── Header kontrak: X-ALIM-API-Version ────────────────────────────────
 
     public function test_versi_api_tidak_dikenal_ditolak_422_bukan_500(): void

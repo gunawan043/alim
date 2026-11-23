@@ -26,8 +26,17 @@ Header:
 |---|---|---|
 | `X-ALIM-CONNECT-APPROVAL-KEY` | Ya | Kunci service-to-service khusus approval (atau `Authorization: Bearer <key>`) |
 | `Accept` | Ya | `application/json` |
-| `Content-Type` | Ya | `application/json` |
+| `Content-Type` | Ya | `application/json`; selain itu `415 unsupported_media_type` |
 | `X-Request-Id` | Tidak | Untuk korelasi audit |
+| `Idempotency-Key` | Tidak | Bila dikirim, nilainya **harus sama dengan `command_id`** di body. Selisih (termasuk selisih satu karakter) → `422 idempotency_key_mismatch`, tanpa perubahan data. Header dikembalikan pada respons sukses dan disimpan di `approval_commands.idempotency_key`. Nilai kosong/spasi diperlakukan sebagai header tidak dikirim |
+| `X-ALIM-API-Version` | Tidak | Nilai yang didukung: `1`. Nilai lain → `422 unsupported_api_version` (bukan `500`, bukan diabaikan). Kosong = kompatibel. Disimpan di `approval_commands.api_version` |
+
+**Mengapa header wajib sama dengan `command_id`.** Idempotensi Core berbasis `command_id` di body.
+Bila header membawa kunci yang berbeda, Core akan memiliki dua jalur idempotensi yang dapat
+menyimpang: satu kunci bisa menunjuk command lain, atau replay sah tiba dengan kunci baru dan
+kehilangan hasil yang sudah tersimpan. Dengan mengikat keduanya, header tidak menambah semantik baru —
+ia hanya membuat proxy/gateway di depan Core dapat menolak replay tanpa membaca body, dan Core tetap
+memutuskan berdasarkan `command_id`.
 
 Konfigurasi Core:
 
@@ -145,6 +154,22 @@ Key ini tidak berlaku untuk POS/Recruitment atau API master.
 - `external_message_id` yang sudah dipakai command lain → HTTP 409 `external_message_replayed`.
 - Unique constraint database + penanganan race memastikan tidak ada dua keputusan.
 - Timeout setelah commit: Connect harus retry dengan `command_id` dan `external_message_id` yang sama; Core mengembalikan hasil sebelumnya.
+
+### 6.1 Matriks header dan body
+
+Lima kombinasi yang mungkin, beserta jawabannya. Setiap baris punya test Feature yang menjalankannya
+(`tests/Feature/ConnectApprovalCommandTest.php`).
+
+| Header `Idempotency-Key` | Body | Jawaban | Kode |
+|---|---|---|---|
+| = `command_id`, body identik | replay sah | `200`, `duplicate: true`, `outcome: duplicate`, status permit tidak berubah, satu baris `approval_commands` | — |
+| = `command_id`, body berbeda | konflik payload | `409 command_id_reused`; payload tidak diterapkan | `command_id_reused` |
+| ≠ `command_id` | apa pun | ditolak **sebelum** body diproses: tidak ada command, permit tetap `pending` | `422 idempotency_key_mismatch` |
+| tidak dikirim / kosong | body baru | idempoten lewat `command_id` seperti biasa | — |
+| berbeda (command_id baru), `external_message_id` sama | pesan yang sama dikirim sebagai command berbeda | `409 external_message_replayed`; permit tidak diputuskan dua kali | `external_message_replayed` |
+
+Baris terakhir adalah kasus yang tidak tertangkap pemeriksaan awal (yang hanya melihat `command_id`):
+yang menghentikannya adalah indeks unik `external_message_id` di dalam transaksi.
 
 ## 7. Error
 
