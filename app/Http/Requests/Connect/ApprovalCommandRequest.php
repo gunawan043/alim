@@ -37,7 +37,7 @@ class ApprovalCommandRequest extends FormRequest
                 'nullable',
                 'integer',
                 'min:1',
-                'max:'.(int) config('connect_approval.max_duration_days', 365),
+                'max:'.(int) config('services.connect_approval.max_duration_days', 365),
                 'required_if:decision,approved',
                 'prohibited_if:decision,rejected,needs_clarification,expired,cancelled',
             ],

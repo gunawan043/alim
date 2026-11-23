@@ -32,6 +32,8 @@ class ApprovalCommand extends Model
 
     protected $fillable = [
         'command_id',
+        'idempotency_key',
+        'api_version',
         'permit_id',
         'actor_user_id',
         'actor_external_identity',

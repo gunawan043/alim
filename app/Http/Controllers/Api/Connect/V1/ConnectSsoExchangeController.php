@@ -29,15 +29,24 @@ class ConnectSsoExchangeController extends Controller
 
             return $this->ok($data, 'Handoff berhasil ditukar.');
         } catch (ConnectSsoException $e) {
+            // Envelope sama dengan Approval Command API: Connect membaca
+            // `errors.code` dan `errors.context`, bukan field sejajar.
             return $this->fail(
                 $e->getMessage(),
                 $e->httpStatus,
-                array_merge(['code' => $e->errorCode], $e->context)
+                [
+                    'code' => $e->errorCode,
+                    'context' => $e->context,
+                ]
             );
         } catch (Throwable $e) {
             report($e);
 
-            return $this->serverError($e, 'Pertukaran handoff gagal.');
+            return $this->fail(
+                'Pertukaran handoff gagal.',
+                500,
+                ['code' => 'core_error', 'context' => null]
+            );
         }
     }
 }

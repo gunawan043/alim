@@ -43,6 +43,7 @@ use App\Http\Middleware\ShareRoleId;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustHosts;
 use App\Http\Middleware\TrustProxies;
+use App\Http\Middleware\ValidateConnectApprovalHeaders;
 use App\Http\Middleware\VerifyConnectApprovalApiKey;
 use App\Http\Middleware\VerifyConnectSsoApiKey;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -168,6 +169,7 @@ class Kernel extends HttpKernel
         'recruitment.api-key' => VerifyRecruitmentApiKey::class,
         'connect.approval-key' => VerifyConnectApprovalApiKey::class,
         'connect.sso-key' => VerifyConnectSsoApiKey::class,
+        'connect.contract-headers' => ValidateConnectApprovalHeaders::class,
         'api.user-scope' => EnsureApiUserScope::class,
         'gtk.access' => EnsureGtkAccess::class,
         'keamanan.access' => EnsureSecurityAccess::class,

@@ -505,7 +505,7 @@ Route::middleware(['connect.sso-key', 'throttle:60,1'])
         Route::post('sso/exchange', [ConnectSsoExchangeController::class, '__invoke']);
     });
 
-Route::middleware(['connect.approval-key', 'throttle:60,1'])
+Route::middleware(['connect.approval-key', 'connect.contract-headers', 'throttle:60,1'])
     ->prefix('connect/v1')
     ->group(function () {
         Route::post('approval-commands', [ApprovalCommandController::class, 'store']);

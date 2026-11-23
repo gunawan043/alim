@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\ConnectSsoHandoff;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\Connect\ConnectHandoffService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -300,5 +301,125 @@ class WhatsAppConnectSsoTest extends TestCase
         $failed = AuditLog::where('action', 'WHATSAPP_CONNECT_SSO_REDEEM_FAILED')->first();
         $this->assertNotNull($failed);
         $this->assertStringNotContainsString('not-a-real-code', json_encode($failed->metadata));
+    }
+
+    // ── Kontrak API exchange (untuk staging) ──────────────────────────────
+
+    public function test_exchange_core_user_id_konsisten_saat_replay_gagal(): void
+    {
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        // Redemption pertama mengembalikan identitas; redemption kedua (kode
+        // terpakai) tidak boleh lagi mengembalikan identitas apa pun.
+        $this->exchange($this->exchangePayload($data['code']))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.core_user_id', $user->id);
+
+        $this->exchange($this->exchangePayload($data['code']))
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('data', null)
+            ->assertJsonPath('errors.code', 'code_already_used');
+    }
+
+    public function test_success_envelope_kompatibel_dengan_connect(): void
+    {
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        $body = $this->exchange($this->exchangePayload($data['code']))
+            ->assertOk()
+            ->json();
+
+        $this->assertTrue($body['success']);
+        $this->assertNull($body['errors']);
+        $this->assertArrayHasKey('meta', $body);
+        $this->assertArrayHasKey('timestamp', $body['meta']);
+
+        foreach (['core_user_id', 'name', 'audience', 'scope', 'issued_at', 'redeemed_at'] as $field) {
+            $this->assertArrayHasKey($field, $body['data'], "Field {$field} wajib ada.");
+        }
+    }
+
+    public function test_error_envelope_selalu_punya_code_dan_context(): void
+    {
+        $body = $this->exchange($this->exchangePayload('kode-tidak-ada'))
+            ->assertStatus(404)
+            ->json();
+
+        $this->assertFalse($body['success']);
+        $this->assertNull($body['data']);
+        $this->assertSame('code_not_found', $body['errors']['code']);
+        $this->assertArrayHasKey('context', $body['errors']);
+    }
+
+    public function test_kode_kosong_ditolak_422(): void
+    {
+        $this->exchange(['code' => '', 'audience' => 'connect', 'scope' => 'whatsapp.embed'])
+            ->assertStatus(422);
+    }
+
+    public function test_audience_dan_scope_wajib_sesuai_kontrak(): void
+    {
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        // Audience/scope salah tidak boleh menghabiskan kode handoff.
+        $this->exchange([
+            'code' => $data['code'],
+            'audience' => 'core',
+            'scope' => 'whatsapp.embed',
+        ])->assertStatus(403)->assertJsonPath('errors.code', 'audience_mismatch');
+
+        $this->assertNull(ConnectSsoHandoff::firstOrFail()->used_at);
+
+        $this->exchange($this->exchangePayload($data['code']))->assertOk();
+    }
+
+    public function test_kode_expired_tidak_dapat_ditukar_setelah_ttl_habis(): void
+    {
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        $this->travel((int) config('services.connect_sso.handoff_ttl') + 1)->seconds();
+
+        $this->exchange($this->exchangePayload($data['code']))
+            ->assertStatus(410)
+            ->assertJsonPath('errors.code', 'code_expired');
+
+        $this->assertNull(ConnectSsoHandoff::firstOrFail()->used_at);
+    }
+
+    public function test_pengguna_nonaktif_ditolak_saat_exchange(): void
+    {
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        $user->update(['is_active' => false]);
+
+        $this->exchange($this->exchangePayload($data['code']))
+            ->assertStatus(403)
+            ->assertJsonPath('errors.code', 'user_inactive');
+    }
+
+    public function test_kegagalan_tak_terduga_dibalas_500_tanpa_detail(): void
+    {
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        // Paksa kegagalan di luar ConnectSsoException: service dibungkus
+        // sehingga setiap Throwable lain jatuh ke cabang 500.
+        $this->mock(ConnectHandoffService::class, function ($mock) {
+            $mock->shouldReceive('redeem')->andThrow(new \RuntimeException('db down'));
+        });
+
+        $response = $this->exchange($this->exchangePayload($data['code']))
+            ->assertStatus(500)
+            ->assertJsonPath('errors.code', 'core_error');
+
+        $this->assertStringNotContainsString('db down', $response->getContent());
+        $this->assertStringNotContainsString('Exception', (string) $response->getContent());
     }
 }

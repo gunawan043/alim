@@ -661,4 +661,183 @@ class ConnectApprovalCommandTest extends TestCase
 
         $this->assertSame($previous->id, Auth::id());
     }
+
+    // ── Header kontrak: Idempotency-Key ───────────────────────────────────
+
+    public function test_idempotency_key_sama_dengan_command_id_diterima(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $payload = $this->payload();
+        $key = $payload['command_id'];
+
+        $this->withHeaders($this->headers([
+            'Idempotency-Key' => $key,
+            'X-ALIM-API-Version' => '1',
+        ]))->postJson('/api/connect/v1/approval-commands', $payload)
+            ->assertOk()
+            ->assertHeader('Idempotency-Key', $key)
+            ->assertJsonPath('data.outcome', 'applied');
+
+        $command = ApprovalCommand::query()->where('command_id', $key)->firstOrFail();
+        $this->assertSame($key, $command->idempotency_key);
+        $this->assertSame('1', $command->api_version);
+    }
+
+    public function test_replay_dengan_idempotency_key_mengembalikan_duplikat(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $payload = $this->payload();
+        $headers = $this->headers([
+            'Idempotency-Key' => $payload['command_id'],
+            'X-ALIM-API-Version' => '1',
+        ]);
+
+        $first = $this->withHeaders($headers)->postJson('/api/connect/v1/approval-commands', $payload)->assertOk();
+
+        $second = $this->withHeaders($headers)->postJson('/api/connect/v1/approval-commands', $payload);
+
+        $second->assertOk()
+            ->assertJsonPath('data.outcome', 'duplicate')
+            ->assertJsonPath('data.duplicate', true)
+            ->assertJsonPath('data.status', $first->json('data.status'))
+            ->assertJsonPath('data.expected_return_datetime', $first->json('data.expected_return_datetime'));
+
+        $this->assertSame(1, ApprovalCommand::query()->count());
+    }
+
+    public function test_idempotency_key_berbeda_dari_command_id_ditolak(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $payload = $this->payload();
+
+        $this->withHeaders($this->headers(['Idempotency-Key' => (string) Str::uuid()]))
+            ->postJson('/api/connect/v1/approval-commands', $payload)
+            ->assertStatus(422)
+            ->assertJsonPath('errors.code', 'idempotency_key_mismatch');
+
+        $this->assertSame(0, ApprovalCommand::query()->count());
+        $this->assertSame('pending', DormitoryPermit::findOrFail($payload['request_id'])->status);
+    }
+
+    public function test_tanpa_idempotency_key_tetap_idempoten_lewat_command_id(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $payload = $this->payload();
+
+        $this->withHeaders($this->headers())->postJson('/api/connect/v1/approval-commands', $payload)->assertOk();
+
+        $this->withHeaders($this->headers())->postJson('/api/connect/v1/approval-commands', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.duplicate', true);
+    }
+
+    // ── Header kontrak: X-ALIM-API-Version ────────────────────────────────
+
+    public function test_versi_api_tidak_dikenal_ditolak_422_bukan_500(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->withHeaders($this->headers(['X-ALIM-API-Version' => '2']))
+            ->postJson('/api/connect/v1/approval-commands', $this->payload())
+            ->assertStatus(422)
+            ->assertJsonPath('errors.code', 'unsupported_api_version');
+    }
+
+    public function test_tanpa_header_versi_tetap_diterima(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload())
+            ->assertOk();
+    }
+
+    // ── Header kontrak: content-type ──────────────────────────────────────
+
+    public function test_content_type_selain_json_ditolak_415(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->call(
+            'POST',
+            '/api/connect/v1/approval-commands',
+            [],
+            [],
+            [],
+            array_merge($this->transformHeadersToServerVars($this->headers()), [
+                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+                'HTTP_ACCEPT' => 'application/json',
+            ]),
+            http_build_query($this->payload())
+        )->assertStatus(415)
+            ->assertJsonPath('errors.code', 'unsupported_media_type');
+    }
+
+    // ── Error mapping: kontrak §7 ────────────────────────────────────────
+
+    public function test_permit_tidak_ditemukan_tanpa_membocorkan_struktur(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload([
+                'request_id' => (string) Str::uuid(),
+            ]))
+            ->assertStatus(404)
+            ->assertJsonPath('errors.code', 'permit_not_found')
+            ->assertJsonPath('data', null);
+    }
+
+    public function test_kegagalan_tak_terduga_dibalas_5xx_bukan_4xx(): void
+    {
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->mock(LeaveWorkflowService::class, function ($mock) {
+            $mock->shouldReceive('approve')->andThrow(new \RuntimeException('db down'));
+        });
+
+        $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload())
+            ->assertStatus(500)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('errors.code', 'core_error');
+    }
+
+    public function test_max_duration_days_dari_config_dihormati(): void
+    {
+        config(['services.connect_approval.max_duration_days' => 3]);
+
+        $head = User::factory()->create(['is_active' => true]);
+        $this->assignHead($head);
+        $this->mapActor($head);
+
+        $this->withHeaders($this->headers())
+            ->postJson('/api/connect/v1/approval-commands', $this->payload([
+                'approved_duration_days' => 4,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonPath('errors.code', 'validation_failed');
+    }
 }

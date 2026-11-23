@@ -40,9 +40,10 @@ class ApprovalCommandService
 
     /**
      * @param  array<string, mixed>  $payload
+     * @param  array{idempotency_key?: ?string, api_version?: ?string}  $context
      * @return array<string, mixed>
      */
-    public function handle(array $payload): array
+    public function handle(array $payload, array $context = []): array
     {
         $commandId = trim((string) $payload['command_id']);
         $permitId = (string) $payload['request_id'];
@@ -52,6 +53,12 @@ class ApprovalCommandService
         $externalIdentity = ConnectActorIdentity::normalizeIdentity((string) $payload['actor_external_id']);
         $messageText = $this->redactMessageText($payload['message_text'] ?? null);
         $note = $payload['notes'] ?? null;
+        $idempotencyKey = isset($context['idempotency_key']) && $context['idempotency_key'] !== ''
+            ? (string) $context['idempotency_key']
+            : $commandId;
+        $apiVersion = isset($context['api_version']) && $context['api_version'] !== ''
+            ? (string) $context['api_version']
+            : null;
 
         $payloadHash = $this->payloadHash($payload, $externalIdentity);
 
@@ -151,7 +158,8 @@ class ApprovalCommandService
         try {
             return DB::transaction(function () use (
                 $permit, $decision, $days, $actor, $externalIdentity,
-                $commandId, $source, $externalMessageId, $messageText, $note, $payloadHash
+                $commandId, $source, $externalMessageId, $messageText, $note, $payloadHash,
+                $idempotencyKey, $apiVersion
             ) {
                 $locked = DormitoryPermit::query()->whereKey($permit->id)->lockForUpdate()->first();
 
@@ -206,6 +214,8 @@ class ApprovalCommandService
                     'message_text_hash' => $messageText !== null
                         ? hash('sha256', (string) $messageText)
                         : null,
+                    'idempotency_key' => $idempotencyKey,
+                    'api_version' => $apiVersion,
                 ], required: true);
 
                 $body = $this->appliedBody(
@@ -221,6 +231,8 @@ class ApprovalCommandService
 
                 ApprovalCommand::create([
                     'command_id' => $commandId,
+                    'idempotency_key' => $idempotencyKey,
+                    'api_version' => $apiVersion,
                     'permit_id' => $decided->id,
                     'actor_user_id' => $actor->id,
                     'actor_external_identity' => $externalIdentity,
@@ -385,7 +397,7 @@ class ApprovalCommandService
         }
 
         $days = (int) $value;
-        $max = (int) config('connect_approval.max_duration_days', 365);
+        $max = (int) config('services.connect_approval.max_duration_days', 365);
 
         if ($days < 1 || $days > $max) {
             throw ApprovalCommandException::invalid(
