@@ -555,6 +555,45 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('opts-auto', $html);
     }
 
+    public function test_tiap_baris_opsi_berisi_kolom_penuh_tanpa_colspan(): void
+    {
+        // Dompdf membagi lebar tabel dari proporsi `width` sel, bukan grid
+        // posisi. `colspan` membuat kolom baris berikutnya bergeser (C mulai
+        // 113,2pt padahal seharusnya 111,7pt), `<colgroup>` dan
+        // `table-layout: fixed` juga tidak dihormati. Satu-satunya bentuk
+        // yang menghasilkan kolom lurus sejajar adalah SATU TABEL PER BARIS
+        // berisi tepat N <td> berlebar sama, tanpa colspan.
+        $opsi = $this->opsi([
+            'Hasil dari 3.475 + 2.860 - 1.925 adalah ....',
+            '4.410',
+            '4.510',
+            '4.610',
+        ]);
+        $layout = app(SoalOpsiLayout::class);
+
+        $html = view('ljk.partials.soal-opsi', [
+            'block' => ['opsi' => $opsi, 'opsiLayout' => $layout->layout($opsi, 157.6, 11.0)],
+            'rtl' => false,
+            'maxOptions' => 4,
+            'colWidth' => 25,
+            'opsiWidthMm' => 157.6,
+        ])->render();
+
+        $this->assertStringNotContainsString('colspan', $html, 'Opsi otomatis tidak memakai colspan.');
+
+        preg_match_all('/<tr>(.*?)<\/tr>/s', $html, $rows);
+        $this->assertNotEmpty($rows[1]);
+
+        foreach ($rows[1] as $i => $tr) {
+            $tdCount = preg_match_all('/<td[^>]*style="width: [\d.]+mm/', $tr);
+            $this->assertSame(4, $tdCount, 'Baris ke-'.($i + 1).' harus berisi tepat 4 kolom.');
+        }
+
+        // Pilihan A panjang → 3 jatah, B 1 jatah; C dan D turun baris
+        // dan tetap mulai di kolom ke-1.
+        $this->assertCount(2, $rows[1], 'A panjang memaksa dua baris.');
+    }
+
     public function test_opsi_mulai_di_titik_yang_sama_lintas_baris(): void
     {
         // "posisinya harus sejajar": pilihan pertama baris ke-2 dan seterusnya
