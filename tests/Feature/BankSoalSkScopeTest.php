@@ -455,7 +455,7 @@ class BankSoalSkScopeTest extends TestCase
 
     public function test_kop_penuh_selebar_margin_dan_bisa_diperkecil(): void
     {
-        $render = function (int $pct, bool $rule): string {
+        $render = function (int $pct, bool $rule, float $kopHeightMm = 18.0): string {
             return view('ljk.soal-pdf', [
                 'judul' => ['NASKAH SOAL', ''],
                 'identityRows' => [],
@@ -472,20 +472,26 @@ class BankSoalSkScopeTest extends TestCase
                 'hasArabic' => false,
                 'paper' => ['width_mm' => 210.0, 'height_mm' => 297.0, 'label' => 'A4'],
                 'marginMm' => ['top' => 5, 'right' => 20, 'bottom' => 10, 'left' => 25],
-                'letterhead' => ['kopBase64' => 'data:image/png;base64,AAA', 'kopWidthMm' => 145.0, 'kopHeightMm' => 18.0],
+                'letterhead' => ['kopBase64' => 'data:image/png;base64,AAA', 'kopWidthMm' => 145.0, 'kopHeightMm' => $kopHeightMm],
                 'showKop' => true,
                 'kopWidthPct' => $pct,
                 'kopRule' => $rule,
             ])->render();
         };
 
-        // 210 - 25 - 20 = 165 mm penuh.
+        // 210 - 25 - 20 = 165 mm; proporsi 145:18 → 20,48 mm melebihi batas
+        // 20 mm, sehingga lebar menyusut agar tinggi tetap 20 mm.
         $full = $render(100, false);
-        $this->assertStringContainsString('width: 165mm', $full);
-        $this->assertStringContainsString('height: 20.48mm', $full); // proporsi 145:18 dijaga
+        $this->assertStringContainsString('width: 161.11mm', $full);
+        $this->assertStringContainsString('height: 20mm', $full);
         $this->assertStringNotContainsString('kop-rule"></div>', $full);
 
-        $half = $render(60, true);
+        // Kop pendek (145:6) muat penuh 165 mm tanpa terpotong.
+        $flat = $render(100, false, 6.0);
+        $this->assertStringContainsString('width: 165mm', $flat);
+        $this->assertStringContainsString('height: 6.83mm', $flat);
+
+        $half = $render(60, true, 6.0);
         $this->assertStringContainsString('width: 99mm', $half);
         $this->assertStringContainsString('kop-rule"></div>', $half);
     }

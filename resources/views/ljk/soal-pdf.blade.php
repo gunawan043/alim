@@ -171,15 +171,23 @@
          Bila belum ada, area kop dikosongkan (tidak memakai teks). --}}
     @if($showKop && ! empty($letterhead['kopBase64']))
         @php
-            // Lebar kop mengikuti persentase, TINGGI dihitung dari proporsi
-            // gambar asli agar tidak gepeng (Dompdf tidak menghormati height:auto).
+            // Lebar kop mengikuti persentase area margin, tetapi TINGGI tetap
+            // dibatasi agar kop tidak menghabiskan halaman. Bila tinggi
+            // melebihi batas, lebar ikut menyusut (proporsi terjaga).
             $kopAspect = (float) ($letterhead['kopHeightMm'] ?? 0) / max(0.0001, (float) ($letterhead['kopWidthMm'] ?? 145));
-            $kopWidthMm = ($paper['width_mm'] - $marginMm['left'] - $marginMm['right']) * ($kopWidthPct / 100);
-            $kopHeightMm = round($kopWidthMm * $kopAspect, 2);
+            $areaWidthMm = $paper['width_mm'] - $marginMm['left'] - $marginMm['right'];
+            $kopWidthMm = $areaWidthMm * ($kopWidthPct / 100);
+            $kopMaxHeightMm = (float) config('ljk.template.max_kop_height_mm', 20.0);
+
+            $kopHeightMm = $kopWidthMm * $kopAspect;
+            if ($kopAspect > 0 && $kopHeightMm > $kopMaxHeightMm) {
+                $kopWidthMm = round($kopMaxHeightMm / $kopAspect, 2);
+                $kopHeightMm = $kopMaxHeightMm;
+            }
         @endphp
         <div class="kop">
             <img class="kop-image" src="{{ $letterhead['kopBase64'] }}"
-                 style="width: {{ round($kopWidthMm, 2) }}mm; height: {{ $kopHeightMm }}mm;">
+                 style="width: {{ round($kopWidthMm, 2) }}mm; height: {{ round($kopHeightMm, 2) }}mm;">
             @if($kopRule)
                 <div class="kop-rule"></div>
             @endif
