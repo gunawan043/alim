@@ -189,29 +189,18 @@
                 </div>
                 <div class="card-body">
                     @if($bank->soal->isNotEmpty())
-                        <form method="POST" action="{{ route('user.soal-saya.print', ['userId' => $userId]) }}" target="_blank" class="mb-3">
-                            @csrf
+                        <form method="GET" action="{{ route('user.soal-saya.cetak', ['userId' => $userId]) }}" class="mb-3" id="bankCetakForm">
+                            <input type="hidden" name="bank_id" value="{{ $bank->id }}">
                             <div class="d-flex flex-wrap align-items-center gap-3 p-3 bg-light rounded border">
-                                <strong class="small mb-0">Preview &amp; cetak PDF</strong>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="form-check-input" type="checkbox" name="with_key" value="1" id="bankWithKey">
-                                    <label class="form-check-label small" for="bankWithKey">Sertakan kunci &amp; pembahasan</label>
-                                </div>
-                                <div class="form-check form-check-inline mb-0">
-                                    <input class="form-check-input" type="checkbox" name="kop" value="1" id="bankWithKop" checked>
-                                    <label class="form-check-label small" for="bankWithKop">Kop sekolah</label>
-                                </div>
+                                <strong class="small mb-0">Cetak naskah</strong>
                                 <input type="text" name="judul" class="form-control form-control-sm" style="max-width:260px"
                                        value="NASKAH SOAL {{ strtoupper($bank->subject?->name ?? '') }}">
-                                <button type="submit" class="btn btn-sm btn-light border">
-                                    <i class="ri-printer-line me-1"></i>Cetak cepat
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="ri-printer-line me-1"></i>Cetak naskah
                                 </button>
-                                <a href="{{ route('user.soal-saya.cetak', ['userId' => $userId, 'bank_id' => $bank->id]) }}"
-                                   class="btn btn-sm btn-primary">
-                                    <i class="ri-settings-3-line me-1"></i>Atur tata letak
-                                </a>
                                 <span class="text-muted small">
-                                    Cetak cepat memakai format resmi. Untuk margin, kertas, dan pratinjau, pakai Atur tata letak.
+                                    Judul, tabel keterangan, penanaman karakter, keterangan soal, margin, dan
+                                    pratinjau diatur di halaman cetak naskah.
                                 </span>
                             </div>
 

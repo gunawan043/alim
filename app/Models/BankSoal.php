@@ -3,17 +3,28 @@
 namespace App\Models;
 
 use App\Models\Traits\LogsDeletion;
+use App\Services\SubjectGroupResolver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class BankSoal extends Model
 {
     use HasFactory, LogsDeletion, SoftDeletes;
+
+    /**
+     * Penanda bank penyimpan otomatis milik Soal Saya.
+     *
+     * Soal wajib punya bank (kolom `bank_soal_id` NOT NULL), tetapi guru
+     * tidak perlu melihat bank itu sebagai koleksi. Bank dengan deskripsi
+     * berawalan penanda ini disembunyikan dari menu Bank Soal.
+     */
+    public const AUTO_BANK_MARKER = '[soal-saya]';
 
     protected $table = 'bank_soal';
 
@@ -137,6 +148,29 @@ class BankSoal extends Model
      * Akses bank: milik sendiri, publik, internal sekolah, atau repositori
      * terpusat (central/public_pool) lintas satuan pendidikan.
      */
+    /**
+     * Bank soal yang tampil sebagai koleksi bersama di menu Bank Soal.
+     *
+     * Bank pribadi otomatis milik Soal Saya (dibuat QuickSoalService) bukan
+     * koleksi — soal pribadi dikelola di menu Soal Saya, sehingga bank
+     * penyimpan itu tidak boleh muncul ganda di daftar Bank Soal.
+     */
+    public function scopeKoleksi($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('deskripsi')
+                ->orWhere('deskripsi', 'not like', self::AUTO_BANK_MARKER.'%');
+        });
+    }
+
+    /**
+     * Apakah bank ini bank penyimpan otomatis milik Soal Saya.
+     */
+    public function isAutoBank(): bool
+    {
+        return str_starts_with((string) $this->deskripsi, self::AUTO_BANK_MARKER);
+    }
+
     public function scopeAccessibleBy($query, string $userId, ?string $schoolId = null)
     {
         // Jaga kompatibilitas instalasi yang belum menjalankan migrasi
@@ -144,12 +178,12 @@ class BankSoal extends Model
         // Cache daftar kolom agar pemanggilan berulang (per baris asesmen)
         // tidak melakukan introspeksi skema berkali-kali.
         static $columnCache = null;
-        $columns = $columnCache ??= \Illuminate\Support\Facades\Schema::getColumnListing($this->getTable());
+        $columns = $columnCache ??= Schema::getColumnListing($this->getTable());
         $has = static fn (string $column): bool => in_array($column, $columns, true);
 
         // Rumpun mapel yang menjadi kewenangan guru (dari tugas mengajar aktif).
         $groupIds = $has('shared_scope') && $has('is_central')
-            ? app(\App\Services\SubjectGroupResolver::class)
+            ? app(SubjectGroupResolver::class)
                 ->groupsForTeacher($userId)
                 ->pluck('id')
                 ->all()

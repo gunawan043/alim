@@ -18,6 +18,17 @@
 
     <x-soal-flow current="bank" :scope="$scope ?? null" />
 
+    <div class="alert alert-light border d-flex gap-2 align-items-start">
+        <i class="ri-information-line fs-5 mt-1 text-primary"></i>
+        <div class="small mb-0">
+            <strong>Bank Soal = koleksi bersama.</strong> Halaman ini menampung kumpulan soal yang dibagikan
+            dan dipakai bersama (per mapel/kelas, bisa dipinjam guru serumpun).
+            Soal pribadi yang Anda buat sendiri dikelola di
+            <a href="{{ route('user.soal-saya.index', ['userId' => $userId]) }}">Soal Saya</a> — di sana soal
+            langsung bisa dicetak tanpa perlu membuat bank soal.
+        </div>
+    </div>
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}

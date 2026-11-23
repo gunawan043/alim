@@ -17,6 +17,17 @@
         'schoolName' => 'ALIM', 'address' => '',
         'kopBase64' => null, 'kopHeightMm' => 0.0, 'logoBase64' => null,
     ];
+
+    // ── Gaya tambahan (opsional; LJK & paket tidak mengirimnya) ──────────
+    $judulStyle = $judulStyle ?? ['size' => $fontSizeBase ?? $fontSize, 'bold' => true, 'lineHeight' => 1.2, 'align' => 'center'];
+    $tahunStyle = $tahunStyle ?? $judulStyle;
+    $identitas = $identitas ?? ['show' => true, 'border' => true, 'padding' => 1.2, 'size' => $fontSizeBase ?? $fontSize, 'labelPeserta' => 'Nama Peserta Didik'];
+    $karakterStyle = $karakterStyle ?? ['title' => 'PENANAMAN KARAKTER :', 'size' => $fontSizeBase ?? $fontSize, 'bold' => false, 'lineHeight' => 1.0, 'marker' => 'numbered'];
+    $instruksiStyle = $instruksiStyle ?? ['show' => true, 'size' => $fontSizeBase ?? $fontSize, 'bold' => false, 'italic' => false, 'spacing' => 1.0];
+    $showKop = (bool) ($showKop ?? true);
+    $optionIndent = (float) ($optionIndent ?? 2);
+
+    $marker = ['numbered' => 'decimal', 'bullet' => 'disc', 'dash' => 'none'][$karakterStyle['marker']] ?? 'decimal';
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -53,8 +64,19 @@
     .kop-image { width: 100%; display: block; margin: 0 auto; }
     .kop-rule { border-top: 0.5mm solid #000; margin: 1.2mm 0 1.6mm; }
 
-    .title { text-align: center; font-weight: bold; font-size: {{ $fontSize }}pt; }
-    .title-sub { text-align: center; font-weight: bold; font-size: {{ $fontSize }}pt; margin-top: 0.2em; }
+    .title {
+        text-align: {{ $judulStyle['align'] }};
+        font-weight: {{ $judulStyle['bold'] ? 'bold' : 'normal' }};
+        font-size: {{ $fontSize * $judulStyle['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
+        line-height: {{ $judulStyle['lineHeight'] }};
+    }
+    .title-sub {
+        text-align: {{ $judulStyle['align'] }};
+        font-weight: {{ $tahunStyle['bold'] ? 'bold' : 'normal' }};
+        font-size: {{ $fontSize * $tahunStyle['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
+        line-height: {{ $tahunStyle['lineHeight'] }};
+        margin-top: 0.2em;
+    }
 
     /* Tabel identitas (maks 3 baris, 2 pasang label/nilai per baris) */
     table.identitas {
@@ -64,20 +86,41 @@
         table-layout: fixed;
     }
     table.identitas td {
-        border: 0.3mm solid #000;
-        padding: 0.35mm 1.2mm;
+        border: {{ $identitas['border'] ? '0.3mm solid #000' : 'none' }};
+        padding: 0.35mm {{ $identitas['padding'] }}mm;
         vertical-align: middle;
-        font-size: {{ $fontSize }}pt;
+        font-size: {{ $fontSize * $identitas['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
     }
     table.identitas td.label { width: 21%; }
     table.identitas td.value { width: 29%; }
     .nama-line { display: inline-block; width: 100%; border-bottom: 0.3mm dotted #000; }
 
-    .karakter-title { font-weight: bold; margin-top: 0.5em; }
-    ol.karakter { margin: 0.1em 0 0 1.6em; padding: 0; }
+    .karakter-title {
+        font-weight: bold;
+        margin-top: 0.5em;
+        font-size: {{ $fontSize * $karakterStyle['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
+    }
+    ol.karakter {
+        margin: 0.1em 0 0 1.6em;
+        padding: 0;
+        list-style-type: {{ $marker }};
+        font-size: {{ $fontSize * $karakterStyle['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
+        line-height: {{ $karakterStyle['lineHeight'] }};
+        font-weight: {{ $karakterStyle['bold'] ? 'bold' : 'normal' }};
+    }
+    {{-- Mode "dash": Dompdf tidak punya list-style dash; tandai manual. --}}
+    @if($karakterStyle['marker'] === 'dash')
+        ol.karakter { list-style: none; margin-left: 0.4em; }
+    @endif
     ol.karakter li { margin-bottom: 0; }
 
-    .instruksi { margin-top: 0.6em; }
+    .instruksi {
+        margin-top: 0.6em;
+        font-size: {{ $fontSize * $instruksiStyle['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
+        line-height: {{ $instruksiStyle['spacing'] }};
+        font-weight: {{ $instruksiStyle['bold'] ? 'bold' : 'normal' }};
+        font-style: {{ $instruksiStyle['italic'] ? 'italic' : 'normal' }};
+    }
     .instruksi-arab { margin-top: 0.2em; }
 
     /* Wacana / soal cerita */
@@ -110,7 +153,7 @@
     }
     table.opts td {
         vertical-align: top;
-        padding: 0 1.5mm 0 0;
+        padding: 0 {{ $optionIndent }}mm 0 0;
         font-size: {{ $fontSize }}pt;
         line-height: {{ $lineHeight }};
     }
@@ -124,7 +167,7 @@
     {{-- ── KOP LEMBAGA ───────────────────────────────────────────────────
          Hanya memakai gambar kop yang diunggah di Pengaturan Sekolah.
          Bila belum ada, area kop dikosongkan (tidak memakai teks). --}}
-    @if(! empty($letterhead['kopBase64']))
+    @if($showKop && ! empty($letterhead['kopBase64']))
         <div class="kop">
             <img class="kop-image" src="{{ $letterhead['kopBase64'] }}"
                  style="width: {{ $letterhead['kopWidthMm'] ?? 145 }}mm; height: {{ $letterhead['kopHeightMm'] ?? 18 }}mm;">
@@ -139,13 +182,14 @@
     @endif
 
     {{-- Identitas: tabel maksimal 3 baris ─────────────────────────────── --}}
+    @if($identitas['show'] && ! empty($identityRows))
     <table class="identitas">
         @foreach($identityRows as $row)
             <tr>
                 @foreach($row as [$label, $value])
                     <td class="label">{{ $label }}</td>
                     <td class="value">
-                        @if($label === 'Nama Peserta Didik')
+                        @if($label === $identitas['labelPeserta'])
                             <span class="nama-line">&nbsp;</span>
                         @else
                             {!! LjkArabicText::toHtml($value, false) !!}
@@ -161,19 +205,23 @@
             </tr>
         @endforeach
     </table>
+    @endif
 
     {{-- ── PENANAMAN KARAKTER ──────────────────────────────────────────── --}}
     @if(! empty($karakter))
-        <div class="karakter-title">PENANAMAN KARAKTER :</div>
+        <div class="karakter-title">{{ $karakterStyle['title'] }}</div>
         <ol class="karakter">
             @foreach($karakter as $butir)
-                <li>{!! LjkArabicText::toHtml($butir) !!}</li>
+                <li>
+                    @if($karakterStyle['marker'] === 'dash'){{ '– ' }}@endif
+                    {!! LjkArabicText::toHtml($butir) !!}
+                </li>
             @endforeach
         </ol>
     @endif
 
     {{-- ── INSTRUKSI ───────────────────────────────────────────────────── --}}
-    @if($instruksi !== '')
+    @if($instruksiStyle['show'] && $instruksi !== '')
         <div class="instruksi"><strong>A.</strong> {{ $instruksi }}</div>
         @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
             <div class="instruksi-arab ar-block"><span class="ar">{!! LjkArabicText::toHtml($instruksiArab, false) !!}</span></div>

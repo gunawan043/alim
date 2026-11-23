@@ -71,7 +71,10 @@
         <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
                 <h5 class="card-title mb-0">Soal Saya</h5>
-                <p class="text-muted mb-0 small">Soal yang Anda buat. STS/SAS wajib validasi mayoritas guru serumpun sebelum dicetak.</p>
+                <p class="text-muted mb-0 small">
+                    Soal yang <strong>Anda buat sendiri</strong> — buat, impor, sunting, lalu cetak langsung.
+                    STS/SAS wajib validasi mayoritas guru serumpun sebelum dicetak.
+                </p>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('user.pencarian.index', ['userId' => $userId]) }}" class="btn btn-soft-info"><i class="ri-search-eye-line me-1"></i>Cari Soal &amp; RPM</a>
@@ -113,15 +116,18 @@
                 <div class="col-md-2"><button class="btn btn-primary w-100"><i class="ri-search-line me-1"></i>Filter</button></div>
             </form>
 
-            <form method="POST" action="{{ route('user.soal-saya.print', ['userId' => $userId]) }}" target="_blank">
-                @csrf
+            {{-- Cetak diarahkan ke halaman cetak naskah (pengaturan lengkap +
+                 pratinjau PDF asli), bukan langsung unduh PDF. --}}
+            <form method="GET" action="{{ route('user.soal-saya.cetak', ['userId' => $userId]) }}" id="cetakForm">
                 <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
                     <strong class="small text-muted">Cetak terpilih:</strong>
-                    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="with_key" value="1" id="withKey"><label class="form-check-label small" for="withKey">Sertakan kunci</label></div>
-                    <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="kop" value="1" id="withKop" checked><label class="form-check-label small" for="withKop">Kop sekolah</label></div>
-                    <input type="text" name="judul" class="form-control form-control-sm" style="max-width:260px" placeholder="Judul cetak (opsional)">
-                    <button type="submit" class="btn btn-sm btn-soft-secondary"><i class="ri-printer-line me-1"></i>Cetak PDF</button>
+                    <input type="text" name="judul" class="form-control form-control-sm" style="max-width:260px" placeholder="Judul naskah (opsional)">
+                    <button type="submit" class="btn btn-sm btn-soft-primary">
+                        <i class="ri-printer-line me-1"></i>Cetak naskah
+                    </button>
+                    <span class="text-muted small">Atur judul, tabel keterangan, karakter, dan margin di halaman berikutnya.</span>
                 </div>
+
 
                 <div class="table-container">
                     <table class="table table-hover align-middle table-freeze mb-0">

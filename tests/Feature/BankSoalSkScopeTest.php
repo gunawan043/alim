@@ -15,6 +15,8 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\Evaluasi\QuickSoalService;
+use App\Services\Evaluasi\SoalNaskahPdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -341,6 +343,154 @@ class BankSoalSkScopeTest extends TestCase
         $response->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
         $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_pengaturan_judul_tahun_dan_keterangan_masuk_ke_naskah(): void
+    {
+        $soal = $this->makeSoal();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana'])->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            [
+                'judul' => 'SOAL SUMATIF HARIAN',
+                'judul_size' => 14,
+                'judul_bold' => false,
+                'judul_line_height' => 1.4,
+                'judul_align' => 'left',
+                'show_tahun_ajaran' => true,
+                'tahun_ajaran' => '2026/2027',
+                'tahun_size' => 10,
+                'tahun_bold' => false,
+                'show_identitas' => true,
+                'identitas_label_peserta' => 'Nama Siswa',
+                'identitas_border' => false,
+                'identitas_padding' => 2.5,
+                'identitas_rows' => 2,
+                'show_karakter' => true,
+                'karakter_title' => 'NILAI KARAKTER',
+                'karakter_items' => "Jujur\nDisiplin",
+                'karakter_style' => 'dash',
+                'karakter_size' => 10,
+                'karakter_bold' => true,
+                'karakter_line_height' => 1.5,
+                'show_instruksi' => true,
+                'instruksi' => 'Kerjakan semua soal berikut.',
+                'instruksi_size' => 10,
+                'instruksi_bold' => true,
+                'instruksi_italic' => true,
+                'instruksi_spacing' => 1.4,
+                'option_indent' => 4,
+                'font' => 'times',
+                'font_size' => 11,
+                'line_height' => 1.2,
+                'question_gap' => 2.0,
+                'start_number' => 7,
+                'show_kop' => false,
+            ]
+        );
+
+        $this->assertStringContainsString('SOAL SUMATIF HARIAN', $html);
+        $this->assertStringContainsString('TAHUN AJARAN 2026/2027', $html);
+        $this->assertStringContainsString('text-align: left', $html);
+        $this->assertStringContainsString('line-height: 1.4', $html);
+        $this->assertStringContainsString('border: none', $html);
+        $this->assertStringContainsString('padding: 0.35mm 2.5mm', $html);
+        $this->assertStringContainsString('Nama Siswa', $html);
+        $this->assertStringContainsString('NILAI KARAKTER', $html);
+        $this->assertStringContainsString('Jujur', $html);
+        $this->assertStringContainsString('list-style-type: none', $html);
+        $this->assertStringContainsString('Kerjakan semua soal berikut.', $html);
+        $this->assertStringContainsString('font-style: italic', $html);
+        $this->assertStringContainsString('padding: 0 4mm 0 0', $html);
+        $this->assertStringContainsString('7.', $html);
+        $this->assertStringNotContainsString('<img class="kop-image"', $html);
+    }
+
+    public function test_pengaturan_boleh_mematikan_tabel_dan_karakter(): void
+    {
+        $soal = $this->makeSoal();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana'])->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            [
+                'show_identitas' => false,
+                'show_karakter' => false,
+                'show_instruksi' => false,
+                'show_tahun_ajaran' => false,
+                'judul' => 'NASKAH RINGKAS',
+            ]
+        );
+
+        $this->assertStringContainsString('NASKAH RINGKAS', $html);
+        $this->assertStringNotContainsString('<table class="identitas">', $html);
+        $this->assertStringNotContainsString('PENANAMAN KARAKTER', $html);
+        $this->assertStringNotContainsString('TAHUN AJARAN', $html);
+    }
+
+    public function test_naskah_paket_tetap_terbentuk_tanpa_pengaturan_baru(): void
+    {
+        // Data bentuk lama (LJK/paket) tidak mengirim kunci baru — harus tetap
+        // merender tabel identitas, karakter, dan opsi seperti sebelumnya.
+        $html = view('ljk.soal-pdf', [
+            'judul' => ['NASKAH SOAL', 'TAHUN AJARAN 2026/2027'],
+            'identityRows' => [
+                [['Mata Pelajaran', 'Matematika'], ['Kelas', '4A']],
+                [['Guru Pengampu', 'Guru Matematika'], ['Nama Peserta Didik', '']],
+            ],
+            'karakter' => ['Jujur'],
+            'instruksi' => 'Pilihlah jawaban yang benar.',
+            'blocks' => [],
+            'maxOptions' => 4,
+            'fontSize' => 11,
+            'fontStack' => 'Times New Roman',
+            'arabicStack' => 'Amiri',
+            'faceCss' => '',
+            'arabicFaceCss' => '',
+            'hasArabic' => false,
+        ])->render();
+
+        $this->assertStringContainsString('<table class="identitas">', $html);
+        $this->assertStringContainsString('Nama Peserta Didik', $html);
+        $this->assertStringContainsString('PENANAMAN KARAKTER :', $html);
+        $this->assertStringContainsString('Pilihlah jawaban yang benar.', $html);
+        $this->assertStringContainsString('padding: 0 2mm 0 0', $html);
+    }
+
+    public function test_soal_pribadi_tidak_membuat_bank_ganda_di_daftar_bank_soal(): void
+    {
+        $this->makeSoal();
+
+        // Bank milik guru (bukan auto-bank) tetap tampil.
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/bank-soal")
+            ->assertOk()
+            ->assertSee('Bank Matematika Kelas 4');
+    }
+
+    public function test_bank_penyimpan_soal_saya_disembunyikan_dari_koleksi(): void
+    {
+        $bank = app(QuickSoalService::class)->bankFor(
+            $this->guru,
+            $this->school,
+            $this->math,
+            $this->grade,
+            $this->ay,
+            'ganjil'
+        );
+
+        $this->assertTrue($bank->isAutoBank());
+        $this->assertTrue(
+            BankSoal::query()->accessibleBy($this->guru->id, $this->school->id)->whereKey($bank->id)->exists(),
+            'Soal Saya tetap memakai bank penyimpan ini.'
+        );
+        $this->assertFalse(
+            BankSoal::query()->accessibleBy($this->guru->id, $this->school->id)->koleksi()->whereKey($bank->id)->exists(),
+            'Bank penyimpan Soal Saya tidak boleh tampil sebagai koleksi Bank Soal.'
+        );
     }
 
     private function makeSoal(): Soal

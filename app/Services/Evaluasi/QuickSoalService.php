@@ -10,8 +10,6 @@ use App\Models\Soal;
 use App\Models\SoalOption;
 use App\Models\Subject;
 use App\Models\User;
-use App\Services\Evaluasi\ContentHashEngine;
-use App\Services\Evaluasi\ReviewWorkflowService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +20,14 @@ use Illuminate\Validation\ValidationException;
  */
 class QuickSoalService
 {
+    /**
+     * Bank penyimpan pribadi milik Soal Saya.
+     *
+     * Soal wajib memiliki bank (`soal.bank_soal_id` NOT NULL), jadi soal
+     * pribadi tetap disimpan di bank milik guru. Bank ini TIDAK tampil di
+     * menu Bank Soal — pemisahan fungsi Soal Saya vs Bank Soal dilakukan
+     * di sini, bukan dengan mengosongkan relasi.
+     */
     public function bankFor(
         User $user,
         School $school,
@@ -31,8 +37,9 @@ class QuickSoalService
         string $semester
     ): BankSoal {
         $name = 'Soal Saya — '.$subject->name;
+        $description = BankSoal::AUTO_BANK_MARKER.' Bank pribadi Soal Saya. Soal di sini dikelola di menu Soal Saya, bukan sebagai koleksi bersama.';
 
-        return BankSoal::firstOrCreate(
+        $bank = BankSoal::firstOrCreate(
             [
                 'school_id' => $school->id,
                 'subject_id' => $subject->id,
@@ -45,7 +52,7 @@ class QuickSoalService
                 'fase' => $grade?->fase,
                 'jenjang' => $grade?->level,
                 'grade_level_id' => $grade?->id,
-                'deskripsi' => 'Bank soal pribadi yang dibuat otomatis dari Soal Saya.',
+                'deskripsi' => $description,
                 'jenis_soal' => 'campuran',
                 'bahasa' => 'latin',
                 'tingkat_kesulitan_target' => 'campuran',
@@ -57,6 +64,14 @@ class QuickSoalService
                 'created_by' => $user->id,
             ]
         );
+
+        // Bank lama buatan versi sebelumnya belum bertanda; tandai sekalian
+        // agar tidak lagi muncul ganda di menu Bank Soal.
+        if (! $bank->isAutoBank()) {
+            $bank->forceFill(['deskripsi' => $description])->save();
+        }
+
+        return $bank;
     }
 
     /**
@@ -87,7 +102,7 @@ class QuickSoalService
         $soal = null;
         $warning = null;
 
-        DB::transaction(function () use (&$soal, $user, $bank, $subject, $data, $tipe, $options, $correctLabel, $engine, $correctTexts) {
+        DB::transaction(function () use (&$soal, $user, $bank, $data, $tipe, $options, $correctLabel, $engine, $correctTexts) {
             $soal = new Soal;
             $soal->fill([
                 'bank_soal_id' => $bank->id,

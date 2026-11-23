@@ -302,6 +302,7 @@ class SoalSayaController extends Controller
 
         $banks = BankSoal::query()
             ->accessibleBy($userId, $school->id)
+            ->koleksi()
             ->withCount('soal')
             ->orderBy('nama')
             ->get(['id', 'nama', 'subject_id', 'school_id', 'owner_user_id', 'created_by']);
@@ -394,14 +395,23 @@ class SoalSayaController extends Controller
 
         $bankIds = BankSoal::accessibleBy($userId, $school->id)->pluck('id');
 
+        // Pratinjau mengikuti soal yang dicentang bila dikirim, sehingga
+        // naskah di layar sama dengan naskah yang akan dicetak.
+        $selected = collect($request->input('ids', []))->filter()->map(fn ($id) => (string) $id)->values()->all();
+
         $questions = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options', 'wacana'])
             ->whereIn('bank_soal_id', $bankIds)
+            ->when($selected !== [], fn ($q) => $q->whereIn('id', $selected))
             ->when($request->filled('bank_id'), fn ($q) => $q->where('bank_soal_id', $request->bank_id))
             ->when($request->filled('subject_id'), fn ($q) => $q->whereHas('bankSoal', fn ($b) => $b->where('subject_id', $request->subject_id)))
             ->orderByDesc('created_at')
             ->get()
             ->reject(fn (Soal $soal) => $soal->requiresValidation() && ! $soal->isValidated())
             ->values();
+
+        if ($selected !== []) {
+            $questions = $questions->sortBy(fn ($q) => array_search($q->id, $selected, true))->values();
+        }
 
         if ($questions->isEmpty()) {
             return response('Belum ada soal yang dapat dicetak.', 200, ['Content-Type' => 'text/plain']);

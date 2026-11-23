@@ -156,7 +156,8 @@ class BankSoalController extends Controller
 
         // Scope daftar = SATU sumber dengan guard detail (accessibleBy):
         // milik sendiri, publik/central/public_pool, internal satuan, dan rumpun kewenangan.
-        $baseQuery = BankSoal::query()->accessibleBy($userId, $schoolId);
+        // Bank penyimpan otomatis milik Soal Saya tidak termasuk koleksi.
+        $baseQuery = BankSoal::query()->accessibleBy($userId, $schoolId)->koleksi();
 
         $query = (clone $baseQuery)
             ->withCount(['soal' => fn ($q) => $q->where('status', 'approved')])
