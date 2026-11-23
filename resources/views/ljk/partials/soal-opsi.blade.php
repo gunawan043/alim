@@ -65,11 +65,12 @@
                         <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }}; text-align: {{ $align }}; white-space: {{ $whiteSpace }};">
                             @if($opsi)
                                 @if($rtl)
-                                    {{-- RTL: marker ".ج" di KIRI teks. Lebar marker
-                                         TETAP (6 mm) agar ا/ب/ج/د sama lebar dan
-                                         jarak ke teks pilihan seragam. --}}
-                                    <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-right: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                    {{-- RTL: teks pilihan di kiri, marker ".ج" di
+                                         KANAN. Marker memakai lebar TETAP (6 mm)
+                                         agar ا/ب/ج/د sama lebar dan selalu berada
+                                         di tepi kanan sel. --}}
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
+                                    <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-left: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
                                 @else
                                     <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
@@ -102,11 +103,11 @@
                     <td style="width: {{ $colWidth }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
                         @if($opsi)
                             @if($rtl)
-                                {{-- RTL: marker ".ج" di kiri teks, lebar tetap.
+                                {{-- RTL: teks di kiri, marker ".ج" di kanan.
                                      Sama dengan cabang opts-auto agar naskah & LJK
                                      identik. --}}
-                                <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-right: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
+                                <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-left: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
                             @else
                                 <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}

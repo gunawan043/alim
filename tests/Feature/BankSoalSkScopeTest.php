@@ -955,9 +955,9 @@ class BankSoalSkScopeTest extends TestCase
         );
     }
 
-    public function test_opsi_arab_menaruh_marker_di_kiri_dan_teks_di_kanan(): void
+    public function test_opsi_arab_menaruh_teks_di_kiri_dan_marker_di_kanan(): void
     {
-        // Naskah Arab: marker ".ج" di gutter KIRI, teks pilihan di kanan.
+        // Naskah Arab: teks pilihan di kiri, marker ".ج" di KANAN.
         $labels = ['ا', 'ب', 'ج', 'د'];
         $teks = ['سبعة', 'ستة', 'ثمانية', 'خمسة'];
         $opsi = [];
@@ -975,15 +975,23 @@ class BankSoalSkScopeTest extends TestCase
             'opsiIndentMm' => 2.0,
         ])->render();
 
-        // Marker ".ج" berada di KIRI teks; teks tetap rata kanan. Lebar marker
-        // tetap agar ا/ب/ج/د sama lebar dan jarak ke teks seragam.
+        // Marker ".ج" berada di KANAN teks; teks tetap rata kanan. Lebar marker
+        // tetap agar ا/ب/ج/د sama lebar dan selalu di tepi kanan sel.
         $this->assertMatchesRegularExpression(
             '/<span class="letter letter-ar"[^>]*>\.<span class="ar">[^<]*<\/span><\/span>/u',
             $html,
             'Marker RTL ditulis ".ج": titik di kiri huruf.'
         );
         $this->assertStringContainsString('width: 6mm', $html, 'Marker memakai lebar tetap.');
-        $this->assertStringContainsString('margin-right: 1mm', $html, 'Jarak marker ke teks seragam.');
+        $this->assertStringContainsString('margin-left: 1mm', $html, 'Jarak marker ke teks seragam.');
+
+        $teks = LjkArabicText::toHtml('سبعة', false);
+        $marker = '.'.LjkArabicText::toHtml('ا', false);
+        $this->assertLessThan(
+            strpos($html, $marker),
+            strpos($html, $teks),
+            'Teks opsi mendahului marker secara visual (marker di kanan).'
+        );
         $this->assertStringContainsString('padding: 0 0 0 2mm', $html, 'Jarak antar kolom di kiri sel (RTL).');
         $this->assertStringContainsString('text-align: right', $html);
     }

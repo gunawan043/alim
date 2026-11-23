@@ -182,7 +182,7 @@
     table.opts td .letter-ar {
         display: inline-block;
         width: 6mm;
-        margin-right: 1mm;
+        margin-left: 1mm;
         text-align: right;
         white-space: nowrap;
     }
@@ -258,7 +258,9 @@
             <tr>
                 @foreach($pasangan as [$label, $value])
                     @if($rtlExam)
-                        <td class="label">{!! LjkArabicText::toHtml($label, false) !!}</td>
+                        {{-- RTL: nilai di kiri, label di kanan. Tabel tetap
+                             dibangun kiri-ke-kanan oleh Dompdf; pasangan sudah
+                             dicermin di atas. --}}
                         <td class="value">
                             @if($label === (config('ljk.soal.identitas_arab.peserta') ?? ''))
                                 <span class="nama-line">&nbsp;</span>
@@ -266,6 +268,7 @@
                                 {!! LjkArabicText::toHtml($value, false) !!}
                             @endif
                         </td>
+                        <td class="label">{!! LjkArabicText::toHtml($label, false) !!}</td>
                     @else
                         <td class="label">{{ $label }}</td>
                         <td class="value">
