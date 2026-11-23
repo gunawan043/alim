@@ -530,6 +530,32 @@ class BankSoalSkScopeTest extends TestCase
             ->assertSee('Pratinjau naskah');
     }
 
+    public function test_halaman_cetak_dari_url_terpilih_tetap_terbuka(): void
+    {
+        $soal = $this->makeSoal();
+
+        $response = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/soal-saya/cetak?bank_id={$soal->bank_soal_id}&judul=NASKAH+SOAL&ids%5B%5D={$soal->id}");
+
+        $response->assertOk()
+            ->assertSee('name="ids[]" value="'.$soal->id.'"', false);
+    }
+
+    public function test_konteks_sekolah_diturunkan_dari_bank_soal(): void
+    {
+        // Admin global bisa membuka workspace tanpa sa_school_id. Konteks
+        // sekolah harus diturunkan dari bank soal, bukan 422.
+        $soal = $this->makeSoal();
+        $controller = app(\App\Http\Controllers\Evaluasi\SoalSayaController::class);
+        $request = Request::create('/cetak', 'GET', ['bank_id' => $soal->bank_soal_id]);
+
+        $method = new \ReflectionMethod($controller, 'school');
+        $method->setAccessible(true);
+        $school = $method->invoke($controller, $request);
+
+        $this->assertSame($this->school->id, $school->id);
+    }
+
     public function test_pratinjau_cetak_menghasilkan_pdf(): void
     {
         $this->makeSoal();

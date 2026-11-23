@@ -10,12 +10,14 @@ use App\Models\School;
 use App\Models\Soal;
 use App\Models\Subject;
 use App\Models\TujuanPembelajaran;
+use App\Models\User;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Evaluasi\DocxQuestionParser;
 use App\Services\Evaluasi\PrintSettingsService;
 use App\Services\Evaluasi\QuickSoalService;
 use App\Services\Evaluasi\SoalNaskahPdfService;
 use App\Services\Evaluasi\TeachingScopeService;
+use App\Services\SchoolGroupService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -602,6 +604,26 @@ class SoalSayaController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
         $school = $schoolId ? School::find($schoolId) : null;
+
+        // Admin dengan akses global bisa membuka workspace guru tanpa memilih
+        // sekolah di session. Turunkan konteks dari bank soal / guru yang
+        // dituju, jangan langsung 422 — halaman ini tetap dibatasi oleh
+        // accessibleBy() saat mengambil soal.
+        if (! $school && $request->filled('bank_id')) {
+            $school = BankSoal::query()->find($request->input('bank_id'))?->school;
+        }
+
+        if (! $school) {
+            $target = User::query()->find($request->route('userId'));
+            $school = $target ? SchoolGroupService::getUserSchool($target) : null;
+        }
+
+        if (! $school && $request->filled('ids')) {
+            $firstId = collect($request->input('ids'))->filter()->first();
+            $school = $firstId
+                ? Soal::query()->find($firstId)?->bankSoal?->school
+                : null;
+        }
 
         abort_if(! $school, 422, 'Konteks satuan pendidikan tidak ditemukan.');
 

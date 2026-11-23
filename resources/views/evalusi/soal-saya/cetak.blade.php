@@ -472,7 +472,14 @@
                     <form method="POST" action="{{ route('user.soal-saya.print', ['userId' => $userId]) }}" target="_blank" id="pdfForm">
                         @csrf
                         <div id="pdfSettings"></div>
-                        <div id="pdfIds"></div>
+                        <div id="pdfIds">
+                            {{-- Cadangan bila JS belum/tidak berjalan: kirim soal
+                                 yang sudah dipilih di URL agar tidak 422. JS akan
+                                 menyinkronkan ulang saat pilihan berubah. --}}
+                            @foreach($selectedIds as $selectedId)
+                                <input type="hidden" name="ids[]" value="{{ $selectedId }}">
+                            @endforeach
+                        </div>
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="ri-printer-line me-1"></i>Cetak / simpan PDF
                         </button>
