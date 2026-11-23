@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentCardSetting;
+use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Pdf\DocumentPdfService;
 use App\Support\UserJabatan;
 use App\Models\StudyGroup;
@@ -62,6 +63,8 @@ class StudentCardController extends Controller
         $signatureName = $setting->signature_name ?: $school->principal_full_name;
         $signatureTitle = $setting->signature_title ?: 'Kepala Satuan Pendidikan';
         $validityText = $setting->validity_text ?: 'Berlaku selama menjadi santri';
+        $frontQr = $this->qrData($selected, 'nis');
+        $backQr = $this->qrData($selected, $layout['back']['back_qr_source'] ?? 'nis');
 
         return view('students.cards.index', compact(
             'userId',
@@ -77,6 +80,8 @@ class StudentCardController extends Controller
             'signatureName',
             'signatureTitle',
             'validityText',
+            'frontQr',
+            'backQr',
         ));
     }
 
@@ -209,7 +214,7 @@ class StudentCardController extends Controller
         $backBg = $this->dataUri($setting->back_background_path);
         $signatureData = $this->dataUri($setting->signature_path ?: $school->ttd_ksp_path);
 
-        $cards = $students->map(function (Student $student) use ($setting, $school, $signatureData) {
+        $cards = $students->map(function (Student $student) use ($setting, $school, $signatureData, $layout) {
             return [
                 'student' => $student,
                 'class' => $this->classLabel($student),
@@ -219,6 +224,10 @@ class StudentCardController extends Controller
                 'signature_name' => $setting->signature_name ?: $school->principal_full_name,
                 'signature_title' => $setting->signature_title ?: 'Kepala Satuan Pendidikan',
                 'validity_text' => $setting->validity_text ?: 'Berlaku selama menjadi santri',
+                'ttl' => $this->ttl($student),
+                'address' => $student->address ?: '-',
+                'front_qr' => $this->qrData($student, 'nis'),
+                'back_qr' => $this->qrData($student, $layout['back']['back_qr_source'] ?? 'nis'),
             ];
         })->all();
 
@@ -290,21 +299,36 @@ class StudentCardController extends Controller
                     continue;
                 }
 
+                if (is_string($defaultValue)) {
+                    $clean[$side][$key] = $key === 'back_qr_source'
+                        && in_array($input, ['nis', 'nisn', 'both'], true)
+                        ? $input
+                        : $defaultValue;
+                    continue;
+                }
+
                 if (! is_numeric($defaultValue)) {
                     continue;
                 }
 
                 $min = match ($key) {
                     'line_height' => 1.0,
-                    'title_size' => 5.0,
+                    'photo_left', 'photo_top', 'back_qr_left', 'back_qr_top' => 0.0,
+                    'qr_size', 'back_qr_size' => 5.0,
                     'photo_width', 'photo_height', 'signature_width', 'signature_height' => 5.0,
                     default => 4.0,
                 };
                 $max = match ($key) {
                     'line_height' => 2.5,
-                    'title_size' => 24.0,
+                    'photo_left' => 80.0,
+                    'photo_top' => 45.0,
                     'photo_width', 'photo_height' => 80.0,
-                    'signature_width', 'signature_height' => 60.0,
+                    'qr_size' => 40.0,
+                    'signature_width' => 60.0,
+                    'signature_height' => 50.0,
+                    'back_qr_left' => 100.0,
+                    'back_qr_top' => 70.0,
+                    'back_qr_size' => 50.0,
                     default => 24.0,
                 };
 
@@ -315,6 +339,34 @@ class StudentCardController extends Controller
         }
 
         return $clean;
+    }
+
+    private function qrData(?Student $student, string $source = 'nis'): ?string
+    {
+        if (! $student) {
+            return null;
+        }
+
+        $nis = trim((string) $student->nis);
+        $nisn = trim((string) $student->nisn);
+
+        $payload = match ($source) {
+            'nisn' => $nisn !== '' ? $nisn : $nis,
+            'both' => trim(($nis !== '' ? 'NIS:'.$nis : '').($nisn !== '' ? ' NISN:'.$nisn : '')),
+            default => $nis !== '' ? $nis : $nisn,
+        };
+
+        return $payload !== ''
+            ? LjkQrRenderer::pngDataUri($payload, 600, 2, 'Q')
+            : null;
+    }
+
+    private function ttl(Student $student): string
+    {
+        $place = trim((string) $student->birth_place);
+        $date = $student->birth_date?->format('d/m/Y');
+
+        return trim(($place !== '' ? $place : '').($date ? ($place !== '' ? ', ' : '').$date : '')) ?: '-';
     }
 
     private function classLabel(Student $student): string
