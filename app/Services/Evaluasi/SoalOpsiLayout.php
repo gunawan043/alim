@@ -10,21 +10,21 @@ use App\Services\Ljk\LjkPdfFonts;
  * Tata letak pilihan jawaban pada naskah soal.
  *
  * Aturan (sesuai ketentuan sekolah):
- *  1. Jumlah kolom = JUMLAH OPSI. 4 opsi (A–D) → 4 kolom (jatah 1/4),
- *     5 opsi (A–E) → 5 kolom (jatah 1/5). Tidak perlu diatur manual.
- *  2. Setiap opsi mendapat jatah kolom sejumlah yang dibutuhkan agar
- *     muat dalam SATU baris:
- *        butuh ≤ 1 jatah → 1 jatah
- *        > 1 jatah (mis. makan 2/4) → 2 jatah
- *        > 2 jatah (mis. makan 3/4) → 3 jatah, dan seterusnya
- *  3. Jatah dijumlahkan per baris; baris baru dibuka bila jatahnya penuh.
- *     Contoh 4 opsi: A=2 jatah, B=C=D=1 jatah → A B C D muat satu baris
- *     (2+1+1+1 = 4 jatah).
- *  4. Tidak ada pilihan yang terlipat: lebar teks diukur dari berkas font
- *     asli (Cambria/Caladea/DejaVu) dengan GD, bukan taksiran jumlah huruf.
+ *  1. SEMUA kolom dalam satu soal lebarnya SAMA PERSIS. Tidak ada pilihan
+ *     yang mendapat kolom lebih lebar dari yang lain — A, B, C, D sama.
+ *  2. Jumlah kolom = jumlah opsi: A–D → 4 kolom, A–E → 5 kolom.
+ *     Tidak perlu diatur manual.
+ *  3. Satu baris memuat paling banyak sejumlah kolom itu. Pilihan yang
+ *     teksnya tidak muat dalam satu kolom turun ke baris berikutnya
+ *     (pilihan setelahnya ikut turun agar tidak ada baris yang isinya
+ *     tidak sejajar).
+ *  4. Tidak ada teks yang terlipat: lebar diukur dari berkas font asli
+ *     (Cambria/Caladea/DejaVu) dengan GD, bukan taksiran jumlah huruf.
  *
- * Lebar kolom dihitung per baris dari TOTAL JATAH baris itu, sehingga
- * lebar setiap kolom selalu seragam dalam satu baris.
+ * Contoh 4 opsi (kolom ¼ lebar area):
+ *   semuanya pendek          → A B C D  (satu baris)
+ *   A panjang, sisanya pendek → A  (baris 1)
+ *                               B C D  (baris 2, mulai kolom 1)
  */
 class SoalOpsiLayout
 {
@@ -35,7 +35,7 @@ class SoalOpsiLayout
     public const MAX_COLUMNS = 5;
 
     /**
-     * Susun pilihan menjadi baris-baris berjatah kolom.
+     * Susun pilihan menjadi baris-baris.
      *
      * @param  array<int, array{label?: string, teks?: string, display_label?: string}>  $opsi
      * @param  float  $availableMm  lebar area isi soal (setelah margin & nomor)
@@ -56,26 +56,25 @@ class SoalOpsiLayout
             return ['rows' => [], 'columns' => 0, 'widths' => [], 'spans' => []];
         }
 
-        // Jumlah kolom dasar = jumlah opsi (maks 5), dibatasi pengaturan.
-        $columns = $maxColumns > 0 ? min(self::MAX_COLUMNS, $count, $maxColumns) : min(self::MAX_COLUMNS, $count);
+        // Jumlah kolom = jumlah opsi (maks 5), dibatasi pengaturan.
+        $columns = $maxColumns > 0
+            ? min(self::MAX_COLUMNS, $count, $maxColumns)
+            : min(self::MAX_COLUMNS, $count);
         $columns = max(1, $columns);
 
+        // Lebar kolom SAMA untuk semuanya (bukan per pilihan).
+        $unitMm = $availableMm / $columns;
+
         $widths = [];
+        $spans = [];
         foreach ($opsi as $index => $option) {
             $widths[$index] = $this->textWidthMm($this->labelText($option), $fontPt);
+            // span selalu 1: pilihan tidak pernah melebar. Nilai dipertahankan
+            // agar bentuk keluaran tetap kompatibel dengan pemanggil lama.
+            $spans[$index] = 1;
         }
 
-        // Jatah kolom tiap opsi berdasarkan lebar yang dibutuhkan.
-        $unitMm = $availableMm / $columns;
-        $spans = [];
-        foreach ($widths as $index => $width) {
-            $spans[$index] = $this->spanFor($width, $unitMm, $columns);
-        }
-
-        // Baris TIDAK diseimbangkan: aturan sekolah adalah "jatah dijumlahkan
-        // per baris, baris baru hanya bila jatahnya penuh". Jadi
-        // A(2) B(1) C(1) D(1) = 4 jatah tetap satu baris.
-        $rows = $this->packRows($spans, $columns);
+        $rows = $this->packRows($widths, $unitMm, $columns);
 
         return [
             'rows' => $rows,
@@ -86,70 +85,36 @@ class SoalOpsiLayout
     }
 
     /**
-     * Berapa jatah kolom yang dibutuhkan satu pilihan.
+     * Bagi pilihan ke baris: maksimal $columns per baris, dan pilihan yang
+     * teksnya tidak muat di satu kolom turun baris beserta sisanya.
      *
-     * Toleransi dibuat sedikit longgar: teks yang hanya kelebihan
-     * sepersekian mm (pembulatan pengukuran) tetap dihitung 1 jatah,
-     * karena CSS memberi padding kanan sebagai ruang kosong antar kolom.
-     * Tanpa kelonggaran ini, "A. tujuh puluh dua" (39,42 mm vs jatah
-     * 39,39 mm) akan naik ke 2 jatah dan mendorong pilihan lain ke baris
-     * baru.
-     */
-    private function spanFor(float $widthMm, float $unitMm, int $columns): int
-    {
-        if ($unitMm <= 0) {
-            return 1;
-        }
-
-        // Pengukuran teks bisa meleset ~1% karena hinting font vs Dompdf.
-        $tolerance = max(1.0, $unitMm * 0.03);
-        $needed = (int) ceil(($widthMm + self::SAFETY_MM) / $unitMm);
-
-        // Muat di 1 jatah bila kelebihannya hanya sebatas toleransi.
-        if ($needed > 1 && $widthMm <= $unitMm + $tolerance) {
-            return 1;
-        }
-
-        return max(1, min($columns, $needed));
-    }
-
-    /**
-     * Bagi pilihan ke baris berdasarkan jumlah jatahnya.
-     *
-     * Sebuah pilihan hanya boleh masuk baris yang sedang diisi bila jatah
-     * yang tersisa PAS untuknya. Bila sisanya kurang (mis. sisa 1 jatah
-     * tetapi pilihan butuh 2), pilihan itu turun ke baris berikutnya
-     * sehingga selalu mulai di kolom ke-1 — inilah yang membuat posisi
-     * pilihan sejajar lurus ke bawah.
-     *
-     * Contoh 4 opsi dengan A butuh 3 jatah:
-     *   A(3) lalu B(1) → sisa 0, pas → A B satu baris
-     *   A(3) lalu B(2) → sisa 1 tidak cukup → B turun baris sendiri
-     *
-     * @param  array<int, int>  $spans
+     * @param  array<int, float>  $widths  lebar teks tiap pilihan (mm)
      * @return array<int, array<int, array{index: int, span: int}>>
      */
-    private function packRows(array $spans, int $columns): array
+    private function packRows(array $widths, float $unitMm, int $columns): array
     {
         $rows = [];
         $current = [];
-        $used = 0;
+        // True bila baris yang sedang diisi sudah penuh: karena berisi
+        // pilihan yang tidak muat (berdiri sendiri) atau sudah N pilihan.
+        $currentFull = false;
 
-        foreach ($spans as $index => $span) {
-            $sisa = $columns - $used;
+        foreach ($widths as $index => $width) {
+            $muat = $width + self::SAFETY_MM <= $unitMm;
 
-            // Baris baru hanya bila pilihan ini TIDAK PAS di sisa jatah.
-            // Pilihan yang jatahnya lebih besar dari satu kolom tidak boleh
-            // dipaksa masuk sisa sempit: kolomnya akan melebar/bergeser dan
-            // posisi antar baris jadi tidak sejajar.
-            if ($current !== [] && $span > $sisa) {
+            // Tutup baris bila sudah penuh, atau bila pilihan panjang ini
+            // tidak muat dan baris sudah ada isinya.
+            if ($current !== [] && ($currentFull || ! $muat)) {
                 $rows[] = $current;
                 $current = [];
-                $used = 0;
+                $currentFull = false;
             }
 
-            $current[] = ['index' => $index, 'span' => $span];
-            $used += $span;
+            $current[] = ['index' => $index, 'span' => 1];
+
+            // Baris otomatis penuh setelah pilihan panjang (berdiri sendiri)
+            // atau setelah mencapai jumlah kolom.
+            $currentFull = ! $muat || count($current) >= $columns;
         }
 
         if ($current !== []) {

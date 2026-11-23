@@ -1,23 +1,12 @@
 @php
     use App\Services\Ljk\LjkArabicText;
 
-    // Tata letak otomatis (naskah soal): kolom seragam & tiap pilihan 1 baris.
+    // Tata letak otomatis (naskah soal): semua kolom berlebar SAMA.
     // LJK/paket tidak mengirim `opsiLayout` sehingga memakai grid lama.
     $opsiLayout = $block['opsiLayout'] ?? null;
 @endphp
 @if(! empty($block['opsi']))
     @if($opsiLayout && ! empty($opsiLayout['rows']))
-        {{-- SATU TABEL PER BARIS, tiap baris SELALU berisi tepat N kolom
-             berlebar sama, tanpa colspan.
-
-             Dompdf membagi lebar tabel dari proporsi `width` sel, bukan
-             dari grid posisi. Akibatnya:
-               • `colspan` membuat kolom baris berikutnya bergeser
-                 (C mulai 113,2pt padahal seharusnya 111,7pt);
-               • `<colgroup>` dan `table-layout: fixed` tidak dihormati.
-             Satu-satunya bentuk yang menghasilkan kolom lurus sejajar
-             adalah tabel terpisah per baris dengan N <td> berlebar SAMA
-             PERSIS; jatah yang tak terpakai diisi sel kosong. --}}
         @php
             $kolom = max(1, (int) $opsiLayout['columns']);
             // Lebar dalam MM, BUKAN persen: Dompdf menyesuaikan lebar kolom
@@ -25,18 +14,20 @@
             $lebarMm = isset($opsiWidthMm) && $opsiWidthMm > 0
                 ? (float) $opsiWidthMm
                 : 157.58;
+            // Semua kolom SAMA PERSIS — tidak ada pilihan yang dilebarkan.
             $unitMm = round($lebarMm / $kolom, 2);
             $align = $rtl ? 'right' : 'left';
         @endphp
+        {{-- Satu tabel per baris. Dompdf membagi lebar tabel dari proporsi
+             `width` sel, sehingga `colspan` / lebar berbeda membuat kolom
+             baris lain bergeser. Semua sel di sini berlebar identik dan
+             tanpa colspan → kolom lurus sejajar dari atas ke bawah. --}}
         @foreach($opsiLayout['rows'] as $row)
-            @php $sisa = max(0, $kolom - array_sum(array_column($row, 'span'))); @endphp
+            @php $sisa = max(0, $kolom - count($row)); @endphp
             <table class="opts opts-auto" style="width: {{ $lebarMm }}mm;">
                 <tr>
                     @foreach($row as $cell)
-                        @php
-                            $opsi = $block['opsi'][$cell['index']] ?? null;
-                            $span = (int) $cell['span'];
-                        @endphp
+                        @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
                         <td style="width: {{ $unitMm }}mm; text-align: {{ $align }};">
                             @if($opsi)
                                 @if($rtl)
@@ -51,14 +42,9 @@
                                 &nbsp;
                             @endif
                         </td>
-
-                        {{-- Opsi panjang merebut jatah kolom berikutnya: isi sel
-                             sisa dengan kosong agar jumlah kolom tetap N. --}}
-                        @for($i = 1; $i < $span; $i++)
-                            <td style="width: {{ $unitMm }}mm;">&nbsp;</td>
-                        @endfor
                     @endforeach
 
+                    {{-- Sel kosong agar jumlah kolom baris ini tetap N. --}}
                     @for($i = 0; $i < $sisa; $i++)
                         <td style="width: {{ $unitMm }}mm;">&nbsp;</td>
                     @endfor
