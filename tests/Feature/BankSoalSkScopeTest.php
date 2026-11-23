@@ -361,6 +361,55 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertTrue(BankSoal::where('nama', 'Ulangan Bab 3')->where('owner_user_id', $this->guru->id)->exists());
     }
 
+    public function test_impor_word_pilihan_jenis_soal_pg_tersimpan_di_enum_paket(): void
+    {
+        // Regresi: form mengirim 'pg'/'isian' sedangkan kolom bank_soal.jenis_soal
+        // hanya menerima pilihan_ganda/isian_singkat. Nilai mentah membuat
+        // insert paket melanggar CHECK constraint dan halaman 500.
+        $path = $this->docx(['1. Soal', 'A. a', 'B. b', 'Kunci: A']);
+
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/soal-saya/import-word", [
+                'file' => new UploadedFile($path, 'soal.docx', null, null, true),
+                'subject_id' => $this->math->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'jenis_asesmen' => 'harian',
+                'jenis_soal' => 'pg',
+                'bahasa' => 'otomatis',
+            ])
+            ->assertRedirect();
+
+        $paket = BankSoal::where('owner_user_id', $this->guru->id)
+            ->where('jenis_soal', 'pilihan_ganda')
+            ->first();
+
+        $this->assertNotNull($paket, "Jenis soal 'pg' harus dipetakan ke pilihan_ganda.");
+    }
+
+    public function test_impor_word_gagal_membaca_tidak_meninggalkan_paket_kosong(): void
+    {
+        $sebelum = BankSoal::where('owner_user_id', $this->guru->id)->count();
+
+        $this->actingAs($this->guru)
+            ->post("/{$this->guru->id}/soal-saya/import-word", [
+                'file' => UploadedFile::fake()->createWithContent('rusak.docx', 'bukan docx asli'),
+                'subject_id' => $this->math->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'jenis_asesmen' => 'harian',
+                'jenis_soal' => 'campuran',
+                'bahasa' => 'otomatis',
+            ])
+            ->assertSessionHas('error');
+
+        $this->assertSame(
+            $sebelum,
+            BankSoal::where('owner_user_id', $this->guru->id)->count(),
+            'Paket tidak boleh dibuat sebelum Word berhasil dibaca.'
+        );
+    }
+
     public function test_impor_word_membuat_wacana_bersama(): void
     {
         $path = $this->docx([

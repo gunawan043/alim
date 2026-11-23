@@ -283,10 +283,8 @@ class SoalSayaController extends Controller
         $grade = $request->filled('grade_level_id') ? GradeLevel::find($request->grade_level_id) : null;
         $ay = AcademicYear::findOrFail($data['academic_year_id']);
 
-        // Tentukan paket tujuan SEBELUM impor agar soal tidak nyasar dulu.
-        // Setiap unggahan Word selalu menjadi paket soal baru.
-        $targetBank = $this->resolveImportBank($request, $userId, $school, $subject, $ay, $data);
-
+        // Baca berkas lebih dulu: bila Word tidak bisa dibaca, jangan sampai
+        // paket kosong sudah terlanjur dibuat.
         try {
             $parsed = $this->docxParser->parse($request->file('file')->getRealPath(), [
                 'jenis_soal' => $data['jenis_soal'],
@@ -295,6 +293,9 @@ class SoalSayaController extends Controller
         } catch (\Throwable $e) {
             return back()->withInput()->with('error', 'Gagal membaca Word: '.$e->getMessage());
         }
+
+        // Setiap unggahan Word selalu menjadi paket soal baru.
+        $targetBank = $this->resolveImportBank($request, $userId, $school, $subject, $ay, $data);
 
         $created = 0;
         $warnings = $parsed['warnings'] ?? [];
@@ -335,6 +336,9 @@ class SoalSayaController extends Controller
         }
 
         if ($created === 0) {
+            // Paket tanpa soal tidak berguna; buang agar daftar Bank Soal bersih.
+            $targetBank->forceDelete();
+
             return back()->withInput()->with('error', 'Tidak ada soal yang berhasil diimpor.')->with('import_warnings', $warnings);
         }
 
@@ -374,7 +378,7 @@ class SoalSayaController extends Controller
             'semester' => $data['semester'] ?? 'ganjil',
             'nama' => $nama,
             'deskripsi' => 'Dibuat otomatis dari impor Word.',
-            'jenis_soal' => $data['jenis_soal'] === 'campuran' ? 'campuran' : $data['jenis_soal'],
+            'jenis_soal' => $this->jenisPaketDariImpor($data['jenis_soal']),
             'bahasa' => $data['bahasa'] === 'otomatis' ? 'latin' : $data['bahasa'],
             'tingkat_kesulitan_target' => 'campuran',
             'is_public' => false,
@@ -383,6 +387,21 @@ class SoalSayaController extends Controller
             'created_by' => $userId,
             'total_soal' => 0,
         ]);
+    }
+
+    /**
+     * Terjemahkan pilihan jenis soal pada form impor (campuran/pg/uraian/isian)
+     * ke nilai enum kolom bank_soal.jenis_soal. Kolom itu dijaga CHECK
+     * constraint di SQLite, sehingga 'pg' atau 'isian' mentah akan menggagalkan
+     * insert paket.
+     */
+    private function jenisPaketDariImpor(string $jenis): string
+    {
+        return match ($jenis) {
+            'pg' => 'pilihan_ganda',
+            'isian' => 'isian_singkat',
+            default => in_array($jenis, ['uraian', 'campuran'], true) ? $jenis : 'campuran',
+        };
     }
 
     /**
