@@ -123,10 +123,25 @@ class ConnectStagingVerify extends Command
         $header = (string) config('services.connect_approval.header', 'X-ALIM-CONNECT-APPROVAL-KEY');
         $body = $this->approvalPayload('version-probe', (string) (DB::table('dormitory_permits')->value('id') ?? '00000000-0000-0000-0000-000000000000'));
 
+        // Versi 1 harus DITERIMA. Bukti yang tepat: request lolos middleware
+        // versi dan sampai ke validasi payload (`validation_failed`), bukan
+        // `unsupported_api_version`, dan bukan 401/403.
+        $v1 = Http::withHeaders([$header => $approvalKey, 'X-ALIM-API-Version' => '1'])
+            ->acceptJson()->post($base . self::APPROVAL_PATH, [
+                'command_id' => 'v1-probe',
+                'request_id' => 'bukan-uuid-sengaja',
+            ]);
+        $v1Code = (string) data_get($v1->json(), 'errors.code');
+        $this->check(
+            '6a. X-ALIM-API-Version: 1 diterima (versi lolos, gagal di validasi payload)',
+            $v1->status() === 422 && $v1Code === 'validation_failed',
+            'HTTP '.$v1->status().' code='.$v1Code
+        );
+
         $v2 = Http::withHeaders([$header => $approvalKey, 'X-ALIM-API-Version' => '2'])
             ->acceptJson()->post($base . self::APPROVAL_PATH, $body);
         $this->check(
-            '6a. X-ALIM-API-Version: 2 ditolak 422 unsupported_api_version',
+            '6b. X-ALIM-API-Version: 2 ditolak 422 unsupported_api_version',
             $v2->status() === 422 && data_get($v2->json(), 'errors.code') === 'unsupported_api_version',
             'HTTP '.$v2->status().' code='.data_get($v2->json(), 'errors.code')
         );
@@ -136,7 +151,7 @@ class ConnectStagingVerify extends Command
         $mis = Http::withHeaders([$header => $approvalKey, 'Idempotency-Key' => 'different-'.$mismatch['command_id']])
             ->acceptJson()->post($base . self::APPROVAL_PATH, $mismatch);
         $this->check(
-            '6b. Idempotency-Key != command_id ditolak 422 idempotency_key_mismatch',
+            '6c. Idempotency-Key != command_id ditolak 422 idempotency_key_mismatch',
             $mis->status() === 422 && data_get($mis->json(), 'errors.code') === 'idempotency_key_mismatch',
             'HTTP '.$mis->status().' code='.data_get($mis->json(), 'errors.code')
         );
@@ -144,7 +159,7 @@ class ConnectStagingVerify extends Command
         $ct = Http::withHeaders([$header => $approvalKey])->withBody('plain', 'text/plain')
             ->post($base . self::APPROVAL_PATH);
         $this->check(
-            '6c. Content-Type non-JSON ditolak 415',
+            '6d. Content-Type non-JSON ditolak 415',
             $ct->status() === 415,
             'HTTP '.$ct->status()
         );

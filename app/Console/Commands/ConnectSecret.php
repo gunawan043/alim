@@ -31,8 +31,9 @@ class ConnectSecret extends Command
     protected $signature = 'alim:connect-secret
         {action : generate | get | rotate | status | verify | export-env}
         {scope? : sso:exchange | approval:command}
-        {--file= : Lokasi berkas secret (default: ~/.alim/staging/connect-secrets.enc.json)}
-        {--stdout : Hanya untuk `get`/`export-env`; tanpa ini perintah menolak mencetak secret}';
+        {--file= : Berkas secret di dalam ~/.alim/staging (default: connect-secrets.enc.json)}
+        {--stdout : Hanya untuk `get`/`export-env`; tanpa ini perintah menolak mencetak secret}
+        {--allow-production : Sadar dan diizinkan menjalankan di APP_ENV=production}';
 
     protected $description = 'Kelola kredensial staging ALIM Connect terenkripsi tanpa mencetak nilainya';
 
@@ -46,7 +47,22 @@ class ConnectSecret extends Command
 
     public function handle(): int
     {
+        // Pengaman: secret staging tidak boleh dibuat/dibaca dari konteks
+        // produksi. With this command previously shipped to production via a
+        // mislabelled commit, an accidental run there must fail closed.
+        if (app()->environment('production') && ! $this->option('allow-production')) {
+            $this->error('alim:connect-secret tidak dijalankan di production. Kelola kredensial staging dari lingkungan staging.');
+
+            return self::FAILURE;
+        }
+
         $action = (string) $this->argument('action');
+
+        // Path `--file` yang keluar dari direktori secret manager sudah
+        // dilaporkan; berhenti tanpa menjalankan aksi.
+        if ($this->secretFile() === '') {
+            return self::FAILURE;
+        }
 
         return match ($action) {
             'generate' => $this->generate((string) $this->argument('scope')),
@@ -269,9 +285,34 @@ class ConnectSecret extends Command
 
     private function secretFile(): string
     {
-        $path = (string) ($this->option('file') ?: (getenv('HOME') ?: sys_get_temp_dir()).'/.alim/staging/connect-secrets.enc.json');
+        $override = trim((string) $this->option('file'));
 
-        return $path;
+        if ($override !== '') {
+            // `--file` sebelumnya menerima path sembarang. Root-nya dibatasi ke
+            // direktori secret manager agar command tidak bisa menimpa berkas
+            // lain (mis. .env, public/index.php) atau membaca file aplikasi
+            // secara tak sengaja.
+            $base = realpath($this->secretDir());
+            // Berkas tujuan belum tentu ada (mis. sebelum `generate`), jadi
+            // realpath() pada direktori induknya yang diperiksa — bukan pada
+            // file yang bisa mengembalikan false tanpa alasan keamanan.
+            $dir = realpath(dirname($override));
+
+            if ($base === false || $dir === false || $dir !== $base) {
+                $this->error('Lokasi --file harus berada di dalam direktori secret manager: '.$this->secretDir());
+
+                return '';
+            }
+
+            return $dir.'/'.basename($override);
+        }
+
+        return $this->secretDir().'/connect-secrets.enc.json';
+    }
+
+    private function secretDir(): string
+    {
+        return (getenv('HOME') ?: sys_get_temp_dir()).'/.alim/staging';
     }
 
     /**
