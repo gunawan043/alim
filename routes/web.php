@@ -288,6 +288,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SiplahController;
 use App\Http\Controllers\StudentAchievementController;
 use App\Http\Controllers\StudentArabicNameController;
+use App\Http\Controllers\StudentCardController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentCounselingRecordController;
 use App\Http\Controllers\StudentDapodikExportController;
@@ -1989,6 +1990,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/cetak', [SoalSayaController::class, 'cetakPage'])->name('cetak');
                 Route::get('/cetak/preview', [SoalSayaController::class, 'previewPdf'])->name('preview');
                 Route::post('/cetak', [SoalSayaController::class, 'print'])->name('print');
+                // '/bulk' harus didaftarkan SEBELUM '/{id}' agar tidak tertangkap
+                // sebagai id soal.
+                Route::delete('/bulk', [SoalSayaController::class, 'destroyBulk'])->name('destroy-bulk');
+                Route::delete('/{id}', [SoalSayaController::class, 'destroy'])->name('destroy');
                 Route::post('/{id}/clone', [SoalSayaController::class, 'clone'])->name('clone');
             });
 
@@ -2146,6 +2151,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     ->name('photos.bulk-form')->middleware('dormitory.restrict:students');
                 Route::post('/photos/bulk', [StudentPhotoBulkController::class, 'process'])
                     ->name('photos.bulk-process')->middleware('dormitory.restrict:students');
+                Route::get('/cards', [StudentCardController::class, 'index'])
+                    ->name('cards.index')->middleware('dormitory.restrict:students');
+                Route::post('/cards/settings', [StudentCardController::class, 'updateSettings'])
+                    ->name('cards.settings')->middleware('dormitory.restrict:students');
+                Route::get('/cards/pdf', [StudentCardController::class, 'printPdf'])
+                    ->name('cards.print')->middleware('dormitory.restrict:students');
                 Route::get('/dapodik-export', [StudentDapodikExportController::class, 'export'])
                     ->name('dapodik-export');
                 Route::get('/dapodik-mapping', [StudentDapodikExportController::class, 'index'])
