@@ -103,6 +103,9 @@ class PrintSettingsService
             'instruksi_spacing' => 1.0,
 
             // Soal & opsi
+            // Bahasa naskah: 'otomatis' mengikuti mayoritas bahasa soal;
+            // 'arab' memaksa seluruh naskah RTL + huruf ا/ب/ج/د + angka Arab.
+            'bahasa' => 'otomatis',
             'font' => 'cambria',
             'font_size' => 11,
             'line_height' => 1.0,
@@ -262,6 +265,9 @@ class PrintSettingsService
         $settings['instruksi_spacing'] = round($this->number($settings['instruksi_spacing'] ?? null, 1.0, 2.5, 1.0), 2);
 
         // Soal & opsi
+        $settings['bahasa'] = in_array($settings['bahasa'] ?? 'otomatis', ['otomatis', 'latin', 'arab'], true)
+            ? $settings['bahasa']
+            : 'otomatis';
         $settings['font'] = array_key_exists((string) $settings['font'], self::FONTS) ? $settings['font'] : 'times';
         $settings['font_size'] = (int) $this->number($settings['font_size'] ?? null, 8, 16, 11);
         $settings['line_height'] = round($this->number($settings['line_height'] ?? null, 1.0, 2.5, 1.2), 2);

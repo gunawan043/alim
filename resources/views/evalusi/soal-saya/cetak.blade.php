@@ -336,6 +336,15 @@
                             <summary>Soal, spasi &amp; opsi</summary>
                             <div class="pb-2">
                                 <div class="cetak-field">
+                                    <label class="form-label mb-1">Bahasa naskah</label>
+                                    <select name="bahasa" class="form-select form-select-sm">
+                                        <option value="otomatis" @selected($settings['bahasa'] === 'otomatis')>Otomatis (ikut mayoritas soal)</option>
+                                        <option value="latin" @selected($settings['bahasa'] === 'latin')>Latin (LTR, A–E)</option>
+                                        <option value="arab" @selected($settings['bahasa'] === 'arab')>Arab (RTL, ا–هـ, ١٢٣)</option>
+                                    </select>
+                                    <div class="form-text">Arab membuat seluruh naskah rata kanan dengan huruf pilihan dan nomor Arab.</div>
+                                </div>
+                                <div class="cetak-field">
                                     <label class="form-label mb-1">Jenis huruf</label>
                                     <select name="font" class="form-select form-select-sm">
                                         @foreach(\App\Services\Evaluasi\PrintSettingsService::FONTS as $value => $label)

@@ -90,27 +90,19 @@ class SoalNaskahPdfService
                 ->map(fn ($option) => [
                     'label' => (string) $option->label,
                     'teks' => (string) $option->teks_opsi,
+                    // Label tampil DITENTUKAN OLEH BAHASA NASKAH (format baku
+                    // LJK), bukan oleh bahasa soal — lihat resolveExamBahasa().
                     'display_label' => (string) $option->label,
                 ])
                 ->all();
 
             $wacana = $item->wacana;
 
-            // Format Arab aktif per soal: soal berbahasa Arab dirender RTL
-            // dengan label opsi ا/ب/ج, soal Latin tetap LTR — dalam satu
-            // dokumen yang sama. bahasaEfektif() juga mendeteksi soal lama
-            // yang kolom bahasanya kosong.
+            // Bahasa per soal hanya dipakai untuk memilih mode naskah saat
+            // setelan 'bahasa' = otomatis. Keputusan RTL/label ada di tingkat
+            // dokumen (lihat blok "Mode bahasa naskah" di bawah).
             $bahasa = $item->bahasaEfektif();
             $isArabic = $bahasa === Soal::BAHASA_ARAB;
-
-            // Soal Arab memakai huruf opsi ا/ب/ج/د/هـ; soal Latin tetap A/B/C/D.
-            if ($isArabic) {
-                $huruf = (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']);
-                foreach ($opsi as $i => &$option) {
-                    $option['display_label'] = $huruf[$i] ?? (string) ($option['label'] ?? '');
-                }
-                unset($option);
-            }
 
             return [
                 'nomor' => $index + $startNumber,
@@ -130,12 +122,49 @@ class SoalNaskahPdfService
             ];
         })->all();
 
+        // ── Mode bahasa naskah (format baku LJK) ──────────────────────────
+        // Bahasa adalah keputusan TINGKAT DOKUMEN, bukan per soal — sama
+        // persis seperti LjkSoalSheet::examBahasa():
+        //   'arab'  → seluruh naskah RTL, huruf ا/ب/ج/د, nomor ١، ٢، ٣
+        //   'latin' → LTR, huruf A/B/C/D, nomor 1, 2, 3
+        // Setelan 'bahasa' = otomatis memilih 'arab' bila mayoritas soal
+        // berbahasa Arab; guru dapat memaksanya lewat setelan cetak.
+        $examBahasa = $this->resolveExamBahasa($settings, $soal);
+        $isArabicExam = $examBahasa === Soal::BAHASA_ARAB;
+        $arabAngka = $isArabicExam && (string) config('ljk.soal.angka_arab', 'auto') !== 'off';
+
+        // Label opsi WAJIB mengikuti bahasa naskah: pada naskah Arab semua
+        // butir memakai ا/ب/ج/د, pada naskah Latin semua butir memakai
+        // A/B/C/D — termasuk soal yang bahasanya berbeda dari naskahnya.
+        $huruf = (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']);
+
+        foreach ($soal as &$butir) {
+            $butir['bahasa'] = $examBahasa;
+            $butir['isArabic'] = $isArabicExam;
+            $butir['rtl'] = $isArabicExam;
+
+            foreach ($butir['opsi'] as $i => &$option) {
+                $option['display_label'] = $isArabicExam
+                    ? ($huruf[$i] ?? (string) ($option['label'] ?? ''))
+                    : (string) ($option['label'] ?? '');
+            }
+            unset($option);
+        }
+        unset($butir);
+
+        // Blok dibangun ulang dari $soal agar rtl/label ikut berubah.
         $blocks = $sheet->blocks($soal);
 
         foreach ($blocks as &$block) {
-            if ($block['type'] === 'soal') {
-                $block['nomor_tampil'] = (string) $block['nomor'].'.';
+            if ($block['type'] !== 'soal') {
+                continue;
             }
+
+            $block['rtl'] = $isArabicExam;
+            $block['bahasa'] = $examBahasa;
+            $block['nomor_tampil'] = $arabAngka
+                ? $sheet->formatNumber((int) $block['nomor'], true)
+                : (string) $block['nomor'].'.';
         }
         unset($block);
 
@@ -174,12 +203,24 @@ class SoalNaskahPdfService
                 continue;
             }
 
-            $block['opsiLayout'] = $layout->layout(
+            $layoutResult = $layout->layout(
                 $block['opsi'],
                 $contentMm,
                 (float) ($settings['font_size'] ?? 11),
                 $maxColumns
             );
+
+            // Naskah RTL: pilihan pertama (ا) harus di kolom PALING KANAN.
+            // Semua tabel opsi dibangun kiri-ke-kanan, jadi urutan sel
+            // dibalik per baris agar ا, ب, ج, د terbaca kanan-ke-kiri.
+            if ($isArabicExam) {
+                foreach ($layoutResult['rows'] as &$row) {
+                    $row = array_reverse($row);
+                }
+                unset($row);
+            }
+
+            $block['opsiLayout'] = $layoutResult;
         }
         unset($block);
 
@@ -212,9 +253,15 @@ class SoalNaskahPdfService
             'mapel' => $mapel,
             'kelas' => $kelas,
             'guru' => (string) $user->name,
-        ]);
+        ], $isArabicExam);
 
         $karakter = ! ($settings['show_karakter'] ?? true) ? [] : $print->karakterItems($settings);
+
+        // Naskah Arab memakai penanaman karakter berbahasa Arab bila guru
+        // belum mengisi butir sendiri (format baku: seluruh informasi Arab).
+        if ($isArabicExam && trim((string) ($settings['karakter_items'] ?? '')) === '') {
+            $karakter = (array) config('ljk.soal.penanaman_karakter_arab', []);
+        }
 
         return [
             'judul' => $judulLines,
@@ -267,11 +314,11 @@ class SoalNaskahPdfService
             'namaPeserta' => '',
             'karakter' => $karakter,
             'instruksi' => ($settings['show_instruksi'] ?? true) ? $print->instruksi($settings) : '',
-            'instruksiArab' => (string) config('ljk.soal.instruksi_arab', ''),
+            'instruksiArab' => $isArabicExam ? (string) config('ljk.soal.instruksi_arab', '') : '',
             'soal' => $soal,
             'blocks' => $blocks,
-            'examBahasa' => 'latin',
-            'arabAngka' => false,
+            'examBahasa' => $examBahasa,
+            'arabAngka' => $arabAngka,
             'maxOptions' => min(5, $maxOptions),
             'fontStack' => LjkPdfFonts::stack(),
             'arabicStack' => LjkPdfFonts::arabicStack(),
@@ -284,6 +331,27 @@ class SoalNaskahPdfService
             'faceCss' => LjkPdfFonts::faceCss(),
             'canonical' => true,
         ];
+    }
+
+    /**
+     * Bahasa naskah: setelan guru bila dipaksa, atau auto dari mayoritas soal.
+     *
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, array<string, mixed>>  $soal
+     */
+    private function resolveExamBahasa(array $settings, array $soal): string
+    {
+        $pilihan = (string) ($settings['bahasa'] ?? 'otomatis');
+
+        if ($pilihan === 'arab' || $pilihan === 'latin') {
+            return $pilihan;
+        }
+
+        $jumlahArab = collect($soal)->filter(fn ($q) => $q['isArabic'] ?? false)->count();
+
+        return ($soal !== [] && $jumlahArab * 2 > count($soal))
+            ? Soal::BAHASA_ARAB
+            : Soal::BAHASA_LATIN;
     }
 
     /**
@@ -356,7 +424,7 @@ class SoalNaskahPdfService
      * @param  array{mapel: string, kelas: string, guru: string}  $values
      * @return array<int, array<int, array{0: string, 1: string}>>
      */
-    private function identityRows(array $settings, array $values): array
+    private function identityRows(array $settings, array $values, bool $isArabic = false): array
     {
         if (! ($settings['show_identitas'] ?? true)) {
             return [];
@@ -368,17 +436,32 @@ class SoalNaskahPdfService
             return $value !== '' ? $value : $fallback;
         };
 
+        // Mode Arab memakai label Arab untuk SEMUA kolom, kecuali guru
+        // sengaja mengetik label sendiri.
+        $arab = (array) config('ljk.soal.identitas_arab', []);
+        $label = function (string $field, string $latin) use ($settings, $isArabic, $arab): string {
+            $custom = trim((string) ($settings['identitas_label_'.$field] ?? ''));
+
+            // Label bawaan di setelan sama dengan versi Latin; anggap belum
+            // diubah sehingga label Arab boleh dipakai.
+            if ($isArabic && ($custom === '' || $custom === $latin)) {
+                return (string) ($arab[$field] ?? $latin);
+            }
+
+            return $custom !== '' ? $custom : $latin;
+        };
+
         $rows = [
             [
-                [(string) ($settings['identitas_label_mapel'] ?? 'Mata Pelajaran'), $override('mapel', $values['mapel'])],
-                [(string) ($settings['identitas_label_kelas'] ?? 'Kelas'), $override('kelas', $values['kelas'])],
+                [$label('mapel', 'Mata Pelajaran'), $override('mapel', $values['mapel'])],
+                [$label('kelas', 'Kelas'), $override('kelas', $values['kelas'])],
             ],
         ];
 
         if ((int) ($settings['identitas_rows'] ?? 2) >= 2) {
             $rows[] = [
-                [(string) ($settings['identitas_label_guru'] ?? 'Guru Pengampu'), $override('guru', $values['guru'])],
-                [(string) ($settings['identitas_label_peserta'] ?? 'Nama Peserta Didik'), ''],
+                [$label('guru', 'Guru Pengampu'), $override('guru', $values['guru'])],
+                [$label('peserta', 'Nama Peserta Didik'), ''],
             ];
         }
 

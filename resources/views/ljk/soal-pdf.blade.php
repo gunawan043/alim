@@ -95,6 +95,9 @@
     }
     table.identitas td.label { width: 21%; }
     table.identitas td.value { width: 29%; }
+    /* RTL: nilainya rata kanan agar sejajar dengan label Arab di kanannya. */
+    table.identitas.rtl-exam td.label { text-align: right; }
+    table.identitas.rtl-exam td.value { text-align: right; }
     .nama-line { display: inline-block; width: 100%; border-bottom: 0.3mm dotted #000; }
 
     .karakter-title {
@@ -147,6 +150,12 @@
     table.qwrap td { vertical-align: top; padding: 0; }
     table.qwrap td.qno { width: 4.5%; font-weight: normal; }
     table.qwrap td.qbody { width: 95.5%; }
+
+    /* RTL = CERMIN dari LTR. Tabel tetap dibangun kiri-ke-kanan, jadi kolom
+       nomor yang semula di kiri dipindah ke kanan dengan lebar yang SAMA
+       (4.5%). Tanpa aturan ini nomor di RTL mendapat kolom lebar sel isi. */
+    table.qwrap.rtl td.qno { text-align: right; }
+    table.qwrap.rtl td.qbody { text-align: right; }
     table.opts {
         width: 100%;
         border-collapse: collapse;
@@ -159,6 +168,11 @@
         font-size: {{ $fontSize }}pt;
         line-height: {{ $lineHeight }};
     }
+    /* RTL: padding pindah ke KIRI agar jarak antar kolom sama besarnya
+       dengan versi Latin (yang memakai padding kanan). Tanpa ini kolom
+       Arab bergeser tidak rata karena padding tetap di kanan. */
+    table.opts.opts-auto.rtl td,
+    table.opts.rtl td { padding: 0 0 0 {{ $optionIndent }}mm; }
     table.opts td .letter { font-weight: normal; }
 
     /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
@@ -212,19 +226,36 @@
     @endif
 
     {{-- Identitas: tabel maksimal 3 baris ─────────────────────────────── --}}
+    @php $rtlExam = ($examBahasa ?? 'latin') === 'arab'; @endphp
     @if($identitas['show'] && ! empty($identityRows))
-    <table class="identitas">
+    <table class="identitas {{ $rtlExam ? 'rtl-exam' : '' }}">
         @foreach($identityRows as $row)
+            @php
+                // Cermin urutan pasangan DAN urutan label/nilai: pada RTL
+                // pasangan paling kanan adalah pasangan pertama.
+                $pasangan = $rtlExam ? array_reverse($row) : $row;
+            @endphp
             <tr>
-                @foreach($row as [$label, $value])
-                    <td class="label">{{ $label }}</td>
-                    <td class="value">
-                        @if($label === $identitas['labelPeserta'])
-                            <span class="nama-line">&nbsp;</span>
-                        @else
-                            {!! LjkArabicText::toHtml($value, false) !!}
-                        @endif
-                    </td>
+                @foreach($pasangan as [$label, $value])
+                    @if($rtlExam)
+                        <td class="label">{!! LjkArabicText::toHtml($label, false) !!}</td>
+                        <td class="value">
+                            @if($label === (config('ljk.soal.identitas_arab.peserta') ?? ''))
+                                <span class="nama-line">&nbsp;</span>
+                            @else
+                                {!! LjkArabicText::toHtml($value, false) !!}
+                            @endif
+                        </td>
+                    @else
+                        <td class="label">{{ $label }}</td>
+                        <td class="value">
+                            @if($label === $identitas['labelPeserta'])
+                                <span class="nama-line">&nbsp;</span>
+                            @else
+                                {!! LjkArabicText::toHtml($value, false) !!}
+                            @endif
+                        </td>
+                    @endif
                 @endforeach
 
                 {{-- Sel kosong bila baris hanya berisi satu pasang --}}
@@ -286,17 +317,22 @@
             <div class="q">
                 {{-- Satu tabel: nomor + kolom isi (teks soal DAN opsi ada di kolom
                      yang sama) → teks soal sejajar dengan huruf pilihan A. --}}
-                <table class="qwrap">
+                <table class="qwrap {{ $rtl ? 'rtl' : '' }}">
                     <tr>
                         @if($rtl)
-                            <td class="qbody" style="text-align: right;">
+                            {{-- RTL: CETAKAN CERMIN dari baris LTR. Dompdf selalu
+                                 menyusun sel kiri-ke-kanan, jadi sel isi ditaruh
+                                 lebih dulu selebar 95.5% lalu sel nomor 4.5%.
+                                 Hasilnya nomor di kanan, teks rata kanan, dan
+                                 lebar kolom identik dengan versi Latin. --}}
+                            <td class="qbody" style="width: 95.5%; text-align: right;">
                                 <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif
                                 @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null])
                             </td>
-                            <td class="qno" style="text-align: right;">
+                            <td class="qno" style="width: 4.5%; text-align: right;">
                                 @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
                             </td>
                         @else

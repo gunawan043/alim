@@ -894,6 +894,168 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('ا.', $html, 'Soal Latin tidak memakai huruf Arab.');
     }
 
+    public function test_naskah_arab_memakai_angka_arab_dan_rata_kanan(): void
+    {
+        // Format baku: mode Arab adalah keputusan TINGKAT DOKUMEN. Nomor soal
+        // memakai ١، ٢، ٣, seluruh isi rata kanan, dan instruksi Arab dicetak.
+        $ids = [];
+
+        foreach (['ما هو ناتج ٣ + ٤ ؟', 'اذكر أقسام الكلمة'] as $pertanyaan) {
+            $soal = $this->makeSoal();
+            $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => $pertanyaan])->save();
+            $ids[] = $soal->id;
+        }
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereIn('id', $ids)->orderBy('id')->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0]
+        );
+
+        $this->assertStringContainsString('١.', $html, 'Nomor soal Arab memakai angka Arab.');
+        $this->assertStringContainsString('٢.', $html, 'Nomor kedua juga angka Arab.');
+        $this->assertStringNotContainsString('<span class="ar">1.</span>', $html, 'Nomor Latin tidak boleh muncul.');
+        $this->assertStringContainsString('<div class="instruksi-arab ar-block">', $html, 'Instruksi Arab dicetak pada naskah Arab.');
+    }
+
+    public function test_naskah_arab_memaksa_soal_latin_ikut_rtl(): void
+    {
+        // Bila guru memilih bahasa = arab, soal yang kolom bahasanya Latin
+        // tetap dicetak RTL dengan huruf pilihan Arab — tidak ada naskah
+        // setengah RTL setengah LTR.
+        $soal = $this->makeSoal();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $this->assertStringContainsString('text-align: right', $html, 'Soal Latin ikut rata kanan.');
+        $this->assertStringNotContainsString('<span class="letter">A.</span>', $html, 'Huruf opsi memakai Arab.');
+    }
+
+    public function test_naskah_latin_memaksa_soal_arab_tetap_ltr(): void
+    {
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'latin']
+        );
+
+        $this->assertStringContainsString('1.', $html, 'Nomor tetap angka Latin.');
+        $this->assertStringNotContainsString('١.', $html, 'Angka Arab tidak dipakai pada mode latin.');
+        $this->assertStringNotContainsString('<div class="instruksi-arab', $html, 'Instruksi Arab tidak dicetak.');
+    }
+
+    public function test_setelan_bahasa_bawaan_otomatis(): void
+    {
+        $settings = app(PrintSettingsService::class)->defaults();
+
+        $this->assertSame('otomatis', $settings['bahasa']);
+
+        $sanitized = app(PrintSettingsService::class)->sanitize(['bahasa' => 'klingon'] + $settings);
+
+        $this->assertSame('otomatis', $sanitized['bahasa'], 'Nilai tak dikenal kembali ke otomatis.');
+    }
+
+    public function test_naskah_arab_menaruh_pilihan_pertama_di_kolom_paling_kanan(): void
+    {
+        // Naskah Arab dibaca kanan-ke-kiri: ا harus berada di kolom kanan,
+        // bukan kiri. Tabel opsi Dompdf selalu dibangun kiri-ke-kanan,
+        // sehingga urutan sel harus dibalik.
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $blokSoal = collect($data['blocks'])->firstWhere('type', 'soal');
+        $barisPertama = $blokSoal['opsiLayout']['rows'][0];
+
+        // Sel dibangun kiri-ke-kanan, jadi opsi pertama (ا) harus di sel TERAKHIR.
+        $this->assertSame(0, end($barisPertama)['index'], 'Opsi ا berada di kolom paling kanan.');
+        $this->assertSame(3, $barisPertama[0]['index'], 'Opsi د berada di kolom paling kiri.');
+    }
+
+    public function test_naskah_latin_tidak_memakai_huruf_arab_walau_soalnya_arab(): void
+    {
+        // Regresi: label opsi dulu ditentukan per soal, sehingga naskah mode
+        // 'latin' tetap mencetak ا/ب/ج untuk soal berbahasa Arab.
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'latin']
+        );
+
+        $label = collect($data['soal'])->first()['opsi'][0]['display_label'];
+
+        $this->assertSame('A', $label, 'Naskah Latin memakai label Latin.');
+    }
+
+    public function test_naskah_arab_memakai_label_identitas_arab(): void
+    {
+        // Format baku: seluruh informasi (mapel, kelas, guru, peserta)
+        // ditulis dalam bahasa Arab pada naskah berbahasa Arab.
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $label = collect($data['identityRows'])->flatten(1)->map(fn ($pair) => $pair[0])->all();
+
+        $this->assertContains('المادة', $label, 'Label mapel berbahasa Arab.');
+        $this->assertContains('الفصل', $label, 'Label kelas berbahasa Arab.');
+        $this->assertContains('المدرّس', $label, 'Label guru berbahasa Arab.');
+        $this->assertContains('اسم الطالب', $label, 'Label peserta berbahasa Arab.');
+        $this->assertNotContains('Mata Pelajaran', $label, 'Label Latin tidak dipakai.');
+    }
+
+    public function test_naskah_arab_mencerminkan_urutan_pasangan_identitas(): void
+    {
+        // RTL = cermin: pasangan pertama harus muncul paling kanan, jadi
+        // urutan pasangan di setiap baris dibalik.
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $baris = $data['identityRows'][0];
+
+        $this->assertSame('المادة', $baris[0][0], 'Pasangan pertama tetap mapel.');
+    }
+
     public function test_daftar_paket_soal_hanya_milik_sendiri(): void
     {
         // Menu Paket Soal tidak menampilkan koleksi guru lain, walau koleksi
@@ -1167,7 +1329,7 @@ class BankSoalSkScopeTest extends TestCase
             'hasArabic' => false,
         ])->render();
 
-        $this->assertStringContainsString('<table class="identitas">', $html);
+        $this->assertStringContainsString('<table class="identitas ', $html);
         $this->assertStringContainsString('Nama Peserta Didik', $html);
         $this->assertStringContainsString('PENANAMAN KARAKTER :', $html);
         $this->assertStringContainsString('Pilihlah jawaban yang benar.', $html);

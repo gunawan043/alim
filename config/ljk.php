@@ -293,6 +293,21 @@ return [
         'huruf_arab' => ['ا', 'ب', 'ج', 'د', 'هـ'],
         // Nomor soal Arab: 'auto' → naskah Arab memakai ١، ٢، ٣; 'off' → Latin.
         'angka_arab' => 'auto',
+        // Label tabel identitas versi Arab. Naskah yang dicetak dalam mode
+        // Arab memakai label ini, sehingga isinya (mapel, guru, kelas)
+        // seluruhnya berbahasa Arab seperti format baku LJK.
+        'identitas_arab' => [
+            'mapel' => 'المادة',
+            'kelas' => 'الفصل',
+            'guru' => 'المدرّس',
+            'peserta' => 'اسم الطالب',
+        ],
+        // Penanaman karakter versi Arab (dipakai bila guru belum mengisi).
+        'penanaman_karakter_arab' => [
+            'ادعُ الله قبل أن تبدأ الإجابة!',
+            'اتّقِ الله وكن صادقًا في إجابتك!',
+            'خير الحافظين هو الله سبحانه وتعالى!',
+        ],
         // Identitas: jumlah baris maksimum pada tabel kop (2 pasang per baris).
         'identitas_baris_maks' => 3,
     ],

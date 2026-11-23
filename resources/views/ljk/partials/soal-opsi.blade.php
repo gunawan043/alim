@@ -24,16 +24,20 @@
              tanpa colspan → kolom lurus sejajar dari atas ke bawah. --}}
         @foreach($opsiLayout['rows'] as $row)
             @php $sisa = max(0, $kolom - count($row)); @endphp
-            <table class="opts opts-auto" style="width: {{ $lebarMm }}mm;">
+            <table class="opts opts-auto {{ $rtl ? 'rtl' : '' }}" style="width: {{ $lebarMm }}mm;">
                 <tr>
                     @foreach($row as $cell)
                         @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
                         <td style="width: {{ $unitMm }}mm; text-align: {{ $align }};">
                             @if($opsi)
                                 @if($rtl)
-                                    {{-- RTL: teks dulu, lalu penanda ".ج" di ujung kanan. --}}
+                                    {{-- RTL: dibaca kanan-ke-kiri "ا. اسم". Dompdf selalu
+                                         mengalirkan isi sel kiri-ke-kanan, jadi teks
+                                         ditaruh dulu, baru penanda huruf — dengan
+                                         sel rata kanan hasil visualnya menjadi
+                                         "اسم .ا" yang terbaca benar dari kanan. --}}
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
-                                    <span class="letter">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                    <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                 @else
                                     <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
@@ -44,7 +48,9 @@
                         </td>
                     @endforeach
 
-                    {{-- Sel kosong agar jumlah kolom baris ini tetap N. --}}
+                    {{-- Sel kosong agar jumlah kolom baris ini tetap N.
+                         Padding-nya SAMA dengan sel berisi supaya lebar
+                         kolom tidak bergeser antar baris. --}}
                     @for($i = 0; $i < $sisa; $i++)
                         <td style="width: {{ $unitMm }}mm;">&nbsp;</td>
                     @endfor
@@ -52,7 +58,7 @@
             </table>
         @endforeach
     @else
-        <table class="opts">
+        <table class="opts {{ $rtl ? 'rtl' : '' }}">
             <tr>
                 @for($i = 0; $i < $maxOptions; $i++)
                     @php
@@ -63,9 +69,10 @@
                     <td style="width: {{ $colWidth }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
                         @if($opsi)
                             @if($rtl)
-                                {{-- RTL: teks dulu, lalu penanda ".ج" di ujung kanan. --}}
+                                {{-- RTL: teks dulu lalu penanda huruf; dengan sel rata
+                                     kanan hasilnya "اسم .ا" terbaca dari kanan. --}}
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
-                                <span class="letter">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                             @else
                                 <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
