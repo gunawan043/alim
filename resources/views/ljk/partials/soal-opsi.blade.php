@@ -7,18 +7,20 @@
 @endphp
 @if(! empty($block['opsi']))
     @if($opsiLayout && ! empty($opsiLayout['rows']))
-        <table class="opts opts-auto">
-            @foreach($opsiLayout['rows'] as $row)
-                @php
-                    // Kolom dihitung PER BARIS: baris berisi 4 pilihan memakai
-                    // 25%, baris berisi 2 pilihan memakai 50% — sehingga
-                    // tidak ada sel kosong yang melebar.
-                    $kolom = max(1, count($row));
-                @endphp
+        {{-- Satu tabel PER BARIS tanpa colspan: Dompdf kurang tepat
+             menghitung lebar bila colspan dipakai, sehingga lebar sel
+             diberikan langsung dalam persen dari total jatah baris. --}}
+        @foreach($opsiLayout['rows'] as $row)
+            @php
+                $totalSpan = array_sum(array_column($row, 'span')) ?: 1;
+                // Sel kosong penutup agar total baris selalu 100%.
+                $sisa = max(0, (int) $opsiLayout['columns'] - $totalSpan);
+            @endphp
+            <table class="opts opts-auto">
                 <tr>
                     @foreach($row as $cell)
                         @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
-                        <td style="width: {{ round(100 / $kolom, 4) }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
+                        <td style="width: {{ round(100 * (int) $cell['span'] / ($totalSpan + $sisa), 4) }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
                             @if($opsi)
                                 @if($rtl)
                                     {{-- RTL: teks dulu, lalu penanda ".ج" di ujung kanan. --}}
@@ -33,9 +35,13 @@
                             @endif
                         </td>
                     @endforeach
+
+                    @if($sisa > 0)
+                        <td style="width: {{ round(100 * $sisa / ($totalSpan + $sisa), 4) }}%;">&nbsp;</td>
+                    @endif
                 </tr>
-            @endforeach
-        </table>
+            </table>
+        @endforeach
     @else
         <table class="opts">
             <tr>

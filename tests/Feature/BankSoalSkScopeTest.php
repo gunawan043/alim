@@ -463,20 +463,33 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertCount(1, $hasil['rows'], 'A, B, C, D dalam satu baris.');
     }
 
-    public function test_pilihan_sedang_dibagi_rata_tanpa_lubang(): void
+    public function test_jumlah_kolom_mengikuti_jumlah_opsi(): void
     {
-        // Empat pilihan tidak muat 4 kolom → dibagi rata 2x2, bukan 3+1
-        // yang menyisakan baris berisi D saja.
+        // A–D → 4 kolom (1/4 tiap opsi), A–E → 5 kolom (1/5).
+        $layout = app(SoalOpsiLayout::class);
+
+        $empat = $layout->layout($this->opsi(['48', '46', '52', '56']), 157.6, 11.0);
+        $this->assertSame(4, $empat['columns']);
+        $this->assertCount(1, $empat['rows']);
+
+        $lima = $layout->layout($this->opsi(['48', '46', '52', '56', '60']), 157.6, 11.0);
+        $this->assertSame(5, $lima['columns']);
+        $this->assertCount(1, $lima['rows']);
+    }
+
+    public function test_opsi_panjang_mendapat_jatah_kolom_lebih(): void
+    {
+        // Opsi yang makan area 3/4 mendapat 3 jatah, sisanya di baris berikut.
         $layout = app(SoalOpsiLayout::class);
         $hasil = $layout->layout(
-            $this->opsi(['48', 'tujuh puluh dua', 'lima puluh dua', 'sembilan']),
+            $this->opsi(['seratus sepuluh milimeter panjangnya', 'ok', 'ya', 'tidak']),
             157.6,
             11.0
         );
 
-        $this->assertCount(2, $hasil['rows']);
-        $this->assertCount(2, $hasil['rows'][0]);
-        $this->assertCount(2, $hasil['rows'][1]);
+        $this->assertSame(4, $hasil['columns']);
+        $this->assertSame(3, $hasil['spans'][0], 'Opsi panjang memakai 3 jatah.');
+        $this->assertSame(1, $hasil['spans'][1]);
     }
 
     public function test_lima_pilihan_pendek_muat_satu_baris(): void
@@ -486,20 +499,6 @@ class BankSoalSkScopeTest extends TestCase
 
         $this->assertSame(5, $hasil['columns'], 'Mode otomatis mendukung 5 kolom.');
         $this->assertCount(1, $hasil['rows'], 'A, B, C, D, E dalam satu baris.');
-    }
-
-    public function test_lima_pilihan_sedang_tidak_menyisakan_satu_baris(): void
-    {
-        // Muat 4 per baris → 3+2, bukan 4+1 yang menggantung.
-        $layout = app(SoalOpsiLayout::class);
-        $hasil = $layout->layout(
-            $this->opsi(['dua belas', 'empat puluh', 'lima puluh', 'enam puluh', 'tujuh puluh']),
-            157.6,
-            11.0
-        );
-
-        $this->assertCount(2, $hasil['rows']);
-        $this->assertGreaterThan(1, count($hasil['rows'][1]), 'Baris terakhir tidak berisi 1 pilihan saja.');
     }
 
     public function test_otomatis_bukan_satu_pilihan_per_baris(): void
@@ -547,7 +546,7 @@ class BankSoalSkScopeTest extends TestCase
 
         preg_match_all('/width: ([\d.]+)%/', $html, $m);
         $this->assertCount(1, array_unique($m[1]), 'Semua kolom memakai lebar yang sama.');
-        $this->assertSame('50', array_unique($m[1])[0]);
+        $this->assertSame('25', array_unique($m[1])[0], 'Empat opsi → tiap opsi 1/4.');
         $this->assertStringContainsString('opts-auto', $html);
     }
 
