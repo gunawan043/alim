@@ -10,6 +10,7 @@ use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\InstitutionDecreeMatrixService;
 use App\Services\InstitutionDecreePayloadService;
 use App\Services\SchoolGroupService;
 use Illuminate\Console\Command;
@@ -46,11 +47,19 @@ class ImportSkPembagianPelajaran extends Command
         'fikih' => ['Fikih'],
         'hafalan hadits/pai depag' => ['Hafalan Hadits'],
         'hafalan hadits' => ['Hafalan Hadits'],
+        'hadits' => ['Hafalan Hadits'],
+        'coding' => ['Coding'],
+        'koding' => ['Coding'],
+        'bahasa indonesia' => ['Bahasa Indonesia'],
+        'pjok' => ['PJOK'],
         'bahasa arab' => ['Bahasa Arab'],
         'qowaid' => ['Qowaid Lughoh'],
         'kitabah khot' => ['Kitabah', 'Khot'],
         'ta\'bir' => ['Ta\'bir'],
         'tahfidzul qur\'an' => ['Tahfidzul Qur\'an'],
+        'tahfidz' => ['Tahfidzul Qur\'an'],
+        'guru tahfizh' => ['Tahfidzul Qur\'an'],
+        'guru tahfidz' => ['Tahfidzul Qur\'an'],
         'bhs indonesia' => ['Bahasa Indonesia'],
         'bhs inggris' => ['Bahasa Inggris'],
         'ipa' => ['IPA Terpadu'],
@@ -92,8 +101,12 @@ class ImportSkPembagianPelajaran extends Command
             return self::FAILURE;
         }
 
+        // Satu tahun ajaran bisa punya dua baris (ganjil & genap) dengan nama
+        // sama. Ambil yang aktif lebih dulu agar rombel tidak jatuh ke semester
+        // yang salah dan seluruh JP hilang tanpa peringatan.
         $year = $this->option('year')
-            ? AcademicYear::where('name', $this->option('year'))->first()
+            ? (AcademicYear::where('name', $this->option('year'))->where('is_active', true)->first()
+                ?? AcademicYear::where('name', $this->option('year'))->orderByDesc('is_active')->first())
             : AcademicYear::where('is_active', true)->first();
 
         if (! $year) {
@@ -101,6 +114,8 @@ class ImportSkPembagianPelajaran extends Command
 
             return self::FAILURE;
         }
+
+        $this->line('Tahun ajaran dipakai: '.$year->name.' '.$year->semester.' (aktif='.(int) $year->is_active.')');
 
         $path = base_path($this->option('file'));
         if (! is_file($path)) {
@@ -263,9 +278,13 @@ class ImportSkPembagianPelajaran extends Command
                             continue;
                         }
 
-                        $key = $subject->id.'|'.$gid;
-                        if (isset($claimed[$key]) && ! str_contains(mb_strtolower($subject->name), 'tahfidz')) {
-                            $this->warn['conflicts'][] = $subject->name.' / '.$rombel.' : '.$claimed[$key].' (dilewati: '.$matched.')';
+                        // Skema mengizinkan satu mapel per kelas diampu beberapa
+                        // guru (bedakan lewat teacher_id), jadi guru kedua tidak
+                        // ditolak. Yang tetap dicegah: satu guru tercatat dua
+                        // kali pada mapel+kelas yang sama.
+                        $key = $subject->id.'|'.$gid.'|'.$userId;
+                        if (isset($claimed[$key])) {
+                            $this->warn['conflicts'][] = $subject->name.' / '.$rombel.' : '.$claimed[$key].' (duplikat guru, dilewati: '.$matched.')';
 
                             continue;
                         }
@@ -360,13 +379,21 @@ class ImportSkPembagianPelajaran extends Command
             $this->error('Tidak terpetakan: '.implode(' | ', array_unique($this->warn['subject_missing'])));
         }
 
+        // Jam bersih per rombel: mapel yang diampu dua guru tetap dihitung
+        // sekali, supaya total dibandingkan dengan kurikulum bukan berlipat.
         $perRombel = [];
+        $jamMapelPerRombel = [];
         foreach ($assignments as $subs) {
             foreach ($subs as $sid => $cells) {
                 foreach ($cells as $gid => $h) {
                     $perRombel[$gid] = ($perRombel[$gid] ?? 0) + $h;
+                    $jamMapelPerRombel[$gid][$sid] = $h;
                 }
             }
+        }
+        $bersihPerRombel = [];
+        foreach ($jamMapelPerRombel as $gid => $subs) {
+            $bersihPerRombel[$gid] = array_sum($subs);
         }
         $kurikulumPerRombel = [];
         foreach ($curriculum as $sid => $cells) {
@@ -383,10 +410,10 @@ class ImportSkPembagianPelajaran extends Command
         $this->line('  guru               : '.count($rows));
         $this->line('');
 
-        $this->line('TOTAL JP PER ROMBEL (penugasan / kurikulum)');
+        $this->line('TOTAL JP PER ROMBEL (jam mapel bersih / kurikulum)');
         $line = [];
         foreach ($groups as $g) {
-            $got = $perRombel[$g->id] ?? 0;
+            $got = $bersihPerRombel[$g->id] ?? 0;
             $need = $kurikulumPerRombel[$g->id] ?? 0;
             $line[] = $g->name.'='.$got.'/'.$need.($got == $need ? '' : ' (!)');
         }
@@ -437,10 +464,15 @@ class ImportSkPembagianPelajaran extends Command
             $positionCount = $service->savePositions($positions, $school->id);
             $result = $service->saveMatrix($decree, $assignments, $tasks, $school->id);
 
+            // Halaman detail/cetak membaca snapshot. Tanpa ini SK tampil kosong
+            // walaupun penugasannya sudah tersimpan.
+            $snapshot = app(InstitutionDecreeMatrixService::class)->refreshSnapshot($decree->refresh());
+
             DB::commit();
 
             $this->info('TERSIMPAN.');
             $this->line('  SK              : '.$decree->decree_number.' ('.$decree->status.') - id '.$decree->id);
+            $this->line('  baris snapshot  : '.count($snapshot['rows'] ?? []));
             $this->line('  jabatan diubah  : '.$positionCount);
             $this->line('  penugasan       : '.$result['assignments']);
             $this->line('  tugas tambahan  : '.$result['tasks']);
