@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\InstitutionDecreeTemplateExport;
+use App\Imports\InstitutionDecreeImport;
 use App\Models\AcademicYear;
 use App\Models\AdditionalTaskType;
 use App\Models\AdditionalTaskTypeWorkUnitHour;
@@ -24,10 +26,9 @@ use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
 use App\Services\InstitutionDecreeMatrixService;
 use App\Services\InstitutionDecreePayloadService;
+use App\Services\InstitutionDecreeService;
 use App\Services\Pdf\DocumentPdfService;
 use App\Services\SchoolGroupService;
-use App\Exports\InstitutionDecreeTemplateExport;
-use App\Imports\InstitutionDecreeImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -756,6 +757,10 @@ class InstitutionDecreeController extends Controller
             'status' => 'required|in:draft,active,archived',
         ]);
 
+        // Aktivasi/penonaktifan punya jalur sendiri (tombol) agar SK lain pada
+        // sekolah + TA yang sama ikut diarsipkan. Nilai select status diabaikan.
+        $data['status'] = $this->guardStatusTransition($decree, $data['status'] ?? null);
+
         // Rombel & penugasan terikat tahun ajaran. Mencegah matriks lama
         // menjadi yatim ketika TA diubah tanpa mengirim ulang matriks.
         if ((string) $decree->academic_year_id !== (string) $data['academic_year_id']
@@ -766,6 +771,8 @@ class InstitutionDecreeController extends Controller
                 'Tahun ajaran tidak dapat diubah langsung karena SK sudah memiliki matriks. Ubah lewat Edit Matriks atau kosongkan penugasan terlebih dahulu.'
             );
         }
+
+        $statusIgnored = $decree->status !== $data['status'];
 
         try {
             DB::transaction(function () use ($decree, $data, $request) {
@@ -799,16 +806,21 @@ class InstitutionDecreeController extends Controller
             // Metadata bisa mengubah TA/sekolah; segarkan snapshot agar konsisten.
             app(InstitutionDecreeMatrixService::class)->refreshSnapshot($decree->fresh());
 
+            $successMessage = 'Surat Keputusan & matriks berhasil diperbarui.';
+            if ($statusIgnored) {
+                $successMessage .= ' Status tidak diubah dari sini — gunakan tombol Aktifkan/Nonaktifkan pada daftar SK.';
+            }
+
             if ($request->wantsJson()) {
                 return response()->json([
-                    'message' => 'Surat Keputusan berhasil diperbarui.',
+                    'message' => $successMessage,
                     'data' => $decree->fresh(),
                 ]);
             }
 
             return redirect()->route('user.institution-decrees.show', [
                 'userId' => $userId, 'id' => $decree->id,
-            ])->with('success', 'Surat Keputusan & matriks berhasil diperbarui.');
+            ])->with('success', $successMessage);
         } catch (\Throwable $e) {
             Log::error('InstitutionDecree update failed', [
                 'decree_id' => $id,
@@ -822,6 +834,135 @@ class InstitutionDecreeController extends Controller
 
             return back()->withInput()->with('error', 'Gagal memperbarui Surat Keputusan: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Aktifkan SK. Untuk SK Pembagian Tugas, SK aktif lain pada sekolah +
+     * tahun ajaran yang sama otomatis diarsipkan agar penugasan tidak ganda.
+     */
+    public function activate(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::with('academicYear')->findOrFail($id);
+        $this->assertDecreeAccess($request, $decree);
+
+        if ($decree->status === InstitutionDecree::STATUS_ACTIVE) {
+            return $this->statusRedirect($request, $userId, $decree, false, 'SK ini sudah aktif.');
+        }
+
+        try {
+            $result = app(InstitutionDecreeService::class)->activate($decree, $request->user());
+            $decree->refresh();
+
+            // Snapshot mengikuti status (aktif/arsip) supaya halaman & cetak konsisten.
+            $matrixService = app(InstitutionDecreeMatrixService::class);
+            $matrixService->refreshSnapshot($decree);
+
+            $replaced = collect($result['replaced']);
+            foreach ($replaced as $peer) {
+                $matrixService->refreshSnapshot($peer->fresh());
+            }
+
+            $message = 'SK '.$decree->decree_number.' diaktifkan.';
+            if ($replaced->isNotEmpty()) {
+                $message .= ' SK yang digantikan dan kini diarsipkan: '
+                    .$replaced->pluck('decree_number')->implode(', ').'.';
+            }
+
+            return $this->statusRedirect($request, $userId, $decree, true, $message);
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree activate failed', [
+                'decree_id' => $id,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->statusRedirect($request, $userId, $decree, false, 'Gagal mengaktifkan SK.');
+        }
+    }
+
+    /**
+     * Nonaktifkan SK: dipindah ke Arsip tanpa menghapus data.
+     */
+    public function deactivate(Request $request, string $userId, string $id)
+    {
+        $decree = InstitutionDecree::with('academicYear')->findOrFail($id);
+        $this->assertDecreeAccess($request, $decree);
+
+        if ($decree->status !== InstitutionDecree::STATUS_ACTIVE) {
+            return $this->statusRedirect($request, $userId, $decree, false, 'SK ini tidak sedang aktif.');
+        }
+
+        try {
+            app(InstitutionDecreeService::class)->deactivate($decree, $request->user());
+            $decree->refresh();
+            app(InstitutionDecreeMatrixService::class)->refreshSnapshot($decree);
+
+            return $this->statusRedirect(
+                $request,
+                $userId,
+                $decree,
+                true,
+                'SK '.$decree->decree_number.' dinonaktifkan dan dipindah ke Arsip.'
+            );
+        } catch (\Throwable $e) {
+            Log::error('InstitutionDecree deactivate failed', [
+                'decree_id' => $id,
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->statusRedirect($request, $userId, $decree, false, 'Gagal menonaktifkan SK.');
+        }
+    }
+
+    /**
+     * Netralkan nilai status dari form agar aktivasi tetap lewat satu jalur
+     * (tombol Aktifkan), sehingga SK lain pada sekolah + TA yang sama ikut
+     * diarsipkan dan tidak ada dua SK aktif sekaligus.
+     */
+    private function guardStatusTransition(InstitutionDecree $decree, ?string $requested): ?string
+    {
+        $requested = in_array($requested, [
+            InstitutionDecree::STATUS_DRAFT,
+            InstitutionDecree::STATUS_ACTIVE,
+            InstitutionDecree::STATUS_ARCHIVED,
+        ], true) ? $requested : $decree->status;
+
+        // Aktif -> draft/arsip berarti penonaktifan: pakai service (ada audit).
+        if ($decree->status === InstitutionDecree::STATUS_ACTIVE
+            && $requested !== InstitutionDecree::STATUS_ACTIVE) {
+            app(InstitutionDecreeService::class)->deactivate($decree, auth()->user());
+
+            return $decree->status;
+        }
+
+        // draft/arsip -> aktif: harus lewat tombol Aktifkan.
+        if ($decree->status !== InstitutionDecree::STATUS_ACTIVE
+            && $requested === InstitutionDecree::STATUS_ACTIVE) {
+            return $decree->status;
+        }
+
+        return $requested;
+    }
+
+    private function statusRedirect(Request $request, string $userId, InstitutionDecree $decree, bool $ok, string $message)
+    {
+        $status = $ok ? 'success' : 'error';
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => $message,
+                'data' => $decree->fresh(),
+            ], $ok ? 200 : 422);
+        }
+
+        // Kembali ke halaman asal bila tersedia (daftar SK), selain itu ke detail.
+        $previous = url()->previous();
+        $redirect = str_contains((string) $previous, '/institution-decrees')
+            ? back()
+            : redirect()->route('user.institution-decrees.show', ['userId' => $userId, 'id' => $decree->id]);
+
+        return $redirect->with($status, $message);
     }
 
     public function destroy(Request $request, string $userId, string $id)

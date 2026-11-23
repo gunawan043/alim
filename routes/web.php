@@ -1815,6 +1815,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{id}', [InstitutionDecreeController::class, 'show'])->name('show');
                 Route::get('/{id}/print', [InstitutionDecreeController::class, 'print'])->name('print');
                 Route::post('/{id}/print-settings', [InstitutionDecreeController::class, 'updatePrintSettings'])->name('print-settings');
+                Route::post('/{id}/activate', [InstitutionDecreeController::class, 'activate'])->name('activate');
+                Route::post('/{id}/deactivate', [InstitutionDecreeController::class, 'deactivate'])->name('deactivate');
                 Route::get('/{id}/edit', [InstitutionDecreeController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [InstitutionDecreeController::class, 'update'])->name('update');
                 Route::delete('/{id}', [InstitutionDecreeController::class, 'destroy'])->name('destroy');

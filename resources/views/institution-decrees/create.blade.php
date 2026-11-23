@@ -134,11 +134,24 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small mb-1">Status</label>
-                        <select name="status" class="form-select">
-                            @foreach(['draft' => 'Draft', 'active' => 'Aktif', 'archived' => 'Arsip'] as $statusValue => $statusLabel)
-                                <option value="{{ $statusValue }}" {{ old('status', $isEdit ? $decree->status : 'draft') === $statusValue ? 'selected' : '' }}>{{ $statusLabel }}</option>
-                            @endforeach
-                        </select>
+                        @if($isEdit)
+                            <div class="pt-1">
+                                @if($decree->status === 'active')
+                                    <span class="badge bg-success-subtle text-success">Aktif</span>
+                                @elseif($decree->status === 'archived')
+                                    <span class="badge bg-secondary-subtle text-secondary">Arsip</span>
+                                @else
+                                    <span class="badge bg-warning-subtle text-warning">Draft</span>
+                                @endif
+                                <div class="small text-muted mt-1">Ubah lewat tombol Aktifkan / Nonaktifkan di daftar SK.</div>
+                            </div>
+                        @else
+                            <select name="status" class="form-select">
+                                @foreach(['draft' => 'Draft', 'active' => 'Aktif', 'archived' => 'Arsip'] as $statusValue => $statusLabel)
+                                    <option value="{{ $statusValue }}" {{ old('status', 'draft') === $statusValue ? 'selected' : '' }}>{{ $statusLabel }}</option>
+                                @endforeach
+                            </select>
+                        @endif
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small mb-1">Deskripsi</label>

@@ -86,6 +86,21 @@
                         <a href="{{ route('user.institution-decrees.edit', ['userId' => $userId, 'id' => $decree->id]) }}" class="btn btn-sm btn-outline-primary">
                             <i class="ri-pencil-line"></i> Edit SK &amp; Matriks
                         </a>
+                        @if($decree->status === 'active')
+                            <form method="POST" action="{{ route('user.institution-decrees.deactivate', ['userId' => $userId, 'id' => $decree->id]) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    <i class="ri-pause-circle-line"></i> Nonaktifkan
+                                </button>
+                            </form>
+                        @else
+                            <form method="POST" action="{{ route('user.institution-decrees.activate', ['userId' => $userId, 'id' => $decree->id]) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i class="ri-play-circle-line"></i> Aktifkan
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
                 <div class="card-body">

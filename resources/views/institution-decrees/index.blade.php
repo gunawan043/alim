@@ -165,29 +165,44 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="dropdown">
-                                                <button class="btn btn-soft-secondary btn-sm" data-bs-toggle="dropdown">
-                                                    <i class="ri-more-fill"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('user.institution-decrees.show', ['userId' => $userId, 'id' => $d->id]) }}">
-                                                            <i class="ri-eye-line me-2"></i>Lihat
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('user.institution-decrees.edit', ['userId' => $userId, 'id' => $d->id]) }}">
-                                                            <i class="ri-pencil-line me-2"></i>Edit
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger delete-d" href="javascript:void(0)"
-                                                            data-id="{{ $d->id }}" data-name="{{ $d->decree_number }}">
-                                                            <i class="ri-delete-bin-line me-2"></i>Hapus
-                                                        </a>
-                                                    </li>
-                                                </ul>
+                                            <div class="d-flex gap-1 align-items-center">
+                                                @if($d->status === 'active')
+                                                    <button type="button" class="btn btn-sm btn-soft-secondary toggle-s"
+                                                        data-id="{{ $d->id }}" data-name="{{ $d->decree_number }}"
+                                                        data-action="deactivate">
+                                                        <i class="ri-pause-circle-line me-1"></i>Nonaktifkan
+                                                    </button>
+                                                @else
+                                                    <button type="button" class="btn btn-sm btn-soft-success toggle-s"
+                                                        data-id="{{ $d->id }}" data-name="{{ $d->decree_number }}"
+                                                        data-action="activate">
+                                                        <i class="ri-play-circle-line me-1"></i>Aktifkan
+                                                    </button>
+                                                @endif
+                                                <div class="dropdown">
+                                                    <button class="btn btn-soft-secondary btn-sm" data-bs-toggle="dropdown">
+                                                        <i class="ri-more-fill"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('user.institution-decrees.show', ['userId' => $userId, 'id' => $d->id]) }}">
+                                                                <i class="ri-eye-line me-2"></i>Lihat
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item" href="{{ route('user.institution-decrees.edit', ['userId' => $userId, 'id' => $d->id]) }}">
+                                                                <i class="ri-pencil-line me-2"></i>Edit
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger delete-d" href="javascript:void(0)"
+                                                                data-id="{{ $d->id }}" data-name="{{ $d->decree_number }}">
+                                                                <i class="ri-delete-bin-line me-2"></i>Hapus
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -219,6 +234,43 @@
 @section('script')
     <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
     <script>
+        document.querySelectorAll('.toggle-s').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var activate = this.dataset.action === 'activate';
+                var text = activate
+                    ? 'SK "' + this.dataset.name + '" akan diaktifkan. SK Pembagian Tugas lain yang masih aktif pada sekolah dan tahun ajaran yang sama akan otomatis diarsipkan.'
+                    : 'SK "' + this.dataset.name + '" akan dinonaktifkan dan dipindah ke Arsip. Data penugasan tidak dihapus.';
+
+                Swal.fire({
+                    title: activate ? 'Aktifkan SK ini?' : 'Nonaktifkan SK ini?',
+                    text: text,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: activate ? '#198754' : '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: activate ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan',
+                    cancelButtonText: 'Batal'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        submitPost(btn.dataset.id, btn.dataset.action);
+                    }
+                });
+            });
+        });
+
+        function submitPost(id, action) {
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/{{ $userId }}/institution-decrees/' + id + '/' + action;
+            var token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_token';
+            token.value = '{{ csrf_token() }}';
+            form.appendChild(token);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
         document.querySelectorAll('.delete-d').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 Swal.fire({

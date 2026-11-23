@@ -85,11 +85,20 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Status</label>
-                                <select name="status" class="form-control">
-                                    <option value="draft" {{ old('status', $decree->status) == 'draft' ? 'selected' : '' }}>Draft</option>
-                                    <option value="active" {{ old('status', $decree->status) == 'active' ? 'selected' : '' }}>Aktif</option>
-                                    <option value="archived" {{ old('status', $decree->status) == 'archived' ? 'selected' : '' }}>Arsip</option>
-                                </select>
+                                <div class="form-control-plaintext">
+                                    @if($decree->status === 'active')
+                                        <span class="badge bg-success-subtle text-success">Aktif</span>
+                                    @elseif($decree->status === 'archived')
+                                        <span class="badge bg-secondary-subtle text-secondary">Arsip</span>
+                                    @else
+                                        <span class="badge bg-warning-subtle text-warning">Draft</span>
+                                    @endif
+                                    <div class="small text-muted mt-1">
+                                        Status diubah lewat tombol
+                                        <strong>Aktifkan</strong> / <strong>Nonaktifkan</strong> pada
+                                        <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}">daftar SK</a>.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
