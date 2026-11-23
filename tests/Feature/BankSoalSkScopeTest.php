@@ -804,6 +804,59 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('٦٢٠٢', $tanggal, 'Tahun tidak boleh terbalik.');
     }
 
+    public function test_naskah_memakai_grid_kolom_yang_sama_untuk_semua_soal(): void
+    {
+        $soal1 = $this->makeSoal();
+
+        // Soal kedua hanya punya 2 opsi; grid naskah tetap harus 4 kolom.
+        $soal2 = Soal::create([
+            'bank_soal_id' => $soal1->bank_soal_id,
+            'tipe_soal' => 'pg',
+            'bahasa' => 'latin',
+            'pertanyaan' => 'Pilih salah satu: 12 atau 18?',
+            'bobot_default' => 1,
+            'tingkat_kesulitan_estimasi' => 'mudah',
+            'waktu_estimasi_menit' => 2,
+            'status' => 'draft',
+            'workflow_status' => Soal::WORKFLOW_DRAFT,
+            'jenis_asesmen' => Soal::JENIS_ASESMEN_HARIAN,
+            'dibuat_oleh' => $this->guru->id,
+            'content_hash' => hash('sha256', 'soal-uji-dua-opsi'),
+        ]);
+
+        foreach (['12', '18'] as $i => $teks) {
+            SoalOption::create([
+                'soal_id' => $soal2->id,
+                'label' => chr(65 + $i),
+                'teks_opsi' => $teks,
+                'is_correct' => $i === 0,
+                'urutan' => $i + 1,
+            ]);
+        }
+
+        $questions = Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+            ->whereIn('id', [$soal1->id, $soal2->id])
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            $questions,
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'latin']
+        );
+
+        $grid = collect($data['blocks'])
+            ->where('type', 'soal')
+            ->map(fn (array $block) => $block['opsiLayout']['columns'])
+            ->values()
+            ->all();
+
+        $this->assertCount(2, $grid);
+        $this->assertSame([4, 4], $grid, 'Semua soal memakai grid kolom yang sama.');
+    }
+
     public function test_naskah_latin_tidak_mencetak_tanggal_arab(): void
     {
         $soal = $this->makeSoal();
@@ -956,6 +1009,74 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertSame([1, 1, 1, 1], $hasil['spans'], 'Tidak ada pilihan yang melebar.');
         $this->assertSame([0, 1], array_column($hasil['rows'][0], 'index'), 'A dan B di baris pertama.');
         $this->assertSame([2, 3], array_column($hasil['rows'][1], 'index'), 'C dan D di baris kedua.');
+    }
+
+    public function test_grid_tetap_menjaga_kolom_opsi_sejajar_antar_soal(): void
+    {
+        // Naskah memakai grid tetap: soal dengan 4 opsi dan soal dengan 2
+        // opsi sama-sama memakai 4 kolom. Sel kosong mengisi sisa kolom,
+        // sehingga A/B/C/D berada di garis vertikal yang sama.
+        $layout = app(SoalOpsiLayout::class);
+
+        $empat = $layout->layout($this->opsi(['48', '46', '52', '56']), 157.6, 11.0, 0, 4);
+        $dua = $layout->layout($this->opsi(['12', '18']), 157.6, 11.0, 0, 4);
+
+        $this->assertSame(4, $empat['columns']);
+        $this->assertSame(4, $dua['columns'], 'Soal 2 opsi tetap memakai grid 4 kolom.');
+        $this->assertCount(1, $dua['rows']);
+        $this->assertSame([0, 1], array_column($dua['rows'][0], 'index'));
+    }
+
+    public function test_grid_tetap_melipat_opsi_panjang_di_dalam_sel(): void
+    {
+        // Opsi panjang tidak boleh melebar / menimpa kolom sebelah. Teks
+        // dilipat di dalam sel, kolom tetap 4 dan sejajar.
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout(
+            $this->opsi([
+                'Hasil dari 3.475 + 2.860 - 1.925 adalah ....',
+                '4.410',
+                '4.510',
+                '4.610',
+            ]),
+            157.6,
+            11.0,
+            0,
+            4
+        );
+
+        $this->assertSame(4, $hasil['columns']);
+        $this->assertTrue($hasil['wrap'], 'Opsi panjang dilipat di dalam sel.');
+        $this->assertCount(1, $hasil['rows'], 'Tetap satu baris grid, bukan satu kolom penuh.');
+    }
+
+    public function test_opsi_arab_dua_pilihan_tetap_di_kanan_pada_grid_tetap(): void
+    {
+        // Service sudah membalik baris untuk RTL. View tidak boleh membalik
+        // lagi; sel kosong diletakkan di kiri agar ا tetap paling kanan.
+        $opsi = [
+            ['label' => 'ا', 'teks' => 'سبعة', 'display_label' => 'ا'],
+            ['label' => 'ب', 'teks' => 'ستة', 'display_label' => 'ب'],
+        ];
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout($opsi, 157.6, 11.0, 0, 4);
+        $hasil['rows'][0] = array_reverse($hasil['rows'][0]);
+
+        $html = view('ljk.partials.soal-opsi', [
+            'block' => ['opsi' => $opsi, 'opsiLayout' => $hasil],
+            'rtl' => true,
+            'maxOptions' => 4,
+            'colWidth' => 25,
+            'opsiWidthMm' => 157.6,
+        ])->render();
+
+        preg_match_all('/<td[^>]*>(.*?)<\/td>/s', $html, $cells);
+        $this->assertCount(4, $cells[1]);
+
+        $this->assertStringContainsString('&nbsp;', $cells[1][0]);
+        $this->assertStringContainsString('&nbsp;', $cells[1][1]);
+        $this->assertStringContainsString(LjkArabicText::toHtml('ب', false), $cells[1][2]);
+        $this->assertStringContainsString(LjkArabicText::toHtml('ا', false), $cells[1][3]);
     }
 
     public function test_pilihan_pada_naskah_tidak_pernah_terlipat(): void

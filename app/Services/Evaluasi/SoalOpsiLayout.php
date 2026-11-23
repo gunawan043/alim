@@ -28,6 +28,12 @@ use App\Services\Ljk\LjkPdfFonts;
  *
  * Lebar kolom = lebar area / jumlah kolom, sehingga A, B, C, D selalu
  * identik lebarnya.
+ *
+ * Naskah soal memakai mode GRID TETAP: jumlah kolom diambil dari jumlah opsi
+ * terbanyak dalam satu naskah (bukan per soal), sehingga penanda A/B/C/D
+ * berdiri di satu garis vertikal dari soal pertama sampai terakhir. Bila ada
+ * opsi yang lebih panjang dari lebar kolom, teks dilipat di dalam selnya —
+ * kolom tetap sejajar, tidak ada pilihan yang melebar.
  */
 class SoalOpsiLayout
 {
@@ -40,23 +46,32 @@ class SoalOpsiLayout
     /**
      * Susun pilihan menjadi baris-baris.
      *
+     * Bila `$kolomTetap` diisi, jumlah kolom tabel dipaksa sebanyak itu untuk
+     * SEMUA soal pada naskah. Inilah yang membuat penanda A/B/C/D berdiri di
+     * satu garis lurus dari soal nomor 1 sampai terakhir: soal yang opsinya
+     * pendek tidak memakai 4 kolom sementara soal lain 1 kolom, karena lebar
+     * tabel (dan pembagi kolomnya) sama di semua baris.
+     *
      * @param  array<int, array{label?: string, teks?: string, display_label?: string}>  $opsi
      * @param  float  $availableMm  lebar area isi soal (setelah margin & nomor)
      * @param  float  $fontPt  ukuran font opsi dalam pt
      * @param  int  $maxColumns  0 = otomatis; selain itu batas atas kolom
+     * @param  int  $kolomTetap  0 = hitung per soal; >0 = paksa jumlah kolom
+     * @param  float  $indentMm  jarak antar kolom (padding) di dalam sel
      * @return array{
      *     rows: array<int, array<int, array{index: int, span: int}>>,
      *     columns: int,
      *     widths: array<int, float>,
-     *     spans: array<int, int>
+     *     spans: array<int, int>,
+     *     wrap: bool
      * }
      */
-    public function layout(array $opsi, float $availableMm, float $fontPt, int $maxColumns = 0): array
+    public function layout(array $opsi, float $availableMm, float $fontPt, int $maxColumns = 0, int $kolomTetap = 0, float $indentMm = 2.0): array
     {
         $count = count($opsi);
 
         if ($count === 0) {
-            return ['rows' => [], 'columns' => 0, 'widths' => [], 'spans' => []];
+            return ['rows' => [], 'columns' => 0, 'widths' => [], 'spans' => [], 'wrap' => false];
         }
 
         $widths = [];
@@ -64,23 +79,76 @@ class SoalOpsiLayout
             $widths[$index] = $this->textWidthMm($this->labelText($option), $fontPt);
         }
 
-        $kolomMaks = max(1, min(self::MAX_COLUMNS, $count));
-        if ($maxColumns > 0) {
-            // Pengaturan manual: jumlah kolom tetap, tidak diturunkan otomatis.
-            $columns = max(1, min($kolomMaks, $maxColumns));
-        } else {
-            $columns = $this->kolomTerbaik($widths, $availableMm, $kolomMaks);
-        }
+        // Jumlah kolom yang dipakai tabel. Saat naskah memaksa grid tetap,
+        // tabel memakai kolom sebanyak itu walau soalnya hanya punya 2 opsi —
+        // sisanya diisi sel kosong, sehingga kolom A selalu di posisi sama.
+        $columns = $kolomTetap > 0
+            ? $kolomTetap
+            : $this->columnsFor($widths, $availableMm, $maxColumns);
+
+        $packColumns = max(1, min($columns, $count));
 
         // Semua kolom sama lebar; tidak ada pilihan yang dilebarkan.
-        $rows = $this->packRows($widths, $availableMm / $columns, $columns);
+        $unitMm = $availableMm / $columns;
+        $rows = $this->packRows($widths, $unitMm, $packColumns);
 
         return [
             'rows' => $rows,
             'columns' => $columns,
             'widths' => $widths,
             'spans' => array_fill(0, $count, 1),
+            // Hanya grid tetap yang boleh melipat teks. Mode otomatis sudah
+            // memilih jumlah kolom yang muat tanpa lipatan.
+            'wrap' => $kolomTetap > 0
+                && $this->perluWrap($widths, max(1.0, $unitMm - max(0.0, $indentMm))),
         ];
+    }
+
+    /**
+     * Apakah ada pilihan yang lebih lebar dari isi sel (setelah padding).
+     *
+     * @param  array<int, float>  $widths
+     */
+    private function perluWrap(array $widths, float $contentMm): bool
+    {
+        foreach ($widths as $width) {
+            if ($width + self::SAFETY_MM > $contentMm) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Jumlah kolom grid tetap untuk satu naskah.
+     *
+     * Dipakai sebagai pembagi lebar yang SAMA pada semua soal. Nilainya
+     * diambil dari jumlah opsi terbanyak (A–D → 4, A–E → 5) supaya tidak
+     * ada baris yang terlipat, dan dibatasi pengaturan `option_columns`.
+     *
+     * @param  int  $maxOpsi  jumlah opsi terbanyak dalam naskah
+     */
+    public function kolomGrid(int $maxOpsi, int $maxColumns = 0): int
+    {
+        $maks = max(1, min(self::MAX_COLUMNS, $maxOpsi));
+
+        return $maxColumns > 0 ? max(1, min($maks, $maxColumns)) : $maks;
+    }
+
+    /**
+     * @param  array<int, float>  $widths
+     */
+    private function columnsFor(array $widths, float $availableMm, int $maxColumns): int
+    {
+        $kolomMaks = max(1, min(self::MAX_COLUMNS, count($widths)));
+
+        if ($maxColumns > 0) {
+            // Pengaturan manual: jumlah kolom tetap, tidak diturunkan otomatis.
+            return max(1, min($kolomMaks, $maxColumns));
+        }
+
+        return $this->kolomTerbaik($widths, $availableMm, $kolomMaks);
     }
 
     /**
