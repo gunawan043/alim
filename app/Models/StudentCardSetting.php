@@ -49,14 +49,12 @@ class StudentCardSetting extends Model
         return [
             'front' => [
                 'show_photo' => true,
-                'show_front_qr' => true,
                 'show_name' => true,
                 'show_nis' => true,
                 'show_nisn' => true,
                 'show_ttl' => true,
                 'show_address' => true,
                 'show_class' => true,
-                'show_validity' => true,
                 'show_signature' => true,
                 'show_signature_name' => true,
                 'show_signature_title' => true,
@@ -69,6 +67,7 @@ class StudentCardSetting extends Model
                 'qr_size' => 14.0,
                 'signature_width' => 22.0,
                 'signature_height' => 12.0,
+                'signature_font_size' => 7.0,
             ],
             'back' => [
                 'show_note' => true,

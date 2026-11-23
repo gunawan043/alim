@@ -7,10 +7,10 @@ use App\Models\AuditLog;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentCardSetting;
+use App\Models\StudyGroup;
 use App\Services\Ljk\LjkQrRenderer;
 use App\Services\Pdf\DocumentPdfService;
 use App\Support\UserJabatan;
-use App\Models\StudyGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -63,7 +63,6 @@ class StudentCardController extends Controller
         $signatureName = $setting->signature_name ?: $school->principal_full_name;
         $signatureTitle = $setting->signature_title ?: 'Kepala Satuan Pendidikan';
         $validityText = $setting->validity_text ?: 'Berlaku selama menjadi santri';
-        $frontQr = $this->qrData($selected, 'nis');
         $backQr = $this->qrData($selected, $layout['back']['back_qr_source'] ?? 'nis');
 
         return view('students.cards.index', compact(
@@ -80,7 +79,6 @@ class StudentCardController extends Controller
             'signatureName',
             'signatureTitle',
             'validityText',
-            'frontQr',
             'backQr',
         ));
     }
@@ -134,7 +132,9 @@ class StudentCardController extends Controller
         $setting->card_height_mm = $validated['card_height_mm'];
         $setting->signature_name = $validated['signature_name'] ?? null;
         $setting->signature_title = $validated['signature_title'] ?? null;
-        $setting->validity_text = $validated['validity_text'] ?? null;
+        if (array_key_exists('validity_text', $validated)) {
+            $setting->validity_text = $validated['validity_text'];
+        }
         $setting->layout = $this->sanitizeLayout($validated['layout'] ?? []);
         $setting->save();
 
@@ -146,6 +146,13 @@ class StudentCardController extends Controller
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengaturan kartu tersimpan otomatis.',
+            ]);
+        }
 
         return redirect()
             ->route('user.students.cards.index', ['userId' => $userId, 'student_id' => $request->input('selected_student_id')])
@@ -223,10 +230,8 @@ class StudentCardController extends Controller
                 'signature' => $signatureData,
                 'signature_name' => $setting->signature_name ?: $school->principal_full_name,
                 'signature_title' => $setting->signature_title ?: 'Kepala Satuan Pendidikan',
-                'validity_text' => $setting->validity_text ?: 'Berlaku selama menjadi santri',
                 'ttl' => $this->ttl($student),
                 'address' => $student->address ?: '-',
-                'front_qr' => $this->qrData($student, 'nis'),
                 'back_qr' => $this->qrData($student, $layout['back']['back_qr_source'] ?? 'nis'),
             ];
         })->all();
@@ -296,6 +301,7 @@ class StudentCardController extends Controller
 
                 if (is_bool($defaultValue)) {
                     $clean[$side][$key] = ! empty($input);
+
                     continue;
                 }
 
@@ -304,6 +310,7 @@ class StudentCardController extends Controller
                         && in_array($input, ['nis', 'nisn', 'both'], true)
                         ? $input
                         : $defaultValue;
+
                     continue;
                 }
 

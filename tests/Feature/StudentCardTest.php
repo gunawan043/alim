@@ -136,7 +136,8 @@ class StudentCardTest extends TestCase
             ->withSession(['sa_school_id' => $this->school->id])
             ->get(route('user.students.cards.index', ['userId' => $this->admin->id]))
             ->assertOk()
-            ->assertSee('Preview Kartu')
+            ->assertSee('Sisi Depan')
+            ->assertSee('Sisi Belakang')
             ->assertSee('Santri Kartu');
     }
 
