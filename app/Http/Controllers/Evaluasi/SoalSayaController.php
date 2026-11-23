@@ -202,8 +202,17 @@ class SoalSayaController extends Controller
         $grades = $this->grades($school);
         $scope = $this->scopeSummary($school);
 
+        // Paket tujuan: hanya paket milik guru sendiri (di luar bank
+        // penyimpan Soal Saya).
+        $paket = BankSoal::query()
+            ->where('owner_user_id', $userId)
+            ->koleksi()
+            ->withCount('soal')
+            ->orderBy('nama')
+            ->get(['id', 'nama', 'subject_id', 'academic_year_id', 'semester']);
+
         return view('evalusi.soal-saya.import', compact(
-            'userId', 'school', 'academicYears', 'selectedAyId', 'semester', 'subjects', 'grades', 'scope'
+            'userId', 'school', 'academicYears', 'selectedAyId', 'semester', 'subjects', 'grades', 'scope', 'paket'
         ));
     }
 
@@ -218,6 +227,12 @@ class SoalSayaController extends Controller
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester' => 'required|in:ganjil,genap',
             'jenis_asesmen' => 'required|in:harian,formatif,sts,sas',
+            // Tujuan penyimpanan: paket yang sudah ada, atau buat paket baru.
+            'paket_id' => 'nullable|uuid',
+            'paket_baru' => 'nullable|string|max:150',
+            // Jenis soal & bahasa: pilihan guru, menimpa tebakan parser.
+            'jenis_soal' => 'required|in:campuran,pg,uraian,isian',
+            'bahasa' => 'required|in:otomatis,latin,arab,gabungan',
         ], [
             'file.mimes' => 'File harus berformat .docx (Word modern). File .doc lama belum didukung.',
         ]);
@@ -229,8 +244,14 @@ class SoalSayaController extends Controller
         $grade = $request->filled('grade_level_id') ? GradeLevel::find($request->grade_level_id) : null;
         $ay = AcademicYear::findOrFail($data['academic_year_id']);
 
+        // Tentukan paket tujuan SEBELUM impor agar soal tidak nyasar dulu.
+        [$targetBank, $newPaketName] = $this->resolveImportBank($request, $userId, $school, $subject, $ay, $data);
+
         try {
-            $parsed = $this->docxParser->parse($request->file('file')->getRealPath());
+            $parsed = $this->docxParser->parse($request->file('file')->getRealPath(), [
+                'jenis_soal' => $data['jenis_soal'],
+                'bahasa' => $data['bahasa'],
+            ]);
         } catch (\Throwable $e) {
             return back()->withInput()->with('error', 'Gagal membaca Word: '.$e->getMessage());
         }
@@ -255,9 +276,13 @@ class SoalSayaController extends Controller
                         'tingkat_kesulitan_estimasi' => 'sedang',
                         'waktu_estimasi_menit' => 2,
                         'bobot_default' => 1,
+                        'bahasa' => $question['bahasa'] ?? ($data['bahasa'] === 'otomatis' ? null : $data['bahasa']),
+                        // Wacana bersama: dibuat sekali lalu dipakai ulang.
+                        'wacana_teks' => $question['wacana'] ?? null,
                     ],
                     $question['options'] ?? [],
-                    $question['correct_label'] ?? null
+                    $question['correct_label'] ?? null,
+                    $targetBank
                 );
 
                 $created++;
@@ -273,10 +298,78 @@ class SoalSayaController extends Controller
             return back()->withInput()->with('error', 'Tidak ada soal yang berhasil diimpor.')->with('import_warnings', $warnings);
         }
 
+        $pesan = "{$created} soal berhasil diimpor ke paket \"{$targetBank->nama}\".";
+
         return redirect()
-            ->route('user.soal-saya.index', ['userId' => $userId])
-            ->with('success', "{$created} soal berhasil diimpor ke Soal Saya.")
+            ->route('user.bank-soal.show', ['userId' => $userId, 'id' => $targetBank->id])
+            ->with('success', $pesan)
             ->with('import_warnings', $warnings);
+    }
+
+    /**
+     * Paket tujuan impor: paket milik guru yang dipilih, paket baru yang
+     * dinamai, atau (bila keduanya kosong) bank penyimpan Soal Saya.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: BankSoal, 1: ?string}
+     */
+    private function resolveImportBank(
+        Request $request,
+        string $userId,
+        $school,
+        Subject $subject,
+        AcademicYear $ay,
+        array $data
+    ): array {
+        if ($request->filled('paket_id')) {
+            $bank = BankSoal::query()
+                ->where('owner_user_id', $userId)
+                ->whereKey($data['paket_id'])
+                ->koleksi()
+                ->first();
+
+            if (! $bank) {
+                throw ValidationException::withMessages([
+                    'paket_id' => 'Paket yang dipilih tidak ditemukan atau bukan milik Anda.',
+                ]);
+            }
+
+            return [$bank, null];
+        }
+
+        $namaBaru = trim((string) ($data['paket_baru'] ?? ''));
+        if ($namaBaru !== '') {
+            $bank = BankSoal::create([
+                'school_id' => $school->id,
+                'subject_id' => $subject->id,
+                'academic_year_id' => $ay->id,
+                'semester' => $data['semester'] ?? 'ganjil',
+                'nama' => $namaBaru,
+                'deskripsi' => 'Dibuat dari impor Word.',
+                'jenis_soal' => $data['jenis_soal'] === 'campuran' ? 'campuran' : $data['jenis_soal'],
+                'bahasa' => $data['bahasa'] === 'otomatis' ? 'latin' : $data['bahasa'],
+                'tingkat_kesulitan_target' => 'campuran',
+                'is_public' => false,
+                'shared_scope' => 'internal_school',
+                'owner_user_id' => $userId,
+                'created_by' => $userId,
+                'total_soal' => 0,
+            ]);
+
+            return [$bank, $namaBaru];
+        }
+
+        // Tanpa pilihan: simpan ke Soal Saya (perilaku lama).
+        $bank = $this->quickSoal->bankFor(
+            $request->user(),
+            $school,
+            $subject,
+            $request->filled('grade_level_id') ? GradeLevel::find($data['grade_level_id']) : null,
+            $ay,
+            $data['semester']
+        );
+
+        return [$bank, null];
     }
 
     /**

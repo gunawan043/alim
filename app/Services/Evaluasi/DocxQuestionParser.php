@@ -9,10 +9,15 @@ use ZipArchive;
  *
  * Format yang dikenali:
  *   1. Pertanyaan ...
- *   A. Opsi ...
- *   B. Opsi ...
- *   Kunci: A
+ *   A. Opsi ...            (latin)
+ *   ا. Opsi ...            (arab, RTL)
+ *   Kunci: A  /  Kunci: ا
  *   Pembahasan: ...
+ *
+ * Wacana (teks bacaan yang dipakai beberapa soal sekaligus) dikenali dari
+ * baris yang tidak bernomor dan muncul SEBELUM soal pertama, atau didahului
+ * penanda "Wacana:", "Bacaan:", atau "Teks berikut:". Wacana berlaku sampai
+ * penanda wacana berikutnya.
  *
  * Blok "KUNCI JAWABAN" di akhir dokumen juga didukung:
  *   1. A
@@ -20,10 +25,22 @@ use ZipArchive;
  */
 class DocxQuestionParser
 {
+    /** Label opsi latin (A-E) → huruf kanonik. */
+    private const LATIN_LABELS = ['a' => 'A', 'b' => 'B', 'c' => 'C', 'd' => 'D', 'e' => 'E'];
+
+    /** Label opsi Arab (alif..ha) → huruf kanonik latin. */
+    private const ARAB_LABELS = ['ا' => 'A', 'ب' => 'B', 'ج' => 'C', 'د' => 'D', 'هـ' => 'E', 'ه' => 'E'];
+
+    /** Penanda awal wacana. */
+    private const WACANA_MARKER = '/^(?:wacana|bacaan|teks\s+berikut|stimulus)\s*[:\-]\s*(.*)$/iu';
+
     /**
+     * @param  array{jenis_soal?: string, bahasa?: string}  $options
+     *                                                                jenis_soal: pg|uraian|isian|campuran (campuran = ikuti isi dokumen)
+     *                                                                bahasa: latin|arab|otomatis (otomatis = deteksi per soal)
      * @return array{questions: array<int, array<string, mixed>>, warnings: array<int, string>}
      */
-    public function parse(string $path): array
+    public function parse(string $path, array $options = []): array
     {
         if (! class_exists(ZipArchive::class)) {
             throw new \RuntimeException('Ekstensi ZIP PHP tidak tersedia untuk membaca file .docx.');
@@ -68,7 +85,7 @@ class DocxQuestionParser
         }
 
         return [
-            'questions' => $this->parseParagraphs($paragraphs, $warnings),
+            'questions' => $this->parseParagraphs($paragraphs, $warnings, $options),
             'warnings' => $warnings,
         ];
     }
@@ -93,17 +110,20 @@ class DocxQuestionParser
     /**
      * @param  array<int, string>  $paragraphs
      * @param  array<int, string>  $warnings
+     * @param  array{jenis_soal?: string, bahasa?: string}  $options
      * @return array<int, array<string, mixed>>
      */
-    private function parseParagraphs(array $paragraphs, array &$warnings): array
+    private function parseParagraphs(array $paragraphs, array &$warnings, array $options = []): array
     {
         $questions = [];
         $current = null;
         $keySection = false;
         $keys = [];
         $lastField = null;
+        $wacana = null;
+        $wacanaBuffer = null;
 
-        $startQuestion = function (int $number, string $text) use (&$current, &$questions): void {
+        $startQuestion = function (int $number, string $text) use (&$current, &$questions, &$wacana): void {
             if ($current !== null) {
                 $questions[] = $current;
             }
@@ -115,6 +135,7 @@ class DocxQuestionParser
                 'correct_label' => null,
                 'pembahasan' => null,
                 'tipe_soal' => 'uraian',
+                'wacana' => $wacana,
             ];
         };
 
@@ -132,25 +153,42 @@ class DocxQuestionParser
             }
 
             if ($keySection) {
-                if (preg_match('/^(\d+)\s*[\.\)\-:]?\s*([A-Ea-e])\b/', $line, $m)) {
-                    $keys[(int) $m[1]] = strtoupper($m[2]);
+                if (preg_match('/^(\d+)\s*[\.\)\-:]?\s*([A-Ea-e]|[ابجد]|هـ|ه)(?![A-Za-z0-9\x{0600}-\x{06FF}])/iu', $line, $m)) {
+                    $keys[(int) $m[1]] = $this->canonicalLabel($m[2]);
                 }
 
                 continue;
             }
 
-            if (preg_match('/^(?:soal\s*)?(\d+)\s*[\.\)]\s*(.+)$/i', $line, $m)) {
+            // Penanda wacana eksplisit: "Wacana: ..." / "Bacaan: ..."
+            if (preg_match(self::WACANA_MARKER, $line, $m)) {
+                // Tutup soal sebelumnya agar wacana baru tidak menempel ke soal lama.
+                if ($current !== null) {
+                    $questions[] = $current;
+                    $current = null;
+                }
+
+                $wacana = trim($m[1]);
+                $wacanaBuffer = $wacana === '' ? [] : null;
+                $lastField = null;
+
+                continue;
+            }
+
+            if (preg_match('/^(?:soal\s*)?([\p{Nd}]+)\s*[\.\)]\s*(.+)$/iu', $line, $m)) {
                 $keySection = false;
-                $startQuestion((int) $m[1], $m[2]);
+                $startQuestion($this->toInt($m[1]), $m[2]);
                 $lastField = 'pertanyaan';
 
                 continue;
             }
 
-            if ($current !== null && preg_match('/^([A-Ea-e])\s*[\.\)]\s*(.+)$/u', $line, $m)) {
+            [$label, $optionText] = $this->matchOption($line);
+
+            if ($current !== null && $label !== null) {
                 $current['options'][] = [
-                    'label' => strtoupper($m[1]),
-                    'teks_opsi' => trim($m[2]),
+                    'label' => $label,
+                    'teks_opsi' => $optionText,
                 ];
                 $current['tipe_soal'] = 'pg';
                 $lastField = 'option:'.(count($current['options']) - 1);
@@ -158,8 +196,8 @@ class DocxQuestionParser
                 continue;
             }
 
-            if ($current !== null && preg_match('/^kunci(?:\s*jawaban)?\s*[:\-]\s*([A-Ea-e])\b/i', $line, $m)) {
-                $current['correct_label'] = strtoupper($m[1]);
+            if ($current !== null && preg_match('/^kunci(?:\s*jawaban)?\s*[:\-]\s*([A-Ea-e]|[ابجد]|هـ|ه)(?![A-Za-z0-9\x{0600}-\x{06FF}])/iu', $line, $m)) {
+                $current['correct_label'] = $this->canonicalLabel($m[1]);
                 $lastField = null;
 
                 continue;
@@ -181,6 +219,13 @@ class DocxQuestionParser
             }
 
             if ($current === null) {
+                // Teks bebas sebelum soal pertama = calon wacana.
+                if ($wacana === null || $wacanaBuffer !== null) {
+                    $wacanaBuffer ??= [];
+                    $wacanaBuffer[] = $line;
+                    $wacana = trim(implode(' ', $wacanaBuffer));
+                }
+
                 continue;
             }
 
@@ -209,6 +254,9 @@ class DocxQuestionParser
             unset($question);
         }
 
+        $forcedJenis = (string) ($options['jenis_soal'] ?? 'campuran');
+        $forcedBahasa = (string) ($options['bahasa'] ?? 'otomatis');
+
         $valid = [];
         foreach ($questions as $index => $question) {
             $number = (int) ($question['number'] ?? ($index + 1));
@@ -227,6 +275,16 @@ class DocxQuestionParser
                 $question['correct_label'] = null;
             }
 
+            // Pilihan jenis soal dari form menimpa tebakan parser.
+            if (in_array($forcedJenis, ['pg', 'uraian', 'isian'], true)) {
+                if ($forcedJenis !== 'pg' && $question['options'] !== []) {
+                    $warnings[] = "Soal nomor {$number} diimpor sebagai {$forcedJenis}; {$this->countOptions($question)} opsi diabaikan.";
+                    $question['options'] = [];
+                    $question['correct_label'] = null;
+                }
+                $question['tipe_soal'] = $forcedJenis;
+            }
+
             if ($question['tipe_soal'] === 'pg' && ! $question['correct_label']) {
                 $warnings[] = "Soal nomor {$number} belum memiliki kunci jawaban.";
             }
@@ -237,13 +295,89 @@ class DocxQuestionParser
                 $question['correct_label'] = null;
             }
 
+            // Bahasa: pilihan form menang, selain "otomatis" deteksi per soal.
+            $question['bahasa'] = $forcedBahasa !== 'otomatis' && $forcedBahasa !== ''
+                ? $forcedBahasa
+                : $this->detectBahasa($question);
+
             $valid[] = $question;
         }
 
         if ($valid === []) {
-            $warnings[] = 'Tidak ada soal bernomor yang terdeteksi. Gunakan format "1. Pertanyaan" dan opsi "A. ...".';
+            $warnings[] = 'Tidak ada soal bernomor yang terdeteksi. Gunakan format "1. Pertanyaan" dan opsi "A. ..." atau "ا. ...".';
         }
 
         return $valid;
+    }
+
+    /**
+     * Cocokkan baris opsi, latin (A.) maupun Arab (ا. / ب.).
+     *
+     * @return array{0: ?string, 1: string} [label kanonik atau null, teks opsi]
+     */
+    private function matchOption(string $line): array
+    {
+        if (preg_match('/^([A-Ea-e])\s*[\.\)]\s*(.+)$/u', $line, $m)) {
+            return [$this->canonicalLabel($m[1]), trim($m[2])];
+        }
+
+        // Label Arab diikuti titik/kurung (termasuk titik Arab ٫).
+        if (preg_match('/^(هـ|ه|[ابجد])\s*[\.\)\x{066B}\x{066C}]\s*(.+)$/u', $line, $m)) {
+            return [$this->canonicalLabel($m[1]), trim($m[2])];
+        }
+
+        return [null, ''];
+    }
+
+    /**
+     * Ubah label apa pun (A/a/ا) ke huruf kanonik A-E.
+     */
+    private function canonicalLabel(string $label): string
+    {
+        $label = trim($label);
+
+        return self::ARAB_LABELS[$label] ?? self::LATIN_LABELS[mb_strtolower($label)] ?? mb_strtoupper($label);
+    }
+
+    /**
+     * Deteksi bahasa soal: arab bila mayoritas kuat huruf Arab.
+     */
+    private function detectBahasa(array $question): string
+    {
+        $teks = (string) ($question['pertanyaan'] ?? '');
+        foreach ($question['options'] ?? [] as $option) {
+            $teks .= ' '.$option['teks_opsi'];
+        }
+
+        $teks = preg_replace('/\s+/u', '', $teks) ?? '';
+        if ($teks === '') {
+            return 'latin';
+        }
+
+        $arab = preg_match_all('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{FB50}-\x{FEFF}]/u', $teks);
+        $total = mb_strlen($teks);
+
+        return $total > 0 && ($arab / $total) >= 0.3 ? 'arab' : 'latin';
+    }
+
+    /**
+     * Ubah angka apa pun (Arab ١٢٣ / Latin 123) ke int. `(int) '١'` bernilai
+     * 0 karena bukan digit ASCII, sehingga nomor soal Arab hilang.
+     */
+    private function toInt(string $angka): int
+    {
+        $latin = preg_replace_callback('/[\x{0660}-\x{0669}\x{06F0}-\x{06F9}]/u', function ($m) {
+            $code = mb_ord($m[0], 'UTF-8');
+
+            // ٠..٩ = U+0660..U+0669, ۰..۹ = U+06F0..U+06F9
+            return (string) ($code >= 0x06F0 ? $code - 0x06F0 : $code - 0x0660);
+        }, $angka) ?? $angka;
+
+        return (int) $latin;
+    }
+
+    private function countOptions(array $question): int
+    {
+        return count($question['options'] ?? []);
     }
 }

@@ -10,6 +10,7 @@ use App\Models\Soal;
 use App\Models\SoalOption;
 use App\Models\Subject;
 use App\Models\User;
+use App\Models\WacanaSoal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -87,9 +88,12 @@ class QuickSoalService
         string $semester,
         array $data,
         array $options = [],
-        ?string $correctLabel = null
+        ?string $correctLabel = null,
+        ?BankSoal $targetBank = null
     ): array {
-        $bank = $this->bankFor($user, $school, $subject, $grade, $academicYear, $semester);
+        // Paket tujuan bisa ditentukan pemanggil (mis. impor Word ke paket
+        // pilihan). Bila tidak, dipakai bank penyimpan Soal Saya.
+        $bank = $targetBank ?? $this->bankFor($user, $school, $subject, $grade, $academicYear, $semester);
         $engine = app(ContentHashEngine::class);
         $tipe = $data['tipe_soal'] ?? 'pg';
         $correctTexts = collect($options)
@@ -102,16 +106,21 @@ class QuickSoalService
         $soal = null;
         $warning = null;
 
-        DB::transaction(function () use (&$soal, $user, $bank, $data, $tipe, $options, $correctLabel, $engine, $correctTexts) {
+        DB::transaction(function () use (&$soal, $user, $bank, $data, $tipe, $options, $correctLabel, $engine, $correctTexts, $school) {
+            // Wacana bersama: dipakai ulang bila teksnya sama dalam paket ini.
+            $wacanaId = $data['wacana_id'] ?? $this->resolveWacana($data, $school, $bank, $user);
+
             $soal = new Soal;
             $soal->fill([
                 'bank_soal_id' => $bank->id,
                 'tp_id' => $data['tp_id'] ?? null,
-                'wacana_id' => $data['wacana_id'] ?? null,
+                'wacana_id' => $wacanaId,
                 'derived_from_soal_id' => $data['derived_from_soal_id'] ?? null,
                 'materi' => $data['materi'] ?? null,
                 'tipe_soal' => $tipe,
-                'bahasa' => $data['bahasa'] ?? 'latin',
+                // Bahasa hanya diisi bila ditentukan; bila null, Soal::
+                // bahasaEfektif() mendeteksi otomatis dari teksnya.
+                'bahasa' => $data['bahasa'] ?? null,
                 'pertanyaan' => $data['pertanyaan'],
                 'pembahasan' => $data['pembahasan'] ?? null,
                 'bobot_default' => $data['bobot_default'] ?? 1,
@@ -152,6 +161,41 @@ class QuickSoalService
         $warning = $this->submitForValidation($soal->fresh(), $user);
 
         return ['soal' => $soal->fresh(), 'warning' => $warning];
+    }
+
+    /**
+     * Wacana dari impor Word: dibuat sekali per teks, dipakai ulang soal lain
+     * yang memakai bacaan yang sama dalam paket ini.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveWacana(array $data, School $school, BankSoal $bank, User $user): ?string
+    {
+        $teks = trim((string) ($data['wacana_teks'] ?? ''));
+
+        if ($teks === '') {
+            return null;
+        }
+
+        $existing = WacanaSoal::query()
+            ->where('bank_soal_id', $bank->id)
+            ->where('teks', $teks)
+            ->value('id');
+
+        if ($existing) {
+            return (string) $existing;
+        }
+
+        $wacana = WacanaSoal::create([
+            'bank_soal_id' => $bank->id,
+            'school_id' => $school->id,
+            'judul' => $data['wacana_judul'] ?? null,
+            'teks' => $teks,
+            'sumber' => $data['wacana_sumber'] ?? null,
+            'created_by' => $user->id,
+        ]);
+
+        return (string) $wacana->id;
     }
 
     /**

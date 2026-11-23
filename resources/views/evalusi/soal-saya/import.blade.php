@@ -79,6 +79,50 @@
                                 </select>
                             </div>
                             <div class="col-12">
+                                <hr class="my-1">
+                                <h6 class="mb-2">Penyimpanan &amp; jenis soal</h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Simpan ke paket soal</label>
+                                <select name="paket_id" class="form-select">
+                                    <option value="">— Soal Saya (tanpa paket) —</option>
+                                    @foreach($paket ?? [] as $p)
+                                        <option value="{{ $p->id }}" {{ old('paket_id') === $p->id ? 'selected' : '' }}>
+                                            {{ $p->nama }} ({{ $p->soal_count }} soal)
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Hanya paket milik Anda. Soal hasil impor langsung masuk ke paket ini.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Atau buat paket baru</label>
+                                <input type="text" name="paket_baru" class="form-control" maxlength="150"
+                                       value="{{ old('paket_baru') }}" placeholder="mis. Ulangan Harian Bab 3">
+                                <small class="text-muted">Diisi → paket baru dibuat. Kosongkan bila memilih paket di atas.</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Jenis soal dalam file <span class="text-danger">*</span></label>
+                                <select name="jenis_soal" class="form-select" required>
+                                    <option value="campuran" {{ old('jenis_soal', 'campuran') === 'campuran' ? 'selected' : '' }}>Campuran (ikuti isi file)</option>
+                                    <option value="pg" {{ old('jenis_soal') === 'pg' ? 'selected' : '' }}>Semua pilihan ganda</option>
+                                    <option value="uraian" {{ old('jenis_soal') === 'uraian' ? 'selected' : '' }}>Semua uraian</option>
+                                    <option value="isian" {{ old('jenis_soal') === 'isian' ? 'selected' : '' }}>Semua isian singkat</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Bahasa / arah tulisan <span class="text-danger">*</span></label>
+                                <select name="bahasa" class="form-select" required>
+                                    <option value="otomatis" {{ old('bahasa', 'otomatis') === 'otomatis' ? 'selected' : '' }}>Deteksi otomatis per soal</option>
+                                    <option value="latin" {{ old('bahasa') === 'latin' ? 'selected' : '' }}>Latin (LTR)</option>
+                                    <option value="arab" {{ old('bahasa') === 'arab' ? 'selected' : '' }}>Bahasa Arab (RTL)</option>
+                                    <option value="gabungan" {{ old('bahasa') === 'gabungan' ? 'selected' : '' }}>Campuran Arab &amp; Latin</option>
+                                </select>
+                                <small class="text-muted">Soal Arab dicetak RTL dengan opsi ا/ب/ج/د.</small>
+                            </div>
+
+                            <div class="col-12">
                                 <label class="form-label">File Word <span class="text-danger">*</span></label>
                                 <input type="file" name="file" class="form-control" accept=".docx" required>
                                 <div class="form-text">Hanya .docx (Word modern). Maksimal 10 MB. File .doc lama belum didukung.</div>
@@ -97,7 +141,7 @@
             <div class="card h-100">
                 <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0"><i class="ri-information-line me-1 text-info"></i>Format Word yang Dibaca</h5></div>
                 <div class="card-body small">
-                    <p class="mb-2">Gunakan format sederhana seperti ini:</p>
+                    <p class="mb-2">Soal Latin (LTR):</p>
                     <pre class="bg-light p-2 rounded small mb-3">1. Pertanyaan pertama ...
 A. Opsi A
 B. Opsi B
@@ -110,11 +154,32 @@ Pembahasan: ...
 A. ...
 B. ...
 Kunci: A</pre>
+
+                    <p class="mb-2">Soal Arab (RTL) — label opsi huruf Arab juga dikenali:</p>
+                    <pre class="bg-light p-2 rounded small mb-3" dir="rtl">١. ما هو ناتج ٣ + ٤ ؟
+ا. ٧
+ب. ٦
+ج. ٨
+د. ٥
+Kunci: ا</pre>
+
+                    <p class="mb-2">Wacana (bacaan untuk beberapa soal sekaligus):</p>
+                    <pre class="bg-light p-2 rounded small mb-3">Bacaan: Anak itu pergi ke pasar.
+1. Siapa yang pergi ke pasar?
+A. Anak itu
+B. Ayahnya
+Kunci: A
+2. Ke mana ia pergi?
+A. Sekolah
+B. Pasar
+Kunci: B</pre>
+
                     <ul class="ps-3 mb-0">
                         <li>Nomor soal: <code>1.</code> atau <code>1)</code>.</li>
-                        <li>Opsi: <code>A.</code> sampai <code>E.</code> (boleh A–D).</li>
-                        <li>Kunci: <code>Kunci: B</code> atau blok <code>KUNCI JAWABAN</code> di akhir.</li>
+                        <li>Opsi Latin: <code>A.</code>–<code>E.</code>; opsi Arab: <code>ا.</code>–<code>هـ.</code>.</li>
+                        <li>Kunci: <code>Kunci: B</code> / <code>Kunci: ا</code>, atau blok <code>KUNCI JAWABAN</code> di akhir.</li>
                         <li>Pembahasan: <code>Pembahasan: ...</code>.</li>
+                        <li>Wacana: awali dengan <code>Wacana:</code>, <code>Bacaan:</code>, atau <code>Teks berikut:</code>. Teks sebelum soal pertama juga dianggap wacana.</li>
                         <li>Tanpa opsi otomatis dianggap soal uraian.</li>
                         <li>Gambar belum diimpor otomatis; tambahkan manual bila ada.</li>
                         <li>STS/SAS otomatis masuk validasi guru serumpun.</li>
