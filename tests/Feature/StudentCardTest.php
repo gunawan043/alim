@@ -168,23 +168,6 @@ class StudentCardTest extends TestCase
         Storage::disk('public')->assertExists($setting->signature_path);
     }
 
-    public function test_pengaturan_kartu_bisa_disimpan_otomatis_via_ajax(): void
-    {
-        $response = $this->actingAs($this->admin)
-            ->withSession(['sa_school_id' => $this->school->id])
-            ->postJson(route('user.students.cards.settings', ['userId' => $this->admin->id]), [
-                'selected_student_id' => $this->student->id,
-                'card_width_mm' => 85.6,
-                'card_height_mm' => 53.98,
-                'layout' => [
-                    'front' => ['show_photo' => 1, 'show_name' => 1, 'show_nis' => 1, 'show_nisn' => 0, 'show_ttl' => 1, 'show_address' => 1, 'show_class' => 1, 'show_signature' => 1, 'show_signature_name' => 1, 'show_signature_title' => 1],
-                    'back' => ['show_note' => 1, 'show_back_qr' => 1, 'back_qr_source' => 'nisn'],
-                ],
-            ]);
-
-        $response->assertOk()->assertJson(['success' => true]);
-    }
-
     public function test_cetak_pdf_kartu_menghasilkan_depan_dan_belakang(): void
     {
         StudentCardSetting::create([

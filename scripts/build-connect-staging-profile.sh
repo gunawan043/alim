@@ -152,7 +152,6 @@ $required = [
   "CONNECT_SSO_FRAME_ORIGIN", "CONNECT_SSO_HANDOFF_URL",
   "CONNECT_SSO_ALLOWED_IPS", "CONNECT_APPROVAL_ALLOWED_IPS",
   "CONNECT_SSO_REQUIRE_HTTPS", "CONNECT_APPROVAL_REQUIRE_HTTPS",
-  "CONNECT_CONNECT_INGEST_KEY",
 ];
 $bad = [];
 foreach ($required as $key) {
@@ -174,7 +173,12 @@ if ($bad !== []) {
   exit(4);
 }
 // Fingerprint saja — satu arah, tidak dapat dibalik menjadi nilai.
-foreach (["CONNECT_SSO_API_KEY", "CONNECT_APPROVAL_API_KEY", "CONNECT_CONNECT_INGEST_KEY"] as $key) {
+// `ALIM_CONNECT_INGEST_KEY` milik Connect (Connect menerima permit dari Core). Core tidak
+// memakainya, jadi profil ini tidak boleh mengisinya.
+foreach (array_keys($env) as $key) {
+  if (str_contains($key, "INGEST")) $bad[] = $key."(milik Connect)";
+}
+foreach (["CONNECT_SSO_API_KEY", "CONNECT_APPROVAL_API_KEY"] as $key) {
   echo sprintf("  %-29s len=%d finger=%s".PHP_EOL, $key, strlen($env[$key]), substr(hash("sha256", $env[$key]), 0, 12));
 }
 echo "  profil staging LENGKAP".PHP_EOL;
