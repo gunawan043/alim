@@ -11,10 +11,12 @@ use App\Services\Ljk\LjkPdfFonts;
  *
  * Aturan (sesuai ketentuan sekolah):
  *  1. Setiap pilihan WAJIB muat dalam 1 baris — tidak boleh terlipat.
- *  2. Lebar kolom SERAGAM dalam satu soal (mis. A dan B sama lebar).
- *  3. Pilihan dimasukkan ke satu baris sebanyak yang muat; sisanya ke
- *     baris berikutnya. Bila satu pilihan saja sudah lebih lebar dari
- *     satu kolom penuh, pilihan itu mendapat satu baris penuh sendiri.
+ *  2. Lebar kolom SERAGAM: semua pilihan dalam satu baris memakai lebar
+ *     yang sama, tidak ada yang penuh lalu sisanya sempit.
+ *  3. "Otomatis" = satu baris diisi SEBANYAK YANG MUAT: bisa 5, 4, 3, 2,
+ *     atau 1 pilihan, bergantung panjang teks masing-masing.
+ *  4. Pilihan yang terlalu panjang untuk satu kolom mendapat satu baris
+ *     penuh sendiri; pilihan di baris lain tidak ikut terpengaruh.
  *
  * Lebar teks diukur dengan GD dari berkas font asli (Cambria/Caladea/
  * DejaVu), sehingga keputusan kolom sama persis dengan hasil render
@@ -25,8 +27,8 @@ class SoalOpsiLayout
     /** Jarak aman agar teks tidak menyentuh kolom sebelah (mm). */
     private const SAFETY_MM = 1.5;
 
-    /** Padding kanan antar kolom yang dipakai CSS `table.opts`. */
-    private const GUTTER_MM = 1.5;
+    /** Batas atas kolom mode otomatis (A..E = 5 pilihan). */
+    public const MAX_COLUMNS = 5;
 
     /**
      * Susun pilihan menjadi baris-baris berkolom seragam.
@@ -34,9 +36,10 @@ class SoalOpsiLayout
      * @param  array<int, array{label?: string, teks?: string, display_label?: string}>  $opsi
      * @param  float  $availableMm  lebar area isi soal (setelah margin & nomor)
      * @param  float  $fontPt  ukuran font opsi dalam pt
-     * @return array{rows: array<int, array<int, array{option: array<string, mixed>, span: int}>>, columns: int, widths: array<int, float>}
+     * @param  int  $maxColumns  0 = otomatis (sampai 5); selain itu batas atas
+     * @return array{rows: array<int, array<int, array{index: int, span: int}>>, columns: int, widths: array<int, float>}
      */
-    public function layout(array $opsi, float $availableMm, float $fontPt, int $maxColumns = 4): array
+    public function layout(array $opsi, float $availableMm, float $fontPt, int $maxColumns = 0): array
     {
         $count = count($opsi);
 
@@ -49,93 +52,125 @@ class SoalOpsiLayout
             $widths[$index] = $this->textWidthMm($this->labelText($option), $fontPt);
         }
 
-        // Cari susunan PALING PADAT: baris paling sedikit, lalu ruang
-        // kosong paling sedikit. Contoh 4 pilihan yang tidak muat 4 kolom
-        // dipilih 2x2 (2 baris, 0 lubang), bukan 3 kolom (2 baris, 2 lubang).
-        $best = null;
+        $limit = $maxColumns > 0 ? min(self::MAX_COLUMNS, $maxColumns) : self::MAX_COLUMNS;
 
-        for ($columns = min($maxColumns, $count); $columns >= 1; $columns--) {
-            $rows = $this->packInto($widths, $availableMm, $columns);
-
-            if ($rows === null) {
-                continue;
-            }
-
-            $rowCount = count($rows);
-            $holes = ($rowCount * $columns) - $count;
-
-            if ($best === null
-                || $rowCount < $best['rows_count']
-                || ($rowCount === $best['rows_count'] && $holes < $best['holes'])) {
-                $best = [
-                    'rows' => $rows,
-                    'columns' => $columns,
-                    'rows_count' => $rowCount,
-                    'holes' => $holes,
-                ];
-            }
-        }
-
-        if ($best !== null) {
-            return ['rows' => $best['rows'], 'columns' => $best['columns'], 'widths' => $widths];
-        }
-
-        // Tidak ada susunan yang muat: setiap pilihan satu baris penuh.
         $rows = [];
-        foreach (array_keys($opsi) as $index) {
-            $rows[] = [['index' => $index, 'span' => 1]];
+        $columns = 1;
+        $pending = array_keys($widths);
+
+        // Isi baris demi baris: sebanyak yang muat.
+        while ($pending !== []) {
+            $perRow = $this->columnsThatFit(
+                array_map(fn ($i) => $widths[$i], $pending),
+                $availableMm,
+                $limit
+            );
+
+            $slice = array_splice($pending, 0, $perRow);
+            $rows[] = array_map(fn ($i) => ['index' => $i, 'span' => 1], $slice);
+            $columns = max($columns, count($slice));
         }
 
-        return ['rows' => $rows, 'columns' => 1, 'widths' => $widths];
+        $rows = $this->balanceTail($rows, $widths, $availableMm, $limit);
+
+        foreach ($rows as $row) {
+            $columns = max($columns, count($row));
+        }
+
+        return ['rows' => $rows, 'columns' => $columns, 'widths' => $widths];
     }
 
     /**
-     * Bagi pilihan ke baris dengan `$columns` kolom seragam.
+     * Seimbangkan baris TERAKHIR bila isinya cuma 1 pilihan sementara baris
+     * sebelumnya penuh — mis. 5 pilihan yang muat 4 per baris menjadi
+     * "ABCD | E" dan diubah menjadi "ABC | DE" agar tidak ada baris
+     * menggantung berisi satu pilihan saja.
      *
-     * Mengembalikan null bila ada pilihan yang tidak muat di satu kolom,
-     * sehingga pemanggil mencoba jumlah kolom lebih sedikit.
+     * Hanya baris terakhir yang disentuh, sehingga pilihan sangat panjang
+     * di tengah tidak merusak susunan baris lain.
      *
+     * @param  array<int, array<int, array{index: int, span: int}>>  $rows
      * @param  array<int, float>  $widths
-     * @return array<int, array<int, array{index: int, span: int}>>|null
+     * @return array<int, array<int, array{index: int, span: int}>>
      */
-    private function packInto(array $widths, float $availableMm, int $columns): ?array
+    private function balanceTail(array $rows, array $widths, float $availableMm, int $limit): array
     {
-        if ($columns < 1) {
-            return null;
+        $total = count($rows);
+
+        if ($total < 2 || count($rows[$total - 1]) > 1) {
+            return $rows;
         }
 
-        $columnMm = $availableMm / $columns;
+        // Coba pindahkan satu pilihan dari baris sebelumnya ke baris terakhir.
+        $prevCount = count($rows[$total - 2]);
 
-        // Satu pilihan pun tidak muat di kolom ini → coba kolom lebih sedikit.
-        foreach ($widths as $width) {
-            if ($width + self::SAFETY_MM > $columnMm) {
-                return null;
-            }
-        }
+        for ($take = 1; $take <= $prevCount - 1; $take++) {
+            $candidatePrev = array_slice($rows[$total - 2], 0, $prevCount - $take);
+            $candidateLast = array_merge(array_slice($rows[$total - 2], $prevCount - $take), $rows[$total - 1]);
 
-        $rows = [];
-        $current = [];
-
-        foreach ($widths as $index => $width) {
-            if (count($current) >= $columns) {
-                $rows[] = $current;
-                $current = [];
+            if (count($candidateLast) > $limit) {
+                continue;
             }
 
-            $current[] = ['index' => $index, 'span' => 1];
-        }
+            $prevWidths = array_map(fn ($c) => $widths[$c['index']], $candidatePrev);
+            $lastWidths = array_map(fn ($c) => $widths[$c['index']], $candidateLast);
 
-        if ($current !== []) {
-            $rows[] = $current;
+            if ($this->fits($prevWidths, $availableMm, count($candidatePrev))
+                && $this->fits($lastWidths, $availableMm, count($candidateLast))) {
+                $rows[$total - 2] = $candidatePrev;
+                $rows[$total - 1] = $candidateLast;
+
+                return $rows;
+            }
         }
 
         return $rows;
     }
 
     /**
-     * Lebar teks "A. isi pilihan" dalam mm.
+     * Jumlah kolom terbanyak yang masih muat untuk sekelompok pilihan.
      *
-     * @param  array<string, mixed>  $option
+     * Dicoba dari banyak ke sedikit supaya pilihan pendek selalu rapat
+     * (A B C D E dalam satu baris).
+     *
+     * @param  array<int, float>  $widths
+     */
+    private function columnsThatFit(array $widths, float $availableMm, int $limit): int
+    {
+        for ($columns = min($limit, count($widths)); $columns >= 1; $columns--) {
+            if ($this->fits($widths, $availableMm, $columns)) {
+                return $columns;
+            }
+        }
+
+        // Terlalu panjang untuk kolom mana pun: satu pilihan satu baris penuh.
+        return 1;
+    }
+
+    /**
+     * Apakah pilihan-pilihan ini muat bila dibagi ke `$columns` kolom seragam?
+     *
+     * @param  array<int, float>  $widths
+     */
+    private function fits(array $widths, float $availableMm, int $columns): bool
+    {
+        if ($columns < 1) {
+            return false;
+        }
+
+        $columnMm = $availableMm / $columns;
+
+        foreach ($widths as $width) {
+            if ($width + self::SAFETY_MM > $columnMm) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Lebar teks "A. isi pilihan" dalam mm.
      */
     public function textWidthMm(string $text, float $fontPt): float
     {

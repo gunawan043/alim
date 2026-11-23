@@ -9,12 +9,15 @@
     @if($opsiLayout && ! empty($opsiLayout['rows']))
         <table class="opts opts-auto">
             @foreach($opsiLayout['rows'] as $row)
+                @php
+                    // Kolom dihitung PER BARIS: baris berisi 4 pilihan memakai
+                    // 25%, baris berisi 2 pilihan memakai 50% — sehingga
+                    // tidak ada sel kosong yang melebar.
+                    $kolom = max(1, count($row));
+                @endphp
                 <tr>
                     @foreach($row as $cell)
-                        @php
-                            $opsi = $block['opsi'][$cell['index']] ?? null;
-                            $kolom = max(1, (int) $opsiLayout['columns']);
-                        @endphp
+                        @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
                         <td style="width: {{ round(100 / $kolom, 4) }}%; text-align: {{ $rtl ? 'right' : 'left' }};">
                             @if($opsi)
                                 @if($rtl)
@@ -30,12 +33,6 @@
                             @endif
                         </td>
                     @endforeach
-
-                    {{-- Sel kosong agar sisa kolom pada baris terakhir tetap
-                         selebar kolom lain (lebar seragam, tidak melebar). --}}
-                    @for($i = count($row); $i < (int) $opsiLayout['columns']; $i++)
-                        <td style="width: {{ round(100 / max(1, (int) $opsiLayout['columns']), 4) }}%;">&nbsp;</td>
-                    @endfor
                 </tr>
             @endforeach
         </table>

@@ -142,9 +142,9 @@ class SoalNaskahPdfService
             - (float) ($settings['margin_right'] ?? 20)) * 0.955;
 
         $layout = new SoalOpsiLayout;
-        // 0 = otomatis; selain itu menjadi batas atas jumlah kolom.
+        // 0 = otomatis (sampai 5 pilihan per baris); selain itu batas atas.
         $maxColumns = (int) ($settings['option_columns'] ?? 0);
-        $maxColumns = $maxColumns > 0 ? min(4, $maxColumns) : 4;
+        $maxColumns = $maxColumns > 0 ? min(SoalOpsiLayout::MAX_COLUMNS, $maxColumns) : 0;
 
         foreach ($blocks as &$block) {
             if ($block['type'] !== 'soal' || empty($block['opsi'])) {

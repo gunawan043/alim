@@ -378,7 +378,9 @@
                                             <option value="2" @selected((int) $settings['option_columns'] === 2)>Maks 2</option>
                                             <option value="3" @selected((int) $settings['option_columns'] === 3)>Maks 3</option>
                                             <option value="4" @selected((int) $settings['option_columns'] === 4)>Maks 4</option>
+                                            <option value="5" @selected((int) $settings['option_columns'] === 5)>Maks 5</option>
                                         </select>
+                                        <div class="text-muted" style="font-size:.7rem">Otomatis: 5, 4, 3, 2, atau 1 per baris sesuai panjang</div>
                                     </div>
                                 </div>
                             </div>

@@ -107,8 +107,8 @@ class PrintSettingsService
             'font_size' => 11,
             'line_height' => 1.0,
             'question_gap' => 1.25,
-            // Batas atas jumlah kolom opsi. 0 = otomatis (cari yang paling
-            // padat). 2/3/4 memaksa susunan tidak lebih dari angka tsb.
+            // Batas atas jumlah kolom opsi. 0 = otomatis (isi sebanyak yang
+            // muat: 5/4/3/2/1 per baris). 2..5 memaksa batas maksimal.
             'option_columns' => 0,
             'option_indent' => 2,
             'start_number' => 1,
@@ -266,7 +266,7 @@ class PrintSettingsService
         $settings['font_size'] = (int) $this->number($settings['font_size'] ?? null, 8, 16, 11);
         $settings['line_height'] = round($this->number($settings['line_height'] ?? null, 1.0, 2.5, 1.2), 2);
         $settings['question_gap'] = round($this->number($settings['question_gap'] ?? null, 0.5, 4, 1.5), 2);
-        $settings['option_columns'] = in_array((int) $settings['option_columns'], [0, 2, 3, 4], true)
+        $settings['option_columns'] = in_array((int) $settings['option_columns'], [0, 2, 3, 4, 5], true)
             ? (int) $settings['option_columns']
             : 0;
         $settings['option_indent'] = (int) $this->number($settings['option_indent'] ?? null, 0, 15, 2);
