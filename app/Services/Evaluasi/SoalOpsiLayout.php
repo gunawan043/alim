@@ -116,6 +116,16 @@ class SoalOpsiLayout
     /**
      * Bagi pilihan ke baris berdasarkan jumlah jatahnya.
      *
+     * Sebuah pilihan hanya boleh masuk baris yang sedang diisi bila jatah
+     * yang tersisa PAS untuknya. Bila sisanya kurang (mis. sisa 1 jatah
+     * tetapi pilihan butuh 2), pilihan itu turun ke baris berikutnya
+     * sehingga selalu mulai di kolom ke-1 — inilah yang membuat posisi
+     * pilihan sejajar lurus ke bawah.
+     *
+     * Contoh 4 opsi dengan A butuh 3 jatah:
+     *   A(3) lalu B(1) → sisa 0, pas → A B satu baris
+     *   A(3) lalu B(2) → sisa 1 tidak cukup → B turun baris sendiri
+     *
      * @param  array<int, int>  $spans
      * @return array<int, array<int, array{index: int, span: int}>>
      */
@@ -126,7 +136,13 @@ class SoalOpsiLayout
         $used = 0;
 
         foreach ($spans as $index => $span) {
-            if ($current !== [] && $used + $span > $columns) {
+            $sisa = $columns - $used;
+
+            // Baris baru hanya bila pilihan ini TIDAK PAS di sisa jatah.
+            // Pilihan yang jatahnya lebih besar dari satu kolom tidak boleh
+            // dipaksa masuk sisa sempit: kolomnya akan melebar/bergeser dan
+            // posisi antar baris jadi tidak sejajar.
+            if ($current !== [] && $span > $sisa) {
                 $rows[] = $current;
                 $current = [];
                 $used = 0;
