@@ -30,6 +30,7 @@
     $optionIndent = (float) ($optionIndent ?? 2);
 
     $marker = ['numbered' => 'decimal', 'bullet' => 'disc', 'dash' => 'none'][$karakterStyle['marker']] ?? 'decimal';
+    $rtlExam = ($examBahasa ?? 'latin') === 'arab';
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -121,6 +122,11 @@
         ol.karakter { list-style: none; margin-left: 0.4em; }
     @endif
     ol.karakter li { margin-bottom: 0; }
+    /* Daftar karakter pada naskah Arab: penanda di kanan, teks mengalir RTL. */
+    ol.karakter.rtl { direction: rtl; margin: 0.1em 1.6em 0 0; }
+    @if($rtlExam && $karakterStyle['marker'] === 'numbered')
+        ol.karakter.rtl { list-style-type: arabic-indic; }
+    @endif
 
     .instruksi {
         margin-top: 0.6em;
@@ -246,7 +252,6 @@
     @endif
 
     {{-- Identitas: tabel maksimal 3 baris ─────────────────────────────── --}}
-    @php $rtlExam = ($examBahasa ?? 'latin') === 'arab'; @endphp
     @if($identitas['show'] && ! empty($identityRows))
     <table class="identitas {{ $rtlExam ? 'rtl-exam' : '' }}">
         @foreach($identityRows as $row)
@@ -294,7 +299,7 @@
     {{-- ── PENANAMAN KARAKTER ──────────────────────────────────────────── --}}
     @if(! empty($karakter))
         <div class="karakter-title">{!! LjkArabicText::toHtml($karakterStyle['title'], false) !!}</div>
-        <ol class="karakter">
+        <ol class="karakter {{ $rtlExam ? 'rtl' : '' }}">
             @foreach($karakter as $butir)
                 <li>
                     @if($karakterStyle['marker'] === 'dash'){{ '– ' }}@endif
@@ -305,10 +310,17 @@
     @endif
 
     {{-- ── INSTRUKSI ───────────────────────────────────────────────────── --}}
-    @if($instruksiStyle['show'] && $instruksi !== '')
-        <div class="instruksi"><strong>A.</strong> {{ $instruksi }}</div>
-        @if(($hasArabic ?? false) && ($instruksiArab ?? '') !== '')
-            <div class="instruksi-arab ar-block"><span class="ar">{!! LjkArabicText::toHtml($instruksiArab, false) !!}</span></div>
+    {{-- Naskah Arab memakai instruksi Arab saja; instruksi Latin bawaan
+         hanya untuk naskah Latin. --}}
+    @if($instruksiStyle['show'])
+        @if($rtlExam)
+            @if(($instruksiArab ?? '') !== '')
+                <div class="instruksi-arab ar-block"><span class="ar">{!! LjkArabicText::toHtml($instruksiArab, false) !!}</span></div>
+            @elseif($instruksi !== '')
+                <div class="instruksi"><strong>A.</strong> {{ $instruksi }}</div>
+            @endif
+        @elseif($instruksi !== '')
+            <div class="instruksi"><strong>A.</strong> {{ $instruksi }}</div>
         @endif
     @endif
 
@@ -332,7 +344,16 @@
                         $dari = $block['dari_tampil'] ?? $block['dari'];
                         $sampai = $block['sampai_tampil'] ?? $block['sampai'];
                     @endphp
-                    <div class="wacana-caption">Wacana untuk soal nomor @if($arabAngka ?? false)<span class="ar ar-number">{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}</span>@else{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}@endif.</div>
+                    @if($rtlExam)
+                        @php
+                            $captionArab = $dari === $sampai
+                                ? "النَّصُّ لِلسُّؤَالِ رَقْمِ {$dari}."
+                                : "النَّصُّ لِلْأَسْئِلَةِ مِنْ رَقْمِ {$dari} إِلَى {$sampai}.";
+                        @endphp
+                        <div class="wacana-caption ar-block"><span class="ar">{!! e(LjkArabicText::shape($captionArab)) !!}</span></div>
+                    @else
+                        <div class="wacana-caption">Wacana untuk soal nomor @if($arabAngka ?? false)<span class="ar ar-number">{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}</span>@else{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}@endif.</div>
+                    @endif
                 @endif
             </div>
         @else

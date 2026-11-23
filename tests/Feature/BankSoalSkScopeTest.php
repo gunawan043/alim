@@ -1306,6 +1306,28 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('<div class="instruksi-arab ar-block">', $html, 'Instruksi Arab dicetak pada naskah Arab.');
     }
 
+    public function test_naskah_arab_hanya_memakai_instruksi_dan_daftar_arab(): void
+    {
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $this->assertStringNotContainsString(
+            'Pilihlah jawaban yang paling tepat',
+            $html,
+            'Instruksi Latin tidak dicetak pada naskah Arab.'
+        );
+        $this->assertStringContainsString('class="instruksi-arab ar-block"', $html, 'Instruksi Arab dipakai.');
+        $this->assertStringContainsString('class="karakter rtl"', $html, 'Daftar karakter mengalir RTL.');
+    }
+
     public function test_naskah_arab_memaksa_soal_latin_ikut_rtl(): void
     {
         // Bila guru memilih bahasa = arab, soal yang kolom bahasanya Latin
