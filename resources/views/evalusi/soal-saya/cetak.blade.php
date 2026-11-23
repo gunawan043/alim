@@ -102,6 +102,10 @@
                          Perubahan langsung memperbarui pratinjau (tanpa submit). --}}
                     <form method="GET" id="settingsForm"
                           action="{{ route('user.soal-saya.cetak', ['userId' => $userId]) }}">
+                        {{-- Penanda form pengaturan: checkbox yang tidak dicentang
+                             boleh dianggap mati; URL cetak biasa tanpa penanda ini
+                             tetap memakai nilai bawaan. --}}
+                        <input type="hidden" name="_settings" value="1">
                         @php
                             // Sumber soal & filter harus ikut tersimpan saat "Terapkan".
                             foreach (['bank_id', 'subject_id', 'jenis_asesmen'] as $keep) {

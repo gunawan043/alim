@@ -59,6 +59,9 @@
 
     /* Teks Arab: bentuk presentasi + urutan visual sudah disiapkan di PHP. */
     .ar { font-family: {!! $arabicStack !!}; direction: rtl; unicode-bidi: embed; font-style: normal; }
+    /* Angka Arab tetap dibaca kiri-ke-kanan; tanpa ini titik nomor (٢٥.)
+       berpindah ke kiri menjadi (.٢٥). */
+    .ar-number { direction: ltr; unicode-bidi: isolate; }
     .ar-block { text-align: right; }
 
     /* Kop lembaga — HANYA gambar kop yang diunggah di pengaturan sekolah */
@@ -174,11 +177,12 @@
     table.opts td .letter { font-weight: normal; }
 
     /* Penanda huruf Arab (ا/ب/ج/د) punya lebar bentuk berbeda setelah
-       di-shape (ﺍ sempit, ﺏ lebar). Lebar tetap + rata kanan membuat
-       keempat penanda berdiri di posisi yang sama di setiap kolom. */
+       di-shape (ﺍ sempit, ﺏ lebar). Lebar TETAP (bukan min-width) + rata
+       kanan membuat keempat penanda sama lebar dan jarak ke teks seragam. */
     table.opts td .letter-ar {
         display: inline-block;
-        min-width: 6mm;
+        width: 6mm;
+        margin-right: 1mm;
         text-align: right;
         white-space: nowrap;
     }
@@ -325,7 +329,7 @@
                         $dari = $block['dari_tampil'] ?? $block['dari'];
                         $sampai = $block['sampai_tampil'] ?? $block['sampai'];
                     @endphp
-                    <div class="wacana-caption">Wacana untuk soal nomor @if($arabAngka ?? false)<span class="ar">{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}</span>@else{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}@endif.</div>
+                    <div class="wacana-caption">Wacana untuk soal nomor @if($arabAngka ?? false)<span class="ar ar-number">{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}</span>@else{{ $dari }}{{ $sampai !== $dari ? '–'.$sampai : '' }}@endif.</div>
                 @endif
             </div>
         @else
@@ -349,11 +353,11 @@
                                 @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null, 'opsiIndentMm' => $optionIndent ?? null])
                             </td>
                             <td class="qno" style="width: 4.5%; text-align: right;">
-                                @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
+                                @if($arabAngka ?? false)<span class="ar ar-number">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
                             </td>
                         @else
                             <td class="qno">
-                                @if($arabAngka ?? false)<span class="ar">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
+                                @if($arabAngka ?? false)<span class="ar ar-number">{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}</span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
                             </td>
                             <td class="qbody">
                                 <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>

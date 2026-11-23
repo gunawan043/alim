@@ -23,6 +23,7 @@ use App\Services\Evaluasi\SoalOpsiLayout;
 use App\Services\KurikulumAccess;
 use App\Services\Ljk\LjkArabicText;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -656,13 +657,40 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertSame(5, (int) $defaults['margin_top'], 'Margin atas 5 mm.');
         $this->assertSame(10, (int) $defaults['margin_bottom'], 'Margin bawah 10 mm.');
 
-        // Kop & karakter otomatis aktif.
+        // Empat bagian wajib tampil secara bawaan, tetapi tetap bisa dimatikan.
         $this->assertTrue($defaults['show_kop'], 'Kop otomatis tampil.');
+        $this->assertTrue($defaults['show_identitas'], 'Tabel keterangan otomatis tampil.');
         $this->assertTrue($defaults['show_karakter'], 'Penanaman karakter otomatis tampil.');
+        $this->assertTrue($defaults['show_instruksi'], 'Keterangan soal otomatis tampil.');
 
         // Kop selebar area margin dan tanpa garis (garis sudah ada di gambar).
         $this->assertSame(100, (int) $defaults['kop_width_pct'], 'Lebar kop penuh.');
         $this->assertFalse($defaults['kop_rule'], 'Kop tanpa garis tambahan.');
+    }
+
+    public function test_url_cetak_dengan_judul_tidak_mematikan_bagian_wajib(): void
+    {
+        // URL cetak membawa `judul` (kunci pengaturan) tetapi bukan form
+        // pengaturan. Empat bagian wajib harus tetap aktif.
+        $print = app(PrintSettingsService::class);
+        $settings = $print->preview(Request::create('/cetak', 'GET', ['judul' => 'NASKAH SOAL']));
+
+        $this->assertTrue($settings['show_kop'], 'Kop tetap aktif.');
+        $this->assertTrue($settings['show_identitas'], 'Tabel keterangan tetap aktif.');
+        $this->assertTrue($settings['show_karakter'], 'Penanaman karakter tetap aktif.');
+        $this->assertTrue($settings['show_instruksi'], 'Keterangan soal tetap aktif.');
+
+        // Saat form pengaturan dikirim (ada penanda `_settings`), checkbox yang
+        // tidak dikirim memang berarti dimatikan.
+        $settings = $print->preview(Request::create('/cetak', 'GET', [
+            '_settings' => '1',
+            'judul' => 'NASKAH SOAL',
+        ]));
+
+        $this->assertFalse($settings['show_kop']);
+        $this->assertFalse($settings['show_identitas']);
+        $this->assertFalse($settings['show_karakter']);
+        $this->assertFalse($settings['show_instruksi']);
     }
 
     public function test_pilihan_pendek_empat_kolom_satu_baris(): void
@@ -901,11 +929,15 @@ class BankSoalSkScopeTest extends TestCase
         );
     }
 
-    public function test_opsi_arab_menaruh_huruf_di_tepi_kanan_sel(): void
+    public function test_opsi_arab_menaruh_marker_di_kiri_dan_teks_di_kanan(): void
     {
-        // Naskah Arab: huruf ا/ب/ج/د harus berada di tepi KANAN tiap kolom
-        // agar keempatnya sejajar. Teks menyusul di kiri huruf.
-        $opsi = $this->opsi(['سبعة', 'ستة', 'ثمانية', 'خمسة']);
+        // Naskah Arab: marker ".ج" di gutter KIRI, teks pilihan di kanan.
+        $labels = ['ا', 'ب', 'ج', 'د'];
+        $teks = ['سبعة', 'ستة', 'ثمانية', 'خمسة'];
+        $opsi = [];
+        foreach ($teks as $i => $isi) {
+            $opsi[] = ['label' => $labels[$i], 'display_label' => $labels[$i], 'teks' => $isi];
+        }
         $layout = app(SoalOpsiLayout::class);
 
         $html = view('ljk.partials.soal-opsi', [
@@ -917,13 +949,15 @@ class BankSoalSkScopeTest extends TestCase
             'opsiIndentMm' => 2.0,
         ])->render();
 
-        // Huruf lebih dulu, teks menyusul (Dompdf mengalir kiri-ke-kanan), dan
-        // penanda memakai kelas letter-ar berlebar tetap agar sejajar.
+        // Marker ".ج" berada di KIRI teks; teks tetap rata kanan. Lebar marker
+        // tetap agar ا/ب/ج/د sama lebar dan jarak ke teks seragam.
         $this->assertMatchesRegularExpression(
-            '/<span class="letter letter-ar">[^<]*<\/span>\s*<span class="ar">/u',
+            '/<span class="letter letter-ar"[^>]*>\.<span class="ar">[^<]*<\/span><\/span>/u',
             $html,
-            'Huruf opsi mendahului teks dan memakai lebar tetap agar sejajar.'
+            'Marker RTL ditulis ".ج": titik di kiri huruf.'
         );
+        $this->assertStringContainsString('width: 6mm', $html, 'Marker memakai lebar tetap.');
+        $this->assertStringContainsString('margin-right: 1mm', $html, 'Jarak marker ke teks seragam.');
         $this->assertStringContainsString('padding: 0 0 0 2mm', $html, 'Jarak antar kolom di kiri sel (RTL).');
         $this->assertStringContainsString('text-align: right', $html);
     }
@@ -1070,13 +1104,25 @@ class BankSoalSkScopeTest extends TestCase
             'opsiWidthMm' => 157.6,
         ])->render();
 
-        preg_match_all('/<td[^>]*>(.*?)<\/td>/s', $html, $cells);
-        $this->assertCount(4, $cells[1]);
+        // Empat sel grid luar (37.4 mm), dua di antaranya kosong di kiri.
+        preg_match_all('/<td style="width: 37\.4mm;/', $html, $cells);
+        $this->assertCount(4, $cells[0], 'Grid tetap 4 kolom walau hanya 2 pilihan.');
 
-        $this->assertStringContainsString('&nbsp;', $cells[1][0]);
-        $this->assertStringContainsString('&nbsp;', $cells[1][1]);
-        $this->assertStringContainsString(LjkArabicText::toHtml('ب', false), $cells[1][2]);
-        $this->assertStringContainsString(LjkArabicText::toHtml('ا', false), $cells[1][3]);
+        $alif = '.'.LjkArabicText::toHtml('ا', false);
+        $ba = '.'.LjkArabicText::toHtml('ب', false);
+
+        $this->assertNotFalse(strpos($html, $alif), 'Marker ا ada.');
+        $this->assertNotFalse(strpos($html, $ba), 'Marker ب ada.');
+        $this->assertLessThan(
+            strpos($html, $alif),
+            strpos($html, $ba),
+            'Urutan RTL: ب (kiri) mendahului ا (kanan), bukan dibalik dua kali.'
+        );
+        $this->assertLessThan(
+            strpos($html, $alif),
+            strpos($html, '&nbsp;'),
+            'Sel kosong berada di kiri, sebelum pilihan pertama.'
+        );
     }
 
     public function test_pilihan_pada_naskah_tidak_pernah_terlipat(): void
@@ -1216,6 +1262,12 @@ class BankSoalSkScopeTest extends TestCase
 
         $this->assertStringContainsString('١.', $html, 'Nomor soal Arab memakai angka Arab.');
         $this->assertStringContainsString('٢.', $html, 'Nomor kedua juga angka Arab.');
+        $this->assertStringContainsString(
+            'class="ar ar-number"',
+            $html,
+            'Nomor memakai arah LTR agar titik tetap di kanan: ٢٥. bukan .٢٥.'
+        );
+        $this->assertStringContainsString('direction: ltr; unicode-bidi: isolate;', $html);
         $this->assertStringNotContainsString('<span class="ar">1.</span>', $html, 'Nomor Latin tidak boleh muncul.');
         $this->assertStringContainsString('<div class="instruksi-arab ar-block">', $html, 'Instruksi Arab dicetak pada naskah Arab.');
     }

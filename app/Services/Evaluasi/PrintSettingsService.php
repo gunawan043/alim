@@ -27,7 +27,7 @@ class PrintSettingsService
      * Versi skema pengaturan. Naikkan angka ini bila nilai bawaan sistem
      * berubah, agar pengaturan lama di session tidak menimpa default baru.
      */
-    private const VERSION = 'v2';
+    private const VERSION = 'v3';
 
     private const SESSION_KEY = 'soal_print_settings_'.self::VERSION;
 
@@ -176,9 +176,16 @@ class PrintSettingsService
             $values[$field] = $request->input($field);
         }
 
-        // Checkbox tidak dikirim saat tidak dicentang.
+        // Checkbox tidak dikirim saat tidak dicentang. Form pengaturan mengirim
+        // penanda `_settings`; tanpa penanda (mis. URL cetak yang hanya membawa
+        // judul/ids), nilai checkbox yang tidak ada harus tetap memakai
+        // pengaturan tersimpan — bukan otomatis dimatikan.
         foreach ($this->booleanFields() as $checkbox) {
-            $values[$checkbox] = $request->boolean($checkbox);
+            if ($request->exists($checkbox)) {
+                $values[$checkbox] = $request->boolean($checkbox);
+            } elseif ($request->boolean('_settings')) {
+                $values[$checkbox] = false;
+            }
         }
 
         return $values;
