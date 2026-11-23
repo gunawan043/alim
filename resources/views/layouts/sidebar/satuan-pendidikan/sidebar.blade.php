@@ -690,6 +690,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.photos.bulk-form', 'user.students.photos.bulk-process']) && (string) request('study_group_id') === (string) $walkesGroup->id ? ' active' : '' }}"
+                           href="{{ route('user.students.photos.bulk-form', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                            Upload Foto Masal Kelas
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link{{ isActiveAny($currentRoute, ['user.students.mahroms.']) && (string) request('study_group_id') === (string) $walkesGroup->id ? ' active' : '' }}"
                            href="{{ route('user.students.mahroms.global', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
                             Data Mahrom Kelas
