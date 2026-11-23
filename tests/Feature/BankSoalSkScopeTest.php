@@ -493,6 +493,59 @@ class BankSoalSkScopeTest extends TestCase
         );
     }
 
+    public function test_pratinjau_mengikuti_pengaturan_dari_url(): void
+    {
+        // JS pratinjau langsung mengirim semua pengaturan lewat query string.
+        $soal = $this->makeSoal();
+
+        $query = http_build_query([
+            'judul' => 'UJI LIVE PREVIEW',
+            'judul_align' => 'right',
+            'judul_bold' => '0',
+            'show_karakter' => '0',
+            'karakter_title' => 'TIDAK BOLEH TAMPIL',
+            'ids' => [$soal->id],
+        ]);
+
+        $response = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/soal-saya/cetak/preview?{$query}");
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+
+        // Pengaturan JSON yang sama harus menghasilkan HTML sesuai isian.
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana'])->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            [
+                'judul' => 'UJI LIVE PREVIEW',
+                'judul_align' => 'right',
+                'judul_bold' => false,
+                'show_karakter' => false,
+                'karakter_title' => 'TIDAK BOLEH TAMPIL',
+            ]
+        );
+
+        $this->assertStringContainsString('UJI LIVE PREVIEW', $html);
+        $this->assertStringContainsString('text-align: right', $html);
+        $this->assertStringNotContainsString('TIDAK BOLEH TAMPIL', $html);
+    }
+
+    public function test_halaman_cetak_memuat_skrip_pratinjau_langsung(): void
+    {
+        $this->makeSoal();
+
+        $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/soal-saya/cetak")
+            ->assertOk()
+            ->assertSee('id="settingsForm"', false)
+            ->assertSee('id="pdfSettings"', false)
+            ->assertSee('data-preview-base', false)
+            ->assertSee('id="previewStatus"', false);
+    }
+
     private function makeSoal(): Soal
     {
         $bank = BankSoal::create([

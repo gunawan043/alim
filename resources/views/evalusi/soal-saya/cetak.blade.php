@@ -10,6 +10,31 @@
         @media (max-width: 1199.98px) { .cetak-panel { position: static; max-height: none; } }
 
         .cetak-preview { width: 100%; height: 78vh; border: 1px solid var(--bs-border-color); border-radius: .5rem; background: #fff; }
+        .cetak-preview-wrap { position: relative; }
+        .cetak-preview-loading {
+            position: absolute;
+            top: .6rem;
+            right: .6rem;
+            display: flex;
+            align-items: center;
+            padding: .3rem .65rem;
+            border-radius: 2rem;
+            background: rgba(255, 255, 255, .95);
+            border: 1px solid var(--bs-border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+            z-index: 3;
+        }
+        .cetak-preview-loading[hidden] { display: none; }
+        .cetak-live-dot {
+            display: inline-block;
+            width: .45rem;
+            height: .45rem;
+            border-radius: 50%;
+            background: var(--bs-secondary-color);
+            margin-right: .3rem;
+            vertical-align: middle;
+        }
+        .cetak-live-dot.is-live { background: #198754; }
         .cetak-field label { font-size: .78rem; font-weight: 600; }
         .cetak-group > summary {
             cursor: pointer;
@@ -73,7 +98,10 @@
             <div class="card">
                 <div class="card-header py-2"><h6 class="mb-0">Pengaturan naskah</h6></div>
                 <div class="card-body">
-                    <form method="GET" action="{{ route('user.soal-saya.cetak', ['userId' => $userId]) }}">
+                    {{-- Pengaturan memakai GET agar bisa dijadikan URL pratinjau.
+                         Perubahan langsung memperbarui pratinjau (tanpa submit). --}}
+                    <form method="GET" id="settingsForm"
+                          action="{{ route('user.soal-saya.cetak', ['userId' => $userId]) }}">
                         @php
                             // Sumber soal & filter harus ikut tersimpan saat "Terapkan".
                             foreach (['bank_id', 'subject_id', 'jenis_asesmen'] as $keep) {
@@ -401,26 +429,18 @@
 
                         <div class="d-grid mt-3">
                             <button type="submit" class="btn btn-sm btn-soft-primary">
-                                <i class="ri-refresh-line me-1"></i>Terapkan &amp; pratinjau
+                                <i class="ri-save-3-line me-1"></i>Simpan pengaturan
                             </button>
+                        </div>
+                        <div class="small text-muted mt-2 mb-0" id="previewStatus">
+                            Pratinjau diperbarui otomatis saat pengaturan diubah.
                         </div>
                     </form>
 
                     <hr class="my-3">
                     <form method="POST" action="{{ route('user.soal-saya.print', ['userId' => $userId]) }}" target="_blank" id="pdfForm">
                         @csrf
-                        @php
-                            // Judul yang terlihat di panel ikut dikirim apa adanya.
-                            $hidden = $settings;
-                            $hidden['judul'] = trim((string) request('judul')) !== '' ? (string) request('judul') : $settings['judul'];
-                        @endphp
-                        @foreach($hidden as $key => $value)
-                            @if(is_bool($value))
-                                @if($value)<input type="hidden" name="{{ $key }}" value="1">@endif
-                            @else
-                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                            @endif
-                        @endforeach
+                        <div id="pdfSettings"></div>
                         <div id="pdfIds"></div>
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="ri-printer-line me-1"></i>Cetak / simpan PDF
@@ -434,7 +454,9 @@
         {{-- PRATINJAU NASKAH ASLI --}}
         <div class="card">
             <div class="card-header py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                <h6 class="mb-0">Pratinjau naskah</h6>
+                <h6 class="mb-0">
+                    <span class="cetak-live-dot" id="liveDot"></span>Pratinjau naskah
+                </h6>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-primary-subtle text-primary" id="selectedCount">{{ count($questions) }} soal</span>
                     <button type="button" class="btn btn-sm btn-light" id="toggleAll">Pilih/buang semua</button>
@@ -452,9 +474,16 @@
                 @else
                     {{-- Pratinjau memakai dokumen PDF asli, bukan tiruan HTML,
                          agar yang terlihat persis sama dengan hasil cetak. --}}
-                    <iframe class="cetak-preview" id="previewFrame"
-                            src="{{ route('user.soal-saya.preview', ['userId' => $userId]) }}?{{ http_build_query(request()->query()) }}"
-                            title="Pratinjau naskah soal"></iframe>
+                    <div class="cetak-preview-wrap">
+                        <iframe class="cetak-preview" id="previewFrame"
+                                data-preview-base="{{ route('user.soal-saya.preview', ['userId' => $userId]) }}"
+                                src="{{ route('user.soal-saya.preview', ['userId' => $userId]) }}?{{ http_build_query(request()->query()) }}"
+                                title="Pratinjau naskah soal"></iframe>
+                        <div class="cetak-preview-loading" id="previewLoading" hidden>
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="small text-muted ms-2">Memperbarui pratinjau…</span>
+                        </div>
+                    </div>
 
                     <div class="mt-3">
                         <div class="small text-muted mb-2">Soal yang ikut dicetak:</div>
@@ -489,46 +518,106 @@
 @section('script')
     <script>
         (function () {
+            var settingsForm = document.getElementById('settingsForm');
             var picks = Array.prototype.slice.call(document.querySelectorAll('.q-pick'));
             var pdfIds = document.getElementById('pdfIds');
+            var pdfSettings = document.getElementById('pdfSettings');
             var pdfCount = document.getElementById('pdfCount');
             var selectedCount = document.getElementById('selectedCount');
             var toggleAll = document.getElementById('toggleAll');
             var frame = document.getElementById('previewFrame');
-            var previewUrl = frame ? frame.getAttribute('src').split('?')[0] : null;
-            var baseQuery = new URLSearchParams(window.location.search);
-            var timer = null;
+            var loading = document.getElementById('previewLoading');
+            var status = document.getElementById('previewStatus');
+            var liveDot = document.getElementById('liveDot');
 
-            function refreshPreview() {
-                if (!frame || !previewUrl) { return; }
-                var params = new URLSearchParams(baseQuery.toString());
-                params.delete('ids[]');
-                picks.filter(function (p) { return p.checked; }).forEach(function (p) {
-                    params.append('ids[]', p.value);
-                });
-                frame.src = previewUrl + '?' + params.toString();
+            var previewBase = frame ? frame.getAttribute('data-preview-base') : null;
+
+            // Filter sumber soal ikut terbawa ke pratinjau.
+            var baseQuery = new URLSearchParams(window.location.search);
+            ['bank_id', 'subject_id', 'jenis_asesmen'].forEach(function (key) {
+                if (!baseQuery.get(key)) { baseQuery.delete(key); }
+            });
+
+            var settingsTimer = null;
+            var lastUrl = null;
+            var pending = false;
+
+            function checkedIds() {
+                return picks.filter(function (p) { return p.checked; }).map(function (p) { return p.value; });
             }
 
-            function sync(refresh) {
-                var chosen = picks.filter(function (p) { return p.checked; });
-                pdfIds.innerHTML = '';
-                chosen.forEach(function (p) {
-                    var input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'ids[]';
-                    input.value = p.value;
-                    pdfIds.appendChild(input);
-                });
-                if (pdfCount) { pdfCount.textContent = chosen.length + ' soal akan dicetak'; }
-                if (selectedCount) { selectedCount.textContent = chosen.length + ' soal'; }
+            /**
+             * Parameter pratinjau = isi form pengaturan + soal yang dicentang.
+             * Form memakai GET, jadi FormData langsung mencerminkan pilihan guru.
+             */
+            function buildParams() {
+                var params = new URLSearchParams(baseQuery.toString());
 
-                if (refresh) {
-                    clearTimeout(timer);
-                    timer = setTimeout(refreshPreview, 350);
+                if (settingsForm) {
+                    new FormData(settingsForm).forEach(function (value, key) {
+                        if (key === 'ids[]' || key === 'ids') { return; }
+                        params.set(key, value);
+                    });
+                }
+
+                // Checkbox yang tidak dicentang tidak terkirim; pastikan terbaca 0.
+                if (settingsForm) {
+                    settingsForm.querySelectorAll('input[type="checkbox"][name]').forEach(function (box) {
+                        if (!box.checked && !box.closest('#pdfForm')) { params.set(box.name, '0'); }
+                    });
+                }
+
+                params.delete('ids[]');
+                checkedIds().forEach(function (id) { params.append('ids[]', id); });
+
+                return params;
+            }
+
+            function refreshPreview() {
+                if (!frame || !previewBase) { return; }
+
+                var params = buildParams();
+                var url = previewBase + '?' + params.toString();
+
+                // Jangan muat ulang bila tidak ada yang berubah.
+                if (url === lastUrl) {
+                    if (status && pending) { status.textContent = 'Pratinjau sudah sesuai.'; }
+                    pending = false;
+                    return;
+                }
+
+                lastUrl = url;
+                pending = false;
+                setBusy(true);
+                frame.src = url;
+            }
+
+            function setBusy(isBusy) {
+                if (loading) { loading.hidden = !isBusy; }
+                if (liveDot) { liveDot.classList.toggle('is-live', !isBusy); }
+                if (status) {
+                    status.textContent = isBusy
+                        ? 'Memperbarui pratinjau…'
+                        : 'Pratinjau diperbarui otomatis saat pengaturan diubah.';
                 }
             }
 
-            picks.forEach(function (p) { p.addEventListener('change', function () { sync(true); }); });
+            function scheduleSettingsRefresh() {
+                pending = true;
+                if (liveDot) { liveDot.classList.remove('is-live'); }
+                if (status) { status.textContent = 'Menunggu ketikan berhenti…'; }
+                clearTimeout(settingsTimer);
+                // Tunda sebentar agar tidak memanggil server per karakter.
+                settingsTimer = setTimeout(refreshPreview, 700);
+            }
+
+            // ── Live preview: setiap perubahan pengaturan / pilihan soal ──
+            if (settingsForm) {
+                settingsForm.addEventListener('input', scheduleSettingsRefresh);
+                settingsForm.addEventListener('change', scheduleSettingsRefresh);
+            }
+
+            picks.forEach(function (p) { p.addEventListener('change', scheduleSettingsRefresh); });
 
             if (toggleAll) {
                 toggleAll.addEventListener('click', function () {
@@ -536,11 +625,80 @@
                     picks.forEach(function (p) {
                         p.checked = p.dataset.blocked === '1' ? false : !allChecked;
                     });
-                    sync(true);
+                    syncPicks();
+                    scheduleSettingsRefresh();
                 });
             }
 
-            sync(false);
+            if (frame) {
+                frame.addEventListener('load', function () { setBusy(false); });
+            }
+
+            /**
+             * Cerminkan pilihan soal ke form cetak (POST) agar tombol
+             * "Cetak / simpan PDF" membawa ids[] yang sama dengan pratinjau.
+             */
+            function syncPicks() {
+                var chosen = checkedIds();
+
+                if (pdfIds) {
+                    pdfIds.innerHTML = '';
+                    chosen.forEach(function (id) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'ids[]';
+                        input.value = id;
+                        pdfIds.appendChild(input);
+                    });
+                }
+
+                if (pdfCount) { pdfCount.textContent = chosen.length + ' soal akan dicetak'; }
+                if (selectedCount) { selectedCount.textContent = chosen.length + ' soal'; }
+            }
+
+            /**
+             * Salin nilai pengaturan terkini ke form cetak. Dibangun saat klik
+             * agar yang dicetak selalu sama dengan yang terlihat di pratinjau.
+             */
+            function syncSettingsForPrint() {
+                if (!pdfSettings || !settingsForm) { return; }
+
+                pdfSettings.innerHTML = '';
+                new FormData(settingsForm).forEach(function (value, key) {
+                    if (key === 'ids[]' || key === 'ids' || value === '') { return; }
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    pdfSettings.appendChild(input);
+                });
+
+                settingsForm.querySelectorAll('input[type="checkbox"][name]').forEach(function (box) {
+                    if (box.checked) { return; }
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = box.name;
+                    input.value = '0';
+                    pdfSettings.appendChild(input);
+                });
+            }
+
+            var pdfForm = document.getElementById('pdfForm');
+            if (pdfForm) {
+                pdfForm.addEventListener('submit', function (e) {
+                    syncPicks();
+                    syncSettingsForPrint();
+
+                    var ids = pdfIds ? pdfIds.querySelectorAll('input[name="ids[]"]') : [];
+                    if (ids.length === 0) {
+                        e.preventDefault();
+                        window.alert('Pilih minimal satu soal untuk dicetak.');
+                    }
+                });
+            }
+
+            syncPicks();
+            setBusy(false);
         })();
     </script>
 @endsection
