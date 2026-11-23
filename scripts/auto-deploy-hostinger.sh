@@ -81,7 +81,13 @@ log "Export selesai; mengirim ${COMMIT_SHORT} ke server..."
 # --checksum: git archive menyamakan mtime semua file, jadi perbandingan
 # ukuran+waktu akan mengirim ulang seluruh aset setiap deploy. Dengan
 # checksum, hanya file yang isinya benar-benar berubah yang dikirim.
-RSYNC_FLAGS=(-azc --partial --delete)
+# Catatan: pada koneksi lambat, server kadang memutus sesi saat menghitung
+# checksum ribuan berkas. Setel ALIM_DEPLOY_NOCHECKSUM=1 untuk memakai
+# perbandingan ukuran+waktu bila itu terjadi.
+RSYNC_FLAGS=(-az --partial --delete --timeout=120)
+if [ "${ALIM_DEPLOY_NOCHECKSUM:-0}" != "1" ]; then
+    RSYNC_FLAGS+=(-c)
+fi
 DRY_RUN="${ALIM_DEPLOY_DRY_RUN:-0}"
 if [ "${DRY_RUN}" = "1" ]; then
     RSYNC_FLAGS+=(-n --itemize-changes)
