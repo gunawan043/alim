@@ -113,6 +113,21 @@ class BankSoalController extends Controller
     }
 
     /**
+     * Hapus paket soal hanya boleh dilakukan PEMILIK. Tim kurikulum dan TU
+     * tetap boleh mengelola (mengubah) isi paket, tetapi tidak menghapusnya.
+     */
+    private function authorizeBankDelete(Request $request, BankSoal $bank): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $bank->owner_user_id === $user->id || $bank->created_by === $user->id,
+            403,
+            'Hanya pemilik yang dapat menghapus paket soal ini.'
+        );
+    }
+
+    /**
      * Kelola bank: owner/tim kurikulum, atau guru pada rumpun kewenangannya
      * dengan bank yang accessible.
      */
@@ -335,7 +350,11 @@ class BankSoalController extends Controller
 
         $scope = $this->scopeSummary($request);
 
-        return view('evalusi.bank-soal.show', compact('bank', 'scope', 'userId'));
+        // Tombol hapus hanya untuk pemilik paket, bukan tim kurikulum/TU.
+        $canDelete = $bank->owner_user_id === $request->user()->id
+            || $bank->created_by === $request->user()->id;
+
+        return view('evalusi.bank-soal.show', compact('bank', 'scope', 'userId', 'canDelete'));
     }
 
     /**
@@ -450,13 +469,25 @@ class BankSoalController extends Controller
     {
         $bank = BankSoal::findOrFail($id);
 
-        $this->authorizeBankManage($request, $bank);
+        $this->authorizeBankDelete($request, $bank);
 
-        $bank->delete();
+        // Soal dan BankSoal sama-sama memakai SoftDeletes, sehingga FK
+        // `onDelete('cascade')` TIDAK berjalan. Soal dihapus eksplisit agar
+        // tidak tertinggal sebagai yatim tanpa paket.
+        $jumlahSoal = $bank->soal()->count();
+
+        DB::transaction(function () use ($bank) {
+            $bank->soal()->delete();
+            $bank->delete();
+        });
+
+        $pesan = $jumlahSoal > 0
+            ? "Paket soal beserta {$jumlahSoal} soalnya berhasil dihapus."
+            : 'Paket soal berhasil dihapus.';
 
         return redirect()
             ->route('user.bank-soal.index', ['userId' => $userId])
-            ->with('success', 'Bank Soal berhasil dihapus.');
+            ->with('success', $pesan);
     }
 
     /**

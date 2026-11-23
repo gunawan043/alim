@@ -54,6 +54,12 @@
                         <i class="ri-stack-line me-1"></i>Paket soal
                     </a>
                 @endif
+                @if($canDelete ?? false)
+                    <button type="button" class="btn btn-soft-danger btn-sm" id="btnHapusPaket"
+                            data-name="{{ $bank->nama }}" data-jumlah="{{ $totalSoal }}">
+                        <i class="ri-delete-bin-line me-1"></i>Hapus paket
+                    </button>
+                @endif
             </div>
         </div>
     </div>
@@ -281,4 +287,53 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('script')
+    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+    <script>
+        (function () {
+            var btn = document.getElementById('btnHapusPaket');
+            if (! btn) return;
+
+            btn.addEventListener('click', function () {
+                var jumlah = parseInt(this.dataset.jumlah, 10) || 0;
+                var pesan = 'Paket soal "' + this.dataset.name + '"'
+                    + (jumlah > 0 ? ' beserta ' + jumlah + ' soalnya' : '')
+                    + ' akan dihapus.';
+
+                Swal.fire({
+                    title: 'Yakin ingin menghapus?',
+                    text: pesan,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then(function (result) {
+                    if (! result.isConfirmed) return;
+
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{{ route('user.bank-soal.destroy', ['userId' => $userId, 'id' => $bank->id]) }}';
+
+                    var token = document.createElement('input');
+                    token.type = 'hidden';
+                    token.name = '_token';
+                    token.value = '{{ csrf_token() }}';
+                    form.appendChild(token);
+
+                    var method = document.createElement('input');
+                    method.type = 'hidden';
+                    method.name = '_method';
+                    method.value = 'DELETE';
+                    form.appendChild(method);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            });
+        })();
+    </script>
 @endsection

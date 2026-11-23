@@ -44,9 +44,17 @@
                         @if($bank->fase)<span class="badge bg-light text-dark border">Fase {{ $bank->fase }}</span>@endif
                     </div>
                 </div>
-                <a href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}" class="btn btn-light btn-sm">
-                    <i class="ri-arrow-left-line me-1"></i> Kembali ke Bank
-                </a>
+                <div class="d-flex gap-2">
+                    @if(($canDeleteBank ?? false) && $isEditMode)
+                        <button type="button" class="btn btn-soft-danger btn-sm" id="btnHapusPaket"
+                                data-name="{{ $bank->nama }}">
+                            <i class="ri-delete-bin-line me-1"></i> Hapus Paket
+                        </button>
+                    @endif
+                    <a href="{{ route('user.bank-soal.show', ['userId' => $userId, 'id' => $bank->id]) }}" class="btn btn-light btn-sm">
+                        <i class="ri-arrow-left-line me-1"></i> Kembali ke Bank
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -134,6 +142,48 @@
 
 @section('script')
 <script src="{{ URL::asset('build/libs/ckeditor5/ckeditor.js') }}"></script>
+<script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+<script>
+(function () {
+    // Hapus paket (beserta soalnya) — hanya pemilik, tombol dirender kondisional.
+    var btnHapus = document.getElementById('btnHapusPaket');
+    if (btnHapus) {
+        btnHapus.addEventListener('click', function () {
+            Swal.fire({
+                title: 'Yakin ingin menghapus?',
+                text: 'Paket soal "' + this.dataset.name + '" beserta seluruh soalnya akan dihapus.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            }).then(function (result) {
+                if (! result.isConfirmed) return;
+
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route('user.bank-soal.destroy', ['userId' => $userId, 'id' => $bank->id]) }}';
+
+                var token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                var method = document.createElement('input');
+                method.type = 'hidden';
+                method.name = '_method';
+                method.value = 'DELETE';
+                form.appendChild(method);
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+        });
+    }
+})();
+</script>
 <script>
 const bankType = @json($bankType);
 const isMixed = @json($isMixed);

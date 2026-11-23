@@ -307,14 +307,18 @@
                                                         <i class="ri-file-copy-line me-2"></i>Clone
                                                     </a>
                                                 </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger delete-bank"
-                                                       href="javascript:void(0)"
-                                                       data-id="{{ $bank->id }}" data-name="{{ $bank->nama }}">
-                                                        <i class="ri-delete-bin-line me-2"></i>Hapus
-                                                    </a>
-                                                </li>
+                                                {{-- Hapus paket hanya untuk PEMILIK. Tim kurikulum
+                                                     dan TU tetap boleh mengubah, bukan menghapus. --}}
+                                                @if($bank->owner_user_id === auth()->id() || $bank->created_by === auth()->id())
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger delete-bank"
+                                                           href="javascript:void(0)"
+                                                           data-id="{{ $bank->id }}" data-name="{{ $bank->nama }}">
+                                                            <i class="ri-delete-bin-line me-2"></i>Hapus
+                                                        </a>
+                                                    </li>
+                                                @endif
                                             </ul>
                                         </div>
                                     </td>
@@ -356,7 +360,7 @@
                 var name = this.dataset.name;
                 Swal.fire({
                     title: 'Yakin ingin menghapus?',
-                    text: "Bank soal \"" + name + "\" akan dihapus permanen.",
+                    text: "Paket soal \"" + name + "\" beserta seluruh soalnya akan dihapus.",
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#d33',

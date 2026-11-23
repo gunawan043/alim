@@ -165,6 +165,10 @@ class SoalController extends Controller
         $isEditMode = true;
         $formAction = route('user.soal.update-all', ['userId' => $userId, 'bankId' => $bank->id]);
 
+        // Hapus paket hanya untuk pemilik; tombol disembunyikan bagi waka/TU.
+        $canDeleteBank = $bank->owner_user_id === $request->user()->id
+            || $bank->created_by === $request->user()->id;
+
         $scope = app(TeachingScopeService::class)->summary(
             $request->user(),
             $request->attributes->get('schoolContextId'),
@@ -173,7 +177,7 @@ class SoalController extends Controller
 
         return view('evalusi.soal.create', compact(
             'bank', 'userId', 'tps', 'wacanas', 'tipeSoal',
-            'builderQuestions', 'isEditMode', 'formAction', 'scope'
+            'builderQuestions', 'isEditMode', 'formAction', 'scope', 'canDeleteBank'
         ));
     }
 
@@ -770,7 +774,7 @@ class SoalController extends Controller
         $soal = Soal::findOrFail($id);
         $bank = $soal->bankSoal;
 
-        $this->authorizeEdit(request(), $bank, $soal);
+        $this->authorizeDelete(request(), $bank, $soal);
 
         $soal->delete();
 
@@ -893,5 +897,26 @@ class SoalController extends Controller
         if (! $isAuthor && ! $isTeam && ! $isBankOwner) {
             abort(403, 'Hanya pembuat soal atau tim kurikulum yang dapat mengubah soal ini.');
         }
+    }
+
+    /**
+     * Hapus soal hanya boleh oleh PEMILIK soal atau pemilik paketnya.
+     * Tim kurikulum tetap boleh mengubah soal, tetapi tidak menghapusnya.
+     *
+     * Kolom `dibuat_oleh` nullable, sehingga soal lama bisa tanpa pembuat;
+     * dalam kasus itu pemilik paket tetap berhak menghapus.
+     */
+    private function authorizeDelete(Request $request, ?BankSoal $bank, Soal $soal): void
+    {
+        $user = $request->user();
+
+        $isAuthor = $soal->dibuat_oleh === $user->id;
+        $isBankOwner = $bank && ($bank->owner_user_id === $user->id || $bank->created_by === $user->id);
+
+        abort_unless(
+            $isAuthor || $isBankOwner,
+            403,
+            'Hanya pemilik yang dapat menghapus soal ini.'
+        );
     }
 }

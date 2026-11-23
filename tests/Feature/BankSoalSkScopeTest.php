@@ -20,6 +20,7 @@ use App\Services\Evaluasi\PrintSettingsService;
 use App\Services\Evaluasi\QuickSoalService;
 use App\Services\Evaluasi\SoalNaskahPdfService;
 use App\Services\Evaluasi\SoalOpsiLayout;
+use App\Services\KurikulumAccess;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -1422,6 +1423,176 @@ class BankSoalSkScopeTest extends TestCase
             ->assertSee('id="previewStatus"', false);
     }
 
+    // ── Penghapusan (pemilik saja) ───────────────────────────────────────
+
+    public function test_hapus_paket_ikut_menghapus_soalnya(): void
+    {
+        $soal = $this->makeSoal();
+        $bankId = $soal->bank_soal_id;
+
+        // Tambah 2 soal lagi agar pembuktian tidak bergantung pada satu baris.
+        foreach (['Soal kedua', 'Soal ketiga'] as $teks) {
+            Soal::create([
+                'bank_soal_id' => $bankId,
+                'tipe_soal' => 'pg',
+                'bahasa' => 'latin',
+                'pertanyaan' => $teks,
+                'bobot_default' => 1,
+                'status' => 'draft',
+                'workflow_status' => Soal::WORKFLOW_DRAFT,
+                'jenis_asesmen' => Soal::JENIS_ASESMEN_HARIAN,
+                'dibuat_oleh' => $this->guru->id,
+                'content_hash' => hash('sha256', $teks),
+            ]);
+        }
+
+        $this->assertSame(3, Soal::where('bank_soal_id', $bankId)->count());
+
+        $this->actingAs($this->guru)
+            ->delete("/{$this->guru->id}/bank-soal/{$bankId}")
+            ->assertRedirect("/{$this->guru->id}/bank-soal");
+
+        // Paket ter-soft-delete dan TIDAK ada soal yatim yang masih aktif.
+        $this->assertNull(BankSoal::find($bankId), 'Paket harus terhapus.');
+        $this->assertSame(0, Soal::where('bank_soal_id', $bankId)->count(), 'Tidak boleh ada soal tersisa.');
+
+        // Data masih dapat dipulihkan (soft delete).
+        $this->assertSame(3, Soal::withTrashed()->where('bank_soal_id', $bankId)->count());
+
+        foreach (Soal::withTrashed()->where('bank_soal_id', $bankId)->get() as $sisa) {
+            $this->assertNotNull($sisa->deleted_at, 'Soal ikut ter-soft-delete.');
+        }
+    }
+
+    public function test_hapus_paket_ditolak_untuk_bukan_pemilik(): void
+    {
+        $soal = $this->makeSoal();
+        $bankId = $soal->bank_soal_id;
+
+        $orangLain = $this->makeGuru('Guru Lain', 'guru.lain@example.test');
+
+        $this->actingAs($orangLain)
+            ->delete("/{$orangLain->id}/bank-soal/{$bankId}")
+            ->assertForbidden();
+
+        $this->assertNotNull(BankSoal::find($bankId), 'Paket tidak boleh terhapus.');
+        $this->assertSame(1, Soal::where('bank_soal_id', $bankId)->count());
+    }
+
+    public function test_hapus_soal_massal_hanya_milik_sendiri(): void
+    {
+        $milikSaya = $this->makeSoal();
+
+        // Soal milik orang lain pada paket yang berbeda.
+        $guruLain = $this->makeGuru('Guru Pemilik Lain', 'guru.pemilik.lain@example.test');
+
+        $bankLain = BankSoal::create([
+            'school_id' => $this->school->id,
+            'subject_id' => $this->math->id,
+            'academic_year_id' => $this->ay->id,
+            'nama' => 'Paket Guru Lain',
+            'jenis_soal' => 'campuran',
+            'bahasa' => 'latin',
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'internal_school',
+            'owner_user_id' => $guruLain->id,
+            'created_by' => $guruLain->id,
+            'total_soal' => 1,
+        ]);
+
+        $soalOrangLain = Soal::create([
+            'bank_soal_id' => $bankLain->id,
+            'tipe_soal' => 'pg',
+            'bahasa' => 'latin',
+            'pertanyaan' => 'Soal milik orang lain',
+            'bobot_default' => 1,
+            'status' => 'draft',
+            'workflow_status' => Soal::WORKFLOW_DRAFT,
+            'jenis_asesmen' => Soal::JENIS_ASESMEN_HARIAN,
+            'dibuat_oleh' => $guruLain->id,
+            'content_hash' => hash('sha256', 'milik-orang-lain'),
+        ]);
+
+        $this->actingAs($this->guru)
+            ->delete("/{$this->guru->id}/soal-saya/bulk", [
+                'ids' => [$milikSaya->id, $soalOrangLain->id],
+            ])
+            ->assertRedirect("/{$this->guru->id}/soal-saya");
+
+        $this->assertNull(Soal::find($milikSaya->id), 'Soal milik sendiri terhapus.');
+        $this->assertNotNull(Soal::find($soalOrangLain->id), 'Soal orang lain TIDAK boleh terhapus.');
+    }
+
+    public function test_hapus_soal_tunggal_dari_soal_saya(): void
+    {
+        $soal = $this->makeSoal();
+
+        $this->actingAs($this->guru)
+            ->delete("/{$this->guru->id}/soal-saya/{$soal->id}")
+            ->assertRedirect("/{$this->guru->id}/soal-saya");
+
+        $this->assertNull(Soal::find($soal->id));
+        $this->assertNotNull(Soal::withTrashed()->find($soal->id));
+    }
+
+    public function test_hapus_soal_ditolak_untuk_bukan_pemilik(): void
+    {
+        $soal = $this->makeSoal();
+
+        $orangLain = $this->makeGuru('Guru Ketiga', 'guru.ketiga@example.test');
+
+        $this->actingAs($orangLain)
+            ->delete("/{$orangLain->id}/soal-saya/{$soal->id}")
+            ->assertForbidden();
+
+        $this->assertNotNull(Soal::find($soal->id));
+    }
+
+    public function test_pemilik_paket_bisa_hapus_soal_tanpa_pembuat(): void
+    {
+        // Kolom dibuat_oleh nullable: soal lama bisa tanpa pembuat, tetapi
+        // pemilik paket tetap berhak menghapusnya.
+        $soal = $this->makeSoal();
+        $soal->forceFill(['dibuat_oleh' => null])->save();
+
+        $this->actingAs($this->guru)
+            ->delete("/{$this->guru->id}/bank-soal/{$soal->bank_soal_id}/soal/{$soal->id}")
+            ->assertRedirect();
+
+        $this->assertNull(Soal::find($soal->id));
+    }
+
+    public function test_hapus_soal_ditolak_untuk_tim_kurikulum(): void
+    {
+        // Regresi: destroy dulu memakai authorizeEdit yang meloloskan tim
+        // kurikulum. Sesudah authorizeDelete, waka kurikulum tidak berhak.
+        $soal = $this->makeSoal();
+
+        $waka = $this->makeGuru('Waka Kurikulum', 'waka.kurikulum@example.test', 'Waka Kurikulum');
+
+        // Pastikan prasyarat tes: user ini memang dianggap tim kurikulum.
+        $this->assertTrue(app(KurikulumAccess::class)->isKurikulumTeam($waka));
+
+        $this->actingAs($waka)
+            ->delete("/{$waka->id}/bank-soal/{$soal->bank_soal_id}/soal/{$soal->id}")
+            ->assertForbidden();
+
+        $this->assertNotNull(Soal::find($soal->id), 'Waka tidak boleh menghapus soal.');
+    }
+
+    public function test_tombol_hapus_paket_hanya_untuk_pemilik(): void
+    {
+        $soal = $this->makeSoal();
+
+        $html = $this->actingAs($this->guru)
+            ->get("/{$this->guru->id}/bank-soal")
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('delete-bank', $html, 'Pemilik melihat tombol hapus.');
+    }
+
     private function makeSoal(): Soal
     {
         $bank = BankSoal::create([
@@ -1466,6 +1637,40 @@ class BankSoalSkScopeTest extends TestCase
         }
 
         return $soal;
+    }
+
+    /**
+     * Buat guru kedua yang sudah lengkap (role + snapshot + GTK) agar bisa
+     * melewati middleware `employee.access` saat diuji.
+     */
+    private function makeGuru(string $nama, string $email, string $jabatan = 'Guru Mapel'): User
+    {
+        $user = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => $nama,
+            'email' => $email,
+            'password' => bcrypt('secret'),
+            'is_active' => true,
+        ]);
+
+        $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 8]);
+        $user->assignRole($role);
+
+        $this->seedSnapshot($user, $this->school);
+
+        \DB::table('gtk_employments')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'school_id' => $this->school->id,
+            'status_kepegawaian' => 'GTY',
+            'nupy' => (string) random_int(1000000000, 9999999999),
+            'jenis_gtk' => 'Pendidik / Guru',
+            'jabatan' => $jabatan,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $user;
     }
 
     private function seedSnapshot(User $user, School $school): void

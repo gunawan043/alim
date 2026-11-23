@@ -18,6 +18,7 @@ use App\Services\Evaluasi\SoalNaskahPdfService;
 use App\Services\Evaluasi\TeachingScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -189,6 +190,54 @@ class SoalSayaController extends Controller
             ->route('user.soal-saya.index', ['userId' => $userId])
             ->with('success', 'Soal berhasil disalin ke Soal Saya.')
             ->with('warning', $result['warning']);
+    }
+
+    /**
+     * Hapus satu soal dari daftar Soal Saya. Hanya pembuat soal.
+     */
+    public function destroy(Request $request, string $userId, string $id)
+    {
+        $soal = Soal::findOrFail($id);
+
+        abort_unless(
+            $soal->dibuat_oleh === $request->user()->id,
+            403,
+            'Hanya pembuat soal yang dapat menghapusnya.'
+        );
+
+        $soal->delete();
+
+        return redirect()
+            ->route('user.soal-saya.index', ['userId' => $userId])
+            ->with('success', 'Soal berhasil dihapus.');
+    }
+
+    /**
+     * Hapus beberapa soal sekaligus dari daftar Soal Saya.
+     * Hanya soal milik pengguna sendiri yang diproses; sisanya diabaikan.
+     */
+    public function destroyBulk(Request $request, string $userId)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'string',
+        ]);
+
+        $soal = Soal::whereIn('id', $validated['ids'])
+            ->where('dibuat_oleh', $request->user()->id)
+            ->get();
+
+        if ($soal->isEmpty()) {
+            return redirect()
+                ->route('user.soal-saya.index', ['userId' => $userId])
+                ->with('warning', 'Tidak ada soal milik Anda yang dipilih.');
+        }
+
+        DB::transaction(fn () => $soal->each->delete());
+
+        return redirect()
+            ->route('user.soal-saya.index', ['userId' => $userId])
+            ->with('success', $soal->count().' soal berhasil dihapus.');
     }
 
     public function importForm(Request $request, string $userId)

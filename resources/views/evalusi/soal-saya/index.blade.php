@@ -125,6 +125,11 @@
                     <button type="submit" class="btn btn-sm btn-soft-primary">
                         <i class="ri-printer-line me-1"></i>Cetak naskah
                     </button>
+                    {{-- Hapus massal: form terpisah karena tabel berada di dalam
+                         form GET cetak. Disubmit lewat JS setelah konfirmasi. --}}
+                    <button type="button" class="btn btn-sm btn-soft-danger" id="btnHapusMassal">
+                        <i class="ri-delete-bin-line me-1"></i>Hapus terpilih
+                    </button>
                     <span class="text-muted small">Atur judul, tabel keterangan, karakter, dan margin di halaman berikutnya.</span>
                 </div>
 
@@ -170,6 +175,10 @@
                                     </td>
                                     <td class="text-end">
                                         <a href="{{ route('user.soal.edit', ['userId' => $userId, 'bankId' => $soal->bank_soal_id, 'id' => $soal->id]) }}" class="btn btn-sm btn-soft-primary" title="Edit"><i class="ri-pencil-line"></i></a>
+                                        <button type="button" class="btn btn-sm btn-soft-danger btn-hapus-soal"
+                                                data-id="{{ $soal->id }}"
+                                                data-label="{{ \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 60) }}"
+                                                title="Hapus"><i class="ri-delete-bin-line"></i></button>
                                     </td>
                                 </tr>
                             @empty
@@ -183,4 +192,89 @@
             <div class="mt-3">{{ $questions->links() }}</div>
         </div>
     </div>
+@endsection
+
+@section('script')
+    <script src="{{ URL::asset('build/libs/sweetalert2/sweetalert2.min.js') }}"></script>
+    <script>
+        // Kirim penghapusan lewat form POST + _method=DELETE. Form dibuat
+        // dinamis karena tabel sudah berada di dalam form GET "cetak".
+        function hapusSoal(action, ids, judul, teks) {
+            Swal.fire({
+                title: judul,
+                text: teks,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            }).then(function (result) {
+                if (! result.isConfirmed) return;
+
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = action;
+
+                var token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                var method = document.createElement('input');
+                method.type = 'hidden';
+                method.name = '_method';
+                method.value = 'DELETE';
+                form.appendChild(method);
+
+                ids.forEach(function (id) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ids[]';
+                    input.value = id;
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+            });
+        }
+
+        // Basis URL untuk hapus satu soal: {base}/{id}.
+        var hapusBase = '{{ route('user.soal-saya.index', ['userId' => $userId]) }}';
+
+        document.querySelectorAll('.btn-hapus-soal').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                hapusSoal(
+                    hapusBase.replace(/\/$/, '') + '/' + this.dataset.id,
+                    [],
+                    'Yakin ingin menghapus?',
+                    'Soal "' + (this.dataset.label || 'ini') + '..." akan dihapus.'
+                );
+            });
+        });
+
+        var btnMassal = document.getElementById('btnHapusMassal');
+        if (btnMassal) {
+            btnMassal.addEventListener('click', function () {
+                var ids = Array.prototype.map.call(
+                    document.querySelectorAll('.soal-check:checked'),
+                    function (el) { return el.value; }
+                );
+
+                if (ids.length === 0) {
+                    Swal.fire({ icon: 'info', title: 'Belum ada yang dipilih', text: 'Centang soal yang ingin dihapus terlebih dahulu.' });
+                    return;
+                }
+
+                hapusSoal(
+                    '{{ route('user.soal-saya.destroy-bulk', ['userId' => $userId]) }}',
+                    ids,
+                    'Hapus ' + ids.length + ' soal?',
+                    'Soal yang dipilih akan dihapus.'
+                );
+            });
+        }
+    </script>
 @endsection
