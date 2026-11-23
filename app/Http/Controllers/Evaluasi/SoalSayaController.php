@@ -202,17 +202,8 @@ class SoalSayaController extends Controller
         $grades = $this->grades($school);
         $scope = $this->scopeSummary($school);
 
-        // Paket tujuan: hanya paket milik guru sendiri (di luar bank
-        // penyimpan Soal Saya).
-        $paket = BankSoal::query()
-            ->where('owner_user_id', $userId)
-            ->koleksi()
-            ->withCount('soal')
-            ->orderBy('nama')
-            ->get(['id', 'nama', 'subject_id', 'academic_year_id', 'semester']);
-
         return view('evalusi.soal-saya.import', compact(
-            'userId', 'school', 'academicYears', 'selectedAyId', 'semester', 'subjects', 'grades', 'scope', 'paket'
+            'userId', 'school', 'academicYears', 'selectedAyId', 'semester', 'subjects', 'grades', 'scope'
         ));
     }
 
@@ -227,8 +218,7 @@ class SoalSayaController extends Controller
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester' => 'required|in:ganjil,genap',
             'jenis_asesmen' => 'required|in:harian,formatif,sts,sas',
-            // Tujuan penyimpanan: paket yang sudah ada, atau buat paket baru.
-            'paket_id' => 'nullable|uuid',
+            // Nama paket baru (opsional; kosong = dibuat otomatis).
             'paket_baru' => 'nullable|string|max:150',
             // Jenis soal & bahasa: pilihan guru, menimpa tebakan parser.
             'jenis_soal' => 'required|in:campuran,pg,uraian,isian',
@@ -245,7 +235,8 @@ class SoalSayaController extends Controller
         $ay = AcademicYear::findOrFail($data['academic_year_id']);
 
         // Tentukan paket tujuan SEBELUM impor agar soal tidak nyasar dulu.
-        [$targetBank, $newPaketName] = $this->resolveImportBank($request, $userId, $school, $subject, $ay, $data);
+        // Setiap unggahan Word selalu menjadi paket soal baru.
+        $targetBank = $this->resolveImportBank($request, $userId, $school, $subject, $ay, $data);
 
         try {
             $parsed = $this->docxParser->parse($request->file('file')->getRealPath(), [
@@ -307,11 +298,11 @@ class SoalSayaController extends Controller
     }
 
     /**
-     * Paket tujuan impor: paket milik guru yang dipilih, paket baru yang
-     * dinamai, atau (bila keduanya kosong) bank penyimpan Soal Saya.
+     * Paket tujuan impor. Setiap berkas Word yang diunggah SELALU menjadi
+     * satu paket soal baru — guru tidak perlu menamai dulu, karena nama
+     * otomatis dibuat dari mapel, jenis asesmen, dan tanggal.
      *
      * @param  array<string, mixed>  $data
-     * @return array{0: BankSoal, 1: ?string}
      */
     private function resolveImportBank(
         Request $request,
@@ -320,56 +311,51 @@ class SoalSayaController extends Controller
         Subject $subject,
         AcademicYear $ay,
         array $data
-    ): array {
-        if ($request->filled('paket_id')) {
-            $bank = BankSoal::query()
-                ->where('owner_user_id', $userId)
-                ->whereKey($data['paket_id'])
-                ->koleksi()
-                ->first();
+    ): BankSoal {
+        $nama = trim((string) ($data['paket_baru'] ?? ''));
 
-            if (! $bank) {
-                throw ValidationException::withMessages([
-                    'paket_id' => 'Paket yang dipilih tidak ditemukan atau bukan milik Anda.',
-                ]);
-            }
-
-            return [$bank, null];
+        if ($nama === '') {
+            $nama = $this->namaPaketOtomatis($userId, $subject, $data);
         }
 
-        $namaBaru = trim((string) ($data['paket_baru'] ?? ''));
-        if ($namaBaru !== '') {
-            $bank = BankSoal::create([
-                'school_id' => $school->id,
-                'subject_id' => $subject->id,
-                'academic_year_id' => $ay->id,
-                'semester' => $data['semester'] ?? 'ganjil',
-                'nama' => $namaBaru,
-                'deskripsi' => 'Dibuat dari impor Word.',
-                'jenis_soal' => $data['jenis_soal'] === 'campuran' ? 'campuran' : $data['jenis_soal'],
-                'bahasa' => $data['bahasa'] === 'otomatis' ? 'latin' : $data['bahasa'],
-                'tingkat_kesulitan_target' => 'campuran',
-                'is_public' => false,
-                'shared_scope' => 'internal_school',
-                'owner_user_id' => $userId,
-                'created_by' => $userId,
-                'total_soal' => 0,
-            ]);
+        return BankSoal::create([
+            'school_id' => $school->id,
+            'subject_id' => $subject->id,
+            'academic_year_id' => $ay->id,
+            'semester' => $data['semester'] ?? 'ganjil',
+            'nama' => $nama,
+            'deskripsi' => 'Dibuat otomatis dari impor Word.',
+            'jenis_soal' => $data['jenis_soal'] === 'campuran' ? 'campuran' : $data['jenis_soal'],
+            'bahasa' => $data['bahasa'] === 'otomatis' ? 'latin' : $data['bahasa'],
+            'tingkat_kesulitan_target' => 'campuran',
+            'is_public' => false,
+            'shared_scope' => 'internal_school',
+            'owner_user_id' => $userId,
+            'created_by' => $userId,
+            'total_soal' => 0,
+        ]);
+    }
 
-            return [$bank, $namaBaru];
+    /**
+     * Nama paket otomatis, mis. "Impor Word Matematika — Harian 23-11-2026".
+     * Diberi akhiran (2), (3), ... bila nama itu sudah dipakai.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function namaPaketOtomatis(string $userId, Subject $subject, array $data): string
+    {
+        $asesmen = Soal::JENIS_ASESMEN_OPTIONS[$data['jenis_asesmen'] ?? ''] ?? 'Impor';
+        $dasar = 'Impor Word '.$subject->name.' — '.$asesmen.' '.now()->format('d-m-Y');
+
+        $nama = $dasar;
+        $urut = 2;
+
+        while (BankSoal::where('owner_user_id', $userId)->where('nama', $nama)->exists()) {
+            $nama = $dasar.' ('.$urut.')';
+            $urut++;
         }
 
-        // Tanpa pilihan: simpan ke Soal Saya (perilaku lama).
-        $bank = $this->quickSoal->bankFor(
-            $request->user(),
-            $school,
-            $subject,
-            $request->filled('grade_level_id') ? GradeLevel::find($data['grade_level_id']) : null,
-            $ay,
-            $data['semester']
-        );
-
-        return [$bank, null];
+        return $nama;
     }
 
     /**

@@ -83,23 +83,24 @@
                                 <h6 class="mb-2">Penyimpanan &amp; jenis soal</h6>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Simpan ke paket soal</label>
-                                <select name="paket_id" class="form-select">
-                                    <option value="">— Soal Saya (tanpa paket) —</option>
-                                    @foreach($paket ?? [] as $p)
-                                        <option value="{{ $p->id }}" {{ old('paket_id') === $p->id ? 'selected' : '' }}>
-                                            {{ $p->nama }} ({{ $p->soal_count }} soal)
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">Hanya paket milik Anda. Soal hasil impor langsung masuk ke paket ini.</small>
+                            <div class="col-12">
+                                <div class="alert alert-info d-flex gap-2 align-items-start mb-0 py-2">
+                                    <i class="ri-folder-add-line fs-5 mt-1"></i>
+                                    <div class="small mb-0">
+                                        <strong>Setiap file Word membuat paket soal baru.</strong>
+                                        Soal hasil impor langsung masuk ke paket itu, jadi tidak tercampur dengan
+                                        paket lain. Isi nama paket di bawah bila perlu — kosongkan untuk nama otomatis.
+                                    </div>
+                                </div>
                             </div>
+
                             <div class="col-md-6">
-                                <label class="form-label">Atau buat paket baru</label>
+                                <label class="form-label">Nama paket soal</label>
                                 <input type="text" name="paket_baru" class="form-control" maxlength="150"
-                                       value="{{ old('paket_baru') }}" placeholder="mis. Ulangan Harian Bab 3">
-                                <small class="text-muted">Diisi → paket baru dibuat. Kosongkan bila memilih paket di atas.</small>
+                                       value="{{ old('paket_baru') }}" placeholder="Kosongkan untuk nama otomatis">
+                                <small class="text-muted">
+                                    Contoh otomatis: <em>Impor Word Matematika — Harian {{ now()->format('d-m-Y') }}</em>
+                                </small>
                             </div>
 
                             <div class="col-md-6">

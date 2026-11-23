@@ -305,67 +305,42 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertSame('A', $soal->options()->where('is_correct', true)->value('label'));
     }
 
-    public function test_impor_word_ke_paket_yang_sudah_ada(): void
+    public function test_impor_word_selalu_membuat_paket_baru(): void
     {
-        $paket = BankSoal::create([
-            'school_id' => $this->school->id,
-            'subject_id' => $this->math->id,
-            'academic_year_id' => $this->ay->id,
-            'nama' => 'Paket Tujuan',
-            'jenis_soal' => 'campuran',
-            'bahasa' => 'latin',
-            'tingkat_kesulitan_target' => 'campuran',
-            'is_public' => false,
-            'shared_scope' => 'internal_school',
-            'owner_user_id' => $this->guru->id,
-            'created_by' => $this->guru->id,
-            'total_soal' => 0,
-        ]);
+        // Setiap unggahan Word = satu paket baru, walau nama tidak diisi.
+        $path1 = $this->docx(['1. Soal pertama', 'A. a', 'B. b', 'Kunci: A']);
+        $path2 = $this->docx(['1. Soal kedua', 'A. a', 'B. b', 'Kunci: A']);
 
-        $path = $this->docx([
-            '1. Berapakah 12 x 4 ?',
-            'A. 48',
-            'B. 46',
-            'C. 52',
-            'D. 56',
-            'Kunci: A',
-        ]);
+        foreach ([$path1, $path2] as $path) {
+            $this->actingAs($this->guru)
+                ->post("/{$this->guru->id}/soal-saya/import-word", [
+                    'file' => new UploadedFile($path, 'soal.docx', null, null, true),
+                    'subject_id' => $this->math->id,
+                    'academic_year_id' => $this->ay->id,
+                    'semester' => 'ganjil',
+                    'jenis_asesmen' => 'harian',
+                    'jenis_soal' => 'campuran',
+                    'bahasa' => 'otomatis',
+                ])
+                ->assertRedirect();
+        }
 
-        $this->actingAs($this->guru)
-            ->post("/{$this->guru->id}/soal-saya/import-word", [
-                'file' => new UploadedFile($path, 'soal.docx', null, null, true),
-                'subject_id' => $this->math->id,
-                'academic_year_id' => $this->ay->id,
-                'semester' => 'ganjil',
-                'jenis_asesmen' => 'harian',
-                'paket_id' => $paket->id,
-                'jenis_soal' => 'campuran',
-                'bahasa' => 'otomatis',
-            ])
-            ->assertRedirect();
+        $paket = BankSoal::where('owner_user_id', $this->guru->id)
+            ->where('deskripsi', 'like', 'Dibuat otomatis dari impor Word%')
+            ->get();
 
-        $this->assertSame(1, Soal::where('bank_soal_id', $paket->id)->count(), 'Soal masuk ke paket yang dipilih.');
+        $this->assertCount(2, $paket, 'Dua unggahan → dua paket terpisah.');
+        $this->assertCount(2, $paket->pluck('nama')->unique(), 'Nama paket otomatis tidak bertabrakan.');
+        $this->assertStringContainsString('Impor Word Matematika', $paket->first()->nama);
+
+        // Soal tidak tercampur antar paket.
+        foreach ($paket as $p) {
+            $this->assertSame(1, Soal::where('bank_soal_id', $p->id)->count());
+        }
     }
 
-    public function test_impor_word_tidak_bisa_ke_paket_milik_guru_lain(): void
+    public function test_impor_word_nama_paket_manual_dipakai(): void
     {
-        $guruLain = User::factory()->create(['name' => 'Guru Lain Uji']);
-
-        $paketOrangLain = BankSoal::create([
-            'school_id' => $this->school->id,
-            'subject_id' => $this->math->id,
-            'academic_year_id' => $this->ay->id,
-            'nama' => 'Paket Guru Lain',
-            'jenis_soal' => 'campuran',
-            'bahasa' => 'latin',
-            'tingkat_kesulitan_target' => 'campuran',
-            'is_public' => true,
-            'shared_scope' => 'public_pool',
-            'owner_user_id' => $guruLain->id,
-            'created_by' => $guruLain->id,
-            'total_soal' => 0,
-        ]);
-
         $path = $this->docx(['1. Soal', 'A. a', 'B. b', 'Kunci: A']);
 
         $this->actingAs($this->guru)
@@ -375,13 +350,13 @@ class BankSoalSkScopeTest extends TestCase
                 'academic_year_id' => $this->ay->id,
                 'semester' => 'ganjil',
                 'jenis_asesmen' => 'harian',
-                'paket_id' => $paketOrangLain->id,
+                'paket_baru' => 'Ulangan Bab 3',
                 'jenis_soal' => 'campuran',
                 'bahasa' => 'otomatis',
             ])
-            ->assertSessionHasErrors('paket_id');
+            ->assertRedirect();
 
-        $this->assertSame(0, Soal::where('bank_soal_id', $paketOrangLain->id)->count());
+        $this->assertTrue(BankSoal::where('nama', 'Ulangan Bab 3')->where('owner_user_id', $this->guru->id)->exists());
     }
 
     public function test_impor_word_membuat_wacana_bersama(): void
