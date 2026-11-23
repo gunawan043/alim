@@ -11,7 +11,7 @@
         @slot('title') {{ $bank->nama }} @endslot
     @endcomponent
 
-    <x-soal-flow current="bank" />
+    <x-soal-flow current="bank" :scope="$scope ?? null" />
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -19,6 +19,40 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+
+    @php
+        $totalSoal = $bank->soal->count();
+        $approvedSoal = $bank->soal->where('status', 'approved')->count();
+        $nextStep = $totalSoal === 0
+            ? ['label' => 'Input soal pertama', 'desc' => 'Belum ada soal di bank ini.']
+            : ($approvedSoal === 0
+                ? ['label' => 'Ajukan soal untuk validasi', 'desc' => 'Semua soal masih draft — belum bisa dipakai di paket.']
+                : ['label' => 'Susun paket soal', 'desc' => $approvedSoal.' soal sudah disetujui dan siap dipakai.']);
+    @endphp
+
+    <div class="card border mb-3">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+            <div>
+                <span class="badge bg-primary-subtle text-primary me-2">Langkah berikutnya</span>
+                <strong>{{ $nextStep['label'] }}</strong>
+                <span class="text-muted small ms-1">{{ $nextStep['desc'] }}</span>
+            </div>
+            <div class="d-flex gap-2">
+                @if($totalSoal === 0)
+                    <a href="{{ route('user.soal.create', ['userId' => $userId, 'bankId' => $bank->id]) }}" class="btn btn-success btn-sm">
+                        <i class="ri-add-line me-1"></i>Input soal
+                    </a>
+                @else
+                    <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}" class="btn btn-primary btn-sm">
+                        <i class="ri-edit-2-line me-1"></i>Kelola soal
+                    </a>
+                    <a href="{{ route('user.paket-soal.index', ['userId' => $userId]) }}" class="btn btn-soft-primary btn-sm">
+                        <i class="ri-stack-line me-1"></i>Paket soal
+                    </a>
+                @endif
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-xl-8">

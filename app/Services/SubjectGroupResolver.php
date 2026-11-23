@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\GtkAdditionalTask;
+use App\Models\GtkEmployment;
+use App\Models\InstitutionDecree;
 use App\Models\OtherTeacherTask;
+use App\Models\School;
 use App\Models\Subject;
 use App\Models\SubjectGroup;
 use App\Models\TeachingAssignment;
@@ -161,6 +164,10 @@ class SubjectGroupResolver
     /**
      * Rumpun yang menjadi kewenangan guru (dari tugas mengajar aktif).
      *
+     * Hanya penugasan pada SK Pembagian Tugas yang masih aktif. Penugasan
+     * lama tetap berstatus `active` setelah SK-nya diarsipkan, sehingga
+     * status SK induk wajib ikut diperiksa agar kewenangan ikut dicabut.
+     *
      * @return Collection<int, SubjectGroup>
      */
     public function groupsForTeacher(User|string $user): Collection
@@ -174,6 +181,13 @@ class SubjectGroupResolver
         $groupIds = TeachingAssignment::query()
             ->where('teacher_id', $userId)
             ->where('status', 'active')
+            ->when(
+                Schema::hasColumn('teaching_assignments', 'decree_id'),
+                fn ($q) => $q->where(function ($q2) {
+                    $q2->whereNull('decree_id')
+                        ->orWhereHas('decree', fn ($d) => $d->where('status', InstitutionDecree::STATUS_ACTIVE));
+                })
+            )
             ->with('subject:id,subject_group_id')
             ->get()
             ->pluck('subject.subject_group_id')
@@ -345,8 +359,8 @@ class SubjectGroupResolver
 
         $legacy = $legacyTasks->map(function (GtkAdditionalTask $task) {
             $schoolId = $task->decree?->school_id
-                ?? \App\Models\GtkEmployment::query()->where('user_id', $task->user_id)->value('school_id');
-            $schoolName = $schoolId ? \App\Models\School::query()->whereKey($schoolId)->value('name') : null;
+                ?? GtkEmployment::query()->where('user_id', $task->user_id)->value('school_id');
+            $schoolName = $schoolId ? School::query()->whereKey($schoolId)->value('name') : null;
 
             return [
                 'task_id' => $task->id,

@@ -13,9 +13,11 @@ use App\Models\TujuanPembelajaran;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Evaluasi\DocxQuestionParser;
 use App\Services\Evaluasi\QuickSoalService;
+use App\Services\Evaluasi\TeachingScopeService;
 use App\Services\Pdf\DocumentPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Jalur cepat asesmen: Soal Saya, Cari Soal, impor Word, dan cetak langsung.
@@ -25,6 +27,7 @@ class SoalSayaController extends Controller
     public function __construct(
         private readonly QuickSoalService $quickSoal,
         private readonly DocxQuestionParser $docxParser,
+        private readonly TeachingScopeService $teachingScope,
     ) {}
 
     public function index(Request $request, string $userId)
@@ -49,8 +52,9 @@ class SoalSayaController extends Controller
         ];
 
         $subjects = $this->subjects($school);
+        $scope = $this->scopeSummary($school);
 
-        return view('evalusi.soal-saya.index', compact('userId', 'school', 'questions', 'stats', 'subjects'));
+        return view('evalusi.soal-saya.index', compact('userId', 'school', 'questions', 'stats', 'subjects', 'scope'));
     }
 
     public function create(Request $request, string $userId)
@@ -62,7 +66,7 @@ class SoalSayaController extends Controller
         $semester = $request->input('semester', $academicYears->firstWhere('id', $selectedAyId)?->semester ?? 'ganjil');
 
         $subjects = $this->subjects($school);
-        $grades = GradeLevel::where('school_id', $school->id)->orderBy('level')->get();
+        $grades = $this->grades($school);
 
         $selectedSubjectId = $request->input('subject_id', $subjects->first()?->id);
         $tps = TujuanPembelajaran::query()
@@ -74,9 +78,11 @@ class SoalSayaController extends Controller
             ->limit(500)
             ->get(['id', 'kode_tp', 'deskripsi']);
 
+        $scope = $this->scopeSummary($school);
+
         return view('evalusi.soal-saya.create', compact(
             'userId', 'school', 'academicYears', 'selectedAyId', 'semester',
-            'subjects', 'grades', 'tps', 'selectedSubjectId'
+            'subjects', 'grades', 'tps', 'selectedSubjectId', 'scope'
         ));
     }
 
@@ -104,6 +110,8 @@ class SoalSayaController extends Controller
             'options.*.label' => 'nullable|string|max:2',
             'options.*.teks_opsi' => 'nullable|string|max:1000',
         ]);
+
+        $this->assertWithinDecree($school, $data['subject_id'], $data['grade_level_id'] ?? null);
 
         $subject = Subject::where(fn ($q) => $q->where('school_id', $school->id)->orWhereNull('school_id'))
             ->findOrFail($data['subject_id']);
@@ -189,10 +197,11 @@ class SoalSayaController extends Controller
         $selectedAyId = $request->input('academic_year_id', $activeAy?->id);
         $semester = $request->input('semester', $academicYears->firstWhere('id', $selectedAyId)?->semester ?? 'ganjil');
         $subjects = $this->subjects($school);
-        $grades = GradeLevel::where('school_id', $school->id)->orderBy('level')->get();
+        $grades = $this->grades($school);
+        $scope = $this->scopeSummary($school);
 
         return view('evalusi.soal-saya.import', compact(
-            'userId', 'school', 'academicYears', 'selectedAyId', 'semester', 'subjects', 'grades'
+            'userId', 'school', 'academicYears', 'selectedAyId', 'semester', 'subjects', 'grades', 'scope'
         ));
     }
 
@@ -210,6 +219,8 @@ class SoalSayaController extends Controller
         ], [
             'file.mimes' => 'File harus berformat .docx (Word modern). File .doc lama belum didukung.',
         ]);
+
+        $this->assertWithinDecree($school, $data['subject_id'], $data['grade_level_id'] ?? null);
 
         $subject = Subject::where(fn ($q) => $q->where('school_id', $school->id)->orWhereNull('school_id'))
             ->findOrFail($data['subject_id']);
@@ -331,10 +342,60 @@ class SoalSayaController extends Controller
 
     private function subjects(School $school): Collection
     {
-        return Subject::query()
-            ->where(fn ($q) => $q->where('school_id', $school->id)->orWhereNull('school_id'))
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+        $request = request();
+
+        return $this->teachingScope->subjects(
+            $request->user(),
+            $school->id,
+            null
+        );
+    }
+
+    /**
+     * Kelas yang boleh dipilih: hanya kelas yang diajar menurut SK aktif.
+     * Bila mapel dipilih, dipersempit lagi ke kelas untuk mapel tersebut.
+     */
+    private function grades(School $school, ?string $subjectId = null): Collection
+    {
+        $request = request();
+
+        if ($subjectId) {
+            return $this->teachingScope->gradeLevelsForSubject($request->user(), $school->id, null, $subjectId);
+        }
+
+        $gradeIds = $this->teachingScope->assignments($request->user(), $school->id, null)
+            ->map(fn ($a) => $a->studyGroup?->grade_level_id)
+            ->filter()
+            ->unique();
+
+        return GradeLevel::query()->whereIn('id', $gradeIds)->orderBy('level')->get();
+    }
+
+    /**
+     * Tolak mapel/kelas di luar SK aktif.
+     *
+     * @throws ValidationException
+     */
+    private function assertWithinDecree(School $school, ?string $subjectId, ?string $gradeLevelId): void
+    {
+        $user = request()->user();
+
+        if (! $this->teachingScope->allowsSubject($user, $school->id, null, $subjectId)) {
+            throw ValidationException::withMessages([
+                'subject_id' => 'Mata pelajaran ini tidak ada pada SK Pembagian Tugas aktif Anda. '
+                    .'Minta Waka menambahkannya ke SK, atau pilih mapel yang memang Anda ajar.',
+            ]);
+        }
+
+        if (! $this->teachingScope->allowsGradeLevel($user, $school->id, null, $subjectId, $gradeLevelId)) {
+            throw ValidationException::withMessages([
+                'grade_level_id' => 'Kelas ini tidak Anda ajar untuk mata pelajaran tersebut menurut SK aktif.',
+            ]);
+        }
+    }
+
+    private function scopeSummary(School $school): array
+    {
+        return $this->teachingScope->summary(request()->user(), $school->id, null);
     }
 }

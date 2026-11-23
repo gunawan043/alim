@@ -30,6 +30,8 @@
         </div>
     @endif
 
+    <x-soal-flow current="bank" :scope="$scope ?? null" :userId="$userId" />
+
     <div class="card mb-3">
         <div class="card-body py-3">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">

@@ -13,8 +13,26 @@
         @slot('title') Buat Soal @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" :scope="$scope ?? null" :userId="$userId" />
+
     @if($errors->any())
         <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
+    @endif
+
+    @if(empty($scope['has_assignment']))
+        <div class="alert alert-warning d-flex gap-3" role="alert">
+            <i class="ri-error-warning-line fs-4 lh-1"></i>
+            <div>
+                <h6 class="alert-heading mb-1">Belum ada mata pelajaran pada SK aktif Anda</h6>
+                <p class="mb-2 small">
+                    Soal hanya boleh dibuat untuk mata pelajaran yang diamanahkan SK Pembagian
+                    Tugas yang sedang aktif. Minta Waka menambahkan nama Anda ke SK tersebut.
+                </p>
+                <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}" class="btn btn-sm btn-primary">
+                    <i class="ri-file-list-3-line me-1"></i>Buka halaman SK &amp; Keputusan
+                </a>
+            </div>
+        </div>
     @endif
 
     <form method="POST" action="{{ route('user.soal-saya.store', ['userId' => $userId]) }}">
@@ -22,21 +40,26 @@
         <div class="row g-3">
             <div class="col-lg-8">
                 <div class="card">
-                    <div class="card-header border-bottom-dashed"><h5 class="card-title mb-0">Soal Baru</h5></div>
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0">1. Konteks soal</h5>
+                        <p class="text-muted mb-0 small">Mapel dan kelas mengikuti SK Pembagian Tugas aktif.</p>
+                    </div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Mata Pelajaran <span class="text-danger">*</span></label>
                                 <select name="subject_id" class="form-select" required>
-                                    @foreach($subjects as $s)
+                                    @forelse($subjects as $s)
                                         <option value="{{ $s->id }}" {{ (string) old('subject_id', $selectedSubjectId) === (string) $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
-                                    @endforeach
+                                    @empty
+                                        <option value="">Belum ada mapel pada SK aktif</option>
+                                    @endforelse
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Kelas</label>
                                 <select name="grade_level_id" class="form-select">
-                                    <option value="">—</option>
+                                    <option value="">Semua kelas yang saya ajar</option>
                                     @foreach($grades as $g)<option value="{{ $g->id }}" {{ (string) old('grade_level_id') === (string) $g->id ? 'selected' : '' }}>{{ $g->name }}</option>@endforeach
                                 </select>
                             </div>

@@ -8,14 +8,21 @@
         @slot('title') Edit: {{ $bank->nama }} @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" :scope="$scope ?? null" />
+
     <div class="row">
         <div class="col-xl-10">
             <div class="card">
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <h5 class="card-title mb-0">Edit Bank Soal</h5>
+                    <div>
+                        <h5 class="card-title mb-0">Edit bank soal</h5>
+                        <p class="text-muted mb-0 small">
+                            Mata pelajaran hanya bisa diganti ke mapel yang ada di SK aktif Anda.
+                        </p>
+                    </div>
                     <a href="{{ route('user.soal.manage', ['userId' => $userId, 'bankId' => $bank->id]) }}"
                        class="btn btn-sm btn-soft-primary">
-                        <i class="ri-edit-2-line me-1"></i> Edit Soal
+                        <i class="ri-edit-2-line me-1"></i> Kelola soal
                     </a>
                 </div>
                 <div class="card-body">

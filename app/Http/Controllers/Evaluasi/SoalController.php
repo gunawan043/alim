@@ -6,19 +6,19 @@ use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\BankSoal;
 use App\Models\Soal;
-use App\Models\WacanaSoal;
 use App\Models\SoalOption;
-use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
+use App\Models\WacanaSoal;
 use App\Services\Evaluasi\ContentHashEngine;
 use App\Services\Evaluasi\ReviewWorkflowService;
 use App\Services\Evaluasi\SoalSimilarityService;
-use App\Services\SubjectGroupResolver;
+use App\Services\Evaluasi\TeachingScopeService;
 use App\Services\KurikulumAccess;
+use App\Services\SubjectGroupResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -105,12 +105,13 @@ class SoalController extends Controller
             ->orderByDesc('created_at')
             ->get(['id', 'judul', 'teks']);
 
-        $wacanas = WacanaSoal::query()
-            ->where('bank_soal_id', $bank->id)
-            ->orderByDesc('created_at')
-            ->get(['id', 'judul', 'teks']);
+        $scope = app(TeachingScopeService::class)->summary(
+            request()->user(),
+            request()->attributes->get('schoolContextId'),
+            null
+        );
 
-        return view('evalusi.soal.create', compact('bank', 'tps', 'tipeSoal', 'wacanas', 'userId'));
+        return view('evalusi.soal.create', compact('bank', 'tps', 'tipeSoal', 'wacanas', 'scope', 'userId'));
     }
 
     /**
@@ -164,9 +165,15 @@ class SoalController extends Controller
         $isEditMode = true;
         $formAction = route('user.soal.update-all', ['userId' => $userId, 'bankId' => $bank->id]);
 
+        $scope = app(TeachingScopeService::class)->summary(
+            $request->user(),
+            $request->attributes->get('schoolContextId'),
+            null
+        );
+
         return view('evalusi.soal.create', compact(
             'bank', 'userId', 'tps', 'wacanas', 'tipeSoal',
-            'builderQuestions', 'isEditMode', 'formAction'
+            'builderQuestions', 'isEditMode', 'formAction', 'scope'
         ));
     }
 

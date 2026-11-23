@@ -6,17 +6,84 @@ use App\Http\Controllers\Concerns\AuthorizesAcademicScope;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\BankSoal;
+use App\Models\GradeLevel;
 use App\Models\School;
 use App\Models\Soal;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\Evaluasi\TeachingScopeService;
+use App\Services\KurikulumAccess;
+use App\Services\SubjectGroupResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class BankSoalController extends Controller
 {
     use AuthorizesAcademicScope;
+
+    public function __construct(private readonly TeachingScopeService $teachingScope) {}
+
+    /**
+     * Mapel yang boleh dipilih untuk membuat/mengubah bank soal.
+     * Hanya mapel yang diamanahkan SK Pembagian Tugas aktif.
+     */
+    private function scopedSubjects(Request $request, ?string $academicYearId = null)
+    {
+        return $this->teachingScope->subjects(
+            $request->user(),
+            $request->attributes->get('schoolContextId'),
+            $academicYearId
+        );
+    }
+
+    /**
+     * Konteks SK untuk ditampilkan di form: nomor SK, mapel, dan rombel.
+     */
+    private function scopeSummary(Request $request): array
+    {
+        return $this->teachingScope->summary(
+            $request->user(),
+            $request->attributes->get('schoolContextId'),
+            null
+        );
+    }
+
+    /**
+     * Tolak mapel/kelas yang tidak ada pada SK aktif guru.
+     *
+     * @throws ValidationException
+     */
+    private function assertWithinDecree(Request $request, ?string $subjectId, ?string $gradeLevelId): void
+    {
+        $user = $request->user();
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if (! $this->teachingScope->allowsSubject($user, $schoolId, null, $subjectId)) {
+            throw ValidationException::withMessages([
+                'subject_id' => 'Mata pelajaran ini tidak ada pada SK Pembagian Tugas aktif Anda. '
+                    .'Minta Waka menambahkannya ke SK terlebih dahulu, atau pilih mapel yang memang Anda ajar.',
+            ]);
+        }
+
+        if (! $this->teachingScope->allowsGradeLevel($user, $schoolId, null, $subjectId, $gradeLevelId)) {
+            throw ValidationException::withMessages([
+                'grade_level_id' => 'Kelas ini tidak Anda ajar untuk mata pelajaran tersebut menurut SK aktif.',
+            ]);
+        }
+    }
+
+    /**
+     * Apakah user termasuk pengelola yang tidak dibatasi SK
+     * (tim kurikulum / super admin)? Dipakai hanya untuk menandai di UI.
+     */
+    private function bypassesDecree(Request $request): bool
+    {
+        $user = $request->user();
+
+        return app(KurikulumAccess::class)->canAccessAllBankSoal($user)
+            || $user->hasRole('Super Admin');
+    }
 
     /**
      * Display a paginated list of BankSoal for the current school context.
@@ -28,7 +95,7 @@ class BankSoalController extends Controller
     {
         $user = $request->user();
 
-        if (app(\App\Services\KurikulumAccess::class)->canAccessAllBankSoal($user)) {
+        if (app(KurikulumAccess::class)->canAccessAllBankSoal($user)) {
             return;
         }
 
@@ -54,7 +121,7 @@ class BankSoalController extends Controller
             return;
         }
 
-        $access = app(\App\Services\KurikulumAccess::class);
+        $access = app(KurikulumAccess::class);
 
         if ($access->isKurikulumTeam($user)) {
             return;
@@ -69,7 +136,7 @@ class BankSoalController extends Controller
             return;
         }
 
-        $resolver = app(\App\Services\SubjectGroupResolver::class);
+        $resolver = app(SubjectGroupResolver::class);
         $bankGroup = $bank->subject ? $resolver->groupForSubject($bank->subject) : null;
         $accessible = BankSoal::query()
             ->accessibleBy($user->id, $request->attributes->get('schoolContextId'))
@@ -116,9 +183,10 @@ class BankSoalController extends Controller
 
         $banks = $query->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
-        $subjects = Subject::where('school_id', $schoolId)->orderBy('name')->get();
+        $subjects = $this->scopedSubjects($request);
         $academicYears = AcademicYear::orderByDesc('name')->get();
         $activeYear = $academicYears->firstWhere('is_active', true);
+        $scope = $this->scopeSummary($request);
 
         $statistics = [
             'total' => (clone $baseQuery)->count(),
@@ -136,7 +204,7 @@ class BankSoalController extends Controller
         ];
 
         return view('evalusi.bank-soal.index', compact(
-            'banks', 'subjects', 'academicYears', 'statistics', 'activeYear', 'userId'
+            'banks', 'subjects', 'academicYears', 'statistics', 'activeYear', 'scope', 'userId'
         ));
     }
 
@@ -147,12 +215,19 @@ class BankSoalController extends Controller
     {
         $schoolId = $request->attributes->get('schoolContextId');
 
-        // Get subjects for this school (or global if admin)
-        $subjects = Subject::where('school_id', $schoolId)
-            ->orWhereNull('school_id')
-            ->orderBy('name')
-            ->get();
-        $gradeLevels = \App\Models\GradeLevel::where(fn ($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'))->orderBy('level')->get();
+        // SK menentukan mapel yang boleh dipilih; tidak ada daftar mapel penuh.
+        $subjects = $this->scopedSubjects($request);
+        $gradeLevels = $this->teachingScope->assignments($request->user(), $schoolId, null)
+            ->map(fn ($a) => $a->studyGroup?->grade_level_id)
+            ->filter()
+            ->unique()
+            ->pipe(fn ($ids) => GradeLevel::query()
+                ->whereIn('id', $ids)
+                ->orderBy('level')
+                ->get());
+
+        $scope = $this->scopeSummary($request);
+        $bypassDecree = $this->bypassesDecree($request);
 
         // Suggest current user as owner
         $currentUser = User::where('id', $userId)->first();
@@ -190,6 +265,8 @@ class BankSoalController extends Controller
             'jenisSoal',
             'tingkatKesulitan',
             'gradeLevels',
+            'scope',
+            'bypassDecree',
             'userId'
         ));
     }
@@ -214,6 +291,8 @@ class BankSoalController extends Controller
         ]);
 
         $schoolId = $request->attributes->get('schoolContextId');
+
+        $this->assertWithinDecree($request, $validated['subject_id'], $validated['grade_level_id'] ?? null);
 
         $validated['school_id'] = $schoolId;
         $validated['owner_user_id'] = $userId;
@@ -247,7 +326,9 @@ class BankSoalController extends Controller
 
         $this->authorizeBankView($request, $bank);
 
-        return view('evalusi.bank-soal.show', compact('bank', 'userId'));
+        $scope = $this->scopeSummary($request);
+
+        return view('evalusi.bank-soal.show', compact('bank', 'scope', 'userId'));
     }
 
     /**
@@ -267,11 +348,17 @@ class BankSoalController extends Controller
 
         $schoolId = request()->attributes->get('schoolContextId');
 
-        $subjects = Subject::where('school_id', $schoolId)
-            ->orWhereNull('school_id')
-            ->orderBy('name')
-            ->get();
-        $gradeLevels = \App\Models\GradeLevel::where(fn ($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'))->orderBy('level')->get();
+        // Bank lama bisa saja memakai mapel di luar SK saat ini; mapel tersebut
+        // tetap ditampilkan agar tidak hilang diam-diam saat disimpan ulang.
+        $subjects = $this->scopedSubjects($request)
+            ->when($bank->subject && ! $this->teachingScope->allowsSubject(
+                $request->user(), $schoolId, null, $bank->subject_id
+            ), fn ($rows) => $rows->push($bank->subject));
+
+        $gradeLevels = GradeLevel::where(fn ($q) => $q->where('school_id', $schoolId)->orWhereNull('school_id'))->orderBy('level')->get();
+
+        $scope = $this->scopeSummary($request);
+        $bypassDecree = $this->bypassesDecree($request);
 
         $sharedScopes = [
             'private' => 'Privat (hanya pemilik)',
@@ -303,6 +390,8 @@ class BankSoalController extends Controller
             'jenisSoal',
             'tingkatKesulitan',
             'gradeLevels',
+            'scope',
+            'bypassDecree',
             'userId'
         ));
     }
@@ -329,6 +418,9 @@ class BankSoalController extends Controller
             'shared_scope' => 'required|in:private,internal_school,public_pool',
             'allow_cross_teacher_clone' => 'nullable|boolean',
         ]);
+
+        // Mapel boleh diganti, tetapi hanya ke mapel yang ada di SK aktif.
+        $this->assertWithinDecree($request, $validated['subject_id'], $validated['grade_level_id'] ?? null);
 
         $bank->update($validated);
 
@@ -390,6 +482,8 @@ class BankSoalController extends Controller
             'subject_id' => 'required|exists:subjects,id',
             'nama_baru' => 'required|string|max:150',
         ]);
+
+        $this->assertWithinDecree($request, $validated['subject_id'], null);
 
         $schoolId = $request->attributes->get('schoolContextId');
 

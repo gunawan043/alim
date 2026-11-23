@@ -19,6 +19,8 @@
         @slot('title') Soal Saya @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" :scope="$scope ?? null" :userId="$userId" />
+
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif

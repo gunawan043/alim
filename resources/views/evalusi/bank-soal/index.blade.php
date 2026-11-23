@@ -16,7 +16,7 @@
         @slot('title') Daftar Bank Soal @endslot
     @endcomponent
 
-    <x-soal-flow current="bank" />
+    <x-soal-flow current="bank" :scope="$scope ?? null" />
 
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -147,13 +147,39 @@
                                 </select>
                                 <button type="submit" class="btn btn-primary"><i class="ri-search-line"></i></button>
                                 <a href="{{ url()->current() }}" class="btn btn-light" title="Reset"><i class="ri-refresh-line"></i></a>
-                                <a href="{{ route('user.bank-soal.create', ['userId' => $userId]) }}" class="btn btn-success">
-                                    <i class="ri-add-line align-bottom me-1"></i> Tambah Bank Soal
-                                </a>
+                                @if(! empty($scope['has_assignment']))
+                                    <a href="{{ route('user.bank-soal.create', ['userId' => $userId]) }}" class="btn btn-success">
+                                        <i class="ri-add-line align-bottom me-1"></i> Tambah Bank Soal
+                                    </a>
+                                @endif
                             </form>
                         </div>
                     </div>
                 </div>
+
+                @if(empty($scope['has_assignment']))
+                    <div class="card-body">
+                        <div class="alert alert-warning d-flex gap-3 mb-0" role="alert">
+                            <i class="ri-error-warning-line fs-4 lh-1"></i>
+                            <div>
+                                <h6 class="alert-heading mb-1">Belum ada mata pelajaran pada SK aktif Anda</h6>
+                                <p class="mb-2 small">
+                                    Bank soal hanya boleh dibuat untuk mata pelajaran yang diamanahkan
+                                    SK Pembagian Tugas yang sedang aktif. Saat ini belum ada penugasan
+                                    mengajar untuk Anda pada SK tersebut.
+                                </p>
+                                <ol class="small mb-2 ps-3">
+                                    <li>Minta Waka menyusun atau mengaktifkan SK Pembagian Tugas yang memuat nama Anda.</li>
+                                    <li>Setelah SK aktif, mata pelajaran dan kelas Anda muncul otomatis di sini.</li>
+                                </ol>
+                                <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="ri-file-list-3-line me-1"></i>Buka halaman SK &amp; Keputusan
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                @endif
 
                 <div class="card-header py-2 bg-light border-bottom">
                     <div class="d-flex flex-wrap align-items-center gap-2">

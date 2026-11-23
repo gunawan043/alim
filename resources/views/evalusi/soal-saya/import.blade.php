@@ -13,6 +13,8 @@
         @slot('title') Import Soal Word @endslot
     @endcomponent
 
+    <x-soal-flow current="bank" :scope="$scope ?? null" :userId="$userId" />
+
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     @endif
@@ -42,8 +44,13 @@
                             <div class="col-md-6">
                                 <label class="form-label">Mata Pelajaran <span class="text-danger">*</span></label>
                                 <select name="subject_id" class="form-select" required>
-                                    @foreach($subjects as $s)<option value="{{ $s->id }}" {{ old('subject_id') === $s->id ? 'selected' : '' }}>{{ $s->name }}</option>@endforeach
+                                    @forelse($subjects as $s)
+                                        <option value="{{ $s->id }}" {{ old('subject_id') === $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
+                                    @empty
+                                        <option value="">Belum ada mapel pada SK aktif</option>
+                                    @endforelse
                                 </select>
+                                <small class="text-muted">Hanya mapel yang tercantum di SK Pembagian Tugas aktif Anda.</small>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Kelas</label>
