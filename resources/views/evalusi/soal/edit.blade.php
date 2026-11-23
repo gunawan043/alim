@@ -325,6 +325,18 @@
 @endsection
 
 @section('script')
+@php
+    // JSON_HEX_* meng-escape < > & " ' sehingga teks opsi tidak bisa
+    // memutus <script> atau string JS, apa pun isinya.
+    $existingOptionsJson = json_encode(
+        $soal->options->map(fn ($opt) => [
+            'label' => (string) $opt->label,
+            'teks_opsi' => (string) $opt->teks_opsi,
+            'is_correct' => (bool) $opt->is_correct,
+        ])->values()->all(),
+        JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+    );
+@endphp
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const tipeSelect = document.getElementById('tipe_soal');
@@ -334,25 +346,66 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let optIndex = 0;
 
-    function makeOptionRow(i, label = '', text = '', isCorrect = false, existingId = '') {
-        return `
-            <div class="option-row border rounded p-2 mb-2" data-i="${i}">
-                <div class="d-flex align-items-center gap-2">
-                    <input type="text" name="options[${i}][label]" class="form-control form-control-sm"
-                           style="max-width:60px" placeholder="A" value="${label}" required>
-                    <input type="text" name="options[${i}][teks_opsi]" class="form-control form-control-sm"
-                           placeholder="Teks opsi" value="${text.replace(/"/g, '&quot;')}" required>
-                    <div class="form-check">
-                        <input type="checkbox" name="options[${i}][is_correct]" value="1" class="form-check-input"
-                               id="opt_correct_${i}" ${isCorrect ? 'checked' : ''}>
-                        <label class="form-check-label" for="opt_correct_${i}">Benar</label>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-opt">
-                        <i class="ri-delete-bin-line"></i>
-                    </button>
-                </div>
-            </div>
-        `;
+    // Baris opsi dibuat lewat DOM (createElement), bukan innerHTML, supaya
+    // tidak pernah ditafsirkan sebagai HTML/JS. Teks yang mengandung backtick,
+    // ${, <, >, &, kutip, atau baris baru tetap utuh apa adanya.
+    function makeOptionRow(i, label, text, isCorrect) {
+        const wrap = document.createElement('div');
+        wrap.className = 'option-row border rounded p-2 mb-2';
+        wrap.dataset.i = i;
+
+        const row = document.createElement('div');
+        row.className = 'd-flex align-items-center gap-2';
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.name = `options[${i}][label]`;
+        labelInput.className = 'form-control form-control-sm';
+        labelInput.style.maxWidth = '60px';
+        labelInput.placeholder = 'A';
+        labelInput.value = label || '';
+        labelInput.required = true;
+
+        const textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.name = `options[${i}][teks_opsi]`;
+        textInput.className = 'form-control form-control-sm';
+        textInput.placeholder = 'Teks opsi';
+        textInput.value = text || '';
+        textInput.required = true;
+
+        const checkWrap = document.createElement('div');
+        checkWrap.className = 'form-check';
+
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.name = `options[${i}][is_correct]`;
+        check.value = '1';
+        check.className = 'form-check-input';
+        check.id = `opt_correct_${i}`;
+        check.checked = !!isCorrect;
+
+        const checkLabel = document.createElement('label');
+        checkLabel.className = 'form-check-label';
+        checkLabel.htmlFor = check.id;
+        checkLabel.textContent = 'Benar';
+
+        checkWrap.append(check, checkLabel);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-sm btn-outline-danger btn-remove-opt';
+        removeBtn.innerHTML = '<i class="ri-delete-bin-line"></i>';
+
+        row.append(labelInput, textInput, checkWrap, removeBtn);
+        wrap.append(row);
+
+        return wrap;
+    }
+
+    function appendOption(label, text, isCorrect) {
+        container.append(makeOptionRow(optIndex, label, text, isCorrect));
+        optIndex++;
     }
 
     function rebuildOptions() {
@@ -360,8 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
         optIndex = 0;
         const seedCount = (tipeSelect.value === 'bs') ? 2 : 4;
         for (let i = 0; i < seedCount; i++) {
-            container.insertAdjacentHTML('beforeend', makeOptionRow(optIndex, String.fromCharCode(65 + i)));
-            optIndex++;
+            appendOption(String.fromCharCode(65 + i), '', false);
         }
     }
 
@@ -372,8 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     btnAdd.addEventListener('click', function () {
-        container.insertAdjacentHTML('beforeend', makeOptionRow(optIndex, String.fromCharCode(65 + optIndex)));
-        optIndex++;
+        appendOption(String.fromCharCode(65 + optIndex), '', false);
     });
 
     container.addEventListener('click', function (e) {
@@ -382,17 +433,23 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Seed existing options
-    tipeSelect.dispatchEvent(new Event('change'));
-    @if($soal->options->isNotEmpty())
+    // Tampilkan panel opsi sesuai tipe soal.
+    const needsOptions = ['pg', 'bs', 'jodoh'].includes(tipeSelect.value);
+    optionsCard.style.display = needsOptions ? 'block' : 'none';
+
+    // Isi opsi yang sudah ada. Data dikirim sebagai JSON (bukan string yang
+    // dirakit di PHP) agar karakter apa pun aman.
+    const existingOptions = {!! $existingOptionsJson !!};
+
+    if (existingOptions.length) {
         container.innerHTML = '';
-        {!! $soal->options->map(function($opt, $i) {
-            return 'container.insertAdjacentHTML(\'beforeend\', makeOptionRow(' . $i . ', "' . addslashes(htmlspecialchars($opt->label, ENT_QUOTES)) . '", "' . addslashes(htmlspecialchars($opt->teks_opsi, ENT_QUOTES)) . '", ' . ($opt->is_correct ? 'true' : 'false') . ', "' . $opt->id . '"));';
-        })->join("\n") !!}
-        optIndex = {{ $soal->options->count() }};
-    @elseif(in_array($soal->tipe_soal, ['pg', 'bs', 'jodoh']))
+        optIndex = 0;
+        existingOptions.forEach(function (opt) {
+            appendOption(opt.label, opt.teks_opsi, opt.is_correct);
+        });
+    } else if (needsOptions) {
         rebuildOptions();
-    @endif
+    }
 });
 
 function renderCompareSoal(data) {

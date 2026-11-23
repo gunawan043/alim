@@ -634,6 +634,106 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('white-space: nowrap', $html);
     }
 
+    public function test_opsi_dengan_karakter_khusus_tetap_bisa_diedit(): void
+    {
+        // Regresi: halaman edit merakit JS lewat addslashes + htmlspecialchars.
+        // Backtick dan ${ mematikan template literal sehingga SELURUH skrip
+        // gagal → opsi tidak bisa diubah. Sekarang data dikirim sebagai JSON
+        // dan baris dibangun lewat DOM.
+        $soal = $this->makeSoal();
+        $soal->options()->delete();
+
+        $teks = [
+            'A' => 'Hasil dari `backtick` dan ${x} <b>tag</b> & "kutip" \'single\'',
+            'B' => 'Baris pertama'.PHP_EOL.'Baris kedua',
+            'C' => '46',
+            'D' => '56',
+        ];
+        foreach ($teks as $label => $isi) {
+            SoalOption::create([
+                'soal_id' => $soal->id,
+                'label' => $label,
+                'teks_opsi' => $isi,
+                'is_correct' => $label === 'A',
+                'urutan' => ord($label) - 64,
+            ]);
+        }
+
+        $this->actingAs($this->guru);
+
+        $html = view('evalusi.soal.edit', [
+            'soal' => $soal->fresh(['options', 'wacana', 'reviewAssignments', 'similarities']),
+            'bank' => $soal->bankSoal,
+            'tps' => collect(),
+            'tipeSoal' => ['pg' => 'Pilihan Ganda'],
+            'userId' => $this->guru->id,
+        ])->render();
+
+        // Tidak boleh ada penyisipan teks opsi ke dalam string JS.
+        $this->assertStringNotContainsString('addslashes', $html);
+        $this->assertStringNotContainsString('insertAdjacentHTML', $html);
+
+        // Data opsi dikirim sebagai JSON yang meng-escape < > & " '.
+        $this->assertStringContainsString('const existingOptions', $html);
+        $this->assertStringContainsString('\\u003Cb\\u003Etag\\u003C\\/b\\u003E', $html);
+
+        // Semua opsi ikut terkirim, termasuk yang berkarakter khusus.
+        $this->assertStringContainsString('backtick', $html);
+        $this->assertStringContainsString('Baris pertama', $html);
+    }
+
+    public function test_soal_arab_dirender_rtl_dengan_huruf_arab(): void
+    {
+        // Format Arab harus aktif OTOMATIS per soal: soal berbahasa Arab
+        // dirender RTL dengan label opsi ا/ب/ج, soal Latin tetap LTR.
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+        $soal->options()->delete();
+        foreach (['٧', '٦', '٨', '٥'] as $i => $teks) {
+            SoalOption::create([
+                'soal_id' => $soal->id,
+                'label' => chr(65 + $i),
+                'teks_opsi' => $teks,
+                'is_correct' => $i === 0,
+                'urutan' => $i + 1,
+            ]);
+        }
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0]
+        );
+
+        $this->assertSame(Soal::BAHASA_ARAB, $soal->fresh()->bahasaEfektif());
+        $this->assertTrue($soal->fresh()->isRtl(), 'Soal Arab harus RTL.');
+        // Soal Arab rata kanan dan label opsinya huruf Arab (di-shape jadi
+        // bentuk presentasi ﺍ/ﺏ oleh LjkArabicText, bukan A/B/C/D).
+        $this->assertStringContainsString('text-align: right', $html, 'Isi soal Arab rata kanan.');
+        $this->assertStringContainsString('class="ar"', $html, 'Teks Arab diberi span .ar.');
+        $this->assertStringContainsString('letter', $html);
+        $this->assertStringNotContainsString('<span class="letter">A.</span>', $html, 'Soal Arab tidak memakai huruf Latin.');
+    }
+
+    public function test_soal_latin_tetap_ltr(): void
+    {
+        $soal = $this->makeSoal();
+
+        $this->assertFalse($soal->isRtl(), 'Soal Latin tidak boleh RTL.');
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0]
+        );
+
+        $this->assertStringNotContainsString('ا.', $html, 'Soal Latin tidak memakai huruf Arab.');
+    }
+
     /**
      * @param  array<int, string>  $teks
      * @return array<int, array{label: string, teks: string, display_label: string}>

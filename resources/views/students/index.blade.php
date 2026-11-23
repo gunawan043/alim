@@ -396,12 +396,6 @@
                                             </li>
                                             <li>
                                                 <a class="dropdown-item"
-                                                   href="{{ route('user.students.photos.bulk-form', ['userId' => $userId]) }}">
-                                                    <i class="ri-image-add-line me-1"></i>Upload Foto Masal
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item"
                                                    href="{{ route('user.students.import-nama-arab-form', ['userId' => $userId]) }}">
                                                     <i class="ri-translate-2 me-1"></i>Import Nama Arab
                                                 </a>

@@ -96,13 +96,29 @@ class SoalNaskahPdfService
 
             $wacana = $item->wacana;
 
+            // Format Arab aktif per soal: soal berbahasa Arab dirender RTL
+            // dengan label opsi ا/ب/ج, soal Latin tetap LTR — dalam satu
+            // dokumen yang sama. bahasaEfektif() juga mendeteksi soal lama
+            // yang kolom bahasanya kosong.
+            $bahasa = $item->bahasaEfektif();
+            $isArabic = $bahasa === Soal::BAHASA_ARAB;
+
+            // Soal Arab memakai huruf opsi ا/ب/ج/د/هـ; soal Latin tetap A/B/C/D.
+            if ($isArabic) {
+                $huruf = (array) config('ljk.soal.huruf_arab', ['ا', 'ب', 'ج', 'د', 'هـ']);
+                foreach ($opsi as $i => &$option) {
+                    $option['display_label'] = $huruf[$i] ?? (string) ($option['label'] ?? '');
+                }
+                unset($option);
+            }
+
             return [
                 'nomor' => $index + $startNumber,
                 'pertanyaan' => (string) $item->pertanyaan,
                 'opsi' => $opsi,
-                'bahasa' => (string) ($item->bahasa ?? 'latin'),
-                'isArabic' => false,
-                'rtl' => false,
+                'bahasa' => $bahasa,
+                'isArabic' => $isArabic,
+                'rtl' => $isArabic,
                 'wacana' => $wacana ? [
                     'id' => $wacana->id,
                     'judul' => $wacana->judul,
