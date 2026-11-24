@@ -181,13 +181,14 @@ final class LjkArabicText
     }
 
     /**
-     * Penanda pilihan jawaban pada baris RTL, mis. "ا." (titik di KIRI huruf).
+     * Penanda pilihan jawaban pada baris RTL: "ا." — huruf lalu titik.
      *
-     * Diperlukan karena Dompdf menggambar kiri→kanan dan mengabaikan
-     * `display: inline-block` pada span, sehingga urutan visual harus
-     * ditetapkan di PHP: titik Latin dulu (paling kiri), lalu huruf Arab
-     * yang sudah di-shape, dengan spasi pengikat agar keduanya tidak
-     * terpisah saat baris rata kanan.
+     * Kaidah Arab: titik berada SETELAH huruf (di sisi kanannya saat urutan
+     * dibaca kanan→kiri), sama seperti nomor "١." — bukan ".ا".
+     *
+     * Urutan visual disusun di PHP karena Dompdf mengabaikan
+     * `display: inline-block` pada span, sehingga urutan elemen menjadi
+     * urutan cetak yang sebenarnya.
      */
     public static function optionMarkerRtl(string $label): string
     {
@@ -197,6 +198,9 @@ final class LjkArabicText
             return '';
         }
 
+        // Dompdf mencetak elemen sesuai urutan HTML (tanpa bidi), jadi huruf
+        // ditulis LEBIH DULU dan titik menyusul: hasil cetak "ا." — huruf di
+        // kanan, titik tepat di kirinya. Urutan sebaliknya mencetak ".ا".
         return '<span class="ar">'.e(self::shape($label)).'</span><span class="marker-dot">.</span>';
     }
 
@@ -211,6 +215,11 @@ final class LjkArabicText
      * Kata-kata disusun RTL, tetapi tanda baca penutup (؟ ! . ، :) harus
      * tetap berada di ujung KIRI baris — sama seperti hasil algoritma bidi
      * Unicode — bukan ikut terbawa ke depan kalimat.
+     *
+     * Paragraf multi-kalimat WAJIB dipecah per kalimat dulu: membalik seluruh
+     * paragraf sebagai satu baris akan membalik urutan kalimatnya
+     * ("A. B. C." menjadi "C. B. A."), padahal hanya urutan kata di dalam
+     * satu kalimat yang perlu dibalik.
      */
     public static function marksToHtml(?string $text): string
     {
@@ -220,7 +229,34 @@ final class LjkArabicText
             return e($text);
         }
 
-        return '<span class="ar">'.e(self::shapeLine((string) self::stripMarks($text))).'</span>';
+        $clean = (string) self::stripMarks($text);
+        $sentences = [];
+
+        foreach (self::splitSentences($clean) as $sentence) {
+            $shaped = self::shapeLine($sentence);
+
+            if ($shaped !== '') {
+                $sentences[] = $shaped;
+            }
+        }
+
+        return '<span class="ar">'.e(implode(' ', $sentences)).'</span>';
+    }
+
+    /**
+     * Pecah paragraf menjadi kalimat utuh (penutup tetap menempel).
+     *
+     * Pemisah kalimat Arab: `.` `!` `؟` serta padanannya `۔` `?`. Tanda baca
+     * tersebut dipertahankan di akhir potongan agar shapeLine() masih bisa
+     * menempatkannya di ujung kiri setiap kalimat.
+     *
+     * @return array<int, string>
+     */
+    public static function splitSentences(string $text): array
+    {
+        $parts = preg_split('/(?<=[.!?؟۔])\s+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return array_values(array_filter(array_map('trim', $parts), static fn ($p) => $p !== ''));
     }
 
     /** Buang harakat dari teks Arab tanpa menyentuh huruf atau tanda baca. */
@@ -261,30 +297,62 @@ final class LjkArabicText
         $body = (string) preg_replace('/\s+([,،.:؛؟!])/u', '$1', $body);
 
         $words = [];
+        // `$glue[i] = true` berarti token ke-i menempel TANPA spasi pada token
+        // sebelumnya. Dipakai untuk tanda baca yang secara logis menempel di
+        // ekor kata ("الكتب،" / "المعلم:") agar hasil cetak pun rapat
+        // ("ﺐﺘﻜﻟﺍ،" bukan "ﺐﺘﻜﻟﺍ ،").
+        $glue = [];
+
         foreach (preg_split('/\s+/u', $body, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
             // Pemisah netral ("/" "|") berdiri sendiri sebagai token: setelah
             // urutan dibalik ia tetap berada di antara kedua bagian kalimat,
             // tidak menempel pada angka di sebelahnya.
             if (preg_match('/^[\/|]+$/u', $word)) {
                 $words[] = $word;
+                $glue[] = false;
 
                 continue;
             }
 
-            // Koma Arab yang menempel pada kata ("ا،") diperlakukan sebagai
-            // token sendiri: setelah urutan dibalik ia kembali menempel ke
-            // KIRI kata yang sama, bukan ke kata berikutnya.
-            if (preg_match('/^(.*[^\s,،])([,،]+)$/u', $word, $m)) {
+            // Tanda baca ekor kata ("الكتب،" / "المعلم:") dipisah sebagai
+            // token sendiri, lalu ditempel kembali ke KIRI kata yang sama
+            // setelah urutan dibalik — bukan ke kata berikutnya.
+            if (preg_match('/^(.*[^\s,،.:؛؟!])([,،.:؛؟!]+)$/u', $word, $m)) {
                 $words[] = self::shapeWord($m[1]);
+                $glue[] = false;
                 $words[] = $m[2];
+                $glue[] = true; // tanda baca menempel pada kata di depannya
 
                 continue;
             }
 
             $words[] = self::shapeWord($word);
+            $glue[] = false;
         }
+
+        // Balik urutan. Token tanda baca ekor ("المعلم:" → "المعلم" + ":")
+        // kini berada TEPAT SEBELUM kata yang dipisahnya. Secara visual tanda
+        // baca harus menempel di sisi KIRI kata itu, artinya ia menjadi AKHIRAN
+        // dari kata tersebut — bukan awalan kata berikutnya.
+        $words = array_reverse($words);
+        $glue = array_reverse($glue);
+
+        $out = '';
+        $pending = ''; // tanda baca menunggu digabung ke AKHIR kata berikutnya
+
+        foreach ($words as $i => $token) {
+            if ($glue[$i] ?? false) {
+                $pending .= $token;
+
+                continue;
+            }
+
+            $out .= ($out === '' ? '' : ' ').$token.$pending;
+            $pending = '';
+        }
+
         // Tanda baca penutup kalimat berada di ujung KIRI baris visual.
-        return implode(' ', array_reverse($words)).$closing;
+        return $out.$pending.$closing;
     }
 
     /**

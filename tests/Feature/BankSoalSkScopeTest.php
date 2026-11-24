@@ -912,6 +912,67 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('«', $shaped, 'Tanda kutip Arab tetap ada.');
     }
 
+    public function test_paragraf_arab_mempertahankan_urutan_kalimat(): void
+    {
+        // Kalimat 1 memiliki tanda titik, sehingga teks ini WAJIB dipecah per
+        // kalimat sebelum dibalik. Membalik seluruh paragraf sebagai satu baris
+        // menghasilkan urutan kalimat terbalik (C. B. A.) — kesalahan yang
+        // terlihat pada wacana/teks bacaan naskah Arab.
+        $paragraf = 'كان أحمد طالبا في المدرسة. يقرأ الكتب في المكتبة. قال المعلم إن أحمد نشيط.';
+
+        $shaped = LjkArabicText::marksToHtml($paragraf);
+
+        // Paragraf dibangun kalimat demi kalimat sesuai urutan logis, lalu
+        // setiap kalimat dibalik kata demi kata. Akibatnya dalam string:
+        // kalimat 1 di depan, kalimat 3 di belakang. Karena tata letak Arab
+        // rata kanan, kalimat 1 justru TAMPIL paling kanan. Yang diuji di sini
+        // adalah urutan logisnya tidak terbalik.
+        $k1 = mb_strpos($shaped, LjkArabicText::shapeLine('كان أحمد طالبا في المدرسة.'));
+        $k3 = mb_strpos($shaped, LjkArabicText::shapeLine('قال المعلم إن أحمد نشيط.'));
+
+        $this->assertNotFalse($k1, 'Kalimat pertama tercetak utuh.');
+        $this->assertNotFalse($k3, 'Kalimat terakhir tercetak utuh.');
+        $this->assertLessThan($k3, $k1, 'Kalimat pertama tetap di depan kalimat terakhir (tidak terbalik).');
+    }
+
+    public function test_tanda_baca_arab_menempel_pada_kata_induknya(): void
+    {
+        // Kaidah cetak: titik dua dan koma menempel rapat pada kata sebelumnya,
+        // tidak mengambang berjeda. Tanpa ini hasilnya "المعلم : إن" dan
+        // "الكتب ، ويكتب" yang salah secara kaidah.
+        $this->assertStringContainsString(
+            'ﻢﻠﻌﻤﻟﺍ:',
+            LjkArabicText::marksToHtml('قال المعلم: إن أحمد نشيط.'),
+            'Titik dua menempel pada المعلم, tanpa spasi.'
+        );
+        $this->assertStringNotContainsString(
+            ' :',
+            LjkArabicText::marksToHtml('قال المعلم: إن أحمد نشيط.'),
+            'Tiada spasi mengambang sebelum titik dua.'
+        );
+
+        $this->assertStringContainsString(
+            'ﺐﺘﻜﻟﺍ،',
+            LjkArabicText::marksToHtml('يقرأ الكتب، ويكتب الدروس.'),
+            'Koma menempel pada الكتب, tanpa spasi.'
+        );
+    }
+
+    public function test_penanda_opsi_arab_huruf_dulu_baru_titik(): void
+    {
+        // Kaidah: "ا." — huruf di kanan, titik tepat di kirinya. Dompdf
+        // mencetak sesuai urutan elemen HTML (tanpa bidi), jadi huruf harus
+        // ditulis lebih dulu baru titik.
+        $marker = LjkArabicText::optionMarkerRtl('ا');
+
+        $posLetter = mb_strpos($marker, LjkArabicText::shape('ا'));
+        $posDot = mb_strpos($marker, '>.<');
+
+        $this->assertNotFalse($posLetter);
+        $this->assertNotFalse($posDot);
+        $this->assertLessThan($posDot, $posLetter, 'Huruf Arab mendahului titik pada HTML penanda.');
+    }
+
     public function test_instruksi_arab_menjaga_kurung_dan_urutan_kata(): void
     {
         // Regresi: kurung "(X)" tidak boleh tercermin menjadi ")X(" dan kata

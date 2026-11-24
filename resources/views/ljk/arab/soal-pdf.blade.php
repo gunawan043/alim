@@ -161,17 +161,19 @@
     .karakter-title, .karakter li, .instruksi-arab, .wacana-title,
     .wacana-text, .wacana-caption { text-align: right; }
 
-    /* Wacana / soal cerita */
-    .wacana { margin-top: {{ $questionGapPt }}pt; page-break-inside: avoid; }
-    .wacana-title { font-weight: bold; }
+    /* Wacana / soal cerita — naskah Arab selalu rata KANAN, bukan justify
+       (justify merenggangkan spasi dan menyulitkan baca Arab). */
+    .wacana { margin-top: {{ $questionGapPt }}pt; page-break-inside: avoid; text-align: right; }
+    .wacana-title { font-weight: bold; text-align: right; }
     .wacana-text {
         margin-top: 0.2em;
         padding: 1.2mm 2mm;
-        border-left: 0.6mm solid #555;
+        border-right: 0.6mm solid #555;
         background: #f5f5f5;
-        text-align: justify;
+        text-align: right;
+        line-height: {{ $lineHeight * 1.25 }};
     }
-    .wacana-caption { margin-top: 0.1em; font-style: italic; }
+    .wacana-caption { margin-top: 0.1em; font-style: italic; text-align: right; }
 
     /* Butir soal — opsi dalam kolom sejajar (A..D selalu pada posisi sama) */
     .q { margin-top: {{ $questionGapPt }}pt; page-break-inside: avoid; }
