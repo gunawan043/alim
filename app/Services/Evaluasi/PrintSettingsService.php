@@ -81,9 +81,16 @@ class PrintSettingsService
             'identitas_label_kelas' => 'Kelas',
             'identitas_label_guru' => 'Guru Pengampu',
             'identitas_label_peserta' => 'Nama Peserta Didik',
+            'identitas_label_tanggal' => 'Tanggal Ujian',
             'identitas_isi_mapel' => '',
             'identitas_isi_kelas' => '',
             'identitas_isi_guru' => '',
+            // Tanggal ujian (Y-m-d). Kosong = tanggal cetak hari ini.
+            'identitas_tanggal' => '',
+            'identitas_tanggal_tampil' => 'nama',
+            // Kolom kanan baris kedua: 'peserta' (garis isi nama) atau
+            // 'tanggal' (tanggal ujian tercetak).
+            'identitas_kolom_kanan' => 'peserta',
 
             // Penanaman karakter
             'show_karakter' => true,
@@ -242,7 +249,7 @@ class PrintSettingsService
         $settings['identitas_border'] = (bool) $settings['identitas_border'];
         $settings['identitas_padding'] = round($this->number($settings['identitas_padding'] ?? null, 0, 4, 1.2), 2);
 
-        foreach (['mapel', 'kelas', 'guru', 'peserta'] as $field) {
+        foreach (['mapel', 'kelas', 'guru', 'peserta', 'tanggal'] as $field) {
             $key = 'identitas_label_'.$field;
             $settings[$key] = mb_substr(trim((string) $settings[$key]), 0, 40);
         }
@@ -251,6 +258,20 @@ class PrintSettingsService
             $key = 'identitas_isi_'.$field;
             $settings[$key] = mb_substr(trim((string) $settings[$key]), 0, 80);
         }
+
+        // Tanggal ujian pada tabel identitas.
+        $settings['identitas_kolom_kanan'] = in_array($settings['identitas_kolom_kanan'] ?? 'peserta', ['peserta', 'tanggal'], true)
+            ? $settings['identitas_kolom_kanan']
+            : 'peserta';
+
+        // Simpan hanya bila valid Y-m-d; selain itu dianggap kosong
+        // (tampil tanggal cetak hari ini) agar naskah tidak error.
+        $tanggal = trim((string) ($settings['identitas_tanggal'] ?? ''));
+        $settings['identitas_tanggal'] = $tanggal !== ''
+            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $tanggal)
+            && strtotime($tanggal) !== false
+                ? $tanggal
+                : '';
 
         // Penanaman karakter
         $settings['show_karakter'] = (bool) $settings['show_karakter'];

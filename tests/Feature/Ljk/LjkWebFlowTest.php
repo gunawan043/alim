@@ -840,9 +840,13 @@ class LjkWebFlowTest extends TestCase
     {
         $arabic = LjkArabicText::class;
 
-        // Font Arab bawaan aplikasi (Amiri, OFL) terdeteksi & dipakai.
+        // Font Arab terdeteksi & dipakai. Default produk adalah Arial (harakat
+        // menempel, bukan melayang seperti Amiri); font lain memakai jalur
+        // yang sama selama memenuhi cakupan bentuk presentasi.
         $fonts = LjkPdfFonts::class;
-        $this->assertStringContainsString('Amiri', $fonts::arabicFontLabel());
+        $label = $fonts::arabicFontLabel();
+        $this->assertNotSame('', $label, 'Ada font Arab yang terpasang.');
+        $this->assertMatchesRegularExpression('/Arial|Amiri|Scheherazade|Naskh|KFGQPC/i', $label);
         $this->assertStringContainsString("font-family: 'LJK-Arabic'", $fonts::arabicFaceCss());
         $this->assertStringContainsString('LJK-Arabic', $fonts::arabicStack());
 

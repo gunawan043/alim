@@ -25,6 +25,15 @@ final class LjkPdfFonts
     private static ?array $cache = null;
 
     /**
+     * Ambang minimal cakupan bentuk presentasi Arab agar font layak dipakai
+     * Dompdf. Rentang U+FB50–U+FEFC berisi 941 codepoint; naskah Arab umum
+     * memakai sekitar 700 di antaranya. Font di bawah 60% akan mencetak kotak
+     * kosong untuk banyak huruf (mis. "Traditional Arabic" Glyph Systems 1996
+     * hanya 243 codepoint = 26%, sehingga hampir seluruh naskah jadi kotak).
+     */
+    private const MIN_PRESENTATION_COVERAGE = 600;
+
+    /**
      * Pola nama berkas font Arab yang dikenali. Ditambah dari waktu ke waktu
      * agar naskah tidak terpaku pada satu keluarga font saja.
      */
@@ -305,19 +314,44 @@ final class LjkPdfFonts
      */
     public static function hasArabicPresentationForms(string $ttfPath): bool
     {
+        return self::presentationFormCoverage($ttfPath) >= self::MIN_PRESENTATION_COVERAGE;
+    }
+
+    /**
+     * Jumlah codepoint bentuk presentasi Arab (U+FB50–U+FEFC) yang benar-benar
+     * dipetakan font ini.
+     *
+     * Pipeline cetak membalik teks ke bentuk presentasi sebelum diserahkan ke
+     * Dompdf (Dompdf tidak punya mesin shaping). Font yang hanya memuat
+     * sebagian kecil bentuk itu akan mencetak KOTAK kosong untuk huruf yang
+     * tidak ada — persis yang terjadi pada "Traditional Arabic" versi
+     * Glyph Systems 1996 yang cuma memuat 243 dari 941 codepoint.
+     *
+     * Karena itu kelayakan font diukur dari CAKUPAN, bukan dari ada-tidaknya
+     * dua codepoint sampel.
+     */
+    public static function presentationFormCoverage(string $ttfPath): int
+    {
         try {
-            return \Illuminate\Support\Facades\Cache::rememberForever(
-                'ljk:arabic-forms:'.sha1($ttfPath.':'.@filemtime($ttfPath)),
+            return (int) \Illuminate\Support\Facades\Cache::rememberForever(
+                'ljk:arabic-forms-count:'.sha1($ttfPath.':'.@filemtime($ttfPath)),
                 function () use ($ttfPath) {
                     $font = \FontLib\Font::load($ttfPath);
                     $font->parse();
                     $map = $font->getUnicodeCharMap();
 
-                    return isset($map[0xFEE0], $map[0xFEFB]);
+                    $n = 0;
+                    for ($cp = 0xFB50; $cp <= 0xFEFC; $cp++) {
+                        if (isset($map[$cp])) {
+                            $n++;
+                        }
+                    }
+
+                    return $n;
                 }
             );
         } catch (\Throwable) {
-            return false;
+            return 0;
         }
     }
 

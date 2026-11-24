@@ -224,14 +224,18 @@ return [
             //
             // URUTAN INI PENTING untuk harakat. Dompdf tidak menerapkan tabel
             // GPOS, jadi posisi harakat di atas huruf sepenuhnya bergantung
-            // pada metrik bawaan font. Amiri menempatkan harakat MELAYANG
-            // (fathah/dammah terpisah di atas huruf), sedangkan Scheherazade
-            // New, Noto Naskh Arabic, dan KFGQPC menempelkannya dengan benar.
-            // Karena itu font berharakat-baik didahulukan di atas Amiri.
+            // pada metrik bawaan font.
+            //
+            // ARIAL didahulukan sesuai keputusan pemilik produk: bila font
+            // Arab khusus tidak terbaca, naskah memakai Arial. Arial dipilih
+            // karena harakatnya menempel, bukan melayang seperti Amiri.
+            // Catatan: cakupan bentuk presentasi Arial hanya ~263 (Amiri 750),
+            // jadi huruf yang tidak ada di Arial otomatis diambil dari
+            // DejaVu Sans lewat `arabicStack()` — naskah tetap utuh.
             'arabic_preferred' => [
-                'scheherazade', 'kfgqpc', 'naskh', 'noto', 'lateef',
-                'sakkal', 'majalla', 'xb ', 'shafigh', 'niloofar', 'riyaz', 'zar',
-                'amiri', 'arabic', 'geeza', 'nile', 'thabit',
+                'arial', 'tahoma', 'scheherazade', 'kfgqpc', 'naskh', 'noto',
+                'lateef', 'sakkal', 'majalla', 'amiri',
+                'shafigh', 'niloofar', 'riyaz', 'zar', 'arabic', 'geeza', 'nile', 'thabit',
             ],
             // Font Arab opsional (Sakkal Majalla/XB/Amiri/Scheherazade/KFGQPC/Noto Naskh).
             // Bila tidak ada, dipakai DejaVu Sans bawaan Dompdf yang sudah
@@ -308,6 +312,7 @@ return [
             'kelas' => 'الفصل',
             'guru' => 'المدرّس',
             'peserta' => 'اسم الطالب',
+            'tanggal' => 'تاريخ الاختبار',
         ],
         // Penanaman karakter versi Arab (dipakai bila guru belum mengisi).
         'karakter_title_arab' => 'تنمية الشخصية:',

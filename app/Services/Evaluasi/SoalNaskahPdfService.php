@@ -293,7 +293,7 @@ class SoalNaskahPdfService
             'mapel' => $mapelTampil,
             'kelas' => $kelas,
             'guru' => $guruTampil,
-        ], $isArabicExam);
+        ], $isArabicExam, $this->tanggalUjian($settings, $isArabicExam));
 
         $karakter = ! ($settings['show_karakter'] ?? true) ? [] : $print->karakterItems($settings);
 
@@ -553,7 +553,7 @@ class SoalNaskahPdfService
      * @param  array{mapel: string, kelas: string, guru: string}  $values
      * @return array<int, array<int, array{0: string, 1: string}>>
      */
-    private function identityRows(array $settings, array $values, bool $isArabic = false): array
+    private function identityRows(array $settings, array $values, bool $isArabic = false, ?string $tanggalUjian = null): array
     {
         if (! ($settings['show_identitas'] ?? true)) {
             return [];
@@ -588,12 +588,44 @@ class SoalNaskahPdfService
         ];
 
         if ((int) ($settings['identitas_rows'] ?? 2) >= 2) {
-            $rows[] = [
-                [$label('guru', 'Guru Pengampu'), $override('guru', $values['guru'])],
-                [$label('peserta', 'Nama Peserta Didik'), ''],
-            ];
+            // Kolom kanan baris kedua bisa berupa garis isi nama peserta atau
+            // tanggal ujian, sesuai setelan guru.
+            $kolomKanan = (string) ($settings['identitas_kolom_kanan'] ?? 'peserta');
+
+            if ($kolomKanan === 'tanggal') {
+                $rows[] = [
+                    [$label('guru', 'Guru Pengampu'), $override('guru', $values['guru'])],
+                    [$label('tanggal', 'Tanggal Ujian'), (string) $tanggalUjian],
+                ];
+            } else {
+                $rows[] = [
+                    [$label('guru', 'Guru Pengampu'), $override('guru', $values['guru'])],
+                    [$label('peserta', 'Nama Peserta Didik'), ''],
+                ];
+            }
         }
 
         return $rows;
+    }
+
+    /**
+     * Tanggal ujian tercetak pada tabel identitas.
+     *
+     * Sumber: setelan `identitas_tanggal` (Y-m-d). Bila kosong dipakai tanggal
+     * cetak hari ini. Naskah Arab memakai `tanggalArab()` (Hijriah + Masehi
+     * berbahasa Arab); naskah Latin memakai format Indonesia.
+     */
+    private function tanggalUjian(array $settings, bool $isArabic = false): string
+    {
+        $raw = trim((string) ($settings['identitas_tanggal'] ?? ''));
+        $iso = $raw !== '' ? $raw : null;
+
+        if ($isArabic) {
+            return $this->tanggalArab($iso);
+        }
+
+        return ($iso !== null ? Carbon::parse($iso) : now())
+            ->locale('id')
+            ->translatedFormat('j F Y');
     }
 }

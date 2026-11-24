@@ -230,9 +230,25 @@
                                 </div>
 
                                 <hr class="my-2">
+                                <div class="small text-muted mb-1">Isi kolom kanan baris kedua</div>
+                                <div class="row g-2">
+                                    <div class="col-12 cetak-field">
+                                        <select name="identitas_kolom_kanan" class="form-select form-select-sm">
+                                            <option value="peserta" @selected(($settings['identitas_kolom_kanan'] ?? 'peserta') === 'peserta')>Garis isi nama peserta</option>
+                                            <option value="tanggal" @selected(($settings['identitas_kolom_kanan'] ?? 'peserta') === 'tanggal')>Tanggal ujian</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 cetak-field">
+                                        <label class="form-label mb-1">Tanggal ujian <span class="text-muted fw-normal">(kosong = hari ini)</span></label>
+                                        <input type="date" name="identitas_tanggal" class="form-control form-control-sm"
+                                               value="{{ $settings['identitas_tanggal'] ?? '' }}">
+                                    </div>
+                                </div>
+
+                                <hr class="my-2">
                                 <div class="small text-muted mb-1">Label baris</div>
                                 <div class="row g-2">
-                                    @foreach(['mapel' => 'Mapel', 'kelas' => 'Kelas', 'guru' => 'Guru', 'peserta' => 'Peserta'] as $field => $label)
+                                    @foreach(['mapel' => 'Mapel', 'kelas' => 'Kelas', 'guru' => 'Guru', 'peserta' => 'Peserta', 'tanggal' => 'Tanggal'] as $field => $label)
                                         <div class="col-6 cetak-field">
                                             <input type="text" name="identitas_label_{{ $field }}" class="form-control form-control-sm"
                                                    value="{{ $settings['identitas_label_'.$field] }}" placeholder="{{ $label }}">

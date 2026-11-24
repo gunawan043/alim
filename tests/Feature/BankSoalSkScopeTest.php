@@ -920,6 +920,49 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('«', $shaped, 'Tanda kutip Arab tetap ada.');
     }
 
+    public function test_tabel_identitas_bisa_memakai_kolom_tanggal_ujian(): void
+    {
+        $settings = app(PrintSettingsService::class)->sanitize(array_merge(
+            app(PrintSettingsService::class)->defaults(),
+            [
+                'identitas_kolom_kanan' => 'tanggal',
+                'identitas_tanggal' => '2026-03-15',
+            ]
+        ));
+
+        $this->assertSame('tanggal', $settings['identitas_kolom_kanan']);
+        $this->assertSame('2026-03-15', $settings['identitas_tanggal']);
+
+        $svc = app(SoalNaskahPdfService::class);
+        $rows = (new \ReflectionMethod($svc, 'identityRows'))->invoke(
+            $svc,
+            $settings + ['show_identitas' => true, 'identitas_rows' => 2],
+            ['mapel' => 'اللغة العربية', 'kelas' => 'العاشر', 'guru' => 'محمد'],
+            true,
+            '٢٦ رمضان ١٤٤٧ هـ / ١٥ مارس ٢٠٢٦ م'
+        );
+
+        $this->assertCount(2, $rows);
+        $this->assertStringContainsString('تاريخ الاختبار', (string) $rows[1][1][0], 'Label Arab tanggal dipakai.');
+        $this->assertStringContainsString('رمضان', (string) $rows[1][1][1], 'Tanggal ujian tercetak di kolom kanan.');
+    }
+
+    public function test_tanggal_ujian_mengikuti_setelan_atau_hari_ini(): void
+    {
+        $svc = app(SoalNaskahPdfService::class);
+        $m = new \ReflectionMethod($svc, 'tanggalUjian');
+
+        // Tanggal khusus: Hijriah + Masehi, keduanya berbahasa Arab.
+        $custom = (string) $m->invoke($svc, ['identitas_tanggal' => '2026-03-15'], true);
+        $this->assertStringContainsString('رمضان', $custom);
+        $this->assertStringContainsString('مارس', $custom);
+        $this->assertStringContainsString('٢٠٢٦', $custom);
+
+        // Kosong = hari ini (naskah Latin memakai bulan Indonesia).
+        $latin = (string) $m->invoke($svc, ['identitas_tanggal' => ''], false);
+        $this->assertMatchesRegularExpression('/\d{1,2} \p{L}+ \d{4}/u', $latin);
+    }
+
     public function test_harakat_tidak_dibuang_saat_dicetak(): void
     {
         // Keputusan produk: tampilan PDF TIDAK boleh mengubah isi database.
