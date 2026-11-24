@@ -25,7 +25,7 @@
                     <i class="ri-file-pdf-line me-1"></i>Download PDF
                 </a>
                 <a href="{{ route('user.students.cards.png', ['userId' => $userId] + $params) }}" class="btn btn-outline-primary btn-sm">
-                    <i class="ri-image-line me-1"></i>Download PNG
+                    <i class="ri-image-line me-1"></i>Download PNG (ZIP)
                 </a>
             </div>
         </div>

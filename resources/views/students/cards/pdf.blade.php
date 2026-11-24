@@ -17,8 +17,7 @@
             page-break-after: always;
         }
         .id-card.last { page-break-after: auto; }
-        .front-bg { background-image: url('{{ $frontBg }}'); }
-        .back-bg { background-image: url('{{ $backBg }}'); }
+        .card-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
         .photo-box { position: absolute; left: var(--photo-left); top: var(--photo-top); width: var(--photo-w); height: var(--photo-h); }
         .photo-box img, .photo-box .photo-empty { width: 100%; height: 100%; object-fit: cover; border-radius: 1mm; background: #dbeafe; border: 0.2mm solid #cbd5e1; display: block; }
         .info-table { position: absolute; left: var(--info-left); right: 4mm; top: var(--info-top); border-collapse: collapse; font-size: var(--info-size); line-height: var(--line-height); }
@@ -39,8 +38,9 @@
 @foreach($cards as $card)
     @php $student = $card['student']; $front = $layout['front']; $back = $layout['back']; @endphp
 
-    <div class="id-card {{ $frontBg ? 'front-bg' : '' }}"
+    <div class="id-card"
          style="--info-size:{{ $front['font_size'] }}pt;--line-height:{{ $front['line_height'] }};--photo-w:{{ $front['photo_width'] }}mm;--photo-h:{{ $front['photo_height'] }}mm;--photo-left:{{ $front['photo_left'] }}mm;--photo-top:{{ $front['photo_top'] }}mm;--info-left:{{ $front['info_left'] }}mm;--info-top:{{ $front['info_top'] }}mm;--sig-w:{{ $front['signature_width'] }}mm;--sig-h:{{ $front['signature_height'] }}mm;--sig-title-size:{{ $front['signature_title_font_size'] }}pt;--sig-name-size:{{ $front['signature_name_font_size'] }}pt;--sig-gap:{{ $front['signature_gap'] }}mm;">
+        @if($frontBg)<img class="card-bg" src="{{ $frontBg }}" alt="">@endif
         @if($front['show_photo'])
             <div class="photo-box">
                 @if($card['photo'])
@@ -83,8 +83,9 @@
         @endif
     </div>
 
-    <div class="id-card {{ $backBg ? 'back-bg' : '' }} {{ $loop->last ? 'last' : '' }}"
+    <div class="id-card {{ $loop->last ? 'last' : '' }}"
          style="--back-size:{{ $back['font_size'] }}pt;--back-line-height:{{ $back['line_height'] }};--back-qr-left:{{ $back['back_qr_left'] }}mm;--back-qr-top:{{ $back['back_qr_top'] }}mm;--back-qr-size:{{ $back['back_qr_size'] }}mm;">
+        @if($backBg)<img class="card-bg" src="{{ $backBg }}" alt="">@endif
         @if($back['show_note'])
             <div class="back-note">Kartu ini merupakan identitas resmi santri. Simpan dan gunakan dengan baik.</div>
         @endif
