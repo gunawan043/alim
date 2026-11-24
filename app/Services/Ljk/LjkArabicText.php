@@ -297,63 +297,146 @@ final class LjkArabicText
         // Arab dan membuat jarak tidak konsisten; rapatkan ke kata sebelumnya.
         $body = (string) preg_replace('/\s+([,،.:؛؟!])/u', '$1', $body);
 
-        $words = [];
-        // `$glue[i] = true` berarti token ke-i menempel TANPA spasi pada token
-        // sebelumnya. Dipakai untuk tanda baca yang secara logis menempel di
-        // ekor kata ("الكتب،" / "المعلم:") agar hasil cetak pun rapat
-        // ("ﺐﺘﻜﻟﺍ،" bukan "ﺐﺘﻜﻟﺍ ،").
-        $glue = [];
+        // Setiap SATUAN = kata + tanda baca yang menempel padanya.
+        //
+        // Tanda baca digabung ke katanya SEBELUM urutan dibalik, bukan diberi
+        // penanda lalu dirakit belakangan. Dengan begitu "طالب؛" tetap satu
+        // satuan: saat urutan dibalik, tanda baca ikut kata itu dan otomatis
+        // berada di sisi KIRI-nya — tepat seperti kaidah cetak Arab. Tidak ada
+        // flag yang bisa salah pasang antar pasangan kata.
+        $units = [];
+
+        // Kutipan boleh melintasi beberapa kata ("«العلم نور»"). Maka « yang
+        // ditemukan membuka SATU satuan yang menelan kata-kata berikutnya
+        // sampai » penutup, sehingga tanda kutip tidak pernah terpisah dari
+        // isinya saat urutan dibalik.
+        $quoteBuf = null;
 
         foreach (preg_split('/\s+/u', $body, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
-            // Pemisah netral ("/" "|") berdiri sendiri sebagai token: setelah
-            // urutan dibalik ia tetap berada di antara kedua bagian kalimat,
-            // tidak menempel pada angka di sebelahnya.
+            if ($quoteBuf !== null) {
+                $quoteBuf[] = $word;
+
+                if (str_contains($word, '»')) {
+                    $units[] = self::joinQuoteUnit($quoteBuf);
+                    $quoteBuf = null;
+                }
+
+                continue;
+            }
+
+            // « tanpa » penutup pada kata yang sama: mulai menampung.
+            if (str_contains($word, '«') && ! str_contains($word, '»')) {
+                $quoteBuf = [$word];
+
+                continue;
+            }
+
+            // Pemisah netral ("/" "|") berdiri sendiri.
             if (preg_match('/^[\/|]+$/u', $word)) {
-                $words[] = $word;
-                $glue[] = false;
+                $units[] = $word;
 
                 continue;
             }
 
-            // Tanda baca ekor kata ("الكتب،" / "المعلم:") dipisah sebagai
-            // token sendiri, lalu ditempel kembali ke KIRI kata yang sama
-            // setelah urutan dibalik — bukan ke kata berikutnya.
-            if (preg_match('/^(.*[^\s,،.:؛؟!])([,،.:؛؟!]+)$/u', $word, $m)) {
-                $words[] = self::shapeWord($m[1]);
-                $glue[] = false;
-                $words[] = $m[2];
-                $glue[] = true; // tanda baca menempel pada kata di depannya
+            // Kata berkutip «…» dalam satu kata.
+            if (self::hasQuotePair($word)) {
+                foreach (self::quoteUnits($word) as $unit) {
+                    $units[] = $unit;
+                }
 
                 continue;
             }
 
-            $words[] = self::shapeWord($word);
-            $glue[] = false;
+            // "الكتب،" → satu satuan "الكتب،" (kata + tanda baca rapat).
+            $units[] = self::shapeWord($word);
         }
 
-        // Balik urutan. Token tanda baca ekor ("المعلم:" → "المعلم" + ":")
-        // kini berada TEPAT SEBELUM kata yang dipisahnya. Secara visual tanda
-        // baca harus menempel di sisi KIRI kata itu, artinya ia menjadi AKHIRAN
-        // dari kata tersebut — bukan awalan kata berikutnya.
-        $words = array_reverse($words);
-        $glue = array_reverse($glue);
-
-        $out = '';
-        $pending = ''; // tanda baca menunggu digabung ke AKHIR kata berikutnya
-
-        foreach ($words as $i => $token) {
-            if ($glue[$i] ?? false) {
-                $pending .= $token;
-
-                continue;
-            }
-
-            $out .= ($out === '' ? '' : ' ').$token.$pending;
-            $pending = '';
+        // Kutipan yang tidak tertutup: perlakukan sebagai teks biasa.
+        if ($quoteBuf !== null) {
+            $units[] = self::joinQuoteUnit($quoteBuf);
         }
 
-        // Tanda baca penutup kalimat berada di ujung KIRI baris visual.
-        return $out.$pending.$closing;
+        // Balik urutan satuan. Tanda baca ikut terbawa bersama katanya.
+        return implode(' ', array_reverse($units)).$closing;
+    }
+
+    /**
+     * Gabungkan satuan kutipan multi-kata menjadi satu string utuh.
+     *
+     * Kata-kata di dalamnya dibalik (karena isi kutipan tetap teks Arab),
+     * tetapi tanda kutip « dan » dibiarkan mengapit hasil itu.
+     *
+     * @param  array<int, string>  $words
+     */
+    private static function joinQuoteUnit(array $words): string
+    {
+        $text = implode(' ', $words);
+
+        // Pisahkan tanda baca ekor di luar kutip ("»." / "»،").
+        $suffix = '';
+        if (preg_match('/^(.*[»])([,،.:؛؟!]+)$/u', $text, $m)) {
+            $text = $m[1];
+            $suffix = $m[2];
+        }
+
+        $inner = trim($text, '«»');
+        $innerUnits = [];
+
+        foreach (preg_split('/\s+/u', $inner, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $w) {
+            $innerUnits[] = self::shapeWord($w);
+        }
+
+        return '«'.implode(' ', array_reverse($innerUnits)).'»'.$suffix;
+    }
+
+    /**
+     * Apakah kata memuat tanda kutip Arab (« atau »).
+     */
+    private static function hasQuotePair(string $word): bool
+    {
+        return preg_match('/[«»]/u', $word) === 1;
+    }
+
+    /**
+     * Pecah kata berkutip menjadi satuan: « / isi / » (+ tanda baca ekor).
+     *
+     * Setiap satuan adalah string utuh, bukan potongan dengan flag. Tanda
+     * kutip dan tanda baca dibiarkan menempel pada isinya, lalu pembalikan
+     * urutan satuan di shapeLine() memindahkan seluruh satuan itu bersama.
+     *
+     * Untuk "«العلم»." hasilnya: ["«العلم»."] — satu satuan. Saat urutan
+     * dibalik, satuan ini tetap utuh dan hanya posisinya yang bergeser,
+     * sehingga « dan » tidak pernah bertukar atau beradu.
+     *
+     * @return array<int, string>
+     */
+    private static function quoteUnits(string $word): array
+    {
+        // Kata mungkin memuat tanda baca ekor di luar kutip ("«العلم»،").
+        $suffix = '';
+        if (preg_match('/^(.*[»])([,،.:؛؟!]+)$/u', $word, $m)) {
+            $word = $m[1];
+            $suffix = $m[2];
+        }
+
+        $open = str_starts_with($word, '«');
+        $close = str_ends_with($word, '»');
+        $core = trim($word, '«»');
+
+        if ($core === '') {
+            return [$word.$suffix];
+        }
+
+        // Satuan tunggal: tanda kutip tetap di posisinya masing-masing
+        // mengapit isi. Karena seluruh satuan dibalik bersama, « yang semula
+        // di kiri isi akan berakhir di kanan isi — posisi yang benar untuk
+        // pembaca Arab — dan » sebaliknya.
+        $unit = ($open ? '«' : '')
+            .self::shapeWord($core)
+            .($close ? '»' : '')
+            .$suffix;
+
+        return [$unit];
     }
 
     /**

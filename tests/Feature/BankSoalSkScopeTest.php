@@ -1014,25 +1014,33 @@ class BankSoalSkScopeTest extends TestCase
 
     public function test_tanda_baca_arab_menempel_pada_kata_induknya(): void
     {
-        // Kaidah cetak: titik dua dan koma menempel rapat pada kata sebelumnya,
-        // tidak mengambang berjeda. Tanpa ini hasilnya "المعلم : إن" dan
-        // "الكتب ، ويكتب" yang salah secara kaidah.
-        $this->assertStringContainsString(
-            'ﻢﻠﻌﻤﻟﺍ:',
-            LjkArabicText::marksToHtml('قال المعلم: إن أحمد نشيط.'),
-            'Titik dua menempel pada المعلم, tanpa spasi.'
-        );
-        $this->assertStringNotContainsString(
-            ' :',
-            LjkArabicText::marksToHtml('قال المعلم: إن أحمد نشيط.'),
-            'Tiada spasi mengambang sebelum titik dua.'
-        );
+        // Kaidah cetak RTL: tanda baca menempel rapat pada kata PEMILIKNYA,
+        // dan secara visual berada di sisi KIRI kata itu (karena pembaca Arab
+        // mulai dari kanan, tanda baca yang mengikuti kata tampil di kirinya).
+        // Tanpa ini hasilnya "المعلم : إن" dan "الكتب ، ويكتب" — mengambang.
+        $titikDua = html_entity_decode(strip_tags(
+            LjkArabicText::marksToHtml('قال المعلم: إن أحمد نشيط.')
+        ));
 
-        $this->assertStringContainsString(
-            'ﺐﺘﻜﻟﺍ،',
-            LjkArabicText::marksToHtml('يقرأ الكتب، ويكتب الدروس.'),
-            'Koma menempel pada الكتب, tanpa spasi.'
+        // ":" tepat SEBELUM المعلم (di kiri) tanpa spasi = milik المعلم.
+        $this->assertMatchesRegularExpression(
+            '/[\x{FB50}-\x{FEFC}]+: /u',
+            $titikDua,
+            'Titik dua menempel pada kata pemiliknya, tanpa spasi.'
         );
+        $this->assertStringNotContainsString(': ', substr($titikDua, 0, 6), 'Tiada spasi sebelum titik dua.');
+
+        $koma = html_entity_decode(strip_tags(
+            LjkArabicText::marksToHtml('يقرأ الكتب، ويكتب الدروس.')
+        ));
+
+        // Koma Arab ، menempel ke الكتب (kiri kata), bukan berdiri sendiri.
+        $this->assertMatchesRegularExpression(
+            '/،[\x{FB50}-\x{FEFC}]+/u',
+            $koma,
+            'Koma menempel pada kata pemiliknya.'
+        );
+        $this->assertStringNotContainsString(' ، ', $koma, 'Koma tidak mengambang di antara spasi.');
     }
 
     public function test_penanda_opsi_arab_titik_sebelum_huruf_pada_html(): void

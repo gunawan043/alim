@@ -35,6 +35,19 @@
     $examBahasa = 'arab';
 @endphp
 <!DOCTYPE html>
+{{--
+    JANGAN menambahkan dir="rtl" (atau direction: rtl pada body/html).
+
+    Seluruh teks Arab disusun ke URUTAN VISUAL (kiri→kanan) oleh
+    LjkArabicText sebelum masuk ke HTML: kata-kata dibalik, bentuk presentasi
+    dipilih, dan tanda baca diletakkan di sisi yang benar. Karena itu HTML ini
+    adalah dokumen LTR yang KEBETULAN berisi glyph Arab dalam urutan cetak.
+
+    Menambahkan dir="rtl" membuat bidi Dompdf membaliknya SEKALI LAGI:
+    tanda tanya ؟ kembali ke kanan, «» bertukar, penanda opsi ".ا" berubah
+    jadi "ا.", dan harakat terlepas dari hurufnya. Perataan kanan dilakukan
+    eksplisit lewat text-align: right pada tiap blok.
+--}}
 <html lang="ar">
 <head>
 <meta charset="UTF-8">
