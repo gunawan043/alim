@@ -1294,8 +1294,10 @@ class BankSoalSkScopeTest extends TestCase
             ['font_size' => 11, 'option_columns' => 0]
         );
 
-        $this->assertStringContainsString('١.', $html, 'Nomor soal Arab memakai angka Arab.');
-        $this->assertStringContainsString('٢.', $html, 'Nomor kedua juga angka Arab.');
+        $this->assertStringContainsString('>١</span>', $html, 'Nomor soal Arab memakai angka Arab.');
+        $this->assertStringContainsString('>٢</span>', $html, 'Nomor kedua juga angka Arab.');
+        $this->assertStringContainsString('class="qno-number"', $html, 'Nomor soal memakai wrapper arah LTR.');
+        $this->assertStringContainsString('class="num-dot"', $html, 'Titik nomor memakai font Latin agar tidak terbaca nol.');
         $this->assertStringContainsString(
             'class="ar ar-number"',
             $html,
