@@ -50,16 +50,15 @@
     .card-photo-box { position:absolute; left:var(--photo-left,4mm); top:var(--photo-top,10mm); width:var(--photo-w,20mm); height:var(--photo-h,25mm); z-index:2; }
     .card-photo-box img, .card-photo-box .photo-empty { width:100%; height:100%; object-fit:cover; border-radius:1mm; display:block; }
     .card-photo-box .photo-empty { background:#dbeafe; border:1px dashed #94a3b8; display:flex; align-items:center; justify-content:center; color:#64748b; }
-    .card-info-table { position:absolute; left:calc(var(--photo-left,4mm) + var(--photo-w,20mm) + 3mm); right:4mm; top:8mm; border-collapse:collapse; font-family:'Cambria','Caladea',serif; font-size:var(--info-size,7.8pt); line-height:var(--line-height,1.25); z-index:2; }
-    .student-card-preview.no-photo .card-info-table { left:4mm; }
+    .card-info-table { position:absolute; left:var(--info-left,27mm); right:4mm; top:var(--info-top,8mm); border-collapse:collapse; font-family:'Cambria','Caladea',serif; font-size:var(--info-size,7.8pt); line-height:var(--line-height,1.25); z-index:2; }
     .card-info-table td { padding:0; vertical-align:top; }
     .card-info-table .label { width:21mm; white-space:nowrap; }
     .card-info-table .colon { width:3mm; text-align:center; }
     .card-signature { position:absolute; right:4mm; bottom:3mm; width:40mm; text-align:center; font-family:'Cambria','Caladea',serif; z-index:4; pointer-events:none; }
-    .card-signature img { width:var(--sig-w,22mm); height:var(--sig-h,12mm); object-fit:contain; display:block; margin:0 auto; }
+    .card-signature img { width:var(--sig-w,22mm); height:var(--sig-h,12mm); object-fit:contain; display:block; margin:var(--sig-gap,.5mm) auto; }
     .card-signature .sig-empty { width:var(--sig-w,22mm); height:var(--sig-h,12mm); border-bottom:1px solid #94a3b8; margin:0 auto; }
-    .card-signature .sig-title { font-size:var(--sig-font-size,7pt); line-height:1.2; }
-    .card-signature .sig-name { font-size:var(--sig-font-size,7pt); font-weight:700; margin-top:.5mm; }
+    .card-signature .sig-title { font-size:var(--sig-title-size,7pt); line-height:1.2; margin-bottom:var(--sig-gap,.5mm); }
+    .card-signature .sig-name { font-size:var(--sig-name-size,7pt); font-weight:700; margin-top:var(--sig-gap,.5mm); }
     .card-back-note { position:absolute; left:5mm; right:5mm; top:5mm; font-family:'Cambria','Caladea',serif; font-size:var(--back-size,7.5pt); line-height:var(--back-line-height,1.35); z-index:2; }
     .card-back-qr { position:absolute; left:var(--back-qr-left,60mm); top:var(--back-qr-top,24mm); width:var(--back-qr-size,22mm); height:var(--back-qr-size,22mm); z-index:2; }
     .card-back-qr img { width:100%; height:100%; display:block; }
@@ -122,7 +121,7 @@
                 <i class="ri-equalizer-line me-1"></i>Atur Desain
             </button>
             @if($selected)
-                <a href="{{ route('user.students.cards.print', ['userId' => $userId, 'student_id' => $selected->id]) }}" class="btn btn-sm btn-danger">
+                <a href="{{ route('user.students.cards.preview', ['userId' => $userId, 'student_id' => $selected->id]) }}" class="btn btn-sm btn-danger">
                     <i class="ri-file-pdf-line me-1"></i>Cetak PDF
                 </a>
             @endif
@@ -133,7 +132,7 @@
         <div class="card-preview-wrap">
             <div class="card-preview-label">Sisi Depan</div>
             <div class="student-card-preview front {{ $showFront['show_photo'] ? '' : 'no-photo' }}" id="cardFront"
-                 style="--card-w:{{ $setting->card_width_mm }}mm;--card-h:{{ $setting->card_height_mm }}mm;--info-size:{{ $showFront['font_size'] }}pt;--line-height:{{ $showFront['line_height'] }};--photo-w:{{ $showFront['photo_width'] }}mm;--photo-h:{{ $showFront['photo_height'] }}mm;--photo-left:{{ $showFront['photo_left'] }}mm;--photo-top:{{ $showFront['photo_top'] }}mm;--sig-w:{{ $showFront['signature_width'] }}mm;--sig-h:{{ $showFront['signature_height'] }}mm;--sig-font-size:{{ $showFront['signature_font_size'] }}pt;{{ $frontBackground ? "background-image:url('".$frontBackground."');" : '' }}">
+                 style="--card-w:{{ $setting->card_width_mm }}mm;--card-h:{{ $setting->card_height_mm }}mm;--info-size:{{ $showFront['font_size'] }}pt;--line-height:{{ $showFront['line_height'] }};--photo-w:{{ $showFront['photo_width'] }}mm;--photo-h:{{ $showFront['photo_height'] }}mm;--photo-left:{{ $showFront['photo_left'] }}mm;--photo-top:{{ $showFront['photo_top'] }}mm;--info-left:{{ $showFront['info_left'] }}mm;--info-top:{{ $showFront['info_top'] }}mm;--sig-w:{{ $showFront['signature_width'] }}mm;--sig-h:{{ $showFront['signature_height'] }}mm;--sig-title-size:{{ $showFront['signature_title_font_size'] }}pt;--sig-name-size:{{ $showFront['signature_name_font_size'] }}pt;--sig-gap:{{ $showFront['signature_gap'] }}mm;{{ $frontBackground ? "background-image:url('".$frontBackground."');" : '' }}">
                 <div class="card-photo-box" data-preview-side="front" data-preview-field="show_photo" style="{{ $showFront['show_photo'] ? '' : 'display:none' }}">
                     @if($selected?->photo_path)
                         <img src="{{ asset('storage/'.$selected->photo_path) }}" alt="Foto {{ $selectedName }}">
@@ -187,7 +186,7 @@
             <div class="showcase-sub">
                 <i class="ri-user-line me-1"></i>{{ $selected->name }} · {{ $selected->nis ?: '-' }} / {{ $selected->nisn ?: '-' }} · {{ $selectedClassText }}
             </div>
-            <a href="{{ route('user.students.cards.print', ['userId' => $userId] + request()->only(['q', 'study_group_id'])) }}" class="btn btn-sm btn-outline-light">
+            <a href="{{ route('user.students.cards.preview', ['userId' => $userId] + request()->only(['q', 'study_group_id'])) }}" class="btn btn-sm btn-outline-light">
                 <i class="ri-printer-line me-1"></i>Cetak Semua Hasil Pencarian
             </a>
         </div>
@@ -223,11 +222,15 @@
                 <div class="row g-2">
                     <div class="col-4"><label class="form-label">Font Info</label><input type="number" step="0.1" name="layout[front][font_size]" class="form-control form-control-sm preview-number" data-side="front" data-var="info-size" value="{{ $showFront['font_size'] }}"></div>
                     <div class="col-4"><label class="form-label">Jarak Baris</label><input type="number" step="0.05" name="layout[front][line_height]" class="form-control form-control-sm preview-number" data-side="front" data-var="line-height" value="{{ $showFront['line_height'] }}"></div>
-                    <div class="col-4"><label class="form-label">Font TTD</label><input type="number" step="0.1" name="layout[front][signature_font_size]" class="form-control form-control-sm preview-number" data-side="front" data-var="sig-font-size" value="{{ $showFront['signature_font_size'] }}"></div>
-                    <div class="col-3"><label class="form-label">Lebar Foto</label><input type="number" step="0.5" name="layout[front][photo_width]" class="form-control form-control-sm preview-number" data-side="front" data-var="photo-w" value="{{ $showFront['photo_width'] }}"></div>
-                    <div class="col-3"><label class="form-label">Tinggi Foto</label><input type="number" step="0.5" name="layout[front][photo_height]" class="form-control form-control-sm preview-number" data-side="front" data-var="photo-h" value="{{ $showFront['photo_height'] }}"></div>
+                    <div class="col-4"><label class="form-label">Jarak TTD</label><input type="number" step="0.1" name="layout[front][signature_gap]" class="form-control form-control-sm preview-number" data-side="front" data-var="sig-gap" value="{{ $showFront['signature_gap'] }}"></div>
                     <div class="col-3"><label class="form-label">Foto Kiri</label><input type="number" step="0.5" name="layout[front][photo_left]" class="form-control form-control-sm preview-number" data-side="front" data-var="photo-left" value="{{ $showFront['photo_left'] }}"></div>
                     <div class="col-3"><label class="form-label">Foto Atas</label><input type="number" step="0.5" name="layout[front][photo_top]" class="form-control form-control-sm preview-number" data-side="front" data-var="photo-top" value="{{ $showFront['photo_top'] }}"></div>
+                    <div class="col-3"><label class="form-label">Tabel Kiri</label><input type="number" step="0.5" name="layout[front][info_left]" class="form-control form-control-sm preview-number" data-side="front" data-var="info-left" value="{{ $showFront['info_left'] }}"></div>
+                    <div class="col-3"><label class="form-label">Tabel Atas</label><input type="number" step="0.5" name="layout[front][info_top]" class="form-control form-control-sm preview-number" data-side="front" data-var="info-top" value="{{ $showFront['info_top'] }}"></div>
+                    <div class="col-3"><label class="form-label">Lebar Foto</label><input type="number" step="0.5" name="layout[front][photo_width]" class="form-control form-control-sm preview-number" data-side="front" data-var="photo-w" value="{{ $showFront['photo_width'] }}"></div>
+                    <div class="col-3"><label class="form-label">Tinggi Foto</label><input type="number" step="0.5" name="layout[front][photo_height]" class="form-control form-control-sm preview-number" data-side="front" data-var="photo-h" value="{{ $showFront['photo_height'] }}"></div>
+                    <div class="col-3"><label class="form-label">Font Jabatan KSP</label><input type="number" step="0.1" name="layout[front][signature_title_font_size]" class="form-control form-control-sm preview-number" data-side="front" data-var="sig-title-size" value="{{ $showFront['signature_title_font_size'] }}"></div>
+                    <div class="col-3"><label class="form-label">Font Nama KSP</label><input type="number" step="0.1" name="layout[front][signature_name_font_size]" class="form-control form-control-sm preview-number" data-side="front" data-var="sig-name-size" value="{{ $showFront['signature_name_font_size'] }}"></div>
                     <div class="col-6"><label class="form-label">Lebar TTD</label><input type="number" step="0.5" name="layout[front][signature_width]" class="form-control form-control-sm preview-number" data-side="front" data-var="sig-w" value="{{ $showFront['signature_width'] }}"></div>
                     <div class="col-6"><label class="form-label">Tinggi TTD</label><input type="number" step="0.5" name="layout[front][signature_height]" class="form-control form-control-sm preview-number" data-side="front" data-var="sig-h" value="{{ $showFront['signature_height'] }}"></div>
                 </div>
@@ -280,7 +283,7 @@
                         <td class="small">{{ $sg ? trim(($sg->gradeLevel?->name ?? '').' '.$sg->name) : '-' }}</td>
                         <td class="text-end">
                             <a href="{{ route('user.students.cards.index', ['userId' => $userId, 'q' => request('q'), 'student_id' => $student->id]) }}" class="btn btn-sm btn-soft-primary">Pilih</a>
-                            <a href="{{ route('user.students.cards.print', ['userId' => $userId, 'student_id' => $student->id]) }}" class="btn btn-sm btn-outline-danger"><i class="ri-file-pdf-line"></i></a>
+                            <a href="{{ route('user.students.cards.preview', ['userId' => $userId, 'student_id' => $student->id]) }}" class="btn btn-sm btn-outline-danger"><i class="ri-file-pdf-line"></i></a>
                         </td>
                     </tr>
                 @empty
@@ -318,7 +321,7 @@
     const cardBack = document.getElementById('cardBack');
     const settingsForm = document.getElementById('cardSettingsForm');
     const autosaveStatus = document.getElementById('autosaveStatus');
-    const mmVars = ['photo-w', 'photo-h', 'photo-left', 'photo-top', 'sig-w', 'sig-h', 'back-qr-left', 'back-qr-top', 'back-qr-size'];
+    const mmVars = ['photo-w', 'photo-h', 'photo-left', 'photo-top', 'info-left', 'info-top', 'sig-w', 'sig-h', 'sig-gap', 'back-qr-left', 'back-qr-top', 'back-qr-size'];
     let saveTimer = null;
 
     document.querySelectorAll('.preview-toggle').forEach(function (input) {

@@ -2155,8 +2155,12 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     ->name('cards.index')->middleware('dormitory.restrict:students');
                 Route::post('/cards/settings', [StudentCardController::class, 'updateSettings'])
                     ->name('cards.settings')->middleware('dormitory.restrict:students');
+                Route::get('/cards/preview', [StudentCardController::class, 'preview'])
+                    ->name('cards.preview')->middleware('dormitory.restrict:students');
                 Route::get('/cards/pdf', [StudentCardController::class, 'printPdf'])
                     ->name('cards.print')->middleware('dormitory.restrict:students');
+                Route::get('/cards/png', [StudentCardController::class, 'png'])
+                    ->name('cards.png')->middleware('dormitory.restrict:students');
                 Route::get('/dapodik-export', [StudentDapodikExportController::class, 'export'])
                     ->name('dapodik-export');
                 Route::get('/dapodik-mapping', [StudentDapodikExportController::class, 'index'])

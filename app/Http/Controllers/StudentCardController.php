@@ -33,7 +33,7 @@ class StudentCardController extends Controller
         $school = School::findOrFail($schoolId);
         $setting = StudentCardSetting::firstOrCreate(
             ['school_id' => $schoolId],
-            ['layout' => StudentCardSetting::defaultLayout()],
+            ['card_width_mm' => 85.60, 'card_height_mm' => 53.98, 'layout' => StudentCardSetting::defaultLayout()],
         );
 
         $query = $this->studentQuery($schoolId);
@@ -107,7 +107,7 @@ class StudentCardController extends Controller
 
         $setting = StudentCardSetting::firstOrCreate(
             ['school_id' => $schoolId],
-            ['layout' => StudentCardSetting::defaultLayout()],
+            ['card_width_mm' => 85.60, 'card_height_mm' => 53.98, 'layout' => StudentCardSetting::defaultLayout()],
         );
 
         foreach ([
@@ -159,7 +159,95 @@ class StudentCardController extends Controller
             ->with('success', 'Pengaturan kartu pelajar berhasil disimpan.');
     }
 
+    public function preview(Request $request, string $userId)
+    {
+        $data = $this->buildPrintData($request);
+
+        if ($data instanceof \Illuminate\Http\RedirectResponse) {
+            return $data;
+        }
+
+        return view('students.cards.preview', [
+            'userId' => $userId,
+            'params' => $this->printParams($request),
+            'cards' => $data['cards'],
+            'setting' => $data['setting'],
+        ]);
+    }
+
     public function printPdf(Request $request, string $userId)
+    {
+        $data = $this->buildPrintData($request);
+
+        if ($data instanceof \Illuminate\Http\RedirectResponse) {
+            return $data;
+        }
+
+        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60)), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98))];
+
+        return app(DocumentPdfService::class)->fromView(
+            'students.cards.pdf',
+            $data,
+            'Kartu-Pelajar-'.now()->format('Ymd-His'),
+            'portrait',
+            $paper,
+            $request->boolean('download') ? 'attachment' : 'inline',
+        );
+    }
+
+    public function png(Request $request, string $userId)
+    {
+        $data = $this->buildPrintData($request);
+
+        if ($data instanceof \Illuminate\Http\RedirectResponse) {
+            return $data;
+        }
+
+        if (! class_exists(\Imagick::class)) {
+            abort(503, 'Server belum menyediakan ekstensi gambar untuk ekspor PNG.');
+        }
+
+        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60)), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98))];
+        $pdf = app(DocumentPdfService::class)->renderHtml(
+            view('students.cards.pdf', $data)->render(),
+            'portrait',
+            $paper,
+        );
+
+        try {
+            $images = new \Imagick;
+            $images->setResolution(300, 300);
+            $images->readImageBlob($pdf);
+            $images->setImageFormat('png');
+
+            $zipPath = tempnam(sys_get_temp_dir(), 'kartu-pelajar-').'.zip';
+            $zip = new \ZipArchive;
+
+            if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                abort(500, 'Gagal membuat arsip PNG.');
+            }
+
+            $pageNumber = 0;
+            foreach ($images as $page) {
+                $pageNumber++;
+                $page->setImageFormat('png');
+                $zip->addFromString(sprintf('kartu-%02d.png', $pageNumber), $page->getImageBlob());
+            }
+
+            $zip->close();
+            $images->clear();
+        } catch (\Throwable $e) {
+            \Log::warning('Gagal mengekspor kartu pelajar PNG', ['error' => $e->getMessage()]);
+
+            abort(500, 'Gagal membuat PNG kartu pelajar. Gunakan opsi Download PDF.');
+        }
+
+        return response()
+            ->download($zipPath, 'Kartu-Pelajar-'.now()->format('Ymd-His').'.zip')
+            ->deleteFileAfterSend(true);
+    }
+
+    private function buildPrintData(Request $request): array|\Illuminate\Http\RedirectResponse
     {
         $schoolId = $this->resolveSchoolId($request);
         $user = $request->user();
@@ -212,7 +300,7 @@ class StudentCardController extends Controller
 
         $setting = StudentCardSetting::firstOrCreate(
             ['school_id' => $schoolId],
-            ['layout' => StudentCardSetting::defaultLayout()],
+            ['card_width_mm' => 85.60, 'card_height_mm' => 53.98, 'layout' => StudentCardSetting::defaultLayout()],
         );
 
         $school = School::findOrFail($schoolId);
@@ -236,14 +324,22 @@ class StudentCardController extends Controller
             ];
         })->all();
 
-        return app(DocumentPdfService::class)->fromView(
-            'students.cards.pdf',
-            compact('cards', 'layout', 'setting', 'frontBg', 'backBg'),
-            'Kartu-Pelajar-'.now()->format('Ymd-His'),
-            'portrait',
-            'A4',
-            'attachment',
-        );
+        return compact('cards', 'layout', 'setting', 'frontBg', 'backBg');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function printParams(Request $request): array
+    {
+        $params = $request->only(['student_id', 'ids', 'study_group_id', 'q']);
+
+        return array_filter($params, fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function mmToPt(float $mm): float
+    {
+        return round($mm * 72 / 25.4, 3);
     }
 
     private function canManageCards(Request $request): bool
@@ -320,19 +416,20 @@ class StudentCardController extends Controller
 
                 $min = match ($key) {
                     'line_height' => 1.0,
-                    'photo_left', 'photo_top', 'back_qr_left', 'back_qr_top' => 0.0,
+                    'photo_left', 'photo_top', 'info_left', 'info_top', 'back_qr_left', 'back_qr_top', 'signature_gap' => 0.0,
                     'qr_size', 'back_qr_size' => 5.0,
                     'photo_width', 'photo_height', 'signature_width', 'signature_height' => 5.0,
                     default => 4.0,
                 };
                 $max = match ($key) {
                     'line_height' => 2.5,
-                    'photo_left' => 80.0,
-                    'photo_top' => 45.0,
+                    'photo_left', 'info_left' => 80.0,
+                    'photo_top', 'info_top' => 45.0,
                     'photo_width', 'photo_height' => 80.0,
                     'qr_size' => 40.0,
                     'signature_width' => 60.0,
                     'signature_height' => 50.0,
+                    'signature_gap' => 5.0,
                     'back_qr_left' => 100.0,
                     'back_qr_top' => 70.0,
                     'back_qr_size' => 50.0,

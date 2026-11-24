@@ -19,7 +19,7 @@ class DocumentPdfService
         array $data,
         string $filename,
         string $orientation = 'portrait',
-        string $paper = 'A4',
+        string|array $paper = 'A4',
         string $disposition = 'inline',
     ): Response {
         return $this->fromHtml(view($view, $data)->render(), $filename, $orientation, $paper, $disposition);
@@ -29,7 +29,7 @@ class DocumentPdfService
         string $html,
         string $filename,
         string $orientation = 'portrait',
-        string $paper = 'A4',
+        string|array $paper = 'A4',
         string $disposition = 'inline',
     ): Response {
         $safe = $this->safeFilename($filename);
@@ -48,7 +48,7 @@ class DocumentPdfService
      * @param  array{margin?: array{top: float, right: float, bottom: float, left: float}}  $overrides
      *                                                                                                  `margin` dalam milimeter; ukuran F4/Folio ikut ditangani.
      */
-    public function renderHtml(string $html, string $orientation = 'portrait', string $paper = 'A4', array $overrides = []): string
+    public function renderHtml(string $html, string $orientation = 'portrait', string|array $paper = 'A4', array $overrides = []): string
     {
         // Toolbar browser tidak boleh ikut tercetak oleh Dompdf.
         $html = $this->withoutBrowserToolbar($html);
@@ -78,7 +78,7 @@ class DocumentPdfService
 
         // Dompdf hanya mengenal ukuran kertas bawaan; F4/Folio dipetakan ke
         // ukuran kustom 210x330mm agar margin halaman tidak terpotong.
-        if (in_array(strtoupper($paper), ['F4', 'FOLIO'], true)) {
+        if (is_string($paper) && in_array(strtoupper($paper), ['F4', 'FOLIO'], true)) {
             $paper = [0, 0, (float) round(215.9 * 72 / 25.4, 2), (float) round(330 * 72 / 25.4, 2)];
         }
 

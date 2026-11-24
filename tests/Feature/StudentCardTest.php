@@ -208,6 +208,17 @@ class StudentCardTest extends TestCase
         $pdf = (string) $response->getContent();
         $this->assertStringStartsWith('%PDF', $pdf);
         $this->assertSame(2, preg_match_all('/\/Type\s*\/Page\b/', $pdf));
-        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*595\.?[0-9]*\s+841\.?[0-9]*\]?/', $pdf);
+        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*242\.?[0-9]*\s+153\.?[0-9]*\]?/', $pdf);
+
+        $this->actingAs($this->admin)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->get(route('user.students.cards.preview', [
+                'userId' => $this->admin->id,
+                'student_id' => $this->student->id,
+            ]))
+            ->assertOk()
+            ->assertSee('Preview Kartu Pelajar')
+            ->assertSee('Download PDF')
+            ->assertSee('Download PNG');
     }
 }

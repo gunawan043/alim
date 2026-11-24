@@ -697,7 +697,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" target="_blank"
-                           href="{{ route('user.students.cards.print', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
+                           href="{{ route('user.students.cards.preview', ['userId' => $userId, 'study_group_id' => $walkesGroup->id]) }}">
                             Cetak Kartu Pelajar Kelas
                         </a>
                     </li>
