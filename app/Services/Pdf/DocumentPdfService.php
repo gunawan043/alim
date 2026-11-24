@@ -21,8 +21,9 @@ class DocumentPdfService
         string $orientation = 'portrait',
         string|array $paper = 'A4',
         string $disposition = 'inline',
+        ?int $dpi = null,
     ): Response {
-        return $this->fromHtml(view($view, $data)->render(), $filename, $orientation, $paper, $disposition);
+        return $this->fromHtml(view($view, $data)->render(), $filename, $orientation, $paper, $disposition, $dpi);
     }
 
     public function fromHtml(
@@ -31,10 +32,11 @@ class DocumentPdfService
         string $orientation = 'portrait',
         string|array $paper = 'A4',
         string $disposition = 'inline',
+        ?int $dpi = null,
     ): Response {
         $safe = $this->safeFilename($filename);
 
-        return response($this->renderHtml($html, $orientation, $paper), 200, [
+        return response($this->renderHtml($html, $orientation, $paper, [], $dpi), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => $disposition.'; filename="'.$safe.'.pdf"',
             'X-Content-Type-Options' => 'nosniff',
@@ -48,7 +50,7 @@ class DocumentPdfService
      * @param  array{margin?: array{top: float, right: float, bottom: float, left: float}}  $overrides
      *                                                                                                  `margin` dalam milimeter; ukuran F4/Folio ikut ditangani.
      */
-    public function renderHtml(string $html, string $orientation = 'portrait', string|array $paper = 'A4', array $overrides = []): string
+    public function renderHtml(string $html, string $orientation = 'portrait', string|array $paper = 'A4', array $overrides = [], ?int $dpi = null): string
     {
         // Toolbar browser tidak boleh ikut tercetak oleh Dompdf.
         $html = $this->withoutBrowserToolbar($html);
@@ -62,6 +64,10 @@ class DocumentPdfService
         $options->set('isRemoteEnabled', true);
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isPhpEnabled', false);
+
+        if ($dpi !== null) {
+            $options->set('dpi', max(72, min(600, $dpi)));
+        }
         $options->setChroot(array_values(array_unique([
             base_path(),
             storage_path(),

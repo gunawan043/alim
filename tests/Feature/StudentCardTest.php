@@ -208,7 +208,7 @@ class StudentCardTest extends TestCase
         $pdf = (string) $response->getContent();
         $this->assertStringStartsWith('%PDF', $pdf);
         $this->assertSame(2, preg_match_all('/\/Type\s*\/Page\b/', $pdf));
-        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*242\.?[0-9]*\s+153\.?[0-9]*\]?/', $pdf);
+        $this->assertMatchesRegularExpression('/MediaBox\s*\[?[^\]]*485\.?[0-9]*\s+306\.?[0-9]*\]?/', $pdf);
 
         $this->actingAs($this->admin)
             ->withSession(['sa_school_id' => $this->school->id])

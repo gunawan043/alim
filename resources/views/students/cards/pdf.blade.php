@@ -3,34 +3,40 @@
 <head>
     <meta charset="utf-8">
     <title>Kartu Pelajar</title>
+    @php
+        $s = (float) ($printScale ?? 2);
+        $pageW = (float) ($setting->card_width_mm ?: 85.60) * $s;
+        $pageH = (float) ($setting->card_height_mm ?: 53.98) * $s;
+        $mm = fn ($value) => round((float) $value * $s, 2);
+        $pt = fn ($value) => round((float) $value * $s, 2);
+    @endphp
     <style>
-        @page { size: {{ $setting->card_width_mm }}mm {{ $setting->card_height_mm }}mm; margin: 0; }
+        @page { size: {{ $pageW }}mm {{ $pageH }}mm; margin: 0; }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; width: {{ $setting->card_width_mm }}mm; height: {{ $setting->card_height_mm }}mm; }
+        html, body { margin: 0; padding: 0; width: {{ $pageW }}mm; height: {{ $pageH }}mm; }
         body { font-family: 'Cambria', 'Caladea', 'DejaVu Serif', serif; color: #0f172a; }
         .id-card {
             position: relative;
-            width: {{ $setting->card_width_mm }}mm;
-            height: {{ $setting->card_height_mm }}mm;
+            width: {{ $pageW }}mm;
+            height: {{ $pageH }}mm;
             overflow: hidden;
-            background: #f8fafc center/100% 100% no-repeat;
+            background: #f8fafc;
             page-break-after: always;
         }
         .id-card.last { page-break-after: auto; }
-        .front-bg { background-image: url('{{ $frontBg }}'); }
-        .back-bg { background-image: url('{{ $backBg }}'); }
+        .card-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
         .photo-box { position: absolute; left: var(--photo-left); top: var(--photo-top); width: var(--photo-w); height: var(--photo-h); }
-        .photo-box img, .photo-box .photo-empty { width: 100%; height: 100%; object-fit: cover; border-radius: 1mm; background: #dbeafe; border: 0.2mm solid #cbd5e1; display: block; }
-        .info-table { position: absolute; left: var(--info-left); right: 4mm; top: var(--info-top); border-collapse: collapse; font-size: var(--info-size); line-height: var(--line-height); }
+        .photo-box img, .photo-box .photo-empty { width: 100%; height: 100%; object-fit: cover; border-radius: {{ $mm(1) }}mm; background: #dbeafe; border: {{ $mm(.2) }}mm solid #cbd5e1; display: block; }
+        .info-table { position: absolute; left: var(--info-left); right: {{ $mm(4) }}mm; top: var(--info-top); border-collapse: collapse; font-size: var(--info-size); line-height: var(--line-height); }
         .info-table td { padding: 0; vertical-align: top; }
-        .info-table .label { width: 21mm; white-space: nowrap; }
-        .info-table .colon { width: 3mm; text-align: center; }
-        .signature { position: absolute; right: 4mm; bottom: 3mm; width: 40mm; text-align: center; }
+        .info-table .label { width: {{ $mm(21) }}mm; white-space: nowrap; }
+        .info-table .colon { width: {{ $mm(3) }}mm; text-align: center; }
+        .signature { position: absolute; right: {{ $mm(4) }}mm; bottom: {{ $mm(3) }}mm; width: {{ $mm(40) }}mm; text-align: center; }
         .signature img { width: var(--sig-w); height: var(--sig-h); object-fit: contain; display: block; margin: var(--sig-gap) auto; }
-        .signature .sig-empty { width: var(--sig-w); height: var(--sig-h); border-bottom: 0.25mm solid #94a3b8; margin: var(--sig-gap) auto; }
+        .signature .sig-empty { width: var(--sig-w); height: var(--sig-h); border-bottom: {{ $mm(.25) }}mm solid #94a3b8; margin: var(--sig-gap) auto; }
         .signature .sig-title { font-size: var(--sig-title-size); line-height: 1.2; margin-bottom: var(--sig-gap); }
         .signature .sig-name { font-size: var(--sig-name-size); font-weight: 700; margin-top: var(--sig-gap); }
-        .back-note { position: absolute; left: 5mm; right: 5mm; top: 5mm; font-size: var(--back-size); line-height: var(--back-line-height); }
+        .back-note { position: absolute; left: {{ $mm(5) }}mm; right: {{ $mm(5) }}mm; top: {{ $mm(5) }}mm; font-size: var(--back-size); line-height: var(--back-line-height); }
         .back-qr { position: absolute; left: var(--back-qr-left); top: var(--back-qr-top); width: var(--back-qr-size); height: var(--back-qr-size); }
         .back-qr img { width: 100%; height: 100%; display: block; }
     </style>
@@ -39,8 +45,9 @@
 @foreach($cards as $card)
     @php $student = $card['student']; $front = $layout['front']; $back = $layout['back']; @endphp
 
-    <div class="id-card {{ $frontBg ? 'front-bg' : '' }}"
-         style="--info-size:{{ $front['font_size'] }}pt;--line-height:{{ $front['line_height'] }};--photo-w:{{ $front['photo_width'] }}mm;--photo-h:{{ $front['photo_height'] }}mm;--photo-left:{{ $front['photo_left'] }}mm;--photo-top:{{ $front['photo_top'] }}mm;--info-left:{{ $front['info_left'] }}mm;--info-top:{{ $front['info_top'] }}mm;--sig-w:{{ $front['signature_width'] }}mm;--sig-h:{{ $front['signature_height'] }}mm;--sig-title-size:{{ $front['signature_title_font_size'] }}pt;--sig-name-size:{{ $front['signature_name_font_size'] }}pt;--sig-gap:{{ $front['signature_gap'] }}mm;">
+    <div class="id-card"
+         style="--info-size:{{ $pt($front['font_size']) }}pt;--line-height:{{ $front['line_height'] }};--photo-w:{{ $mm($front['photo_width']) }}mm;--photo-h:{{ $mm($front['photo_height']) }}mm;--photo-left:{{ $mm($front['photo_left']) }}mm;--photo-top:{{ $mm($front['photo_top']) }}mm;--info-left:{{ $mm($front['info_left']) }}mm;--info-top:{{ $mm($front['info_top']) }}mm;--sig-w:{{ $mm($front['signature_width']) }}mm;--sig-h:{{ $mm($front['signature_height']) }}mm;--sig-title-size:{{ $pt($front['signature_title_font_size']) }}pt;--sig-name-size:{{ $pt($front['signature_name_font_size']) }}pt;--sig-gap:{{ $mm($front['signature_gap']) }}mm;">
+        @if($frontBg)<img class="card-bg" src="{{ $frontBg }}" alt="">@endif
         @if($front['show_photo'])
             <div class="photo-box">
                 @if($card['photo'])
@@ -83,8 +90,9 @@
         @endif
     </div>
 
-    <div class="id-card {{ $backBg ? 'back-bg' : '' }} {{ $loop->last ? 'last' : '' }}"
-         style="--back-size:{{ $back['font_size'] }}pt;--back-line-height:{{ $back['line_height'] }};--back-qr-left:{{ $back['back_qr_left'] }}mm;--back-qr-top:{{ $back['back_qr_top'] }}mm;--back-qr-size:{{ $back['back_qr_size'] }}mm;">
+    <div class="id-card {{ $loop->last ? 'last' : '' }}"
+         style="--back-size:{{ $pt($back['font_size']) }}pt;--back-line-height:{{ $back['line_height'] }};--back-qr-left:{{ $mm($back['back_qr_left']) }}mm;--back-qr-top:{{ $mm($back['back_qr_top']) }}mm;--back-qr-size:{{ $mm($back['back_qr_size']) }}mm;">
+        @if($backBg)<img class="card-bg" src="{{ $backBg }}" alt="">@endif
         @if($back['show_note'])
             <div class="back-note">Kartu ini merupakan identitas resmi santri. Simpan dan gunakan dengan baik.</div>
         @endif

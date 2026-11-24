@@ -18,6 +18,8 @@ class StudentCardController extends Controller
 {
     use UploadsSecure;
 
+    private const CARD_PRINT_SCALE = 2.0;
+
     public function index(Request $request, string $userId)
     {
         abort_unless($this->canManageCards($request), 403, 'Pengaturan kartu pelajar hanya untuk KSP, Waka, dan TU.');
@@ -172,6 +174,7 @@ class StudentCardController extends Controller
             'params' => $this->printParams($request),
             'cards' => $data['cards'],
             'setting' => $data['setting'],
+            'printScale' => self::CARD_PRINT_SCALE,
         ]);
     }
 
@@ -183,7 +186,7 @@ class StudentCardController extends Controller
             return $data;
         }
 
-        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60)), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98))];
+        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60) * self::CARD_PRINT_SCALE), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98) * self::CARD_PRINT_SCALE)];
 
         return app(DocumentPdfService::class)->fromView(
             'students.cards.pdf',
@@ -192,6 +195,7 @@ class StudentCardController extends Controller
             'portrait',
             $paper,
             $request->boolean('download') ? 'attachment' : 'inline',
+            300,
         );
     }
 
@@ -202,6 +206,15 @@ class StudentCardController extends Controller
         if ($data instanceof \Illuminate\Http\RedirectResponse) {
             return $data;
         }
+
+        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60) * self::CARD_PRINT_SCALE), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98) * self::CARD_PRINT_SCALE)];
+        $pdf = app(DocumentPdfService::class)->renderHtml(
+            view('students.cards.pdf', $data)->render(),
+            'portrait',
+            $paper,
+            [],
+            300,
+        );
 
         $workDir = storage_path('app/tmp/kartu-'.uniqid('', true));
         @mkdir($workDir, 0755, true);
@@ -337,7 +350,7 @@ class StudentCardController extends Controller
             ];
         })->all();
 
-        return compact('cards', 'layout', 'setting', 'frontBg', 'backBg');
+        return compact('cards', 'layout', 'setting', 'frontBg', 'backBg') + ['printScale' => self::CARD_PRINT_SCALE];
     }
 
     /**

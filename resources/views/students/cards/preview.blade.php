@@ -25,7 +25,7 @@
                     <i class="ri-file-pdf-line me-1"></i>Download PDF
                 </a>
                 <a href="{{ route('user.students.cards.png', ['userId' => $userId] + $params) }}" class="btn btn-outline-primary btn-sm">
-                    <i class="ri-image-line me-1"></i>Download PNG
+                    <i class="ri-image-line me-1"></i>Download PNG (ZIP)
                 </a>
             </div>
         </div>
@@ -35,7 +35,7 @@
                     style="width:100%;height:75vh;border:0;background:#e2e8f0"></iframe>
         </div>
         <div class="card-footer text-muted small">
-            PDF memakai ukuran halaman sesuai ukuran kartu. Untuk banyak kartu, setiap halaman berisi satu sisi kartu depan/belakang.
+            PDF dibuat {{ number_format($setting->card_width_mm * $printScale, 2) }} × {{ number_format($setting->card_height_mm * $printScale, 2) }} mm (2× ukuran kartu). Saat mencetak, gunakan skala 50% untuk hasil ukuran kartu. Setiap halaman berisi satu sisi kartu.
         </div>
     </div>
 @endsection
