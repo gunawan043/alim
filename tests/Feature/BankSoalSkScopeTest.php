@@ -963,6 +963,54 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertMatchesRegularExpression('/\d{1,2} \p{L}+ \d{4}/u', $latin);
     }
 
+    public function test_opsi_arab_memakai_kolom_label_dan_isi_terpisah(): void
+    {
+        // Struktur grid: setiap opsi = <td class="col-label"> + <td class="col-isi">,
+        // keduanya berlebar TETAP dalam mm (bukan spasi manual). Dengan ini
+        // label berdiri di satu garis vertikal, awal teks setiap opsi mulai
+        // pada x yang sama, dan jarak label→isi konsisten.
+        $soal = $this->makeSoal(); // helper test ini: bikin soal arab A–D
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $this->assertStringContainsString('class="opts opts-grid', $html, 'Naskah memakai grid kolom eksplisit.');
+
+        // Domain label & isi diekstrak dari tabel grid pertama.
+        $this->assertSame(1, preg_match('/<table class="opts opts-grid[^"]*" style="width: ([\d.]+)mm;"[^>]*>(.*?)<\/table>/s', $html, $t));
+        $lebarTabel = (float) $t[1];
+
+        preg_match_all('/<td class="col-label" style="width: ([\d.]+)mm/', $t[2], $labelMm);
+        preg_match_all('/<td class="col-isi" style="width: ([\d.]+)mm/', $t[2], $isiMm);
+        preg_match_all('/<td class="col-label"[^>]*padding: 0 0 0 ([\d.]+)mm/', $t[2], $gapMm);
+
+        $this->assertNotEmpty($labelMm[1], 'Ada kolom label.');
+        $this->assertNotEmpty($isiMm[1], 'Ada kolom isi.');
+
+        // 1) Semua label berlebar sama; semua isi berlebar sama.
+        $this->assertCount(1, array_unique($labelMm[1]), 'Lebar semua kolom label identik.');
+        $this->assertCount(1, array_unique($isiMm[1]), 'Lebar semua kolom isi identik.');
+
+        // 2) Jarak label→isi satu nilai (tidak ada spasi manual yang bervariasi).
+        $this->assertCount(1, array_unique($gapMm[1]), 'Jarak label→isi konsisten.');
+
+        // 3) Total lebar kolom TEPAT sama dengan lebar tabel (tidak menyusut
+        //    karena pembulatan, sehingga kolom antar baris tetap sejajar).
+        $total = array_sum(array_map('floatval', $labelMm[1]))
+            + array_sum(array_map('floatval', $isiMm[1]))
+            + array_sum(array_map('floatval', $gapMm[1]));
+
+        $this->assertEqualsWithDelta($lebarTabel, $total, 0.05, 'Total kolom = lebar tabel.');
+
+        // 4) Tidak ada spasi manual (&nbsp; beruntun) untuk mengatur posisi.
+        $this->assertStringNotContainsString('&nbsp;&nbsp;', $html, 'Posisi tidak diatur dengan spasi manual.');
+    }
+
     public function test_harakat_tidak_dibuang_saat_dicetak(): void
     {
         // Keputusan produk: tampilan PDF TIDAK boleh mengubah isi database.

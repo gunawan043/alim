@@ -246,6 +246,27 @@
        tepat 1 baris. Lebar mm ditetapkan di partial opsi. */
     table.opts.opts-auto td { white-space: nowrap; }
 
+    /* ── Grid kolom label + isi (struktur dua kolom per opsi) ─────────────
+       Setiap opsi = <td class="col-label"> + <td class="col-isi">. Lebar
+       keduanya DITULIS EKSPLISIT dalam mm oleh partial, sehingga:
+         - semua label berdiri di satu garis vertikal;
+         - awal teks setiap opsi mulai pada x yang sama;
+         - jarak label→isi konsisten apa pun panjang teksnya.
+
+       `padding: 0` WAJIB menimpa aturan `table.opts td` di atas: Dompdf
+       menambahkan padding DI LUAR `width`, jadi padding warisan akan
+       melebarkan setiap sel dan menggeser seluruh kolom ke kanan. */
+    table.opts.opts-grid td {
+        padding: 0;
+        vertical-align: top;
+    }
+    table.opts.opts-grid td.col-label {
+        white-space: nowrap;
+    }
+    table.opts.opts-grid td .letter-ar {
+        margin-right: 0;
+    }
+
     .paper-note { font-size: {{ max(6.0, $fontSize - 4) }}pt; color: #666; }
 </style>
 </head>

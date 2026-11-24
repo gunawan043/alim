@@ -4,6 +4,22 @@
     // Tata letak otomatis (naskah soal): semua kolom berlebar SAMA.
     // LJK/paket tidak mengirim `opsiLayout` sehingga memakai grid lama.
     $opsiLayout = $block['opsiLayout'] ?? null;
+
+    // ── Ukuran kolom ──────────────────────────────────────────────────────
+    // Setiap opsi memakai DUA kolom terpisah di dalam tabel:
+    //
+    //   | label | isi opsi | label | isi opsi | …
+    //
+    // Kolom label berlebar TETAP (LF) dan kolom isi berlebar TETAP (IF).
+    // Karena lebar ditentukan dari angka (mm), bukan dari spasi, maka:
+    //   - semua label berdiri pada satu garis vertikal;
+    //   - awal teks setiap opsi mulai pada x yang sama;
+    //   - jarak label→isi konsisten berapa pun panjang teksnya.
+    //
+    // Dompdf menambahkan padding DI LUAR `width`, jadi LF + IF harus dihitung
+    // agar nol (N opsi tepat memenuhi lebar area opsi).
+    $labelMm = 6.0;   // lebar kolom label (huruf + titik)
+    $gapMm = 1.6;     // jarak tetap antara label dan isi
 @endphp
 @if(! empty($block['opsi']))
     @if($opsiLayout && ! empty($opsiLayout['rows']))
@@ -15,35 +31,41 @@
                 ? (float) $opsiWidthMm
                 : 157.58;
 
-            // Dompdf menambahkan padding DI LUAR `width` sel, jadi lebar
-            // sel harus dikurangi padding agar N sel tetap muat dalam
-            // `$lebarMm`. Tanpa ini total lebar = N x (unit + padding) dan
-            // kolom meluber hingga teks A menimpa B/C/D.
-            $jedaMm = max(0.0, (float) ($opsiIndentMm ?? 2.0));
+            // Satu "unit opsi" = kolom label + kolom isi.
+            $unitMm = $lebarMm / $kolom;
 
-            // Lebar tiap kolom dihitung sekali dari area opsi yang dipakai
-            // SEMUA soal, bukan dari lebar tabel baris ini. Karena semua baris
-            // memakai nilai yang sama, penanda A/B/C/D berada di satu garis
-            // lurus dari soal nomor 1 sampai terakhir.
-            $unitMm = round($lebarMm / $kolom, 2);
+            // Lebar kolom isi = unit dikurangi label dan jarak.
+            //
+            // Dibulatkan ke bawah TAPI sisa pembulatan dikompensasi di sini:
+            // jumlah semua kolom harus tepat sama dengan lebar tabel. Bila
+            // tiap kolom dibulatkan sendiri-sendiri, sisa 2 desimal per kolom
+            // hilang (mis. 4 x 0.3 mm = 1.2 mm) dan tabel menyusut sehingga
+            // kolom terakhir tidak sejajar dengan baris lain.
+            $isiMm = round(max(1.0, $unitMm - $labelMm - $gapMm), 2);
 
-            // Jarak antar kolom = padding + lebar sel, sehingga N kolom
-            // tepat memenuhi `$lebarMm` (tanpa meluber / tumpang tindih).
-            $selMm = round(max(1.0, $unitMm - $jedaMm), 2);
+            // Sisa yang belum terpakai (akibat pembulatan 2 desimal per kolom)
+            // ditambahkan ke kolom isi terakhir agar total seluruh kolom
+            // TEPAT sama dengan lebar tabel. Tanpa ini tabel menyusut
+            // beberapa milimeter dan kolom paling kiri tidak sejajar dengan
+            // baris opsi lain.
+            $totalMm = round($lebarMm, 2);
+            $terpakaiMm = ($labelMm + $gapMm + $isiMm) * $kolom;
+            $isiTerakhirMm = round($isiMm + max(0.0, $totalMm - $terpakaiMm), 2);
 
             $align = $rtl ? 'right' : 'left';
-            $padStyle = $rtl
-                ? "0 0 0 {$jedaMm}mm"
-                : "0 {$jedaMm}mm 0 0";
+            $labelAlign = $rtl ? 'right' : 'left';
+
+            // Label selalu menempel ke sisi isi (RTL: label di kanan isi),
+            // sehingga jarak label→isi tetap konsisten.
+            $labelPad = $rtl ? "0 0 0 {$gapMm}mm" : "0 {$gapMm}mm 0 0";
+            $isiPad = '0';
 
             // Grid tetap melipat teks yang lebih panjang dari kolomnya agar
             // tidak menimpa kolom sebelah. Opsi pendek tetap satu baris.
             $whiteSpace = ! empty($opsiLayout['wrap']) ? 'normal' : 'nowrap';
         @endphp
-        {{-- Satu tabel per baris, SELALU N kolom. Dompdf membagi lebar tabel
-             dari proporsi `width` sel, sehingga lebar berbeda / colspan
-             membuat kolom baris lain bergeser. Semua sel di sini berlebar
-             identik dan tanpa colspan → kolom lurus sejajar. --}}
+        {{-- Satu tabel per baris, lebar tiap kolom DIEKSPLISITKAN dalam mm.
+             Tidak ada spasi manual yang dipakai untuk memposisikan apa pun. --}}
         @foreach($opsiLayout['rows'] as $row)
             @php
                 $sisa = max(0, $kolom - count($row));
@@ -52,41 +74,50 @@
                 // kanan walau soal hanya punya 2–3 pilihan.
                 $selIsi = $row;
             @endphp
-            <table class="opts opts-auto {{ $rtl ? 'rtl' : '' }}" style="width: {{ $lebarMm }}mm;">
+            <table class="opts opts-grid {{ $rtl ? 'rtl' : '' }}" style="width: {{ $totalMm }}mm;" cellspacing="0" cellpadding="0">
                 <tr>
                     @if($rtl && $sisa > 0)
                         @for($i = 0; $i < $sisa; $i++)
-                            <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }};">&nbsp;</td>
+                            {{-- Slot kosong tetap memakai DUA kolom dengan lebar
+                                 sama, supaya grid tidak bergeser. --}}
+                            <td class="col-label" style="width: {{ $labelMm }}mm;">&nbsp;</td>
+                            <td class="col-isi" style="width: {{ $isiMm }}mm;">&nbsp;</td>
                         @endfor
                     @endif
 
                     @foreach($selIsi as $cell)
-                        @php $opsi = $block['opsi'][$cell['index']] ?? null; @endphp
-                        <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }}; text-align: {{ $align }}; white-space: {{ $whiteSpace }};">
-                            @if($opsi)
-                                @if($rtl)
-                                    {{-- RTL: teks pilihan di kiri, marker ".ج" di
-                                         KANAN. Urutan visual marker disusun di PHP
-                                         (LjkArabicText::optionMarkerRtl) karena
-                                         Dompdf mengabaikan inline-block sehingga
-                                         lebar tetap tidak bisa diandalkan. --}}
-                                    {!! LjkArabicText::marksToHtml($opsi['teks']) !!}
-                                    <span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($opsi['display_label'] ?? $opsi['label']) !!}</span>
-                                @else
-                                    <span class="letter">{!! LjkArabicText::marksToHtml($opsi['display_label'] ?? $opsi['label']) !!}.</span>
-                                    {!! LjkArabicText::marksToHtml($opsi['teks']) !!}
-                                @endif
-                            @else
-                                &nbsp;
-                            @endif
-                        </td>
+                        @php
+                            $opsi = $block['opsi'][$cell['index']] ?? null;
+                            $label = $opsi ? ($opsi['display_label'] ?? $opsi['label']) : '';
+                            // Kolom isi TERAKHIR menyerap sisa pembulatan.
+                            $isiSelMm = $loop->last ? $isiTerakhirMm : $isiMm;
+                        @endphp
+                        @if($rtl)
+                            {{-- RTL: kolom ISI di kiri, kolom LABEL di kanan.
+                                 Tabel tetap dibangun kiri→kanan; sel isi ditulis
+                                 lebih dulu agar berada di kiri label. --}}
+                            <td class="col-isi" style="width: {{ $isiSelMm }}mm; text-align: {{ $align }}; white-space: {{ $whiteSpace }}; padding: {{ $isiPad }};">
+                                @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
+                            </td>
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: {{ $labelAlign }}; padding: {{ $labelPad }};">
+                                @if($opsi)<span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($label) !!}</span>@else&nbsp;@endif
+                            </td>
+                        @else
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: {{ $labelAlign }}; padding: {{ $labelPad }};">
+                                @if($opsi)<span class="letter">{!! LjkArabicText::marksToHtml($label) !!}.</span>@else&nbsp;@endif
+                            </td>
+                            <td class="col-isi" style="width: {{ $isiSelMm }}mm; text-align: {{ $align }}; white-space: {{ $whiteSpace }}; padding: {{ $isiPad }};">
+                                @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
+                            </td>
+                        @endif
                     @endforeach
 
-                    {{-- LTR: sel kosong di kanan. Lebar & padding SAMA dengan
+                    {{-- LTR: sel kosong di kanan. Struktur & lebar SAMA dengan
                          sel berisi supaya posisi kolom tidak bergeser. --}}
                     @if(! $rtl && $sisa > 0)
                         @for($i = 0; $i < $sisa; $i++)
-                            <td style="width: {{ $selMm }}mm; padding: {{ $padStyle }};">&nbsp;</td>
+                            <td class="col-label" style="width: {{ $labelMm }}mm;">&nbsp;</td>
+                            <td class="col-isi" style="width: {{ $isiMm }}mm;">&nbsp;</td>
                         @endfor
                     @endif
                 </tr>
