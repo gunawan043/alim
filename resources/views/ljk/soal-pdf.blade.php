@@ -128,7 +128,7 @@
     @endif
     ol.karakter li { margin-bottom: 0; }
     /* Daftar karakter pada naskah Arab: penanda di kanan, teks mengalir RTL. */
-    ol.karakter.rtl { direction: rtl; margin: 0.1em 1.6em 0 0; }
+    ol.karakter.rtl { direction: rtl; text-align: right; margin: 0.1em 1.6em 0 0; }
     @if($rtlExam && $karakterStyle['marker'] === 'numbered')
         ol.karakter.rtl { list-style-type: arabic-indic; }
     @endif
@@ -315,7 +315,7 @@
                         ]);
                     @endphp
                     <li>
-                        <span class="karakter-no"><span class="ar ar-number">{{ $nomorKarakter }}</span><span class="num-dot">.</span></span>
+                        <span class="karakter-no"><span class="num-dot">.</span><span class="ar ar-number">{{ $nomorKarakter }}</span></span>
                         {!! LjkArabicText::toHtml($butir) !!}
                     </li>
                 @endforeach
@@ -400,11 +400,11 @@
                                 @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm ?? null, 'opsiIndentMm' => $optionIndent ?? null])
                             </td>
                             <td class="qno" style="width: 4.5%; text-align: right;">
-                                @if($arabAngka ?? false)@php $nomorSoal = rtrim((string) ($block['nomor_tampil'] ?? ($block['nomor'].'.')), '.'); @endphp<span class="qno-number"><span class="ar ar-number">{{ $nomorSoal }}</span><span class="num-dot">.</span></span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
+                                @if($arabAngka ?? false)@php $nomorSoal = rtrim((string) ($block['nomor_tampil'] ?? ($block['nomor'].'.')), '.'); @endphp<span class="qno-number"><span class="num-dot">.</span><span class="ar ar-number">{{ $nomorSoal }}</span></span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
                             </td>
                         @else
                             <td class="qno">
-                                @if($arabAngka ?? false)@php $nomorSoal = rtrim((string) ($block['nomor_tampil'] ?? ($block['nomor'].'.')), '.'); @endphp<span class="qno-number"><span class="ar ar-number">{{ $nomorSoal }}</span><span class="num-dot">.</span></span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
+                                @if($arabAngka ?? false)@php $nomorSoal = rtrim((string) ($block['nomor_tampil'] ?? ($block['nomor'].'.')), '.'); @endphp<span class="qno-number"><span class="num-dot">.</span><span class="ar ar-number">{{ $nomorSoal }}</span></span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
                             </td>
                             <td class="qbody">
                                 <div>{!! LjkArabicText::toHtml($block['pertanyaan']) !!}</div>

@@ -1348,7 +1348,11 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringContainsString('>١</span>', $html, 'Nomor soal Arab memakai angka Arab.');
         $this->assertStringContainsString('>٢</span>', $html, 'Nomor kedua juga angka Arab.');
         $this->assertStringContainsString('class="qno-number"', $html, 'Nomor soal memakai wrapper arah LTR.');
-        $this->assertStringContainsString('class="num-dot"', $html, 'Titik nomor memakai font Latin agar tidak terbaca nol.');
+        $this->assertStringContainsString(
+            'class="num-dot">.</span><span class="ar ar-number">١</span>',
+            $html,
+            'Titik berada di kiri nomor: .١'
+        );
         $this->assertStringContainsString(
             'class="ar ar-number"',
             $html,
@@ -1379,6 +1383,11 @@ class BankSoalSkScopeTest extends TestCase
         );
         $this->assertStringContainsString('class="instruksi-arab ar-block"', $html, 'Instruksi Arab dipakai.');
         $this->assertStringContainsString('class="karakter rtl"', $html, 'Daftar karakter mengalir RTL.');
+        $this->assertStringContainsString(
+            'ol.karakter.rtl { direction: rtl; text-align: right;',
+            $html,
+            'Daftar karakter rata kanan.'
+        );
     }
 
     public function test_naskah_arab_memaksa_soal_latin_ikut_rtl(): void
