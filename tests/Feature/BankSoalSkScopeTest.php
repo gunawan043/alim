@@ -899,17 +899,51 @@ class BankSoalSkScopeTest extends TestCase
         // Algoritma bidi: tanda tanya adalah tanda penutup kalimat, jadi
         // berada di ujung KIRI baris visual — bukan di awal teks Arab.
         $this->assertStringEndsWith('؟</span>', $shaped, 'Tanda tanya berada di ujung kiri baris.');
-        $this->assertStringContainsString('ﻰﻨﻌﻣ', $shaped, 'Kata pertama (أول) tetap di posisi kanan.');
 
-        // Huruf dan tanda baca tetap utuh walau harakat dibuang untuk cetak.
-        // Bandingkan dengan kata TANPA harakat: hasilnya harus identik, artinya
-        // pembuangan harakat tidak menghilangkan atau mengubah satu huruf pun.
-        $this->assertSame(
+        // Harakat DIPERTAHANKAN: isi database tidak boleh diubah saat tampil.
+        // Posisi harakat di atas huruf menjadi tanggung jawab font (lihat
+        // config('ljk.pdf.fonts.arabic_preferred') — Amiri menempatkannya
+        // melayang, sedangkan Scheherazade/Noto Naskh menempelkannya).
+        $berHarakat = LjkArabicText::marksToHtml('مَدْرَسَةٌ');
+        $this->assertNotSame(
             LjkArabicText::marksToHtml('مدرسة'),
-            LjkArabicText::marksToHtml('مَدْرَسَةٌ'),
-            'Huruf kata tetap lengkap dan sama dengan versi tanpa harakat.'
+            $berHarakat,
+            'Harakat tidak dibuang dari teks cetak.'
         );
+        $this->assertMatchesRegularExpression('/\p{Mn}/u', html_entity_decode(strip_tags($berHarakat)), 'Tanda harakat ikut tercetak.');
+
+        // Huruf tetap lengkap: jumlah huruf sama dengan versi tanpa harakat.
+        $hurufBer = preg_match_all('/[\x{FB50}-\x{FEFC}]/u', html_entity_decode(strip_tags($berHarakat)));
+        $hurufTanpa = preg_match_all('/[\x{FB50}-\x{FEFC}]/u', html_entity_decode(strip_tags(LjkArabicText::marksToHtml('مدرسة'))));
+        $this->assertSame($hurufTanpa, $hurufBer, 'Jumlah huruf tidak berkurang karena harakat.');
+
         $this->assertStringContainsString('«', $shaped, 'Tanda kutip Arab tetap ada.');
+    }
+
+    public function test_harakat_tidak_dibuang_saat_dicetak(): void
+    {
+        // Keputusan produk: tampilan PDF TIDAK boleh mengubah isi database.
+        // Soal tersimpan berharakat, maka PDF pun mencetak harakatnya.
+        // (stripMarks tetap tersedia sebagai utilitas, tapi tidak dipakai
+        // di jalur cetak.)
+        $teks = 'ادْعُ اللهَ قَبْلَ أَنْ تَبْدَأَ الْإِجَابَةَ!';
+
+        $html = LjkArabicText::marksToHtml($teks);
+        $plain = html_entity_decode(strip_tags($html));
+
+        $this->assertSame(
+            preg_match_all('/\p{Mn}/u', $teks),
+            preg_match_all('/\p{Mn}/u', $plain),
+            'Jumlah harakat pada cetakan sama dengan di database.'
+        );
+        $this->assertNotSame('', $plain);
+        // Harakat berada TEPAT setelah huruf (bentuk presentasi U+FB50–U+FEFC),
+        // bukan mengambang di awal/akhir kata.
+        $this->assertMatchesRegularExpression(
+            '/[\x{FB50}-\x{FEFC}][\x{064B}-\x{0652}]/u',
+            $plain,
+            'Harakat menempel langsung pada hurufnya.'
+        );
     }
 
     public function test_paragraf_arab_mempertahankan_urutan_kalimat(): void
@@ -958,11 +992,14 @@ class BankSoalSkScopeTest extends TestCase
         );
     }
 
-    public function test_penanda_opsi_arab_huruf_dulu_baru_titik(): void
+    public function test_penanda_opsi_arab_titik_sebelum_huruf_pada_html(): void
     {
-        // Kaidah: "ا." — huruf di kanan, titik tepat di kirinya. Dompdf
-        // mencetak sesuai urutan elemen HTML (tanpa bidi), jadi huruf harus
-        // ditulis lebih dulu baru titik.
+        // Hasil cetak yang dikehendaki: ".ا" — titik di KIRI, huruf di kanan.
+        //
+        // `.ar` memakai direction: rtl, sehingga Dompdf menerapkan bidi dan
+        // MEMBALIK urutan elemen anak. Karena itu titik harus ditulis LEBIH
+        // DULU di HTML; bidilah yang menempatkannya di kiri. Menulis huruf
+        // lebih dulu menghasilkan "ا." yang salah.
         $marker = LjkArabicText::optionMarkerRtl('ا');
 
         $posLetter = mb_strpos($marker, LjkArabicText::shape('ا'));
@@ -970,7 +1007,7 @@ class BankSoalSkScopeTest extends TestCase
 
         $this->assertNotFalse($posLetter);
         $this->assertNotFalse($posDot);
-        $this->assertLessThan($posDot, $posLetter, 'Huruf Arab mendahului titik pada HTML penanda.');
+        $this->assertLessThan($posLetter, $posDot, 'Titik mendahului huruf pada HTML penanda (bidi RTL membaliknya saat cetak).');
     }
 
     public function test_instruksi_arab_menjaga_kurung_dan_urutan_kata(): void
@@ -1170,12 +1207,12 @@ class BankSoalSkScopeTest extends TestCase
         ])->render();
 
         // Marker ".ج" berada di KANAN teks; titik menempel di kiri huruf.
-        // Urutan visualnya ditetapkan PHP karena Dompdf mengabaikan
-        // display:inline-block pada span, sehingga lebar tetap tidak dipakai.
+        // `.ar` ber-direction rtl → bidi Dompdf membalik urutan, jadi titik
+        // ditulis DULU di HTML agar tercetak di kiri huruf ("د." → ".د").
         $this->assertMatchesRegularExpression(
-            '/<span class="letter letter-ar"><span class="ar">[^<]*<\/span><span class="marker-dot">\.<\/span><\/span>/u',
+            '/<span class="letter letter-ar"><span class="marker-dot">\.<\/span><span class="ar">[^<]*<\/span><\/span>/u',
             $html,
-            'Marker RTL ditulis "ج.": titik menempel di kiri huruf.'
+            'Marker RTL ditulis ".ج" pada HTML: titik di kiri huruf saat cetak.'
         );
 
         $teks = LjkArabicText::marksToHtml('سبعة');
@@ -1525,10 +1562,18 @@ class BankSoalSkScopeTest extends TestCase
         );
         $this->assertStringContainsString('class="instruksi-arab ar-block"', $html, 'Instruksi Arab dipakai.');
         $this->assertStringContainsString('class="karakter rtl"', $html, 'Daftar karakter mengalir RTL.');
-        $this->assertStringContainsString(
-            'ol.karakter.rtl { direction: rtl; text-align: right;',
+        // Daftar tetap rata kanan, TANPA direction: rtl — teks Arab sudah
+        // disusun ke urutan visual di PHP, direction: rtl akan membalik
+        // urutan inline (nomor lompat ke kiri).
+        $this->assertMatchesRegularExpression(
+            '/ol\.karakter\.rtl \{[^}]*text-align: right;/',
             $html,
             'Daftar karakter rata kanan.'
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/ol\.karakter\.rtl \{[^}]*direction: rtl;/',
+            $html,
+            'Daftar karakter tidak memakai direction: rtl (menghindari pembalikan ganda).'
         );
     }
 

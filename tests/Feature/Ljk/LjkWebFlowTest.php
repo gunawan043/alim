@@ -962,11 +962,12 @@ class LjkWebFlowTest extends TestCase
 
         $html = $sheet->render($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
         // RTL: penanda huruf diletakkan setelah teks opsi sehingga berdiri di
-        // tepi kanan sel, dengan titik menempel di sisi kiri huruf penanda.
+        // tepi kanan sel. `.ar` ber-direction rtl membuat bidi Dompdf membalik
+        // urutan elemen, jadi titik ditulis DULU agar tercetak di kiri huruf.
         $this->assertMatchesRegularExpression(
-            '/<span class="letter letter-ar"><span class="ar">.\.?<\/span><span class="marker-dot">\.<\/span><\/span>/u',
+            '/<span class="letter letter-ar"><span class="marker-dot">\.<\/span><span class="ar">.\.?<\/span><\/span>/u',
             $html,
-            'Penanda huruf mengikuti teks opsi dan titiknya menempel.'
+            'Penanda huruf mengikuti teks opsi dan titiknya tercetak di kiri huruf.'
         );
 
         // Ujian mode Arab → SELURUH lembar memakai huruf Arab (tanpa A.).
