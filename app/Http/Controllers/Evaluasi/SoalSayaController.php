@@ -38,7 +38,7 @@ class SoalSayaController extends Controller
     public function index(Request $request, string $userId)
     {
         $school = $this->school($request);
-        $query = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options', 'creator:id,name'])
+        $query = Soal::with(['bankSoal.subject:id,name,name_ar', 'bankSoal.gradeLevel:id,name', 'options', 'creator:id,name'])
             ->where('dibuat_oleh', $userId)
             ->when($request->filled('q'), fn ($q) => $q->where('pertanyaan', 'like', '%'.$request->q.'%'))
             ->when($request->filled('jenis_asesmen'), fn ($q) => $q->where('jenis_asesmen', $request->jenis_asesmen))
@@ -440,7 +440,7 @@ class SoalSayaController extends Controller
 
         $bankIds = BankSoal::accessibleBy($userId, $school->id)->pluck('id');
 
-        $query = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options'])
+        $query = Soal::with(['bankSoal.subject:id,name,name_ar', 'bankSoal.gradeLevel:id,name', 'options'])
             ->whereIn('bank_soal_id', $bankIds)
             ->when($request->filled('bank_id'), fn ($q) => $q->where('bank_soal_id', $request->bank_id))
             ->when($request->filled('jenis_asesmen'), fn ($q) => $q->where('jenis_asesmen', $request->jenis_asesmen))
@@ -483,7 +483,7 @@ class SoalSayaController extends Controller
         ]);
 
         $bankIds = BankSoal::accessibleBy($userId, $school->id)->pluck('id');
-        $questions = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options'])
+        $questions = Soal::with(['bankSoal.subject:id,name,name_ar', 'bankSoal.gradeLevel:id,name', 'options'])
             ->whereIn('id', $data['ids'])
             ->whereIn('bank_soal_id', $bankIds)
             ->get()
@@ -548,7 +548,7 @@ class SoalSayaController extends Controller
         // naskah di layar sama dengan naskah yang akan dicetak.
         $selected = collect($request->input('ids', []))->filter()->map(fn ($id) => (string) $id)->values()->all();
 
-        $questions = Soal::with(['bankSoal.subject:id,name', 'bankSoal.gradeLevel:id,name', 'options', 'wacana'])
+        $questions = Soal::with(['bankSoal.subject:id,name,name_ar', 'bankSoal.gradeLevel:id,name', 'options', 'wacana'])
             ->whereIn('bank_soal_id', $bankIds)
             ->when($selected !== [], fn ($q) => $q->whereIn('id', $selected))
             ->when($request->filled('bank_id'), fn ($q) => $q->where('bank_soal_id', $request->bank_id))

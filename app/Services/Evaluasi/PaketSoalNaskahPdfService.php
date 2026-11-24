@@ -126,7 +126,12 @@ class PaketSoalNaskahPdfService
 
     public function html(PaketSoal $paket): string
     {
-        return view('ljk.soal-pdf', $this->data($paket))->render();
+        $data = $this->data($paket);
+        $view = ($data['examBahasa'] ?? 'latin') === 'arab'
+            ? 'ljk.arab.soal-pdf'
+            : 'ljk.soal-pdf';
+
+        return view($view, $data)->render();
     }
 
     public function pdf(PaketSoal $paket): string

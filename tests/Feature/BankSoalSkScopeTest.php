@@ -847,6 +847,57 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertContains('أحمد فوزي', $nilai, 'Nama guru dari users.name_ar.');
     }
 
+    public function test_naskah_arab_otomatis_memakai_nama_mapel_dan_guru_arab(): void
+    {
+        $this->math->forceFill(['name_ar' => null])->save();
+        $this->guru->forceFill(['name_ar' => null])->save();
+
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'ما هو ناتج ٣ + ٤ ؟'])->save();
+
+        $data = app(SoalNaskahPdfService::class)->data(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru->fresh(),
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $nilai = collect($data['identityRows'])->flatten(1)->map(fn ($pair) => $pair[1])->all();
+
+        $this->assertContains('الرياضيات', $nilai, 'Mapel otomatis Arab dari kamus kurikulum.');
+
+        $labelGuru = (string) config('ljk.soal.identitas_arab.guru');
+        $guru = collect($data['identityRows'])->flatten(1)
+            ->first(fn ($pair) => $pair[0] === $labelGuru)[1] ?? '';
+
+        $this->assertMatchesRegularExpression('/\p{Arabic}/u', $guru, 'Nama guru otomatis Arab.');
+    }
+
+    public function test_naskah_arab_memakai_urut_kata_rtl_dan_tanda_tanya_di_kiri(): void
+    {
+        $pertanyaan = 'مَا مَعْنَى «مَدْرَسَةٌ»؟';
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => $pertanyaan])->save();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
+        );
+
+        $this->assertStringContainsString(
+            LjkArabicText::toHtmlRtl($pertanyaan, false),
+            $html,
+            'Template Arab memakai susunan kata RTL, bukan urutan segmen LTR.'
+        );
+
+        $shaped = LjkArabicText::toHtmlRtl($pertanyaan, false);
+        $this->assertStringStartsWith('<span class="ar">؟', $shaped, 'Tanda tanya berada di kiri.');
+    }
+
     public function test_naskah_arab_mencetak_tanggal_hijriah_dan_masehi(): void
     {
         $tanggal = app(SoalNaskahPdfService::class)->tanggalArab('2026-11-24');

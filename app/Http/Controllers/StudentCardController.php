@@ -203,55 +203,42 @@ class StudentCardController extends Controller
             return $data;
         }
 
-        $workDir = storage_path('app/tmp/kartu-'.uniqid('', true));
-        @mkdir($workDir, 0755, true);
-        $pdfPath = $workDir.'/kartu.pdf';
-        $pattern = $workDir.'/kartu-%03d.png';
-        file_put_contents($pdfPath, $pdf);
+        if (! class_exists(\Imagick::class)) {
+            abort(503, 'Server belum menyediakan ekstensi gambar untuk ekspor PNG.');
+        }
+
+        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60)), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98))];
+        $pdf = app(DocumentPdfService::class)->renderHtml(
+            view('students.cards.pdf', $data)->render(),
+            'portrait',
+            $paper,
+        );
 
         try {
-            if (! $this->commandExists('gs')) {
-                abort(503, 'Server belum menyediakan Ghostscript untuk ekspor PNG.');
-            }
+            $images = new \Imagick;
+            $images->setResolution(300, 300);
+            $images->readImageBlob($pdf);
+            $images->setImageFormat('png');
 
-            $process = new \Symfony\Component\Process\Process([
-                'gs', '-dSAFER', '-dBATCH', '-dNOPAUSE',
-                '-sDEVICE=png16m', '-dTextAlphaBits=4', '-dGraphicsAlphaBits=4',
-                '-r300', '-sOutputFile='.$pattern, $pdfPath,
-            ]);
-            $process->setTimeout(120);
-            $process->run();
-
-            if (! $process->isSuccessful()) {
-                throw new \RuntimeException($process->getErrorOutput() ?: 'Ghostscript gagal membuat PNG.');
-            }
-
-            $files = glob($workDir.'/kartu-*.png') ?: [];
-            sort($files);
-
-            if ($files === []) {
-                throw new \RuntimeException('Tidak ada file PNG yang dihasilkan.');
-            }
-
-            $zipPath = $workDir.'/Kartu-Pelajar-'.now()->format('Ymd-His').'.zip';
+            $zipPath = tempnam(sys_get_temp_dir(), 'kartu-pelajar-').'.zip';
             $zip = new \ZipArchive;
 
             if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                throw new \RuntimeException('Gagal membuat arsip PNG.');
+                abort(500, 'Gagal membuat arsip PNG.');
             }
 
-            foreach ($files as $index => $file) {
-                $zip->addFile($file, sprintf('kartu-%02d.png', $index + 1));
+            $pageNumber = 0;
+            foreach ($images as $page) {
+                $pageNumber++;
+                $page->setImageFormat('png');
+                $zip->addFromString(sprintf('kartu-%02d.png', $pageNumber), $page->getImageBlob());
             }
 
             $zip->close();
-            @unlink($pdfPath);
-            foreach ($files as $file) {
-                @unlink($file);
-            }
+            $images->clear();
         } catch (\Throwable $e) {
             \Log::warning('Gagal mengekspor kartu pelajar PNG', ['error' => $e->getMessage()]);
-            @unlink($pdfPath);
+
             abort(500, 'Gagal membuat PNG kartu pelajar. Gunakan opsi Download PDF.');
         }
 
@@ -348,14 +335,6 @@ class StudentCardController extends Controller
         $params = $request->only(['student_id', 'ids', 'study_group_id', 'q']);
 
         return array_filter($params, fn ($value) => $value !== null && $value !== '');
-    }
-
-    private function commandExists(string $command): bool
-    {
-        $process = new \Symfony\Component\Process\Process(['which', $command]);
-        $process->run();
-
-        return $process->isSuccessful() && trim($process->getOutput()) !== '';
     }
 
     private function mmToPt(float $mm): float

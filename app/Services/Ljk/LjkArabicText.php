@@ -142,6 +142,45 @@ final class LjkArabicText
     }
 
     /**
+     * Versi RTL untuk dokumen Arab: satu baris utuh disusun visual RTL.
+     *
+     * Berbeda dari toHtml() yang memproses per segmen (aman untuk teks Latin
+     * dengan kutipan Arab), metode ini mempertahankan urutan kata Arab dan
+     * memindahkan tanda baca akhir (؟، .) ke kiri. Dipakai oleh template
+     * naskah Arab yang terpisah.
+     */
+    public static function toHtmlRtl(?string $text, bool $nl2br = true): string
+    {
+        $text = (string) $text;
+
+        if ($text === '') {
+            return '';
+        }
+
+        $lines = preg_split("/\r\n|\r|\n/", $text) ?: [$text];
+        $htmlLines = [];
+
+        foreach ($lines as $line) {
+            if ($line === '') {
+                $htmlLines[] = '';
+
+                continue;
+            }
+
+            // Jangan merusak markup HTML; pakai jalur lama untuk baris bertag.
+            if (! self::hasArabic($line) || strip_tags($line) !== $line) {
+                $htmlLines[] = self::lineToHtml($line);
+
+                continue;
+            }
+
+            $htmlLines[] = '<span class="ar">'.e(self::shape($line)).'</span>';
+        }
+
+        return $nl2br ? implode('<br>', $htmlLines) : implode(' ', $htmlLines);
+    }
+
+    /**
      * Satu baris: pecah menjadi segmen Arab dan non-Arab.
      */
     private static function lineToHtml(string $line): string
@@ -327,11 +366,14 @@ final class LjkArabicText
                 continue;
             }
 
-            // Deret angka menempel menjadi satu gugus agar urutannya utuh.
-            $isDigit = self::isDigit($code);
-            $currentIsDigit = $current !== '' && self::isDigit(mb_ord(mb_substr($current, 0, 1), 'UTF-8'));
+            // Deret angka dan kata Latin menempel menjadi satu gugus agar
+            // urutannya tidak terbalik saat baris disusun RTL.
+            $isWordChar = self::isDigit($code) || self::isLatinLetter($code);
+            $currentIsWordChar = $current !== ''
+                && (self::isDigit(mb_ord(mb_substr($current, 0, 1), 'UTF-8'))
+                    || self::isLatinLetter(mb_ord(mb_substr($current, 0, 1), 'UTF-8')));
 
-            if ($isDigit && $currentIsDigit) {
+            if ($isWordChar && $currentIsWordChar) {
                 $current .= $char;
 
                 continue;
@@ -359,5 +401,12 @@ final class LjkArabicText
         return ($code >= 0x0660 && $code <= 0x0669)   // ٠-٩
             || ($code >= 0x06F0 && $code <= 0x06F9)   // ۰-۹
             || ($code >= 0x0030 && $code <= 0x0039);  // 0-9
+    }
+
+    /** Huruf Latin dasar; dipakai untuk menjaga kata Latin utuh saat RTL. */
+    private static function isLatinLetter(int $code): bool
+    {
+        return ($code >= 0x0041 && $code <= 0x005A)   // A-Z
+            || ($code >= 0x0061 && $code <= 0x007A);  // a-z
     }
 }

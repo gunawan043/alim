@@ -8,6 +8,8 @@ use App\Models\AcademicYear;
 use App\Models\School;
 use App\Models\Soal;
 use App\Models\User;
+use App\Services\ArabicName\ArabicNameResolver;
+use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
 use App\Services\Ljk\LjkArabicText;
 use App\Services\Ljk\LjkPdfFonts;
 use App\Services\Ljk\LjkSchoolLetterhead;
@@ -38,7 +40,12 @@ class SoalNaskahPdfService
         ?string $judul = null,
         ?string $kelasLabel = null
     ): string {
-        return view('ljk.soal-pdf', $this->data($questions, $school, $user, $settings, $judul, $kelasLabel))->render();
+        $data = $this->data($questions, $school, $user, $settings, $judul, $kelasLabel);
+        $view = ($data['examBahasa'] ?? 'latin') === Soal::BAHASA_ARAB
+            ? 'ljk.arab.soal-pdf'
+            : 'ljk.soal-pdf';
+
+        return view($view, $data)->render();
     }
 
     /**
@@ -262,14 +269,30 @@ class SoalNaskahPdfService
         // naskah tidak kosong — guru melengkapinya di halaman master.
         $subjectMaster = $first?->bankSoal?->subject;
         $mapel = (string) ($subjectMaster?->name ?? '-');
-        $mapelAr = trim((string) ($subjectMaster?->name_ar ?? ''));
-        $guruAr = trim((string) ($user->name_ar ?? ''));
         $kelas = $kelasLabel ?: (string) ($first?->bankSoal?->gradeLevel?->name ?? '-');
 
+        // Naskah Arab: nama mapel & guru WAJIB Arab. Utamakan kolom name_ar
+        // dari master kurikulum/GTK, lalu kamus mapel, lalu transliterasi
+        // otomatis. Naskah Latin tetap memakai nama aslinya.
+        $mapelTampil = $mapel;
+        $guruTampil = (string) $user->name;
+
+        if ($isArabicExam) {
+            $arabicNames = app(ArabicNameResolver::class);
+            $generator = app(ArabicNameGeneratorContract::class);
+
+            $mapelTampil = (string) ($arabicNames->subjectName($subjectMaster)
+                ?? $generator->generate($mapel)
+                ?? $mapel);
+            $guruTampil = (string) (filled($user->name_ar)
+                ? $user->name_ar
+                : ($arabicNames->userName($user) ?? $generator->generate((string) $user->name)));
+        }
+
         $identityRows = $this->identityRows($settings, [
-            'mapel' => $isArabicExam && $mapelAr !== '' ? $mapelAr : $mapel,
+            'mapel' => $mapelTampil,
             'kelas' => $kelas,
-            'guru' => $isArabicExam && $guruAr !== '' ? $guruAr : (string) $user->name,
+            'guru' => $guruTampil,
         ], $isArabicExam);
 
         $karakter = ! ($settings['show_karakter'] ?? true) ? [] : $print->karakterItems($settings);
@@ -328,9 +351,9 @@ class SoalNaskahPdfService
             ],
             'lineHeight' => (float) ($settings['line_height'] ?? 1.0),
             'questionGap' => (float) ($settings['question_gap'] ?? 1.5),
-            'mataPelajaran' => $mapel,
+            'mataPelajaran' => $mapelTampil,
             'kelas' => $kelas,
-            'guruPengampu' => (string) $user->name,
+            'guruPengampu' => $guruTampil,
             'namaPeserta' => '',
             'karakter' => $karakter,
             'instruksi' => ($settings['show_instruksi'] ?? true) ? $print->instruksi($settings) : '',
