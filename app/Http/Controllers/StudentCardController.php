@@ -192,7 +192,6 @@ class StudentCardController extends Controller
             'portrait',
             $paper,
             $request->boolean('download') ? 'attachment' : 'inline',
-            300,
         );
     }
 
@@ -203,15 +202,6 @@ class StudentCardController extends Controller
         if ($data instanceof \Illuminate\Http\RedirectResponse) {
             return $data;
         }
-
-        $paper = [0, 0, $this->mmToPt((float) ($data['setting']->card_width_mm ?: 85.60)), $this->mmToPt((float) ($data['setting']->card_height_mm ?: 53.98))];
-        $pdf = app(DocumentPdfService::class)->renderHtml(
-            view('students.cards.pdf', $data)->render(),
-            'portrait',
-            $paper,
-            [],
-            300,
-        );
 
         $workDir = storage_path('app/tmp/kartu-'.uniqid('', true));
         @mkdir($workDir, 0755, true);
