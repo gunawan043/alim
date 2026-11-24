@@ -4411,7 +4411,11 @@ Route::fallback(fn () => abort(404));
 
 // ── AUTO-DEPLOY WEBHOOK ────────────────────────────────────────────────────────
 // Lihat: app/Http/Controllers/DeployController.php
-Route::post('/webhook/deploy', [DeployController::class, 'handle']);
+// Hanya untuk produksi: staging tidak boleh punya jalur deploy yang bisa menarik
+// kode/commit ke host uji.
+if (app()->environment('production')) {
+    Route::post('/webhook/deploy', [DeployController::class, 'handle']);
+}
 Route::get('/health', [DeployController::class, 'health']);
 
 Route::view('/offline', 'offline')->name('offline');

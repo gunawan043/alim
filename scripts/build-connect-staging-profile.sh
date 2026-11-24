@@ -101,6 +101,9 @@ file_put_contents($envPath, $out);
 ' "$TARGET_ENV" "$KEYS_FILE"
 
 # Nilai non-secret untuk hosting.
+# Kanal keluar dipaksa tertutup: staging tidak boleh mengirim surel, broadcast,
+# maupun WhatsApp yang bisa sampai ke wali/GTK nyata. Queue `sync` + `MAIL_MAILER=log`
+# berarti notifikasi hanya tercatat di storage/logs/staging.log.
 php -r '
 $path = $argv[1];
 $set = [
@@ -111,6 +114,17 @@ $set = [
   "CONNECT_APPROVAL_ALLOWED_IPS" => $argv[5],
   "CONNECT_SSO_REQUIRE_HTTPS" => "true",
   "CONNECT_APPROVAL_REQUIRE_HTTPS" => "true",
+  "APP_DEBUG" => "false",
+  "LOG_CHANNEL" => "staging",
+  "MAIL_MAILER" => "log",
+  "MAIL_FROM_ADDRESS" => "staging@staging.invalid",
+  "BROADCAST_DRIVER" => "null",
+  "BROADCAST_CONNECTION" => "null",
+  "QUEUE_CONNECTION" => "sync",
+  "WA_ENABLED" => "false",
+  "WA_PROVIDER" => "log",
+  "WA_API_URL" => "",
+  "SCOUT_DRIVER" => "collection",
 ];
 $lines = file($path, FILE_IGNORE_NEW_LINES);
 $seen = [];
@@ -123,6 +137,8 @@ $append = "";
 foreach ($set as $key => $value) {
   if (! isset($seen[$key])) { $append .= $key."=".$value.PHP_EOL; }
 }
+// Baris ganda di sumber (mis. BROADCAST_DRIVER vs BROADCAST_CONNECTION) dimungkinkan;
+// pemenang ditentukan pemuat .env terakhir, jadi nilai paksa ditempatkan paling akhir.
 file_put_contents($path, implode(PHP_EOL, $lines).PHP_EOL.$append);
 ' "$TARGET_ENV" "$STAGE_URL" "$CONNECT_ORIGIN" "$CONNECT_HANDOFF" "$CONNECT_EGRESS"
 
@@ -158,6 +174,16 @@ foreach ($required as $key) {
   if (($env[$key] ?? "") === "") $bad[] = $key;
 }
 if ($env["APP_ENV"] !== "staging") $bad[] = "APP_ENV(!=staging)";
+// Kanal keluar wajib tertutup: profil ini untuk host yang dapat dijangkau publik.
+if (($env["APP_DEBUG"] ?? "") !== "false") $bad[] = "APP_DEBUG(!=false)";
+if (($env["MAIL_MAILER"] ?? "") !== "log") $bad[] = "MAIL_MAILER(!=log)";
+foreach (["BROADCAST_DRIVER", "BROADCAST_CONNECTION"] as $key) {
+  if (($env[$key] ?? "") !== "null") $bad[] = $key."(!=null)";
+}
+if (($env["QUEUE_CONNECTION"] ?? "") !== "sync") $bad[] = "QUEUE_CONNECTION(!=sync)";
+if (($env["WA_ENABLED"] ?? "") !== "false") $bad[] = "WA_ENABLED(!=false)";
+if (($env["WA_PROVIDER"] ?? "") !== "log") $bad[] = "WA_PROVIDER(!=log)";
+if (($env["LOG_CHANNEL"] ?? "") !== "staging") $bad[] = "LOG_CHANNEL(!=staging)";
 foreach (["CONNECT_SSO_REQUIRE_HTTPS", "CONNECT_APPROVAL_REQUIRE_HTTPS"] as $key) {
   if (($env[$key] ?? "") !== "true") $bad[] = $key."(!=true)";
 }

@@ -432,11 +432,13 @@
                         <input type="hidden" name="leger_mode" value="{{ $legerMode ?? 'sts' }}">
 
                         <div class="table-responsive leger-scroll">
-                            <table id="tab-leger" class="table table-bordered table-hover align-middle mb-0" style="min-width: max-content;">
+                            <table id="tab-leger" class="table table-bordered table-hover align-middle mb-0{{ ($legerMode ?? 'sts') === 'sas' ? ' is-sas' : '' }}" style="min-width: max-content;">
                                 <thead class="table-light text-center">
                                     @php
                                         $isSasLeger = ($legerMode ?? 'sts') === 'sas';
                                         $umumCount = $subjectMap->count() - ($agamaCount ?? 0);
+                                        // STS: nilai tidak dikali bobot — kolom Jumlah dan rincian N/Jumlah tidak dipakai.
+                                        $subjectSpan = $isSasLeger ? 2 : 1;
                                     @endphp
                                     {{-- Baris grup: Pembiasaan/Tahfidz (SAS) · Agama | Umum · Presensi --}}
                                     <tr>
@@ -450,14 +452,14 @@
                                             <th colspan="3" class="align-middle" style="background:var(--bs-primary-bg-subtle);color:var(--bs-primary-text-emphasis);letter-spacing:0.4px;">TAHFIDZ</th>
                                         @endif
                                         @if(($agamaCount ?? 0) > 0)
-                                            <th colspan="{{ $agamaCount * 2 }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
+                                            <th colspan="{{ $agamaCount * $subjectSpan }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
                                         @endif
                                         @if($umumCount > 0)
-                                            <th colspan="{{ $umumCount * 2 }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
+                                            <th colspan="{{ $umumCount * $subjectSpan }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
-                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
                                         @if($isSasLeger)
-                                            <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" title="Jumlah (Bobot × Nilai)">
+                                            <th rowspan="5" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
+                                            <th rowspan="5" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" title="Jumlah (Bobot × Nilai)">
                                                 Jumlah<br><small style="font-size:9px;font-weight:400;">B×N</small>
                                             </th>
                                         @endif
@@ -468,15 +470,15 @@
                                     </tr>
                                     <tr class="text-center">
                                         @if($isSasLeger)
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="doa">Do'a</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="hiwar">Hiwar</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="conv">Conversation</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="juz">Juz</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="jumlah_juz">Jml Juz</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
+                                            <th rowspan="4" style="background:var(--bs-warning-bg-subtle);" data-sort="doa">Do'a</th>
+                                            <th rowspan="4" style="background:var(--bs-warning-bg-subtle);" data-sort="hiwar">Hiwar</th>
+                                            <th rowspan="4" style="background:var(--bs-warning-bg-subtle);" data-sort="conv">Conversation</th>
+                                            <th rowspan="4" style="background:var(--bs-primary-bg-subtle);" data-sort="juz">Juz</th>
+                                            <th rowspan="4" style="background:var(--bs-primary-bg-subtle);" data-sort="jumlah_juz">Jml Juz</th>
+                                            <th rowspan="4" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
                                         @endif
                                         @foreach($subjectMap as $subject)
-                                            <th rowspan="1" colspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
+                                            <th rowspan="2" colspan="{{ $subjectSpan }}" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
                                                 <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px;">
                                                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                                                 </div>
@@ -485,23 +487,25 @@
                                         <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
                                     </tr>
                                     <tr class="text-center">
-                                        @foreach($subjectMap as $subject)
-                                            <th class="sub-n" style="background:var(--bs-tertiary-bg);font-size:9px;" title="Nilai {{ $subject->name }}">N</th>
-                                            <th class="sub-bn" style="background:var(--bs-secondary-bg);font-size:9px;" title="Jumlah = Nilai × Bobot {{ $subject->name }}">Jumlah</th>
-                                        @endforeach
+                                        @if($isSasLeger)
+                                            @foreach($subjectMap as $subject)
+                                                <th class="sub-n" style="background:var(--bs-tertiary-bg);font-size:9px;" title="Nilai {{ $subject->name }}">N</th>
+                                                <th class="sub-bn" style="background:var(--bs-secondary-bg);font-size:9px;" title="Jumlah = Nilai × Bobot {{ $subject->name }}">Jumlah</th>
+                                            @endforeach
+                                        @endif
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-success-subtle text-success" data-sort="s">S</th>
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-warning-subtle text-warning" data-sort="i">I</th>
                                         <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-danger-subtle text-danger" data-sort="a">A</th>
                                     </tr>
                                     <tr>
-                                        <th colspan="{{ 3 }}" class="text-center fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;" data-col="name">
+                                        <th colspan="3" class="text-center fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;" data-col="name">
                                             <span class="bg-primary-subtle text-primary">
                                                 <i class="ri-checkbox-circle-line me-1"></i>KKTP
                                             </span>
                                         </th>
                                         @foreach($subjectMap as $subject)
                                             @php $book = $bookMap[$subject->id] ?? null; @endphp
-                                            <th colspan="2" class="kktp-cell">
+                                            <th colspan="{{ $subjectSpan }}" class="kktp-cell">
                                                 @if($book)
                                                     <input type="number" class="kktp-input"
                                                            name="leger_kkm[{{ $book->id }}]"
@@ -556,19 +560,19 @@
                                             $avgVal = $legerAggMap[$sid] ?? null;
                                             $rankVal = $rankMap[$sid] ?? null;
                                             $pres = $presensiMap[$sid] ?? null;
-                                            $jumlahSts = 0; $countMapel = 0;
-                                            foreach ($subjectMap as $subject) {
-                                                $book = $bookMap[$subject->id] ?? null;
-                                                if (!$book) continue;
-                                                $n = $nilaiMap[$sid][$book->id] ?? null;
-                                                $col = ($legerMode ?? 'sts') === 'sas' ? 'sas' : 'sts';
-                                                $val = $nilaiTahfidzMap[$sid][$book->id] ?? null;
-                                                if ($val === null && $n && $n->{$col} !== null) {
-                                                    $val = $n->{$col};
-                                                }
-                                                if ($val !== null) {
-                                                    $jumlahSts += $val;
-                                                    $countMapel++;
+                                            $jumlahSts = 0;
+                                            if ($isSasLeger) {
+                                                foreach ($subjectMap as $subject) {
+                                                    $book = $bookMap[$subject->id] ?? null;
+                                                    if (!$book) continue;
+                                                    $n = $nilaiMap[$sid][$book->id] ?? null;
+                                                    $val = $nilaiTahfidzMap[$sid][$book->id] ?? null;
+                                                    if ($val === null && $n && $n->sas !== null) {
+                                                        $val = $n->sas;
+                                                    }
+                                                    if ($val !== null) {
+                                                        $jumlahSts += $val;
+                                                    }
                                                 }
                                             }
                                             if ($avgVal === null) $predikat = '—';
@@ -627,8 +631,6 @@
                                                         $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
                                                     }
                                                     $belowKkm = $stsVal !== null && $stsVal < $kkm;
-                                                    $bobotEfektif = (float) ($bobotMap[$subject->id] ?? 0);
-                                                    $nilaiTertimbang = $stsVal !== null ? $bobotEfektif * (float) $stsVal : null;
                                                 @endphp
                                                 <td style="text-align:center;" data-col="subject-{{ $subject->id }}">
                                                     @if($book)
@@ -639,19 +641,25 @@
                                                         <span class="text-muted">—</span>
                                                     @endif
                                                 </td>
-                                                <td class="sub-bn" style="text-align:center;background:var(--bs-secondary-bg);" data-col="subject-{{ $subject->id }}-bn">
-                                                    @if($nilaiTertimbang !== null)
-                                                        <span class="fw-semibold">{{ number_format($nilaiTertimbang, 1, '.', '') }}</span>
-                                                    @else
-                                                        <span class="text-muted">—</span>
-                                                    @endif
-                                                </td>
+                                                @if($isSasLeger)
+                                                    @php
+                                                        $bobotEfektif = (float) ($bobotMap[$subject->id] ?? 0);
+                                                        $nilaiTertimbang = $stsVal !== null ? $bobotEfektif * (float) $stsVal : null;
+                                                    @endphp
+                                                    <td class="sub-bn" style="text-align:center;background:var(--bs-secondary-bg);" data-col="subject-{{ $subject->id }}-bn">
+                                                        @if($nilaiTertimbang !== null)
+                                                            <span class="fw-semibold">{{ number_format($nilaiTertimbang, 1, '.', '') }}</span>
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                @endif
                                             @endforeach
-                                            {{-- Jumlah --}}
-                                            <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
-                                                {{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}
-                                            </td>
-                                            @if(($legerMode ?? 'sts') === 'sas')
+                                            @if($isSasLeger)
+                                                {{-- Jumlah --}}
+                                                <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
+                                                    {{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}
+                                                </td>
                                                 {{-- Jumlah (Bobot × Nilai) --}}
                                                 <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total_bobot">
                                                     {{ isset($legerJumlahMap[$sid]) ? number_format($legerJumlahMap[$sid], 1) : '—' }}
@@ -698,7 +706,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $subjectMap->count() * 2 + ($isSasLeger ? 17 : 10) }}" class="text-center text-muted py-4">
+                                            <td colspan="{{ $subjectMap->count() * $subjectSpan + ($isSasLeger ? 17 : 9) }}" class="text-center text-muted py-4">
                                                 <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                             </td>
                                         </tr>
@@ -1222,8 +1230,9 @@
     }
 
     /* ── Lebar kolom konsisten ── */
-    /* Satu mapel = 2 sub-kolom: N (64px) + Jumlah berbobot (68px) = 132px. */
-    #tab-leger th[data-sort^="subject-"] { width: 132px; min-width: 132px; max-width: 132px; }
+    /* SAS: satu mapel = 2 sub-kolom (N 64px + Jumlah berbobot 68px). STS: 1 kolom nilai saja. */
+    #tab-leger.is-sas th[data-sort^="subject-"] { width: 132px; min-width: 132px; max-width: 132px; }
+    #tab-leger th[data-sort^="subject-"] { width: 84px; min-width: 84px; max-width: 84px; }
     #tab-leger td[data-col^="subject-"] { width: 64px; min-width: 64px; max-width: 64px; }
     #tab-leger th.sub-n { width: 64px; min-width: 64px; max-width: 64px; }
     #tab-leger th.sub-bn, #tab-leger td.sub-bn { width: 68px; min-width: 68px; max-width: 68px; }

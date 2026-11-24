@@ -65,18 +65,43 @@ class BackupDatabase extends Command
     private function backupMysql(string $connection, string $target): string
     {
         $cfg = config('database.connections.'.$connection);
-        $command = sprintf(
-            'mysqldump --host=%s --port=%s --user=%s --single-transaction --quick --routines --triggers --default-character-set=utf8mb4 %s',
-            escapeshellarg((string) ($cfg['host'] ?? '127.0.0.1')),
-            escapeshellarg((string) ($cfg['port'] ?? '3306')),
-            escapeshellarg((string) ($cfg['username'] ?? '')),
-            escapeshellarg((string) ($cfg['database'] ?? '')),
-        );
+        // Opsi file sementara: kata sandi tidak pernah masuk argumen proses
+        // (terlihat lewat `ps`) maupun nilai DEBUG=1/2 yang membuat MySQL
+        // mencetak SET PASSWORD ke stderr.
+        // Nama diberi akhiran `.cnf` karena MySQL/MariaDB MENGHENTIKAN proses bila
+        // opsi `--defaults-extra-file` tidak berakhiran `.cnf`; dengan `tempnam` biasa
+        // (tanpa akhiran) backup akan selalu gagal.
+        $defaults = tempnam(sys_get_temp_dir(), 'alim-my');
+        $cnf = $defaults;
 
-        $tmp = $target.'.tmp';
-        $result = Process::timeout(900)
-            ->env(['MYSQL_PWD' => (string) ($cfg['password'] ?? '')])
-            ->run($command.' > '.escapeshellarg($tmp));
+        try {
+            $cnf = $defaults.'.cnf';
+            if (! rename($defaults, $cnf)) {
+                throw new \RuntimeException('Tidak dapat menyiapkan berkas opsi mysqldump.');
+            }
+
+            file_put_contents($cnf, sprintf(
+                "[client]\nuser=%s\npassword=%s\nhost=%s\nport=%s\n",
+                str_replace(["\n", "\r"], '', (string) ($cfg['username'] ?? '')),
+                str_replace(["\n", "\r"], '', (string) ($cfg['password'] ?? '')),
+                str_replace(["\n", "\r"], '', (string) ($cfg['host'] ?? '127.0.0.1')),
+                str_replace(["\n", "\r"], '', (string) ($cfg['port'] ?? '3306')),
+            ));
+            chmod($cnf, 0600);
+
+            $command = sprintf(
+                'mysqldump --defaults-extra-file=%s --single-transaction --quick --routines --triggers --default-character-set=utf8mb4 %s',
+                escapeshellarg($cnf),
+                escapeshellarg((string) ($cfg['database'] ?? '')),
+            );
+
+            $tmp = $target.'.tmp';
+            $result = Process::timeout(900)->run($command.' > '.escapeshellarg($tmp));
+        } finally {
+            // Selalu dihapus: sukses, gagal, maupun exception (`finally`).
+            File::delete($cnf);
+            File::delete($defaults);
+        }
 
         if (! $result->successful()) {
             File::delete($tmp);
@@ -96,18 +121,36 @@ class BackupDatabase extends Command
     private function backupPgsql(string $connection, string $target): string
     {
         $cfg = config('database.connections.'.$connection);
-        $command = sprintf(
-            'pg_dump --host=%s --port=%s --username=%s --no-owner --no-privileges %s',
-            escapeshellarg((string) ($cfg['host'] ?? '127.0.0.1')),
-            escapeshellarg((string) ($cfg['port'] ?? '5432')),
-            escapeshellarg((string) ($cfg['username'] ?? '')),
-            escapeshellarg((string) ($cfg['database'] ?? '')),
-        );
+        // Kata sandi lewat berkas sementara 0600 (PGPASSFILE), bukan nilai PGPASSWORD:
+        // nilai env proses dapat terbaca proses lain milik user yang sama.
+        $passfile = tempnam(sys_get_temp_dir(), 'alim-pg');
 
-        $tmp = $target.'.tmp';
-        $result = Process::timeout(900)
-            ->env(['PGPASSWORD' => (string) ($cfg['password'] ?? '')])
-            ->run($command.' > '.escapeshellarg($tmp));
+        try {
+            file_put_contents($passfile, sprintf(
+                "%s:%s:%s:%s:%s\n",
+                str_replace([':', "\n", "\r"], '', (string) ($cfg['host'] ?? '127.0.0.1')),
+                str_replace([':', "\n", "\r"], '', (string) ($cfg['port'] ?? '5432')),
+                str_replace([':', "\n", "\r"], '', (string) ($cfg['database'] ?? '')),
+                str_replace([':', "\n", "\r"], '', (string) ($cfg['username'] ?? '')),
+                str_replace(["\n", "\r"], '', (string) ($cfg['password'] ?? '')),
+            ));
+            chmod($passfile, 0600);
+
+            $command = sprintf(
+                'pg_dump --host=%s --port=%s --username=%s --no-owner --no-privileges %s',
+                escapeshellarg((string) ($cfg['host'] ?? '127.0.0.1')),
+                escapeshellarg((string) ($cfg['port'] ?? '5432')),
+                escapeshellarg((string) ($cfg['username'] ?? '')),
+                escapeshellarg((string) ($cfg['database'] ?? '')),
+            );
+
+            $tmp = $target.'.tmp';
+            $result = Process::timeout(900)
+                ->env(['PGPASSFILE' => $passfile])
+                ->run($command.' > '.escapeshellarg($tmp));
+        } finally {
+            File::delete($passfile);
+        }
 
         if (! $result->successful()) {
             File::delete($tmp);

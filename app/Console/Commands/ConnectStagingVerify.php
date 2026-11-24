@@ -95,6 +95,19 @@ class ConnectStagingVerify extends Command
                 'HTTP '.$response->status()
             );
         }
+
+        // /health boleh publik, tetapi tidak boleh membocorkan lingkungan, versi,
+        // maupun konfigurasi. `request_id` ditambahkan RequestIdMiddleware untuk
+        // semua respons JSON (korelasi log), jadi itu satu-satunya kunci lain
+        // yang wajar; `env`/`app`/versi tidak.
+        $health = Http::timeout(10)->acceptJson()->get($base.'/health');
+        $body = is_array($health->json()) ? $health->json() : [];
+        $extra = array_diff(array_keys($body), ['status', 'time', 'request_id']);
+        $this->check(
+            '1b. /health minimal (tanpa env/versi/konfigurasi)',
+            $health->status() === 200 && ($body['status'] ?? null) === 'ok' && $extra === [],
+            'HTTP '.$health->status().($extra === [] ? '' : ' kunci tambahan: '.implode(',', $extra))
+        );
     }
 
     private function checkCredentials(string $base, string $ssoKey, string $approvalKey): void

@@ -198,10 +198,12 @@ final class LjkArabicText
             return '';
         }
 
-        // Dompdf mencetak elemen sesuai urutan HTML (tanpa bidi), jadi huruf
-        // ditulis LEBIH DULU dan titik menyusul: hasil cetak "ا." — huruf di
-        // kanan, titik tepat di kirinya. Urutan sebaliknya mencetak ".ا".
-        return '<span class="ar">'.e(self::shape($label)).'</span><span class="marker-dot">.</span>';
+        // `.ar` memakai direction: rtl, sehingga Dompdf menerapkan bidi dan
+        // MEMBALIK urutan elemen anak. Untuk hasil cetak ".د" (titik di kiri,
+        // huruf di kanan) titik harus ditulis LEBIH DULU di HTML — bidilah
+        // yang menempatkannya di kiri. Menulis huruf lebih dulu justru
+        // menghasilkan "د." yang salah.
+        return '<span class="marker-dot">.</span><span class="ar">'.e(self::shape($label)).'</span>';
     }
 
     /**
@@ -229,10 +231,9 @@ final class LjkArabicText
             return e($text);
         }
 
-        $clean = (string) self::stripMarks($text);
         $sentences = [];
 
-        foreach (self::splitSentences($clean) as $sentence) {
+        foreach (self::splitSentences($text) as $sentence) {
             $shaped = self::shapeLine($sentence);
 
             if ($shaped !== '') {
@@ -415,7 +416,7 @@ final class LjkArabicText
             return e($text);
         }
 
-        $text = (string) self::stripMarks($text);
+        $text = (string) $text;
         $closing = '';
 
         // Tanda penutup kalimat di ujung: pindah ke kiri baris.

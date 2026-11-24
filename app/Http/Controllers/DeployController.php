@@ -21,6 +21,10 @@ class DeployController extends Controller
      */
     public function handle(Request $request)
     {
+        // Route-nya hanya didaftarkan di produksi; penjaga ini menjaga bila suatu
+        // saat route didaftarkan global atau di-cache dari lingkungan lain.
+        abort_unless(app()->environment('production'), 404);
+
         $secret = config('deploy.secret');
         $branch = config('deploy.branch', 'main');
         $scriptPath = config('deploy.script_path');
@@ -144,14 +148,16 @@ class DeployController extends Controller
 
     /**
      * Health check endpoint (untuk monitoring & verifikasi webhook hidup).
+     *
+     * Sengaja TIDAK mengembalikan lingkungan, versi, maupun konfigurasi:
+     * endpoint ini publik di host staging, sehingga isi respons tidak boleh
+     * memberi tahu penyerang apakah sebuah host produksi atau staging.
      */
     public function health()
     {
         return response()->json([
             'status' => 'ok',
             'time' => now()->toIso8601String(),
-            'app' => config('app.name'),
-            'env' => app()->environment(),
         ]);
     }
 }

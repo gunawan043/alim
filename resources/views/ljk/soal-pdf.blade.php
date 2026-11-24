@@ -58,8 +58,11 @@
         color: #000;
     }
 
-    /* Teks Arab: bentuk presentasi + urutan visual sudah disiapkan di PHP. */
-    .ar { font-family: {!! $arabicStack !!}; direction: rtl; unicode-bidi: embed; font-style: normal; }
+    /* Teks Arab: bentuk presentasi + urutan visual sudah disiapkan di PHP.
+       JANGAN memakai direction: rtl — PHP sudah membalik urutan kata ke
+       urutan visual, bidi Dompdf akan membaliknya sekali lagi dan
+       mengembalikan tanda tanya ؟ ke kanan. */
+    .ar { font-family: {!! $arabicStack !!}; font-style: normal; }
     /* Angka Arab tetap dibaca kiri-ke-kanan; tanpa ini titik nomor (٢٥.)
        berpindah ke kiri menjadi (.٢٥). */
     .ar-number { direction: ltr; unicode-bidi: isolate; }
@@ -128,7 +131,9 @@
     @endif
     ol.karakter li { margin-bottom: 0; }
     /* Daftar karakter pada naskah Arab: penanda di kanan, teks mengalir RTL. */
-    ol.karakter.rtl { direction: rtl; text-align: right; margin: 0.1em 1.6em 0 0; }
+    /* Teks Arab sudah rata kanan lewat marksToHtml(); direction: rtl akan
+       membalik urutan inline anak (nomor lompat ke kiri). */
+    ol.karakter.rtl { text-align: right; margin: 0.1em 1.6em 0 0; }
     @if($rtlExam && $karakterStyle['marker'] === 'numbered')
         ol.karakter.rtl { list-style-type: arabic-indic; }
     @endif

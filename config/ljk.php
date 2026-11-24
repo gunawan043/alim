@@ -221,10 +221,17 @@ return [
             // Urutan preferensi font Arab (dicari di arabic_paths). Hanya font
             // yang memuat bentuk presentasi Arab (FE70–FEFC) yang dipakai,
             // karena shaping dilakukan di PHP (Dompdf tanpa mesin OpenType).
+            //
+            // URUTAN INI PENTING untuk harakat. Dompdf tidak menerapkan tabel
+            // GPOS, jadi posisi harakat di atas huruf sepenuhnya bergantung
+            // pada metrik bawaan font. Amiri menempatkan harakat MELAYANG
+            // (fathah/dammah terpisah di atas huruf), sedangkan Scheherazade
+            // New, Noto Naskh Arabic, dan KFGQPC menempelkannya dengan benar.
+            // Karena itu font berharakat-baik didahulukan di atas Amiri.
             'arabic_preferred' => [
+                'scheherazade', 'kfgqpc', 'naskh', 'noto', 'lateef',
                 'sakkal', 'majalla', 'xb ', 'shafigh', 'niloofar', 'riyaz', 'zar',
-                'amiri', 'scheherazade', 'kfgqpc', 'naskh', 'arabic', 'lateef',
-                'geeza', 'nile', 'thabit',
+                'amiri', 'arabic', 'geeza', 'nile', 'thabit',
             ],
             // Font Arab opsional (Sakkal Majalla/XB/Amiri/Scheherazade/KFGQPC/Noto Naskh).
             // Bila tidak ada, dipakai DejaVu Sans bawaan Dompdf yang sudah
