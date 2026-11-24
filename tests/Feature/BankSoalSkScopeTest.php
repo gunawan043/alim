@@ -888,14 +888,96 @@ class BankSoalSkScopeTest extends TestCase
             ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
         );
 
+        // Naskah cetak memakai marksToHtml(): susunan kata RTL, tanpa harakat.
         $this->assertStringContainsString(
-            LjkArabicText::toHtmlRtl($pertanyaan, false),
+            LjkArabicText::marksToHtml($pertanyaan),
             $html,
             'Template Arab memakai susunan kata RTL, bukan urutan segmen LTR.'
         );
 
-        $shaped = LjkArabicText::toHtmlRtl($pertanyaan, false);
-        $this->assertStringStartsWith('<span class="ar">؟', $shaped, 'Tanda tanya berada di kiri.');
+        $shaped = LjkArabicText::marksToHtml($pertanyaan);
+        // Algoritma bidi: tanda tanya adalah tanda penutup kalimat, jadi
+        // berada di ujung KIRI baris visual — bukan di awal teks Arab.
+        $this->assertStringEndsWith('؟</span>', $shaped, 'Tanda tanya berada di ujung kiri baris.');
+        $this->assertStringContainsString('ﻰﻨﻌﻣ', $shaped, 'Kata pertama (أول) tetap di posisi kanan.');
+
+        // Huruf dan tanda baca tetap utuh walau harakat dibuang untuk cetak.
+        // Bandingkan dengan kata TANPA harakat: hasilnya harus identik, artinya
+        // pembuangan harakat tidak menghilangkan atau mengubah satu huruf pun.
+        $this->assertSame(
+            LjkArabicText::marksToHtml('مدرسة'),
+            LjkArabicText::marksToHtml('مَدْرَسَةٌ'),
+            'Huruf kata tetap lengkap dan sama dengan versi tanpa harakat.'
+        );
+        $this->assertStringContainsString('«', $shaped, 'Tanda kutip Arab tetap ada.');
+    }
+
+    public function test_instruksi_arab_menjaga_kurung_dan_urutan_kata(): void
+    {
+        // Regresi: kurung "(X)" tidak boleh tercermin menjadi ")X(" dan kata
+        // harus tetap urut RTL dengan tanda penutup di ujung kiri.
+        $html = LjkArabicText::instructionsToHtml(
+            'اختر الإجابةَ الأصحَّ بوضع علامة (X) على أحد الحروف: (أ، ب، ج، د) في ورقة الإجابة المرفقة!'
+        );
+
+        $this->assertStringContainsString('<span class="ltr">(X)</span>', $html, 'Kurung (X) satu token LTR.');
+        $this->assertStringNotContainsString(')X(', $html, 'Kurung tidak boleh tercermin.');
+        $this->assertStringEndsWith('!', $html, 'Tanda seru berada di ujung kiri (akhir visual).');
+
+        // Kata pertama teks ("اختر") harus berada paling kanan → paling akhir
+        // pada string visual.
+        $this->assertStringEndsWith('!', $html);
+        $this->assertStringContainsString('ﺮﺘﺧﺍ', $html, 'Kata "اختر" tetap ada.');
+    }
+
+    public function test_judul_dan_daftar_karakter_rata_kanan_pada_naskah_arab(): void
+    {
+        $soal = $this->makeSoal();
+        $soal->forceFill(['bahasa' => Soal::BAHASA_ARAB, 'pertanyaan' => 'مَا هَذَا؟'])->save();
+
+        $html = app(SoalNaskahPdfService::class)->html(
+            Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana', 'tujuanPembelajaran'])
+                ->whereKey($soal->id)->get(),
+            $this->school,
+            $this->guru,
+            ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab', 'show_karakter' => '1']
+        );
+
+        // Dompdf tidak mewarisi dir=rtl, jadi judul & item daftar harus
+        // diberi perataan eksplisit — tanpa ini judul menempel ke kiri.
+        $this->assertMatchesRegularExpression(
+            '/\.karakter-title[^{]*\{[^}]*text-align:\s*right/',
+            $html,
+            'Judul penanaman karakter rata kanan.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.karakter li[^{]*\{[^}]*text-align:\s*right|\.karakter-title, \.karakter li[^}]*text-align:\s*right/',
+            $html,
+            'Butir daftar karakter rata kanan.'
+        );
+
+        // Nomor daftar memakai digit Arab + titik Latin di sisi kanan.
+        $this->assertMatchesRegularExpression(
+            '/<span class="ar ar-number">[١٢٣]<\/span><span class="num-dot">\.<\/span>/u',
+            $html,
+            'Nomor daftar berformat "١." (titik setelah angka).'
+        );
+    }
+
+    public function test_naskah_arab_mencetak_teks_tanpa_harakat_namun_huruf_utuh(): void
+    {
+        // Dompdf tidak menerapkan tabel GPOS font sehingga tanda diakritik
+        // selalu jatuh ke garis dasar dan menumpuk. Naskah cetak karenanya
+        // membuang harakat, TETAPI tidak boleh menghilangkan satu huruf pun.
+        $berharakat = 'الطُّلَّابُ يَقْرَءُونَ الْكِتَابَ';
+        $tanpaHarakat = 'الطلاب يقرءون الكتاب';
+
+        $this->assertSame($tanpaHarakat, LjkArabicText::stripMarks($berharakat));
+        $this->assertSame($tanpaHarakat, LjkArabicText::stripMarks($tanpaHarakat), 'Teks tanpa harakat tidak berubah.');
+
+        // Angka, tanda baca, dan Latin tidak tersentuh.
+        $campuran = 'اختر الإجابة: ١٢٣ dan 2026؟';
+        $this->assertSame($campuran, LjkArabicText::stripMarks($campuran));
     }
 
     public function test_naskah_arab_mencetak_tanggal_hijriah_dan_masehi(): void
@@ -1026,18 +1108,17 @@ class BankSoalSkScopeTest extends TestCase
             'opsiIndentMm' => 2.0,
         ])->render();
 
-        // Marker ".ج" berada di KANAN teks; teks tetap rata kanan. Lebar marker
-        // tetap agar ا/ب/ج/د sama lebar dan selalu di tepi kanan sel.
+        // Marker ".ج" berada di KANAN teks; titik menempel di kiri huruf.
+        // Urutan visualnya ditetapkan PHP karena Dompdf mengabaikan
+        // display:inline-block pada span, sehingga lebar tetap tidak dipakai.
         $this->assertMatchesRegularExpression(
-            '/<span class="letter letter-ar"[^>]*>\.<span class="ar">[^<]*<\/span><\/span>/u',
+            '/<span class="letter letter-ar"><span class="ar">[^<]*<\/span><span class="marker-dot">\.<\/span><\/span>/u',
             $html,
-            'Marker RTL ditulis ".ج": titik di kiri huruf.'
+            'Marker RTL ditulis "ج.": titik menempel di kiri huruf.'
         );
-        $this->assertStringContainsString('width: 6mm', $html, 'Marker memakai lebar tetap.');
-        $this->assertStringContainsString('margin-left: 1mm', $html, 'Jarak marker ke teks seragam.');
 
-        $teks = LjkArabicText::toHtml('سبعة', false);
-        $marker = '.'.LjkArabicText::toHtml('ا', false);
+        $teks = LjkArabicText::marksToHtml('سبعة');
+        $marker = LjkArabicText::optionMarkerRtl('ا');
         $this->assertLessThan(
             strpos($html, $marker),
             strpos($html, $teks),
@@ -1193,8 +1274,8 @@ class BankSoalSkScopeTest extends TestCase
         preg_match_all('/<td style="width: 37\.4mm;/', $html, $cells);
         $this->assertCount(4, $cells[0], 'Grid tetap 4 kolom walau hanya 2 pilihan.');
 
-        $alif = '.'.LjkArabicText::toHtml('ا', false);
-        $ba = '.'.LjkArabicText::toHtml('ب', false);
+        $alif = LjkArabicText::optionMarkerRtl('ا');
+        $ba = LjkArabicText::optionMarkerRtl('ب');
 
         $this->assertNotFalse(strpos($html, $alif), 'Marker ا ada.');
         $this->assertNotFalse(strpos($html, $ba), 'Marker ب ada.');

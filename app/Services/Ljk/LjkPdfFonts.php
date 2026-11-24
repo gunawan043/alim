@@ -25,6 +25,12 @@ final class LjkPdfFonts
     private static ?array $cache = null;
 
     /**
+     * Pola nama berkas font Arab yang dikenali. Ditambah dari waktu ke waktu
+     * agar naskah tidak terpaku pada satu keluarga font saja.
+     */
+    private const ARABIC_NAME_PATTERN = '/amiri|scheherazade|kfgqpc|naskh|arabic|lateef|geeza|nile|thabit|sakkal|majalla|shafigh|niloofar|riyaz|zar|noto|tajawal|almarai|cairo|changa|el-messiri|elmessiri|harmattan|jomhuria|kufi|nadeem|baghdad|diwan|deco|al\b|ae_|traditional|simpo|lotus|mcs\s*|sultan|andalus|simplified|mudir|mitral|yermia|sindibad|farah|dubai|asan|markazi|rabar|vazir|sahel/i';
+
+    /**
      * Konfigurasi Dompdf: cache metrik font wajib writable agar font baru
      * (Cambria/Caladea/DejaVu Serif) dapat didaftarkan saat render.
      */
@@ -188,7 +194,7 @@ final class LjkPdfFonts
             }
 
             foreach (self::filesIn($dir) as $file) {
-                if (preg_match('/amiri|scheherazade|kfgqpc|naskh|arabic|lateef|geeza|nile|thabit|sakkal|majalla|shafigh|niloofar|riyaz|zar/i', basename($file))
+                if (preg_match(self::ARABIC_NAME_PATTERN, basename($file))
                     && self::hasArabicPresentationForms($file)) {
                     $candidates[] = $file;
                 }
@@ -268,14 +274,30 @@ final class LjkPdfFonts
     }
 
     /**
-     * Stack font untuk teks Arab — DejaVu Sans bawaan Dompdf memuat bentuk
-     * presentasi Arab (U+FE70–FEFC) sehingga shaping PHP tetap terbaca.
+     * Stack font untuk teks Arab.
+     *
+     * Bila berkas font Arab terdaftar di `arabic_paths`, keluarga itulah yang
+     * dipakai. Selebihnya dipakai daftar cadangan yang mencakup font Arab
+     * umum di Windows/macOS/Linux; Dompdf akan memakai yang bisa dimuat.
      */
     public static function arabicStack(): string
     {
-        return self::arabicFontPath() !== null
-            ? "'LJK-Arabic', 'DejaVu Sans', sans-serif"
-            : "'DejaVu Sans', sans-serif";
+        if (self::arabicFontPath() !== null) {
+            return "'LJK-Arabic', 'DejaVu Sans', sans-serif";
+        }
+
+        // Cadangan terurut: font Arab sistem lebih dulu, DejaVu Sans (bawaan
+        // Dompdf, selalu tersedia) sebagai jaring pengaman terakhir.
+        $fallbacks = [
+            'Amiri', 'Scheherazade New', 'Scheherazade', 'KFGQPC Uthmanic Script HAFS',
+            'Noto Naskh Arabic', 'Noto Sans Arabic', 'Traditional Arabic', 'Simplified Arabic',
+            'Arabic Typesetting', 'Sakkal Majalla', 'Microsoft Uighur', 'Tahoma',
+            'Geeza Pro', 'Al Bayan', 'Baghdad', 'Nadeem', 'Diwan Kufi', 'DecoType Naskh',
+            'Al Nile', 'Farah', 'Dubai', 'Cairo', 'Tajawal', 'Almarai',
+            'DejaVu Sans',
+        ];
+
+        return "'".implode("', '", $fallbacks)."', sans-serif";
     }
 
     /**
@@ -317,7 +339,7 @@ final class LjkPdfFonts
                 if ($limit++ > 400) {
                     break;
                 }
-                if ($file instanceof \SplFileInfo && $file->isFile() && preg_match('/\.(ttf|otf)$/i', $file->getFilename())) {
+                if ($file instanceof \SplFileInfo && $file->isFile() && preg_match('/\.(ttf|otf|ttc)$/i', $file->getFilename())) {
                     $files[] = $file->getPathname();
                 }
             }

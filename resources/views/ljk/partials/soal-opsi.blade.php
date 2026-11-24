@@ -70,7 +70,7 @@
                                          agar ا/ب/ج/د sama lebar dan selalu berada
                                          di tepi kanan sel. --}}
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
-                                    <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-left: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                    <span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($opsi["display_label"] ?? $opsi["label"]) !!}</span>
                                 @else
                                     <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                     {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
@@ -107,7 +107,7 @@
                                      Sama dengan cabang opts-auto agar naskah & LJK
                                      identik. --}}
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}
-                                <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-left: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                <span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($opsi["display_label"] ?? $opsi["label"]) !!}</span>
                             @else
                                 <span class="letter">{!! LjkArabicText::toHtml($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
                                 {!! LjkArabicText::toHtml($opsi['teks'], false) !!}

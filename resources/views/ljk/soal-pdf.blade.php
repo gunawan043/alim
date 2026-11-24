@@ -187,15 +187,16 @@
        dalam lebar sel agar kolom tidak meluber. */
     table.opts td .letter { font-weight: normal; }
 
-    /* Penanda huruf Arab (ا/ب/ج/د) punya lebar bentuk berbeda setelah
-       di-shape (ﺍ sempit, ﺏ lebar). Lebar TETAP (bukan min-width) + rata
-       kanan membuat keempat penanda sama lebar dan jarak ke teks seragam. */
+    /* Penanda huruf Arab (ا/ب/ج/د). Dompdf mengabaikan inline-block pada
+       span, sehingga lebar tetap tidak bisa diandalkan; urutan visual dan
+       lebar penanda disusun di PHP (LjkArabicText::optionMarkerRtl). */
     table.opts td .letter-ar {
-        display: inline-block;
-        width: 6mm;
-        margin-left: 1mm;
-        text-align: right;
+        margin-right: 1.5mm;
         white-space: nowrap;
+    }
+    table.opts td .letter-ar .marker-dot {
+        font-family: {!! $fontStack !!};
+        margin-left: 0.2mm;
     }
 
     /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan

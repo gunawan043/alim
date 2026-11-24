@@ -66,6 +66,10 @@
        berpindah ke kiri menjadi (.٢٥). */
     .ar-number { direction: ltr; unicode-bidi: isolate; }
     .ar-block { text-align: right; }
+    /* Tanda kurung dan isi Latin di tengah kalimat Arab ("(X)"): digambar
+       apa adanya kiri→kanan, tanpa dibalik susunan RTL. */
+    .ar-block .ltr, .ar .ltr { font-family: {!! $fontStack !!}; direction: ltr; unicode-bidi: isolate; }
+    .ltr-group { unicode-bidi: isolate; }
     /* Nomor soal: angka Arab + titik dari font Latin agar titik tidak
        terbaca sebagai angka nol (١٠). */
     .qno-number { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
@@ -116,6 +120,12 @@
         margin-top: 0.5em;
         font-size: {{ $fontSize * $karakterStyle['size'] / max(1, $fontSizeBase ?? $fontSize) }}pt;
     }
+    /* Naskah Arab: judul penanaman karakter rata KANAN. Dompdf tidak
+       menerapkan `dir="rtl"`/`direction` pada blok, jadi perataan harus
+       eksplisit — tanpa ini judul menempel ke kiri halaman. */
+    @if($rtlExam)
+        .karakter-title { text-align: right; }
+    @endif
     ol.karakter {
         margin: 0.1em 0 0 1.6em;
         padding: 0;
@@ -142,7 +152,14 @@
         font-weight: {{ $instruksiStyle['bold'] ? 'bold' : 'normal' }};
         font-style: {{ $instruksiStyle['italic'] ? 'italic' : 'normal' }};
     }
-    .instruksi-arab { margin-top: 0.2em; }
+    .instruksi-arab { margin-top: 0.2em; text-align: right; }
+
+    /* Naskah Arab: SEMUA teks paragraf rata kanan.
+       Dompdf tidak mewarisi `dir="rtl"`/`direction` dari <html>, jadi setiap
+       blok teks harus diberi perataan eksplisit — tanpa ini judul, instruksi,
+       dan daftar karakter menempel ke kiri halaman. */
+    .karakter-title, .karakter li, .instruksi-arab, .wacana-title,
+    .wacana-text, .wacana-caption { text-align: right; }
 
     /* Wacana / soal cerita */
     .wacana { margin-top: {{ $questionGapPt }}pt; page-break-inside: avoid; }
@@ -189,15 +206,19 @@
        dalam lebar sel agar kolom tidak meluber. */
     table.opts td .letter { font-weight: normal; }
 
-    /* Penanda huruf Arab (ا/ب/ج/د) punya lebar bentuk berbeda setelah
-       di-shape (ﺍ sempit, ﺏ lebar). Lebar TETAP (bukan min-width) + rata
-       kanan membuat keempat penanda sama lebar dan jarak ke teks seragam. */
+    /* Penanda huruf Arab (ا/ب/ج/د). Dompdf mengabaikan inline-block pada
+       span, jadi lebar tetap tidak bisa dipakai untuk merapikan kolom.
+       Yang dijaga sebagai gantinya:
+       - marker menempel pada teks jawaban (spasi normal), tidak melayang;
+       - titik (num-dot) memakai font Latin agar tidak terbaca "٠";
+       - margin kanan memberi jarak seragam ke kolom berikutnya. */
     table.opts td .letter-ar {
-        display: inline-block;
-        width: 6mm;
-        margin-left: 1mm;
-        text-align: right;
+        margin-right: 1.5mm;
         white-space: nowrap;
+    }
+    table.opts td .letter-ar .marker-dot {
+        font-family: {!! $fontStack !!};
+        margin-left: 0.2mm;
     }
 
     /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
@@ -247,15 +268,15 @@
     {{-- ── JUDUL UJIAN ─────────────────────────────────────────────────── --}}
     {{-- Judul dilewatkan LjkArabicText agar teks Arab benar-benar di-shape;
          tanpa ini huruf Arab tampil sebagai kotak pada Dompdf. --}}
-    <div class="title">{!! LjkArabicText::toHtmlRtl($line1, false) !!}</div>
+    <div class="title">{!! LjkArabicText::marksToHtml($line1) !!}</div>
     @if($line2 !== '')
-        <div class="title-sub">{!! LjkArabicText::toHtmlRtl($line2, false) !!}</div>
+        <div class="title-sub">{!! LjkArabicText::marksToHtml($line2) !!}</div>
     @endif
     @if(($tanggalArab ?? '') !== '')
         {{-- Naskah Arab: tanggal Hijriah + Masehi, rata kanan.
              LjkArabicText::toHtmlRtl() menyusun urutan visual RTL untuk Dompdf;
              deret angka kini dijaga tetap urut oleh reverseClusters(). --}}
-        <div class="title-sub" style="text-align: right;">{!! LjkArabicText::toHtmlRtl($tanggalArab, false) !!}</div>
+        <div class="title-sub" style="text-align: right;">{!! LjkArabicText::marksToHtml($tanggalArab) !!}</div>
     @endif
 
     {{-- Identitas: tabel maksimal 3 baris ─────────────────────────────── --}}
@@ -277,17 +298,17 @@
                             @if($label === (config('ljk.soal.identitas_arab.peserta') ?? ''))
                                 <span class="nama-line">&nbsp;</span>
                             @else
-                                {!! LjkArabicText::toHtmlRtl($value, false) !!}
+                                {!! LjkArabicText::marksToHtml($value) !!}
                             @endif
                         </td>
-                        <td class="label">{!! LjkArabicText::toHtmlRtl($label, false) !!}</td>
+                        <td class="label">{!! LjkArabicText::marksToHtml($label) !!}</td>
                     @else
                         <td class="label">{{ $label }}</td>
                         <td class="value">
                             @if($label === $identitas['labelPeserta'])
                                 <span class="nama-line">&nbsp;</span>
                             @else
-                                {!! LjkArabicText::toHtmlRtl($value, false) !!}
+                                {!! LjkArabicText::marksToHtml($value) !!}
                             @endif
                         </td>
                     @endif
@@ -305,10 +326,12 @@
 
     {{-- ── PENANAMAN KARAKTER ──────────────────────────────────────────── --}}
     @if(! empty($karakter))
-        <div class="karakter-title">{!! LjkArabicText::toHtmlRtl($karakterStyle['title'], false) !!}</div>
+        <div class="karakter-title">{!! LjkArabicText::marksToHtml($karakterStyle['title']) !!}</div>
         @if($rtlExam && $karakterStyle['marker'] === 'numbered')
-            {{-- Penanda daftar Arab: angka Arab + titik Latin, di kanan. --}}
-            <ol class="karakter rtl" style="list-style: none; margin: 0.1em 0 0 0;">
+            {{-- Penanda daftar Arab: angka Arab + titik Latin, di kanan.
+                 Margin kanan 1.6em memberi ruang agar penanda tidak keluar
+                 area cetak (tanpa margin, nomor terpotong di tepi halaman). --}}
+            <ol class="karakter rtl" style="list-style: none; margin: 0.1em 1.6em 0 0;">
                 @foreach($karakter as $butir)
                     @php
                         $nomorKarakter = strtr((string) $loop->iteration, [
@@ -317,8 +340,17 @@
                         ]);
                     @endphp
                     <li>
-                        <span class="karakter-no"><span class="num-dot">.</span><span class="ar ar-number">{{ $nomorKarakter }}</span></span>
-                        {!! LjkArabicText::toHtmlRtl($butir) !!}
+                        {{-- Urutan elemen mengikuti bidi: teks Arab ditulis lebih
+                             dulu, baru penanda nomor — sehingga nomor berada di
+                             KANAN baris dan teks mengalir ke kiri.
+                             Titik nomor memakai font Latin dan ditulis SETELAH
+                             angka agar tampil "١." (bila ditulis sebelum angka,
+                             titik terbaca "٠" sehingga muncul ".١"). --}}
+                        {!! LjkArabicText::marksToHtml($butir) !!}
+                        {{-- Label nomor diisolasi LTR: Dompdf tidak menghitung
+                             bidi, jadi urutan elemen di dalam span ini = urutan
+                             cetak. Angka lalu titik → tampil "١." di tepi kanan. --}}
+                        <span class="karakter-no" style="direction: ltr; unicode-bidi: isolate;"><span class="ar ar-number">{{ $nomorKarakter }}</span><span class="num-dot">.</span></span>
                     </li>
                 @endforeach
             </ol>
@@ -327,7 +359,7 @@
                 @foreach($karakter as $butir)
                     <li>
                         @if($karakterStyle['marker'] === 'dash'){{ '– ' }}@endif
-                        {!! LjkArabicText::toHtmlRtl($butir) !!}
+                        {!! LjkArabicText::marksToHtml($butir) !!}
                     </li>
                 @endforeach
             </ol>
@@ -340,7 +372,7 @@
     @if($instruksiStyle['show'])
         @if($rtlExam)
             @if(($instruksiArab ?? '') !== '')
-                <div class="instruksi-arab ar-block"><span class="ar">{!! LjkArabicText::toHtmlRtl($instruksiArab, false) !!}</span></div>
+                <div class="instruksi-arab ar-block">{!! LjkArabicText::instructionsToHtml($instruksiArab) !!}</div>
             @elseif($instruksi !== '')
                 <div class="instruksi"><strong>A.</strong> {{ $instruksi }}</div>
             @endif
@@ -355,14 +387,14 @@
         @if($block['type'] === 'wacana')
             <div class="wacana">
                 @if(! empty($block['judul']))
-                    <div class="wacana-title">{!! LjkArabicText::toHtmlRtl($block['judul']) !!}</div>
+                    <div class="wacana-title">{!! LjkArabicText::marksToHtml($block['judul']) !!}</div>
                 @endif
                 <div class="wacana-text {{ ($block['rtl'] ?? false) ? 'ar-block' : '' }}">
                     @php $wacanaHtml = (string) ($block['teks'] ?? ''); @endphp
-                    {!! strip_tags($wacanaHtml) !== $wacanaHtml ? $wacanaHtml : LjkArabicText::toHtmlRtl($wacanaHtml) !!}
+                    {!! strip_tags($wacanaHtml) !== $wacanaHtml ? $wacanaHtml : LjkArabicText::marksToHtml($wacanaHtml) !!}
                 </div>
                 @if(! empty($block['sumber']))
-                    <div class="wacana-caption paper-note">Sumber: {!! LjkArabicText::toHtmlRtl($block['sumber']) !!}</div>
+                    <div class="wacana-caption paper-note">Sumber: {!! LjkArabicText::marksToHtml($block['sumber']) !!}</div>
                 @endif
                 @if($block['dari'] !== null)
                     @php
@@ -395,7 +427,7 @@
                                  Hasilnya nomor di kanan, teks rata kanan, dan
                                  lebar kolom identik dengan versi Latin. --}}
                             <td class="qbody" style="width: 95.5%; text-align: right;">
-                                <div>{!! LjkArabicText::toHtmlRtl($block['pertanyaan']) !!}</div>
+                                <div>{!! LjkArabicText::marksToHtml($block['pertanyaan']) !!}</div>
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif
@@ -409,7 +441,7 @@
                                 @if($arabAngka ?? false)@php $nomorSoal = rtrim((string) ($block['nomor_tampil'] ?? ($block['nomor'].'.')), '.'); @endphp<span class="qno-number"><span class="num-dot">.</span><span class="ar ar-number">{{ $nomorSoal }}</span></span>@else{{ $block['nomor_tampil'] ?? ($block['nomor'].'.') }}@endif
                             </td>
                             <td class="qbody">
-                                <div>{!! LjkArabicText::toHtmlRtl($block['pertanyaan']) !!}</div>
+                                <div>{!! LjkArabicText::marksToHtml($block['pertanyaan']) !!}</div>
                                 @if(! empty($block['gambar_path']))
                                     <div style="text-align:center;margin:2mm 0;"><img src="{{ \Illuminate\Support\Facades\Storage::url($block['gambar_path']) }}" style="max-width:80mm;max-height:50mm;"><div class="paper-note">{{ $block['gambar_keterangan'] ?? '' }}</div></div>
                                 @endif

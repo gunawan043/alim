@@ -181,6 +181,267 @@ final class LjkArabicText
     }
 
     /**
+     * Penanda pilihan jawaban pada baris RTL, mis. "ا." (titik di KIRI huruf).
+     *
+     * Diperlukan karena Dompdf menggambar kiri→kanan dan mengabaikan
+     * `display: inline-block` pada span, sehingga urutan visual harus
+     * ditetapkan di PHP: titik Latin dulu (paling kiri), lalu huruf Arab
+     * yang sudah di-shape, dengan spasi pengikat agar keduanya tidak
+     * terpisah saat baris rata kanan.
+     */
+    public static function optionMarkerRtl(string $label): string
+    {
+        $label = trim($label);
+
+        if ($label === '') {
+            return '';
+        }
+
+        return '<span class="ar">'.e(self::shape($label)).'</span><span class="marker-dot">.</span>';
+    }
+
+    /**
+     * Teks Arab menjadi HTML naskah cetak (satu baris, tanpa harakat).
+     *
+     * Harakat dibuang untuk tampilan cetak: Dompdf tidak menerapkan tabel
+     * GPOS font, sehingga tanda tidak pernah naik ke atas huruf dan malah
+     * menumpuk di garis dasar. Huruf, penyambungan, tanda baca, dan angka
+     * tetap utuh. Data di database TIDAK diubah.
+     *
+     * Kata-kata disusun RTL, tetapi tanda baca penutup (؟ ! . ، :) harus
+     * tetap berada di ujung KIRI baris — sama seperti hasil algoritma bidi
+     * Unicode — bukan ikut terbawa ke depan kalimat.
+     */
+    public static function marksToHtml(?string $text): string
+    {
+        $text = (string) $text;
+
+        if ($text === '' || ! self::hasArabic($text)) {
+            return e($text);
+        }
+
+        return '<span class="ar">'.e(self::shapeLine((string) self::stripMarks($text))).'</span>';
+    }
+
+    /** Buang harakat dari teks Arab tanpa menyentuh huruf atau tanda baca. */
+    public static function stripMarks(string $text): string
+    {
+        // Non-Spacing Mark apa pun (Unicode kategori Mn) adalah tanda
+        // diakritik — aman dibuang untuk semua blok Arab, tidak menyentuh
+        // huruf (Lo), tanda baca (Po), maupun angka (Nd).
+        $text = (string) preg_replace('/\p{Mn}+/u', '', $text);
+
+        // Bentuk presentasi untuk harakat tunggal (U+FE70–FE7F) ber-kategori
+        // Lo di Unicode, sehingga tidak tertangkap \p{Mn}.
+        return (string) preg_replace('/[\x{FE70}-\x{FE7F}]/u', '', $text);
+    }
+
+    /**
+     * Susun satu baris Arab ke urutan visual (kiri→kanan) sesuai kaidah bidi.
+     *
+     * Langkah:
+     *  1. Pisahkan tanda baca/tanda kurung di ujung baris (leading/trailing).
+     *  2. Tokenisasi kata; deret angka di dalam kalimat menjadi satu token dan
+     *     isinya tidak dibalik.
+     *  3. Balik urutan kata, lalu tempelkan balik tanda baca awal & akhir.
+     *  4. Cerminkan pasangan kurung/siku karena arah baca dibalik.
+     */
+    public static function shapeLine(string $line): string
+    {
+        $line = trim($line);
+
+        if ($line === '') {
+            return '';
+        }
+
+        [$body, $closing] = self::splitEdgePunctuation($line);
+
+        // Spasi sebelum tanda baca netral (" :", " !") bukan bagian kaidah
+        // Arab dan membuat jarak tidak konsisten; rapatkan ke kata sebelumnya.
+        $body = (string) preg_replace('/\s+([,،.:؛؟!])/u', '$1', $body);
+
+        $words = [];
+        foreach (preg_split('/\s+/u', $body, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            // Pemisah netral ("/" "|") berdiri sendiri sebagai token: setelah
+            // urutan dibalik ia tetap berada di antara kedua bagian kalimat,
+            // tidak menempel pada angka di sebelahnya.
+            if (preg_match('/^[\/|]+$/u', $word)) {
+                $words[] = $word;
+
+                continue;
+            }
+
+            // Koma Arab yang menempel pada kata ("ا،") diperlakukan sebagai
+            // token sendiri: setelah urutan dibalik ia kembali menempel ke
+            // KIRI kata yang sama, bukan ke kata berikutnya.
+            if (preg_match('/^(.*[^\s,،])([,،]+)$/u', $word, $m)) {
+                $words[] = self::shapeWord($m[1]);
+                $words[] = $m[2];
+
+                continue;
+            }
+
+            $words[] = self::shapeWord($word);
+        }
+        // Tanda baca penutup kalimat berada di ujung KIRI baris visual.
+        return implode(' ', array_reverse($words)).$closing;
+    }
+
+    /**
+     * Pisahkan tanda baca penutup dari isi baris.
+     *
+     * Tanda di akhir teks ("… الإجابة!") dipindah ke kumpulan tanda penutup.
+     * Tanda yang terlanjur berada di awal teks ("!… الإجابة", umum pada teks
+     * hasil salin-tempel dari tampilan RTL) juga dianggap tanda penutup —
+     * keduanya menghasilkan satu bentuk visual yang sama.
+     *
+     * @return array{0: string, 1: string} [body, closing]
+     */
+    private static function splitEdgePunctuation(string $line): array
+    {
+        $closing = '';
+
+        // Tanda baca di akhir baris (bisa lebih dari satu, mis. "؟!").
+        while ($line !== '' && preg_match('/[,.:،؛؟!؛]$/u', $line, $m)) {
+            $closing = $m[0].$closing;
+            $line = rtrim(mb_substr($line, 0, mb_strlen($line) - 1));
+        }
+
+        // Tanda baca di awal baris: hanya bila kata pertama seluruhnya tanda.
+        $firstWord = (preg_split('/\s+/u', $line, 2)[0]) ?? '';
+        if ($firstWord !== '' && preg_match('/^[,.:،؛؟!]+$/u', $firstWord)) {
+            $closing = $firstWord.$closing;
+            $line = ltrim(mb_substr($line, mb_strlen($firstWord)));
+        }
+
+        return [$line, $closing];
+    }
+
+    /**
+     * Satu kata: shape huruf Arab, biarkan token angka/Latin apa adanya.
+     */
+    private static function shapeWord(string $word): string
+    {
+        $out = '';
+        foreach (self::splitSegments($word) as ['text' => $segment, 'arabic' => $isArabic]) {
+            $out .= $isArabic ? self::shape($segment) : $segment;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Baris Arab untuk instruksi/petunjuk yang mengandung kurung atau teks
+     * Latin di tengah kalimat, mis. "… (X) pada huruf (أ، ب، ج، د) …".
+     *
+     * Berbeda dari marksToHtml(): tanda kurung dan isinya dijadikan satu
+     * token ber-arah LTR di dalam <span class="ltr">, sehingga Dompdf
+     * menggambar "(X)" apa adanya. Tanpa ini, pencerminan urutan RTL
+     * menghasilkan ")X(".
+     */
+    public static function instructionsToHtml(?string $text): string
+    {
+        $text = trim((string) $text);
+
+        if ($text === '' || ! self::hasArabic($text)) {
+            return e($text);
+        }
+
+        $text = (string) self::stripMarks($text);
+        $closing = '';
+
+        // Tanda penutup kalimat di ujung: pindah ke kiri baris.
+        while ($text !== '' && preg_match('/[,.:،؛؟!؛]$/u', $text, $m)) {
+            $closing = $m[0].$closing;
+            $text = rtrim(mb_substr($text, 0, mb_strlen($text) - 1));
+        }
+
+        // Pecah menjadi token berspasi; ":الحروف" → ":" dan "الحروف" agar
+        // titik dua kembali menempel di KIRI kata setelah urutan dibalik.
+        $tokens = [];
+        foreach (preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $tokens = array_merge($tokens, self::splitPunctuationToken($word));
+        }
+
+        // Gabungkan kata menjadi kelompok kutipan, lalu balik urutan kelompok.
+        $groups = [];
+        $buffer = '';
+        foreach ($tokens as $word) {
+            $buffer = $buffer === '' ? $word : $buffer.' '.$word;
+
+            if (self::bracketBalance($buffer) === 0) {
+                $groups[] = $buffer;
+                $buffer = '';
+            }
+        }
+        if ($buffer !== '') {
+            $groups[] = $buffer;
+        }
+
+        $html = [];
+        foreach (array_reverse($groups) as $group) {
+            $html[] = self::groupToHtml($group);
+        }
+
+        return implode(' ', $html).e($closing);
+    }
+
+    /**
+     * Selisih kurung buka/tutup pada sebuah potongan teks.
+     * 0 berarti potongan sudah seimbang (bukan potongan dalam kurung).
+     */
+    private static function bracketBalance(string $text): int
+    {
+        return substr_count($text, '(') - substr_count($text, ')')
+            + substr_count($text, '[') - substr_count($text, ']');
+    }
+
+    /**
+     * Pisahkan tanda baca netral dari kata, mis. "الحروف:" → [":", "الحروف"].
+     *
+     * Tanda baca bukan bagian kata Arab; setelah urutan dibalik ia harus
+     * tetap menempel di KIRI kata aslinya.
+     *
+     * @return array<int, string>
+     */
+    private static function splitPunctuationToken(string $word): array
+    {
+        if (preg_match('/^([^\s,،.:؛]+)([,،.:؛]+)$/u', $word, $m)) {
+            // "الحروف:" → token kata lalu token tanda. Setelah urutan kata
+            // dibalik, tanda ini akan berada di KIRI kata tersebut.
+            return [$m[1], $m[2]];
+        }
+
+        return [$word];
+    }
+
+    /** Satu kelompok kata: segmen Arab di-shape, kurung/Latin dibiarkan LTR. */
+    private static function groupToHtml(string $group): string
+    {
+        $hasBracket = (bool) preg_match('/[()\[\]«»]/u', $group);
+
+        // Kelompok berkurung memakai font Latin agar "(X)" dan "(أ، ب، ج، د)"
+        // tergambar sesuai urutan aslinya tanpa dibalik algoritma RTL.
+        if ($hasBracket && self::hasArabic($group)) {
+            $parts = [];
+            foreach (preg_split('/([()\[\]«»])/u', $group, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: [] as $part) {
+                $parts[] = preg_match('/^[()\[\]«»]$/u', $part)
+                    ? '<span class="ltr">'.e($part).'</span>'
+                    : '<span class="ar">'.e(self::shape($part)).'</span>';
+            }
+
+            return '<span class="ltr-group">'.implode('', $parts).'</span>';
+        }
+
+        if ($hasBracket) {
+            return '<span class="ltr">'.e($group).'</span>';
+        }
+
+        return '<span class="ar">'.e(self::shape($group)).'</span>';
+    }
+
+
+    /**
      * Satu baris: pecah menjadi segmen Arab dan non-Arab.
      */
     private static function lineToHtml(string $line): string
@@ -357,11 +618,29 @@ final class LjkArabicText
         $clusters = [];
         $current = '';
 
+        // Harakat berada SETELAH hurufnya pada urutan logis. Karena gugus
+        // dibalik, harakat harus dikeluarkan lalu ditempelkan kembali tepat di
+        // BELAKANG huruf setelah pembalikan — bila dibiarkan ikut terbawa
+        // sebelum huruf, ia menempel pada huruf sebelah kiri setelah urutan
+        // dibalik (fathah/kasrah tampak bergeser satu huruf).
+        // Dikunci per INDEKS gugus: beberapa gugus bisa berupa huruf yang sama
+        // (mis. dua kali "ﻣ"), sehingga kunci berbasis teks akan mencampur
+        // harakat kedua gugus tersebut.
+        $marks = [];
+        $clusterIndex = -1;
+
         foreach ($chars as $char) {
             $code = mb_ord($char, 'UTF-8');
 
-            if (in_array($code, self::TRANSPARENT, true) && $current !== '') {
-                $current .= $char; // harakat menempel pada huruf sebelumnya
+            if (in_array($code, self::TRANSPARENT, true)) {
+                if ($current !== '') {
+                    $marks[$clusterIndex][] = $char; // tangguhkan harakat
+
+                    continue;
+                }
+
+                // Harakat tanpa huruf sebelumnya (mis. tunggal): satu gugus.
+                $current = $char;
 
                 continue;
             }
@@ -383,13 +662,40 @@ final class LjkArabicText
                 $clusters[] = $current;
             }
             $current = $char;
+            $clusterIndex++;
         }
 
         if ($current !== '') {
             $clusters[] = $current;
         }
 
-        return implode('', array_reverse($clusters));
+        // Balik urutan huruf, lalu kembalikan harakat ke belakang huruf
+        // asalnya. Urutan harakat pada satu huruf ikut dibalik karena
+        // perender LTR menggambar tanda dari kiri ke kanan — tanpa ini
+        // tasydid yang ditulis SEBELUM fathah (syadda + fatha) tampil di
+        // sisi yang salah dibanding bentuk presentasi Unicode.
+        $visual = [];
+        foreach (array_reverse(array_keys($clusters)) as $index) {
+            $cluster = $clusters[$index];
+            $attached = $marks[$index] ?? [];
+
+            // Deret angka/Latin tidak membawa harakat dan tidak dibalik isinya.
+            if ($attached !== [] && ! self::isDigitOrLatinCluster($cluster)) {
+                $attached = array_reverse($attached);
+            }
+
+            $visual[] = $cluster.implode('', $attached);
+        }
+
+        return implode('', $visual);
+    }
+
+    /** Gugus angka/Latin (bukan huruf Arab berharakat). */
+    private static function isDigitOrLatinCluster(string $cluster): bool
+    {
+        $first = mb_ord(mb_substr($cluster, 0, 1), 'UTF-8');
+
+        return self::isDigit($first) || self::isLatinLetter($first);
     }
 
     /**

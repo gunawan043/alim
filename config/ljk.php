@@ -263,7 +263,7 @@ return [
         ],
         'instruksi' => 'Pilihlah jawaban yang paling tepat dengan memberikan tanda silang (X) pada huruf A, B, C atau D pada Lembar Jawaban yang disediakan! Jika mengganti jawaban, hapus tanda lama hingga bersih atau tulis tanda = pada X lama.',
         // Ditampilkan pada lembar soal berbahasa Arab (setelah instruksi Indonesia).
-        'instruksi_arab' => 'اختر الجواب الأصح بوضع علامة (X) على الحرف ا، ب، ج، د في ورقة الجواب المرفقة !',
+        'instruksi_arab' => 'اختر الإجابةَ الأصحَّ بوضع علامة (X) على أحد الحروف: (أ، ب، ج، د) في ورقة الإجابة المرفقة!',
         // Petunjuk pengisian pada LEMBAR JAWABAN.
         'instruksi_ljk' => 'Beri tanda silang (X) pada satu kotak jawaban dengan pulpen hitam/biru. Jika mengganti, hapus X lama atau tulis = padanya, lalu silang kotak baru. Dua X tanpa = diperiksa guru.',
 
@@ -303,11 +303,11 @@ return [
             'peserta' => 'اسم الطالب',
         ],
         // Penanaman karakter versi Arab (dipakai bila guru belum mengisi).
-        'karakter_title_arab' => 'تنمية الشخصية :',
+        'karakter_title_arab' => 'تنمية الشخصية:',
         'penanaman_karakter_arab' => [
-            'ادعُ الله قبل أن تبدأ الإجابة!',
-            'اتّقِ الله وكن صادقًا في إجابتك!',
-            'خير الحافظين هو الله سبحانه وتعالى!',
+            'ادْعُ اللهَ قبل أن تبدأ الإجابة!',
+            'اتَّقِ اللهَ وكُنْ صادقًا في إجابتك!',
+            'خيرُ الحافظين هو اللهُ سبحانه وتعالى!',
         ],
         // Identitas: jumlah baris maksimum pada tabel kop (2 pasang per baris).
         'identitas_baris_maks' => 3,

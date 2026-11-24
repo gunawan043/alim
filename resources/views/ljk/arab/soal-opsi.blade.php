@@ -66,14 +66,15 @@
                             @if($opsi)
                                 @if($rtl)
                                     {{-- RTL: teks pilihan di kiri, marker ".ج" di
-                                         KANAN. Marker memakai lebar TETAP (6 mm)
-                                         agar ا/ب/ج/د sama lebar dan selalu berada
-                                         di tepi kanan sel. --}}
-                                    {!! LjkArabicText::toHtmlRtl($opsi['teks'], false) !!}
-                                    <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-left: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtmlRtl($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                         KANAN. Urutan visual marker disusun di PHP
+                                         (LjkArabicText::optionMarkerRtl) karena
+                                         Dompdf mengabaikan inline-block sehingga
+                                         lebar tetap tidak bisa diandalkan. --}}
+                                    {!! LjkArabicText::marksToHtml($opsi['teks']) !!}
+                                    <span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($opsi['display_label'] ?? $opsi['label']) !!}</span>
                                 @else
-                                    <span class="letter">{!! LjkArabicText::toHtmlRtl($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
-                                    {!! LjkArabicText::toHtmlRtl($opsi['teks'], false) !!}
+                                    <span class="letter">{!! LjkArabicText::marksToHtml($opsi['display_label'] ?? $opsi['label']) !!}.</span>
+                                    {!! LjkArabicText::marksToHtml($opsi['teks']) !!}
                                 @endif
                             @else
                                 &nbsp;
@@ -106,11 +107,11 @@
                                 {{-- RTL: teks di kiri, marker ".ج" di kanan.
                                      Sama dengan cabang opts-auto agar naskah & LJK
                                      identik. --}}
-                                {!! LjkArabicText::toHtmlRtl($opsi['teks'], false) !!}
-                                <span class="letter letter-ar" style="display: inline-block; width: 6mm; margin-left: 1mm; text-align: right; white-space: nowrap;">.{!! LjkArabicText::toHtmlRtl($opsi['display_label'] ?? $opsi['label'], false) !!}</span>
+                                {!! LjkArabicText::marksToHtml($opsi['teks']) !!}
+                                <span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($opsi['display_label'] ?? $opsi['label']) !!}</span>
                             @else
-                                <span class="letter">{!! LjkArabicText::toHtmlRtl($opsi['display_label'] ?? $opsi['label'], false) !!}.</span>
-                                {!! LjkArabicText::toHtmlRtl($opsi['teks'], false) !!}
+                                <span class="letter">{!! LjkArabicText::marksToHtml($opsi['display_label'] ?? $opsi['label']) !!}.</span>
+                                {!! LjkArabicText::marksToHtml($opsi['teks']) !!}
                             @endif
                         @else
                             &nbsp;

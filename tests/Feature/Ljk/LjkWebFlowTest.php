@@ -961,12 +961,12 @@ class LjkWebFlowTest extends TestCase
         $this->assertSame(['ا', 'ب', 'ج', 'د'], array_column($arab['opsi'], 'display_label'));
 
         $html = $sheet->render($exam->fresh(['subject', 'studyGroup.gradeLevel', 'adminBook.teacher', 'academicYear', 'paketSoal']));
-        // RTL: penanda huruf memakai lebar tetap (letter-ar) agar ا/ب/ج/د
-        // sejajar, dan diletakkan SEBELUM teks sehingga berdiri di tepi kanan.
+        // RTL: penanda huruf diletakkan setelah teks opsi sehingga berdiri di
+        // tepi kanan sel, dengan titik menempel di sisi kiri huruf penanda.
         $this->assertMatchesRegularExpression(
-            '/<span class="letter letter-ar">.*?<\/span>\.<\/span>\s*<span class="ar">/u',
+            '/<span class="letter letter-ar"><span class="ar">.\.?<\/span><span class="marker-dot">\.<\/span><\/span>/u',
             $html,
-            'Penanda huruf berlebar tetap mendahului teks opsi.'
+            'Penanda huruf mengikuti teks opsi dan titiknya menempel.'
         );
 
         // Ujian mode Arab → SELURUH lembar memakai huruf Arab (tanpa A.).
@@ -1100,7 +1100,9 @@ class LjkWebFlowTest extends TestCase
         // RTL: nomor di sel kanan; penanda huruf berlebar tetap agar sejajar.
         $this->assertStringContainsString('class="qbody" style="width: 95.5%; text-align: right;"', $htmlArab);
         $this->assertStringContainsString('class="qno" style="width: 4.5%; text-align: right;"', $htmlArab);
-        $this->assertStringContainsString('١.', $htmlArab);
+        // Nomor soal digambar sebagai titik (font Latin) lalu digit Arab di
+        // dalam span berisolasi LTR agar titik tidak terbaca sebagai nol.
+        $this->assertStringContainsString('<span class="num-dot">.</span><span class="ar ar-number">١</span>', $htmlArab);
         $this->assertStringContainsString('<span class="letter letter-ar">', $htmlArab);
         $this->assertStringNotContainsString('<span class="letter">A.</span>', $htmlArab);
     }
