@@ -204,9 +204,28 @@
         margin-left: 0.2mm;
     }
 
-    /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
-       tepat 1 baris. Lebar mm ditetapkan di partial opsi. */
-    table.opts.opts-auto td { white-space: nowrap; }
+    /* ── Grid opsi: lebar sel eksplisit (mm) dari partial ────────────────
+       `table-layout: fixed` memakai angka mm apa adanya, sehingga semua
+       sel berlebar identik dan sel pada baris ke-2 (mode 2 kolom) jatuh
+       tepat di bawah sel baris ke-1. `padding: 0` menimpa padding warisan
+       `table.opts td` — DomPDF menaruh padding DI LUAR `width`. */
+    table.opts.opts-grid {
+        width: auto;
+        table-layout: fixed;
+        margin: 0.1em 0 0 0;
+    }
+    table.opts.opts-grid.ltr {
+        margin-left: 0;
+        margin-right: auto;
+    }
+    table.opts.opts-grid.rtl {
+        margin-left: auto;
+        margin-right: 0;
+    }
+    table.opts.opts-grid td {
+        padding: 0;
+        vertical-align: top;
+    }
 
     .paper-note { font-size: {{ max(6.0, $fontSize - 4) }}pt; color: #666; }
 </style>

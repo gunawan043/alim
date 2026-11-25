@@ -15,8 +15,11 @@ use App\Models\School;
 use App\Models\Soal;
 use App\Services\Evaluasi\PaketNaskahService;
 use App\Services\Evaluasi\PaketQualityGateService;
+use App\Services\Evaluasi\SoalOpsiLayout;
 use App\Services\Evaluasi\ReviewWorkflowService;
+use App\Services\Ljk\LjkSoalSheet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class PaketSoalController extends Controller
@@ -782,12 +785,63 @@ class PaketSoalController extends Controller
             ? School::find($paket->kisiKisi->school_id)
             : null;
 
+        $layoutSettings = $paket->layoutSettings();
+
+        // Opsi jawaban memakai MESIN YANG SAMA dengan naskah soal-saya, agar
+        // jumlah kolom dan lebar sel konsisten di kedua jalur. Lebar area
+        // diturunkan dari kertas paket + margennya, dikurangi porsi kolom
+        // nomor soal (4.5%) seperti di SoalNaskahPdfService.
+        $rows = $this->susunOpsiPaket($rows, $layoutSettings);
+
         return [
             'paket' => $paket,
             'rows' => $rows,
             'school' => $school,
-            'layout' => $paket->layoutSettings(),
+            'layout' => $layoutSettings,
         ];
+    }
+
+    /**
+     * Hitung `opsiLayout` untuk setiap soal pada naskah paket.
+     *
+     * Jumlah kolom dihitung per soal dari panjang opsinya (4 → 2 → 1), dan
+     * semua kolom dalam satu soal berlebar identik.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $rows
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function susunOpsiPaket($rows, array $layout): Collection
+    {
+        $sheet = app(LjkSoalSheet::class);
+        $paper = $sheet->paper((string) ($layout['paper_size'] ?? 'a4'));
+
+        $contentMm = (($paper['width_mm']
+            - (float) ($layout['margin_left'] ?? 20)
+            - (float) ($layout['margin_right'] ?? 15)) * 0.955);
+
+        $layoutService = app(SoalOpsiLayout::class);
+        $fontPt = (float) ($layout['font_size'] ?? 11);
+
+        return $rows->map(function (array $row) use ($layoutService, $contentMm, $fontPt) {
+            if (($row['type'] ?? 'question') !== 'question' || empty($row['opsi'])) {
+                return $row;
+            }
+
+            $hasil = $layoutService->layout($row['opsi'], $contentMm, $fontPt);
+
+            // RTL: opsi pertama (ا) di kolom PALING KANAN.
+            if (! empty($row['rtl'])) {
+                foreach ($hasil['rows'] as &$baris) {
+                    $baris = array_reverse($baris);
+                }
+                unset($baris);
+            }
+
+            $row['opsiLayout'] = $hasil;
+            $row['opsiWidthMm'] = round($contentMm, 2);
+
+            return $row;
+        });
     }
 
     public function kartuSoal(Request $request, string $userId, string $paketUuid)

@@ -19,9 +19,13 @@
 
     @php
         $rtl = (bool) ($row['rtl'] ?? false);
+        // Layout opsi dihitung controller dengan mesin yang sama seperti
+        // naskah soal-saya (jumlah kolom otomatis 4 → 2 → 1).
+        $opsiLayout = $row['opsiLayout'] ?? null;
+        $opsiWidthMm = $row['opsiWidthMm'] ?? null;
         $maxOptions = max(4, count($row['opsi'] ?? []));
         $colWidth = round(100 / $maxOptions, 4);
-        $block = ['opsi' => $row['opsi'] ?? []];
+        $block = ['opsi' => $row['opsi'] ?? [], 'opsiLayout' => $opsiLayout];
     @endphp
 
     <div class="naskah-question q">
@@ -38,7 +42,7 @@
                                 @endif
                             </div>
                         @endif
-                        @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                        @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => true, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm, 'opsiIndentMm' => $opsiIndentMm ?? null])
                     </td>
                     <td class="qno" style="text-align:right;">{{ $row['nomor'] }}.</td>
                 @else
@@ -53,7 +57,7 @@
                                 @endif
                             </div>
                         @endif
-                        @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth])
+                        @include('ljk.partials.soal-opsi', ['block' => $block, 'rtl' => false, 'maxOptions' => $maxOptions, 'colWidth' => $colWidth, 'opsiWidthMm' => $opsiWidthMm, 'opsiIndentMm' => $opsiIndentMm ?? null])
                     </td>
                 @endif
             </tr>

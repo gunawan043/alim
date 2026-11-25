@@ -207,12 +207,10 @@ class SoalNaskahPdfService
         // posisi kolom A/B/C tidak sejajar antar soal.
         $opsiWidthMm = round($contentMm, 2);
 
-        // Grid kolom DIPAKU untuk seluruh naskah. Tanpa ini setiap soal
-        // menghitung kolomnya sendiri dari panjang opsinya, sehingga soal
-        // dengan opsi pendek memakai 4 kolom dan soal lain 2 atau 1 kolom —
-        // penanda A/B/C/D jadi tidak berada di satu garis vertikal.
-        $kolomGrid = $layout->kolomGrid($maxOptions, $maxColumns);
-
+        // Grid kolom dihitung PER SOAL dari panjang opsinya sendiri. Soal
+        // beropsi panjang turun ke 2 atau 1 kolom, soal lain tetap 4 kolom —
+        // soal tidak saling memaksa. Di dalam satu soal, semua kolom tetap
+        // berlebar identik sehingga label A/B/C/D sejajar.
         foreach ($blocks as &$block) {
             if ($block['type'] !== 'soal' || empty($block['opsi'])) {
                 continue;
@@ -223,7 +221,7 @@ class SoalNaskahPdfService
                 $contentMm,
                 (float) ($settings['font_size'] ?? 11),
                 $maxColumns,
-                $kolomGrid,
+                0,
                 (float) ($settings['option_indent'] ?? 2)
             );
 

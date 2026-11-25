@@ -242,9 +242,6 @@
         margin-left: 0.2mm;
     }
 
-    /* Tata letak otomatis: lebar kolom TETAP dan identik, tiap pilihan
-       tepat 1 baris. Lebar mm ditetapkan di partial opsi. */
-    table.opts.opts-auto td { white-space: nowrap; }
 
     /* ── Grid kolom label + isi (struktur dua kolom per opsi) ─────────────
        Setiap opsi = <td class="col-label"> + <td class="col-isi">. Lebar
@@ -265,12 +262,11 @@
         width: auto;
         margin-left: auto;
         margin-right: 0;
-        /* `table-layout: fixed` (dari `table.opts`) MEMBAGI RATA sisa ruang
-           ke setiap sel, sehingga sel isi melebar melebihi teksnya dan jarak
-           antar opsi jadi renggang. Dengan `auto`, angka mm di partial
-           dihormati apa adanya dan tabel mengikuti jumlah kolomnya.
+        /* `fixed`: lebar sel PERSIS seperti angka mm di partial, tidak
+           dibagi ulang oleh renderer. Jumlah kolomnya sudah dihitung
+           otomatis dari panjang opsi, jadi tidak ada sel yang meluber.
            Margin kiri `auto` menempelkan tabel ke tepi KANAN area opsi. */
-        table-layout: auto;
+        table-layout: fixed;
     }
     table.opts.opts-grid.ltr {
         margin-left: 0;

@@ -1007,13 +1007,16 @@ class BankSoalSkScopeTest extends TestCase
         // 2) Jarak label→isi satu nilai.
         $this->assertCount(1, array_unique($gapMm[1]), 'Jarak label→isi konsisten.');
 
-        // 3) Total kolom = lebar tabel, jadi tidak ada ruang kosong di dalam
-        //    tabel dan tabel tidak melebihi area opsi.
+        // 3) Total kolom + padding = lebar tabel. Padding ikut dihitung
+        //    karena DomPDF menaruhnya DI LUAR `width` (jarak ke opsi berikut).
+        preg_match_all('/<td class="col-isi" style="width: [\d.]+mm;[^"]*padding: 0 0 0 ([\d.]+)mm;/', $tabel[0], $padMm);
+
         $total = array_sum(array_map('floatval', $labelMm[1]))
             + array_sum(array_map('floatval', $isiMm[1]))
-            + array_sum(array_map('floatval', $gapMm[1]));
+            + array_sum(array_map('floatval', $gapMm[1]))
+            + array_sum(array_map('floatval', $padMm[1]));
 
-        $this->assertEqualsWithDelta($lebarTabel, $total, 0.05, 'Total kolom = lebar tabel.');
+        $this->assertEqualsWithDelta($lebarTabel, $total, 0.05, 'Total kolom + padding = lebar tabel.');
 
         // 4) Tidak ada spasi manual untuk memposisikan opsi.
         $this->assertStringNotContainsString('&nbsp;&nbsp;', $html);
@@ -1196,11 +1199,14 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertStringNotContainsString('٦٢٠٢', $tanggal, 'Tahun tidak boleh terbalik.');
     }
 
-    public function test_naskah_memakai_grid_kolom_yang_sama_untuk_semua_soal(): void
+    public function test_naskah_menghitung_kolom_opsi_per_soal(): void
     {
+        // Keputusan produk: jumlah kolom dihitung PER SOAL dari panjang
+        // opsinya. Soal beropsi pendek tidak dipaksa menyempit gara-gara
+        // soal lain, dan soal beropsi panjang turun sendiri ke 2/1 kolom.
         $soal1 = $this->makeSoal();
 
-        // Soal kedua hanya punya 2 opsi; grid naskah tetap harus 4 kolom.
+        // Soal kedua hanya punya 2 opsi -> dihitung 2 kolom.
         $soal2 = Soal::create([
             'bank_soal_id' => $soal1->bank_soal_id,
             'tipe_soal' => 'pg',
@@ -1239,6 +1245,8 @@ class BankSoalSkScopeTest extends TestCase
             ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'latin']
         );
 
+        $contentMm = (float) $data['opsiWidthMm'];
+
         $grid = collect($data['blocks'])
             ->where('type', 'soal')
             ->map(fn (array $block) => $block['opsiLayout']['columns'])
@@ -1246,7 +1254,25 @@ class BankSoalSkScopeTest extends TestCase
             ->all();
 
         $this->assertCount(2, $grid);
-        $this->assertSame([4, 4], $grid, 'Semua soal memakai grid kolom yang sama.');
+        // Urutan blok mengikuti created_at yang bisa sama; bandingkan sebagai
+        // himpunan agar test tidak rapuh.
+        sort($grid);
+        $this->assertSame([2, 4], $grid, 'Kolom mengikuti panjang opsi tiap soal.');
+
+        // Opsi pendek tidak boleh ikut menyempit hanya karena ada soal lain.
+        $teksTiapSel = collect($data['blocks'])
+            ->where('type', 'soal')
+            ->map(fn (array $b) => [$b['opsiLayout']['columns'], round($b['opsiLayout']['cellMm'], 2)])
+            ->all();
+
+        foreach ($teksTiapSel as [$kolom, $cellMm]) {
+            $this->assertEqualsWithDelta(
+                $contentMm / $kolom,
+                $cellMm,
+                0.02,
+                'Lebar sel = area opsi / kolom soal itu sendiri.'
+            );
+        }
     }
 
     public function test_naskah_latin_tidak_mencetak_tanggal_arab(): void
@@ -1356,9 +1382,9 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertNotEmpty($m[1], 'Lebar kolom opsi memakai satuan mm.');
         $this->assertCount(1, array_unique($m[1]), 'Semua kolom memakai lebar yang sama.');
         $this->assertSame('37.4', array_unique($m[1])[0], '157,6/4 dikurangi jarak 2 mm.');
-        $this->assertStringContainsString('style="width: 157.6mm;"', $html, 'Tabel tetap selebar area opsi.');
+        $this->assertStringContainsString('style="width: 157.6mm;"', $html, 'Lebar tabel = jumlah kolom x lebar sel.');
         $this->assertStringContainsString('padding: 0 2mm 0 0', $html, 'Jarak antar kolom 2 mm.');
-        $this->assertStringContainsString('opts-auto', $html);
+        $this->assertStringContainsString('opts-grid', $html);
     }
 
     public function test_pilihan_panjang_dirender_satu_kolom_penuh(): void
@@ -1507,7 +1533,9 @@ class BankSoalSkScopeTest extends TestCase
             ['font_size' => 11, 'option_columns' => 0]
         );
 
-        $this->assertStringContainsString('opts-auto', $html);
+        // Opsi pendek tidak boleh terlipat: grid memakai nowrap dan tabelnya
+        // ber-class opts-grid.
+        $this->assertStringContainsString('opts-grid', $html);
         $this->assertStringContainsString('white-space: nowrap', $html);
     }
 
@@ -2020,6 +2048,136 @@ class BankSoalSkScopeTest extends TestCase
             $teks,
             array_keys($teks)
         ));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // DYNAMIC OPTION LAYOUT — 6 skenario wajib
+    // ─────────────────────────────────────────────────────────────
+
+    public function test_skenario_1_empat_opsi_panjang_hampir_sama_tetap_empat_kolom(): void
+    {
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout(
+            $this->opsi(['40', '41', '42', '43']),
+            157.6, 11.0
+        );
+
+        $this->assertSame(4, $hasil['columns']);
+        $this->assertCount(1, $hasil['rows']);
+        $this->assertFalse($hasil['wrap'], 'Keempat opsi muat tanpa dilipat.');
+        $this->assertSame(
+            round(157.6 / 4, 2),
+            $hasil['cellMm'],
+            'Lebar sel = area opsi / jumlah kolom.'
+        );
+    }
+
+    public function test_skenario_2_empat_opsi_sangat_berbeda_panjang_tetap_seragam(): void
+    {
+        // Panjang berbeda tidak boleh membuat satu opsi lebih lebar: semua
+        // kolom memakai lebar yang SAMA (cellMm), bukan lebar teksnya.
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout($this->opsi(['1', 'dua belas', 'tiga', 'empat belas']), 157.6, 11.0);
+
+        $this->assertSame(4, $hasil['columns'], 'Keempatnya masih muat.');
+        $this->assertCount(1, $hasil['rows']);
+        $this->assertSame(
+            round(157.6 / 4, 2),
+            $hasil['cellMm'],
+            'Lebar kolom tidak mengikuti panjang teks masing-masing.'
+        );
+    }
+
+    public function test_skenario_3_satu_opsi_jauh_lebih_panjang_turun_dua_kolom(): void
+    {
+        // Bukan dilipat: opsi yang terlalu panjang menurunkan jumlah kolom
+        // menjadi 2 (dua baris), sesuai aturan adaptif. Panjang dipilih
+        // supaya TIDAK muat 4 kolom tetapi muat 2 kolom.
+        $layout = app(SoalOpsiLayout::class);
+        $hasil = $layout->layout(
+            $this->opsi([
+                'tiga ribu empat ratus tujuh',
+                '4.410', '4.510', '4.610',
+            ]),
+            157.6,
+            11.0
+        );
+
+        $this->assertSame(2, $hasil['columns'], 'Tidak muat 4 kolom -> 2 kolom.');
+        $this->assertCount(2, $hasil['rows']);
+        $this->assertSame([0, 1], array_column($hasil['rows'][0], 'index'));
+        $this->assertSame([2, 3], array_column($hasil['rows'][1], 'index'));
+        $this->assertSame(round(157.6 / 2, 2), $hasil['cellMm']);
+    }
+
+    public function test_skenario_4_opsi_arab_berharakat_diukur_bentuk_visual(): void
+    {
+        // Harakat tidak boleh membuat opsi dianggap jauh lebih panjang:
+        // pengukuran memakai presentation form yang benar-benar tercetak.
+        $layout = app(SoalOpsiLayout::class);
+        $arab = function (array $teks): array {
+            return array_values(array_map(
+                fn (string $t, int $i) => [
+                    'label' => chr(65 + $i),
+                    'teks' => $t,
+                    'display_label' => ['ا', 'ب', 'ج', 'د'][$i],
+                ],
+                $teks,
+                array_keys($teks)
+            ));
+        };
+
+        $hasil = $layout->layout(
+            $arab(['بَيْتٌ', 'مَسْجِدٌ', 'سُوقٌ', 'مَكْتَبٌ']),
+            157.6, 11.0
+        );
+
+        $this->assertSame(4, $hasil['columns'], 'Empat opsi berharakat pendek tetap 4 kolom.');
+        $this->assertCount(1, $hasil['rows']);
+
+        // Bentuk visual lebih pendek dari teks sumber berharakat.
+        $sumber = $layout->textWidthMm('بَيْتٌ', 11.0);
+        $visual = $layout->opsiWidthMm(['label' => 'ا', 'teks' => 'بَيْتٌ', 'display_label' => 'ا'], 11.0);
+        $this->assertLessThan($sumber, $visual, 'Pengukuran memakai bentuk visual (lebih pendek).');
+    }
+
+    public function test_skenario_5_opsi_butuh_lebih_satu_baris_hanya_mode_satu_kolom(): void
+    {
+        // Teks sangat panjang: turun ke 1 kolom dan boleh dilipat di dalam
+        // selnya sendiri. Tidak ada opsi yang dihilangkan atau dipotong.
+        $layout = app(SoalOpsiLayout::class);
+        $panjang = 'Uraian panjang sekali yang jelas tidak akan muat dalam dua kolom '
+            .'bahkan pada kertas A4 dengan margin normal sekalipun, jadi harus satu kolom.';
+        $hasil = $layout->layout($this->opsi([$panjang, 'pendek', 'sedang', 'lain']), 157.6, 11.0);
+
+        $this->assertSame(1, $hasil['columns']);
+        $this->assertCount(4, $hasil['rows'], 'Setiap opsi satu baris.');
+        $this->assertTrue($hasil['wrap'], 'Teks panjang dilipat di dalam selnya.');
+        $this->assertSame(round(157.6, 2), $hasil['cellMm'], 'Mode 1 kolom memakai lebar penuh.');
+    }
+
+    public function test_skenario_6_jumlah_opsi_berbeda_mengikuti_jumlahnya(): void
+    {
+        $layout = app(SoalOpsiLayout::class);
+
+        $dua = $layout->layout($this->opsi(['12', '18']), 157.6, 11.0);
+        $tiga = $layout->layout($this->opsi(['12', '18', '24']), 157.6, 11.0);
+        $empat = $layout->layout($this->opsi(['12', '18', '24', '36']), 157.6, 11.0);
+        $lima = $layout->layout($this->opsi(['12', '18', '24', '36', '48']), 157.6, 11.0);
+
+        $this->assertSame(2, $dua['columns']);
+        $this->assertSame(3, $tiga['columns']);
+        $this->assertSame(4, $empat['columns']);
+        $this->assertSame(5, $lima['columns']);
+
+        foreach ([$dua, $tiga, $empat, $lima] as $hasil) {
+            $this->assertCount(1, $hasil['rows'], 'Semua opsi satu baris.');
+            $this->assertSame(
+                round(157.6 / $hasil['columns'], 2),
+                $hasil['cellMm'],
+                'Lebar sel = area / jumlah opsi.'
+            );
+        }
     }
 
     public function test_kop_penuh_selebar_margin_dan_bisa_diperkecil(): void

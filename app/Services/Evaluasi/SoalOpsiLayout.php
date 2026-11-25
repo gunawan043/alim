@@ -30,11 +30,13 @@ use App\Services\Ljk\LjkPdfFonts;
  * Lebar kolom = lebar area / jumlah kolom, sehingga A, B, C, D selalu
  * identik lebarnya.
  *
- * Naskah soal memakai mode GRID TETAP: jumlah kolom diambil dari jumlah opsi
- * terbanyak dalam satu naskah (bukan per soal), sehingga penanda A/B/C/D
- * berdiri di satu garis vertikal dari soal pertama sampai terakhir. Bila ada
- * opsi yang lebih panjang dari lebar kolom, teks dilipat di dalam selnya —
- * kolom tetap sejajar, tidak ada pilihan yang melebar.
+ * Jumlah kolom DIHITUNG dari teks nyata setiap soal (bukan dipaksa dari
+ * jumlah opsi). Bila satu opsi sangat panjang, soal itu saja yang turun ke
+ * 2 kolom atau 1 kolom — soal lain dalam naskah tidak ikut berubah.
+ *
+ * Teks Arab diukur dalam BENTUK VISUAL (hasil shaping + presentation form),
+ * bukan teks sumber ber-harakat, karena itu yang benar-benar tercetak.
+ * Contoh: "بَيْتٌ" = 11,64 mm (sumber) tetapi 6,61 mm (visual) pada 11 pt.
  */
 class SoalOpsiLayout
 {
@@ -72,37 +74,49 @@ class SoalOpsiLayout
         $count = count($opsi);
 
         if ($count === 0) {
-            return ['rows' => [], 'columns' => 0, 'widths' => [], 'spans' => [], 'wrap' => false];
+            return ['rows' => [], 'columns' => 0, 'widths' => [], 'spans' => [], 'wrap' => false, 'cellMm' => 0.0];
         }
 
+        // Lebar tiap opsi dalam bentuk yang BENAR-BENAR tercetak.
         $widths = [];
         foreach ($opsi as $index => $option) {
-            $widths[$index] = $this->textWidthMm($this->labelText($option), $fontPt);
+            $widths[$index] = $this->opsiWidthMm($option, $fontPt);
         }
 
-        // Jumlah kolom yang dipakai tabel. Saat naskah memaksa grid tetap,
-        // tabel memakai kolom sebanyak itu walau soalnya hanya punya 2 opsi —
-        // sisanya diisi sel kosong, sehingga kolom A selalu di posisi sama.
+        // Jumlah kolom: otomatis dari teks (per soal). `$kolomTetap` hanya
+        // dipakai bila pemanggil benar-benar memaksa (dipakai test lama dan
+        // pembungkus kompatibilitas).
         $columns = $kolomTetap > 0
             ? $kolomTetap
-            : $this->columnsFor($widths, $availableMm, $maxColumns);
+            : $this->columnsFor($widths, $availableMm, $maxColumns, $indentMm);
 
         $packColumns = max(1, min($columns, $count));
 
         // Semua kolom sama lebar; tidak ada pilihan yang dilebarkan.
-        $unitMm = $availableMm / $columns;
-        $rows = $this->packRows($widths, $unitMm, $packColumns);
+        $cellMm = $this->cellWidthMm($availableMm, $columns);
+        $rows = $this->packRows($widths, $cellMm, $packColumns);
 
         return [
             'rows' => $rows,
             'columns' => $columns,
             'widths' => $widths,
             'spans' => array_fill(0, $count, 1),
-            // Hanya grid tetap yang boleh melipat teks. Mode otomatis sudah
-            // memilih jumlah kolom yang muat tanpa lipatan.
-            'wrap' => $kolomTetap > 0
-                && $this->perluWrap($widths, max(1.0, $unitMm - max(0.0, $indentMm))),
+            'cellMm' => $cellMm,
+            // Lipatan hanya terjadi pada mode 1 kolom (atau grid paksa).
+            // Mode 4/2 kolom sudah dijamin muat oleh perhitungan di atas.
+            'wrap' => $columns === 1 || $this->perluWrap($widths, max(1.0, $cellMm - max(0.0, $indentMm))),
         ];
+    }
+
+    /**
+     * Lebar satu sel kolom (mm) — sama untuk semua kolom dalam satu soal.
+     *
+     * Dibulatkan 2 desimal agar HTML rapi; sisa pembulatan ikut ke sel
+     * terakhir lewat `columns × cellMm` pada lebar tabel.
+     */
+    private function cellWidthMm(float $availableMm, int $columns): float
+    {
+        return round(max(1.0, $availableMm) / max(1, $columns), 2);
     }
 
     /**
@@ -140,7 +154,7 @@ class SoalOpsiLayout
     /**
      * @param  array<int, float>  $widths
      */
-    private function columnsFor(array $widths, float $availableMm, int $maxColumns): int
+    private function columnsFor(array $widths, float $availableMm, int $maxColumns, float $indentMm = 2.0): int
     {
         $kolomMaks = max(1, min(self::MAX_COLUMNS, count($widths)));
 
@@ -149,35 +163,66 @@ class SoalOpsiLayout
             return max(1, min($kolomMaks, $maxColumns));
         }
 
-        return $this->kolomTerbaik($widths, $availableMm, $kolomMaks);
+        return $this->kolomTerbaik($widths, $availableMm, $kolomMaks, $indentMm);
     }
 
     /**
      * Pilih jumlah kolom terbanyak yang masih memuat SEMUA pilihan tanpa
-     * terlipat. Bila tidak ada yang muat, semua pilihan jadi 1 kolom per
-     * baris (lebar penuh).
+     * terlipat, dengan aturan bertingkat: n kolom → 2 kolom → 1 kolom.
+     *
+     * Satu kolom dipakai hanya bila 2 kolom pun tidak cukup. Tidak ada
+     * pilihan yang dipotong atau disembunyikan: pada 1 kolom teks boleh
+     * turun baris di dalam selnya sendiri (lihat `wrap`).
+     *
+     * Ruang yang dibutuhkan satu sel = lebar teks + padding kanan sel.
+     * Padding ditambahkan karena DomPDF menaruh padding DI LUAR `width`.
      *
      * @param  array<int, float>  $widths
      */
-    private function kolomTerbaik(array $widths, float $availableMm, int $kolomMaks): int
+    private function kolomTerbaik(array $widths, float $availableMm, int $kolomMaks, float $indentMm = 2.0): int
     {
-        for ($columns = $kolomMaks; $columns > 1; $columns--) {
-            $unitMm = $availableMm / $columns;
-            $muatSemua = true;
+        $pad = max(0.0, $indentMm);
 
-            foreach ($widths as $width) {
-                if ($width + self::SAFETY_MM > $unitMm) {
-                    $muatSemua = false;
-                    break;
-                }
-            }
+        for ($columns = $kolomMaks; $columns >= 2; $columns--) {
+            $cellMm = $availableMm / $columns;
 
-            if ($muatSemua) {
+            if ($this->muatSemua($widths, $cellMm - $pad)) {
                 return $columns;
             }
         }
 
         return 1;
+    }
+
+    /**
+     * Apakah semua pilihan muat satu baris di dalam lebar sel `$contentMm`.
+     *
+     * @param  array<int, float>  $widths
+     */
+    private function muatSemua(array $widths, float $contentMm): bool
+    {
+        foreach ($widths as $width) {
+            if ($width + self::SAFETY_MM > $contentMm) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Lebar opsi dalam bentuk yang tercetak (mm).
+     *
+     * Naskah Arab di-shape lebih dulu oleh `LjkArabicText::marksToHtml()`,
+     * sehingga yang diukur adalah presentation form tanpa harakat — ukuran
+     * yang benar-benar dipakai DomPDF. Tanpa ini opsi berharakat dianggap
+     * 40–100% lebih panjang dari kenyataan dan soal turun ke 1 kolom.
+     *
+     * @param  array<string, mixed>  $option
+     */
+    public function opsiWidthMm(array $option, float $fontPt): float
+    {
+        return $this->textWidthMm($this->labelText($option), $fontPt);
     }
 
     /**
@@ -252,15 +297,27 @@ class SoalOpsiLayout
     }
 
     /**
-     * Teks yang diukur/ditampilkan: "A. isi pilihan".
+     * Teks yang diukur: "label. isi pilihan", dalam bentuk yang tercetak.
+     *
+     * Teks Arab di-shape dulu (presentation form, harakat dibuang di dalam
+     * span) lalu tag di-strip, sehingga lebar yang dihasilkan sama dengan
+     * lebar glyph yang dicetak DomPDF.
      *
      * @param  array<string, mixed>  $option
      */
     private function labelText(array $option): string
     {
         $label = (string) ($option['display_label'] ?? $option['label'] ?? '');
-        $teks = (string) ($option['teks'] ?? '');
+        $teks = strip_tags((string) ($option['teks'] ?? ''));
 
-        return trim($label.'. '.strip_tags($teks));
+        if (LjkArabicText::hasArabic($teks)) {
+            $teks = html_entity_decode(
+                strip_tags(LjkArabicText::marksToHtml($teks)),
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8'
+            );
+        }
+
+        return trim($label.'. '.$teks);
     }
 }

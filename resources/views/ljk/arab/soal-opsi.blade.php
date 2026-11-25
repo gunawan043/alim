@@ -30,7 +30,7 @@
                 ? (float) $opsiWidthMm
                 : 157.58;
 
-            // ── Grid kolom label + isi, DIKUNCI lebar isinya ─────────────────
+            // ── Grid kolom label + isi ──────────────────────────────────────
             //
             // Tiap opsi tetap memakai DUA sel: | isi opsi | .label |.
             // Kolom isi berlebar SAMA untuk semua opsi pada soal ini dan
@@ -39,37 +39,45 @@
             //   - awal teks setiap opsi mulai pada x yang sama;
             //   - jarak label→isi konsisten.
             //
-            // Lebarnya DITURUNKAN DARI UKURAN FONT (bukan teks per soal),
-            // supaya tidak ada ruang kosong menganga saat teks pendek dan
-            // semuanya ikut menyesuaikan bila guru mengganti ukuran font.
+            // Lebar satu sel datang dari service (`cellMm` = area opsi /
+            // jumlah kolom). Jumlah kolomnya sudah dihitung otomatis dari
+            // panjang opsi soal ini, jadi opsi pendek tidak menyisakan ruang
+            // kosong dan opsi panjang tidak pernah terpotong.
             $fontOpsi = (float) ($fontSize ?? 11);
             $ptMm = 25.4 / 72;                              // 1 pt dalam mm
-            $labelMm = round($fontOpsi * $ptMm * 1.7, 2);   // huruf + titik
-            $gapMm = round($fontOpsi * $ptMm * 0.4, 2);     // label → isi
+            // Label memakai lebar HURUF saja (≈0,3 em): titik diletakkan di
+            // sebelah kiri huruf oleh bidi, tidak menambah lebar. Jarak ke
+            // isi tipis. Keduanya relatif terhadap font, jadi ikut berubah
+            // saat ukuran font diganti.
+            $labelMm = round($fontOpsi * $ptMm * 0.3, 2);   // huruf label
+            $gapMm = round($fontOpsi * $ptMm * 0.25, 2);    // label → isi
+            $padMm = max(0.0, (float) ($opsiIndentMm ?? 2));
 
-            // Lebar isi: cukup untuk kata opsi terpanjang yang lazim (sekitar
-            // 1,25 mm per pt) + ruang aman tipis. Dipakai SEMUA opsi, jadi
-            // teks pendek tetap rata pada garis awal yang sama.
-            $isiMm = round($fontOpsi * $ptMm * 1.25 + $gapMm, 2);
+            $cellMm = isset($opsiLayout['cellMm']) && $opsiLayout['cellMm'] > 0
+                ? round((float) $opsiLayout['cellMm'], 2)
+                : round($lebarMm / $kolom, 2);
 
-            // Jangan sampai satu baris tidak muat 4 grup: batasi seperempat
-            // area opsi agar tidak jatuh ke 2 baris saat font diperbesar.
-            $maksIsi = round($lebarMm / 4 - $labelMm - $gapMm, 2);
-            if ($maksIsi > 0 && $isiMm > $maksIsi) {
-                $isiMm = max(1.0, $maksIsi);
-            }
+            // Isi = sisa sel setelah label + jarak + padding kanan. Padding
+            // ikut dikurangkan karena DomPDF menaruhnya DI LUAR `width`.
+            $isiMm = round(max(1.0, $cellMm - $labelMm - $gapMm - $padMm), 2);
 
-            // Lebar tabel = jumlah kolom × (isi + jarak + label). Tabel tidak
-            // direntangkan ke seluruh area: sisa ruang dibiarkan di KIRI
-            // sehingga seluruh grup opsi menempel ke tepi KANAN.
-            $totalMm = round(($isiMm + $gapMm + $labelMm) * $kolom, 2);
+            // Lebar tabel = jumlah kolom × lebar sel, sehingga tabel tepat
+            // sebesar isinya dan menempel ke tepi KANAN (sisa ruang di kiri).
+            $totalMm = round($cellMm * $kolom, 2);
             if ($totalMm > $lebarMm) {
                 $totalMm = round($lebarMm, 2);
             }
 
             $align = $rtl ? 'right' : 'left';
 
+            // Mode 1 kolom: teks boleh turun baris di selnya sendiri agar
+            // tidak terpotong. Mode 4/2 kolom sudah dijamin muat.
             $whiteSpace = ! empty($opsiLayout['wrap']) ? 'normal' : 'nowrap';
+
+            // Padding kanan sel isi: jarak ke label opsi berikutnya. Dipasang
+            // di sel isi (bukan sel label) supaya `cellMm` tetap utuh.
+            $padIsi = $rtl ? "0 0 0 {$padMm}mm" : "0 {$padMm}mm 0 0";
+            $padLabel = $rtl ? "0 0 0 {$gapMm}mm" : "0 {$gapMm}mm 0 0";
         @endphp
         {{-- RTL: label di KANAN isi, seluruh baris dirapatkan ke tepi kanan.
              LTR: label di KIRI isi, baris dirapatkan ke kiri.
@@ -83,17 +91,17 @@
                             $label = $opsi ? ($opsi['display_label'] ?? $opsi['label']) : '';
                         @endphp
                         @if($rtl)
-                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: right; white-space: {{ $whiteSpace }}; padding: 0;">
+                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: right; white-space: {{ $whiteSpace }}; padding: {{ $padIsi }};">
                                 @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
                             </td>
-                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: right; padding: 0 0 0 {{ $gapMm }}mm;">
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: right; padding: {{ $padLabel }};">
                                 @if($opsi)<span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($label) !!}</span>@else&nbsp;@endif
                             </td>
                         @else
-                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: left; padding: 0 {{ $gapMm }}mm 0 0;">
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: left; padding: {{ $padLabel }};">
                                 @if($opsi)<span class="letter">{!! LjkArabicText::marksToHtml($label) !!}.</span>@else&nbsp;@endif
                             </td>
-                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: left; white-space: {{ $whiteSpace }}; padding: 0;">
+                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: left; white-space: {{ $whiteSpace }}; padding: {{ $padIsi }};">
                                 @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
                             </td>
                         @endif
