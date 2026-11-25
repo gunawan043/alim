@@ -24,3 +24,6 @@
     RewriteRule ^ index.php [L]
 </IfModule>
 
+
+# ALIM: use PHP 8.4 (required by composer.lock)
+AddHandler application/x-httpd-php84 .php
