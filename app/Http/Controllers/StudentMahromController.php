@@ -46,8 +46,11 @@ class StudentMahromController extends Controller
             }
 
             if ($user->isDormitoryUser()) {
-                $dormitoryIds = $user->accessibleDormitoryIds();
-                $q->whereHas('student.activeDormitoryResident', fn ($sq) => $sq->whereIn('dormitory_id', $dormitoryIds));
+                // Sama seperti menu Data Santri: seluruh santri yang mondok.
+                $dormitoryIds = $user->mahromDormitoryScope();
+                $q->whereHas('student.activeDormitoryResident', function ($sq) use ($dormitoryIds) {
+                    $dormitoryIds === [] ? $sq->whereRaw('1 = 0') : $sq->whereIn('dormitory_id', $dormitoryIds);
+                });
             }
         };
 
@@ -430,7 +433,13 @@ class StudentMahromController extends Controller
 
         // User asrama: hanya santri yang mondok di asrama yang dapat diakses.
         if ($user->isDormitoryUser()) {
-            $dormitoryIds = $user->accessibleDormitoryIds();
+            // Cukup santri mondok di asrama mana pun yang aktif, sama seperti
+            // daftar santri yang ditampilkan kepadanya.
+            $dormitoryIds = $user->mahromDormitoryScope();
+
+            if ($dormitoryIds === []) {
+                return false;
+            }
 
             return $student->activeDormitoryResident()
                 ->whereIn('dormitory_id', $dormitoryIds)
@@ -624,8 +633,10 @@ class StudentMahromController extends Controller
             if ($auth->isHomeroomTeacher()) {
                 $query->whereIn('id', $this->homeroomStudentIds($auth));
             } elseif ($auth->isDormitoryUser()) {
-                $dormitoryIds = $auth->accessibleDormitoryIds();
-                $query->whereHas('activeDormitoryResident', fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds));
+                $dormitoryIds = $auth->mahromDormitoryScope();
+                $dormitoryIds === []
+                    ? $query->whereRaw('1 = 0')
+                    : $query->whereHas('activeDormitoryResident', fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds));
             }
         }
 

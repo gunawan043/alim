@@ -967,4 +967,30 @@ class User extends Authenticatable
 
         return $assigned->unique()->values()->toArray();
     }
+
+    /**
+     * Batas asrama untuk data mahrom.
+     *
+     * Mengikuti menu Data Santri: user asrama melihat SELURUH santri yang
+     * mondok, bukan hanya asrama yang ditugaskan padanya. Sebelumnya cakupan
+     * diambil dari penugasan asrama, sehingga user yang belum punya
+     * penugasan tidak melihat satu data pun dan tidak dapat mengedit mahrom.
+     *
+     * null berarti tanpa batas asrama.
+     *
+     * @return array<int, string>|null
+     */
+    public function mahromDormitoryScope(): ?array
+    {
+        if (! $this->isDormitoryUser()) {
+            return null;
+        }
+
+        $ids = Dormitory::query()
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+
+        return $ids === [] ? [] : $ids;
+    }
 }

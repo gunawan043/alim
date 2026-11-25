@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
  *
  *  - admin/struktural : seluruh santri pada konteks sekolah;
  *  - wali kelas       : hanya santri pada rombel yang diwalikan;
- *  - user asrama      : hanya santri yang mondok di asrama yang dapat diakses.
+ *  - user asrama      : santri yang mondok (sama seperti menu Data Santri).
  */
 class MahromAccessScope
 {
@@ -54,11 +54,16 @@ class MahromAccessScope
         }
 
         if ($user->isDormitoryUser()) {
-            $dormitoryIds = $user->accessibleDormitoryIds();
+            // Sama seperti menu Data Santri: seluruh santri yang mondok,
+            // tidak bergantung pada penugasan asrama per user.
+            $dormitoryIds = $user->mahromDormitoryScope();
 
-            $ids = Student::query()
-                ->withoutGlobalScope('school_context')
-                ->whereHas('activeDormitoryResident', fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds))
+            $query = Student::query()
+                ->withoutGlobalScope('school_context');
+
+            $ids = ($dormitoryIds === []
+                ? $query->whereRaw('1 = 0')
+                : $query->whereHas('activeDormitoryResident', fn ($q) => $q->whereIn('dormitory_id', $dormitoryIds)))
                 ->pluck('id')
                 ->all();
 
