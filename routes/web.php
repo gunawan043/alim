@@ -957,6 +957,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/', [NilaiKelasController::class, 'index'])->name('index');
                     Route::get('/{studyGroupId}/sts', [NilaiKelasController::class, 'sts'])->name('sts');
                     Route::post('/{studyGroupId}/sts', [NilaiKelasController::class, 'stsStore'])->name('sts.store');
+                    Route::post('/{studyGroupId}/presensi', [NilaiKelasController::class, 'presensiStore'])->name('presensi.store');
                     Route::post('/{studyGroupId}/sts/kolom', [NilaiKelasController::class, 'stsColumns'])->name('sts.kolom');
                     Route::post('/{studyGroupId}/sts/komponen', [NilaiKelasController::class, 'stsKomponen'])->name('sts.komponen');
                     Route::get('/{studyGroupId}/leger/cetak', [NilaiKelasController::class, 'legerCetak'])->name('leger.cetak');

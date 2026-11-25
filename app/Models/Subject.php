@@ -30,6 +30,7 @@ class Subject extends Model
         'name_ar',
         'subject_group_id',
         'category',
+        'kelompok',
         'source',
         'credit_hours',
         'description',

@@ -202,7 +202,7 @@
                     </thead>
                     <tbody>
                         @php $rowNum = 0; @endphp
-                        @foreach(['agama','arab','hadits','umum'] as $key)
+                        @foreach(['agama','bahasa','umum'] as $key)
                             @php $items = $grouped[$key] ?? collect([]); @endphp
                             @if($items->isEmpty())
                                 @continue

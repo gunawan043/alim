@@ -47,6 +47,27 @@ DIRTY_COUNT="$(git -C "${ROOT_DIR}" status --porcelain | wc -l | tr -d ' ')"
 # Beri waktu singkat agar proses `git push` selesai lebih dulu.
 sleep "${ALIM_DEPLOY_DELAY:-8}"
 
+# -----------------------------------------------------------------------------
+# PENJAGA REMOTE: rsync di bawah memakai --delete, jadi berkas di server yang
+# tidak ada di dalam commit akan DIHAPUS. Pada 2026-11-25 production memuat
+# 6.830 berkas di luar commit (termasuk 35 migration yang sudah "Ran").
+# Periksa dulu worktree server; bila kotor, batalkan sebelum satu byte pun
+# terkirim. Tidak ada override lewat environment — sama seperti deploy.sh.
+# -----------------------------------------------------------------------------
+REMOTE_DIRTY="$(${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && git status --porcelain | wc -l" 2>/dev/null | tr -d '[:space:]')"
+
+if [ -z "${REMOTE_DIRTY}" ]; then
+    log "ERROR: gagal membaca status worktree server; deploy dibatalkan (tidak bisa memverifikasi keamanan)."
+    exit 3
+fi
+
+if [ "${REMOTE_DIRTY}" -gt 0 ]; then
+    log "ERROR: worktree server memuat ${REMOTE_DIRTY} berkas di luar commit."
+    log "ERROR: rsync --delete akan MENGHAPUS berkas tersebut; deploy dibatalkan."
+    log "Rujukan: docs/integration/alim-core-production-remediation-cycle-1.md"
+    exit 3
+fi
+
 log "============================================================"
 log "AUTO DEPLOY DIMULAI (git archive)"
 log "Repo: ${ROOT_DIR}"

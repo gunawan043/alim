@@ -252,7 +252,19 @@ class StudentMahromController extends Controller
 
         $mahrom = StudentMahrom::where('student_id', $santriUuid)->findOrFail($mahromUuid);
 
-        return view('students.mahroms.edit', compact('student', 'mahrom', 'userId'));
+        // Halaman edit menampilkan SELURUH mahrom santri ini, bukan hanya
+        // yang diklik. Operator sering harus menyunting beberapa mahrom
+        // sekaligus (mis. memperbaiki nomor ayah dan ibu), dan berpindah
+        // halaman untuk tiap mahrom membuat pekerjaan itu berulang.
+        // Mahrom yang diklik diletakkan paling atas agar tetap jadi fokus.
+        $allMahroms = StudentMahrom::where('student_id', $santriUuid)
+            ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$mahromUuid])
+            ->orderByDesc('is_primary')
+            ->orderBy('relationship')
+            ->orderBy('name')
+            ->get();
+
+        return view('students.mahroms.edit', compact('student', 'mahrom', 'allMahroms', 'userId'));
     }
 
     /**
@@ -289,8 +301,13 @@ class StudentMahromController extends Controller
 
         $mahrom->update($data);
 
-        return redirect()->route('user.students.mahroms.index', ['userId' => $userId, 'santriUuid' => $santriUuid])
-            ->with('success', 'Data mahrom berhasil diperbarui.');
+        // Halaman edit kini memuat semua mahrom santri, jadi kembali ke edit
+        // agar operator bisa langsung menyunting mahrom berikutnya.
+        return redirect()->route('user.students.mahroms.edit', [
+            'userId' => $userId,
+            'santriUuid' => $santriUuid,
+            'mahromUuid' => $mahromUuid,
+        ])->with('success', 'Data mahrom "'.$mahrom->name.'" berhasil diperbarui.');
     }
 
     /**

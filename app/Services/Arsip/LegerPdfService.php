@@ -4,6 +4,7 @@ namespace App\Services\Arsip;
 
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
+use App\Models\LegerPresensi;
 use App\Models\NilaiSumatif;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
@@ -86,16 +87,33 @@ class LegerPdfService
             }
         }
 
+        // Rekap presensi: S = hadir + terlambat, I = izin + sakit, A = alpa.
+        // Isian manual di leger (admin_leger_presensi) menimpa hitungan ini.
         $presensiMap = [];
         if ($selectedAyId) {
             $presensiRaw = AdminPresensiHarian::where('academic_year_id', $selectedAyId)
                 ->where('study_group_id', $studyGroupId)
                 ->where('semester', $selectedSem)->get()->groupBy('student_id');
+
             foreach ($presensiRaw as $sid => $rows) {
                 $presensiMap[$sid] = [
-                    's' => $rows->where('status', 'S')->count(),
-                    'i' => $rows->where('status', 'I')->count(),
-                    'a' => $rows->where('status', 'A')->count(),
+                    's' => $rows->filter(fn ($r) => in_array($r->status, ['hadir', 'terlambat'], true))->count(),
+                    'i' => $rows->filter(fn ($r) => in_array($r->status, ['izin', 'sakit'], true))->count(),
+                    'a' => $rows->where('status', 'alpa')->count(),
+                ];
+            }
+
+            $manual = LegerPresensi::where('study_group_id', $studyGroupId)
+                ->where('academic_year_id', $selectedAyId)
+                ->where('semester', $selectedSem)
+                ->get();
+
+            foreach ($manual as $row) {
+                $base = $presensiMap[$row->student_id] ?? ['s' => 0, 'i' => 0, 'a' => 0];
+                $presensiMap[$row->student_id] = [
+                    's' => $row->s ?? $base['s'],
+                    'i' => $row->i ?? $base['i'],
+                    'a' => $row->a ?? $base['a'],
                 ];
             }
         }

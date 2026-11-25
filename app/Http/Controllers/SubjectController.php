@@ -6,6 +6,8 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\School;
+use App\Models\StudyGroup;
+use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Support\SubjectArabicName;
 use Illuminate\Http\Request;
@@ -46,27 +48,15 @@ class SubjectController extends Controller
 
         $subjects = $query->orderBy('school_id')->orderBy('name')->get();
 
-        // Group by kelompok mapel: Agama → Arab → Hadits → Umum
-        $grouped = $subjects->groupBy(function ($s) {
-            $name = strtolower($s->name);
-            if (preg_match('/(aqidah|adab|fiqih|tahfidz|hafalan|pendidikan agama)/i', $name)) {
-                return 'agama';
-            }
-            if (preg_match('/(bahasa arab|b\.? ?arab|qowaid|ta[\'"]?bir|sharaf)/i', $name)) {
-                return 'arab';
-            }
-            if (preg_match('/(hadits|hadist)/i', $name)) {
-                return 'hadits';
-            }
-
-            return 'umum';
-        });
+        // Kelompok mapel disimpan eksplisit di kolom `kelompok`.
+        $grouped = $subjects->groupBy(fn ($s) => in_array($s->kelompok, ['agama', 'bahasa', 'umum'], true)
+            ? $s->kelompok
+            : 'umum');
 
         $kelompokLabels = [
-            'agama' => ['label' => 'Mapel Agama',            'icon' => 'ri-moon-line',       'color' => 'primary'],
-            'arab' => ['label' => 'Mapel Bahasa Arab',       'icon' => 'ri-quill-pen-line', 'color' => 'success'],
-            'hadits' => ['label' => 'Mapel Hadits',             'icon' => 'ri-book-mark-line', 'color' => 'info'],
-            'umum' => ['label' => 'Mapel Umum',               'icon' => 'ri-global-line',    'color' => 'warning'],
+            'agama' => ['label' => 'Mapel Agama',      'icon' => 'ri-moon-line',        'color' => 'primary'],
+            'bahasa' => ['label' => 'Mapel Bahasa',     'icon' => 'ri-quill-pen-line',   'color' => 'success'],
+            'umum' => ['label' => 'Mapel Umum',        'icon' => 'ri-global-line',      'color' => 'warning'],
         ];
 
         $schools = School::orderBy('name')->get();
@@ -195,6 +185,7 @@ class SubjectController extends Controller
             'name' => 'required|string|max:100',
             'name_ar' => 'nullable|string|max:100',
             'category' => 'required|in:nasional,lokal,muatan_lokal',
+            'kelompok' => 'required|in:agama,bahasa,umum',
             'credit_hours' => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -268,8 +259,49 @@ class SubjectController extends Controller
     }
 
     /**
-     * Terapkan mapel yang sudah ada ke seluruh tingkat aktif.
+     * Teruskan perubahan JP master ke alokasi tingkat aktif
+     * (grade_level_subjects), lalu ke rombel (study_group_subjects).
+     * Tanpa ini, JP di halaman Edit Mapel hanya mengubah master dan tidak
+     * pernah sampai ke jadwal / buku nilai / pekan efektif.
      */
+    private function propagateHoursToActiveYear(Subject $subject): int
+    {
+        $activeAyId = AcademicYear::where('is_active', true)->value('id');
+        if (! $activeAyId) {
+            return 0;
+        }
+
+        $hours = (int) ($subject->credit_hours ?: 2);
+
+        $gradeRows = GradeLevelSubject::query()
+            ->where('academic_year_id', $activeAyId)
+            ->where('subject_id', $subject->id)
+            ->get();
+
+        if ($gradeRows->isEmpty()) {
+            return 0;
+        }
+
+        $gradeLevelIds = $gradeRows->pluck('grade_level_id');
+
+        GradeLevelSubject::whereIn('id', $gradeRows->pluck('id'))->update(['allocation_hours' => $hours]);
+
+        $groupIds = StudyGroup::query()
+            ->whereIn('grade_level_id', $gradeLevelIds)
+            ->where('school_id', $subject->school_id)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($groupIds->isNotEmpty()) {
+            StudyGroupSubject::query()
+                ->whereIn('study_group_id', $groupIds)
+                ->where('subject_id', $subject->id)
+                ->update(['weekly_hours' => $hours]);
+        }
+
+        return $gradeRows->count();
+    }
+
     public function syncGrades(Request $request, string $userId, string $id)
     {
         $subject = Subject::findOrFail($id);
@@ -316,10 +348,15 @@ class SubjectController extends Controller
         $user = auth()->user();
         $isSuper = $user && ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
 
+        $lockedFields = [];
         if (! $isSuper && ($subject->source ?? 'pondok') === 'pondok') {
-            $request->merge([
-                'credit_hours' => $subject->credit_hours,
-                'category' => $subject->category,
+            // Mapel pondok: satuan pendidikan hanya boleh mengubah nama.
+            // Field lain diterima apa adanya (tidak ditimpa diam-diam) lalu
+            // dilaporkan sebagai terkunci di pesan sukses.
+            $lockedFields = array_filter([
+                'credit_hours' => (int) $subject->credit_hours !== (int) $request->input('credit_hours'),
+                'category' => $subject->category !== $request->input('category'),
+                'kelompok' => ($subject->kelompok ?? 'umum') !== $request->input('kelompok'),
             ]);
         }
 
@@ -335,6 +372,7 @@ class SubjectController extends Controller
             'name' => 'required|string|max:100',
             'name_ar' => 'nullable|string|max:100',
             'category' => 'required|in:nasional,lokal,muatan_lokal',
+            'kelompok' => 'required|in:agama,bahasa,umum',
             'credit_hours' => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:500',
             'is_active' => 'boolean',
@@ -360,10 +398,37 @@ class SubjectController extends Controller
             return back()->withInput()->with('error', 'Kode mata pelajaran ini sudah ada untuk sekolah tersebut.');
         }
 
+        // Bandingkan hanya field yang boleh berubah oleh pengguna ini.
+        $hoursChanged = ! isset($lockedFields['credit_hours'])
+            && (int) $subject->credit_hours !== (int) $data['credit_hours'];
+
+        if ($lockedFields !== []) {
+            $data = array_merge($data, array_intersect_key(
+                ['credit_hours' => $subject->credit_hours, 'category' => $subject->category, 'kelompok' => $subject->kelompok],
+                $lockedFields
+            ));
+        }
+
         $subject->update($data);
 
+        // JP master yang berubah harus ikut ke tingkat & rombel tahun ajaran aktif.
+        $syncedTingkat = $hoursChanged ? $this->propagateHoursToActiveYear($subject) : 0;
+
+        $message = 'Mata pelajaran berhasil diperbarui.';
+        if ($hoursChanged) {
+            $message .= $syncedTingkat > 0
+                ? " JP {$data['credit_hours']} diterapkan ke {$syncedTingkat} tingkat pada tahun ajaran aktif."
+                : ' Mapel belum terpasang di tingkat mana pun — JP akan dipakai saat diterapkan.';
+        }
+
+        if ($lockedFields !== []) {
+            $labels = ['credit_hours' => 'JP', 'category' => 'kategori', 'kelompok' => 'kelompok'];
+            $names = array_map(fn ($k) => $labels[$k], array_keys($lockedFields));
+            $message .= ' Perubahan '.implode(', ', $names).' tidak disimpan karena mapel pondok hanya boleh diganti namanya — ubah di menu super admin.';
+        }
+
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])
-            ->with('success', 'Mata pelajaran berhasil diperbarui.');
+            ->with('success', $message);
     }
 
     /**

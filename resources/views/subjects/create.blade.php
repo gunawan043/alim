@@ -72,6 +72,15 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label">Kelompok Mapel <span class="text-danger">*</span></label>
+                                <select name="kelompok" class="form-select" required>
+                                    <option value="umum" {{ old('kelompok', 'umum') == 'umum' ? 'selected' : '' }}>Umum</option>
+                                    <option value="agama" {{ old('kelompok') == 'agama' ? 'selected' : '' }}>Agama</option>
+                                    <option value="bahasa" {{ old('kelompok') == 'bahasa' ? 'selected' : '' }}>Bahasa</option>
+                                </select>
+                                <div class="form-text">Menentukan pengelompokan di daftar mapel.</div>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Jam Pelajaran / Minggu <span class="text-danger">*</span></label>
                                 <input type="number" name="credit_hours" class="form-control" value="{{ old('credit_hours', 2) }}" min="1" max="20" required placeholder="1–20">
                             </div>

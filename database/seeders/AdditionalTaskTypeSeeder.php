@@ -57,13 +57,27 @@ class AdditionalTaskTypeSeeder extends Seeder
                     'Koordinator Alumni',
                 ],
             ],
+            [
+                // Nama jenis_gtk di master adalah "Tenaga Perpustakaan";
+                // pencocokan memakai LIKE '%Perpustakaan%' sehingga awalan
+                // "Tenaga" tidak menghalangi.
+                'jenis_gtk' => 'Perpustakaan',
+                'tasks' => [
+                    'Koordinator Perpustakaan',
+                ],
+            ],
         ];
 
         foreach ($data as $section) {
+            // Kelompokkan exact + LIKE dalam satu closure, lalu prioritaskan
+            // nama persis. Tanpa pengelompokan, `orWhere` bisa meloloskan
+            // baris lain dan `first()` mengambil jenis_gtk yang salah.
             $jenisGtk = DB::table('jenis_gtk')
                 ->where('nama', $section['jenis_gtk'])
-                ->orWhere('nama', 'like', '%'.$section['jenis_gtk'].'%')
-                ->first();
+                ->first()
+                ?? DB::table('jenis_gtk')
+                    ->where('nama', 'like', '%'.$section['jenis_gtk'].'%')
+                    ->first();
 
             if (! $jenisGtk) {
                 $this->command->warn("JenisGtk '{$section['jenis_gtk']}' not found, skipping...");

@@ -43,6 +43,49 @@ fi
 
 cd "${APP_DIR}"
 
+# ---------- PENJAGA: jangan pernah reset worktree yang berisi pekerjaan ----------
+# Langkah [1/7] menjalankan `git reset --hard origin/main`. Pada kondisi
+# production 2026-11-25 worktree memuat 6.830 berkas di luar commit (420 sumber
+# + 192 berkas baru + 35 migration yang SUDAH tercatat "Ran" di ledger).
+# Satu kali reset = pekerjaan hilang permanen dan ledger migrasi menjadi yatim.
+#
+# Penjaga ini menolak deploy bila ada berkas terlacak yang berubah, berkas
+# terhapus, atau berkas baru yang tidak diabaikan .gitignore. Sengaja TIDAK ada
+# jalur override lewat environment: melewati penjaga ini harus lewat keputusan
+# eksplisit pemilik production (ubah kode, bukan variabel).
+GUARD_BLOCKED=0
+GUARD_DETAIL=""
+
+DIRTY_TRACKED=$(git status --porcelain --untracked-files=no 2>/dev/null | wc -l | tr -d ' ')
+if [ "${DIRTY_TRACKED}" -gt 0 ]; then
+    GUARD_BLOCKED=1
+    GUARD_DETAIL="${GUARD_DETAIL}  - ${DIRTY_TRACKED} berkas terlacak berubah/terhapus\n"
+fi
+
+UNTRACKED=$(git status --porcelain --untracked-files=all 2>/dev/null | grep -c '^??' || true)
+if [ "${UNTRACKED}" -gt 0 ]; then
+    GUARD_BLOCKED=1
+    GUARD_DETAIL="${GUARD_DETAIL}  - ${UNTRACKED} berkas baru (tidak terlacak, tidak diabaikan .gitignore)\n"
+fi
+
+if [ "${GUARD_BLOCKED}" -eq 1 ]; then
+    log "============================================================"
+    log "DEPLOY DIBATALKAN — penjaga worktree."
+    log "Worktree memuat pekerjaan yang akan HILANG oleh git reset --hard:"
+    printf "%b" "${GUARD_DETAIL}" | tee -a "${DEPLOY_LOG}"
+    log ""
+    log "Rujukan: docs/integration/alim-core-production-remediation-cycle-1.md"
+    log "Deploy hanya boleh jalan setelah worktree bersih dan 0 untracked."
+    log "============================================================"
+    exit 3
+fi
+
+# ---------- PENJAGA: branch harus ada di remote ----------
+if ! git rev-parse --verify --quiet "origin/${BRANCH}" >/dev/null; then
+    log "DEPLOY DIBATALKAN — origin/${BRANCH} tidak ada; git reset --hard akan gagal separuh jalan."
+    exit 3
+fi
+
 START_TIME=$(date +%s)
 log "============================================================"
 log "DEPLOY DIMULAI"

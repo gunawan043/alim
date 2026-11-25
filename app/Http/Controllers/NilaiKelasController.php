@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\LegerExport;
 use App\Models\AcademicYear;
 use App\Models\AdminPresensiHarian;
+use App\Models\LegerPresensi;
 use App\Models\NilaiFormatif;
 use App\Models\NilaiSumatif;
 use App\Models\PembiasaanPagi;
@@ -354,22 +355,17 @@ class NilaiKelasController extends Controller
         }
 
         // PRESENSI: hitung S / I / A per siswa di semester ini
-        $presensiMap = [];
-        if ($selectedAyId) {
-            $presensiRaw = AdminPresensiHarian::where('academic_year_id', $selectedAyId)
-                ->where('study_group_id', $studyGroupId)
+        $presensiMap = $this->buildPresensiMap($studyGroupId, $selectedAyId, $selectedSemester);
+
+        // Rekap presensi yang sudah diisi manual (override absensi harian).
+        $presensiManualMap = ($selectedAyId && $selectedSemester)
+            ? LegerPresensi::where('study_group_id', $studyGroupId)
+                ->where('academic_year_id', $selectedAyId)
                 ->where('semester', $selectedSemester)
                 ->get()
-                ->groupBy('student_id');
-
-            foreach ($presensiRaw as $sid => $rows) {
-                $presensiMap[$sid] = [
-                    's' => $rows->where('status', 'S')->count(),
-                    'i' => $rows->where('status', 'I')->count(),
-                    'a' => $rows->where('status', 'A')->count(),
-                ];
-            }
-        }
+                ->keyBy('student_id')
+                ->all()
+            : [];
 
         // Peringkat & Predikat (per siswa): aggregate STS per mapel → rata-rata kelas
         $legerCol = $legerMode === 'sas' ? 'sas' : 'sts';
@@ -503,12 +499,156 @@ class NilaiKelasController extends Controller
             'userId', 'studyGroup', 'academicYears', 'subjectMap', 'bookMap',
             'students', 'nilaiMap', 'selectedAyId', 'selectedSemester',
             'selectedBookId', 'activeBook', 'isPrivileged',
-            'presensiMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
+            'presensiMap', 'presensiManualMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
             'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'predicateNotes', 'predicateNotesAr',
             'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional',
             'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap'
         ));
+    }
+
+    /**
+     * Rekap presensi leger: S = hadir + terlambat, I = izin + sakit, A = alpa.
+     *
+     * Angka rekap yang sudah diisi manual di leger (admin_leger_presensi) selalu
+     * menang; absensi harian hanya menjadi nilai awal sebelum rekap diisi.
+     * Kunci hasil = student_id, nilai = ['s' => int, 'i' => int, 'a' => int].
+     */
+    private function buildPresensiMap(?string $studyGroupId, ?string $academicYearId, ?string $semester): array
+    {
+        if (! $studyGroupId || ! $academicYearId || ! $semester) {
+            return [];
+        }
+
+        $map = [];
+
+        $presensiRaw = AdminPresensiHarian::where('academic_year_id', $academicYearId)
+            ->where('study_group_id', $studyGroupId)
+            ->where('semester', $semester)
+            ->get()
+            ->groupBy('student_id');
+
+        foreach ($presensiRaw as $sid => $rows) {
+            $map[$sid] = [
+                's' => $rows->filter(fn ($r) => in_array($r->status, ['hadir', 'terlambat'], true))->count(),
+                'i' => $rows->filter(fn ($r) => in_array($r->status, ['izin', 'sakit'], true))->count(),
+                'a' => $rows->where('status', 'alpa')->count(),
+            ];
+        }
+
+        $manual = LegerPresensi::where('study_group_id', $studyGroupId)
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester', $semester)
+            ->get();
+
+        foreach ($manual as $row) {
+            $base = $map[$row->student_id] ?? ['s' => 0, 'i' => 0, 'a' => 0];
+            $map[$row->student_id] = [
+                's' => $row->s ?? $base['s'],
+                'i' => $row->i ?? $base['i'],
+                'a' => $row->a ?? $base['a'],
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * Simpan rekap presensi S/I/A dari leger (STS maupun SAS).
+     *
+     * Sel yang dikosongkan menghapus override manual sehingga angka kembali
+     * mengikuti absensi harian.
+     */
+    public function presensiStore(Request $request, string $userId, string $studyGroupId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        $studyGroup = StudyGroup::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($studyGroupId);
+        $this->assertLegerAccess($userId, $studyGroup);
+
+        // Kolom kosong dikirim sebagai "" dari form; ubah ke null agar lolos aturan nullable|integer.
+        $presensiInput = collect($request->input('presensi', []))->map(function ($values) {
+            return collect(is_array($values) ? $values : [])->map(function ($value) {
+                return is_string($value) && trim($value) === '' ? null : $value;
+            })->all();
+        })->all();
+
+        $validated = validator(
+            [
+                'academic_year_id' => $request->input('academic_year_id'),
+                'semester' => $request->input('semester'),
+                'presensi' => $presensiInput,
+            ],
+            [
+                'academic_year_id' => 'required|string|exists:academic_years,id',
+                'semester' => 'required|in:ganjil,genap',
+                'presensi' => 'required|array|min:1',
+                'presensi.*.s' => 'nullable|integer|min:0|max:999',
+                'presensi.*.i' => 'nullable|integer|min:0|max:999',
+                'presensi.*.a' => 'nullable|integer|min:0|max:999',
+            ],
+            [
+                'presensi.*.integer' => 'Presensi harus berupa angka bulat.',
+                'presensi.*.max' => 'Presensi maksimal 999.',
+            ]
+        )->validate();
+
+        $this->assertNotArchivedAcademicYear($validated['academic_year_id']);
+
+        $studentIds = collect($validated['presensi'])->keys();
+
+        $validStudentIds = StudentClassHistory::where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $validated['academic_year_id'])
+            ->whereIn('student_id', $studentIds)
+            ->pluck('student_id')
+            ->all();
+
+        $invalid = $studentIds->diff($validStudentIds);
+        abort_if($invalid->isNotEmpty(), 422, 'Terdapat santri yang bukan anggota rombel ini.');
+
+        $saved = [];
+
+        foreach ($validated['presensi'] as $studentId => $values) {
+            $payload = [
+                's' => $values['s'] ?? null,
+                'i' => $values['i'] ?? null,
+                'a' => $values['a'] ?? null,
+            ];
+
+            if ($payload['s'] === null && $payload['i'] === null && $payload['a'] === null) {
+                LegerPresensi::where('study_group_id', $studyGroup->id)
+                    ->where('academic_year_id', $validated['academic_year_id'])
+                    ->where('semester', $validated['semester'])
+                    ->where('student_id', $studentId)
+                    ->delete();
+            } else {
+                LegerPresensi::updateOrCreate(
+                    [
+                        'study_group_id' => $studyGroup->id,
+                        'academic_year_id' => $validated['academic_year_id'],
+                        'semester' => $validated['semester'],
+                        'student_id' => $studentId,
+                    ],
+                    $payload
+                );
+            }
+
+            $saved[] = ['student_id' => $studentId] + $payload;
+        }
+
+        $presensiMap = $this->buildPresensiMap(
+            $studyGroup->id,
+            $validated['academic_year_id'],
+            $validated['semester']
+        );
+
+        return response()->json([
+            'success' => true,
+            'saved' => $saved,
+            'presensi' => $presensiMap,
+            'message' => 'Presensi disimpan.',
+        ]);
     }
 
     /**
@@ -1099,19 +1239,7 @@ class NilaiKelasController extends Controller
             }
         }
 
-        $presensiMap = [];
-        if ($selectedAyId) {
-            $presensiRaw = AdminPresensiHarian::where('academic_year_id', $selectedAyId)
-                ->where('study_group_id', $studyGroupId)
-                ->where('semester', $selectedSem)->get()->groupBy('student_id');
-            foreach ($presensiRaw as $sid => $rows) {
-                $presensiMap[$sid] = [
-                    's' => $rows->where('status', 'S')->count(),
-                    'i' => $rows->where('status', 'I')->count(),
-                    'a' => $rows->where('status', 'A')->count(),
-                ];
-            }
-        }
+        $presensiMap = $this->buildPresensiMap($studyGroupId, $selectedAyId, $selectedSem);
 
         // Nilai tampil mengikuti jenis dokumen (STS → sts; SAS → NR Final fallback SAS).
         $nilaiResolved = [];

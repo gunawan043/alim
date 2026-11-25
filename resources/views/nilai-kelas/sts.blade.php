@@ -19,6 +19,7 @@
             && $students->isNotEmpty()
             && ! $students->contains(fn ($history) => $history->is_active);
         $autosaveUrl = route('user.schools.nilai-kelas.sts.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]);
+        $presensiUrl = route('user.schools.nilai-kelas.presensi.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]);
     @endphp
 
     @component('components.breadcrumb')
@@ -375,7 +376,7 @@
                     </div>
 
                     {{-- Catatan rapor per predikat (dipakai bila catatan wali kosong) --}}
-                    <div class="px-4 pt-2">
+                    <div class="px-4 pt-2 mb-2">
                         <details class="predicate-notes-box">
                             <summary class="d-flex align-items-center gap-2">
                                 <i class="ri-chat-quote-line"></i>
@@ -437,12 +438,17 @@
                                     @php
                                         $isSasLeger = ($legerMode ?? 'sts') === 'sas';
                                         $umumCount = $subjectMap->count() - ($agamaCount ?? 0);
+                                        // Rencana kolom eksplisit — tidak ada span yang boleh tumpang tindih.
+                                        // Baris: 1 grup · 2 nama mapel + S/I/A · 3 N/Jumlah (SAS) · 4 KKTP · 5 Bobot (SAS)
+                                        $tailRowCount = $isSasLeger ? 2 : 1;            // baris KKTP (+ Bobot untuk SAS)
+                                        $identitySpan = $isSasLeger ? 3 : 2;            // No/NIS/Nama: STS s/d baris 2, SAS s/d baris 3
+                                        $headerTailSpan = $isSasLeger ? 5 : 2;          // Jumlah s/d Predikat: STS baris 2-3, SAS baris 1-5
                                     @endphp
-                                    {{-- Baris grup: Pembiasaan/Tahfidz (SAS) · Agama | Umum · Presensi --}}
+                                    {{-- Baris 1: grup kolom --}}
                                     <tr>
-                                        <th rowspan="3" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="no">No</th>
-                                        <th rowspan="3" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="nis">NIS</th>
-                                        <th rowspan="3" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="name">
+                                        <th rowspan="{{ $identitySpan }}" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="no">No</th>
+                                        <th rowspan="{{ $identitySpan }}" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="nis">NIS</th>
+                                        <th rowspan="{{ $identitySpan }}" class="text-center align-middle text-muted" style="background:var(--bs-tertiary-bg);" data-sort="name">
                                             <i class="ri-user-line me-1"></i>Nama Santri
                                         </th>
                                         @if($isSasLeger)
@@ -456,55 +462,67 @@
                                             <th colspan="{{ $umumCount * 2 }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
                                         @if($isSasLeger)
-                                            <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
+                                            <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
                                         @endif
-                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" @if($isSasLeger) title="Jumlah (Bobot × Nilai)" @endif>
+                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" @if($isSasLeger) title="Jumlah (Bobot × Nilai)" @endif>
                                             @if($isSasLeger)
                                                 Jumlah<br><small style="font-size:9px;font-weight:400;">B×N</small>
                                             @else
                                                 Jumlah
                                             @endif
                                         </th>
-                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="avg">Rata-rata</th>
-                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="rank">Peringkat</th>
-                                        <th rowspan="{{ $isSasLeger ? 5 : 4 }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="pred">Predikat</th>
-                                        <th class="bg-secondary-subtle text-secondary" colspan="3">PRESENSI</th>
+                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="avg">Rata-rata</th>
+                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="rank">Peringkat</th>
+                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="pred">Predikat</th>
+                                        <th colspan="3" class="bg-secondary-subtle text-secondary">PRESENSI</th>
                                     </tr>
+                                    {{-- Baris 2: nama kolom mapel + S/I/A di bawah PRESENSI --}}
                                     <tr class="text-center">
                                         @if($isSasLeger)
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="doa">Do'a</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="hiwar">Hiwar</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-warning-bg-subtle);" data-sort="conv">Conversation</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="juz">Juz</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="jumlah_juz">Jml Juz</th>
-                                            <th rowspan="{{ $isSasLeger ? 4 : 3 }}" style="background:var(--bs-primary-bg-subtle);" data-sort="halaqoh">Halaqoh</th>
+                                            @foreach(['doa' => 'Do\'a', 'hiwar' => 'Hiwar', 'conv' => 'Conversation'] as $key => $label)
+                                                <th rowspan="1" style="background:var(--bs-warning-bg-subtle);" data-sort="{{ $key }}">{{ $label }}</th>
+                                            @endforeach
+                                            @foreach(['juz' => 'Juz', 'jumlah_juz' => 'Jml Juz', 'halaqoh' => 'Halaqoh'] as $key => $label)
+                                                <th rowspan="1" style="background:var(--bs-primary-bg-subtle);" data-sort="{{ $key }}">{{ $label }}</th>
+                                            @endforeach
                                         @endif
                                         @foreach($subjectMap as $subject)
-                                            <th rowspan="1" colspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
+                                            <th colspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
                                                 <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px;">
                                                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                                                 </div>
                                             </th>
                                         @endforeach
-                                        <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
+                                        <th class="bg-success-subtle text-success" data-sort="s">S</th>
+                                        <th class="bg-warning-subtle text-warning" data-sort="i">I</th>
+                                        <th class="bg-danger-subtle text-danger" data-sort="a">A</th>
                                     </tr>
-                                    <tr class="text-center">
-                                        @if($isSasLeger)
+                                    @if($isSasLeger)
+                                        {{-- Baris 3 (SAS): N | Jumlah per mapel; sisa kolom ditutup sel pembentang --}}
+                                        <tr class="text-center">
+                                            <td colspan="6" style="background:var(--bs-tertiary-bg);"></td>
                                             @foreach($subjectMap as $subject)
                                                 <th class="sub-n" style="background:var(--bs-tertiary-bg);font-size:9px;" title="Nilai {{ $subject->name }}">N</th>
                                                 <th class="sub-bn" style="background:var(--bs-secondary-bg);font-size:9px;" title="Jumlah = Nilai × Bobot {{ $subject->name }}">Jumlah</th>
                                             @endforeach
-                                        @endif
-                                        <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-success-subtle text-success" data-sort="s">S</th>
-                                        <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-warning-subtle text-warning" data-sort="i">I</th>
-                                        <th rowspan="{{ $isSasLeger ? 3 : 2 }}" class="bg-danger-subtle text-danger" data-sort="a">A</th>
-                                    </tr>
+                                            <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
+                                        </tr>
+                                    @endif
+                                    {{-- Baris 4: KKTP — label mulai kolom 1 (No+NIS+Nama), input di tiap mapel --}}
                                     <tr>
-                                        <th colspan="{{ 3 }}" class="text-center fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;" data-col="name">
-                                            <span class="bg-primary-subtle text-primary">
-                                                <i class="ri-checkbox-circle-line me-1"></i>KKTP
+                                        <th colspan="3" rowspan="{{ $tailRowCount }}" class="text-start fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;text-align:left !important;" data-col="name">
+                                            <span class="bg-primary-subtle text-primary" style="display:inline-flex;align-items:center;gap:2px;margin:0;">
+                                                <i class="ri-checkbox-circle-line"></i>KKTP
                                             </span>
+                                            @if($isSasLeger)
+                                                <div class="bg-secondary-subtle text-secondary" style="margin-top:2px;font-weight:600;display:block;padding:0 4px;">
+                                                    <i class="ri-scales-3-line"></i> Bobot
+                                                </div>
+                                            @endif
                                         </th>
+                                        @if($isSasLeger)
+                                            <td colspan="6" style="background:var(--bs-tertiary-bg);"></td>
+                                        @endif
                                         @foreach($subjectMap as $subject)
                                             @php $book = $bookMap[$subject->id] ?? null; @endphp
                                             <th colspan="2" class="kktp-cell">
@@ -520,14 +538,14 @@
                                                 @endif
                                             </th>
                                         @endforeach
+                                        @if($isSasLeger)
+                                            <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
+                                        @endif
                                     </tr>
                                     @if($isSasLeger)
+                                        {{-- Baris 5 (SAS): Bobot per mapel — label melanjutkan sel KKTP di atas --}}
                                         <tr>
-                                            <th colspan="3" class="text-center fw-bold bobot-cell" style="background:var(--bs-secondary-bg);vertical-align:middle;" data-col="name">
-                                                <span class="bg-secondary-subtle text-secondary">
-                                                    <i class="ri-scales-3-line me-1"></i>Bobot
-                                                </span>
-                                            </th>
+                                            <td colspan="6" style="background:var(--bs-tertiary-bg);"></td>
                                             @foreach($subjectMap as $subject)
                                                 @php
                                                     $bobotManual = $bobotManualMap[$subject->id] ?? null;
@@ -539,7 +557,7 @@
                                                         ? rtrim(rtrim(number_format((float) $bobotJp, 2, '.', ''), '0'), '.')
                                                         : '';
                                                 @endphp
-                                                <th @if($isSasLeger) colspan="2" @endif class="bobot-cell" title="Bobot {{ $subject->name }} — kosong berarti JP ÷ 2 ({{ $bobotJpText ?: '—' }}); JP 1 tetap 1">
+                                                <th colspan="2" class="bobot-cell" title="Bobot {{ $subject->name }} — kosong berarti JP ÷ 2 ({{ $bobotJpText ?: '—' }}); JP 1 tetap 1">
                                                     <input type="number" class="bobot-input"
                                                            name="leger_bobot[{{ $subject->id }}]"
                                                            value="{{ $bobotVal }}"
@@ -549,6 +567,7 @@
                                                            title="Bobot {{ $subject->name }}">
                                                 </th>
                                             @endforeach
+                                            <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
                                         </tr>
                                     @endif
                                 </thead>
@@ -691,18 +710,21 @@
                                                     @endif"
                                                     style="min-width:130px;padding:4px 6px;white-space:nowrap;">{{ $predikat }}</span>
                                             </td>
-                                            {{-- PRESENSI S --}}
-                                            <td class="text-center fw-semibold bg-success-subtle" style="color:var(--bs-success-text-emphasis);" data-col="s">
-                                                {{ $pres['s'] ?? '—' }}
-                                            </td>
-                                            {{-- PRESENSI I --}}
-                                            <td class="text-center fw-semibold bg-warning-subtle" style="color:var(--bs-warning-text-emphasis);" data-col="i">
-                                                {{ $pres['i'] ?? '—' }}
-                                            </td>
-                                            {{-- PRESENSI A --}}
-                                            <td class="text-center fw-semibold bg-danger-subtle" style="color:var(--bs-danger-text-emphasis);" data-col="a">
-                                                {{ $pres['a'] ?? '—' }}
-                                            </td>
+                                            {{-- PRESENSI S / I / A — bisa diisi; kosong = ikut absensi harian --}}
+                                            @foreach(['s' => ['bg-success-subtle', 'success', 'Sakit / S'],
+                                                      'i' => ['bg-warning-subtle', 'warning', 'Izin / I'],
+                                                      'a' => ['bg-danger-subtle', 'danger', 'Alpa / A']] as $kode => $meta)
+                                                <td class="text-center fw-semibold {{ $meta[0] }} presensi-cell" data-col="{{ $kode }}">
+                                                    <input type="number" class="leger-input presensi-input"
+                                                           name="presensi[{{ $sid }}][{{ $kode }}]"
+                                                           data-col="{{ $kode }}"
+                                                           value="{{ isset($presensiManualMap[$sid]) && $presensiManualMap[$sid]->{$kode} !== null ? $presensiManualMap[$sid]->{$kode} : '' }}"
+                                                           placeholder="{{ $pres[$kode] ?? 0 }}"
+                                                           min="0" max="999" step="1"
+                                                           style="color:var(--bs-{{ $meta[1] }}-text-emphasis);"
+                                                           title="Presensi {{ $meta[2] }} — kosongkan agar mengikuti rekap absensi harian ({{ $pres[$kode] ?? 0 }})">
+                                                </td>
+                                            @endforeach
                                         </tr>
                                     @empty
                                         <tr>
@@ -767,7 +789,6 @@
                 </div>
 
                 <form method="POST" action="{{ route('user.schools.nilai-kelas.sts.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]) }}" id="formMapel">
-                    @csrf
                     <input type="hidden" name="admin_book_id" value="{{ $activeBook->id }}">
                     <input type="hidden" name="tab" value="mapel">
 
@@ -1213,8 +1234,10 @@
     #tab-mapel th[data-sort="no"], #tab-mapel td[data-col="no"] { left: 0; }
     #tab-leger th[data-sort="nis"], #tab-leger td[data-col="nis"],
     #tab-mapel th[data-sort="nis"], #tab-mapel td[data-col="nis"] { left: 50px; }
-    #tab-leger th[data-sort="name"], #tab-leger td[data-col="name"],
+    #tab-leger thead th[data-sort="name"], #tab-leger td[data-col="name"],
     #tab-mapel th[data-sort="name"], #tab-mapel td[data-col="name"] { left: 134px; }
+    /* Sel KKTP membentang No+NIS+Nama (sticky) — mulai dari kolom pertama */
+    #tab-leger thead th[data-col="name"].kktp-cell { left: 0; }
     .leger-scroll thead th[data-sort="no"], .leger-scroll thead th[data-sort="nis"], .leger-scroll thead th[data-sort="name"] { z-index: 40; }
 
     /* Layar kecil (mobile/tablet): kolom beku dimatikan agar tabel bisa digeser ke samping */
@@ -1274,6 +1297,16 @@
     }
     #tab-leger input.leger-input.is-below { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
     #tab-leger input.leger-input:focus { border: 0; box-shadow: none; outline: none; background: rgba(var(--bs-primary-rgb), .06); }
+    /* Presensi S/I/A: input muat dalam kolom 42px (tanpa spinner) agar tabel tidak melebar */
+    #tab-leger td.presensi-cell { padding: 0 1px !important; vertical-align: middle; }
+    #tab-leger input.presensi-input.leger-input {
+        width: 100%; min-width: 0; max-width: 100%; height: 27px; padding: 0;
+        text-align: center; font-variant-numeric: tabular-nums;
+        -moz-appearance: textfield; appearance: textfield;
+    }
+    #tab-leger input.presensi-input.leger-input::-webkit-outer-spin-button,
+    #tab-leger input.presensi-input.leger-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    #tab-leger input.presensi-input.leger-input::placeholder { color: var(--bs-secondary-color); font-weight: 500; opacity: .55; }
     /* Kolom terkunci (menunggu Nilai Murni) diberi corak agar terlihat sebelum diketik */
     #tab-mapel input.js-gated[readonly] {
         background: repeating-linear-gradient(45deg, #fff8e1, #fff8e1 4px, #ffe9a8 4px, #ffe9a8 8px);
@@ -1360,13 +1393,23 @@
     #tab-leger th input.bobot-input:focus { border: 0; outline: none; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
 
     /* ── Baris KKTP & Bobot: tinggi diringkas ── */
+    /* Header ringkasan (Jumlah..Predikat) membentang beberapa baris: pastikan garis bawah tetap tergambar */
+    #tab-leger thead th[data-sort="total"], #tab-leger thead th[data-sort="total_bobot"],
+    #tab-leger thead th[data-sort="avg"], #tab-leger thead th[data-sort="rank"],
+    #tab-leger thead th[data-sort="pred"] {
+        border-bottom: var(--bs-border-width) solid var(--bs-border-color) !important;
+    }
     #tab-leger thead th.kktp-cell,
     #tab-leger thead th.bobot-cell { padding: 0 2px; line-height: 1; vertical-align: middle; }
-    #tab-leger thead th[data-col="name"].kktp-cell,
-    #tab-leger thead th[data-col="name"].bobot-cell { padding: 0 6px; }
+    #tab-leger thead th[data-col="name"].kktp-cell { padding: 0 6px; }
     #tab-leger thead th[data-col="name"] > span {
         display: inline-block; padding: 1px 6px; line-height: 1.2;
     }
+    /* Label KKTP: rata kiri sejajar kolom No */
+    #tab-leger thead th[data-col="name"].kktp-cell { text-align: left; padding: 0 2px 0 4px; line-height: 1; }
+    #tab-leger thead th[data-col="name"].kktp-cell > span { padding: 1px 4px; }
+    /* SAS: sel KKTP menampung dua label (KKTP + Bobot) — beri jarak baris */
+    #tab-leger thead th[data-col="name"].kktp-cell > div { margin-top: 3px !important; line-height: 1.4; padding: 0 4px !important; }
 </style>
 <script>
 function syncSearchInput(val) {
@@ -1695,6 +1738,76 @@ document.addEventListener('DOMContentLoaded', function () {
                     el.addEventListener('change', triggerSave);
                 });
             }
+        });
+    })();
+
+    // ─── Auto-save Presensi S/I/A (terpisah dari nilai) ──────────
+    (function() {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+        var dot = document.getElementById('autosave-dot');
+        var text = document.getElementById('autosave-text');
+        var timer = null;
+        var inFlight = false;
+
+        function setIndicator(cls, msg) {
+            if (dot) dot.className = 'rounded-circle ' + cls;
+            if (text) text.textContent = msg;
+        }
+
+        function save() {
+            if (inFlight) return;
+
+            var payload = new URLSearchParams();
+            payload.append('academic_year_id', '{{ $selectedAyId }}');
+            payload.append('semester', '{{ $selectedSemester }}');
+
+            var count = 0;
+            document.querySelectorAll('#tab-leger .presensi-input').forEach(function(inp) {
+                var m = inp.name.match(/^presensi\[([^\]]+)\]\[(s|i|a)\]$/);
+                if (!m) return;
+                var v = inp.value.trim();
+                payload.append('presensi[' + m[1] + '][' + m[2] + ']', v === '' ? '' : v);
+                count++;
+            });
+            if (count === 0) return;
+
+            inFlight = true;
+            setIndicator('bg-warning', 'Menyimpan presensi…');
+
+            fetch('{{ $presensiUrl }}', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: payload.toString(),
+            })
+            .then(function(res) { return res.json().then(function(j) { return { ok: res.ok, body: j }; }); })
+            .then(function(r) {
+                inFlight = false;
+                if (r.ok && r.body && r.body.success === true) {
+                    var time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                    setIndicator('bg-success', 'Presensi tersimpan ' + time);
+                    setTimeout(function() { setIndicator('bg-secondary', 'Menunggu…'); }, 3000);
+                } else {
+                    setIndicator('bg-danger', (r.body && r.body.message) || 'Gagal menyimpan presensi');
+                    setTimeout(function() { setIndicator('bg-secondary', 'Menunggu…'); }, 4000);
+                }
+            })
+            .catch(function() {
+                inFlight = false;
+                setIndicator('bg-danger', 'Gagal menyimpan presensi');
+                setTimeout(function() { setIndicator('bg-secondary', 'Menunggu…'); }, 4000);
+            });
+        }
+
+        document.querySelectorAll('#tab-leger .presensi-input').forEach(function(inp) {
+            inp.addEventListener('input', function() {
+                clearTimeout(timer);
+                timer = setTimeout(save, 1500);
+            });
         });
     })();
 
