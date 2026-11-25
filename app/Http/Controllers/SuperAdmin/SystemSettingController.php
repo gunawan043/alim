@@ -4,15 +4,18 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\IntegrationEventLog;
 use App\Models\SystemSetting;
 use App\Models\UserDevice;
 use App\Models\WebPushSubscription;
+use App\Services\Connect\ConnectWhatsAppClient;
 use App\Services\Notifications\WhatsAppGatewayService;
 use App\Services\Recruitment\RecruitmentApiClient;
 use App\Services\Sarpras\GoogleDriveService;
 use App\Services\SystemMailSettingsService;
 use App\Support\ApnsConfig;
 use App\Support\AsramaConfig;
+use App\Support\ConnectApiConfig;
 use App\Support\ConnectApprovalConfig;
 use App\Support\ConnectSsoConfig;
 use App\Support\FcmConfig;
@@ -209,6 +212,14 @@ class SystemSettingController extends Controller
             'connect_approval_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'connect_approval_api_allowed_ips' => 'nullable|string|max:2000',
             'connect_approval_api_key_input' => 'nullable|string|min:16|max:200',
+            // Tanpa aturan `url`: aturan itu menerima ftp://, sedangkan yang
+            // boleh dipakai hanya http/https dan divalidasi lebih ketat di
+            // blok tab Connect di bawah.
+            'connect_base_url' => 'nullable|string|max:255',
+            'connect_session_id' => 'nullable|string|max:100|regex:/^[A-Za-z0-9\-]*$/',
+            'connect_api_key_input' => 'nullable|string|min:8|max:500',
+            'connect_test_phone' => 'nullable|string|max:25',
+            'connect_test_text' => 'nullable|string|max:1000',
             'google_drive_enabled' => 'boolean',
             'google_drive_folder_id' => 'nullable|string|max:191',
             'google_drive_folder_url' => 'nullable|url|max:500',
@@ -784,6 +795,114 @@ class SystemSettingController extends Controller
             };
         }
 
+        // ── Tab WhatsApp Connect: arah keluar (Core → Connect) ────────────
+        // Key di blok ini BUKAN key SSO. SSO mengatur kepercayaan Connect
+        // terhadap Core; blok ini mengatur kredensial Core saat memanggil
+        // Connect untuk mengirim WhatsApp.
+        $connectOutboundFlash = null;
+
+        if ($request->filled('connect_outbound_tab')) {
+            $baseUrl = trim((string) $request->input('connect_base_url', ''));
+            $sessionId = trim((string) $request->input('connect_session_id', ''));
+            $keyInput = trim((string) $request->input('connect_api_key_input', ''));
+
+            if ($baseUrl !== '' && ConnectApiConfig::originOf($baseUrl) === null) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Base URL Connect tidak valid. Isi dengan https://host tanpa path, contoh https://connect.contoh.id'
+                );
+            }
+
+            ConnectApiConfig::storeBaseUrl($baseUrl);
+            ConnectApiConfig::storeSessionId($sessionId);
+
+            $outboundKeyImported = false;
+
+            if ($keyInput !== '') {
+                ConnectApiConfig::storeKey($keyInput);
+                $outboundKeyImported = true;
+            }
+
+            if ($request->filled('clear_connect_api_key')) {
+                ConnectApiConfig::forgetKey();
+                $outboundKeyImported = false;
+            }
+
+            $this->writeSettingsAudit($request, 'CONNECT_WA_OUTBOUND_SETTINGS_UPDATED');
+
+            if ($outboundKeyImported) {
+                $this->writeSettingsAudit($request, 'CONNECT_WA_OUTBOUND_KEY_IMPORTED');
+            }
+
+            $connectOutboundFlash = $outboundKeyImported
+                ? 'Alamat dan key WhatsApp Connect tersimpan (key terenkripsi).'
+                : 'Pengaturan WhatsApp Connect (pengiriman) berhasil disimpan.';
+        }
+
+        $connectOutboundResult = null;
+
+        if ($request->filled('connect_check_session')) {
+            $missing = ConnectApiConfig::missing();
+
+            if ($missing !== []) {
+                return redirect()->back()->with('error', implode(' ', $missing));
+            }
+
+            $result = app(ConnectWhatsAppClient::class)->sessionStatus();
+            $connectOutboundResult = $this->describeSessionCheck($result);
+        }
+
+        if ($request->filled('connect_send_test')) {
+            $phone = trim((string) $request->input('connect_test_phone', ''));
+            $text = trim((string) $request->input('connect_test_text', ''));
+
+            if ($phone === '' || $text === '') {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Nomor tujuan dan isi pesan uji wajib diisi.'
+                );
+            }
+
+            $missing = ConnectApiConfig::missing();
+
+            if ($missing !== []) {
+                return redirect()->back()->withInput()->with('error', implode(' ', $missing));
+            }
+
+            $result = app(ConnectWhatsAppClient::class)->sendText($phone, $text);
+            $jid = ConnectApiConfig::jid($phone) ?? $phone;
+
+            IntegrationEventLog::record(
+                eventName: 'wa.connect_test',
+                sourceModule: 'system_settings',
+                targetModule: 'whatsapp',
+                aggregateId: $jid,
+                aggregateType: 'ConnectTestMessage',
+                payload: [
+                    'chat_id' => $jid,
+                    'http' => $result['status'],
+                    'ok' => $result['ok'],
+                    'preview' => mb_substr($text, 0, 140),
+                ],
+                status: $result['ok']
+                    ? IntegrationEventLog::STATUS_PROCESSED
+                    : IntegrationEventLog::STATUS_FAILED,
+                error: $result['ok'] ? null : mb_substr($result['message'], 0, 500),
+                dispatchedBy: (string) $request->user()?->id,
+            );
+
+            $this->writeSettingsAudit($request, 'CONNECT_WA_TEST_SENT');
+
+            $connectOutboundResult = [
+                'tone' => $result['ok'] ? 'ok' : 'error',
+                'headline' => $result['ok']
+                    ? 'Connect menerima pesan untuk dikirim ke '.$jid.'. Periksa WhatsApp tujuan; "diterima" berarti pesan sudah diserahkan ke sesi, belum tentu sudah dibaca.'
+                    : $result['message'],
+                'rows' => $result['ok'] ? [['label' => 'Nomor tujuan (JID)', 'value' => $jid]] : [],
+                'raw' => $result['ok'] ? '' : $result['raw'],
+            ];
+        }
+
         // ── Tab WhatsApp Connect: kredensial Approval API ─────────────────
         // Key ini berbeda dari key SSO. Keduanya diverifikasi middleware
         // terpisah, jadi operator harus dapat mengisi keduanya dari satu
@@ -857,8 +976,63 @@ class SystemSettingController extends Controller
             };
         }
 
-        return redirect()->back()
-            ->with('success', $posFlash ?? $recruitmentFlash ?? $connectSsoFlash ?? $connectApprovalFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
+        $redirect = redirect()->back();
+
+        if (! empty($connectOutboundResult)) {
+            $redirect->with('connect_outbound_result', $connectOutboundResult);
+        }
+
+        return $redirect
+            ->with('success', $posFlash ?? $recruitmentFlash ?? $connectSsoFlash ?? $connectOutboundFlash ?? $connectApprovalFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
+    }
+
+    /**
+     * Terjemahkan hasil `GET /api/sessions/{id}` Connect menjadi ringkasan
+     * yang bisa dibaca operator: status sesi, nomor, dan langkah berikutnya.
+     *
+     * @param  array{ok: bool, status: int, message: string, data: array, raw: string}  $result
+     * @return array{tone: string, headline: string, rows: list<array{label: string, value: string}>, raw: string}
+     */
+    private function describeSessionCheck(array $result): array
+    {
+        if (! $result['ok']) {
+            return [
+                'tone' => 'error',
+                'headline' => $result['message'],
+                'rows' => [],
+                'raw' => $result['raw'],
+            ];
+        }
+
+        $data = $result['data'];
+        $status = is_string($data['status'] ?? null) ? $data['status'] : null;
+
+        $labels = [
+            'created' => 'sesi dibuat, belum dijalankan',
+            'initializing' => 'sedang menghubungkan ulang',
+            'qr_ready' => 'menunggu scan QR',
+            'authenticating' => 'sedang autentikasi',
+            'ready' => 'siap',
+            'disconnected' => 'terputus — perlu scan QR ulang',
+            'action_required' => 'butuh tindakan manual',
+            'failed' => 'gagal permanen',
+        ];
+
+        $ready = $status === ConnectWhatsAppClient::READY;
+
+        return [
+            'tone' => $ready ? 'ok' : 'warn',
+            'headline' => $ready
+                ? 'Sesi WhatsApp siap menerima pengiriman.'
+                : 'Sesi WhatsApp terhubung tetapi belum siap: '.($labels[$status] ?? ($status ?? 'status tidak dikenal')).'.',
+            'rows' => array_values(array_filter([
+                ['label' => 'Status', 'value' => (string) ($labels[$status] ?? $status ?? '-')],
+                ['label' => 'Nomor terhubung', 'value' => (string) ($data['phone'] ?? '')],
+                ['label' => 'Nama sesi', 'value' => (string) ($data['name'] ?? '')],
+                ['label' => 'Terakhir aktif', 'value' => (string) ($data['lastActive'] ?? '')],
+            ], fn (array $row) => $row['value'] !== '')),
+            'raw' => '',
+        ];
     }
 
     /**

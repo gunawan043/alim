@@ -1561,6 +1561,155 @@
                                 </div>
                             </div>
 
+                            <hr class="my-4">
+
+                            {{-- Pengiriman: arah keluar Core → Connect --}}
+                            @php
+                                $coBaseUrl = \App\Support\ConnectApiConfig::baseUrl();
+                                $coSessionId = \App\Support\ConnectApiConfig::sessionId();
+                                $coHasKey = \App\Support\ConnectApiConfig::hasStoredKey() || \App\Support\ConnectApiConfig::apiKey() !== '';
+                                $coMissing = \App\Support\ConnectApiConfig::missing();
+                                $coResult = session('connect_outbound_result');
+                            @endphp
+
+                            <input type="hidden" name="connect_outbound_tab" value="1">
+
+                            <h6 class="mb-3"><i class="ri-send-plane-line me-1"></i>Pengiriman WhatsApp dari ALIM</h6>
+
+                            @if(!empty($coResult))
+                                @php
+                                    $coTone = $coResult['tone'] ?? 'info';
+                                    $coAlert = match ($coTone) {
+                                        'ok' => 'alert-success',
+                                        'warn' => 'alert-warning',
+                                        'error' => 'alert-danger',
+                                        default => 'alert-secondary',
+                                    };
+                                @endphp
+                                <div class="alert {{ $coAlert }} py-2 px-3 small">
+                                    <div>{{ $coResult['headline'] ?? '' }}</div>
+                                    @if(!empty($coResult['rows']))
+                                        <ul class="list-unstyled mb-0 mt-2">
+                                            @foreach($coResult['rows'] as $row)
+                                                <li><span class="text-muted">{{ $row['label'] }}:</span> <code>{{ $row['value'] }}</code></li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                    @if(!empty($coResult['raw']))
+                                        <pre class="mt-2 mb-0 p-2 bg-body-tertiary rounded text-wrap">{{ $coResult['raw'] }}</pre>
+                                    @endif
+                                </div>
+                            @endif
+
+                            @if($coMissing !== [])
+                                <div class="alert alert-warning py-2 px-3 small">
+                                    <div class="fw-semibold mb-1">Belum siap mengirim:</div>
+                                    <ul class="mb-0 ps-3">
+                                        @foreach($coMissing as $item)
+                                            <li>{{ $item }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">Alamat &amp; sesi pengirim</h6>
+                                            <span class="badge bg-{{ $coMissing === [] ? 'success' : 'warning' }}-subtle text-{{ $coMissing === [] ? 'success' : 'warning' }}">
+                                                {{ $coMissing === [] ? 'Lengkap' : 'Belum lengkap' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small">Base URL Connect</label>
+                                                <input type="url" name="connect_base_url" class="form-control form-control-sm font-monospace"
+                                                    value="{{ $coBaseUrl }}" placeholder="https://alim-wa.contoh.id">
+                                                <small class="text-muted">Tanpa path dan tanpa garis miring akhir. Wajib https di production.</small>
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label small">Session ID WhatsApp</label>
+                                                <input type="text" name="connect_session_id" class="form-control form-control-sm font-monospace"
+                                                    value="{{ $coSessionId }}" placeholder="ID sesi dari halaman Connect">
+                                                <small class="text-muted">Sesi yang sudah terhubung (sudah scan QR) di Connect.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="card border h-100">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-key-2-line me-1"></i>API key pengiriman</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-2">
+                                                @if($coHasKey)
+                                                    <span class="badge bg-success-subtle text-success">Tersimpan terenkripsi</span>
+                                                @else
+                                                    <span class="badge bg-danger-subtle text-danger">Belum ada key</span>
+                                                @endif
+                                            </div>
+                                            <p class="small text-muted mb-2">
+                                                Dibuat di ALIM Connect (key ber-role <strong>OPERATOR</strong>) dan dikirim lewat header
+                                                <code>X-API-Key</code>. Berbeda dari key SSO di atas.
+                                            </p>
+                                            <div class="mb-2">
+                                                <label class="form-label small">Tempel API key</label>
+                                                <input type="password" name="connect_api_key_input" class="form-control form-control-sm font-monospace"
+                                                    autocomplete="new-password" spellcheck="false" placeholder="Kosongkan bila tidak ingin mengganti" value="">
+                                            </div>
+                                            @if($coHasKey)
+                                                <div class="form-check small">
+                                                    <input class="form-check-input" type="checkbox" name="clear_connect_api_key" value="1" id="clear-connect-api-key">
+                                                    <label class="form-check-label" for="clear-connect-api-key">Hapus key tersimpan</label>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card border mt-4">
+                                <div class="card-header border-bottom-dashed">
+                                    <h6 class="mb-0"><i class="ri-radar-line me-1"></i>Uji koneksi &amp; kirim</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="small text-muted mb-3">
+                                        Pengiriman notifikasi ALIM yang sebenarnya masih lewat Fonnte. Uji ini hanya membuktikan
+                                        jalur ALIM → Connect → WhatsApp hidup, dan setiap percobaan dicatat sebagai
+                                        <code>wa.connect_test</code>.
+                                    </p>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Cek status sesi</label>
+                                            <button type="submit" name="connect_check_session" value="1" class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="ri-refresh-line me-1"></i>Cek sesi sekarang
+                                            </button>
+                                            <small class="text-muted d-block mt-1">Hanya membaca status, tidak mengirim apa pun.</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small" for="connect_test_phone">Nomor tujuan</label>
+                                            <input type="tel" id="connect_test_phone" name="connect_test_phone" class="form-control form-control-sm"
+                                                value="{{ old('connect_test_phone') }}" placeholder="08xxxxxxxxxx">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label small" for="connect_test_text">Isi pesan uji</label>
+                                            <input type="text" id="connect_test_text" name="connect_test_text" class="form-control form-control-sm" maxlength="1000"
+                                                value="{{ old('connect_test_text', 'Uji kirim WhatsApp ALIM Connect '.now()->format('d/m/Y H:i')) }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <button type="submit" name="connect_send_test" value="1" class="btn btn-sm btn-success">
+                                            <i class="ri-send-plane-line me-1"></i>Kirim pesan uji
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="alert alert-info small mt-4 mb-0">
                                 <i class="ri-information-line me-1"></i>
                                 <strong>Yang harus disetel di sisi ALIM Connect:</strong>

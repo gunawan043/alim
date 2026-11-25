@@ -170,6 +170,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | WhatsApp Connect — Core memanggil Connect (arah keluar)
+    |--------------------------------------------------------------------------
+    |
+    | Berbeda dari `connect_sso` di atas, yang mengatur kepercayaan Connect
+    | terhadap Core. Di sini alamat API dan key ber-role OPERATOR yang
+    | dipakai Core untuk mengirim pesan lewat sesi WhatsApp Connect.
+    | Nilai database (Pengaturan Sistem) lebih dulu; env hanya fallback.
+    |
+    */
+    'connect' => [
+        'base_url' => env('CONNECT_BASE_URL', ''),
+        'session_id' => env('CONNECT_SESSION_ID', ''),
+        'api_key' => env('CONNECT_API_KEY', ''),
+        'header' => 'X-API-Key',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | POS Procurement (ALIM → POS)
     |--------------------------------------------------------------------------
     |
