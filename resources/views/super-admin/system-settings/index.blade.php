@@ -640,13 +640,6 @@
                                                     <input type="text" name="wa_central_number" class="form-control form-control-sm" value="{{ $settings['wa_central_number'] ?? '' }}" placeholder="08xxxxxxxxxx">
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <label class="form-label small">Footer Branding ALIM (opsional)</label>
-                                                    <input type="text" name="wa_brand_footer" class="form-control form-control-sm"
-                                                           value="{{ $settings['wa_brand_footer'] ?? '' }}"
-                                                           placeholder="ALIM — https://alim.sch.id">
-                                                    <div class="form-text">Ditambahkan di akhir pesan. Watermark Fonnte tetap mengikuti paket device.</div>
-                                                </div>
-                                                <div class="col-md-4">
                                                     <label class="form-label small">API Token</label>
                                                     <input type="text" name="wa_api_token" class="form-control form-control-sm" value="{{ $settings['wa_api_token'] ?? '' }}" placeholder="token Fonnte/Wablas">
                                                 </div>
@@ -1667,6 +1660,30 @@
                                                 </div>
                                             @endif
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card border mt-4">
+                                <div class="card-header border-bottom-dashed">
+                                    <h6 class="mb-0"><i class="ri-file-text-line me-1"></i>Footer pesan WhatsApp</h6>
+                                </div>
+                                <div class="card-body">
+                                    <label class="form-label small">Tulisan di akhir setiap pesan</label>
+                                    <input type="text" name="wa_brand_footer" class="form-control form-control-sm font-monospace"
+                                           value="{{ $settings['wa_brand_footer'] ?? '' }}"
+                                           placeholder="_Pesan otomatis dari aplikasi ALIM | Pondok Pesantren Abu Hurairah_">
+                                    <div class="form-text">
+                                        Ditambahkan otomatis ke semua pesan — OTP, notifikasi wali, keamanan, dan uji kirim.
+                                        Boleh dikosongkan untuk mematikan. Watermark Fonnte tetap mengikuti paket device.
+                                    </div>
+                                    <div class="alert alert-light border small mt-3 mb-0">
+                                        <div class="fw-semibold mb-1">Contoh hasil di WhatsApp:</div>
+                                        <div class="font-monospace" style="white-space: pre-line;">Assalamu'alaikum Bpk/Ibu wali,
+
+Santri *Ahmad* telah *KEMBALI KE ASRAMA*.
+
+{{ ($settings['wa_brand_footer'] ?? '') !== '' ? $settings['wa_brand_footer'] : '_Pesan otomatis dari aplikasi ALIM | Pondok Pesantren Abu Hurairah_' }}</div>
                                     </div>
                                 </div>
                             </div>
