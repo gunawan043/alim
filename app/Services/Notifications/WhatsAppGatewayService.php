@@ -2,6 +2,7 @@
 
 namespace App\Services\Notifications;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -126,6 +127,11 @@ class WhatsAppGatewayService
 
         $provider = $this->provider();
 
+        // Jeda diambil SEBELUM kirim. Pada broadcast, kiriman pertama tidak
+        // menunggu dan baru kiriman ke-11 yang mulai dijeda; hitungannya
+        // disimpan per periode waktu sehingga tetap berlaku lintas request.
+        $this->respectSendGap();
+
         try {
             $sent = match ($provider) {
                 'meta' => $this->sendViaMeta($target, $message, $context),
@@ -148,6 +154,54 @@ class WhatsAppGatewayService
 
             return false;
         }
+    }
+
+    /**
+     * Batasi laju pengiriman agar tidak membanjiri WhatsApp.
+     *
+     * Setting `wa_send_burst` (default 10) pesan pertama pada tiap rentetan
+     * dikirim tanpa jeda; pesan berikutnya menunggu `wa_send_gap` detik
+     * (default 3) satu per satu. Bila jeda diisi 0, pembatas dimatikan.
+     *
+     * Rentetan dihitung ulang setelah tidak ada pengiriman selama
+     * `wa_send_window` detik, jadi dua broadcast terpisah tidak saling
+     * menghabiskan kuota, sedangkan satu broadcast panjang tetap dijeda.
+     *
+     * Hitungan disimpan di cache, bukan di memori proses, karena broadcast
+     * berjalan pada request/job terpisah.
+     */
+    private function respectSendGap(): void
+    {
+        $gap = (int) $this->config('send_gap', 0);
+
+        if ($gap <= 0) {
+            return;
+        }
+
+        $gap = min($gap, 120);
+        $burst = max(1, (int) $this->config('send_burst', 10));
+        $window = max(1, (int) $this->config('send_window', 60));
+        $now = time();
+
+        $countKey = 'wa:send-gap:count';
+        $lastKey = 'wa:send-gap:last';
+
+        $last = (int) Cache::get($lastKey, 0);
+        $idle = $last === 0 || ($now - $last) >= $window;
+        $count = $idle ? 0 : (int) Cache::get($countKey, 0);
+
+        if ($count >= $burst) {
+            $wait = ($last + $gap) - $now;
+
+            if ($wait > 0) {
+                sleep($wait);
+            }
+
+            $now = time();
+        }
+
+        Cache::put($countKey, $idle ? 1 : $count + 1, $window * 4);
+        Cache::put($lastKey, $now, $window * 4);
     }
 
     /**

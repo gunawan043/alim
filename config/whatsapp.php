@@ -36,6 +36,19 @@ return [
     'brand_footer' => env('WA_BRAND_FOOTER', ''),
 
     /*
+    | Pembatas laju pengiriman (mencegah WhatsApp memblokir nomor karena
+    | mengirim ratusan pesan sekaligus).
+    |  - send_gap    : jeda antar pesan (detik). 0 = pembatas dimatikan.
+    |  - send_burst  : jumlah pesan yang boleh dikirim tanpa jeda pada tiap
+    |                  periode send_window (detik).
+    */
+    'send_gap' => env('WA_SEND_GAP', 0),
+
+    'send_burst' => env('WA_SEND_BURST', 10),
+
+    'send_window' => env('WA_SEND_WINDOW', 60),
+
+    /*
     | Toggle jenis notifikasi (dapat ditimpa settings `wa_event_{key}`).
     */
     'events' => [
