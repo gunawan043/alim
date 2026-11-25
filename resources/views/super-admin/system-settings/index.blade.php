@@ -808,6 +808,88 @@
 
                                 <div class="col-12">
                                     <div class="card">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-file-text-line me-1"></i>Footer pesan WhatsApp</h6>
+                                        </div>
+                                        <div class="card-body">
+                                                <label class="form-label small">Tulisan di akhir setiap pesan</label>
+                                                <input type="text" name="wa_brand_footer" class="form-control form-control-sm font-monospace"
+                                                       value="{{ $settings['wa_brand_footer'] ?? '' }}"
+                                                       placeholder="_Pesan otomatis dari aplikasi ALIM | Pondok Pesantren Abu Hurairah_">
+                                                <div class="form-text">
+                                                    Ditambahkan otomatis ke semua pesan — OTP, notifikasi wali, keamanan, dan uji kirim.
+                                                    Boleh dikosongkan untuk mematikan. Watermark Fonnte tetap mengikuti paket device.
+                                                </div>
+                                                <div class="alert alert-light border small mt-3 mb-0">
+                                                    <div class="fw-semibold mb-1">Contoh hasil di WhatsApp:</div>
+                                                    <div class="font-monospace" style="white-space: pre-line;">Assalamu'alaikum Bpk/Ibu wali,
+
+            Santri *Ahmad* telah *KEMBALI KE ASRAMA*.
+
+            {{ ($settings['wa_brand_footer'] ?? '') !== '' ? $settings['wa_brand_footer'] : '_Pesan otomatis dari aplikasi ALIM | Pondok Pesantren Abu Hurairah_' }}</div>
+                                                </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-timer-line me-1"></i>Jeda pengiriman (anti-banned)</h6>
+                                        </div>
+                                        <div class="card-body">
+                                                <p class="small text-muted mb-3">
+                                                    Mengirim ratusan pesan sekaligus membuat nomor WhatsApp dibatasi atau diblokir.
+                                                    Pesan pertama dalam satu periode dikirim langsung; pesan berikutnya menunggu jeda
+                                                    satu per satu. Berlaku untuk broadcast, pengumuman, dan semua notifikasi.
+                                                </p>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small">Jeda antar pesan (detik)</label>
+                                                        <input type="number" name="wa_send_gap" class="form-control form-control-sm"
+                                                               min="0" max="120" step="1"
+                                                               value="{{ $settings['wa_send_gap'] ?? '0' }}">
+                                                        <div class="form-text">0 = tanpa jeda. Saran 3–8 detik.</div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small">Kirim langsung tanpa jeda</label>
+                                                        <input type="number" name="wa_send_burst" class="form-control form-control-sm"
+                                                               min="1" max="500" step="1"
+                                                               value="{{ $settings['wa_send_burst'] ?? '10' }}">
+                                                        <div class="form-text">Jumlah pesan awal pada tiap rentetan sebelum jeda berlaku.</div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small">Periode hitungan (detik)</label>
+                                                        <input type="number" name="wa_send_window" class="form-control form-control-sm"
+                                                               min="10" max="3600" step="1"
+                                                               value="{{ $settings['wa_send_window'] ?? '60' }}">
+                                                        <div class="form-text">Setelah diam selama ini, kuota tanpa jeda dipulihkan.</div>
+                                                    </div>
+                                                </div>
+
+                                                @php
+                                                    $gapNow = (int) ($settings['wa_send_gap'] ?? 0);
+                                                    $burstNow = max(1, (int) ($settings['wa_send_burst'] ?? 10));
+                                                    $windowNow = max(1, (int) ($settings['wa_send_window'] ?? 60));
+                                                @endphp
+
+                                                <div class="alert alert-light border small mt-3 mb-0">
+                                                    <div class="fw-semibold mb-1">Akibat pengaturan saat ini:</div>
+                                                    @if($gapNow <= 0)
+                                                        <span class="text-danger">Tanpa jeda — semua pesan dikirim secepat mungkin.</span>
+                                                    @else
+                                                        {{ $burstNow }} pesan pertama dalam {{ $windowNow }} detik dikirim langsung, lalu tiap pesan berjarak
+                                                        {{ $gapNow }} detik. Contoh 100 penerima: pesan ke-{{ $burstNow }} langsung terkirim, sisanya butuh sekitar
+                                                        <strong>{{ (int) ceil(max(0, 100 - $burstNow) * $gapNow / 60) }} menit</strong>.
+                                                    @endif
+                                                </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card">
                                         <div class="card-header border-bottom-dashed"><h6 class="mb-0"><i class="ri-history-line me-1"></i>Riwayat Pengiriman Terakhir</h6></div>
                                         <div class="card-body">
                                             @if(!empty($waLogs) && $waLogs->count() > 0)
@@ -1664,83 +1746,9 @@
                                 </div>
                             </div>
 
-                            <div class="card border mt-4">
-                                <div class="card-header border-bottom-dashed">
-                                    <h6 class="mb-0"><i class="ri-file-text-line me-1"></i>Footer pesan WhatsApp</h6>
-                                </div>
-                                <div class="card-body">
-                                    <label class="form-label small">Tulisan di akhir setiap pesan</label>
-                                    <input type="text" name="wa_brand_footer" class="form-control form-control-sm font-monospace"
-                                           value="{{ $settings['wa_brand_footer'] ?? '' }}"
-                                           placeholder="_Pesan otomatis dari aplikasi ALIM | Pondok Pesantren Abu Hurairah_">
-                                    <div class="form-text">
-                                        Ditambahkan otomatis ke semua pesan — OTP, notifikasi wali, keamanan, dan uji kirim.
-                                        Boleh dikosongkan untuk mematikan. Watermark Fonnte tetap mengikuti paket device.
-                                    </div>
-                                    <div class="alert alert-light border small mt-3 mb-0">
-                                        <div class="fw-semibold mb-1">Contoh hasil di WhatsApp:</div>
-                                        <div class="font-monospace" style="white-space: pre-line;">Assalamu'alaikum Bpk/Ibu wali,
+                                                        </div>
 
-Santri *Ahmad* telah *KEMBALI KE ASRAMA*.
-
-{{ ($settings['wa_brand_footer'] ?? '') !== '' ? $settings['wa_brand_footer'] : '_Pesan otomatis dari aplikasi ALIM | Pondok Pesantren Abu Hurairah_' }}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="card border mt-4">
-                                <div class="card-header border-bottom-dashed">
-                                    <h6 class="mb-0"><i class="ri-timer-line me-1"></i>Jeda pengiriman (anti-banned)</h6>
-                                </div>
-                                <div class="card-body">
-                                    <p class="small text-muted mb-3">
-                                        Mengirim ratusan pesan sekaligus membuat nomor WhatsApp dibatasi atau diblokir.
-                                        Pesan pertama dalam satu periode dikirim langsung; pesan berikutnya menunggu jeda
-                                        satu per satu. Berlaku untuk broadcast, pengumuman, dan semua notifikasi.
-                                    </p>
-
-                                    <div class="row g-3">
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Jeda antar pesan (detik)</label>
-                                            <input type="number" name="wa_send_gap" class="form-control form-control-sm"
-                                                   min="0" max="120" step="1"
-                                                   value="{{ $settings['wa_send_gap'] ?? '0' }}">
-                                            <div class="form-text">0 = tanpa jeda. Saran 3–8 detik.</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Kirim langsung tanpa jeda</label>
-                                            <input type="number" name="wa_send_burst" class="form-control form-control-sm"
-                                                   min="1" max="500" step="1"
-                                                   value="{{ $settings['wa_send_burst'] ?? '10' }}">
-                                            <div class="form-text">Jumlah pesan awal per periode sebelum jeda berlaku.</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Periode hitungan (detik)</label>
-                                            <input type="number" name="wa_send_window" class="form-control form-control-sm"
-                                                   min="10" max="3600" step="1"
-                                                   value="{{ $settings['wa_send_window'] ?? '60' }}">
-                                            <div class="form-text">Setelah periode ini, kuota tanpa jeda dihitung ulang.</div>
-                                        </div>
-                                    </div>
-
-                                    @php
-                                        $gapNow = (int) ($settings['wa_send_gap'] ?? 0);
-                                        $burstNow = max(1, (int) ($settings['wa_send_burst'] ?? 10));
-                                        $windowNow = max(1, (int) ($settings['wa_send_window'] ?? 60));
-                                    @endphp
-
-                                    <div class="alert alert-light border small mt-3 mb-0">
-                                        <div class="fw-semibold mb-1">Akibat pengaturan saat ini:</div>
-                                        @if($gapNow <= 0)
-                                            <span class="text-danger">Tanpa jeda — semua pesan dikirim secepat mungkin.</span>
-                                        @else
-                                            {{ $burstNow }} pesan pertama dalam {{ $windowNow }} detik dikirim langsung, lalu tiap pesan berjarak
-                                            {{ $gapNow }} detik. Contoh 100 penerima: pesan ke-{{ $burstNow }} langsung terkirim, sisanya butuh sekitar
-                                            <strong>{{ (int) ceil(max(0, 100 - $burstNow) * $gapNow / 60) }} menit</strong>.
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
+                                                        </div>
 
                             <div class="card border mt-4">
                                 <div class="card-header border-bottom-dashed">
