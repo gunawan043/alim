@@ -535,23 +535,7 @@ class GuardianWhatsAppNotifier
      */
     private function withBrandFooter(string $message): string
     {
-        $footer = '';
-
-        if (function_exists('setting')) {
-            $footer = (string) setting('wa_brand_footer', '');
-        }
-
-        if (trim($footer) === '') {
-            $footer = (string) config('whatsapp.brand_footer', '');
-        }
-
-        $footer = trim($footer);
-
-        if ($footer === '' || str_contains($message, $footer)) {
-            return $message;
-        }
-
-        return rtrim($message)."\n\n".$footer;
+        return $this->gateway->withBrandFooter($message);
     }
 
     /**

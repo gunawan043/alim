@@ -119,6 +119,11 @@ class WhatsAppGatewayService
             return false;
         }
 
+        // Footer dipasang di sini, bukan di tiap pemanggil, supaya SEMUA jalur
+        // (OTP, keamanan, wali, antrean job, uji kirim) memakai tulisan yang
+        // sama dan tidak ada yang terlewat saat pemanggil baru ditambahkan.
+        $message = $this->withBrandFooter($message);
+
         $provider = $this->provider();
 
         try {
@@ -143,6 +148,24 @@ class WhatsAppGatewayService
 
             return false;
         }
+    }
+
+    /**
+     * Tambahkan footer branding di akhir pesan.
+     *
+     * Teks footer disimpan pada setting `wa_brand_footer`; bila kosong dipakai
+     * `config('whatsapp.brand_footer')`. Pesan yang sudah mengandung footer
+     * tidak ditambahi lagi agar pengiriman ulang tidak menumpuk.
+     */
+    public function withBrandFooter(string $message): string
+    {
+        $footer = trim((string) $this->config('brand_footer', ''));
+
+        if ($footer === '' || str_contains($message, $footer)) {
+            return $message;
+        }
+
+        return rtrim($message)."\n\n".$footer;
     }
 
     /**
