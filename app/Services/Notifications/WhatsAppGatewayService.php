@@ -2,6 +2,8 @@
 
 namespace App\Services\Notifications;
 
+use App\Services\Connect\ConnectWhatsAppClient;
+use App\Support\ConnectApiConfig;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -136,6 +138,7 @@ class WhatsAppGatewayService
             $sent = match ($provider) {
                 'meta' => $this->sendViaMeta($target, $message, $context),
                 'fonnte' => $this->sendViaFonnte($target, $message),
+                'connect' => $this->sendViaConnect($target, $message),
                 'wablas' => $this->sendViaWablas($target, $message),
                 'generic' => $this->sendViaGeneric($target, $message),
                 default => $this->sendViaLog($target, $message, $context),
@@ -375,6 +378,33 @@ class WhatsAppGatewayService
         }
 
         return $response->successful();
+    }
+
+    /**
+     * ALIM Connect (WhatsApp Web pribadi lewat gateway sendiri).
+     *
+     * Alamat, session id, dan API key disimpan di Pengaturan Sistem
+     * (lihat ConnectApiConfig), sehingga berpindah provider cukup dengan
+     * mengubah `wa.provider` — tanpa mengubah kode.
+     *
+     * Bila Connect gagal, pesan ditandai gagal; pemanggil tetap menerima
+     * alasan yang bisa dibaca lewat lastResponseDetail().
+     */
+    private function sendViaConnect(string $target, string $message): bool
+    {
+        $missing = ConnectApiConfig::missing();
+
+        if ($missing !== []) {
+            $this->lastResponseBody = implode(' ', $missing);
+
+            return false;
+        }
+
+        $result = app(ConnectWhatsAppClient::class)->sendText($target, $message);
+
+        $this->lastResponseBody = (string) ($result['raw'] ?? $result['message'] ?? '');
+
+        return (bool) ($result['ok'] ?? false);
     }
 
     private function sendViaWablas(string $target, string $message): bool

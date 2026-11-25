@@ -622,10 +622,21 @@
                                                 <div class="col-md-4">
                                                     <label class="form-label small">Provider</label>
                                                     <select name="wa_provider" class="form-select form-select-sm">
-                                                        @foreach(['log' => 'Log / Gratis (wa.me manual)', 'fonnte' => 'Fonnte (tidak resmi)', 'meta' => 'Meta WhatsApp Cloud API (resmi)', 'wablas' => 'Wablas', 'generic' => 'Generic Webhook'] as $value => $label)
+                                                        @foreach(['log' => 'Log / Gratis (wa.me manual)', 'connect' => 'ALIM Connect (WhatsApp pribadi)', 'fonnte' => 'Fonnte (tidak resmi)', 'meta' => 'Meta WhatsApp Cloud API (resmi)', 'wablas' => 'Wablas', 'generic' => 'Generic Webhook'] as $value => $label)
                                                             <option value="{{ $value }}" {{ ($settings['wa_provider'] ?? 'log') === $value ? 'selected' : '' }}>{{ $label }}</option>
                                                         @endforeach
                                                     </select>
+                                                    @if(($settings['wa_provider'] ?? '') === 'connect')
+                                                        @php $connectMissing = \App\Support\ConnectApiConfig::missing(); @endphp
+                                                        @if($connectMissing === [])
+                                                            <div class="form-text text-success">Alamat, sesi, dan key Connect sudah lengkap.</div>
+                                                        @else
+                                                            <div class="form-text text-danger">
+                                                                Belum bisa mengirim: {{ implode(' ', $connectMissing) }}
+                                                                — lengkapi di tab <strong>WhatsApp Connect</strong>.
+                                                            </div>
+                                                        @endif
+                                                    @endif
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label small">Mode Penerima</label>
