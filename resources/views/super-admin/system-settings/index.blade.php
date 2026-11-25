@@ -1433,6 +1433,124 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <hr class="my-4">
+
+                            {{-- Kredensial Approval: key terpisah dari key SSO --}}
+                            @php
+                                $caHeader = \App\Support\ConnectApprovalConfig::header();
+                                $caAllowedIps = implode(',', \App\Support\ConnectApprovalConfig::allowedIps());
+                                $caHasKey = \App\Support\ConnectApprovalConfig::hasStoredKey() || \App\Support\ConnectApprovalConfig::apiKey() !== '';
+                                $caKeyEncrypted = \App\Support\ConnectApprovalConfig::isEncrypted($settings['connect_approval_api_key'] ?? null);
+                                $caGeneratedAt = $settings['connect_approval_api_key_generated_at'] ?? null;
+                                $caScopes = \App\Support\ConnectApprovalConfig::scopes();
+                                $caScopeOk = in_array('approval:command', $caScopes, true);
+                            @endphp
+
+                            <input type="hidden" name="connect_approval_tab" value="1">
+
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-checkbox-circle-line me-1"></i>Approval API</h6>
+                                            <span class="badge bg-{{ $caScopeOk ? 'success' : 'danger' }}-subtle text-{{ $caScopeOk ? 'success' : 'danger' }}">
+                                                {{ $caScopeOk ? 'cakupan benar' : 'cakupan salah' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="small text-muted mb-3">
+                                                Key ini dipakai Connect untuk mengirim <strong>perintah persetujuan</strong> ke Core
+                                                (mis. menyetujui izin asrama lewat WhatsApp). Berbeda dari key SSO dan tidak boleh dipakai
+                                                bergantian: key Approval hanya berlaku untuk <code>approval:command</code>.
+                                            </p>
+                                            <ul class="list-unstyled small mb-0">
+                                                <li class="d-flex justify-content-between border-bottom py-1">
+                                                    <span>Key Approval</span>
+                                                    <span>{!! $caHasKey ? '<span class="badge bg-success-subtle text-success">ada</span>' : '<span class="badge bg-danger-subtle text-danger">belum ada</span>' !!}</span>
+                                                </li>
+                                                <li class="d-flex justify-content-between border-bottom py-1">
+                                                    <span>Cakupan key</span>
+                                                    <span class="font-monospace">{{ implode(', ', $caScopes) ?: '—' }}</span>
+                                                </li>
+                                                <li class="d-flex justify-content-between py-1">
+                                                    <span>Endpoint</span>
+                                                    <span class="font-monospace small">POST /api/connect/v1/approval-commands</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-key-2-line me-1"></i>Kredensial Approval</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                @if($caHasKey)
+                                                    <span class="badge bg-info-subtle text-info">Tersimpan</span>
+                                                    @if($caKeyEncrypted)
+                                                        <span class="badge bg-success-subtle text-success"><i class="ri-lock-2-line me-1"></i>terenkripsi</span>
+                                                    @endif
+                                                    @if($caGeneratedAt)
+                                                        <span class="text-muted small">· dibuat {{ \Illuminate\Support\Carbon::parse($caGeneratedAt)->format('d/m/Y H:i') }}</span>
+                                                    @endif
+                                                @else
+                                                    <span class="badge bg-danger-subtle text-danger">Belum ada key</span>
+                                                @endif
+                                            </div>
+                                            <p class="small text-muted mb-2">
+                                                Nilai tidak pernah ditampilkan di halaman ini. Partner Connect memakai key ini
+                                                sebagai <code>ALIM_CONNECT_APPROVAL_KEY</code>.
+                                            </p>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small">Pasang key yang sudah ada</label>
+                                                <input type="password" name="connect_approval_api_key_input"
+                                                    class="form-control form-control-sm font-monospace" autocomplete="new-password"
+                                                    spellcheck="false" placeholder="Tempel key dari ALIM Connect" value="">
+                                                <small class="text-muted">Kosongkan bila tidak ingin mengubah key.</small>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small">Nama header key</label>
+                                                <input type="text" name="connect_approval_api_header" class="form-control form-control-sm font-monospace"
+                                                    value="{{ $caHeader }}" placeholder="X-ALIM-CONNECT-APPROVAL-KEY">
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small">Whitelist IP (opsional)</label>
+                                                <textarea name="connect_approval_api_allowed_ips" rows="2" class="form-control form-control-sm font-monospace"
+                                                    placeholder="103.10.20.30, 10.0.0.0/8">{{ $caAllowedIps }}</textarea>
+                                            </div>
+
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <button type="submit" name="regenerate_connect_approval_key" value="1" class="btn btn-sm btn-warning"
+                                                    onclick="return confirm('Key Approval lama langsung tidak berlaku; Connect harus diganti sebelum persetujuan bisa masuk lagi. Lanjutkan?')">
+                                                    <i class="ri-refresh-line me-1"></i>{{ $caHasKey ? 'Buat key baru' : 'Buat key' }}
+                                                </button>
+                                                @if($caHasKey)
+                                                    <button type="submit" name="clear_connect_approval_key" value="1" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Key Approval dihapus dan Connect tidak bisa mengirim persetujuan. Lanjutkan?')">
+                                                        <i class="ri-delete-bin-line me-1"></i>Hapus key
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info small mt-4 mb-0">
+                                <i class="ri-information-line me-1"></i>
+                                <strong>Yang harus disetel di sisi ALIM Connect:</strong>
+                                <code>ALIM_CORE_BASE_URL</code>, <code>ALIM_CORE_WEB_ORIGIN</code>,
+                                <code>ALIM_CONNECT_SSO_KEY</code> (sama dengan key SSO di atas), dan
+                                <code>ALIM_CONNECT_APPROVAL_KEY</code> (sama dengan key Approval di atas).
+                                Nilai key tidak dapat ditampilkan ulang — bila hilang, buat key baru di sini lalu perbarui Connect.
+                            </div>
                         @endif
 
                         {{-- TAB: Google Drive --}}

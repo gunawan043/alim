@@ -13,6 +13,7 @@ use App\Services\Sarpras\GoogleDriveService;
 use App\Services\SystemMailSettingsService;
 use App\Support\ApnsConfig;
 use App\Support\AsramaConfig;
+use App\Support\ConnectApprovalConfig;
 use App\Support\ConnectSsoConfig;
 use App\Support\FcmConfig;
 use App\Support\IntegrationApiConfig;
@@ -204,6 +205,9 @@ class SystemSettingController extends Controller
             'connect_sso_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'connect_sso_api_allowed_ips' => 'nullable|string|max:2000',
             'connect_sso_api_key_input' => 'nullable|string|min:16|max:200',
+            'connect_approval_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
+            'connect_approval_api_allowed_ips' => 'nullable|string|max:2000',
+            'connect_approval_api_key_input' => 'nullable|string|min:16|max:200',
             'google_drive_enabled' => 'boolean',
             'google_drive_folder_id' => 'nullable|string|max:191',
             'google_drive_folder_url' => 'nullable|url|max:500',
@@ -779,8 +783,81 @@ class SystemSettingController extends Controller
             };
         }
 
+        // ── Tab WhatsApp Connect: kredensial Approval API ─────────────────
+        // Key ini berbeda dari key SSO. Keduanya diverifikasi middleware
+        // terpisah, jadi operator harus dapat mengisi keduanya dari satu
+        // halaman tanpa menyunting .env di server.
+        $connectApprovalFlash = null;
+
+        if ($request->filled('connect_approval_tab')) {
+            $headerInput = trim((string) $request->input('connect_approval_api_header', ''));
+            $allowedIpsInput = trim((string) $request->input('connect_approval_api_allowed_ips', ''));
+            $keyInput = trim((string) $request->input('connect_approval_api_key_input', ''));
+
+            [$allowedIpsNormalized, $invalidIps] = $this->normalizeIpAllowlist($allowedIpsInput);
+
+            if ($invalidIps !== []) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Daftar IP Approval tidak valid: '.implode(', ', $invalidIps)
+                        .'. Gunakan format IP atau CIDR, pisahkan dengan koma.'
+                );
+            }
+
+            SystemSetting::set(
+                'connect_approval_api_header',
+                $headerInput !== '' ? $headerInput : ConnectApprovalConfig::DEFAULT_HEADER,
+                'integration'
+            );
+
+            ConnectApprovalConfig::storeAllowedIps($allowedIpsNormalized);
+
+            $approvalKeyImported = false;
+            $approvalKeyRegenerated = false;
+            $approvalKeyCleared = false;
+
+            if ($keyInput !== '') {
+                ConnectApprovalConfig::storeKey($keyInput);
+                SystemSetting::set('connect_approval_api_key_generated_at', now()->toDateTimeString(), 'integration');
+                $approvalKeyImported = true;
+            }
+
+            if ($request->filled('regenerate_connect_approval_key')) {
+                ConnectApprovalConfig::storeKey(IntegrationApiConfig::generateKey());
+                SystemSetting::set('connect_approval_api_key_generated_at', now()->toDateTimeString(), 'integration');
+                $approvalKeyRegenerated = true;
+            }
+
+            if ($request->filled('clear_connect_approval_key')) {
+                ConnectApprovalConfig::forgetKey();
+                SystemSetting::set('connect_approval_api_key_generated_at', null, 'integration');
+                $approvalKeyCleared = true;
+            }
+
+            $this->writeSettingsAudit($request, 'CONNECT_APPROVAL_SETTINGS_UPDATED');
+
+            if ($approvalKeyRegenerated) {
+                $this->writeSettingsAudit($request, 'CONNECT_APPROVAL_KEY_ROTATED');
+            }
+
+            if ($approvalKeyImported) {
+                $this->writeSettingsAudit($request, 'CONNECT_APPROVAL_KEY_IMPORTED');
+            }
+
+            if ($approvalKeyCleared) {
+                $this->writeSettingsAudit($request, 'CONNECT_APPROVAL_KEY_CLEARED');
+            }
+
+            $connectApprovalFlash = match (true) {
+                $approvalKeyCleared => 'Key Approval dihapus. Perintah persetujuan dari Connect akan ditolak sampai key baru dipasang.',
+                $approvalKeyImported => 'Key Approval tersimpan (terenkripsi). Pasang nilai yang sama di ALIM Connect sebagai ALIM_CONNECT_APPROVAL_KEY.',
+                $approvalKeyRegenerated => 'Key Approval baru dibuat. Perbarui ALIM_CONNECT_APPROVAL_KEY di sisi Connect — key lama sudah tidak berlaku.',
+                default => 'Pengaturan Approval ALIM Connect berhasil disimpan.',
+            };
+        }
+
         return redirect()->back()
-            ->with('success', $posFlash ?? $recruitmentFlash ?? $connectSsoFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
+            ->with('success', $posFlash ?? $recruitmentFlash ?? $connectSsoFlash ?? $connectApprovalFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
     }
 
     /**
