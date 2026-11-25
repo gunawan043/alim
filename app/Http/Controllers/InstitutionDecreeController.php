@@ -754,12 +754,13 @@ class InstitutionDecreeController extends Controller
             'end_date' => 'nullable|date|after_or_equal:effective_date',
             'signed_by' => 'nullable|exists:users,id',
             'signed_position' => 'nullable|string|max:100',
-            'status' => 'required|in:draft,active,archived',
+            // Tidak wajib: form edit hanya menampilkan status sebagai badge.
+            'status' => 'nullable|in:draft,active,archived',
         ]);
 
         // Aktivasi/penonaktifan punya jalur sendiri (tombol) agar SK lain pada
         // sekolah + TA yang sama ikut diarsipkan. Nilai select status diabaikan.
-        $data['status'] = $this->guardStatusTransition($decree, $data['status'] ?? null);
+        $data['status'] = $this->guardStatusTransition($decree, $data['status'] ?? $decree->status);
 
         // Rombel & penugasan terikat tahun ajaran. Mencegah matriks lama
         // menjadi yatim ketika TA diubah tanpa mengirim ulang matriks.
