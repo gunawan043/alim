@@ -13,7 +13,9 @@ use App\Services\Sarpras\GoogleDriveService;
 use App\Services\SystemMailSettingsService;
 use App\Support\ApnsConfig;
 use App\Support\AsramaConfig;
+use App\Support\ConnectSsoConfig;
 use App\Support\FcmConfig;
+use App\Support\IntegrationApiConfig;
 use App\Support\PosApiConfig;
 use App\Support\PosProcurementConfig;
 use App\Support\Qr\QrBranding;
@@ -197,6 +199,10 @@ class SystemSettingController extends Controller
             'recruitment_outbound_url' => 'nullable|url|max:500',
             'recruitment_outbound_token' => 'nullable|string|max:2000',
             'recruitment_outbound_token_clear' => 'boolean',
+            'connect_sso_handoff_url' => 'nullable|url|max:500',
+            'connect_sso_frame_origin' => 'nullable|url|max:500',
+            'connect_sso_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
+            'connect_sso_api_allowed_ips' => 'nullable|string|max:2000',
             'google_drive_enabled' => 'boolean',
             'google_drive_folder_id' => 'nullable|string|max:191',
             'google_drive_folder_url' => 'nullable|url|max:500',
@@ -672,8 +678,74 @@ class SystemSettingController extends Controller
             );
         }
 
+        // ── Tab WhatsApp Connect: aktivasi SSO tanpa menyunting .env ──────
+        $connectSsoFlash = null;
+
+        if ($request->filled('connect_sso_tab')) {
+            $handoffUrl = trim((string) $request->input('connect_sso_handoff_url', ''));
+            $frameOriginInput = trim((string) $request->input('connect_sso_frame_origin', ''));
+            $headerInput = trim((string) $request->input('connect_sso_api_header', ''));
+            $allowedIpsInput = trim((string) $request->input('connect_sso_api_allowed_ips', ''));
+
+            if ($handoffUrl !== '' && ! str_starts_with(strtolower($handoffUrl), 'https://')) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'URL handoff Connect harus diawali https:// karena kode handoff dikirim lewat form POST dari browser.'
+                );
+            }
+
+            $frameOrigin = $frameOriginInput !== '' ? ConnectSsoConfig::originOf($frameOriginInput) : null;
+
+            if ($frameOriginInput !== '' && $frameOrigin === null) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Origin Connect tidak valid. Isi dengan origin saja, contoh https://connect.contoh.id (tanpa path).'
+                );
+            }
+
+            [$allowedIpsNormalized, $invalidIps] = $this->normalizeIpAllowlist($allowedIpsInput);
+
+            if ($invalidIps !== []) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    'Daftar IP tidak valid: '.implode(', ', $invalidIps)
+                        .'. Gunakan format IP atau CIDR (contoh: 103.10.20.30 atau 10.0.0.0/8), pisahkan dengan koma.'
+                );
+            }
+
+            ConnectSsoConfig::storeHandoffUrl($handoffUrl);
+            ConnectSsoConfig::storeFrameOrigin($frameOrigin);
+            ConnectSsoConfig::storeAllowedIps($allowedIpsNormalized);
+
+            SystemSetting::set(
+                'connect_sso_api_header',
+                $headerInput !== '' ? $headerInput : ConnectSsoConfig::DEFAULT_HEADER,
+                'integration'
+            );
+
+            // Key hanya pernah ditulis, tidak pernah dibaca balik ke form.
+            // Rotasi memutus handoff berikutnya sampai Connect diberi nilai baru.
+            $regenerated = false;
+
+            if ($request->filled('regenerate_connect_sso_key')) {
+                ConnectSsoConfig::storeKey(IntegrationApiConfig::generateKey());
+                SystemSetting::set('connect_sso_api_key_generated_at', now()->toDateTimeString(), 'integration');
+                $regenerated = true;
+            }
+
+            $this->writeSettingsAudit($request, 'CONNECT_SSO_SETTINGS_UPDATED');
+
+            if ($regenerated) {
+                $this->writeSettingsAudit($request, 'CONNECT_SSO_KEY_ROTATED');
+            }
+
+            $connectSsoFlash = $regenerated
+                ? 'Pengaturan WhatsApp Connect disimpan dan key SSO baru dibuat. Salin key ke ALIM Connect (ALIM_CONNECT_SSO_KEY) sekarang — key lama sudah tidak berlaku.'
+                : 'Pengaturan WhatsApp Connect berhasil disimpan.';
+        }
+
         return redirect()->back()
-            ->with('success', $posFlash ?? $recruitmentFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
+            ->with('success', $posFlash ?? $recruitmentFlash ?? $connectSsoFlash ?? $pushFlash ?? $webPushFlash ?? 'Pengaturan berhasil disimpan.');
     }
 
     /**

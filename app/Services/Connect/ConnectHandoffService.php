@@ -7,6 +7,7 @@ use App\Exceptions\ConnectSsoException;
 use App\Models\AuditLog;
 use App\Models\ConnectSsoHandoff;
 use App\Models\User;
+use App\Support\ConnectSsoConfig;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -34,7 +35,7 @@ class ConnectHandoffService
 
         $audience = self::AUDIENCE;
         $scope = self::SCOPE;
-        $ttl = max(1, (int) config('services.connect_sso.handoff_ttl', 60));
+        $ttl = ConnectSsoConfig::handoffTtl();
         $expiresAt = now()->addSeconds($ttl);
         $code = $this->generateCode();
 
@@ -71,7 +72,7 @@ class ConnectHandoffService
             'audience' => $audience,
             'scope' => $scope,
             'expires_at' => $expiresAt->toIso8601String(),
-            'connect_sso_url' => (string) config('services.connect_sso.handoff_url', ''),
+            'connect_sso_url' => ConnectSsoConfig::handoffUrl(),
         ];
     }
 

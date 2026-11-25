@@ -74,6 +74,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ $tab === 'connect-sso' ? 'active' : '' }}"
+                                href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'connect-sso']) }}">
+                                <i class="ri-whatsapp-line me-1"></i> WhatsApp Connect
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ $tab === 'google-drive' ? 'active' : '' }}"
                                 href="{{ route('user.sa.system-settings.index', ['userId' => $userId, 'tab' => 'google-drive']) }}">
                                 <i class="ri-google-line me-1"></i> Google Drive
@@ -1279,6 +1285,129 @@
                                                         @endforeach
                                                     </tbody>
                                                 </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- TAB: WhatsApp Connect (SSO) --}}
+                        @if($tab === 'connect-sso')
+                            @php
+                                $csHandoffUrl = \App\Support\ConnectSsoConfig::handoffUrl();
+                                $csFrameOrigin = \App\Support\ConnectSsoConfig::frameOrigin();
+                                $csHeader = \App\Support\ConnectSsoConfig::header();
+                                $csAllowedIps = implode(',', \App\Support\ConnectSsoConfig::allowedIps());
+                                $csHasKey = \App\Support\ConnectSsoConfig::hasStoredKey() || \App\Support\ConnectSsoConfig::apiKey() !== '';
+                                $csKeyEncrypted = \App\Support\ConnectSsoConfig::isEncrypted($settings['connect_sso_api_key'] ?? null);
+                                $csGeneratedAt = $settings['connect_sso_api_key_generated_at'] ?? null;
+                                $csOriginValid = \App\Support\ConnectSsoConfig::originOf($csFrameOrigin) !== null;
+                                $csActive = $csHasKey && $csHandoffUrl !== '' && $csOriginValid;
+                                $csPageUrl = $userId ? route('user.whatsapp-connect.index', ['userId' => $userId]) : null;
+                            @endphp
+
+                            <input type="hidden" name="connect_sso_tab" value="1">
+
+                            <div class="row g-4">
+                                <div class="col-lg-7">
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0"><i class="ri-whatsapp-line me-1"></i>Status SSO</h6>
+                                            <span class="badge bg-{{ $csActive ? 'success' : 'warning' }}-subtle text-{{ $csActive ? 'success' : 'warning' }}">
+                                                {{ $csActive ? 'Siap' : 'Belum lengkap' }}
+                                            </span>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="list-unstyled small mb-0">
+                                                <li class="d-flex justify-content-between border-bottom py-1">
+                                                    <span>URL handoff Connect</span>
+                                                    <span>{!! $csHandoffUrl !== '' ? '<span class="badge bg-success-subtle text-success">terisi</span>' : '<span class="badge bg-danger-subtle text-danger">kosong</span>' !!}</span>
+                                                </li>
+                                                <li class="d-flex justify-content-between border-bottom py-1">
+                                                    <span>Origin iframe Connect</span>
+                                                    <span>{!! $csOriginValid ? '<span class="badge bg-success-subtle text-success">valid</span>' : '<span class="badge bg-danger-subtle text-danger">belum valid</span>' !!}</span>
+                                                </li>
+                                                <li class="d-flex justify-content-between py-1">
+                                                    <span>Key SSO (connect_sso)</span>
+                                                    <span>{!! $csHasKey ? '<span class="badge bg-success-subtle text-success">ada</span>' : '<span class="badge bg-danger-subtle text-danger">belum ada</span>' !!}</span>
+                                                </li>
+                                            </ul>
+                                            @if($csPageUrl)
+                                                <hr class="my-3">
+                                                <a href="{{ $csPageUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-soft-primary">
+                                                    <i class="ri-external-link-line me-1"></i>Buka halaman WhatsApp Connect
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-links-line me-1"></i>Alamat Connect</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small">URL halaman handoff Connect</label>
+                                                <input type="url" name="connect_sso_handoff_url" class="form-control form-control-sm font-monospace"
+                                                    value="{{ $csHandoffUrl }}" placeholder="https://connect.contoh.id/sso/handoff">
+                                                <small class="text-muted">Halaman Connect yang menerima form POST kode handoff. Harus https.</small>
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label small">Origin Connect (iframe)</label>
+                                                <input type="url" name="connect_sso_frame_origin" class="form-control form-control-sm font-monospace"
+                                                    value="{{ $csFrameOrigin }}" placeholder="https://connect.contoh.id">
+                                                <small class="text-muted">Hanya origin (scheme + host + port), tanpa path. Satu-satunya origin yang boleh memuat iframe di halaman Core.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <div class="card border mb-4">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-key-2-line me-1"></i>Kredensial SSO</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                                @if($csHasKey)
+                                                    <span class="badge bg-info-subtle text-info">Tersimpan</span>
+                                                    @if($csKeyEncrypted)
+                                                        <span class="badge bg-success-subtle text-success"><i class="ri-lock-2-line me-1"></i>terenkripsi</span>
+                                                    @endif
+                                                    @if($csGeneratedAt)
+                                                        <span class="text-muted small">· dibuat {{ \Illuminate\Support\Carbon::parse($csGeneratedAt)->format('d/m/Y H:i') }}</span>
+                                                    @endif
+                                                @else
+                                                    <span class="badge bg-danger-subtle text-danger">Belum ada key</span>
+                                                @endif
+                                            </div>
+                                            <p class="small text-muted mb-2">
+                                                Nilai key tidak pernah ditampilkan di halaman ini. Partner Connect memakai key ini
+                                                sebagai <code>ALIM_CONNECT_SSO_KEY</code>.
+                                            </p>
+                                            <button type="submit" name="regenerate_connect_sso_key" value="1" class="btn btn-sm btn-warning"
+                                                onclick="return confirm('Key SSO lama langsung tidak berlaku dan Connect harus diganti sebelum SSO bisa dipakai lagi. Lanjutkan?')">
+                                                <i class="ri-refresh-line me-1"></i>{{ $csHasKey ? 'Buat key SSO baru' : 'Buat key SSO' }}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="card border">
+                                        <div class="card-header border-bottom-dashed">
+                                            <h6 class="mb-0"><i class="ri-shield-check-line me-1"></i>Pembatasan Akses</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label small">Nama header key</label>
+                                                <input type="text" name="connect_sso_api_header" class="form-control form-control-sm font-monospace"
+                                                    value="{{ $csHeader }}" placeholder="X-ALIM-CONNECT-SSO-KEY">
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label small">Whitelist IP (opsional)</label>
+                                                <textarea name="connect_sso_api_allowed_ips" rows="2" class="form-control form-control-sm font-monospace"
+                                                    placeholder="103.10.20.30, 10.0.0.0/8">{{ $csAllowedIps }}</textarea>
+                                                <small class="text-muted">Kosongkan = semua IP boleh selama membawa key. Isi bila egress server Connect memiliki IP tetap.</small>
                                             </div>
                                         </div>
                                     </div>

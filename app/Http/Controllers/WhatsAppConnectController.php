@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Authorization\ValueObjects\OrganizationContext;
 use App\Services\Connect\ConnectHandoffService;
+use App\Support\ConnectSsoConfig;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -19,25 +20,67 @@ class WhatsAppConnectController extends Controller
         $this->authorizeSelf($request, $userId);
 
         $frameOrigin = $this->frameOrigin();
-        $connectSsoUrl = trim((string) config('services.connect_sso.handoff_url', ''));
+        $connectSsoUrl = ConnectSsoConfig::handoffUrl();
+
+        $notConfiguredReason = match (true) {
+            $frameOrigin === null => 'CONNECT_SSO_FRAME_ORIGIN belum berisi origin Connect yang valid (https).',
+            $connectSsoUrl === '' => 'CONNECT_SSO_HANDOFF_URL belum berisi URL handoff Connect.',
+            default => null,
+        };
 
         $response = response()->view('whatsapp-connect.index', [
             'userId' => $userId,
             'frameOrigin' => $frameOrigin,
             'connectSsoUrl' => $connectSsoUrl,
             'handoffUrl' => route('user.whatsapp-connect.handoff', ['userId' => $userId]),
-            'configured' => $frameOrigin !== null && $connectSsoUrl !== '',
+            'configured' => $notConfiguredReason === null,
+            'notConfiguredReason' => $notConfiguredReason,
         ]);
 
         // Route-specific CSP only. Do not weaken the global web/API policy.
         if ($frameOrigin !== null) {
-            $response->headers->set(
-                'Content-Security-Policy',
-                "frame-src 'self' {$frameOrigin}"
-            );
+            $response->headers->set('Content-Security-Policy', $this->frameCsp($response, $frameOrigin));
         }
 
         return $response;
+    }
+
+    /**
+     * Bangun ulang kebijakan global dan ganti hanya `frame-src`.
+     *
+     * Sebelumnya header ini ditimpa penuh dengan `frame-src 'self' <origin>`,
+     * sehingga seluruh direktif global (script-src, style-src, object-src)
+     * hilang dari halaman ini — bukan pelonggaran yang dimaksud, tetapi
+     * justru kehilangan proteksi bawaan sambil menambah satu izin.
+     */
+    private function frameCsp($response, string $frameOrigin): string
+    {
+        $global = (string) $response->headers->get('Content-Security-Policy', '');
+        $directives = [];
+
+        foreach (explode(';', $global) as $part) {
+            $part = trim($part);
+
+            if ($part !== '') {
+                $directives[] = $part;
+            }
+        }
+
+        $frameSrc = "frame-src 'self' {$frameOrigin}";
+        $replaced = false;
+
+        foreach ($directives as $i => $directive) {
+            if (str_starts_with($directive, 'frame-src ')) {
+                $directives[$i] = $frameSrc;
+                $replaced = true;
+            }
+        }
+
+        if (! $replaced) {
+            $directives[] = $frameSrc;
+        }
+
+        return implode('; ', $directives);
     }
 
     public function handoff(Request $request, string $userId): JsonResponse
@@ -83,27 +126,6 @@ class WhatsAppConnectController extends Controller
 
     private function frameOrigin(): ?string
     {
-        $origin = trim((string) config('services.connect_sso.frame_origin', ''));
-
-        if ($origin === '') {
-            return null;
-        }
-
-        $parts = parse_url($origin);
-
-        if (! $parts || empty($parts['scheme']) || empty($parts['host'])) {
-            return null;
-        }
-
-        if (! in_array($parts['scheme'], ['https', 'http'], true)) {
-            return null;
-        }
-
-        if (app()->environment('production') && $parts['scheme'] !== 'https') {
-            return null;
-        }
-
-        return $parts['scheme'].'://'.$parts['host']
-            .(isset($parts['port']) ? ':'.$parts['port'] : '');
+        return ConnectSsoConfig::originOf(ConnectSsoConfig::frameOrigin());
     }
 }

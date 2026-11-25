@@ -65,9 +65,10 @@
                     @if(! $configured)
                         <div class="alert alert-warning mb-0">
                             <strong>WhatsApp Connect belum dikonfigurasi.</strong>
-                            Isi <code>CONNECT_SSO_HANDOFF_URL</code> dan
-                            <code>CONNECT_SSO_FRAME_ORIGIN</code> pada environment Core.
-                            Halaman ini tidak akan menampilkan iframe sampai konfigurasi tersedia.
+                            {{ $notConfiguredReason }}
+                            Konfigurasi dibaca dari Pengaturan Sistem → WhatsApp Connect atau
+                            dari environment Core. Halaman ini tidak menampilkan iframe sampai
+                            konfigurasi valid.
                         </div>
                     @else
                         <div id="connect-alert" class="alert alert-danger d-none" role="alert"></div>
@@ -104,11 +105,13 @@
     </div>
 </div>
 
+@if($configured)
 <form id="connect-handoff-form" method="POST" action="" target="connect-frame" class="d-none" aria-hidden="true">
     <input type="hidden" name="code" id="connect-handoff-code">
     <input type="hidden" name="audience" value="connect">
     <input type="hidden" name="scope" value="whatsapp.embed">
 </form>
+@endif
 @endsection
 
 @push('scripts')
@@ -137,15 +140,21 @@
     }
 
     async function requestHandoff() {
-        const response = await fetch(handoffUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': csrfToken,
-            },
-        });
+        let response;
+
+        try {
+            response = await fetch(handoffUrl, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+            });
+        } catch (error) {
+            throw new Error('ALIM Core tidak dapat dihubungi. Periksa koneksi lalu tekan “Muat ulang sesi”.');
+        }
 
         const body = await response.json().catch(() => ({}));
 

@@ -100,11 +100,103 @@ class WhatsAppConnectSsoTest extends TestCase
             ->get(route('user.whatsapp-connect.index', ['userId' => $user->id]));
 
         $response->assertOk()
-            ->assertSee('WhatsApp Connect');
+            ->assertSee('WhatsApp Connect')
+            ->assertSee('id="connect-frame"', false);
+        // URL diterbitkan sebagai literal JSON di skrip, jadi "/" tampil ter-escape.
+        $this->assertStringContainsString(
+            json_encode('https://connect.test/sso/handoff'),
+            $response->getContent()
+        );
 
         $csp = (string) $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString("frame-src 'self' https://connect.test", $csp);
         $this->assertStringNotContainsString('*', $csp);
+        $this->assertStringNotContainsString(' http://', $csp);
+    }
+
+    public function test_page_reports_which_setting_is_missing_instead_of_a_generic_hint(): void
+    {
+        $user = $this->userWithPermission();
+        config(['services.connect_sso.frame_origin' => '']);
+
+        $response = $this->actingAs($user)
+            ->get(route('user.whatsapp-connect.index', ['userId' => $user->id]));
+
+        $response->assertOk()
+            ->assertSee('CONNECT_SSO_FRAME_ORIGIN belum berisi origin Connect', false)
+            ->assertDontSee('id="connect-frame"', false)
+            ->assertDontSee('connect-handoff-form', false);
+
+        $this->assertStringNotContainsString('frame-src', (string) $response->headers->get('Content-Security-Policy'));
+    }
+
+    public function test_plain_http_origin_is_refused_outside_development(): void
+    {
+        $user = $this->userWithPermission();
+        config(['services.connect_sso.frame_origin' => 'http://connect.test']);
+
+        app()->detectEnvironment(fn () => 'production');
+
+        try {
+            $response = $this->actingAs($user)
+                ->get(route('user.whatsapp-connect.index', ['userId' => $user->id]));
+
+            $response->assertOk()
+                ->assertSee('CONNECT_SSO_FRAME_ORIGIN belum berisi origin Connect', false);
+            $this->assertStringNotContainsString('http://connect.test', (string) $response->headers->get('Content-Security-Policy'));
+        } finally {
+            app()->detectEnvironment(fn () => 'testing');
+        }
+    }
+
+    /**
+     * Produksi tidak punya jalur .env yang aman untuk diaktifkan operator, jadi
+     * nilai alamat dibaca dari system_settings lebih dulu. Test ini memastikan
+     * baris database benar-benar mengalahkan config/services.php.
+     */
+    public function test_database_settings_override_config_for_handoff_url_and_frame_origin(): void
+    {
+        config([
+            'services.connect_sso.handoff_url' => 'https://from-env.test/sso/handoff',
+            'services.connect_sso.frame_origin' => 'https://from-env.test',
+        ]);
+
+        \App\Models\SystemSetting::set('connect_sso_handoff_url', 'https://from-db.test/sso/handoff', 'integration');
+        \App\Models\SystemSetting::set('connect_sso_frame_origin', 'https://from-db.test', 'integration');
+
+        $user = $this->userWithPermission();
+        $data = $this->issueHandoff($user);
+
+        $this->assertSame('https://from-db.test/sso/handoff', $data['connect_sso_url']);
+
+        $response = $this->actingAs($user)
+            ->get(route('user.whatsapp-connect.index', ['userId' => $user->id]));
+
+        $this->assertStringContainsString(
+            "frame-src 'self' https://from-db.test",
+            (string) $response->headers->get('Content-Security-Policy')
+        );
+    }
+
+    public function test_stored_frame_origin_with_path_is_reduced_to_an_origin(): void
+    {
+        \App\Support\ConnectSsoConfig::storeFrameOrigin('https://connect.test/dashboard?x=1');
+
+        $this->assertSame('https://connect.test', \App\Support\ConnectSsoConfig::frameOrigin());
+    }
+
+    public function test_sso_api_key_can_come_from_database_for_the_exchange(): void
+    {
+        \App\Support\ConnectSsoConfig::storeKey('stored-sso-key-123');
+
+        $data = $this->issueHandoff($this->userWithPermission());
+
+        $this->exchange($this->exchangePayload($data['code']), [
+            'X-ALIM-CONNECT-SSO-KEY' => 'stored-sso-key-123',
+        ])->assertOk();
+
+        // Key dari config/services.php tidak lagi diterima begitu database punya key.
+        $this->exchange($this->exchangePayload('kode-lain'))->assertStatus(401);
     }
 
     public function test_user_cannot_open_another_users_handoff_page(): void
