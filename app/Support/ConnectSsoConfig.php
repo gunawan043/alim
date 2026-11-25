@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Konfigurasi WhatsApp Connect SSO di sisi Core.
@@ -48,6 +49,27 @@ class ConnectSsoConfig
     public static function storeKey(string $plainKey): void
     {
         IntegrationApiConfig::storeKey(self::PREFIX, $plainKey);
+
+        // `setting()` menyimpan seluruh tabel di cache 5 menit. Tanpa
+        // pembersihan, middleware masih memakai key lama sampai cache
+        // kedaluwarsa dan operator mengira key baru tidak berlaku.
+        Cache::forget('system_settings_map');
+    }
+
+    /**
+     * Hapus key tersimpan sehingga `apiKey()` kembali membaca
+     * `CONNECT_SSO_API_KEY` dari `.env`.
+     *
+     * Baris dihapus, bukan diisi string kosong: `storeKey('')` menyimpan
+     * `enc:v1:` + enkripsi(''), yang tetap non-empty sehingga `key()`
+     * menganggapnya ada dan tidak pernah jatuh ke config. Akibatnya
+     * fallback `.env` diam-diam mati walau UI menyatakan key dihapus.
+     */
+    public static function forgetKey(): void
+    {
+        SystemSetting::query()->where('key', self::PREFIX.'_api_key')->delete();
+
+        Cache::forget('system_settings_map');
     }
 
     public static function isEncrypted(?string $value): bool

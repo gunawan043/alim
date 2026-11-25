@@ -203,6 +203,7 @@ class SystemSettingController extends Controller
             'connect_sso_frame_origin' => 'nullable|url|max:500',
             'connect_sso_api_header' => 'nullable|string|max:100|regex:/^[A-Za-z0-9-]+$/',
             'connect_sso_api_allowed_ips' => 'nullable|string|max:2000',
+            'connect_sso_api_key_input' => 'nullable|string|min:16|max:200',
             'google_drive_enabled' => 'boolean',
             'google_drive_folder_id' => 'nullable|string|max:191',
             'google_drive_folder_url' => 'nullable|url|max:500',
@@ -726,11 +727,32 @@ class SystemSettingController extends Controller
             // Key hanya pernah ditulis, tidak pernah dibaca balik ke form.
             // Rotasi memutus handoff berikutnya sampai Connect diberi nilai baru.
             $regenerated = false;
+            $keyImported = false;
+            $keyCleared = false;
+
+            // Key yang dibuat di luar aplikasi (mis. dibuat di sisi Connect)
+            // dimasukkan operator lewat input password. Nilainya tidak pernah
+            // dikembalikan ke tampilan; yang tersimpan hanya hasil enkripsi.
+            $keyInput = trim((string) $request->input('connect_sso_api_key_input', ''));
+
+            if ($keyInput !== '') {
+                ConnectSsoConfig::storeKey($keyInput);
+                SystemSetting::set('connect_sso_api_key_generated_at', now()->toDateTimeString(), 'integration');
+                $keyImported = true;
+            }
 
             if ($request->filled('regenerate_connect_sso_key')) {
                 ConnectSsoConfig::storeKey(IntegrationApiConfig::generateKey());
                 SystemSetting::set('connect_sso_api_key_generated_at', now()->toDateTimeString(), 'integration');
                 $regenerated = true;
+            }
+
+            // Penggantian key harus eksplisit: menandai centang, bukan sekadar
+            // mengosongkan form yang bisa terjadi karena tidak sengaja.
+            if ($request->filled('clear_connect_sso_key')) {
+                ConnectSsoConfig::forgetKey();
+                SystemSetting::set('connect_sso_api_key_generated_at', null, 'integration');
+                $keyCleared = true;
             }
 
             $this->writeSettingsAudit($request, 'CONNECT_SSO_SETTINGS_UPDATED');
@@ -739,9 +761,22 @@ class SystemSettingController extends Controller
                 $this->writeSettingsAudit($request, 'CONNECT_SSO_KEY_ROTATED');
             }
 
-            $connectSsoFlash = $regenerated
-                ? 'Pengaturan WhatsApp Connect disimpan dan key SSO baru dibuat. Salin key ke ALIM Connect (ALIM_CONNECT_SSO_KEY) sekarang — key lama sudah tidak berlaku.'
-                : 'Pengaturan WhatsApp Connect berhasil disimpan.';
+            if ($keyImported) {
+                $this->writeSettingsAudit($request, 'CONNECT_SSO_KEY_IMPORTED');
+            }
+
+            if ($keyCleared) {
+                $this->writeSettingsAudit($request, 'CONNECT_SSO_KEY_CLEARED');
+            }
+
+            // Urutan pesan mengikuti aksi yang paling menentukan: key kosong
+            // membuat SSO tidak bisa dipakai, jadi disebut lebih dulu.
+            $connectSsoFlash = match (true) {
+                $keyCleared => 'Key SSO dihapus. WhatsApp Connect tidak dapat bertukar kode sampai key baru dipasang di kedua sisi.',
+                $keyImported => 'Key SSO tersimpan (terenkripsi). Pastikan nilai yang sama dipasang di ALIM Connect sebagai ALIM_CONNECT_SSO_KEY.',
+                $regenerated => 'Pengaturan WhatsApp Connect disimpan dan key SSO baru dibuat. Buat nilai yang sama di ALIM Connect (ALIM_CONNECT_SSO_KEY) — key lama sudah tidak berlaku.',
+                default => 'Pengaturan WhatsApp Connect berhasil disimpan.',
+            };
         }
 
         return redirect()->back()

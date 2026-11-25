@@ -1386,10 +1386,30 @@
                                                 Nilai key tidak pernah ditampilkan di halaman ini. Partner Connect memakai key ini
                                                 sebagai <code>ALIM_CONNECT_SSO_KEY</code>.
                                             </p>
-                                            <button type="submit" name="regenerate_connect_sso_key" value="1" class="btn btn-sm btn-warning"
-                                                onclick="return confirm('Key SSO lama langsung tidak berlaku dan Connect harus diganti sebelum SSO bisa dipakai lagi. Lanjutkan?')">
-                                                <i class="ri-refresh-line me-1"></i>{{ $csHasKey ? 'Buat key SSO baru' : 'Buat key SSO' }}
-                                            </button>
+
+                                            <div class="mb-3">
+                                                <label class="form-label small">Pasang key yang sudah ada</label>
+                                                <input type="password" name="connect_sso_api_key_input" id="connect-sso-key-input"
+                                                    class="form-control form-control-sm font-monospace" autocomplete="new-password"
+                                                    spellcheck="false" placeholder="Tempel key dari ALIM Connect" value="">
+                                                <small class="text-muted">
+                                                    Dipakai bila key dibuat di sisi ALIM Connect. Disimpan terenkripsi dan tidak
+                                                    bisa dilihat lagi setelah disimpan. Kosongkan bila tidak ingin mengubah key.
+                                                </small>
+                                            </div>
+
+                                            <div class="d-flex flex-wrap gap-2">
+                                                <button type="submit" name="regenerate_connect_sso_key" value="1" class="btn btn-sm btn-warning"
+                                                    onclick="return confirm('Key SSO lama langsung tidak berlaku dan Connect harus diganti sebelum SSO bisa dipakai lagi. Lanjutkan?')">
+                                                    <i class="ri-refresh-line me-1"></i>{{ $csHasKey ? 'Buat key SSO baru' : 'Buat key SSO' }}
+                                                </button>
+                                                @if($csHasKey)
+                                                    <button type="submit" name="clear_connect_sso_key" value="1" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Key SSO dihapus dan SSO berhenti sampai key baru dipasang. Lanjutkan?')">
+                                                        <i class="ri-delete-bin-line me-1"></i>Hapus key
+                                                    </button>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
 
