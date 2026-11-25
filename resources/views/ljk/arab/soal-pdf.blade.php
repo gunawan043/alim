@@ -246,31 +246,42 @@
        tepat 1 baris. Lebar mm ditetapkan di partial opsi. */
     table.opts.opts-auto td { white-space: nowrap; }
 
-    /* ── Tabel opsi: satu sel per opsi, rapat ke kanan ──────────────────── */
-    /* `table-layout: auto` WAJIB: dengan `fixed` (warisan `table.opts`)
-       DomPDF membagi rata seluruh lebar area ke setiap sel, sehingga kata
-       opsi pendek berakhir jauh di kiri labelnya sendiri. Dengan `auto`
-       lebar sel mengikuti teksnya dan celah kata→label hanya padding. */
+    /* ── Grid kolom label + isi (struktur dua kolom per opsi) ─────────────
+       Setiap opsi = <td class="col-label"> + <td class="col-isi">. Lebar
+       keduanya DITULIS EKSPLISIT dalam mm oleh partial, sehingga:
+         - semua label berdiri di satu garis vertikal;
+         - awal teks setiap opsi mulai pada x yang sama;
+         - jarak label→isi konsisten apa pun panjang teksnya.
+
+       `padding: 0` WAJIB menimpa aturan `table.opts td` di atas: Dompdf
+       menambahkan padding DI LUAR `width`, jadi padding warisan akan
+       melebarkan setiap sel dan menggeser seluruh kolom ke kanan. */
+    /* Grid kolom label + isi: lebar tabel DITETAPKAN mm oleh partial (bukan
+       100%), lalu ditempel ke tepi KANAN area opsi. Tanpa `width: auto` dan
+       margin kiri otomatis, aturan `table.opts { width: 100% }` di atas
+       memaksa tabel melebar penuh sehingga jarak antar opsi selalu renggang
+       berapa pun lebar kolom yang dihitung. */
     table.opts.opts-grid {
         width: auto;
-        table-layout: auto;
-        margin: 0.1em 0 0 0;
-    }
-    /* Baris dirapatkan ke tepi KANAN area opsi (RTL). */
-    table.opts.opts-grid.rtl-exam {
-        direction: rtl;
         margin-left: auto;
         margin-right: 0;
+        /* `table-layout: fixed` (dari `table.opts`) MEMBAGI RATA sisa ruang
+           ke setiap sel, sehingga sel isi melebar melebihi teksnya dan jarak
+           antar opsi jadi renggang. Dengan `auto`, angka mm di partial
+           dihormati apa adanya dan tabel mengikuti jumlah kolomnya.
+           Margin kiri `auto` menempelkan tabel ke tepi KANAN area opsi. */
+        table-layout: auto;
     }
     table.opts.opts-grid.ltr {
-        direction: ltr;
         margin-left: 0;
         margin-right: auto;
     }
     table.opts.opts-grid td {
+        padding: 0;
         vertical-align: top;
-        padding-top: 0;
-        padding-bottom: 0;
+    }
+    table.opts.opts-grid td.col-label {
+        white-space: nowrap;
     }
     table.opts.opts-grid td .letter-ar {
         margin-right: 0;

@@ -963,13 +963,12 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertMatchesRegularExpression('/\d{1,2} \p{L}+ \d{4}/u', $latin);
     }
 
-    public function test_opsi_arab_teks_menempel_label_dan_rata_kanan(): void
+    public function test_opsi_arab_memakai_kolom_label_dan_isi_terpisah(): void
     {
-        // Keluhan nyata: "jarak antar opsi dan keterangan opsi masih sangat
-        // jauh". Penyebabnya sel isi diberi lebar tetap sebesar teks
-        // terpanjang, sehingga kata pendek berakhir jauh di kiri labelnya.
-        // Perbaikan: satu sel per opsi tanpa lebar mm (table-layout: auto),
-        // label menempel langsung pada teksnya.
+        // PERSYARATAN PRODUK (jangan diubah): setiap opsi memakai grid kolom
+        // tetap — label ا/ب/ج/د di satu garis vertikal, awal teks setiap opsi
+        // pada x yang sama, jarak label→isi konsisten. Tabel menempel ke tepi
+        // KANAN, dan lebarnya hanya sebesar kolom yang dipakai.
         $soal = $this->makeSoal();
         $soal->update(['bahasa' => 'arab', 'pertanyaan' => 'مَا ضِدُّ «كَبِيرٌ»؟']);
         $soal->bankSoal->update(['bahasa' => 'arab']);
@@ -986,24 +985,38 @@ class BankSoalSkScopeTest extends TestCase
         );
 
         $this->assertMatchesRegularExpression(
-            '/<table class="opts opts-grid rtl-exam"/',
+            '/<table class="opts opts-grid rtl" style="width: ([\d.]+)mm;"/',
             $html,
-            'Tabel opsi RTL dirapatkan ke tepi kanan.'
+            'Tabel opsi RTL punya lebar eksplisit (menempel kanan).'
         );
+        preg_match('/<table class="opts opts-grid rtl" style="width: ([\d.]+)mm;"/', $html, $m);
+        $lebarTabel = (float) $m[1];
 
-        // Satu sel per opsi: tidak ada lagi kolom label/isi terpisah yang
-        // membuat celah lebar.
-        $this->assertStringNotContainsString('col-label', $html);
-        $this->assertStringNotContainsString('col-isi', $html);
+        preg_match('/<table class="opts opts-grid rtl".*?<\/table>/s', $html, $tabel);
+        preg_match_all('/<td class="col-label" style="width: ([\d.]+)mm/', $tabel[0], $labelMm);
+        preg_match_all('/<td class="col-isi" style="width: ([\d.]+)mm/', $tabel[0], $isiMm);
+        preg_match_all('/<td class="col-label"[^>]*padding: 0 0 0 ([\d.]+)mm/', $tabel[0], $gapMm);
 
-        // Label menempel pada teks lewat margin kecil (bukan spasi manual).
-        $this->assertMatchesRegularExpression(
-            '/class="letter letter-ar" style="margin-right: [\d.]+mm;"/',
-            $html,
-            'Label opsi menempel pada teksnya dengan jarak kecil.'
-        );
+        $this->assertCount(4, $labelMm[1], 'Empat kolom label (ا ب ج د).');
+        $this->assertCount(4, $isiMm[1], 'Empat kolom isi opsi.');
 
-        $this->assertStringNotContainsString('&nbsp;&nbsp;', $html, 'Posisi tidak diatur dengan spasi manual.');
+        // 1) Sejajar: lebar semua kolom label identik, semua kolom isi identik.
+        $this->assertCount(1, array_unique($labelMm[1]), 'Semua label berlebar sama.');
+        $this->assertCount(1, array_unique($isiMm[1]), 'Semua kolom isi berlebar sama.');
+
+        // 2) Jarak label→isi satu nilai.
+        $this->assertCount(1, array_unique($gapMm[1]), 'Jarak label→isi konsisten.');
+
+        // 3) Total kolom = lebar tabel, jadi tidak ada ruang kosong di dalam
+        //    tabel dan tabel tidak melebihi area opsi.
+        $total = array_sum(array_map('floatval', $labelMm[1]))
+            + array_sum(array_map('floatval', $isiMm[1]))
+            + array_sum(array_map('floatval', $gapMm[1]));
+
+        $this->assertEqualsWithDelta($lebarTabel, $total, 0.05, 'Total kolom = lebar tabel.');
+
+        // 4) Tidak ada spasi manual untuk memposisikan opsi.
+        $this->assertStringNotContainsString('&nbsp;&nbsp;', $html);
     }
 
     public function test_harakat_tidak_dibuang_saat_dicetak(): void

@@ -30,45 +30,71 @@
                 ? (float) $opsiWidthMm
                 : 157.58;
 
-            // ── Tiap opsi = satu sel, label menempel langsung ─────────────
+            // ── Grid kolom label + isi, DIKUNCI lebar isinya ─────────────────
             //
-            // Bentuk cetak: "طَوِيلٌ .ا". Sel opsi TIDAK diberi lebar mm,
-            // karena `table-layout: auto` akan memberi sel sebesar teksnya
-            // sendiri — celah antara kata pendek dan labelnya jadi nol.
-            // Memberi lebar tetap membuat teks pendek berakhir jauh di kiri
-            // labelnya (keluhan "jarak antar opsi masih jauh").
+            // Tiap opsi tetap memakai DUA sel: | isi opsi | .label |.
+            // Kolom isi berlebar SAMA untuk semua opsi pada soal ini dan
+            // kolom label berlebar sama pula, sehingga:
+            //   - label ا/ب/ج/د berdiri di satu garis vertikal;
+            //   - awal teks setiap opsi mulai pada x yang sama;
+            //   - jarak label→isi konsisten.
             //
-            // Lebar yang dipakai sama untuk semua soal adalah LEBAR LABEL
-            // (dari ukuran font), bukan lebar teks opsi — jadi posisi label
-            // ا/ب/ج/د tetap segaris dari soal pertama hingga terakhir.
+            // Lebarnya DITURUNKAN DARI UKURAN FONT (bukan teks per soal),
+            // supaya tidak ada ruang kosong menganga saat teks pendek dan
+            // semuanya ikut menyesuaikan bila guru mengganti ukuran font.
             $fontOpsi = (float) ($fontSize ?? 11);
             $ptMm = 25.4 / 72;                              // 1 pt dalam mm
             $labelMm = round($fontOpsi * $ptMm * 1.7, 2);   // huruf + titik
-            $gapMm = round($fontOpsi * $ptMm * 0.35, 2);    // kata → label
-            $antarMm = round($fontOpsi * $ptMm * 0.6, 2);   // label → opsi berikut
+            $gapMm = round($fontOpsi * $ptMm * 0.4, 2);     // label → isi
+
+            // Lebar isi: cukup untuk kata opsi terpanjang yang lazim (sekitar
+            // 1,25 mm per pt) + ruang aman tipis. Dipakai SEMUA opsi, jadi
+            // teks pendek tetap rata pada garis awal yang sama.
+            $isiMm = round($fontOpsi * $ptMm * 1.25 + $gapMm, 2);
+
+            // Jangan sampai satu baris tidak muat 4 grup: batasi seperempat
+            // area opsi agar tidak jatuh ke 2 baris saat font diperbesar.
+            $maksIsi = round($lebarMm / 4 - $labelMm - $gapMm, 2);
+            if ($maksIsi > 0 && $isiMm > $maksIsi) {
+                $isiMm = max(1.0, $maksIsi);
+            }
+
+            // Lebar tabel = jumlah kolom × (isi + jarak + label). Tabel tidak
+            // direntangkan ke seluruh area: sisa ruang dibiarkan di KIRI
+            // sehingga seluruh grup opsi menempel ke tepi KANAN.
+            $totalMm = round(($isiMm + $gapMm + $labelMm) * $kolom, 2);
+            if ($totalMm > $lebarMm) {
+                $totalMm = round($lebarMm, 2);
+            }
 
             $align = $rtl ? 'right' : 'left';
+
             $whiteSpace = ! empty($opsiLayout['wrap']) ? 'normal' : 'nowrap';
         @endphp
-        {{-- RTL: teks lalu label (label di kanan teks), dirapatkan ke kanan.
-             LTR: label lalu teks, dirapatkan ke kiri. --}}
-        <table class="opts opts-grid {{ $rtl ? 'rtl-exam' : 'ltr' }}" cellspacing="0" cellpadding="0">
+        {{-- RTL: label di KANAN isi, seluruh baris dirapatkan ke tepi kanan.
+             LTR: label di KIRI isi, baris dirapatkan ke kiri.
+             Tidak ada spasi manual — posisi diatur lebar sel (mm). --}}
+        <table class="opts opts-grid {{ $rtl ? 'rtl' : 'ltr' }}" style="width: {{ $totalMm }}mm;" cellspacing="0" cellpadding="0">
             <tr>
                 @foreach($opsiLayout['rows'] as $row)
                     @foreach($row as $cell)
                         @php
                             $opsi = $block['opsi'][$cell['index']] ?? null;
                             $label = $opsi ? ($opsi['display_label'] ?? $opsi['label']) : '';
-                            $teks = $opsi ? LjkArabicText::marksToHtml($opsi['teks']) : '&nbsp;';
-                            $marker = $opsi ? LjkArabicText::optionMarkerRtl($label) : '&nbsp;';
                         @endphp
                         @if($rtl)
-                            <td class="col-opsi" style="text-align: right; white-space: {{ $whiteSpace }}; padding: 0 0 0 {{ $antarMm }}mm;">
-                                {!! $teks !!}<span class="letter letter-ar" style="margin-right: {{ $gapMm }}mm;">{!! $marker !!}</span>
+                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: right; white-space: {{ $whiteSpace }}; padding: 0;">
+                                @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
+                            </td>
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: right; padding: 0 0 0 {{ $gapMm }}mm;">
+                                @if($opsi)<span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($label) !!}</span>@else&nbsp;@endif
                             </td>
                         @else
-                            <td class="col-opsi" style="text-align: left; white-space: {{ $whiteSpace }}; padding: 0 {{ $antarMm }}mm 0 0;">
-                                <span class="letter" style="margin-right: {{ $gapMm }}mm;">{!! LjkArabicText::marksToHtml($label) !!}.</span>{!! $teks !!}
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: left; padding: 0 {{ $gapMm }}mm 0 0;">
+                                @if($opsi)<span class="letter">{!! LjkArabicText::marksToHtml($label) !!}.</span>@else&nbsp;@endif
+                            </td>
+                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: left; white-space: {{ $whiteSpace }}; padding: 0;">
+                                @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
                             </td>
                         @endif
                     @endforeach
