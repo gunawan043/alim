@@ -342,25 +342,11 @@ class SubjectController extends Controller
 
     public function update(Request $request, string $userId, string $id)
     {
-        // Kebijakan: mapel PONDOK → satuan pendidikan hanya boleh mengubah NAMA;
-        // alokasi jam & kredit terkunci (hanya Super Admin yang boleh).
+        // Mapel adalah data milik satuan pendidikan (per school_id): setiap
+        // sekolah mengatur JP, kategori, dan kelompoknya sendiri tanpa saling
+        // memengaruhi sekolah lain.
         $subject = Subject::findOrFail($id);
-        $user = auth()->user();
-        $isSuper = $user && ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
 
-        $lockedFields = [];
-        if (! $isSuper && ($subject->source ?? 'pondok') === 'pondok') {
-            // Mapel pondok: satuan pendidikan hanya boleh mengubah nama.
-            // Field lain diterima apa adanya (tidak ditimpa diam-diam) lalu
-            // dilaporkan sebagai terkunci di pesan sukses.
-            $lockedFields = array_filter([
-                'credit_hours' => (int) $subject->credit_hours !== (int) $request->input('credit_hours'),
-                'category' => $subject->category !== $request->input('category'),
-                'kelompok' => ($subject->kelompok ?? 'umum') !== $request->input('kelompok'),
-            ]);
-        }
-
-        $subject = Subject::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
 
         if ($schoolId && $subject->school_id !== $schoolId) {
@@ -398,16 +384,7 @@ class SubjectController extends Controller
             return back()->withInput()->with('error', 'Kode mata pelajaran ini sudah ada untuk sekolah tersebut.');
         }
 
-        // Bandingkan hanya field yang boleh berubah oleh pengguna ini.
-        $hoursChanged = ! isset($lockedFields['credit_hours'])
-            && (int) $subject->credit_hours !== (int) $data['credit_hours'];
-
-        if ($lockedFields !== []) {
-            $data = array_merge($data, array_intersect_key(
-                ['credit_hours' => $subject->credit_hours, 'category' => $subject->category, 'kelompok' => $subject->kelompok],
-                $lockedFields
-            ));
-        }
+        $hoursChanged = (int) $subject->credit_hours !== (int) $data['credit_hours'];
 
         $subject->update($data);
 
@@ -419,12 +396,6 @@ class SubjectController extends Controller
             $message .= $syncedTingkat > 0
                 ? " JP {$data['credit_hours']} diterapkan ke {$syncedTingkat} tingkat pada tahun ajaran aktif."
                 : ' Mapel belum terpasang di tingkat mana pun — JP akan dipakai saat diterapkan.';
-        }
-
-        if ($lockedFields !== []) {
-            $labels = ['credit_hours' => 'JP', 'category' => 'kategori', 'kelompok' => 'kelompok'];
-            $names = array_map(fn ($k) => $labels[$k], array_keys($lockedFields));
-            $message .= ' Perubahan '.implode(', ', $names).' tidak disimpan karena mapel pondok hanya boleh diganti namanya — ubah di menu super admin.';
         }
 
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])
