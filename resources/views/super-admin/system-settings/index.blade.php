@@ -1399,6 +1399,12 @@
                                             </div>
 
                                             <div class="d-flex flex-wrap gap-2">
+                                                @if($csHasKey)
+                                                    <button type="button" class="btn btn-sm btn-primary" id="copy-connect-sso-key"
+                                                        data-url="{{ route('user.sa.system-settings.connect-sso-key', ['userId' => $userId]) }}">
+                                                        <i class="ri-file-copy-line me-1"></i>Salin key
+                                                    </button>
+                                                @endif
                                                 <button type="submit" name="regenerate_connect_sso_key" value="1" class="btn btn-sm btn-warning"
                                                     onclick="return confirm('Key SSO lama langsung tidak berlaku dan Connect harus diganti sebelum SSO bisa dipakai lagi. Lanjutkan?')">
                                                     <i class="ri-refresh-line me-1"></i>{{ $csHasKey ? 'Buat key SSO baru' : 'Buat key SSO' }}
@@ -1409,6 +1415,18 @@
                                                         <i class="ri-delete-bin-line me-1"></i>Hapus key
                                                     </button>
                                                 @endif
+                                            </div>
+
+                                            <div class="alert alert-success small mt-3 d-none" id="connect-sso-key-result">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <strong>Tempel ini di server ALIM Connect:</strong>
+                                                    <span class="badge bg-success-subtle text-success" id="connect-sso-key-badge">tersalin</span>
+                                                </div>
+                                                <textarea id="connect-sso-key-env" class="form-control form-control-sm font-monospace" rows="2" readonly></textarea>
+                                                <small class="text-muted d-block mt-1">
+                                                    Nilai ini tidak akan tampil lagi setelah halaman ditutup. Disalin ke clipboard —
+                                                    tempel ke berkas environment Connect, lalu tutup panel ini.
+                                                </small>
                                             </div>
                                         </div>
                                     </div>
@@ -1921,6 +1939,68 @@
                 const el = document.getElementById('pos-base-url');
                 if (el) posCopyText(el.textContent.trim(), button);
             }
+        </script>
+    @endpush
+@endif
+
+@if($tab === 'connect-sso')
+    @push('scripts')
+        <script>
+            // Nilai key tidak pernah dirender ke HTML. Tombol ini meminta
+            // nilainya sekali lewat POST ber-CSRF, lalu langsung menaruhnya di
+            // clipboard dan panel sementara yang bisa ditutup operator.
+            (function () {
+                const button = document.getElementById('copy-connect-sso-key');
+                if (!button) return;
+
+                const panel = document.getElementById('connect-sso-key-result');
+                const box = document.getElementById('connect-sso-key-env');
+                const badge = document.getElementById('connect-sso-key-badge');
+
+                button.addEventListener('click', async function () {
+                    button.disabled = true;
+                    const original = button.innerHTML;
+                    button.innerHTML = '<i class="ri-loader-4-line me-1"></i>Membuka…';
+
+                    try {
+                        const response = await fetch(button.dataset.url, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                        });
+
+                        const body = await response.json().catch(() => ({}));
+
+                        if (!response.ok || !body.success) {
+                            throw new Error(body.message || 'Gagal membuka key.');
+                        }
+
+                        box.value = body.data.env;
+                        panel.classList.remove('d-none');
+
+                        try {
+                            await navigator.clipboard.writeText(body.data.env);
+                            badge.textContent = 'tersalin';
+                        } catch (e) {
+                            // Clipboard API butuh https + izin. Bila ditolak,
+                            // nilainya tetap ada di kotak untuk disalin manual.
+                            badge.textContent = 'salin manual';
+                        }
+
+                        box.focus();
+                        box.select();
+                    } catch (error) {
+                        alert(error.message);
+                    } finally {
+                        button.disabled = false;
+                        button.innerHTML = original;
+                    }
+                });
+            })();
         </script>
     @endpush
 @endif

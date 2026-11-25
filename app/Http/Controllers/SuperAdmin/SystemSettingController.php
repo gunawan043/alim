@@ -23,6 +23,7 @@ use App\Support\Qr\QrBranding;
 use App\Support\RecruitmentApiConfig;
 use App\Support\RecruitmentOutboundConfig;
 use App\Support\WebPushConfig;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -872,6 +873,51 @@ class SystemSettingController extends Controller
         if (! canPermission('super-admin-only')) {
             abort(403, 'Akses hanya untuk Super Admin.');
         }
+    }
+
+    /**
+     * Buka kembali nilai key SSO supaya bisa disalin ke ALIM Connect.
+     *
+     * Key harus berpindah dari Core ke Connect, dan pihak yang memasangnya di
+     * Connect adalah orang yang sama dengan operator di sini. Tanpa jalur ini
+     * satu-satunya cara memindahkannya adalah membaca rahasia langsung dari
+     * database server.
+     *
+     * Pengamanannya:
+     *  - hanya Super Admin / System Admin (bukan sekadar pemegang izin),
+     *  - POST + CSRF, serta throttle 5/menit, sehingga tidak bisa dipicu dari
+     *    situs lain atau ditebak berulang,
+     *  - nilai dikirim sebagai JSON untuk ditempel ke clipboard oleh tombol;
+     *    tidak pernah dirender ke HTML maupun dicatat ke audit log.
+     */
+    public function revealConnectSsoKey(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $isAdmin = $user !== null
+            && ($user->isSystemAdmin() || (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()));
+
+        abort_unless($isAdmin, 403, 'Akses hanya untuk Super Admin.');
+
+        $key = ConnectSsoConfig::apiKey();
+
+        if ($key === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Belum ada key SSO yang tersimpan.',
+            ], 404);
+        }
+
+        // Dicatat sebagai kejadian, tanpa nilai key.
+        $this->writeSettingsAudit($request, 'CONNECT_SSO_KEY_REVEALED');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'key' => $key,
+                'env' => 'ALIM_CONNECT_SSO_KEY='.$key,
+            ],
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     }
 
     private function writeSettingsAudit(Request $request, string $action): void

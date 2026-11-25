@@ -3351,6 +3351,13 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::post('/test-email', [SystemSettingController::class, 'testEmail'])->name('test-email');
                     Route::post('/test-google-drive', [SystemSettingController::class, 'testGoogleDrive'])->name('test-google-drive');
                     Route::get('/clear-cache', [SystemSettingController::class, 'clearCache'])->name('clear-cache');
+
+                    // Membuka kembali nilai key SSO untuk disalin ke Connect.
+                    // POST, bukan GET: tidak boleh ikut cache/proxy/riwayat, dan
+                    // wajib membawa CSRF supaya tidak bisa dipicu dari situs lain.
+                    Route::post('/connect-sso-key', [SystemSettingController::class, 'revealConnectSsoKey'])
+                        ->name('connect-sso-key')
+                        ->middleware('throttle:5,1');
                 });
 
                 // ── PENGATURAN PROVIDER AI (multi-platform) ─────────
