@@ -41,3 +41,8 @@ opencode.jsonc
 /public/tmp-*.html
 /resources/views/layouts/sidebar/*/sidebar.blade 2.php
 /storage/fonts/
+
+# CHANGELOG pustaka pihak ketiga: tidak dipakai di produksi dan
+# dibuang dari git archive oleh .gitattributes, sehingga rsync --delete
+# menghapusnya tiap deploy dan membuat worktree server kotor.
+public/build/**/CHANGELOG.md
