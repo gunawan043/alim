@@ -79,6 +79,13 @@ class LibraryAccess
             return $query->whereRaw('1 = 0')->get();
         }
 
+        // Pengelola perpustakaan tingkat yayasan: bertugas di work unit
+        // Perpustakaan yang tidak menempel ke sekolah mana pun. Mereka
+        // mengurus perpustakaan secara keseluruhan, jadi melihat semua unit.
+        if ($this->isCentralLibraryStaff($user)) {
+            return $query->orderBy('name')->get();
+        }
+
         $codes = $this->unitCodesForSchools($this->schoolIdsOf($user));
 
         if ($codes === []) {
@@ -181,6 +188,11 @@ class LibraryAccess
             return null;
         }
 
+        // Pengelola yayasan melihat seluruh santri pada unit mana pun.
+        if ($this->isCentralLibraryStaff($user)) {
+            return null;
+        }
+
         $sekolahUser = $this->schoolIdsOf($user);
         $patterns = (array) (config('perpustakaan.units', [])[$unit->code] ?? []);
 
@@ -202,6 +214,40 @@ class LibraryAccess
         }
 
         return array_values(array_unique($hasil));
+    }
+
+    /**
+     * Pengelola perpustakaan tingkat yayasan.
+     *
+     * Mereka memegang tugas perpustakaan namun ditempatkan di work unit
+     * Perpustakaan yang tidak menempel ke sekolah mana pun. Karena sekolahnya
+     * tidak diketahui, pemetaan sekolah tidak memberi unit apa pun; mereka
+     * justru mengurus perpustakaan secara menyeluruh.
+     *
+     * Syaratnya ketat: harus punya tugas perpustakaan DAN seluruh work
+     * unit-nya memang work unit perpustakaan mandiri (tanpa sekolah).
+     */
+    public function isCentralLibraryStaff(User $user): bool
+    {
+        if (! $this->hasLibraryDuty($user)) {
+            return false;
+        }
+
+        $workUnitIds = GtkWorkUnit::query()
+            ->where('user_id', $user->id)
+            ->pluck('work_unit_id')
+            ->filter()
+            ->unique();
+
+        if ($workUnitIds->isEmpty()) {
+            return false;
+        }
+
+        // Tidak boleh ada work unit yang menempel ke sekolah, karena itu
+        // berarti ia bertugas di sekolah tertentu dan harus dibatasi.
+        $punyaSekolah = School::query()->whereIn('work_unit_id', $workUnitIds)->exists();
+
+        return ! $punyaSekolah;
     }
 
     /**

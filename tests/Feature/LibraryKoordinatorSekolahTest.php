@@ -330,6 +330,46 @@ class LibraryKoordinatorSekolahTest extends TestCase
         ]);
     }
 
+
+    public function test_pengelola_yayasan_melihat_semua_unit(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+
+        // Work unit perpustakaan pusat yang tidak menempel ke sekolah mana pun.
+        $unitPusat = WorkUnit::create([
+            'name' => 'Perpustakaan',
+            'code' => 'DEP-PERPUS',
+            'type' => 'department',
+        ]);
+
+        $user = User::create([
+            'name' => 'Kepala Perpustakaan', 'email' => 'pushub@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+        // Seperti data nyata: pengelola pusat memegang peran Perpustakaan.
+        $user->assignRole('Perpustakaan');
+
+        GtkWorkUnit::create([
+            'user_id' => $user->id,
+            'work_unit_id' => $unitPusat->id,
+            'jabatan' => 'Kepala Perpustakaan',
+            'is_primary' => true,
+        ]);
+
+        $this->assertTrue($this->access->isCentralLibraryStaff($user));
+        $this->assertCount(2, $this->access->unitsFor($user));
+
+        // Tanpa penyaringan santri: pengelola yayasan melihat seluruhnya.
+        $this->assertNull($this->access->schoolIdsForUnit($user, $this->unitSd));
+    }
+
+    public function test_guru_sekolah_bukan_pengelola_yayasan(): void
+    {
+        $guru = $this->koordinator('Guru SD Putri', $this->sdPutri);
+
+        $this->assertFalse($this->access->isCentralLibraryStaff($guru));
+    }
+
     private function anggota(LibraryUnit $unit, School $sekolah, string $nama, string $nis, string $gender): LibraryMember
     {
         $student = Student::create([

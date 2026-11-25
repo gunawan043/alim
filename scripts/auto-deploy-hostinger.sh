@@ -163,7 +163,9 @@ fi
 ${SSH_CMD} "${REMOTE_ALIAS}" "chmod 755 ${REMOTE_APP}" >>"${LOG_FILE}" 2>&1 || true
 
 log "rsync selesai; memasang ulang handler PHP 8.4 di public/.htaccess..."
-${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && printf '\n# ALIM: use PHP 8.4 (required by composer.lock)\nAddHandler application/x-httpd-php84 .php\n' >> public/.htaccess" >>"${LOG_FILE}" 2>&1 || true
+# Hanya tambahkan bila belum ada: pengulangan tiap deploy membuat berkas
+# tumbuh dan handler terpasang berkali-kali.
+${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && grep -q 'application/x-httpd-php84' public/.htaccess || printf '\n# ALIM: use PHP 8.4 (required by composer.lock)\nAddHandler application/x-httpd-php84 .php\n' >> public/.htaccess" >>"${LOG_FILE}" 2>&1 || true
 
 log "rsync selesai; menjalankan deploy di server..."
 ${SSH_CMD} "${REMOTE_ALIAS}" "bash ${REMOTE_DEPLOY}" >>"${LOG_FILE}" 2>&1
