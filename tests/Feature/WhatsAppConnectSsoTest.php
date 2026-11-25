@@ -101,7 +101,8 @@ class WhatsAppConnectSsoTest extends TestCase
 
         $response->assertOk()
             ->assertSee('WhatsApp Connect')
-            ->assertSee('id="connect-frame"', false);
+            ->assertSee('Buka WhatsApp Connect')
+            ->assertDontSee('id="connect-frame"', false);
         // URL diterbitkan sebagai literal JSON di skrip, jadi "/" tampil ter-escape.
         $this->assertStringContainsString(
             json_encode('https://connect.test/sso/handoff'),

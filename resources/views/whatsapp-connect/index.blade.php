@@ -2,44 +2,6 @@
 
 @section('title', 'WhatsApp Connect')
 
-@section('css')
-<style>
-    .whatsapp-connect-frame-wrap {
-        position: relative;
-        width: 100%;
-        height: calc(100vh - 190px);
-        min-height: 620px;
-        border: 1px solid #e2e8f0;
-        border-radius: .75rem;
-        overflow: hidden;
-        background: #f8fafc;
-    }
-    .whatsapp-connect-frame-wrap iframe {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        display: block;
-    }
-    .whatsapp-connect-loading {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: .75rem;
-        background: rgba(248, 250, 252, .92);
-        z-index: 2;
-    }
-    @media (max-width: 767.98px) {
-        .whatsapp-connect-frame-wrap {
-            height: calc(100vh - 150px);
-            min-height: 480px;
-        }
-    }
-</style>
-@endsection
-
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -51,13 +13,8 @@
                             <i class="ri-whatsapp-line text-success me-1"></i> WhatsApp Connect
                         </h5>
                         <p class="text-muted mb-0 small">
-                            Akses WhatsApp Connect tanpa meninggalkan ALIM Core.
+                            WhatsApp Connect dibuka di tab baru.
                         </p>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-success btn-sm" id="open-connect-btn">
-                            <i class="ri-external-link-line me-1"></i> Buka di tab baru
-                        </button>
                     </div>
                 </div>
 
@@ -67,51 +24,24 @@
                             <strong>WhatsApp Connect belum dikonfigurasi.</strong>
                             {{ $notConfiguredReason }}
                             Konfigurasi dibaca dari Pengaturan Sistem → WhatsApp Connect atau
-                            dari environment Core. Halaman ini tidak menampilkan iframe sampai
-                            konfigurasi valid.
+                            dari environment Core.
                         </div>
                     @else
                         <div id="connect-alert" class="alert alert-danger d-none" role="alert"></div>
 
-                        <div class="whatsapp-connect-frame-wrap" id="connect-frame-wrap">
-                            <div class="whatsapp-connect-loading" id="connect-loading">
-                                <div class="spinner-border text-success" role="status" aria-hidden="true"></div>
-                                <div class="small text-muted">Menyiapkan sesi WhatsApp Connect…</div>
-                            </div>
-                            <iframe
-                                name="connect-frame"
-                                id="connect-frame"
-                                title="WhatsApp Connect"
-                                allow="clipboard-read; clipboard-write"
-                            ></iframe>
-                        </div>
-
-                        <div class="d-flex flex-wrap gap-2 mt-3">
-                            <button type="button" class="btn btn-outline-success btn-sm" id="reload-connect-btn">
-                                <i class="ri-refresh-line me-1"></i> Muat ulang sesi
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="new-tab-connect-btn">
-                                <i class="ri-external-link-line me-1"></i> Buka di tab baru jika iframe gagal
-                            </button>
-                        </div>
-                        <p class="text-muted small mt-2 mb-0">
-                            Jika Connect meminta login ulang, tekan “Muat ulang sesi”.
+                        <p class="text-muted small mb-3">
                             Logout ALIM Core tidak otomatis mengakhiri sesi Connect.
                         </p>
+
+                        <button type="button" class="btn btn-success" id="open-connect-btn">
+                            <i class="ri-external-link-line me-1"></i> Buka WhatsApp Connect
+                        </button>
                     @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-@if($configured)
-<form id="connect-handoff-form" method="POST" action="" target="connect-frame" class="d-none" aria-hidden="true">
-    <input type="hidden" name="code" id="connect-handoff-code">
-    <input type="hidden" name="audience" value="connect">
-    <input type="hidden" name="scope" value="whatsapp.embed">
-</form>
-@endif
 @endsection
 
 @push('scripts')
@@ -121,11 +51,8 @@
     const handoffUrl = @json($handoffUrl);
     const connectSsoUrl = @json($connectSsoUrl);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const form = document.getElementById('connect-handoff-form');
-    const codeInput = document.getElementById('connect-handoff-code');
-    const frame = document.getElementById('connect-frame');
-    const loading = document.getElementById('connect-loading');
     const alertBox = document.getElementById('connect-alert');
+    const openBtn = document.getElementById('open-connect-btn');
 
     function showError(message) {
         if (!alertBox) return;
@@ -153,7 +80,7 @@
                 },
             });
         } catch (error) {
-            throw new Error('ALIM Core tidak dapat dihubungi. Periksa koneksi lalu tekan “Muat ulang sesi”.');
+            throw new Error('ALIM Core tidak dapat dihubungi. Periksa koneksi lalu coba lagi.');
         }
 
         const body = await response.json().catch(() => ({}));
@@ -169,28 +96,7 @@
         return body.data;
     }
 
-    function submitToTarget(data, target) {
-        form.action = data.connect_sso_url || connectSsoUrl;
-        form.target = target;
-        codeInput.value = data.code;
-        form.submit();
-    }
-
-    function loadIframe() {
-        clearError();
-        loading.classList.remove('d-none');
-
-        requestHandoff()
-            .then((data) => {
-                submitToTarget(data, 'connect-frame');
-            })
-            .catch((error) => {
-                loading.classList.add('d-none');
-                showError(error.message);
-            });
-    }
-
-    function openNewTab() {
+    function openConnect() {
         clearError();
 
         // Buka window secara sinkron agar tidak diblokir popup blocker.
@@ -203,21 +109,21 @@
 
         requestHandoff()
             .then((data) => {
-                const newForm = targetWindow.document.createElement('form');
-                newForm.method = 'POST';
-                newForm.action = data.connect_sso_url || connectSsoUrl;
-                newForm.target = '_self';
+                const form = targetWindow.document.createElement('form');
+                form.method = 'POST';
+                form.action = data.connect_sso_url || connectSsoUrl;
+                form.target = '_self';
 
-                ['code', 'audience', 'scope'].forEach((name) => {
-                    const input = targetWindow.document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = name;
-                    input.value = name === 'code' ? data.code : (name === 'audience' ? 'connect' : 'whatsapp.embed');
-                    newForm.appendChild(input);
-                });
+                // Hanya `code` — Connect memakai whitelist ketat (forbidNonWhitelisted),
+                // field tambahan ditolak dengan 400 sebelum kode diproses.
+                const codeField = targetWindow.document.createElement('input');
+                codeField.type = 'hidden';
+                codeField.name = 'code';
+                codeField.value = data.code;
+                form.appendChild(codeField);
 
-                targetWindow.document.body.appendChild(newForm);
-                newForm.submit();
+                targetWindow.document.body.appendChild(form);
+                form.submit();
             })
             .catch((error) => {
                 try { targetWindow.close(); } catch (e) {}
@@ -225,15 +131,7 @@
             });
     }
 
-    frame?.addEventListener('load', function () {
-        loading?.classList.add('d-none');
-    });
-
-    document.getElementById('open-connect-btn')?.addEventListener('click', openNewTab);
-    document.getElementById('new-tab-connect-btn')?.addEventListener('click', openNewTab);
-    document.getElementById('reload-connect-btn')?.addEventListener('click', loadIframe);
-
-    loadIframe();
+    openBtn?.addEventListener('click', openConnect);
 })();
 </script>
 @endif
