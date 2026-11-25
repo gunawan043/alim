@@ -505,11 +505,21 @@ class StudentMahromController extends Controller
 
         $students = $this->listStudentsForSelect();
 
+        // Semua mahrom milik santri yang sama ditampilkan bersama, supaya
+        // penyuntingan tidak berhenti di satu catatan. Yang diklik diletakkan
+        // paling atas agar langsung terlihat.
+        $allMahroms = StudentMahrom::where('student_id', $mahrom->student_id)
+            ->orderBy('nama')
+            ->get()
+            ->sortByDesc(fn (StudentMahrom $m) => $m->id === $mahrom->id)
+            ->values();
+
         return view('students.mahroms.edit-global', [
             'userId' => $userId,
             'mahrom' => $mahrom,
             'student' => $mahrom->student,
             'students' => $students,
+            'allMahroms' => $allMahroms,
         ]);
     }
 

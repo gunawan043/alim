@@ -28,13 +28,17 @@ class LibraryMemberController extends Controller
         $unit = $units->firstWhere('id', $request->input('unit_id')) ?? $units->first();
         abort_unless($unit, 404, 'Belum ada unit perpustakaan.');
         $schoolId = $unit->school_id;
-        $members = LibraryMember::with(['student:id,name,nis,nisn,gender,photo_path', 'user:id,name', 'cards' => fn ($q) => $q->where('status', LibraryMemberCard::STATUS_ACTIVE)])
-            ->where('library_unit_id', $unit->id)
+        $queryAnggota = LibraryMember::with(['student:id,name,nis,nisn,gender,photo_path', 'user:id,name', 'cards' => fn ($q) => $q->where('status', LibraryMemberCard::STATUS_ACTIVE)])
+            ->where('library_unit_id', $unit->id);
+        // Pada unit bersama, anggota dibatasi ke santri sekolah koordinator.
+        $this->access->scopeMembersToSchools($queryAnggota, $request->user(), $unit);
+        $members = $queryAnggota
             ->when($request->filled('member_type'), fn ($q) => $q->where('member_type', $request->member_type))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('member_number', 'like', '%'.$request->search.'%')->orWhereHas('student', fn ($st) => $st->where('name', 'like', '%'.$request->search.'%')->orWhere('nis', 'like', '%'.$request->search.'%'))))
             ->orderByDesc('created_at')->limit(200)->get();
 
         $baseMembers = LibraryMember::where('library_unit_id', $unit->id);
+        $this->access->scopeMembersToSchools($baseMembers, $request->user(), $unit);
         $stats = [
             'total' => (clone $baseMembers)->count(),
             'active' => (clone $baseMembers)->where('status', LibraryMember::STATUS_ACTIVE)->count(),
@@ -52,8 +56,12 @@ class LibraryMemberController extends Controller
         abort_unless($this->access->canAccessUnit($request->user(), $unit), 403);
         $search = trim((string) $request->input('q', ''));
 
+        $sekolahBoleh = $this->access->schoolIdsForUnit($request->user(), $unit);
+
         $students = Student::with('currentClassHistory.studyGroup')
             ->where('status', 'active')
+            // Hanya santri dari sekolah yang dikelola koordinator ini.
+            ->when($sekolahBoleh !== null, fn ($q) => $q->whereIn('school_id', $sekolahBoleh ?: ['-']))
             ->when($unit->gender_scope !== 'mixed', fn ($q) => $q->whereRaw('UPPER(gender) = ?', [strtoupper((string) $unit->gender_scope)]))
             ->when($search !== '', fn ($q) => $q->where(fn ($inner) => $inner->where('name', 'like', '%'.$search.'%')->orWhere('nis', 'like', '%'.$search.'%')->orWhere('nisn', 'like', '%'.$search.'%')))
             ->orderBy('name')->limit(50)->get();
@@ -103,6 +111,13 @@ class LibraryMemberController extends Controller
         $student = null;
         if ($validated['member_type'] === 'student') {
             $student = Student::findOrFail($validated['student_id'] ?? null);
+            // Santri hanya boleh didaftarkan oleh koordinator sekolahnya.
+            $sekolahBoleh = $this->access->schoolIdsForUnit($request->user(), $unit);
+            abort_if(
+                $sekolahBoleh !== null && ! in_array((string) $student->school_id, $sekolahBoleh, true),
+                403,
+                'Santri ini bukan dari sekolah yang Anda kelola.'
+            );
             $this->assertEligible($student, $unit);
             abort_if(LibraryMember::where('library_unit_id', $unit->id)->where('student_id', $student->id)->exists(), 422, 'Santri sudah menjadi anggota unit ini.');
         } else {

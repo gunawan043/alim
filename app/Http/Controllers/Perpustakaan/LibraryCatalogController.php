@@ -26,7 +26,10 @@ class LibraryCatalogController extends Controller
         abort_unless($unit, 404, 'Belum ada unit perpustakaan.');
         $schoolId = $unit->school_id ?: $request->attributes->get('schoolContextId');
 
-        $titles = LibraryTitle::with('genre:id,name')->where('school_id', $schoolId)
+        // Katalog buku adalah data BERSAMA: semua sekolah yang memakai
+        // perpustakaan yang sama melihat judul yang sama. Yang dibatasi per
+        // sekolah hanya data santri (anggota, peminjaman, kunjungan, denda).
+        $titles = LibraryTitle::with('genre:id,name')
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('title', 'like', '%'.$request->search.'%')->orWhere('author', 'like', '%'.$request->search.'%')))
             ->when($request->input('collection') === 'reference', fn ($q) => $q->whereIn('collection_type', ['kitab', 'referensi']))
             ->when($request->filled('collection') && $request->input('collection') !== 'reference', fn ($q) => $q->where('collection_type', $request->collection))
@@ -40,10 +43,10 @@ class LibraryCatalogController extends Controller
             ->when($request->filled('collection') && $request->input('collection') !== 'reference', fn ($q) => $q->whereHas('title', fn ($t) => $t->where('collection_type', $request->collection)))
             ->when($request->filled('search'), fn ($q) => $q->where(fn ($s) => $s->where('inventory_code', 'like', '%'.$request->search.'%')->orWhereHas('title', fn ($t) => $t->where('title', 'like', '%'.$request->search.'%'))))
             ->orderByDesc('created_at')->limit(200)->get();
-        $genres = LibraryGenre::whereNull('school_id')->orWhere('school_id', $schoolId)->orderBy('name')->get();
+        $genres = LibraryGenre::orderBy('name')->get();
         $allItems = LibraryItem::where('library_unit_id', $unit->id);
         $stats = [
-            'titles' => LibraryTitle::where('school_id', $schoolId)->count(),
+            'titles' => LibraryTitle::count(),
             'items' => (clone $allItems)->count(),
             'available' => (clone $allItems)->where('status', LibraryItem::STATUS_AVAILABLE)->count(),
             'on_loan' => (clone $allItems)->where('status', LibraryItem::STATUS_ON_LOAN)->count(),
@@ -95,7 +98,10 @@ class LibraryCatalogController extends Controller
             'description' => 'nullable|string|max:5000',
             'is_active' => 'boolean',
         ]);
-        $validated['school_id'] = $request->attributes->get('schoolContextId');
+        // school_id di sini hanya mencatat sekolah pencatat pertama; katalog
+        // tetap dibaca bersama oleh semua pemakai perpustakaan.
+        $validated['school_id'] = $request->attributes->get('schoolContextId')
+            ?: $this->access->unitsFor($request->user())->first()?->school_id;
         $validated['is_active'] = $request->boolean('is_active', true);
         LibraryTitle::create($validated);
 

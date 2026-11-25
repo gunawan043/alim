@@ -7,6 +7,14 @@
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
+    @if($belumDitugaskan ?? false)
+        <div class="alert alert-warning">
+            <h6 class="alert-heading"><i class="ri-error-warning-line me-1"></i>Anda belum ditugaskan di unit perpustakaan mana pun</h6>
+            <p class="mb-1">Akses perpustakaan mengikuti <strong>unit tempat Anda ditugaskan</strong> — perpustakaan SD, putra, atau putri. Tanpa penugasan, tidak ada data perpustakaan yang dapat dibuka.</p>
+            <p class="mb-0 small">Minta admin mencatat penempatan Anda di work unit perpustakaan yang sesuai (mis. Guru SD → <em>Perpustakaan SD</em>, guru SMP/SMA Putri → <em>Perpustakaan Putri</em>).</p>
+        </div>
+    @endif
+
     <div class="row g-2 mb-3 library-stats">
         @foreach([['Total Unit', $units->count(), 'ri-building-2-line', 'primary', 'Unit perpustakaan terdaftar'], ['Aktif', $units->where('is_active', true)->count(), 'ri-checkbox-circle-line', 'success', 'Dapat digunakan'], ['Sudah Diatur', $settings->count(), 'ri-settings-4-line', 'info', 'Pengaturan tahun '.($year?->name ?? 'aktif')]] as [$label, $value, $icon, $color, $hint])
             @include('perpustakaan._stat-card', ['label' => $label, 'value' => $value, 'icon' => $icon, 'color' => $color, 'hint' => $hint])
@@ -18,13 +26,14 @@
             <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#unitModal" onclick="openUnitCreate()"><i class="ri-add-line me-1"></i>Tambah Unit</button>
         </div>
         <div class="table-container"><table class="table table-hover library-table align-middle mb-0 table-freeze">
-            <thead class="table-light"><tr><th>Unit</th><th>Sekolah</th><th>Gender / Jenjang</th><th>Lokasi</th><th>Pengaturan</th><th class="text-end">Aksi</th></tr></thead>
+            <thead class="table-light"><tr><th>Unit</th><th>Sekolah</th><th>Work Unit</th><th>Gender / Jenjang</th><th>Lokasi</th><th>Pengaturan</th><th class="text-end">Aksi</th></tr></thead>
             <tbody>
             @forelse($units as $unit)
                 @php $s = $settings[$unit->id] ?? null; @endphp
                 <tr>
                     <td><div class="fw-semibold">{{ $unit->name }}</div><div class="text-muted small">{{ $unit->code }}</div></td>
                     <td>{{ $unit->school?->name ?? '—' }}</td>
+                    <td class="small">{{ $unit->workUnit?->name ?? '—' }}</td>
                     <td><span class="badge bg-light text-dark">{{ $unit->gender_scope }}</span> <span class="badge bg-info-subtle text-info">{{ strtoupper($unit->level_scope) }}</span></td>
                     <td>{{ $unit->location ?? '—' }}</td>
                     <td class="small">
@@ -37,7 +46,7 @@
                     </td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-soft-warning" data-unit="{{ json_encode($unit->only(['id','school_id','code','name','gender_scope','level_scope','location','is_active']), JSON_HEX_APOS|JSON_HEX_QUOT) }}" onclick="openUnitEdit(this)" title="Edit"><i class="ri-pencil-line"></i></button>
+                            <button class="btn btn-soft-warning" data-unit="{{ json_encode($unit->only(['id','school_id','work_unit_id','code','name','gender_scope','level_scope','location','is_active']), JSON_HEX_APOS|JSON_HEX_QUOT) }}" onclick="openUnitEdit(this)" title="Edit"><i class="ri-pencil-line"></i></button>
                             <button class="btn btn-soft-primary" data-settings="{{ json_encode(['id'=>$unit->id,'academic_year_id'=>$year?->id,'loan_days'=>$s?->loan_days ?? 7,'max_active_loans'=>$s?->max_active_loans ?? 3,'allow_renewal'=>(bool)($s?->allow_renewal ?? true),'max_renewals'=>$s?->max_renewals ?? 1,'renewal_days'=>$s?->renewal_days ?? 7,'allow_fine'=>(bool)($s?->allow_fine ?? false),'fine_per_day'=>$s?->fine_per_day ?? 0,'max_fine'=>$s?->max_fine,'replacement_card_fee'=>$s?->replacement_card_fee ?? 0], JSON_HEX_APOS|JSON_HEX_QUOT) }}" onclick="openSettings(this)" title="Pengaturan"><i class="ri-settings-4-line"></i></button>
                         </div>
                     </td>
@@ -51,6 +60,7 @@
         <div class="col-md-6"><label class="form-label">Nama Unit</label><input name="name" id="unitName" class="form-control" required></div>
         <div class="col-md-6"><label class="form-label">Kode</label><input name="code" id="unitCode" class="form-control" required maxlength="30" placeholder="PERPUS-PUTRA"></div>
         <div class="col-md-6"><label class="form-label">Sekolah</label><select name="school_id" id="unitSchool" class="form-select"><option value="">—</option>@foreach($schools as $school)<option value="{{ $school->id }}">{{ $school->name }}</option>@endforeach</select></div>
+        <div class="col-md-6"><label class="form-label">Work Unit Penanggung Jawab</label><select name="work_unit_id" id="unitWorkUnit" class="form-select"><option value="">—</option>@foreach($workUnits as $wu)<option value="{{ $wu->id }}">{{ $wu->name }}</option>@endforeach</select><div class="form-text">Guru yang ditugaskan di work unit ini hanya dapat membuka unit perpustakaan ini.</div></div>
         <div class="col-md-3"><label class="form-label">Gender</label><select name="gender_scope" id="unitGender" class="form-select"><option value="mixed">Campuran</option><option value="L">Putra</option><option value="P">Putri</option></select></div>
         <div class="col-md-3"><label class="form-label">Jenjang</label><select name="level_scope" id="unitLevel" class="form-select"><option value="sd_smp">SD–SMP</option><option value="sd">SD</option><option value="smp">SMP</option></select></div>
         <div class="col-md-8"><label class="form-label">Lokasi</label><input name="location" id="unitLocation" class="form-control"></div>
@@ -75,8 +85,8 @@
 const unitStoreUrl=@json(route('user.perpustakaan.units.store',['userId'=>$userId]));
 const unitUpdateUrl=@json(route('user.perpustakaan.units.update',['userId'=>$userId,'id'=>'__ID__']));
 const settingsUrl=@json(route('user.perpustakaan.units.settings',['userId'=>$userId,'id'=>'__ID__']));
-function openUnitCreate(){document.getElementById('unitTitle').textContent='Tambah Unit';document.getElementById('unitForm').action=unitStoreUrl;document.getElementById('unitMethod').value='POST';['unitName','unitCode','unitLocation'].forEach(id=>document.getElementById(id).value='');document.getElementById('unitSchool').value='';document.getElementById('unitGender').value='mixed';document.getElementById('unitLevel').value='sd_smp';document.getElementById('unitActive').value='1';}
-function openUnitEdit(btn){const d=JSON.parse(btn.dataset.unit);document.getElementById('unitTitle').textContent='Edit Unit';document.getElementById('unitForm').action=unitUpdateUrl.replace('__ID__',d.id);document.getElementById('unitMethod').value='PUT';document.getElementById('unitName').value=d.name||'';document.getElementById('unitCode').value=d.code||'';document.getElementById('unitSchool').value=d.school_id||'';document.getElementById('unitGender').value=d.gender_scope||'mixed';document.getElementById('unitLevel').value=d.level_scope||'sd_smp';document.getElementById('unitLocation').value=d.location||'';document.getElementById('unitActive').value=d.is_active?'1':'0';new bootstrap.Modal(document.getElementById('unitModal')).show();}
+function openUnitCreate(){document.getElementById('unitTitle').textContent='Tambah Unit';document.getElementById('unitForm').action=unitStoreUrl;document.getElementById('unitMethod').value='POST';['unitName','unitCode','unitLocation'].forEach(id=>document.getElementById(id).value='');document.getElementById('unitSchool').value='';document.getElementById('unitWorkUnit').value='';document.getElementById('unitGender').value='mixed';document.getElementById('unitLevel').value='sd_smp';document.getElementById('unitActive').value='1';}
+function openUnitEdit(btn){const d=JSON.parse(btn.dataset.unit);document.getElementById('unitTitle').textContent='Edit Unit';document.getElementById('unitForm').action=unitUpdateUrl.replace('__ID__',d.id);document.getElementById('unitMethod').value='PUT';document.getElementById('unitName').value=d.name||'';document.getElementById('unitCode').value=d.code||'';document.getElementById('unitSchool').value=d.school_id||'';document.getElementById('unitWorkUnit').value=d.work_unit_id||'';document.getElementById('unitGender').value=d.gender_scope||'mixed';document.getElementById('unitLevel').value=d.level_scope||'sd_smp';document.getElementById('unitLocation').value=d.location||'';document.getElementById('unitActive').value=d.is_active?'1':'0';new bootstrap.Modal(document.getElementById('unitModal')).show();}
 function openSettings(btn){const d=JSON.parse(btn.dataset.settings);document.getElementById('settingsForm').action=settingsUrl.replace('__ID__',d.id);document.getElementById('settingYear').value=d.academic_year_id||'';document.getElementById('settingDays').value=d.loan_days;document.getElementById('settingMax').value=d.max_active_loans;document.getElementById('settingRenew').value=d.allow_renewal?'1':'0';document.getElementById('settingMaxRenew').value=d.max_renewals;document.getElementById('settingRenewDays').value=d.renewal_days;document.getElementById('settingFine').value=d.allow_fine?'1':'0';document.getElementById('settingFineDay').value=d.fine_per_day;document.getElementById('settingFineMax').value=d.max_fine||'';document.getElementById('settingCardFee').value=d.replacement_card_fee;new bootstrap.Modal(document.getElementById('settingsModal')).show();}
 </script>
 @endsection

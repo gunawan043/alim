@@ -276,6 +276,75 @@
             </div>
         </div>
     </form>
+
+    {{-- Semua mahrom santri ini --}}
+    <div class="card mt-3" id="mahromLainCard">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h5 class="mb-0"><i class="ri-group-line me-2 text-primary"></i>Seluruh Mahrom Santri Ini</h5>
+                <p class="text-muted mb-0 small">
+                    {{ $allMahroms->count() }} mahrom terdaftar untuk
+                    <strong id="mahromSantriName">{{ $student->name ?? 'santri ini' }}</strong>.
+                    Klik <em>Edit</em> untuk menyunting catatan lain, atau
+                    <em>Tambah</em> untuk mahrom baru.
+                </p>
+            </div>
+            <a href="{{ route('user.students.mahroms.create', ['userId' => $userId, 'santriUuid' => $student->id]) }}"
+               class="btn btn-sm btn-primary">
+                <i class="ri-add-line me-1"></i>Tambah Mahrom
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nama</th>
+                        <th>Hubungan</th>
+                        <th>Telepon</th>
+                        <th class="text-center">Utama</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="mahromLainBody">
+                    @forelse($allMahroms as $item)
+                        <tr @if($item->id === $mahrom->id) class="table-active" @endif>
+                            <td>
+                                <div class="fw-semibold">{{ $item->name }}</div>
+                                @if($item->id === $mahrom->id)
+                                    <span class="badge bg-primary-subtle text-primary">sedang disunting</span>
+                                @endif
+                            </td>
+                            <td>{{ $item->relationship_text }}</td>
+                            <td>{{ $item->phone ?: '—' }}</td>
+                            <td class="text-center">
+                                @if($item->is_primary)
+                                    <i class="ri-star-fill text-warning"></i>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @if($item->is_active)
+                                    <span class="badge bg-success-subtle text-success">Aktif</span>
+                                @else
+                                    <span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ route('user.students.mahroms.globalEdit', ['userId' => $userId, 'mahromUuid' => $item->id]) }}"
+                                   class="btn btn-sm btn-soft-primary">
+                                    <i class="ri-pencil-line me-1"></i>Edit
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="text-center text-muted">Belum ada mahrom.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 @endsection
 
 @section('js')
@@ -328,6 +397,61 @@
         mahromForm.addEventListener('submit', function() {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
+        });
+    }
+
+    // ── Ganti santri → muat daftar mahrom santri yang baru ──
+    // Halaman ini menyunting satu mahrom, tetapi mahrom selalu menempel pada
+    // seorang santri. Saat santri diganti, daftar di bawah harus ikut berganti
+    // agar yang ditampilkan benar-benar milik santri tersebut.
+    var santriAsal = @json((string) $mahrom->student_id);
+    var listUrlTpl = @json(route('user.students.mahroms.list', ['userId' => $userId, 'santriUuid' => '__SANTRI__']));
+
+    function muatMahromLain(santriId) {
+        var body = document.getElementById('mahromLainBody');
+        var judul = document.getElementById('mahromSantriName');
+        if (!body || !santriId) return;
+
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">' +
+            '<span class="spinner-border spinner-border-sm me-1"></span>Memuat mahrom…</td></tr>';
+
+        fetch(listUrlTpl.replace('__SANTRI__', encodeURIComponent(santriId)), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+        .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function(res) {
+            var daftar = (res && (res.data || res.mahroms)) || [];
+            if (!daftar.length) {
+                body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">' +
+                    'Santri ini belum punya mahrom lain.</td></tr>';
+                return;
+            }
+            body.innerHTML = daftar.map(function(m) {
+                return '<tr>' +
+                    '<td><div class="fw-semibold">' + (m.name || '—') + '</div></td>' +
+                    '<td>' + (m.relationship_text || m.relationship || '—') + '</td>' +
+                    '<td>' + (m.phone || '—') + '</td>' +
+                    '<td class="text-center">' + (m.is_primary ? '<i class="ri-star-fill text-warning"></i>' : '<span class="text-muted">—</span>') + '</td>' +
+                    '<td class="text-center">' + (m.is_active
+                        ? '<span class="badge bg-success-subtle text-success">Aktif</span>'
+                        : '<span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>') + '</td>' +
+                    '<td class="text-end"><span class="text-muted small">pilih Simpan untuk pindah</span></td>' +
+                '</tr>';
+            }).join('');
+        })
+        .catch(function() {
+            body.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">' +
+                'Gagal memuat mahrom santri ini.</td></tr>';
+        });
+    }
+
+    if (studentSelect) {
+        // Choices membungkus <select> asli, jadi event change tetap memicu.
+        studentSelect.addEventListener('change', function() {
+            var baru = this.value;
+            if (!baru || baru === santriAsal) return;
+            muatMahromLain(baru);
         });
     }
 })();

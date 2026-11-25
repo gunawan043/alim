@@ -7,6 +7,7 @@ use App\Models\AcademicYear;
 use App\Models\LibrarySetting;
 use App\Models\LibraryUnit;
 use App\Models\School;
+use App\Models\WorkUnit;
 use App\Services\LibraryAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,20 +20,27 @@ class LibraryUnitController extends Controller
     {
         abort_unless($this->access->canManage($request->user()), 403);
         $units = $this->access->unitsFor($request->user());
+        $belumDitugaskan = $this->access->hasNoUnitAssigned($request->user());
         $year = AcademicYear::where('is_active', true)->first();
         $settings = LibrarySetting::whereIn('library_unit_id', $units->pluck('id'))
             ->when($year, fn ($q) => $q->where('academic_year_id', $year->id))
             ->get()->keyBy('library_unit_id');
         $schools = School::active()->orderBy('name')->get(['id', 'name']);
+        $workUnits = WorkUnit::orderBy('name')->get(['id', 'name']);
 
-        return view('perpustakaan.units.index', compact('userId', 'units', 'year', 'settings', 'schools'));
+        return view('perpustakaan.units.index', compact('userId', 'units', 'year', 'settings', 'schools', 'workUnits', 'belumDitugaskan'));
     }
 
     public function store(Request $request, string $userId)
     {
-        abort_unless($this->access->canManage($request->user()), 403);
+        $user = $request->user();
+        abort_unless($this->access->canManage($user), 403);
+        // Membuat unit adalah tindakan lintas perpustakaan. Hanya super admin
+        // yang boleh; pengelola unit tidak menambah perpustakaan baru.
+        abort_unless($this->access->isSuperAdmin($user), 403, 'Hanya super admin yang dapat menambah unit perpustakaan.');
         $validated = $request->validate([
             'school_id' => 'nullable|exists:schools,id',
+            'work_unit_id' => 'nullable|exists:work_units,id',
             'code' => 'required|string|max:30|unique:library_units,code',
             'name' => 'required|string|max:191',
             'gender_scope' => 'required|in:L,P,mixed',
@@ -52,6 +60,7 @@ class LibraryUnitController extends Controller
         abort_unless($this->access->canManageUnit($request->user(), $unit), 403);
         $validated = $request->validate([
             'school_id' => 'nullable|exists:schools,id',
+            'work_unit_id' => 'nullable|exists:work_units,id',
             'code' => ['required', 'string', 'max:30', Rule::unique('library_units', 'code')->ignore($unit->id)],
             'name' => 'required|string|max:191',
             'gender_scope' => 'required|in:L,P,mixed',
