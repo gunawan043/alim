@@ -417,6 +417,23 @@ class WhatsAppGuardianNotificationTest extends TestCase
         });
     }
 
+    public function test_libur_tidak_dikirim_ke_nomor_admin_saat_mode_guardian(): void
+    {
+        config()->set('whatsapp.delivery_mode', 'guardian');
+        config()->set('whatsapp.central_number', '081122223333');
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+
+        $kaldik = new Kaldik;
+        $kaldik->id = (string) Str::uuid();
+        $kaldik->name = 'Libur Semester';
+        $kaldik->type = Kaldik::TYPE_LIBUR;
+        $kaldik->start_date = now();
+
+        $this->assertFalse(app(GuardianWhatsAppNotifier::class)->notifyHoliday($kaldik));
+
+        Http::assertNothingSent();
+    }
+
     public function test_notifikasi_kunjungan_dan_pengingat_kembali(): void
     {
         config()->set('whatsapp.delivery_mode', 'central');

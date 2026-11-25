@@ -462,8 +462,17 @@ class GuardianWhatsAppNotifier
         return array_values(array_unique(array_filter($phones)));
     }
 
+    /**
+     * Kirim ke nomor admin ALIM — hanya bila mode penerima menyertakan
+     * admin (`central` / `both`). Pada mode `guardian` pesan ini tidak
+     * dikirim, supaya nomor admin tidak menerima salinan semua notifikasi.
+     */
     private function sendCentralOnly(string $message, string $event, string $refId): bool
     {
+        if (! in_array($this->gateway->deliveryMode(), ['central', 'both'], true)) {
+            return false;
+        }
+
         $central = $this->gateway->centralNumber();
 
         if (! $central) {
