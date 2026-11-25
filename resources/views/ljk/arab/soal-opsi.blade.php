@@ -25,140 +25,94 @@
     @if($opsiLayout && ! empty($opsiLayout['rows']))
         @php
             $kolom = max(1, (int) $opsiLayout['columns']);
-            // Lebar dalam MM, BUKAN persen: Dompdf menyesuaikan lebar kolom
-            // dengan isinya bila memakai %, sehingga B/C bergeser antar soal.
             $lebarMm = isset($opsiWidthMm) && $opsiWidthMm > 0
                 ? (float) $opsiWidthMm
                 : 157.58;
 
-            // ── Lebar kolom isi mengikuti TEKS TERPANJANG, bukan dibagi rata ──
+            // ── Satu grup opsi = satu pasangan sel, dirapatkan ke KANAN ──
             //
-            // Membagi rata area opsi (155 / 4 = 38.75 mm per unit) membuat
-            // kolom isi 31.15 mm walau teksnya hanya "بَيْتٌ" (≈ 10 mm).
-            // Akibatnya teks pendek terpisah jauh dari labelnya dan jarak
-            // antar opsi terlihat renggang. Di sini lebar isi dihitung dari
-            // teks terpanjang + ruang aman, lalu DIPAKU untuk semua kolom
-            // supaya grid tetap lurus.
+            // Model sebelumnya memakai grid: lebar kolom isi = teks TERPANJANG,
+            // lalu dipaku untuk semua kolom. Akibatnya opsi pendek ("سُوقٌ")
+            // duduk jauh di kiri labelnya sendiri dan antar grup renggang.
+            //
+            // Model sekarang: tiap grup adalah
+            //     | isi opsi  relatif  | .label  |
+            // dengan lebar HANYA sebesar isinya, dan label selalu menempel
+            // tepat di kanan isi. Semua grup lalu dirapatkan ke tepi kanan
+            // (`text-align: right` pada baris). Tidak ada kolom kosong yang
+            // ditebak — tiap grup berakhir persis di labelnya.
             $meter = app(\App\Services\Evaluasi\SoalOpsiLayout::class);
             $fontOpsi = (float) ($fontSize ?? 11);
 
-            // Diukur DUA kali: bentuk logis (muat? tepat?) dan bentuk VISUAL
-            // (seberapa lebar teks benar-benar tercetak?). Naskah Arab di-shape
-            // lebih dulu sehingga bentuk visual memakai presentation form dan
-            // jauh lebih pendek dari teks sumber ber-harakat.
-            $terpanjangLogisMm = 0.0;
-            $terpanjangVisualMm = 0.0;
-            foreach ($block['opsi'] as $o) {
+            // Lebar isi per opsi = lebar VISUAL teks setelah di-shape (bentuk
+            // yang benar-benar tercetak), bukan teks sumber ber-harakat yang
+            // jauh lebih panjang diukur.
+            $isiPerOpsi = [];
+            $terpanjangIsiMm = 0.0;
+            foreach ($block['opsi'] as $idxOpsi => $o) {
                 $teks = (string) ($o['teks'] ?? '');
-                $terpanjangLogisMm = max($terpanjangLogisMm, $meter->textWidthMm($teks, $fontOpsi));
-
+                $w = 0.0;
                 if ($rtl && $teks !== '') {
                     $visual = html_entity_decode(strip_tags(LjkArabicText::marksToHtml($teks)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                    $terpanjangVisualMm = max($terpanjangVisualMm, $meter->textWidthMm($visual, $fontOpsi));
+                    $w = $meter->textWidthMm($visual, $fontOpsi);
+                } else {
+                    $w = $meter->textWidthMm($teks, $fontOpsi);
                 }
+                $isiPerOpsi[$idxOpsi] = $w;
+                $terpanjangIsiMm = max($terpanjangIsiMm, $w);
             }
-            if ($terpanjangVisualMm <= 0.0) {
-                $terpanjangVisualMm = $terpanjangLogisMm;
-            }
 
-            // Ruang aman: teks tidak boleh menyentuh label opsi berikutnya.
-            $ruangAmanMm = 1.8;
-            $butuhMm = $labelMm + $gapMm + $terpanjangLogisMm + $ruangAmanMm;
+            // ── Lebar kolom isi mengikuti TEKS TERPANJANG, bukan dibagi rata ──
+            //
+            // Tabel membentang selebar area opsi dan dirapatkan ke KANAN
+            // (`direction: rtl` + `text-align: right`), tetapi sel isi diberi
+            // lebar TETAP agar label ا/ب/ج/د berdiri di posisi yang sama pada
+            // setiap soal dan sejajar di bawah awal pertanyaan. Lebar sel isi
+            // = teks terpanjang + ruang aman, jadi tidak ada kolom kosong
+            // yang membuat jarak opsi renggang.
+            $ruangAmanMm = 2.0;
+            $isiMm = round($terpanjangIsiMm + $ruangAmanMm, 2);
 
-            // Bila teks terpanjang masih muat dalam satu unit area opsi,
-            // pakai ukuran seperlunya. Bila tidak, kembali ke pembagian rata
-            // (teks akan dilipat atau di-nowrap sesuai `wrap`).
-            $unitMm = $lebarMm / $kolom;
-            $isiMm = $butuhMm <= $unitMm
-                ? round($terpanjangVisualMm + $ruangAmanMm, 2)
-                : round(max(1.0, $unitMm - $labelMm - $gapMm), 2);
-
-            // Lebar tabel = jumlah kolom yang benar-benar dipakai. Bila isi
-            // lebih sempit dari pembagian rata, tabel TIDAK direntangkan ke
-            // seluruh area — ia rapat ke tepi kanan dan sisa ruang dibiarkan
-            // kosong di kiri, sehingga jarak antar opsi tetap wajar.
-            $totalMm = round(($labelMm + $gapMm + $isiMm) * $kolom, 2);
-
-            // Tabel mengikuti isinya. TIDAK dibatasi `lebarMm`: batas itu
-            // memotong sisa pembulatan kolom sehingga teks terpanjang (yang
-            // muat berdasarkan ukuran logis) bisa berdesakan dengan label.
-            // Lebar maksimum sudah dijaga oleh `$unitMm` di atas.
-
-            // Sisa pembulatan diserap kolom isi terakhir agar tidak menyusut.
-            $terpakaiMm = ($labelMm + $gapMm + $isiMm) * $kolom;
-            $isiTerakhirMm = round($isiMm + ($totalMm - $terpakaiMm), 2);
+            // Kolom per baris: muat bila seluruh grup selebar $isiMm + label
+            // masih masuk area opsi.
+            $unitPerGrupMm = $isiMm + $labelMm + $gapMm;
+            $muatPerBaris = max(1, (int) floor($lebarMm / max(1.0, $unitPerGrupMm)));
+            $kolomBaris = max(1, min($kolom, $muatPerBaris));
 
             $align = $rtl ? 'right' : 'left';
-            $labelAlign = $rtl ? 'right' : 'left';
 
-            // Label selalu menempel ke sisi isi (RTL: label di kanan isi),
-            // sehingga jarak label→isi tetap konsisten.
-            $labelPad = $rtl ? "0 0 0 {$gapMm}mm" : "0 {$gapMm}mm 0 0";
-            $isiPad = '0';
-
-            // Grid tetap melipat teks yang lebih panjang dari kolomnya agar
-            // tidak menimpa kolom sebelah. Opsi pendek tetap satu baris.
             $whiteSpace = ! empty($opsiLayout['wrap']) ? 'normal' : 'nowrap';
         @endphp
-        {{-- Satu tabel per baris, lebar tiap kolom DIEKSPLISITKAN dalam mm.
-             Tidak ada spasi manual yang dipakai untuk memposisikan apa pun. --}}
-        @foreach($opsiLayout['rows'] as $row)
-            @php
-                $sisa = max(0, $kolom - count($row));
-                // RTL: service sudah membalik urutan sel (ا paling kanan).
-                // Sisa sel kosong ditempatkan di KIRI agar ا tetap di tepi
-                // kanan walau soal hanya punya 2–3 pilihan.
-                $selIsi = $row;
-            @endphp
-            <table class="opts opts-grid {{ $rtl ? 'rtl' : '' }}" style="width: {{ $totalMm }}mm;" cellspacing="0" cellpadding="0">
-                <tr>
-                    @if($rtl && $sisa > 0)
-                        @for($i = 0; $i < $sisa; $i++)
-                            {{-- Slot kosong tetap memakai DUA kolom dengan lebar
-                                 sama, supaya grid tidak bergeser. --}}
-                            <td class="col-label" style="width: {{ $labelMm }}mm;">&nbsp;</td>
-                            <td class="col-isi" style="width: {{ $isiMm }}mm;">&nbsp;</td>
-                        @endfor
-                    @endif
-
-                    @foreach($selIsi as $cell)
+        {{-- RTL: label di KANAN isi, seluruh baris dirapatkan ke tepi kanan.
+             LTR: label di KIRI isi, baris dirapatkan ke kiri.
+             Tidak ada spasi manual — posisi diatur lebar sel (mm). --}}
+        <table class="opts opts-grid {{ $rtl ? 'rtl' : 'ltr' }}" style="width: {{ round($lebarMm, 2) }}mm;" cellspacing="0" cellpadding="0">
+            <tr>
+                @foreach($opsiLayout['rows'] as $row)
+                    @foreach($row as $cell)
                         @php
                             $opsi = $block['opsi'][$cell['index']] ?? null;
                             $label = $opsi ? ($opsi['display_label'] ?? $opsi['label']) : '';
-                            // Kolom isi TERAKHIR menyerap sisa pembulatan.
-                            $isiSelMm = $loop->last ? $isiTerakhirMm : $isiMm;
                         @endphp
                         @if($rtl)
-                            {{-- RTL: kolom ISI di kiri, kolom LABEL di kanan.
-                                 Tabel tetap dibangun kiri→kanan; sel isi ditulis
-                                 lebih dulu agar berada di kiri label. --}}
-                            <td class="col-isi" style="width: {{ $isiSelMm }}mm; text-align: {{ $align }}; white-space: {{ $whiteSpace }}; padding: {{ $isiPad }};">
+                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: right; white-space: {{ $whiteSpace }}; padding: 0;">
                                 @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
                             </td>
-                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: {{ $labelAlign }}; padding: {{ $labelPad }};">
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: right; padding: 0 0 0 {{ $gapMm }}mm;">
                                 @if($opsi)<span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($label) !!}</span>@else&nbsp;@endif
                             </td>
                         @else
-                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: {{ $labelAlign }}; padding: {{ $labelPad }};">
+                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: left; padding: 0 {{ $gapMm }}mm 0 0;">
                                 @if($opsi)<span class="letter">{!! LjkArabicText::marksToHtml($label) !!}.</span>@else&nbsp;@endif
                             </td>
-                            <td class="col-isi" style="width: {{ $isiSelMm }}mm; text-align: {{ $align }}; white-space: {{ $whiteSpace }}; padding: {{ $isiPad }};">
+                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: left; white-space: {{ $whiteSpace }}; padding: 0;">
                                 @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
                             </td>
                         @endif
                     @endforeach
-
-                    {{-- LTR: sel kosong di kanan. Struktur & lebar SAMA dengan
-                         sel berisi supaya posisi kolom tidak bergeser. --}}
-                    @if(! $rtl && $sisa > 0)
-                        @for($i = 0; $i < $sisa; $i++)
-                            <td class="col-label" style="width: {{ $labelMm }}mm;">&nbsp;</td>
-                            <td class="col-isi" style="width: {{ $isiMm }}mm;">&nbsp;</td>
-                        @endfor
-                    @endif
-                </tr>
-            </table>
-        @endforeach
+                @endforeach
+            </tr>
+        </table>
     @else
         <table class="opts {{ $rtl ? 'rtl' : '' }}">
             <tr>

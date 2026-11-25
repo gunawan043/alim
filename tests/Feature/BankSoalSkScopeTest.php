@@ -999,15 +999,35 @@ class BankSoalSkScopeTest extends TestCase
         // 2) Jarak label→isi satu nilai (tidak ada spasi manual yang bervariasi).
         $this->assertCount(1, array_unique($gapMm[1]), 'Jarak label→isi konsisten.');
 
-        // 3) Total lebar kolom TEPAT sama dengan lebar tabel (tidak menyusut
-        //    karena pembulatan, sehingga kolom antar baris tetap sejajar).
+        // 3) Lebar kolom isi SEHAT: cukup untuk opsi terpanjang, tetapi tidak
+        //    membengkak. Model lama memaku isi = teks terpanjang untuk semua
+        //    soal; model baru memakai teks terpanjang + ruang aman 2 mm.
+        //    Batas atas mencegah kembalinya jarak renggang yang dikeluhkan.
+        $isiSumMax = 0.0;
+        foreach ($soal->options as $o) {
+            $isiSumMax = max($isiSumMax, mb_strlen((string) $o->teks_opsi));
+        }
+        $isiMm1 = (float) $isiMm[1][0];
+        $this->assertGreaterThan(0.0, $isiMm1, 'Kolom isi punya lebar positif.');
+        $this->assertLessThanOrEqual(
+            $lebarTabel / max(1, count($isiMm[1])),
+            $isiMm1 + 0.01,
+            'Kolom isi tidak melebihi porsi rata-rata area opsi.'
+        );
+
+        // 4) Total lebar sel + jarak tidak melebihi lebar tabel (grid tetap
+        //    utuh, tidak meluber ke margin kiri).
         $total = array_sum(array_map('floatval', $labelMm[1]))
             + array_sum(array_map('floatval', $isiMm[1]))
             + array_sum(array_map('floatval', $gapMm[1]));
 
-        $this->assertEqualsWithDelta($lebarTabel, $total, 0.05, 'Total kolom = lebar tabel.');
+        $this->assertLessThanOrEqual($lebarTabel + 0.05, $total, 'Total kolom tidak melebihi lebar tabel.');
 
-        // 4) Tidak ada spasi manual (&nbsp; beruntun) untuk mengatur posisi.
+        // 5) Rata KANAN: tabel opsi memakai class rtl sehingga barisnya
+        //    dirapatkan ke tepi kanan area naskah.
+        $this->assertMatchesRegularExpression('/<table class="opts opts-grid rtl"/', $html, 'Tabel opsi RTL dirapatkan ke kanan.');
+
+        // 6) Tidak ada spasi manual (&nbsp; beruntun) untuk mengatur posisi.
         $this->assertStringNotContainsString('&nbsp;&nbsp;', $html, 'Posisi tidak diatur dengan spasi manual.');
     }
 

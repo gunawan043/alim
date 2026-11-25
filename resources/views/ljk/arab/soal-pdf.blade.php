@@ -265,6 +265,18 @@
         width: auto;
         margin-left: auto;
         margin-right: 0;
+        /* `table-layout: fixed` (dari `table.opts`) MEMBAGI RATA sisa ruang
+           ke semua sel — sel isi melebar jauh melebihi teksnya dan jarak
+           antar opsi jadi renggang. Dengan `auto`, lebar sel mengikuti isi
+           dan angkanya (mm) dihormati sebagai minimum. `direction: rtl`
+           membuat baris dirapatkan ke tepi KANAN. */
+        table-layout: auto;
+        direction: rtl;
+    }
+    table.opts.opts-grid.ltr {
+        direction: ltr;
+        margin-left: 0;
+        margin-right: auto;
     }
     table.opts.opts-grid td {
         padding: 0;
