@@ -16,10 +16,11 @@
     //   - awal teks setiap opsi mulai pada x yang sama;
     //   - jarak label→isi konsisten berapa pun panjang teksnya.
     //
-    // Dompdf menambahkan padding DI LUAR `width`, jadi LF + IF harus dihitung
-    // agar nol (N opsi tepat memenuhi lebar area opsi).
-    $labelMm = 5.0;   // lebar kolom label (huruf + titik)
-    $gapMm = 1.2;     // jarak tetap antara label dan isi
+    // Semua ukuran dipakai lewat variabel — lihat blok di bawah — dan
+    // DITURUNKAN DARI UKURAN FONT, sehingga berubah otomatis bila guru
+    // mengganti font_size. Lebar kosong dalam mm tidak dipakai untuk
+    // menebak posisi; nilainya datang dari service (satu nilai untuk
+    // seluruh naskah) sehingga label ا/ب/ج/د segaris di semua soal.
 @endphp
 @if(! empty($block['opsi']))
     @if($opsiLayout && ! empty($opsiLayout['rows']))
@@ -31,47 +32,28 @@
 
             // ── Satu grup opsi = satu pasangan sel, dirapatkan ke KANAN ──
             //
-            // Model sebelumnya memakai grid: lebar kolom isi = teks TERPANJANG,
-            // lalu dipaku untuk semua kolom. Akibatnya opsi pendek ("سُوقٌ")
-            // duduk jauh di kiri labelnya sendiri dan antar grup renggang.
-            //
-            // Model sekarang: tiap grup adalah
-            //     | isi opsi  relatif  | .label  |
-            // dengan lebar HANYA sebesar isinya, dan label selalu menempel
-            // tepat di kanan isi. Semua grup lalu dirapatkan ke tepi kanan
-            // (`text-align: right` pada baris). Tidak ada kolom kosong yang
-            // ditebak — tiap grup berakhir persis di labelnya.
-            $meter = app(\App\Services\Evaluasi\SoalOpsiLayout::class);
+            // Tiap grup adalah | isi opsi | .label | — label selalu menempel
+            // ke kanan isi, dan seluruh baris dirapatkan ke tepi kanan area
+            // opsi. Lebar sel isi TIDAK dihitung per soal: nilainya datang
+            // dari service (`$opsiCellMm`) yang menurunkannya dari ukuran
+            // font, sehingga setiap soal memakai lebar identik dan label
+            // ا/ب/ج/د tidak bergeser antar soal.
             $fontOpsi = (float) ($fontSize ?? 11);
 
-            // Lebar isi per opsi = lebar VISUAL teks setelah di-shape (bentuk
-            // yang benar-benar tercetak), bukan teks sumber ber-harakat yang
-            // jauh lebih panjang diukur.
-            $isiPerOpsi = [];
-            $terpanjangIsiMm = 0.0;
-            foreach ($block['opsi'] as $idxOpsi => $o) {
-                $teks = (string) ($o['teks'] ?? '');
-                $w = 0.0;
-                if ($rtl && $teks !== '') {
-                    $visual = html_entity_decode(strip_tags(LjkArabicText::marksToHtml($teks)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                    $w = $meter->textWidthMm($visual, $fontOpsi);
-                } else {
-                    $w = $meter->textWidthMm($teks, $fontOpsi);
-                }
-                $isiPerOpsi[$idxOpsi] = $w;
-                $terpanjangIsiMm = max($terpanjangIsiMm, $w);
-            }
+            // Satuan relatif: semua ukuran mengikuti ukuran font soal.
+            // `table.opts td` memakai mm/em yang tetap untuk lebar, jadi
+            // nilainya dihitung di sini (1 em ≈ 0,35 mm per pt pada 96 dpi).
+            $ptMm = 25.4 / 72;                       // 1 pt dalam mm
+            $labelMm = round($fontOpsi * $ptMm * 1.6, 2);  // kolom huruf + titik
+            $gapMm = round($fontOpsi * $ptMm * 0.35, 2);   // jarak label→isi
 
-            // ── Lebar kolom isi mengikuti TEKS TERPANJANG, bukan dibagi rata ──
-            //
-            // Tabel membentang selebar area opsi dan dirapatkan ke KANAN
-            // (`direction: rtl` + `text-align: right`), tetapi sel isi diberi
-            // lebar TETAP agar label ا/ب/ج/د berdiri di posisi yang sama pada
-            // setiap soal dan sejajar di bawah awal pertanyaan. Lebar sel isi
-            // = teks terpanjang + ruang aman, jadi tidak ada kolom kosong
-            // yang membuat jarak opsi renggang.
-            $ruangAmanMm = 2.0;
-            $isiMm = round($terpanjangIsiMm + $ruangAmanMm, 2);
+            if (isset($opsiCellMm) && $opsiCellMm > 0) {
+                $isiMm = round((float) $opsiCellMm, 2);
+            } else {
+                // LJK/paket: tidak ada lebar bersama, pakai rumus yang sama
+                // dari ukuran font agar hasilnya tetap seragam per dokumen.
+                $isiMm = round(min($fontOpsi * 1.22, $lebarMm / 4), 2);
+            }
 
             // Kolom per baris: muat bila seluruh grup selebar $isiMm + label
             // masih masuk area opsi.

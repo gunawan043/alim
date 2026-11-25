@@ -1990,6 +1990,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/cetak', [SoalSayaController::class, 'cetakPage'])->name('cetak');
                 Route::get('/cetak/preview', [SoalSayaController::class, 'previewPdf'])->name('preview');
                 Route::post('/cetak', [SoalSayaController::class, 'print'])->name('print');
+                // Edit cepat dari daftar "Soal yang ikut dicetak" (modal).
+                Route::get('/{id}/json', [SoalSayaController::class, 'editJson'])->name('edit-json');
+                Route::put('/{id}', [SoalSayaController::class, 'updateSoal'])->name('update');
                 // '/bulk' harus didaftarkan SEBELUM '/{id}' agar tidak tertangkap
                 // sebagai id soal.
                 Route::delete('/bulk', [SoalSayaController::class, 'destroyBulk'])->name('destroy-bulk');

@@ -2404,6 +2404,64 @@ class BankSoalSkScopeTest extends TestCase
             ->assertSee('0 disetujui');
     }
 
+    public function test_modal_edit_soal_mengembalikan_data_json(): void
+    {
+        $soal = $this->makeSoal();
+
+        $this->actingAs($this->guru)
+            ->getJson("/{$this->guru->id}/soal-saya/{$soal->id}/json")
+            ->assertOk()
+            ->assertJsonPath('id', $soal->id)
+            ->assertJsonPath('tipe_soal', 'pg')
+            ->assertJsonCount(4, 'options')
+            ->assertJsonStructure(['pertanyaan', 'correct_label', 'update_url']);
+    }
+
+    public function test_modal_edit_soal_menyimpan_perubahan(): void
+    {
+        $soal = $this->makeSoal();
+
+        $this->actingAs($this->guru)
+            ->put("/{$this->guru->id}/soal-saya/{$soal->id}", [
+                'pertanyaan' => 'Berapakah hasil dari 13 x 4?',
+                'tingkat_kesulitan_estimasi' => 'sedang',
+                'waktu_estimasi_menit' => 3,
+                'correct_label' => 'B',
+                'options' => [
+                    ['label' => 'A', 'teks_opsi' => '62'],
+                    ['label' => 'B', 'teks_opsi' => '52'],
+                    ['label' => 'C', 'teks_opsi' => '56'],
+                    ['label' => 'D', 'teks_opsi' => '48'],
+                ],
+            ])
+            ->assertRedirect(route('user.soal-saya.cetak', ['userId' => $this->guru->id]));
+
+        $soal->refresh();
+        $this->assertSame('Berapakah hasil dari 13 x 4?', $soal->pertanyaan);
+
+        $opsi = $soal->options()->orderBy('urutan')->get();
+        $this->assertCount(4, $opsi);
+        $this->assertSame('62', $opsi[0]->teks_opsi);
+        $this->assertTrue((bool) $opsi[1]->is_correct, 'Kunci B ditandai benar.');
+        $this->assertFalse((bool) $opsi[0]->is_correct);
+    }
+
+    public function test_modal_edit_soal_menolak_soal_guru_lain(): void
+    {
+        $soal = $this->makeSoal();
+        $lain = User::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Guru Lain',
+            'email' => 'guru.lain@example.test',
+            'password' => bcrypt('secret'),
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->guru)
+            ->getJson("/{$lain->id}/soal-saya/{$soal->id}/json")
+            ->assertForbidden();
+    }
+
     private function makeSoal(): Soal
     {
         $bank = BankSoal::create([

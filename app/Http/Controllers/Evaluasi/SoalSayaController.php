@@ -195,6 +195,125 @@ class SoalSayaController extends Controller
     }
 
     /**
+     * Data satu soal untuk modal "Edit soal" pada halaman cetak naskah.
+     *
+     * Dikembalikan sebagai JSON agar modal bisa diisi tanpa memuat ulang
+     * halaman — pratinjau PDF dan centang "Soal yang ikut dicetak" tetap
+     * utuh di tempatnya.
+     */
+    public function editJson(Request $request, string $userId, string $id)
+    {
+        $soal = $this->editableSoal($request, $userId, $id);
+
+        return response()->json([
+            'id' => $soal->id,
+            'tipe_soal' => $soal->tipe_soal,
+            'bahasa' => $soal->bahasa,
+            'pertanyaan' => $soal->pertanyaan,
+            'pembahasan' => $soal->pembahasan,
+            'materi' => $soal->materi,
+            'tingkat_kesulitan_estimasi' => $soal->tingkat_kesulitan_estimasi,
+            'waktu_estimasi_menit' => $soal->waktu_estimasi_menit,
+            // Kunci jawaban tidak punya kolom sendiri di tabel soal: ia
+            // diturunkan dari opsi yang bertanda is_correct.
+            'correct_label' => $soal->options()->where('is_correct', true)->value('label'),
+            'options' => $soal->options()->orderBy('urutan')->get()->map(fn ($o) => [
+                'label' => $o->label,
+                'teks_opsi' => $o->teks_opsi,
+                'is_correct' => (bool) $o->is_correct,
+            ])->all(),
+            'update_url' => route('user.soal-saya.update', ['userId' => $userId, 'id' => $soal->id]),
+        ]);
+    }
+
+    /**
+     * Simpan perubahan dari modal "Edit soal" pada halaman cetak naskah.
+     *
+     * Sengaja hanya menyentuh isi soal (pertanyaan, opsi, kunci, pembahasan)
+     * — bukan pengaturan cetak. Setelah disimpan, kembalikan guru ke halaman
+     * cetak dengan pratinjau yang dirender ulang dari data terbaru.
+     */
+    public function updateSoal(Request $request, string $userId, string $id)
+    {
+        $soal = $this->editableSoal($request, $userId, $id);
+
+        $data = $request->validate([
+            'pertanyaan' => 'required|string|max:10000',
+            'pembahasan' => 'nullable|string|max:10000',
+            'materi' => 'nullable|string|max:150',
+            'tingkat_kesulitan_estimasi' => 'required|in:mudah,sedang,sulit',
+            'waktu_estimasi_menit' => 'nullable|integer|min:1|max:120',
+            'correct_label' => 'nullable|string|max:2',
+            'options' => 'nullable|array',
+            'options.*.label' => 'nullable|string|max:2',
+            'options.*.teks_opsi' => 'nullable|string|max:1000',
+        ]);
+
+        $options = collect($request->input('options', []))
+            ->filter(fn ($option) => trim((string) ($option['teks_opsi'] ?? '')) !== '')
+            ->values();
+
+        $correct = strtoupper(trim((string) ($data['correct_label'] ?? '')));
+
+        if ($soal->tipe_soal === 'pg' && $options->count() < 2) {
+            return back()->withInput()->with('error', 'Soal pilihan ganda minimal memiliki 2 opsi.');
+        }
+
+        if ($correct !== '' && ! $options->contains(fn ($o) => strtoupper(trim((string) ($o['label'] ?? ''))) === $correct)) {
+            return back()->withInput()->with('error', 'Kunci jawaban tidak ada di opsi.');
+        }
+
+        DB::transaction(function () use ($soal, $data, $options, $correct) {
+            $soal->fill([
+                'pertanyaan' => $data['pertanyaan'],
+                'pembahasan' => $data['pembahasan'] ?? null,
+                'materi' => $data['materi'] ?? null,
+                'tingkat_kesulitan_estimasi' => $data['tingkat_kesulitan_estimasi'],
+                'waktu_estimasi_menit' => $data['waktu_estimasi_menit'] ?? $soal->waktu_estimasi_menit,
+            ]);
+            $soal->save();
+
+            // Opsi diganti utuh: id opsi lama tidak dipakai lagi oleh LJK
+            // (jawaban santri disimpan per label, bukan per id opsi).
+            if (in_array($soal->tipe_soal, ['pg', 'bs', 'jodoh'], true)) {
+                $soal->options()->delete();
+                $options->each(function ($opt, $i) use ($soal, $correct) {
+                    $label = strtoupper(trim((string) ($opt['label'] ?? ''))) ?: chr(65 + $i);
+
+                    \App\Models\SoalOption::create([
+                        'soal_id' => $soal->id,
+                        'label' => $label,
+                        'teks_opsi' => (string) $opt['teks_opsi'],
+                        'is_correct' => $correct !== '' && $label === $correct,
+                        'urutan' => $i + 1,
+                    ]);
+                });
+            }
+        });
+
+        return redirect()
+            ->route('user.soal-saya.cetak', ['userId' => $userId])
+            ->with('success', 'Soal berhasil diperbarui.');
+    }
+
+    /**
+     * Soal yang boleh diedit dari halaman cetak: harus milik halaman guru
+     * ini dan pembuatnya sendiri (atau tim kurikulum). Tanpa cek ini, modal
+     * bisa dipakai untuk mengubah soal guru lain lewat id di URL.
+     */
+    private function editableSoal(Request $request, string $userId, string $id): Soal
+    {
+        $soal = Soal::with('bankSoal')->findOrFail($id);
+
+        abort_if($soal->dibuat_oleh !== $userId, 403, 'Soal ini bukan milik halaman Anda.');
+
+        $bankIds = BankSoal::accessibleBy($request->user()->id, $soal->bankSoal?->school_id)->pluck('id')->all();
+        abort_unless(in_array($soal->bank_soal_id, $bankIds, true), 403, 'Anda tidak memiliki akses ke soal ini.');
+
+        return $soal;
+    }
+
+    /**
      * Hapus satu soal dari daftar Soal Saya. Hanya pembuat soal.
      */
     public function destroy(Request $request, string $userId, string $id)

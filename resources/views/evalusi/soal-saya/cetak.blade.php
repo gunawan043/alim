@@ -552,19 +552,92 @@
                                            value="{{ $soal->id }}"
                                            data-blocked="{{ $isBlocked ? '1' : '0' }}"
                                            @checked($isPicked)>
-                                    <span class="small">
+                                    <span class="small flex-grow-1">
                                         <strong>{{ $index + 1 }}.</strong>
                                         {{ \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 110) }}
                                         @if($isBlocked)
                                             <span class="badge bg-warning-subtle text-warning ms-1">STS/SAS belum tervalidasi</span>
                                         @endif
                                     </span>
+                                    @if((string) $soal->dibuat_oleh === (string) auth()->id())
+                                        {{-- Hanya pembuat soal yang boleh mengubah.
+                                             Tombol sengaja di luar <label> agar klik tidak
+                                             ikut membalik centang "ikut dicetak". --}}
+                                        <button type="button" class="btn btn-sm btn-light q-edit"
+                                                data-edit-url="{{ route('user.soal-saya.edit-json', ['userId' => $userId, 'id' => $soal->id]) }}"
+                                                title="Edit soal">
+                                            <i class="ri-edit-line"></i>
+                                        </button>
+                                    @endif
                                 </label>
                             @endforeach
                         </div>
                     </div>
                 @endif
             </div>
+        </div>
+    </div>
+
+    {{-- Modal edit soal: mengubah isi soal tanpa meninggalkan halaman cetak,
+         agar pratinjau PDF dan pilihan "ikut dicetak" tetap di tempatnya. --}}
+    <div class="modal fade" id="editSoalModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <form method="POST" id="editSoalForm">
+                @csrf
+                @method('PUT')
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit soal</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger py-2 small" id="editSoalError" hidden></div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Pertanyaan</label>
+                            <textarea name="pertanyaan" id="editPertanyaan" class="form-control" rows="4" required></textarea>
+                        </div>
+
+                        <div id="editOpsiWrap">
+                            <label class="form-label small fw-semibold">Opsi jawaban</label>
+                            <div id="editOpsiList"></div>
+                            <div class="form-text">Kosongkan teks opsi yang tidak dipakai. Isi huruf kunci pada kolom kunci jawaban.</div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-sm-4">
+                                <label class="form-label small fw-semibold">Kunci jawaban</label>
+                                <input type="text" name="correct_label" id="editKunci" class="form-control form-control-sm" maxlength="2">
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label small fw-semibold">Kesulitan</label>
+                                <select name="tingkat_kesulitan_estimasi" id="editKesulitan" class="form-select form-select-sm">
+                                    <option value="mudah">Mudah</option>
+                                    <option value="sedang">Sedang</option>
+                                    <option value="sulit">Sulit</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label small fw-semibold">Estimasi (menit)</label>
+                                <input type="number" name="waktu_estimasi_menit" id="editWaktu" class="form-control form-control-sm" min="1" max="120">
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="form-label small fw-semibold">Pembahasan</label>
+                            <textarea name="pembahasan" id="editPembahasan" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label small fw-semibold">Materi</label>
+                            <input type="text" name="materi" id="editMateri" class="form-control form-control-sm" maxlength="150">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary" id="editSoalSubmit">Simpan</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 @endsection
@@ -753,6 +826,79 @@
 
             syncPicks();
             setBusy(false);
+        })();
+
+        // ── Modal "Edit soal" pada daftar Soal yang ikut dicetak ─────────
+        // Diisi dari endpoint JSON agar halaman (pratinjau + centang) tidak
+        // dimuat ulang; sesudah simpan server mengembalikan ke halaman ini
+        // sehingga PDF dirender lagi dari data terbaru.
+        (function () {
+            var modalEl = document.getElementById('editSoalModal');
+            if (!modalEl || !window.bootstrap) { return; }
+
+            var form = document.getElementById('editSoalForm');
+            var list = document.getElementById('editOpsiList');
+            var errBox = document.getElementById('editSoalError');
+            var opsiWrap = document.getElementById('editOpsiWrap');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+            function esc(v) {
+                return String(v == null ? '' : v)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            function renderOptions(options) {
+                list.innerHTML = (options || []).map(function (o, i) {
+                    return '<div class="input-group input-group-sm mb-2">'
+                        + '<span class="input-group-text" style="width:2.6rem">' + esc(o.label || '') + '</span>'
+                        + '<input type="hidden" name="options[' + i + '][label]" value="' + esc(o.label || '') + '">'
+                        + '<input type="text" class="form-control" name="options[' + i + '][teks_opsi]" value="' + esc(o.teks_opsi || '') + '">'
+                        + '</div>';
+                }).join('');
+            }
+
+            function fill(data) {
+                form.action = data.update_url;
+                document.getElementById('editPertanyaan').value = data.pertanyaan || '';
+                document.getElementById('editKunci').value = data.correct_label || '';
+                document.getElementById('editKesulitan').value = data.tingkat_kesulitan_estimasi || 'sedang';
+                document.getElementById('editWaktu').value = data.waktu_estimasi_menit || '';
+                document.getElementById('editPembahasan').value = data.pembahasan || '';
+                document.getElementById('editMateri').value = data.materi || '';
+
+                // Hanya soal PG/BS/Jodoh yang punya opsi.
+                var punyaOpsi = ['pg', 'bs', 'jodoh'].indexOf(data.tipe_soal) !== -1;
+                opsiWrap.hidden = !punyaOpsi;
+                renderOptions(punyaOpsi ? data.options : []);
+            }
+
+            document.querySelectorAll('.q-edit').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    // Tombol ini berada di dalam <label>, jadi klik harus
+                    // dicegah agar centang "ikut dicetak" tidak ikut berubah.
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    errBox.hidden = true;
+                    list.innerHTML = '<div class="text-muted small">Memuat soal…</div>';
+                    modal.show();
+
+                    fetch(btn.getAttribute('data-edit-url'), {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin'
+                    })
+                        .then(function (r) {
+                            if (!r.ok) { throw new Error('Gagal memuat soal (' + r.status + ').'); }
+                            return r.json();
+                        })
+                        .then(fill)
+                        .catch(function (err) {
+                            errBox.textContent = err.message;
+                            errBox.hidden = false;
+                        });
+                });
+            });
         })();
     </script>
 @endsection

@@ -30,6 +30,18 @@ use Pharaonic\Hijri\Hijri;
 class SoalNaskahPdfService
 {
     /**
+     * Lebar sel isi opsi per pt ukuran font (mm/pt).
+     *
+     * Wadah opsi DITURUNKAN DARI UKURAN FONT, bukan dari teks soal, supaya
+     * lebarnya sama untuk semua soal dan ikut menyesuaikan otomatis ketika
+     * guru mengubah ukuran font. Diukur dari lebar teks Arab Arial pada
+     * naskah: ±1,25 mm untuk setiap 1 pt (9 pt ≈ 11,4 mm, 11 pt ≈ 13,8 mm,
+     * 14 pt ≈ 17,5 mm). Nilai 1,5 memberi ruang aman untuk kata opsi
+     * terpanjang yang lazim, mis. "مَكَانُ التَّعَلُّمِ".
+     */
+    private const OPSI_CELL_MM_PER_PT = 1.22;
+
+    /**
      * @param  Collection<int, Soal>  $questions
      */
     public function html(
@@ -240,6 +252,15 @@ class SoalNaskahPdfService
             $block['opsiLayout'] = $layoutResult;
         }
         unset($block);
+
+        // ── Lebar sel opsi DISERAGAMKAN untuk seluruh naskah ──────────────
+        //
+        // Menghitung lebar per soal membuat tiap baris opsi punya lebar
+        // berbeda: soal beropsi pendek ("سُوقٌ") berakhir lebih ke kiri
+        // daripada soal beropsi panjang, sehingga label ا/ب/ج/د tidak
+        // segaris antar soal. Lebar kini dihitung SEKALI dari ukuran font
+        // dan dipakai semua soal.
+        $opsiMmPerCell = $this->opsiCellWidthMm($contentMm, (float) ($settings['font_size'] ?? 11));
 
         $first = $questions->first();
         $academicYear = $first?->bankSoal?->academicYear
@@ -606,6 +627,24 @@ class SoalNaskahPdfService
         }
 
         return $rows;
+    }
+
+    /**
+     * Lebar sel isi opsi (mm) yang dipakai SELURUH soal dalam satu naskah.
+     *
+     * Lebar diturunkan dari UKURAN FONT, bukan dari teks soal, karena lebar
+     * teks Arab berbanding lurus dengan font (diukur: 1,25 mm per pt). Dengan
+     * rumus ini lebar ikut menyesuaikan otomatis saat guru mengubah ukuran
+     * font, dan setiap soal memakai lebar yang sama sehingga label ا/ب/ج/د
+     * berdiri di satu garis dari soal pertama sampai terakhir.
+     */
+    private function opsiCellWidthMm(float $contentMm, float $fontPt): float
+    {
+        $mm = max(1.0, $fontPt) * self::OPSI_CELL_MM_PER_PT;
+
+        // Jangan pernah melebihi seperempat area opsi: dengan begitu satu
+        // baris selalu muat empat grup (isi + label), tidak ada lipatan.
+        return round(min($mm, $contentMm / 4), 2);
     }
 
     /**
