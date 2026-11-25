@@ -256,6 +256,16 @@
        `padding: 0` WAJIB menimpa aturan `table.opts td` di atas: Dompdf
        menambahkan padding DI LUAR `width`, jadi padding warisan akan
        melebarkan setiap sel dan menggeser seluruh kolom ke kanan. */
+    /* Grid kolom label + isi: lebar tabel DITETAPKAN mm oleh partial (bukan
+       100%), lalu ditempel ke tepi KANAN area opsi. Tanpa `width: auto` dan
+       margin kiri otomatis, aturan `table.opts { width: 100% }` di atas
+       memaksa tabel melebar penuh sehingga jarak antar opsi selalu renggang
+       berapa pun lebar kolom yang dihitung. */
+    table.opts.opts-grid {
+        width: auto;
+        margin-left: auto;
+        margin-right: 0;
+    }
     table.opts.opts-grid td {
         padding: 0;
         vertical-align: top;

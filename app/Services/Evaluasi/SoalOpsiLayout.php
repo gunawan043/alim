@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Evaluasi;
 
+use App\Services\Ljk\LjkArabicText;
 use App\Services\Ljk\LjkPdfFonts;
 
 /**
@@ -208,10 +209,19 @@ class SoalOpsiLayout
 
     /**
      * Lebar teks "A. isi pilihan" dalam mm.
+     *
+     * Font pengukur HARUS sama dengan yang dipakai saat mencetak, kalau tidak
+     * lebarnya salah jauh. Contoh nyata: "بَيْتٌ" diukur 20.37 mm dengan font
+     * Latin tetapi hanya 12.44 mm dengan font Arab — selisih 64%. Lebar yang
+     * terlalu besar membuat kolom opsi membengkak dan jarak antar opsi
+     * terlihat renggang di PDF.
      */
     public function textWidthMm(string $text, float $fontPt): float
     {
-        $path = LjkPdfFonts::faces()['normal'] ?? null;
+        // Teks Arab diukur dengan font Arab, sisanya dengan font Latin.
+        $path = LjkArabicText::hasArabic($text)
+            ? (LjkPdfFonts::arabicFontPath() ?? LjkPdfFonts::faces()['normal'] ?? null)
+            : (LjkPdfFonts::faces()['normal'] ?? null);
 
         if (! $path || ! is_file($path) || ! function_exists('imagettfbbox')) {
             return $this->estimateWidthMm($text, $fontPt);

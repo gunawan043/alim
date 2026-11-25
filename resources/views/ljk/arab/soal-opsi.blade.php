@@ -18,8 +18,8 @@
     //
     // Dompdf menambahkan padding DI LUAR `width`, jadi LF + IF harus dihitung
     // agar nol (N opsi tepat memenuhi lebar area opsi).
-    $labelMm = 6.0;   // lebar kolom label (huruf + titik)
-    $gapMm = 1.6;     // jarak tetap antara label dan isi
+    $labelMm = 5.0;   // lebar kolom label (huruf + titik)
+    $gapMm = 1.2;     // jarak tetap antara label dan isi
 @endphp
 @if(! empty($block['opsi']))
     @if($opsiLayout && ! empty($opsiLayout['rows']))
@@ -31,26 +31,62 @@
                 ? (float) $opsiWidthMm
                 : 157.58;
 
-            // Satu "unit opsi" = kolom label + kolom isi.
-            $unitMm = $lebarMm / $kolom;
-
-            // Lebar kolom isi = unit dikurangi label dan jarak.
+            // ── Lebar kolom isi mengikuti TEKS TERPANJANG, bukan dibagi rata ──
             //
-            // Dibulatkan ke bawah TAPI sisa pembulatan dikompensasi di sini:
-            // jumlah semua kolom harus tepat sama dengan lebar tabel. Bila
-            // tiap kolom dibulatkan sendiri-sendiri, sisa 2 desimal per kolom
-            // hilang (mis. 4 x 0.3 mm = 1.2 mm) dan tabel menyusut sehingga
-            // kolom terakhir tidak sejajar dengan baris lain.
-            $isiMm = round(max(1.0, $unitMm - $labelMm - $gapMm), 2);
+            // Membagi rata area opsi (155 / 4 = 38.75 mm per unit) membuat
+            // kolom isi 31.15 mm walau teksnya hanya "بَيْتٌ" (≈ 10 mm).
+            // Akibatnya teks pendek terpisah jauh dari labelnya dan jarak
+            // antar opsi terlihat renggang. Di sini lebar isi dihitung dari
+            // teks terpanjang + ruang aman, lalu DIPAKU untuk semua kolom
+            // supaya grid tetap lurus.
+            $meter = app(\App\Services\Evaluasi\SoalOpsiLayout::class);
+            $fontOpsi = (float) ($fontSize ?? 11);
 
-            // Sisa yang belum terpakai (akibat pembulatan 2 desimal per kolom)
-            // ditambahkan ke kolom isi terakhir agar total seluruh kolom
-            // TEPAT sama dengan lebar tabel. Tanpa ini tabel menyusut
-            // beberapa milimeter dan kolom paling kiri tidak sejajar dengan
-            // baris opsi lain.
-            $totalMm = round($lebarMm, 2);
+            // Diukur DUA kali: bentuk logis (muat? tepat?) dan bentuk VISUAL
+            // (seberapa lebar teks benar-benar tercetak?). Naskah Arab di-shape
+            // lebih dulu sehingga bentuk visual memakai presentation form dan
+            // jauh lebih pendek dari teks sumber ber-harakat.
+            $terpanjangLogisMm = 0.0;
+            $terpanjangVisualMm = 0.0;
+            foreach ($block['opsi'] as $o) {
+                $teks = (string) ($o['teks'] ?? '');
+                $terpanjangLogisMm = max($terpanjangLogisMm, $meter->textWidthMm($teks, $fontOpsi));
+
+                if ($rtl && $teks !== '') {
+                    $visual = html_entity_decode(strip_tags(LjkArabicText::marksToHtml($teks)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $terpanjangVisualMm = max($terpanjangVisualMm, $meter->textWidthMm($visual, $fontOpsi));
+                }
+            }
+            if ($terpanjangVisualMm <= 0.0) {
+                $terpanjangVisualMm = $terpanjangLogisMm;
+            }
+
+            // Ruang aman: teks tidak boleh menyentuh label opsi berikutnya.
+            $ruangAmanMm = 1.8;
+            $butuhMm = $labelMm + $gapMm + $terpanjangLogisMm + $ruangAmanMm;
+
+            // Bila teks terpanjang masih muat dalam satu unit area opsi,
+            // pakai ukuran seperlunya. Bila tidak, kembali ke pembagian rata
+            // (teks akan dilipat atau di-nowrap sesuai `wrap`).
+            $unitMm = $lebarMm / $kolom;
+            $isiMm = $butuhMm <= $unitMm
+                ? round($terpanjangVisualMm + $ruangAmanMm, 2)
+                : round(max(1.0, $unitMm - $labelMm - $gapMm), 2);
+
+            // Lebar tabel = jumlah kolom yang benar-benar dipakai. Bila isi
+            // lebih sempit dari pembagian rata, tabel TIDAK direntangkan ke
+            // seluruh area — ia rapat ke tepi kanan dan sisa ruang dibiarkan
+            // kosong di kiri, sehingga jarak antar opsi tetap wajar.
+            $totalMm = round(($labelMm + $gapMm + $isiMm) * $kolom, 2);
+
+            // Tabel mengikuti isinya. TIDAK dibatasi `lebarMm`: batas itu
+            // memotong sisa pembulatan kolom sehingga teks terpanjang (yang
+            // muat berdasarkan ukuran logis) bisa berdesakan dengan label.
+            // Lebar maksimum sudah dijaga oleh `$unitMm` di atas.
+
+            // Sisa pembulatan diserap kolom isi terakhir agar tidak menyusut.
             $terpakaiMm = ($labelMm + $gapMm + $isiMm) * $kolom;
-            $isiTerakhirMm = round($isiMm + max(0.0, $totalMm - $terpakaiMm), 2);
+            $isiTerakhirMm = round($isiMm + ($totalMm - $terpakaiMm), 2);
 
             $align = $rtl ? 'right' : 'left';
             $labelAlign = $rtl ? 'right' : 'left';
