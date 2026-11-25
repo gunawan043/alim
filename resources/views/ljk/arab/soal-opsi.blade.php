@@ -30,65 +30,45 @@
                 ? (float) $opsiWidthMm
                 : 157.58;
 
-            // ── Satu grup opsi = satu pasangan sel, dirapatkan ke KANAN ──
+            // ── Tiap opsi = satu sel, label menempel langsung ─────────────
             //
-            // Tiap grup adalah | isi opsi | .label | — label selalu menempel
-            // ke kanan isi, dan seluruh baris dirapatkan ke tepi kanan area
-            // opsi. Lebar sel isi TIDAK dihitung per soal: nilainya datang
-            // dari service (`$opsiCellMm`) yang menurunkannya dari ukuran
-            // font, sehingga setiap soal memakai lebar identik dan label
-            // ا/ب/ج/د tidak bergeser antar soal.
+            // Bentuk cetak: "طَوِيلٌ .ا". Sel opsi TIDAK diberi lebar mm,
+            // karena `table-layout: auto` akan memberi sel sebesar teksnya
+            // sendiri — celah antara kata pendek dan labelnya jadi nol.
+            // Memberi lebar tetap membuat teks pendek berakhir jauh di kiri
+            // labelnya (keluhan "jarak antar opsi masih jauh").
+            //
+            // Lebar yang dipakai sama untuk semua soal adalah LEBAR LABEL
+            // (dari ukuran font), bukan lebar teks opsi — jadi posisi label
+            // ا/ب/ج/د tetap segaris dari soal pertama hingga terakhir.
             $fontOpsi = (float) ($fontSize ?? 11);
-
-            // Satuan relatif: semua ukuran mengikuti ukuran font soal.
-            // `table.opts td` memakai mm/em yang tetap untuk lebar, jadi
-            // nilainya dihitung di sini (1 em ≈ 0,35 mm per pt pada 96 dpi).
-            $ptMm = 25.4 / 72;                       // 1 pt dalam mm
-            $labelMm = round($fontOpsi * $ptMm * 1.6, 2);  // kolom huruf + titik
-            $gapMm = round($fontOpsi * $ptMm * 0.35, 2);   // jarak label→isi
-
-            if (isset($opsiCellMm) && $opsiCellMm > 0) {
-                $isiMm = round((float) $opsiCellMm, 2);
-            } else {
-                // LJK/paket: tidak ada lebar bersama, pakai rumus yang sama
-                // dari ukuran font agar hasilnya tetap seragam per dokumen.
-                $isiMm = round(min($fontOpsi * 1.22, $lebarMm / 4), 2);
-            }
-
-            // Kolom per baris: muat bila seluruh grup selebar $isiMm + label
-            // masih masuk area opsi.
-            $unitPerGrupMm = $isiMm + $labelMm + $gapMm;
-            $muatPerBaris = max(1, (int) floor($lebarMm / max(1.0, $unitPerGrupMm)));
-            $kolomBaris = max(1, min($kolom, $muatPerBaris));
+            $ptMm = 25.4 / 72;                              // 1 pt dalam mm
+            $labelMm = round($fontOpsi * $ptMm * 1.7, 2);   // huruf + titik
+            $gapMm = round($fontOpsi * $ptMm * 0.35, 2);    // kata → label
+            $antarMm = round($fontOpsi * $ptMm * 0.6, 2);   // label → opsi berikut
 
             $align = $rtl ? 'right' : 'left';
-
             $whiteSpace = ! empty($opsiLayout['wrap']) ? 'normal' : 'nowrap';
         @endphp
-        {{-- RTL: label di KANAN isi, seluruh baris dirapatkan ke tepi kanan.
-             LTR: label di KIRI isi, baris dirapatkan ke kiri.
-             Tidak ada spasi manual — posisi diatur lebar sel (mm). --}}
-        <table class="opts opts-grid {{ $rtl ? 'rtl' : 'ltr' }}" style="width: {{ round($lebarMm, 2) }}mm;" cellspacing="0" cellpadding="0">
+        {{-- RTL: teks lalu label (label di kanan teks), dirapatkan ke kanan.
+             LTR: label lalu teks, dirapatkan ke kiri. --}}
+        <table class="opts opts-grid {{ $rtl ? 'rtl-exam' : 'ltr' }}" cellspacing="0" cellpadding="0">
             <tr>
                 @foreach($opsiLayout['rows'] as $row)
                     @foreach($row as $cell)
                         @php
                             $opsi = $block['opsi'][$cell['index']] ?? null;
                             $label = $opsi ? ($opsi['display_label'] ?? $opsi['label']) : '';
+                            $teks = $opsi ? LjkArabicText::marksToHtml($opsi['teks']) : '&nbsp;';
+                            $marker = $opsi ? LjkArabicText::optionMarkerRtl($label) : '&nbsp;';
                         @endphp
                         @if($rtl)
-                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: right; white-space: {{ $whiteSpace }}; padding: 0;">
-                                @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
-                            </td>
-                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: right; padding: 0 0 0 {{ $gapMm }}mm;">
-                                @if($opsi)<span class="letter letter-ar">{!! LjkArabicText::optionMarkerRtl($label) !!}</span>@else&nbsp;@endif
+                            <td class="col-opsi" style="text-align: right; white-space: {{ $whiteSpace }}; padding: 0 0 0 {{ $antarMm }}mm;">
+                                {!! $teks !!}<span class="letter letter-ar" style="margin-right: {{ $gapMm }}mm;">{!! $marker !!}</span>
                             </td>
                         @else
-                            <td class="col-label" style="width: {{ $labelMm }}mm; text-align: left; padding: 0 {{ $gapMm }}mm 0 0;">
-                                @if($opsi)<span class="letter">{!! LjkArabicText::marksToHtml($label) !!}.</span>@else&nbsp;@endif
-                            </td>
-                            <td class="col-isi" style="width: {{ $isiMm }}mm; text-align: left; white-space: {{ $whiteSpace }}; padding: 0;">
-                                @if($opsi){!! LjkArabicText::marksToHtml($opsi['teks']) !!}@else&nbsp;@endif
+                            <td class="col-opsi" style="text-align: left; white-space: {{ $whiteSpace }}; padding: 0 {{ $antarMm }}mm 0 0;">
+                                <span class="letter" style="margin-right: {{ $gapMm }}mm;">{!! LjkArabicText::marksToHtml($label) !!}.</span>{!! $teks !!}
                             </td>
                         @endif
                     @endforeach

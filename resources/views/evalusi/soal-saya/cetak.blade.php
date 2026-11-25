@@ -585,13 +585,21 @@
             <form method="POST" id="editSoalForm">
                 @csrf
                 @method('PUT')
+                {{-- Kembali ke halaman ini DENGAN filter yang sama, supaya
+                     daftar soal terpilih dan pratinjau tidak kembali ke
+                     "semua soal" setelah menyimpan. --}}
+                <input type="hidden" name="kembali" id="editSoalKembali" value="{{ url()->full() }}">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Edit soal</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="alert alert-danger py-2 small" id="editSoalError" hidden></div>
+                        {{-- Galat validasi / aturan bisnis ditampilkan di dalam
+                             modal, bukan lempar guru ke halaman lain. --}}
+                        <div class="alert alert-danger py-2 small mb-3" id="editSoalError" @if(! session('error')) hidden @endif>
+                            {{ session('error') }}
+                        </div>
 
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Pertanyaan</label>
@@ -841,6 +849,12 @@
             var errBox = document.getElementById('editSoalError');
             var opsiWrap = document.getElementById('editOpsiWrap');
             var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+            // Galat simpan sebelumnya (mis. kunci jawaban salah) tampil di
+            // modal yang sama agar guru bisa langsung memperbaiki.
+            if (errBox && !errBox.hidden && errBox.textContent.trim() !== '') {
+                modal.show();
+            }
 
             function esc(v) {
                 return String(v == null ? '' : v)

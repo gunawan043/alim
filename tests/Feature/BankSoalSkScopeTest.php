@@ -963,13 +963,19 @@ class BankSoalSkScopeTest extends TestCase
         $this->assertMatchesRegularExpression('/\d{1,2} \p{L}+ \d{4}/u', $latin);
     }
 
-    public function test_opsi_arab_memakai_kolom_label_dan_isi_terpisah(): void
+    public function test_opsi_arab_teks_menempel_label_dan_rata_kanan(): void
     {
-        // Struktur grid: setiap opsi = <td class="col-label"> + <td class="col-isi">,
-        // keduanya berlebar TETAP dalam mm (bukan spasi manual). Dengan ini
-        // label berdiri di satu garis vertikal, awal teks setiap opsi mulai
-        // pada x yang sama, dan jarak label→isi konsisten.
-        $soal = $this->makeSoal(); // helper test ini: bikin soal arab A–D
+        // Keluhan nyata: "jarak antar opsi dan keterangan opsi masih sangat
+        // jauh". Penyebabnya sel isi diberi lebar tetap sebesar teks
+        // terpanjang, sehingga kata pendek berakhir jauh di kiri labelnya.
+        // Perbaikan: satu sel per opsi tanpa lebar mm (table-layout: auto),
+        // label menempel langsung pada teksnya.
+        $soal = $this->makeSoal();
+        $soal->update(['bahasa' => 'arab', 'pertanyaan' => 'مَا ضِدُّ «كَبِيرٌ»؟']);
+        $soal->bankSoal->update(['bahasa' => 'arab']);
+        foreach ($soal->options()->orderBy('urutan')->get() as $i => $o) {
+            $o->update(['teks_opsi' => ['طَوِيلٌ', 'جَمِيلٌ', 'صَغِيرٌ', 'قَرِيبٌ'][$i]]);
+        }
 
         $html = app(SoalNaskahPdfService::class)->html(
             Soal::with(['bankSoal.subject', 'bankSoal.gradeLevel', 'options', 'wacana'])
@@ -979,55 +985,24 @@ class BankSoalSkScopeTest extends TestCase
             ['font_size' => 11, 'option_columns' => 0, 'bahasa' => 'arab']
         );
 
-        $this->assertStringContainsString('class="opts opts-grid', $html, 'Naskah memakai grid kolom eksplisit.');
-
-        // Domain label & isi diekstrak dari tabel grid pertama.
-        $this->assertSame(1, preg_match('/<table class="opts opts-grid[^"]*" style="width: ([\d.]+)mm;"[^>]*>(.*?)<\/table>/s', $html, $t));
-        $lebarTabel = (float) $t[1];
-
-        preg_match_all('/<td class="col-label" style="width: ([\d.]+)mm/', $t[2], $labelMm);
-        preg_match_all('/<td class="col-isi" style="width: ([\d.]+)mm/', $t[2], $isiMm);
-        preg_match_all('/<td class="col-label"[^>]*padding: 0 0 0 ([\d.]+)mm/', $t[2], $gapMm);
-
-        $this->assertNotEmpty($labelMm[1], 'Ada kolom label.');
-        $this->assertNotEmpty($isiMm[1], 'Ada kolom isi.');
-
-        // 1) Semua label berlebar sama; semua isi berlebar sama.
-        $this->assertCount(1, array_unique($labelMm[1]), 'Lebar semua kolom label identik.');
-        $this->assertCount(1, array_unique($isiMm[1]), 'Lebar semua kolom isi identik.');
-
-        // 2) Jarak label→isi satu nilai (tidak ada spasi manual yang bervariasi).
-        $this->assertCount(1, array_unique($gapMm[1]), 'Jarak label→isi konsisten.');
-
-        // 3) Lebar kolom isi SEHAT: cukup untuk opsi terpanjang, tetapi tidak
-        //    membengkak. Model lama memaku isi = teks terpanjang untuk semua
-        //    soal; model baru memakai teks terpanjang + ruang aman 2 mm.
-        //    Batas atas mencegah kembalinya jarak renggang yang dikeluhkan.
-        $isiSumMax = 0.0;
-        foreach ($soal->options as $o) {
-            $isiSumMax = max($isiSumMax, mb_strlen((string) $o->teks_opsi));
-        }
-        $isiMm1 = (float) $isiMm[1][0];
-        $this->assertGreaterThan(0.0, $isiMm1, 'Kolom isi punya lebar positif.');
-        $this->assertLessThanOrEqual(
-            $lebarTabel / max(1, count($isiMm[1])),
-            $isiMm1 + 0.01,
-            'Kolom isi tidak melebihi porsi rata-rata area opsi.'
+        $this->assertMatchesRegularExpression(
+            '/<table class="opts opts-grid rtl-exam"/',
+            $html,
+            'Tabel opsi RTL dirapatkan ke tepi kanan.'
         );
 
-        // 4) Total lebar sel + jarak tidak melebihi lebar tabel (grid tetap
-        //    utuh, tidak meluber ke margin kiri).
-        $total = array_sum(array_map('floatval', $labelMm[1]))
-            + array_sum(array_map('floatval', $isiMm[1]))
-            + array_sum(array_map('floatval', $gapMm[1]));
+        // Satu sel per opsi: tidak ada lagi kolom label/isi terpisah yang
+        // membuat celah lebar.
+        $this->assertStringNotContainsString('col-label', $html);
+        $this->assertStringNotContainsString('col-isi', $html);
 
-        $this->assertLessThanOrEqual($lebarTabel + 0.05, $total, 'Total kolom tidak melebihi lebar tabel.');
+        // Label menempel pada teks lewat margin kecil (bukan spasi manual).
+        $this->assertMatchesRegularExpression(
+            '/class="letter letter-ar" style="margin-right: [\d.]+mm;"/',
+            $html,
+            'Label opsi menempel pada teksnya dengan jarak kecil.'
+        );
 
-        // 5) Rata KANAN: tabel opsi memakai class rtl sehingga barisnya
-        //    dirapatkan ke tepi kanan area naskah.
-        $this->assertMatchesRegularExpression('/<table class="opts opts-grid rtl"/', $html, 'Tabel opsi RTL dirapatkan ke kanan.');
-
-        // 6) Tidak ada spasi manual (&nbsp; beruntun) untuk mengatur posisi.
         $this->assertStringNotContainsString('&nbsp;&nbsp;', $html, 'Posisi tidak diatur dengan spasi manual.');
     }
 
@@ -2460,6 +2435,50 @@ class BankSoalSkScopeTest extends TestCase
         $this->actingAs($this->guru)
             ->getJson("/{$lain->id}/soal-saya/{$soal->id}/json")
             ->assertForbidden();
+    }
+
+    public function test_edit_soal_kembali_ke_cetak_dengan_filter_sama(): void
+    {
+        // Regresi: setelah simpan, guru terlempar ke /soal-saya/cetak tanpa
+        // query, sehingga daftar kembali ke semua soal dan soal yang baru
+        // diedit tampak hilang dari pilihan.
+        $soal = $this->makeSoal();
+
+        $kembali = "/{$this->guru->id}/soal-saya/cetak?bank_id={$soal->bank_soal_id}&judul=NASKAH&ids%5B%5D={$soal->id}";
+
+        $this->actingAs($this->guru)
+            ->put("/{$this->guru->id}/soal-saya/{$soal->id}", [
+                'pertanyaan' => 'Berapakah hasil dari 12 x 5?',
+                'tingkat_kesulitan_estimasi' => 'mudah',
+                'options' => [
+                    ['label' => 'A', 'teks_opsi' => '60'],
+                    ['label' => 'B', 'teks_opsi' => '50'],
+                ],
+                'correct_label' => 'A',
+                'kembali' => $kembali,
+            ])
+            ->assertRedirect($kembali);
+    }
+
+    public function test_edit_soal_menolak_url_kembali_di_luar_halaman_cetak(): void
+    {
+        // Nilai `kembali` datang dari form, jadi tidak boleh dipakai sebagai
+        // open redirect ke domain/situs lain.
+        $soal = $this->makeSoal();
+
+        $response = $this->actingAs($this->guru)
+            ->put("/{$this->guru->id}/soal-saya/{$soal->id}", [
+                'pertanyaan' => 'Soal uji.',
+                'tingkat_kesulitan_estimasi' => 'mudah',
+                'options' => [
+                    ['label' => 'A', 'teks_opsi' => '1'],
+                    ['label' => 'B', 'teks_opsi' => '2'],
+                ],
+                'correct_label' => 'A',
+                'kembali' => 'https://situs-jahat.example/phish',
+            ]);
+
+        $response->assertRedirect(route('user.soal-saya.cetak', ['userId' => $this->guru->id]));
     }
 
     private function makeSoal(): Soal

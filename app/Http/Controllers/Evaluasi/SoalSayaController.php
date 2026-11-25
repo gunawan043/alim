@@ -244,6 +244,7 @@ class SoalSayaController extends Controller
             'tingkat_kesulitan_estimasi' => 'required|in:mudah,sedang,sulit',
             'waktu_estimasi_menit' => 'nullable|integer|min:1|max:120',
             'correct_label' => 'nullable|string|max:2',
+            'kembali' => 'nullable|string|max:4000',
             'options' => 'nullable|array',
             'options.*.label' => 'nullable|string|max:2',
             'options.*.teks_opsi' => 'nullable|string|max:1000',
@@ -291,8 +292,7 @@ class SoalSayaController extends Controller
             }
         });
 
-        return redirect()
-            ->route('user.soal-saya.cetak', ['userId' => $userId])
+        return $this->kembaliKeCetak($request, $userId)
             ->with('success', 'Soal berhasil diperbarui.');
     }
 
@@ -311,6 +311,47 @@ class SoalSayaController extends Controller
         abort_unless(in_array($soal->bank_soal_id, $bankIds, true), 403, 'Anda tidak memiliki akses ke soal ini.');
 
         return $soal;
+    }
+
+    /**
+     * Kembali ke halaman cetak DENGAN filter yang sama seperti sebelumnya.
+     *
+     * Tanpa query asli (bank, judul, daftar soal terpilih), guru terlempar ke
+     * halaman cetak tanpa filter: daftar kembali ke semua soal di bank dan
+     * soal yang barusan diedit tampak "hilang" dari pilihan.
+     */
+    private function kembaliKeCetak(Request $request, string $userId): \Illuminate\Http\RedirectResponse
+    {
+        $kembali = trim((string) $request->input('kembali', ''));
+        $url = $this->urlKembaliValid($kembali);
+
+        if ($url !== null) {
+            return redirect()->to($url);
+        }
+
+        return redirect()->route('user.soal-saya.cetak', ['userId' => $userId]);
+    }
+
+    /**
+     * Hanya terima URL kembali yang menunjuk halaman cetak guru ini.
+     * Mencegah open redirect: nilai ini datang dari form.
+     */
+    private function urlKembaliValid(string $kembali): ?string
+    {
+        if ($kembali === '') {
+            return null;
+        }
+
+        $path = parse_url($kembali, PHP_URL_PATH) ?? '';
+
+        if (! str_contains($path, '/soal-saya/cetak')) {
+            return null;
+        }
+
+        // Path relatif lebih aman daripada URL absolut kiriman klien.
+        $query = parse_url($kembali, PHP_URL_QUERY);
+
+        return $query ? $path.'?'.$query : $path;
     }
 
     /**
