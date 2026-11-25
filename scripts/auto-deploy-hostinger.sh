@@ -54,7 +54,12 @@ sleep "${ALIM_DEPLOY_DELAY:-8}"
 # Periksa dulu worktree server; bila kotor, batalkan sebelum satu byte pun
 # terkirim. Tidak ada override lewat environment — sama seperti deploy.sh.
 # -----------------------------------------------------------------------------
-REMOTE_DIRTY="$(${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && git status --porcelain | wc -l" 2>/dev/null | tr -d '[:space:]')"
+REMOTE_DIRTY_LIST="$(${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && git status --porcelain" 2>/dev/null)"
+
+# public/.htaccess sengaja berbeda di server: berisi handler PHP 8.4 yang
+# ditambahkan alim-deploy-live.sh setelah git reset. Berkas ini dikecualikan
+# dari hitungan, dan handler-nya dipasang ulang setelah rsync.
+REMOTE_DIRTY="$(printf '%s\n' "${REMOTE_DIRTY_LIST}" | grep -v -e '^ *[MADRCU?!][MADRCU?!]* public/\.htaccess$' -e '^$' | wc -l | tr -d '[:space:]')"
 
 if [ -z "${REMOTE_DIRTY}" ]; then
     log "ERROR: gagal membaca status worktree server; deploy dibatalkan (tidak bisa memverifikasi keamanan)."
@@ -156,6 +161,9 @@ fi
 
 # Jaring pengaman: docroot harus 755 agar web server bisa menembusnya.
 ${SSH_CMD} "${REMOTE_ALIAS}" "chmod 755 ${REMOTE_APP}" >>"${LOG_FILE}" 2>&1 || true
+
+log "rsync selesai; memasang ulang handler PHP 8.4 di public/.htaccess..."
+${SSH_CMD} "${REMOTE_ALIAS}" "cd ${REMOTE_APP} && printf '\n# ALIM: use PHP 8.4 (required by composer.lock)\nAddHandler application/x-httpd-php84 .php\n' >> public/.htaccess" >>"${LOG_FILE}" 2>&1 || true
 
 log "rsync selesai; menjalankan deploy di server..."
 ${SSH_CMD} "${REMOTE_ALIAS}" "bash ${REMOTE_DEPLOY}" >>"${LOG_FILE}" 2>&1
