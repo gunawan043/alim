@@ -971,10 +971,13 @@ class User extends Authenticatable
     /**
      * Batas asrama untuk data mahrom.
      *
-     * Mengikuti menu Data Santri: user asrama melihat SELURUH santri yang
+     * Mengikuti menu Data Santri: user asrama melihat seluruh santri yang
      * mondok, bukan hanya asrama yang ditugaskan padanya. Sebelumnya cakupan
      * diambil dari penugasan asrama, sehingga user yang belum punya
      * penugasan tidak melihat satu data pun dan tidak dapat mengedit mahrom.
+     *
+     * UKS tetap dibatasi sektor: Staf/Admin UKS Putra hanya asrama putra,
+     * Putri hanya asrama putri, Kepala UKS semua.
      *
      * null berarti tanpa batas asrama.
      *
@@ -982,15 +985,50 @@ class User extends Authenticatable
      */
     public function mahromDormitoryScope(): ?array
     {
-        if (! $this->isDormitoryUser()) {
+        if (! $this->isDormitoryUser() && ! $this->hasRole('UKS')) {
             return null;
         }
 
-        $ids = Dormitory::query()
-            ->where('is_active', true)
-            ->pluck('id')
-            ->all();
+        $query = Dormitory::query()->where('is_active', true);
 
-        return $ids === [] ? [] : $ids;
+        // Role UKS tidak membawa sektor; sektornya dibaca dari jabatan & tugas.
+        if ($this->hasRole('UKS') && ! $this->isDormitoryUser()) {
+            $sektor = $this->uksSector();
+
+            if ($sektor !== null) {
+                $query->whereIn('gender', [$sektor, 'campuran']);
+            }
+        }
+
+        return $query->pluck('id')->all();
+    }
+
+    /**
+     * Sektor UKS user: 'putra', 'putri', atau null (Kepala/tanpa sektor).
+     */
+    public function uksSector(): ?string
+    {
+        $sumber = mb_strtolower(
+            implode(' ', $this->effectiveRoles()).' '.($this->employment?->jabatan ?? '')
+        );
+
+        foreach (GtkAdditionalTask::query()
+            ->where('user_id', $this->id)
+            ->where(function ($q) {
+                $q->whereNull('tst')->orWhereDate('tst', '>=', today());
+            })
+            ->pluck('nama_tugas') as $tugas) {
+            $sumber .= ' '.mb_strtolower((string) $tugas);
+        }
+
+        if (str_contains($sumber, 'putri')) {
+            return 'putri';
+        }
+
+        if (str_contains($sumber, 'putra')) {
+            return 'putra';
+        }
+
+        return null;
     }
 }

@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\Dormitory;
+use App\Models\GtkAdditionalTask;
 use App\Models\DormitoryResident;
 use App\Models\School;
 use App\Models\Student;
@@ -173,6 +174,73 @@ class MahromAksesAsramaTest extends TestCase
                 'mahromUuid' => $mahrom->id,
             ]))
             ->assertNotFound();
+    }
+
+
+    public function test_uks_putra_hanya_melihat_asrama_putra(): void
+    {
+        $asramaPutri = Dormitory::create([
+            'id' => (string) Str::uuid(),
+            'work_unit_id' => $this->dormitory->work_unit_id,
+            'school_id' => $this->school->id,
+            'code' => 'D-MA-2',
+            'name' => 'Asrama Putri Uji',
+            'gender' => 'putri',
+            'is_active' => true,
+        ]);
+
+        $userUks = User::factory()->create(['is_active' => true]);
+        $userUks->assignRole('UKS');
+
+        GtkAdditionalTask::create([
+            'user_id' => $userUks->id,
+            'nama_tugas' => 'Staf UKS Putra',
+            'tmt' => now()->toDateString(),
+        ]);
+
+        $sektor = $userUks->uksSector();
+        $this->assertSame('putra', $sektor);
+        $this->assertSame([$this->dormitory->id], $userUks->mahromDormitoryScope());
+
+        // Kepala UKS (tanpa sektor) melihat semua asrama.
+        $kepala = User::factory()->create(['is_active' => true]);
+        $kepala->assignRole('UKS');
+        GtkAdditionalTask::create([
+            'user_id' => $kepala->id,
+            'nama_tugas' => 'Kepala UKS',
+            'tmt' => now()->toDateString(),
+        ]);
+
+        $this->assertNull($kepala->uksSector());
+        $this->assertCount(2, $kepala->mahromDormitoryScope());
+        $this->assertContains($asramaPutri->id, $kepala->mahromDormitoryScope());
+    }
+
+    public function test_uks_tetap_terbatas_tidak_lintas_sektor(): void
+    {
+        Dormitory::create([
+            'id' => (string) Str::uuid(),
+            'work_unit_id' => $this->dormitory->work_unit_id,
+            'school_id' => $this->school->id,
+            'code' => 'D-MA-3',
+            'name' => 'Asrama Putri Lain',
+            'gender' => 'putri',
+            'is_active' => true,
+        ]);
+
+        $userUks = User::factory()->create(['is_active' => true]);
+        $userUks->assignRole('UKS');
+        GtkAdditionalTask::create([
+            'user_id' => $userUks->id,
+            'nama_tugas' => 'Admin UKS Putra',
+            'tmt' => now()->toDateString(),
+        ]);
+
+        $scope = $userUks->mahromDormitoryScope();
+
+        // Tidak boleh null: null berarti seluruh sistem (5.980 mahrom).
+        $this->assertNotNull($scope);
+        $this->assertSame([$this->dormitory->id], $scope);
     }
 
     public function test_non_asrama_tidak_terpengaruh_aturan_asrama(): void
