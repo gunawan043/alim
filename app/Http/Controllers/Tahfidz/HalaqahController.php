@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GtkEmployment;
+use App\Models\OtherTeacherTask;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudentClassHistory;
@@ -20,11 +21,13 @@ use App\Models\TahfidzSchedule;
 use App\Models\TahfidzProgressRecap;
 use App\Models\TahfidzStudentTarget;
 use App\Models\User;
+use App\Services\SchoolGroupService;
 use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
 use App\Services\TahfidzTargetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class HalaqahController extends Controller
@@ -232,6 +235,95 @@ class HalaqahController extends Controller
 
         return redirect()->route('user.tahfidz.halaqah.show', ['userId' => $userId, 'id' => $group->id])
             ->with('success', 'Halaqah diperbarui.'.$this->memberSummary($members));
+    }
+
+    /**
+     * Santri yang dapat ditarik ke halaqah, disaring seperti daftar santri
+     * pada rombel: satu sekolah, aktif, dan belum anggota halaqah ini.
+     * Santri yang sudah ada di halaqah lain tetap tampil karena akan dipindah.
+     *
+     * @return array<int, array{id: string, name: string, nis: ?string, nisn: ?string, class_name: ?string, group_name: ?string}>
+     */
+    public function availableStudents(Request $request, string $userId, string $id)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeGroupManage($request, $group);
+
+        $query = Student::query()
+            ->where('school_id', $group->school_id)
+            ->where('status', 'active')
+            ->with(['currentClassHistory.studyGroup:id,name,grade_level_id'])
+            ->orderBy('name');
+
+        if ($request->filled('q')) {
+            $term = '%'.trim((string) $request->input('q')).'%';
+            $query->where(fn ($q) => $q->where('name', 'like', $term)
+                ->orWhere('nis', 'like', $term)
+                ->orWhere('nisn', 'like', $term));
+        }
+
+        $alreadyIn = TahfidzGroupMember::query()
+            ->where('tahfidz_group_id', $group->id)
+            ->where('academic_year_id', $group->academic_year_id)
+            ->where('status', 'aktif')
+            ->pluck('student_id')
+            ->all();
+
+        $otherGroups = TahfidzGroupMember::query()
+            ->where('academic_year_id', $group->academic_year_id)
+            ->where('status', 'aktif')
+            ->where('tahfidz_group_id', '!=', $group->id)
+            ->with('group:id,name')
+            ->get()
+            ->keyBy('student_id');
+
+        $rows = $query->limit(600)->get(['id', 'name', 'nis', 'nisn'])
+            ->reject(fn ($student) => in_array($student->id, $alreadyIn, true))
+            ->map(fn ($student) => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'nis' => $student->nis,
+                'nisn' => $student->nisn,
+                'class_name' => $student->currentClassHistory?->studyGroup?->name,
+                'group_name' => $otherGroups->get($student->id)?->group?->name,
+            ])
+            ->values();
+
+        return response()->json(['data' => $rows, 'total' => $rows->count()]);
+    }
+
+    /**
+     * Tarik santri terpilih ke halaqah. Santri dari halaqah lain dipindahkan,
+     * dan santri yang tingkatnya tidak sesuai ditolak dengan penjelasan.
+     */
+    public function pullStudents(Request $request, string $userId, string $id)
+    {
+        $group = TahfidzGroup::findOrFail($id);
+        $this->authorizeGroupManage($request, $group);
+
+        $validated = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'exists:students,id',
+        ], [
+            'student_ids.required' => 'Pilih minimal satu santri.',
+        ]);
+
+        $result = $this->attachMembers($group, $validated['student_ids']);
+
+        if ($result['added'] === 0 && $result['moved'] === 0) {
+            $reason = ($result['grade_mismatch'] ?? 0) > 0
+                ? 'Santri yang dipilih berasal dari tingkat berbeda. Halaqah ini untuk '
+                    .($group->gradeLevel?->name ?? 'satu tingkat').' — ubah Kelas halaqah atau pilih santri lain.'
+                : 'Tidak ada santri baru yang ditambahkan.'.$this->memberSummary($result);
+
+            return response()->json(['success' => false, 'message' => $reason], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Santri masuk halaqah.'.$this->memberSummary($result),
+            'result' => $result,
+        ]);
     }
 
     public function addMembers(Request $request, string $userId, string $id)
@@ -715,12 +807,18 @@ class HalaqahController extends Controller
             return collect();
         }
 
+        // GTK satuan pendidikan dibaca lewat SchoolGroupService: di data nyata
+        // gtk_employments.school_id sering kosong dan keanggotaan sekolah hanya
+        // tercatat di penempatan unit kerja (gtk_work_unit). Membaca
+        // gtk_employments.sendiri membuat semua guru terlihat "tidak terdaftar".
+        $schoolGtkIds = SchoolGroupService::gtkUserIdsForSchool($schoolId);
+
         $ids = collect();
 
-        // 1) Jabatan kepegawaian di sekolah ini bernuansa tahfidz.
+        // 1) Jabatan kepegawaian bernuansa tahfidz pada GTK sekolah ini.
         $ids = $ids->merge(
             GtkEmployment::query()
-                ->where('school_id', $schoolId)
+                ->whereIn('user_id', $schoolGtkIds)
                 ->where(function ($q) {
                     $q->where('jabatan', 'like', '%tahfidz%')
                         ->orWhere('jabatan', 'like', '%tahfiz%')
@@ -729,16 +827,30 @@ class HalaqahController extends Controller
                 ->pluck('user_id')
         );
 
-        // 2) Role / tugas tambahan tahfidz, tetap dibatasi pada GTK sekolah ini.
+        // 2) Role atau tugas tambahan (SK) tahfidz pada GTK sekolah ini.
         $ids = $ids->merge(
             User::query()
-                ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+                ->whereIn('id', $schoolGtkIds)
                 ->where(function ($q) {
                     $q->whereHas('roles', fn ($r) => $r->where('name', 'like', '%Tahfidz%')->orWhere('name', 'like', '%Tahfiz%')->orWhere('name', 'like', '%Musyrif%'))
                         ->orWhereHas('tugasTambahan', fn ($t) => $t->where('nama_tugas', 'like', '%Tahfidz%')->orWhere('nama_tugas', 'like', '%Tahfiz%')->orWhere('nama_tugas', 'like', '%Musyrif%'));
                 })
                 ->pluck('id')
         );
+
+        // 2b) Penugasan dari matriks SK (Other Teacher Tasks) — sekolahnya
+        //     dicocokkan lewat kolom school_id, bukan kepegawaian.
+        if (Schema::hasTable('other_teacher_tasks')) {
+            $ids = $ids->merge(
+                OtherTeacherTask::query()
+                    ->where('school_id', $schoolId)
+                    ->where('is_active', true)
+                    ->where(fn ($q) => $q->where('task_name', 'like', '%Tahfidz%')
+                        ->orWhere('task_name', 'like', '%Tahfiz%')
+                        ->orWhere('task_name', 'like', '%Musyrif%'))
+                    ->pluck('teacher_id')
+            );
+        }
 
         // 3) Sudah mengampu halaqah di sekolah ini.
         $ids = $ids->merge(

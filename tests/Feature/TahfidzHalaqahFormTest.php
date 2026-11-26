@@ -326,6 +326,95 @@ class TahfidzHalaqahFormTest extends TestCase
         }
     }
 
+    /**
+     * Kondisi data nyata: gtk_employments.school_id kosong dan guru hanya
+     * tercatat di penempatan unit kerja + Other Teacher Tasks.
+     */
+    public function test_guru_tahfidz_dari_unit_kerja_dan_other_tasks_muncul_di_pilihan(): void
+    {
+        $guru = $this->employmentUser('Guru Tahfidz Unit', 'guru.unit@test.local', 'Guru Tahfidz');
+        GtkEmployment::where('user_id', $guru->id)->update(['school_id' => null]);
+
+        DB::table('gtk_work_unit')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $guru->id,
+            'work_unit_id' => $this->unit->id,
+            'jabatan' => 'Guru Tahfidz',
+            'is_primary' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Tanpa konteks session: sekolah harus terbaca dari unit kerja.
+        $html = $this->actingAs($this->coordinator)
+            ->get("/{$this->coordinator->id}/tahfidz/halaqah/create")
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString($guru->name, $html, 'Guru Tahfidz lewat unit kerja harus muncul.');
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
+    }
+
+    /**
+     * Alur "Tarik Santri" seperti rombel: daftar santri sekolah dikirim
+     * sebagai JSON, lalu dipilih dan dimasukkan ke halaqah.
+     */
+    public function test_tarik_santri_ke_halaqah(): void
+    {
+        $group = TahfidzGroup::create([
+            'school_id' => $this->school->id,
+            'work_unit_id' => $this->unit->id,
+            'academic_year_id' => $this->year->id,
+            'name' => 'Halaqah Tarik',
+            'code' => 'HT-1',
+            'gender' => 'putra',
+            'teacher_id' => $this->tahfidzTeacher->id,
+            'is_active' => true,
+        ]);
+
+        $santri = \App\Models\Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'Santri Tarik',
+            'nis' => '9001',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        $available = $this->actingAs($this->coordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->getJson("/{$this->coordinator->id}/tahfidz/halaqah/{$group->id}/members/available")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame('Santri Tarik', $available[0]['name']);
+
+        $this->actingAs($this->coordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->postJson("/{$this->coordinator->id}/tahfidz/halaqah/{$group->id}/members/pull", [
+                'student_ids' => [$santri->id],
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('tahfidz_group_members', [
+            'tahfidz_group_id' => $group->id,
+            'student_id' => $santri->id,
+            'status' => 'aktif',
+        ]);
+
+        // Setelah masuk, santri tidak lagi muncul di daftar tarik.
+        $again = $this->actingAs($this->coordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->getJson("/{$this->coordinator->id}/tahfidz/halaqah/{$group->id}/members/available")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame([], $again);
+    }
+
     public function test_koordinator_dan_gender_diisi_otomatis_saat_menyimpan(): void
     {
         $this->actingAs($this->coordinator)

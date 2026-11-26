@@ -130,10 +130,9 @@ class TahfidzMutabaahTest extends TestCase
         $this->assertSame(5, $record->tilawah_halaman);
 
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
-            ->get("/{$this->admin->id}/tahfidz/mutabaah?month=".now()->format('Y-m'))
+            ->get("/{$this->admin->id}/tahfidz/setoran-harian?tab=mutabaah&date=".now()->format('Y-m-d')."&tahfidz_group_id={$this->group->id}")
             ->assertOk()
-            ->assertSee('Santri Mutabaah')
-            ->assertSee('Waraqat al-Mutaba’ah');
+            ->assertSee('Santri Mutabaah');
 
         $print = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get("/{$this->admin->id}/tahfidz/mutabaah/{$this->student->id}/print?month=".now()->format('Y-m')."&group_id={$this->group->id}");

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\TahfidzSubjectResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -31,6 +32,7 @@ class Subject extends Model
         'subject_group_id',
         'category',
         'kelompok',
+        'penilaian_format',
         'source',
         'credit_hours',
         'description',
@@ -43,6 +45,12 @@ class Subject extends Model
      */
     public function allowsMultipleTeachers(): bool
     {
+        // Penanda resmi dipakai lebih dulu; pencocokan nama hanya cadangan untuk
+        // mapel yang belum ditandai admin.
+        if (($this->penilaian_format ?? null) === TahfidzSubjectResolver::FORMAT_TAHFIDZ) {
+            return true;
+        }
+
         $haystack = mb_strtolower(($this->name ?? '').' '.($this->code ?? ''));
 
         return (bool) preg_match('/(tahfidz|tahfiz|hafalan|hadits|hadist)/', $haystack);

@@ -339,6 +339,7 @@ use App\Http\Controllers\Tahfidz\HalaqahImportController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
 use App\Http\Controllers\TahfidzSubjectFormatController;
+use App\Http\Controllers\Tahfidz\TahfidzPenilaianController;
 use App\Http\Controllers\Tahfidz\TahfidzSetoranBulkController;
 use App\Http\Controllers\Tahfidz\TahfidzAttendanceController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
@@ -813,7 +814,10 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
                 Route::prefix('mutabaah')->name('mutabaah.')->group(function () {
-                    Route::get('/', [MutabaahController::class, 'index'])->name('index');
+                    // Mutaba'ah kini satu layar dengan input setoran harian.
+                    // Tautan lama (bookmark, notifikasi) tetap diarahkan ke sana.
+                    Route::get('/', fn (string $userId) => redirect()->route('user.tahfidz.setoran-bulk.index', ['userId' => $userId, 'tab' => 'mutabaah']))
+                        ->name('index');
                     Route::post('/', [MutabaahController::class, 'store'])->name('store');
                     Route::put('/{id}', [MutabaahController::class, 'update'])->name('update');
                     Route::delete('/{id}', [MutabaahController::class, 'destroy'])->name('destroy');
@@ -834,6 +838,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{id}', [HalaqahController::class, 'update'])->name('update');
                     Route::delete('/{id}', [HalaqahController::class, 'destroy'])->name('destroy');
                     Route::post('/{id}/members', [HalaqahController::class, 'addMembers'])->name('members.store');
+                    // Tarik santri ke halaqah — alur sama dengan rombel.
+                    Route::get('/{id}/members/available', [HalaqahController::class, 'availableStudents'])->name('members.available');
+                    Route::post('/{id}/members/pull', [HalaqahController::class, 'pullStudents'])->name('members.pull');
                     Route::post('/{id}/targets', [HalaqahController::class, 'storeTarget'])->name('targets.store');
                     Route::post('/{id}/targets/apply', [HalaqahController::class, 'applyTargets'])->name('targets.apply');
                     Route::put('/{id}/targets/{targetId}', [HalaqahController::class, 'updateTarget'])->name('targets.update');
@@ -842,6 +849,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{id}/schedules/{scheduleId}', [HalaqahController::class, 'updateSchedule'])->name('schedules.update');
                     Route::delete('/{id}/schedules/{scheduleId}', [HalaqahController::class, 'destroySchedule'])->name('schedules.destroy');
                     Route::post('/{id}/members/{memberId}/remove', [HalaqahController::class, 'removeMember'])->name('members.remove');
+                });
+
+                Route::prefix('penilaian-tahfidz')->name('penilaian.')->group(function () {
+                    Route::get('/', [TahfidzPenilaianController::class, 'index'])->name('index');
+                    Route::post('/', [TahfidzPenilaianController::class, 'store'])->name('store');
                 });
 
                 Route::prefix('setoran-harian')->name('setoran-bulk.')->group(function () {
@@ -2166,6 +2178,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
 
             Route::prefix('students')->name('students.')->group(function () {
                 Route::get('/', [StudentController::class, 'index'])->name('index');
+                Route::post('/urutan-bawaan', [StudentController::class, 'saveOrderDefault'])
+                    ->name('order-default')->middleware('dormitory.restrict:students');
                 Route::get('/create', [StudentController::class, 'create'])->name('create')->middleware('dormitory.restrict:students');
                 Route::post('/', [StudentController::class, 'store'])->name('store')->middleware('dormitory.restrict:students');
                 Route::get('/find-student', [StudentController::class, 'findStudent'])->name('find-student');

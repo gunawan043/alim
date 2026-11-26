@@ -111,6 +111,14 @@ class MutabaahController extends Controller
             TahfidzMutabaah::create($payload);
         }
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'saved' => true,
+                'student_id' => $validated['student_id'],
+                'message' => 'Mutaba’ah harian disimpan.',
+            ]);
+        }
+
         return back()->with('success', 'Mutaba’ah harian disimpan.');
     }
 

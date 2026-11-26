@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AcademicYear;
 use App\Models\NilaiSumatif;
 use App\Models\Subject;
+use App\Models\TahfidzGradebookScore;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TahfidzSetoran;
 use App\Models\TeacherAdminBook;
@@ -13,38 +14,31 @@ use Carbon\Carbon;
 
 class TahfidzRaporService
 {
+    public function __construct(private TahfidzSubjectResolver $resolver) {}
+
+    /**
+     * Apakah mapel memakai format penilaian tahfidz?
+     *
+     * Diteruskan ke TahfidzSubjectResolver agar rapor, jadwal, leger, dan
+     * sidebar memakai satu sumber kebenaran (kolom `penilaian_format`).
+     */
     public function isTahfidzSubject(?Subject $subject): bool
     {
-        if (! $subject) {
-            return false;
-        }
-
-        $haystack = mb_strtolower(trim(($subject->code ?? '').' '.($subject->name ?? '')));
-
-        return str_contains($haystack, 'thf')
-            || (bool) preg_match('/tahfidz|tahfiz|hafalan qur|hafalan al-qur/', $haystack);
+        return $this->resolver->isTahfidz($subject);
     }
 
-    public function setoranAverage(string $studentId, string $academicYearId, string $semester): ?float
-    {
-        $academicYear = AcademicYear::find($academicYearId);
-        $query = TahfidzSetoran::query()
-            ->where('student_id', $studentId)
-            ->where('academic_year_id', $academicYearId)
-            ->where('verification_status', 'verified')
-            ->where('status', 'lulus')
-            ->whereNotNull('nilai_setoran');
-
-        if ($academicYear?->start_date) {
-            [$start, $end] = $this->semesterRange($academicYear, $semester);
-            $query->whereBetween('setoran_date', [$start->toDateString(), $end->toDateString()]);
-        }
-
-        $average = $query->avg('nilai_setoran');
-
-        return $average !== null ? round((float) $average, 2) : null;
-    }
-
+    /**
+     * Nilai mapel tahfidz untuk rapor.
+     *
+     * Sumbernya BUKAN rata-rata setoran lagi, melainkan buku nilai halaqah
+     * (kolom Ziyadah, Rabt, STS, SAS yang diisi guru). Buku itu diikat ke
+     * halaqah, sedangkan rapor tetap per rombel — karena itu nilai dibaca
+     * per santri dari buku halaqah tempat ia terdaftar pada periode ini.
+     *
+     * `$row` (nilai sumatif buku mapel) tidak dipakai untuk tahfidz: format
+     * tahfidz punya kolomnya sendiri dan tidak boleh tercampur dengan format
+     * mapel umum.
+     */
     public function scoreFor(
         string $studentId,
         TeacherAdminBook $book,
@@ -53,39 +47,27 @@ class TahfidzRaporService
         string $jenis,
         ?NilaiSumatif $row = null,
     ): ?float {
-        $existing = AcademicNilai::resolveTampil($jenis, $row);
-
         if (! $this->isTahfidzSubject($book->subject)) {
-            return $existing;
+            return AcademicNilai::resolveTampil($jenis, $row);
         }
 
-        $setoran = $this->setoranAverage($studentId, $academicYearId, $semester);
-        if ($setoran === null) {
-            return $existing;
+        $score = TahfidzGradebookScore::query()
+            ->whereHas('gradebook', fn ($q) => $q
+                ->where('subject_id', $book->subject_id)
+                ->where('academic_year_id', $academicYearId)
+                ->where('semester', $semester)
+                ->where('is_active', true))
+            ->where('student_id', $studentId)
+            ->first();
+
+        if (! $score) {
+            return null;
         }
 
-        $weights = config('tahfidz.rapor_weights', []);
-        $components = ['setoran' => [$setoran, (float) ($weights['setoran'] ?? 0.60)]];
-
-        if ($jenis === 'sas') {
-            if ($row?->sts !== null) {
-                $components['sts'] = [(float) $row->sts, (float) ($weights['sts'] ?? 0.20)];
-            }
-            if ($row?->sas !== null) {
-                $components['sas'] = [(float) $row->sas, (float) ($weights['sas'] ?? 0.20)];
-            }
-        } elseif ($row?->sts !== null) {
-            $components['sts'] = [(float) $row->sts, (float) ($weights['sts'] ?? 0.20)];
-        }
-
-        $weightTotal = collect($components)->sum(fn ($component) => $component[1]);
-        if ($weightTotal <= 0) {
-            return $setoran;
-        }
-
-        $score = collect($components)->sum(fn ($component) => $component[0] * $component[1]) / $weightTotal;
-
-        return round($score, 2);
+        return match ($jenis) {
+            'sts' => $score->sts !== null ? (float) $score->sts : null,
+            default => $score->nr_final !== null ? (float) $score->nr_final : null,
+        };
     }
 
     public function jumlahJuz(string $studentId, string $academicYearId): int

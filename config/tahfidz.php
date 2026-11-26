@@ -2,14 +2,18 @@
 
 return [
     /*
-     * Bobot nilai rapor mapel THF (Tahfidzul Qur'an).
-     * Nilai setoran berasal dari rata-rata setoran terverifikasi.
-     * Bobot dinormalisasi otomatis bila salah satu komponen belum ada.
+     * Bobot NR Final mapel THF.
+     *
+     * Mapel tahfidz TIDAK lagi memakai bobot global: nilai diisi guru pada
+     * buku halaqah, dan bobotnya disimpan per buku (`tahfidz_gradebooks`)
+     * agar tiap halaqah bisa berbeda. Nilai di bawah hanya bobot awal saat
+     * buku baru dibuat — lihat TahfidzGradebookService::DEFAULT_WEIGHTS.
      */
     'rapor_weights' => [
-        'setoran' => (float) env('TAHFIDZ_RAPOR_SETORAN_WEIGHT', 0.60),
-        'sts' => (float) env('TAHFIDZ_RAPOR_STS_WEIGHT', 0.20),
-        'sas' => (float) env('TAHFIDZ_RAPOR_SAS_WEIGHT', 0.20),
+        'ziyadah' => 40.0,
+        'rabt' => 20.0,
+        'sts' => 20.0,
+        'sas' => 20.0,
     ],
 
     /*
