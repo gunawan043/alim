@@ -124,7 +124,7 @@ class NilaiGuruController extends Controller
             ->where('study_group_id', $book['adminBook']->study_group_id)
             ->where('academic_year_id', $book['adminBook']->academic_year_id)
             ->where('is_active', true)
-            ->orderBy('attendance_number')->get();
+            ->orderedByStudent()->get();
 
         // Filter tanggal dari request (untuk load data existing saat pilih tanggal)
         $selectedDate = $request->input('attendance_date', now()->toDateString());
@@ -462,7 +462,7 @@ class NilaiGuruController extends Controller
             ->where('study_group_id', $book['adminBook']->study_group_id)
             ->where('academic_year_id', $book['adminBook']->academic_year_id)
             ->where('is_active', true)
-            ->orderBy('attendance_number')->get();
+            ->orderedByStudent()->get();
 
         $sumatifMap = NilaiSumatif::where('admin_book_id', $book['adminBook']->id)
             ->where('semester', $book['adminBook']->semester)
@@ -893,7 +893,7 @@ class NilaiGuruController extends Controller
             ->where('study_group_id', $book['adminBook']->study_group_id)
             ->where('academic_year_id', $book['adminBook']->academic_year_id)
             ->where('is_active', true)
-            ->orderBy('attendance_number')->get();
+            ->orderedByStudent()->get();
 
         $formatifMap = NilaiFormatif::where('admin_book_id', $book['adminBook']->id)
             ->where('semester', $book['adminBook']->semester)
@@ -1084,7 +1084,7 @@ class NilaiGuruController extends Controller
             ->where('study_group_id', $book['adminBook']->study_group_id)
             ->where('academic_year_id', $book['adminBook']->academic_year_id)
             ->where('is_active', true)
-            ->orderBy('attendance_number')->get();
+            ->orderedByStudent()->get();
 
         $penghargaanMap = PenghargaanAkademik::where('admin_book_id', $book['adminBook']->id)
             ->where('semester', $book['adminBook']->semester)

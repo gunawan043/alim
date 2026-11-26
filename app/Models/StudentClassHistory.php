@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\StudentOrder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -72,5 +74,59 @@ class StudentClassHistory extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    /**
+     * Urutkan baris riwayat kelas menurut DATA SANTRI (nama atau NIS),
+     * bukan menurut attendance_number.
+     *
+     * attendance_number diisi mengikuti urutan input (lihat
+     * BulkPromotionController/StudentMoveController: $count + 1), sehingga
+     * santri yang masuk belakangan mendapat nomor acak di tengah daftar dan
+     * daftar nilainya tampak berantakan — bukan menurut nama.
+     */
+    public function scopeOrderedByStudent(Builder $q, ?string $order = null): Builder
+    {
+        if ($order === StudentOrder::NIS) {
+            // Urutan NIS membandingkan angka, bukan teks. Subquery ORDER BY
+            // hanya boleh satu kolom, jadi angkanya dipadatkan menjadi satu
+            // string berpanjang tetap agar perbandingan teks = perbandingan
+            // angka (portabel SQLite & MySQL).
+            return $q->orderByRaw(self::nisSortKeySql($q));
+        }
+
+        return $q->orderBy(
+            Student::query()
+                ->select('name')
+                ->whereColumn('students.id', 'student_class_histories.student_id')
+                ->limit(1)
+        );
+    }
+
+    /**
+     * Kunci urut NIS: digit NIS dipadatkan dengan nol di depan.
+     *
+     * Padding diambil dari potongan literal nol (substr) karena REPEAT ada di
+     * MySQL tetapi tidak di SQLite. Hasilnya string berpanjang tetap sehingga
+     * perbandingan teks sejajar dengan perbandingan angka:
+     * "9" → 000...009 < "10" → 000...010.
+     */
+    private static function nisSortKeySql(Builder $q): string
+    {
+        $digits = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(nis,' ',''),'/',''),'-',''),'.',''),',','')";
+        $sqlite = $q->getConnection()->getDriverName() === 'sqlite';
+        $len = $sqlite ? 'length' : 'CHAR_LENGTH';
+        $substr = $sqlite ? 'substr' : 'SUBSTRING';
+        $pad = str_repeat('0', 20);
+
+        // Di MySQL `||` berarti OR, jadi penyambungan memakai CONCAT.
+        $concat = $sqlite
+            ? "{$substr}('{$pad}', 1, 20 - {$len}({$digits})) || {$digits}"
+            : "CONCAT({$substr}('{$pad}', 1, 20 - {$len}({$digits})), {$digits})";
+
+        return "(select "
+            ."CASE WHEN nis IS NULL OR TRIM(nis) = '' THEN 'zzzzzzzzzzzzzzzzzzzzzz' "
+            ."ELSE {$concat} END "
+            ."from students where students.id = student_class_histories.student_id and students.deleted_at is null limit 1)";
     }
 }

@@ -239,7 +239,7 @@ class NilaiKelasController extends Controller
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->orderByDesc('is_active')
-            ->orderBy('attendance_number')
+            ->orderedByStudent()
             ->get();
 
         // Nilai STS per siswa per mapel (dari semua admin books di kelas ini)
@@ -1222,7 +1222,7 @@ class NilaiKelasController extends Controller
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('is_active', true)
-            ->orderBy('attendance_number')->get();
+            ->orderedByStudent()->get();
 
         $nilaiMap = [];
         if ($students->isNotEmpty() && $selectedAyId) {
@@ -1335,7 +1335,7 @@ class NilaiKelasController extends Controller
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->when(! $isArchiveAy, fn ($q) => $q->where('is_active', true))
-            ->orderBy('attendance_number')
+            ->orderedByStudent()
             ->get();
 
         // Catatan wali kelas per santri (kolom homeroom_note — data existing).
@@ -2637,7 +2637,7 @@ class NilaiKelasController extends Controller
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->when(! $isArchiveAy, fn ($q) => $q->where('is_active', true))
-            ->orderBy('attendance_number')
+            ->orderedByStudent()
             ->get();
 
         if ($students->isEmpty()) {

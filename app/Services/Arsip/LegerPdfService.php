@@ -66,7 +66,7 @@ class LegerPdfService
             ->where('study_group_id', $studyGroupId)
             ->where('academic_year_id', $selectedAyId)
             ->where('is_active', true)
-            ->orderBy('attendance_number')
+            ->orderedByStudent()
             ->get();
 
         $nilaiMap = [];
