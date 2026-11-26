@@ -4,11 +4,12 @@
 <style>
     .sh-table th {
         font-size: .76rem; font-weight: 600; color: var(--bs-secondary-color);
-        padding: .65rem 1rem; white-space: nowrap; border-bottom-width: 1px;
+        padding: .65rem 1rem; white-space: nowrap;
     }
     .sh-table td { padding: .7rem 1rem; vertical-align: middle; }
     .sh-table tbody tr:last-child td { border-bottom: 0; }
-    .sh-actions .btn { min-width: 92px; }
+    .sh-stat { font-size: .72rem; color: var(--bs-secondary-color); }
+    .sh-actions .btn { min-width: 96px; }
     @media (max-width: 575.98px) {
         .sh-actions { display: flex; gap: .4rem; }
         .sh-actions .btn { min-width: 0; flex: 1 1 0; }
@@ -21,6 +22,8 @@
         $selectedGroupId = $group?->id;
         $dateValue = $date ?? now()->toDateString();
         $filledCount = $rows->filter(fn ($row) => $row['ziyadah'] || $row['rabt'])->count();
+        $ziyadahCount = $rows->filter(fn ($row) => $row['ziyadah'])->count();
+        $rabtCount = $rows->filter(fn ($row) => $row['rabt'])->count();
     @endphp
     @include('tahfidz._styles')
     @component('components.breadcrumb') @slot('li_1') Tahfidz @endslot @slot('li_2') Operasional @endslot @slot('title') Input Setoran Harian @endslot @endcomponent
@@ -35,7 +38,7 @@
                     <h5 class="card-title mb-0">Input Setoran Harian</h5>
                     <p class="text-muted mb-0 small">
                         Pilih <strong>Ziyadah</strong> (hafalan baru) atau <strong>Rabt</strong> (mengikat hafalan lama)
-                        pada baris santri. Halaman input akan terbuka sesuai jenis yang dipilih.
+                        pada baris santri. Halaman input dibuka sesuai jenis yang dipilih.
                     </p>
                 </div>
                 <div class="col-sm-auto">
@@ -61,28 +64,13 @@
                     <label class="form-label small">Tanggal Setoran</label>
                     <input type="date" name="date" value="{{ $dateValue }}" class="form-control" onchange="this.form.submit()">
                 </div>
-                <div class="col-md-4 d-flex justify-content-md-end gap-2">
-                    <span class="badge bg-light text-body align-self-center">{{ $filledCount }} dari {{ $rows->count() }} santri terisi</span>
+                <div class="col-md-4 d-flex flex-wrap justify-content-md-end gap-2">
+                    <span class="badge bg-success-subtle text-success align-self-center">Ziyadah {{ $ziyadahCount }}</span>
+                    <span class="badge bg-primary-subtle text-primary align-self-center">Rabt {{ $rabtCount }}</span>
+                    <span class="badge bg-light text-body align-self-center">{{ $filledCount }} / {{ $rows->count() }} santri</span>
                 </div>
             </form>
         </div>
-
-        @if($group)
-            <ul class="nav nav-tabs nav-success" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link {{ $tab === 'setoran' ? 'active' : '' }}" role="tab"
-                       href="{{ route('user.tahfidz.setoran-bulk.index', ['userId' => $userId, 'group_id' => $group->id, 'date' => $dateValue, 'tab' => 'setoran']) }}">
-                        <i class="ri-book-read-line me-1"></i>Setoran Hafalan
-                    </a>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link {{ $tab === 'mutabaah' ? 'active' : '' }}" role="tab"
-                       href="{{ route('user.tahfidz.setoran-bulk.index', ['userId' => $userId, 'group_id' => $group->id, 'date' => $dateValue, 'tab' => 'mutabaah']) }}">
-                        <i class="ri-calendar-check-line me-1"></i>Mutaba’ah Harian
-                    </a>
-                </li>
-            </ul>
-        @endif
 
         @if(! $group)
             <div class="card-body text-center text-muted py-5">
@@ -94,7 +82,7 @@
                 <i class="ri-user-search-line fs-2 d-block mb-2"></i>
                 Belum ada santri aktif di halaqah ini.
             </div>
-        @elseif($tab === 'setoran')
+        @else
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover sh-table align-middle mb-0">
@@ -115,6 +103,10 @@
                                     $ziyadah = $row['ziyadah'];
                                     $rabt = $row['rabt'];
                                     $hasAny = $ziyadah || $rabt;
+                                    $entryUrl = fn (string $jenis) => route('user.tahfidz.setoran-bulk.entry', [
+                                        'userId' => $userId, 'studentId' => $student->id,
+                                        'group_id' => $group->id, 'date' => $dateValue, 'jenis' => $jenis,
+                                    ]);
                                 @endphp
                                 <tr>
                                     <td class="text-muted">{{ $index + 1 }}</td>
@@ -127,20 +119,20 @@
                                             </div>
                                             <div class="ms-2">
                                                 <div class="fw-semibold">{{ $student->name }}</div>
-                                                <div class="text-muted small">{{ $student->nis }}</div>
+                                                <div class="sh-stat">{{ $student->nis }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="text-center">
-                                        {{ $rabt?->juz ?? $ziyadah?->juz ?? '—' }}
-                                    </td>
+                                    <td class="text-center">{{ $rabt?->juz ?? $ziyadah?->juz ?? '—' }}</td>
                                     <td>
                                         @if($hasAny)
                                             <div class="small">
                                                 @if($ziyadah)
-                                                    <span class="badge bg-success-subtle text-success me-1">Ziyadah</span>
-                                                    {{ $ziyadah->surah_start_name ?? '—' }}{{ $ziyadah->ayat_start ? ':'.$ziyadah->ayat_start : '' }}
-                                                    @if($ziyadah->nilai_setoran !== null)<span class="text-muted">· nilai {{ $ziyadah->nilai_setoran }}</span>@endif
+                                                    <div>
+                                                        <span class="badge bg-success-subtle text-success me-1">Ziyadah</span>
+                                                        {{ $ziyadah->surah_start_name ?? '—' }}{{ $ziyadah->ayat_start ? ':'.$ziyadah->ayat_start : '' }}
+                                                        @if($ziyadah->nilai_setoran !== null)<span class="text-muted">· nilai {{ $ziyadah->nilai_setoran }}</span>@endif
+                                                    </div>
                                                 @endif
                                                 @if($rabt)
                                                     <div class="{{ $ziyadah ? 'mt-1' : '' }}">
@@ -161,11 +153,11 @@
                                     </td>
                                     <td class="text-end">
                                         <div class="sh-actions d-inline-flex gap-2">
-                                            <a href="{{ route('user.tahfidz.setoran-bulk.entry', ['userId' => $userId, 'studentId' => $student->id, 'group_id' => $group->id, 'date' => $dateValue, 'jenis' => 'ziyadah']) }}"
+                                            <a href="{{ $entryUrl('ziyadah') }}"
                                                class="btn btn-sm {{ $ziyadah ? 'btn-soft-success' : 'btn-success' }}">
                                                 <i class="ri-add-line me-1"></i>{{ $ziyadah ? 'Edit Ziyadah' : 'Ziyadah' }}
                                             </a>
-                                            <a href="{{ route('user.tahfidz.setoran-bulk.entry', ['userId' => $userId, 'studentId' => $student->id, 'group_id' => $group->id, 'date' => $dateValue, 'jenis' => 'robet']) }}"
+                                            <a href="{{ $entryUrl('robet') }}"
                                                class="btn btn-sm {{ $rabt ? 'btn-soft-primary' : 'btn-primary' }}">
                                                 <i class="ri-link me-1"></i>{{ $rabt ? 'Edit Rabt' : 'Rabt' }}
                                             </a>
@@ -177,8 +169,6 @@
                     </table>
                 </div>
             </div>
-        @else
-            @include('tahfidz.setoran._mutabaah-grid')
         @endif
     </div>
 @endsection

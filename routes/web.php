@@ -815,10 +815,9 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
                 Route::prefix('mutabaah')->name('mutabaah.')->group(function () {
-                    // Mutaba'ah kini satu layar dengan input setoran harian.
-                    // Tautan lama (bookmark, notifikasi) tetap diarahkan ke sana.
-                    Route::get('/', fn (string $userId) => redirect()->route('user.tahfidz.setoran-bulk.index', ['userId' => $userId, 'tab' => 'mutabaah']))
-                        ->name('index');
+                    // Mutaba'ah kembali menjadi halaman sendiri; halaman input
+                    // setoran harian tidak lagi memuat tab mutaba'ah.
+                    Route::get('/', [MutabaahController::class, 'index'])->name('index');
                     Route::post('/', [MutabaahController::class, 'store'])->name('store');
                     Route::put('/{id}', [MutabaahController::class, 'update'])->name('update');
                     Route::delete('/{id}', [MutabaahController::class, 'destroy'])->name('destroy');

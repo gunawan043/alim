@@ -91,6 +91,11 @@ class TahfidzInputTest extends TestCase
             ->assertOk()
             ->assertSee('Riwayat Hafalan')
             ->assertSee('Santri Input')
+            // Tiga tombol input sesuai format penilaian yang berlaku.
+            ->assertSee('Input Ziyadah')
+            ->assertSee('Input Rabt')
+            ->assertSee('Input STS &amp; SAS', false)
+            ->assertSee('Ganti Santri')
             ->assertSee('id="jenis_ziyadah"', false)
             ->assertSee('id="jenis_robet"', false)
             ->assertSee('id="jenis_none"', false)

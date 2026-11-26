@@ -136,15 +136,15 @@ class TahfidzSetoranBulkTest extends TestCase
             'Tautan Rabt per santri harus tersedia.',
         );
 
+        // Tombol membuka halaman input santri yang sudah ada, bukan form kedua.
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get(route('user.tahfidz.setoran-bulk.entry', [
                 'userId' => $this->teacher->id, 'studentId' => $this->santriA->id,
                 'group_id' => $this->group->id, 'jenis' => 'robet',
             ]))
-            ->assertOk()
-            ->assertSee('Santri Alif')
-            ->assertSee('Nilai Rabt')
-            ->assertSee('Detail Hafalan');
+            ->assertRedirect(route('user.tahfidz.input.index', [
+                'userId' => $this->teacher->id, 'student_id' => $this->santriA->id,
+            ]));
 
         // Santri di luar halaqah tidak boleh dibuka lewat URL langsung.
         $outside = Student::create([
@@ -389,25 +389,25 @@ class TahfidzSetoranBulkTest extends TestCase
             ->assertSee('Format Penilaian Mapel');
     }
 
-    public function test_tab_mutabaah_tampil_di_halaman_yang_sama(): void
+    public function test_halaman_setoran_harian_tidak_lagi_memuat_tab_mutabaah(): void
     {
         $response = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get(route('user.tahfidz.setoran-bulk.index', [
-                'userId' => $this->teacher->id, 'group_id' => $this->group->id, 'tab' => 'mutabaah',
+                'userId' => $this->teacher->id, 'group_id' => $this->group->id,
             ]));
 
         $response->assertOk()
-            ->assertSee('Setoran Hafalan')
-            ->assertSee('Mutaba’ah Harian')
             ->assertSee('Santri Alif')
-            ->assertSee('Santri Ba');
+            ->assertSee('Santri Ba')
+            ->assertDontSee('Mutaba’ah Harian')
+            ->assertDontSee('tab=mutabaah', false);
     }
 
-    public function test_tautan_mutabaah_lama_diarahkan_ke_halaman_gabungan(): void
+    public function test_halaman_mutabaah_kini_berdiri_sendiri(): void
     {
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
             ->get(route('user.tahfidz.mutabaah.index', ['userId' => $this->teacher->id]))
-            ->assertRedirect(route('user.tahfidz.setoran-bulk.index', ['userId' => $this->teacher->id, 'tab' => 'mutabaah']));
+            ->assertOk();
     }
 
     public function test_mutabaah_disimpan_lewat_ajax_tanpa_meninggalkan_halaman(): void

@@ -22,8 +22,6 @@ class TahfidzRouteSmokeTest extends TestCase
             'tahfidz/rpp',
             'tahfidz/halaqah',
             'tahfidz/setoran',
-            // Mutaba'ah kini satu halaman dengan setoran; URL lamanya sengaja
-            // dialihkan ke halaman gabungan, jadi memang membalas 302.
             'tahfidz/mutabaah',
             'tahfidz/tasmi',
             'tahfidz/monitoring',
@@ -39,15 +37,9 @@ class TahfidzRouteSmokeTest extends TestCase
         ];
 
         foreach ($paths as $path) {
-            $response = $this->actingAs($admin)->get("/{$admin->id}/{$path}");
-
-            if ($path === 'tahfidz/mutabaah') {
-                $response->assertRedirect(route('user.tahfidz.setoran-bulk.index', ['userId' => $admin->id, 'tab' => 'mutabaah']));
-
-                continue;
-            }
-
-            $response->assertSuccessful();
+            $this->actingAs($admin)
+                ->get("/{$admin->id}/{$path}")
+                ->assertSuccessful();
         }
     }
 }

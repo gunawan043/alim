@@ -30,9 +30,9 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran-bulk.', 'user.tahfidz.setoran.create', 'user.tahfidz.setoran.store', 'user.tahfidz.input.', 'user.tahfidz.mutabaah.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran-bulk.', 'user.tahfidz.setoran.create', 'user.tahfidz.setoran.store', 'user.tahfidz.input.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.setoran-bulk.index', ['userId' => $userId]) }}">
-            <i class="ri-file-add-line"></i><span>Setoran &amp; Mutaba’ah Harian</span>
+            <i class="ri-file-add-line"></i><span>Input Setoran Harian</span>
         </a>
     </li>
 
@@ -154,9 +154,9 @@
     </li>
 
     <li class="nav-item">
-        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran-bulk.', 'user.tahfidz.mutabaah.']) ? ' active' : '' }}"
+        <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.setoran-bulk.']) ? ' active' : '' }}"
            href="{{ route('user.tahfidz.setoran-bulk.index', ['userId' => $userId]) }}">
-            <i class="ri-file-add-line"></i><span>Setoran &amp; Mutaba’ah Harian</span>
+            <i class="ri-file-add-line"></i><span>Input Setoran Harian</span>
         </a>
     </li>
 

@@ -50,8 +50,6 @@ class TahfidzSetoranBulkController extends Controller
                 'groups' => $groups,
                 'group' => null,
                 'rows' => collect(),
-                'mutabaahRows' => collect(),
-                'tab' => 'setoran',
                 'surahs' => collect(),
                 'date' => null,
                 'kegiatan' => self::KEGIATAN,
@@ -61,59 +59,43 @@ class TahfidzSetoranBulkController extends Controller
         $groupId = $request->input('group_id', $groups->first()->id);
         $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
         $date = $this->safeDate($request->input('date'));
-        // Satu halaman untuk setoran hafalan dan mutaba'ah; tab hanya penanda.
-        $tab = $request->input('tab') === 'mutabaah' ? 'mutabaah' : 'setoran';
 
         return view('tahfidz.setoran.bulk', [
             'userId' => $userId,
             'groups' => $groups,
             'group' => $group,
             'rows' => $this->setoranRows($group, $date),
-            'mutabaahRows' => $this->mutabaahRows($group, $date),
             'surahs' => TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']),
             'date' => $date,
-            'tab' => $tab,
             'kegiatan' => self::KEGIATAN,
         ]);
     }
 
     /**
-     * Halaman input setoran untuk satu santri (Ziyadah atau Rabt).
-     *
-     * Dipakai dari tombol di daftar halaqah agar guru tidak harus mengisi
-     * grid seluruh halaqah. Penyimpanan memakai aksi bulk yang sama, jadi
-     * aturan validasi dan verifikasi tidak diduplikasi.
+     * Tombol Ziyadah/Rabt di daftar halaqah membuka halaman input santri
+     * yang sudah ada (input-hafalan). Halaman ini hanya pengalih agar satu
+     * form dipakai di semua tempat, bukan dua yang harus dirawat bersama.
      */
     public function entry(Request $request, string $userId, string $studentId)
     {
         $groups = $this->accessibleGroups($request);
-
         $groupId = $request->input('group_id', $groups->first()?->id);
         $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
         abort_unless($group, 404, 'Halaqah tidak ditemukan.');
 
-        $row = $this->setoranRows($group, $this->safeDate($request->input('date')))
-            ->firstWhere(fn ($item) => $item['student']?->id === $studentId);
+        $isMember = TahfidzGroupMember::query()
+            ->where('tahfidz_group_id', $group->id)
+            ->where('student_id', $studentId)
+            ->where('status', 'aktif')
+            ->exists();
 
-        abort_unless($row, 404, 'Santri bukan anggota aktif halaqah ini.');
+        abort_unless($isMember, 404, 'Santri bukan anggota aktif halaqah ini.');
 
-        $jenis = in_array($request->input('jenis'), ['ziyadah', 'robet'], true)
-            ? $request->input('jenis')
-            : 'ziyadah';
+        $jenis = $request->input('jenis') === 'robet' ? 'robet' : 'ziyadah';
 
-        return view('tahfidz.setoran.entry', [
-            'userId' => $userId,
-            'group' => $group,
-            'student' => $row['student'],
-            'ziyadah' => $row['ziyadah'],
-            'rabt' => $row['rabt'],
-            'last' => $row['last'],
-            'date' => $this->safeDate($request->input('date')),
-            'jenis' => $jenis,
-            'surahs' => TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']),
-            'statusLabels' => ['lulus' => 'Lulus', 'ulang' => 'Ulang', 'ditunda' => 'Ditunda'],
-            'rabtLabels' => ['siap' => 'Siap', 'belum_siap' => 'Belum siap', 'perlu_diulang' => 'Perlu diulang'],
-        ]);
+        return redirect()
+            ->route('user.tahfidz.input.index', ['userId' => $userId, 'student_id' => $studentId])
+            ->with('input_jenis', $jenis);
     }
 
     /**

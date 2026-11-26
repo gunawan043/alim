@@ -45,12 +45,31 @@
                     <h5 class="card-title mb-1">{{ $selected->name }} @if(($presenceToday[$selected->id] ?? null))<span class="badge bg-{{ $presenceToday[$selected->id]['color'] }}-subtle text-{{ $presenceToday[$selected->id]['color'] }} ms-1">{{ $presenceToday[$selected->id]['label'] }}</span>@endif</h5>
                     <div class="text-muted small">{{ $selected->nis }} · {{ $selectedGroup?->name }} · {{ $selectedGroup?->school?->name }}</div>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     <a href="{{ route('user.tahfidz.santri.show', ['userId'=>$userId,'studentId'=>$selected->id]) }}" class="btn btn-outline-primary"><i class="ri-profile-line me-1"></i>Detail Tahfidz</a>
-                    @if($canInput)<button type="button" class="btn btn-success" onclick="openHafalanModal()"><i class="ri-add-line me-1"></i>Tambah Setoran</button>@endif
-                    <a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId]) }}" class="btn btn-light">Cari Santri Lain</a>
+                    <a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId]) }}" class="btn btn-light"><i class="ri-user-search-line me-1"></i>Ganti Santri</a>
                 </div>
             </div>
+
+            @if($canInput)
+                <div class="card-body border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small me-1">Input:</span>
+                        <button type="button" class="btn btn-success" onclick="openHafalanModal('ziyadah')">
+                            <i class="ri-add-line me-1"></i>Input Ziyadah
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="openHafalanModal('robet')">
+                            <i class="ri-link me-1"></i>Input Rabt
+                        </button>
+                        <a href="{{ route('user.tahfidz.penilaian.index', ['userId'=>$userId, 'group_id'=>$selectedGroup?->id]) }}" class="btn btn-outline-secondary">
+                            <i class="ri-file-list-3-line me-1"></i>Input STS &amp; SAS
+                        </a>
+                    </div>
+                    <div class="form-text mt-1">
+                        Nilai STS/SAS diisi per halaqah di Buku Nilai Tahfidz, bukan per santri, agar sejajar dengan santri lain.
+                    </div>
+                </div>
+            @endif
             <div class="card-body">
                 @if($isSubstitute)
                     <div class="alert alert-info mb-3"><i class="ri-user-shared-line me-1"></i>Mode guru pengganti: Anda menginput untuk halaqah <strong>{{ $selectedGroup?->name }}</strong>, bukan halaqah utama Anda.</div>
@@ -152,7 +171,7 @@
                         <div class="alert alert-light border small mb-3"><i class="ri-lightbulb-line text-warning me-1"></i>Juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Ubah jika tidak sesuai; nilai akhir dan jumlah halaman dihitung otomatis.</div>
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" id="smart_setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
-                            @php $oldJenis = old('setoran_type', 'ziyadah'); @endphp
+                            @php $oldJenis = old('setoran_type', session('input_jenis', 'ziyadah')); @endphp
                             <div class="col-md-4">
                                 <label class="form-label d-block">Jenis Setoran <span class="text-danger">*</span></label>
                                 <div class="btn-group w-100" role="group" aria-label="Jenis setoran">
@@ -216,7 +235,12 @@
 
 @push('scripts')
 <script>
-    function openHafalanModal() {
+    function openHafalanModal(jenis) {
+        const radio = document.getElementById('jenis_' + (jenis || 'ziyadah'));
+        if (radio) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change'));
+        }
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
     // "—" hanya penanda belum memilih jenis. Setoran butuh jenis agar bisa
@@ -320,7 +344,10 @@
             jQuery('#smart_surah_start, #surahEndPicker').select2({ width: '100%', placeholder: 'Cari nama surah...', allowClear: true });
         }
         @if($selected && $canInput && $errors->any())
-            openHafalanModal();
+            openHafalanModal(@json(old('setoran_type') === 'robet' ? 'robet' : 'ziyadah'));
+        @elseif($selected && $canInput && session('input_jenis'))
+            // Datang dari tombol Ziyadah/Rabt di daftar halaqah: langsung buka form.
+            openHafalanModal(@json(session('input_jenis') === 'robet' ? 'robet' : 'ziyadah'));
         @endif
 
         const hafalanModal = document.getElementById('hafalanModal');
