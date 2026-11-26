@@ -162,10 +162,12 @@ class HalaqahManagementTest extends TestCase
             'status' => 'aktif',
         ]);
 
+        // Daftar tarik santri dimuat lewat endpoint JSON (modal Tarik Santri),
+        // bukan lagi dirender langsung di halaman detail.
         $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
-            ->get("/{$this->admin->id}/tahfidz/halaqah/{$groupB->id}")
+            ->getJson("/{$this->admin->id}/tahfidz/halaqah/{$groupB->id}/members/available")
             ->assertOk()
-            ->assertSee('Santri Satu');
+            ->assertJsonFragment(['name' => 'Santri Satu']);
     }
 
     private function payload(array $overrides = []): array
