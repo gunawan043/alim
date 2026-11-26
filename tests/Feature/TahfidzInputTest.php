@@ -90,7 +90,12 @@ class TahfidzInputTest extends TestCase
             ->get("/{$admin->id}/tahfidz/input-hafalan?student_id={$student->id}")
             ->assertOk()
             ->assertSee('Riwayat Hafalan')
-            ->assertSee('Santri Input');
+            ->assertSee('Santri Input')
+            ->assertSee('id="jenis_ziyadah"', false)
+            ->assertSee('id="jenis_robet"', false)
+            ->assertSee('id="jenis_none"', false)
+            ->assertSee('Nilai Tikrar')
+            ->assertDontSee('value="murajaah"', false);
 
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])
             ->post("/{$admin->id}/tahfidz/setoran", [

@@ -152,9 +152,24 @@
                         <div class="alert alert-light border small mb-3"><i class="ri-lightbulb-line text-warning me-1"></i>Juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Ubah jika tidak sesuai; nilai akhir dan jumlah halaman dihitung otomatis.</div>
                         <div class="row g-3">
                             <div class="col-md-3"><label class="form-label">Tanggal <span class="text-danger">*</span></label><input type="date" name="setoran_date" id="smart_setoran_date" class="form-control" value="{{ old('setoran_date', now()->toDateString()) }}" required></div>
-                            <div class="col-md-3"><label class="form-label">Jenis <span class="text-danger">*</span></label><select name="setoran_type" class="form-select" required><option value="ziyadah" @selected(old('setoran_type','ziyadah')==='ziyadah')>Ziyadah (hafalan baru)</option><option value="murajaah" @selected(old('setoran_type')==='murajaah')>Murajaah</option><option value="tikror" @selected(old('setoran_type')==='tikror')>Tikror</option><option value="robet" @selected(old('setoran_type')==='robet')>Robet</option></select></div>
+                            @php $oldJenis = old('setoran_type', 'ziyadah'); @endphp
+                            <div class="col-md-4">
+                                <label class="form-label d-block">Jenis Setoran <span class="text-danger">*</span></label>
+                                <div class="btn-group w-100" role="group" aria-label="Jenis setoran">
+                                    @foreach(['ziyadah' => 'Ziyadah', 'robet' => 'Rabt'] as $jenisValue => $jenisLabel)
+                                        <input type="radio" class="btn-check" name="setoran_type" id="jenis_{{ $jenisValue }}"
+                                               value="{{ $jenisValue }}" autocomplete="off" @checked($oldJenis === $jenisValue) required>
+                                        <label class="btn btn-outline-success" for="jenis_{{ $jenisValue }}">{{ $jenisLabel }}</label>
+                                    @endforeach
+                                    <input type="radio" class="btn-check" name="setoran_type" id="jenis_none"
+                                           value="" autocomplete="off" @checked(! in_array($oldJenis, ['ziyadah', 'robet'], true)) required>
+                                    <label class="btn btn-outline-secondary" for="jenis_none" title="Belum memilih jenis — pilih Ziyadah atau Rabt untuk menyimpan">—</label>
+                                </div>
+                                <div class="form-text">Ziyadah = hafalan baru. Rabt = mengikat hafalan lama agar tetap terjaga.</div>
+                            </div>
                             <div class="col-md-2"><label class="form-label">Juz</label><input type="number" name="juz" id="smart_juz" min="1" max="30" class="form-control" value="{{ old('juz', $target?->juz_start ?? $lastSetoran?->juz) }}" placeholder="Otomatis"></div>
-                            <div class="col-md-2"><label class="form-label">Nilai Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" id="smart_hasil" class="form-control" value="{{ old('hasil_hafalan') }}" placeholder="0–100"></div>
+                            <div class="col-md-3"><label class="form-label" id="smart_hasil_label">Nilai Hafalan</label><input type="number" step="0.01" min="0" max="100" name="hasil_hafalan" id="smart_hasil" class="form-control" value="{{ old('hasil_hafalan') }}" placeholder="0–100"></div>
+                            <div class="col-md-3"><label class="form-label">Nilai Tikrar</label><input type="number" step="0.01" min="0" max="100" name="nilai_tikrar" id="smart_nilai_tikrar" class="form-control" value="{{ old('nilai_tikrar') }}" placeholder="0–100"><div class="form-text">Dipakai bersama oleh Ziyadah dan Rabt.</div></div>
                             <div class="col-md-2"><label class="form-label">Status <span class="text-danger">*</span></label><select name="status" class="form-select" required><option value="lulus" @selected(old('status','lulus')==='lulus')>Lulus</option><option value="ulang" @selected(old('status')==='ulang')>Ulang</option><option value="ditunda" @selected(old('status')==='ditunda')>Ditunda</option></select></div>
                             <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
                                 @if($lastPosition)
@@ -204,6 +219,14 @@
     function openHafalanModal() {
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
+    // "—" hanya penanda belum memilih jenis. Setoran butuh jenis agar bisa
+    // dinilai, jadi radio itu dinonaktifkan saat disimpan (field tidak terkirim,
+    // dan validasi required langsung menunjuk tombol yang harus dipilih).
+    document.addEventListener('submit', function (event) {
+        if (event.target.querySelector('#jenis_none')) {
+            document.getElementById('jenis_none').disabled = true;
+        }
+    }, true);
     document.addEventListener('DOMContentLoaded', function () {
         const quranPositionUrl = @json(route('user.tahfidz.quran-position', ['userId' => $userId]));
         const pageStart = document.getElementById('smart_halaman_start');
@@ -261,6 +284,18 @@
         }
 
         [pageStart, pageEnd].forEach(input => input?.addEventListener('input', calculatePages));
+
+        // Rabt dinilai dari hasil mengikat, bukan dari hafalan baru, jadi label
+        // kolom nilai ikut berubah agar guru tidak salah mengisi.
+        const hasilLabel = document.getElementById('smart_hasil_label');
+        const syncHasilLabel = function () {
+            const checked = document.querySelector('input[name="setoran_type"]:checked');
+            if (hasilLabel) hasilLabel.textContent = checked?.value === 'robet' ? 'Nilai Rabt' : 'Nilai Hafalan';
+        };
+        document.querySelectorAll('input[name="setoran_type"]').forEach(radio => {
+            radio.addEventListener('change', syncHasilLabel);
+        });
+        syncHasilLabel();
         ['smart_surah_start', 'surahEndPicker', 'smart_ayat_start'].forEach(function (id) {
             const field = document.getElementById(id);
             if (! field) return;
