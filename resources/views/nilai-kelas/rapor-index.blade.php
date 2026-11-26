@@ -860,6 +860,25 @@
 
                             {{-- Tab 3: judul & identitas santri --}}
                             <div class="tab-pane fade" id="layoutTabTitle" role="tabpanel">
+                                <h6 class="mb-2 small fw-semibold"><i class="ri-user-3-line me-1"></i>Format Nama Santri</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-1">Tampilan nama pada rapor</label>
+                                        <select name="student_name_case" class="form-select form-select-sm" id="studentNameCaseSelect">
+                                            @foreach(\App\Support\StudentNameFormatter::options() as $value => $text)
+                                                <option value="{{ $value }}" {{ \App\Support\StudentNameFormatter::normalize(old('student_name_case', $layout['student_name_case'] ?? 'as_is')) === $value ? 'selected' : '' }}>
+                                                    {{ $text }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="form-text">
+                                            Contoh: <span class="fw-semibold" id="studentNamePreview">Muhammad Abdul Aziz</span>
+                                            <br>
+                                            Berlaku untuk seluruh jenis dan bahasa rapor sekolah ini.
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <h6 class="mb-2 small fw-semibold"><i class="ri-heading me-1"></i>Judul Rapor</h6>
                                 <div class="row g-2 mb-3">
                                     <div class="col-md-4">
@@ -1327,6 +1346,34 @@ renumberSubjectRows();
     // Tombol varian mengubah preview (lihat IIFE preview di bawah) dan
     // menyiapkan isi modal agar pengaturan tersimpan pada varian yang sama.
     window.applyRaporVariant = applyVariant;
+})();
+
+// Pratinjau format nama santri — pengaturan ini berlaku lintas varian,
+// jadi nilainya tidak ikut direset saat varian diganti.
+(function () {
+    const select = document.getElementById('studentNameCaseSelect');
+    const preview = document.getElementById('studentNamePreview');
+    if (!select || !preview) return;
+
+    const contoh = 'Muhammad Abdul Aziz';
+
+    function render() {
+        const mode = select.value;
+        let teks = contoh;
+
+        if (mode === 'upper') {
+            teks = contoh.toUpperCase();
+        } else if (mode === 'title') {
+            teks = contoh.toLowerCase().replace(/(^|[^a-z])([a-z]+)/g, function (_, awal, kata) {
+                return awal + kata.charAt(0).toUpperCase() + kata.slice(1);
+            });
+        }
+
+        preview.textContent = teks;
+    }
+
+    select.addEventListener('change', render);
+    render();
 })();
 
 // Modal pengaturan bertab: selalu mulai dari tab pertama, dan buka tab yang

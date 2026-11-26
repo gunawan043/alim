@@ -37,6 +37,7 @@ use App\Services\SumatifKomponenService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use App\Support\NilaiMurniRule;
+use App\Support\StudentNameFormatter;
 use App\Support\UserJabatan;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -1980,6 +1981,8 @@ class NilaiKelasController extends Controller
             'stamp_margin' => 'nullable|numeric|min:0|max:30',
             'document_leader_name' => 'nullable|string|max:255',
             'document_leader_nupy' => 'nullable|string|max:50',
+            // Format nama santri: as_is | upper | title.
+            'student_name_case' => 'nullable|in:as_is,upper,title',
         ]);
 
         $context = [
@@ -2049,6 +2052,11 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Format nama berlaku untuk SELURUH varian dokumen sekolah ini, jadi
+        // ditulis ke kolom dasar — bukan ke dalam blob varian.
+        if (! empty($validated['student_name_case'])) {
+            $update['student_name_case'] = StudentNameFormatter::normalize($validated['student_name_case']);
+        }
         RaporDistributionSetting::updateOrCreate($context, $update);
         $this->saveDocumentLeaderOverride($studyGroup->school, $request);
 

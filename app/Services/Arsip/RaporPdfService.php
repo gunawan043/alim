@@ -24,6 +24,7 @@ use App\Services\Ljk\LjkPdfFonts;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use App\Support\NoteTemplate;
+use App\Support\StudentNameFormatter;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Collection;
@@ -320,6 +321,7 @@ class RaporPdfService
         string $jenis,
         Student $student,
         ?array $reportSubjectIds = null,
+        ?string $studentNameCase = null,
     ): array {
         $studentId = $student->id;
         $studyGroupId = $studyGroup->id;
@@ -446,14 +448,19 @@ class RaporPdfService
 
         // Placeholder {nama} diisi saat cetak: nama Latin untuk catatan Indonesia,
         // nama Arab untuk catatan Arab.
-        $catatanWali = NoteTemplate::render($catatanWali, $student->name);
+        // Format nama mengikuti pengaturan sekolah. Dipakai juga untuk
+        // placeholder {nama} pada catatan agar isi catatan tidak berbeda
+        // dari nama yang tercetak.
+        $namaTampil = StudentNameFormatter::format($student->name, $studentNameCase);
+
+        $catatanWali = NoteTemplate::render($catatanWali, $namaTampil);
         $catatanWaliAr = NoteTemplate::render($catatanWaliAr, $namaAr);
-        $catatanPredikat = NoteTemplate::render($catatanPredikat, $student->name);
+        $catatanPredikat = NoteTemplate::render($catatanPredikat, $namaTampil);
         $catatanPredikatAr = NoteTemplate::render($catatanPredikatAr, $namaAr);
 
         return [
             $studentId => [
-                'Nama' => $student->name,
+                'Nama' => $namaTampil,
                 'NamaAr' => $namaAr,
                 'NIS' => $student->nis ?? '-',
                 'NISN' => $student->nisn ?? '-',
@@ -550,8 +557,12 @@ class RaporPdfService
         $isBilingual = $bahasa === self::BAHASA_BILINGUAL;
 
         $setting = RaporDistributionSetting::forContext($studyGroup->school_id, $selectedAyId, $selectedSem);
-        $santri = $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
         $layout = $layout ?? ($setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout());
+        $santri = $this->buildSantriData(
+            $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student,
+            $setting?->reportSubjectIds(),
+            $setting?->student_name_case,
+        );
 
         $resolver = app(ArabicNameResolver::class);
         $ownerSchool = app(SchoolUnitService::class)->dataOwnerSchool($studyGroup->school_id) ?? $studyGroup->school;
@@ -644,7 +655,11 @@ class RaporPdfService
                 continue;
             }
 
-            $santri += $this->buildSantriData($schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student, $setting?->reportSubjectIds());
+            $santri += $this->buildSantriData(
+                $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student,
+                $setting?->reportSubjectIds(),
+                $setting?->student_name_case,
+            );
         }
 
         $layout = $setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout();

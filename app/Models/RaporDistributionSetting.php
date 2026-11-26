@@ -56,6 +56,7 @@ class RaporDistributionSetting extends Model
         'title_margin_bottom',
         'ident_line_height',
         'ident_row_padding',
+        'student_name_case',
         'footer_border',
         'footer_padding',
         'footer_left',
@@ -156,6 +157,7 @@ class RaporDistributionSetting extends Model
             'title_margin_bottom' => 2.5,
             'ident_line_height' => 1.05,
             'ident_row_padding' => 0.15,
+            'student_name_case' => \App\Support\StudentNameFormatter::AS_IS,
             'footer_border' => false,
             'footer_padding' => 2.0,
             'footer_left' => null,
@@ -262,6 +264,9 @@ class RaporDistributionSetting extends Model
             'title_margin_bottom' => (float) ($this->title_margin_bottom ?? $defaults['title_margin_bottom']),
             'ident_line_height' => (float) ($this->ident_line_height ?? $defaults['ident_line_height']),
             'ident_row_padding' => (float) ($this->ident_row_padding ?? $defaults['ident_row_padding']),
+            // Format nama santri. Disimpan di dasar (bukan per varian) agar
+            // nama tampil sama di semua jenis & bahasa rapor sekolah ini.
+            'student_name_case' => \App\Support\StudentNameFormatter::normalize($this->student_name_case),
             'footer_border' => (bool) ($this->footer_border ?? $defaults['footer_border']),
             'footer_padding' => (float) ($this->footer_padding ?? $defaults['footer_padding']),
             'footer_left' => $this->footer_left,
