@@ -222,6 +222,24 @@ class TahfidzHalaqahFormTest extends TestCase
         }
     }
 
+    public function test_guru_tahfidz_tanpa_tugas_tambahan_mendapat_penjelasan(): void
+    {
+        // Kasus akun nyata: jabatan "Guru Tahfidz" tetapi tugas tambahan
+        // koordinator belum tercatat, sehingga tombol tambah halaqah hilang.
+        $html = $this->actingAs($this->tahfidzTeacher)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->tahfidzTeacher->id}/tahfidz/halaqah")
+            ->assertOk()
+            ->assertDontSee('onclick="openHalaqahModal()"')
+            ->getContent();
+
+        $this->assertStringContainsString('belum tercatat sebagai Koordinator Guru Tahfidz', $html);
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
+    }
+
     public function test_koordinator_dan_gender_diisi_otomatis_saat_menyimpan(): void
     {
         $this->actingAs($this->coordinator)

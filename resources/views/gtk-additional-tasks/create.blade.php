@@ -57,6 +57,10 @@
                                         <option value="{{ $dt }}" {{ old('nama_tugas') == $dt ? 'selected' : '' }}>{{ $dt }}</option>
                                     @endforeach
                                 </select>
+                                <div class="form-text">
+                                    Untuk koordinator tahfidz, pilih <strong>Koordinator Guru Tahfidz</strong>:
+                                    nama ini yang membuka menu serta wewenang mengelola halaqah.
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Jam per Minggu (JP)</label>

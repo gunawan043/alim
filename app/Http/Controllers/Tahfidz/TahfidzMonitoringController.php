@@ -219,7 +219,7 @@ class TahfidzMonitoringController extends Controller
             ->pluck('user_id')
             ->merge(GtkAdditionalTask::query()
                 ->whereIn('work_unit_id', $workUnitIds)
-                ->where('nama_tugas', 'like', '%Koordinator Guru Tahfidz%')
+                ->where($this->access->coordinatorTaskLike())
                 ->pluck('user_id'))
             ->merge($groups->pluck('coordinator_id'))
             ->merge($groups->pluck('teacher_id'))

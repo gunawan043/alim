@@ -21,6 +21,22 @@
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show"><i class="ri-check-line me-1"></i>{{ session('success') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
     @if(session('error'))<div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button class="btn-close" data-bs-dismiss="alert"></button></div>@endif
 
+    {{-- Tanpa tugas tambahan, tombol tambah halaqah memang tidak tampil.
+         Jelaskan penyebabnya alih-alih membiarkan halaman terasa terkunci. --}}
+    @if(! $canManage && $isTahfidzTeacher)
+        <div class="alert alert-warning d-flex gap-2 align-items-start">
+            <i class="ri-error-warning-line fs-5"></i>
+            <div>
+                <div class="fw-semibold">Anda belum tercatat sebagai Koordinator Guru Tahfidz.</div>
+                <div class="small">
+                    Menambah dan mengubah halaqah hanya untuk koordinator. Minta pengelola kepegawaian
+                    menambahkan <strong>tugas tambahan</strong> bernama <strong>Koordinator Guru Tahfidz</strong>
+                    untuk akun Anda di satuan pendidikan ini.
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="row tahfidz-stat">
         @foreach([
             ['Total Halaqah', $stats['total'], 'ri-team-line', 'primary', 'Semua halaqah pada filter ini'],

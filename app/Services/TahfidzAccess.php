@@ -100,6 +100,17 @@ class TahfidzAccess
             });
     }
 
+    /**
+     * Nama tugas koordinator tahfidz sudah diakui, baik ejaan "tahfidz"
+     * maupun "tahfiz". Dipakai juga oleh query yang mencari koordinator.
+     */
+    public function coordinatorTaskLike(): \Closure
+    {
+        return fn ($q) => $q->where('nama_tugas', 'like', '%Koordinator%')
+            ->where(fn ($inner) => $inner->where('nama_tugas', 'like', '%Tahfidz%')
+                ->orWhere('nama_tugas', 'like', '%Tahfiz%'));
+    }
+
     public function isSchoolLeader(User $user): bool
     {
         return \App\Support\UserJabatan::hasAnyLoose($user, [
@@ -259,10 +270,7 @@ class TahfidzAccess
         return User::query()
             ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->whereHas('tugasTambahan', fn ($t) => $t
-                ->where('nama_tugas', 'like', '%Koordinator%')
-                ->where(fn ($q) => $q->where('nama_tugas', 'like', '%Tahfidz%')
-                    ->orWhere('nama_tugas', 'like', '%Tahfiz%')))
+            ->whereHas('tugasTambahan', $this->coordinatorTaskLike())
             ->orderBy('name')
             ->first();
     }

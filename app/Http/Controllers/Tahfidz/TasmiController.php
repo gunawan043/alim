@@ -375,7 +375,7 @@ class TasmiController extends Controller
         if ($session->school?->work_unit_id) {
             $recipients = $recipients->merge(GtkAdditionalTask::query()
                 ->where('work_unit_id', $session->school->work_unit_id)
-                ->where('nama_tugas', 'like', '%Koordinator Guru Tahfidz%')
+                ->where($this->access->coordinatorTaskLike())
                 ->pluck('user_id'));
         }
 
