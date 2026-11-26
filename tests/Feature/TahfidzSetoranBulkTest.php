@@ -360,7 +360,7 @@ class TahfidzSetoranBulkTest extends TestCase
             ->get(route('user.tahfidz.penilaian.index', ['userId' => $this->teacher->id, 'group_id' => $this->group->id]));
 
         $response->assertOk()
-            ->assertSee('Buku Nilai Tahfidz')
+            ->assertSee('Buku Nilai Halaqah')
             ->assertSee('STS')
             ->assertSee('SAS')
             ->assertSee('Santri Alif');

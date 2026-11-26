@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Tahfidz;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
-use App\Models\Subject;
 use App\Models\TahfidzGradebook;
 use App\Models\TahfidzGroup;
 use App\Services\TahfidzAccess;
@@ -25,9 +24,23 @@ use Illuminate\Support\Facades\DB;
  * Buku diikat ke halaqah (bukan rombel) karena anggota satu halaqah bisa
  * berasal dari beberapa rombel dalam satu tingkat. Saat masuk rapor, nilai
  * dipetakan ke rombel masing-masing santri.
+ *
+ * Satu halaqah = satu buku, bukan satu (mapel x rombel). Mapel tahfidz hanya
+ * satu, jadi mapel tidak perlu dipilih guru; bila data lama memuat lebih dari
+ * satu mapel tahfidz, tab mapel ditampilkan seperti buku nilai sumatif.
  */
 class TahfidzPenilaianController extends Controller
 {
+    /** Kolom nilai pada format tahfidz. */
+    private const COLUMNS = ['ziyadah', 'rabt', 'sts', 'sas'];
+
+    private const COLUMN_LABELS = [
+        'ziyadah' => 'Ziyadah',
+        'rabt' => 'Rabt',
+        'sts' => 'STS',
+        'sas' => 'SAS',
+    ];
+
     public function __construct(
         private readonly TahfidzAccess $access,
         private readonly TahfidzGradebookService $books,
@@ -39,29 +52,18 @@ class TahfidzPenilaianController extends Controller
         $academicYear = AcademicYear::where('is_active', true)->first()
             ?? AcademicYear::orderByDesc('start_date')->first();
 
-        if (! $academicYear) {
-            return view('tahfidz.penilaian.index', [
-                'userId' => $userId,
-                'groups' => collect(),
-                'group' => null,
-                'books' => collect(),
-                'book' => null,
-                'subjects' => collect(),
-                'rows' => collect(),
-                'members' => collect(),
-                'semester' => 'ganjil',
-                'academicYear' => null,
-                'weightErrors' => [],
-            ]);
-        }
-
         $semester = in_array($request->input('semester'), ['ganjil', 'genap'], true)
             ? $request->input('semester')
-            : ($academicYear->semester ?: 'ganjil');
+            : ($academicYear?->semester ?: 'ganjil');
 
-        $groups = $this->accessibleGroups($request, $academicYear);
-        $groupId = $request->input('group_id', $groups->first()?->id);
-        $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
+        // Filter utama: halaqah. Tanpa group_id, daftar tetap tampil agar guru
+        // bisa memilih — tetapi tabel nilai baru dimuat setelah halaqah dipilih.
+        $groups = $academicYear
+            ? $this->accessibleGroups($request, $academicYear)
+            : collect();
+
+        $groupId = $request->input('group_id');
+        $group = $groupId ? $groups->firstWhere('id', $groupId) : null;
 
         $books = collect();
         $book = null;
@@ -69,6 +71,10 @@ class TahfidzPenilaianController extends Controller
         $members = collect();
 
         if ($group) {
+            // Buku dibuat otomatis saat dibuka (satu per halaqah per mapel
+            // tahfidz), sama seperti daftar Buku Nilai Saya. Tanpa ini guru
+            // harus membuat buku manual padahal konteksnya sudah jelas.
+            $this->books->ensureBooks($group, $academicYear->id);
             $books = $this->booksForGroup($group, $academicYear, $semester);
 
             if ($books->isNotEmpty()) {
@@ -85,6 +91,17 @@ class TahfidzPenilaianController extends Controller
             }
         }
 
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $rows = $rows->filter(function ($row) use ($needle) {
+                $name = mb_strtolower((string) ($row['member']['name'] ?? ''));
+                $nis = mb_strtolower((string) ($row['member']['nis'] ?? ''));
+
+                return str_contains($name, $needle) || str_contains($nis, $needle);
+            })->values();
+        }
+
         return view('tahfidz.penilaian.index', [
             'userId' => $userId,
             'groups' => $groups,
@@ -95,10 +112,18 @@ class TahfidzPenilaianController extends Controller
             'members' => $members,
             'semester' => $semester,
             'academicYear' => $academicYear,
+            'search' => $search,
+            'columns' => self::COLUMNS,
+            'columnLabels' => self::COLUMN_LABELS,
             'weightErrors' => [],
         ]);
     }
 
+    /**
+     * Simpan nilai. Mendukung dua cara pakai:
+     *  - formulir penuh (tombol Simpan / Enter) — redirect dengan pesan;
+     *  - autosave AJAX per setoran (seperti buku nilai sumatif) — JSON.
+     */
     public function store(Request $request, string $userId)
     {
         $validated = $request->validate([
@@ -110,6 +135,7 @@ class TahfidzPenilaianController extends Controller
             'scores.*.rabt' => 'nullable|numeric|min:0|max:100',
             'scores.*.sts' => 'nullable|numeric|min:0|max:100',
             'scores.*.sas' => 'nullable|numeric|min:0|max:100',
+            'scores.*.ket' => 'nullable|string|max:100',
         ]);
 
         $group = TahfidzGroup::findOrFail($validated['tahfidz_group_id']);
@@ -139,7 +165,17 @@ class TahfidzPenilaianController extends Controller
                 'semester' => $validated['semester'],
             ]);
 
+        $wantsJson = $request->ajax() || $request->wantsJson();
+
         if (! $request->has('weights')) {
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Nilai tersimpan untuk '.$saved.' santri.',
+                    'saved_rows' => $this->savedRows($book, array_keys($validated['scores'] ?? [])),
+                ]);
+            }
+
             return $redirect->with('success', 'Nilai tersimpan untuk '.$saved.' santri.');
         }
 
@@ -153,8 +189,17 @@ class TahfidzPenilaianController extends Controller
         $errors = $this->calculator->validateWeights($weights);
 
         if ($errors !== []) {
-            return $redirect
-                ->with('error', 'Nilai tersimpan, tetapi bobot tidak diubah: '.implode(' ', $errors));
+            $message = 'Nilai tersimpan, tetapi bobot tidak diubah: '.implode(' ', $errors);
+
+            if ($wantsJson) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'saved_rows' => $this->savedRows($book, array_keys($validated['scores'] ?? [])),
+                ], 422);
+            }
+
+            return $redirect->with('error', $message);
         }
 
         DB::transaction(function () use ($book, $weights) {
@@ -170,7 +215,43 @@ class TahfidzPenilaianController extends Controller
             $book->refresh()->recalcAll();
         });
 
+        if ($wantsJson) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Nilai dan bobot tersimpan.',
+                'saved_rows' => $this->savedRows($book->refresh(), array_keys($validated['scores'] ?? [])),
+            ]);
+        }
+
         return $redirect->with('success', 'Nilai dan bobot tersimpan. NR Final dihitung ulang untuk seluruh santri.');
+    }
+
+    /**
+     * Baris nilai terkini untuk balasan autosave (pembaruan sel tanpa reload).
+     *
+     * @param  array<int, string>  $studentIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function savedRows(TahfidzGradebook $book, array $studentIds): array
+    {
+        $weights = $book->weights();
+
+        return $book->scores()
+            ->whereIn('student_id', $studentIds)
+            ->get()
+            ->map(fn ($score) => [
+                'student_id' => (string) $score->student_id,
+                'ziyadah' => $score->ziyadah,
+                'rabt' => $score->rabt,
+                'sts' => $score->sts,
+                'sas' => $score->sas,
+                'nr_final' => $score->nr_final,
+                'weighted' => $score->nr_final !== null
+                    ? round((float) $score->nr_final * $book->totalWeight() / 100, 2)
+                    : null,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

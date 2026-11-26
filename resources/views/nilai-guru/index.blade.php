@@ -1,11 +1,11 @@
 @extends('layouts.master')
-@section('title') Mapel Saya @endsection
+@section('title') Nilai Saya @endsection
 @php $userId = $userId ?? request()->route('userId') ?? (function_exists('auth') && auth()->check() ? auth()->id() : null); @endphp
 
 @section('content')
     @component('components.breadcrumb')
         @slot('li_1') Akademik @endslot
-        @slot('title') Mapel Saya @endslot
+        @slot('title') Nilai Saya @endslot
     @endcomponent
 
     @if(session('success'))
@@ -51,10 +51,10 @@
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-header border-bottom-dashed">
-                        <h5 class="card-title mb-0"><i class="ri-book-3-line me-2 text-primary"></i>Buku Nilai Halaqah</h5>
+                        <h5 class="card-title mb-0"><i class="ri-book-3-line me-2 text-primary"></i>Buku Nilai Halaqah (Tahfidz)</h5>
                         <p class="text-muted mb-0 small">
-                            Buku nilai tahfidz diikat ke halaqah Anda. Nilai diisi dengan kolom
-                            Ziyadah, Rabt, STS, dan SAS.
+                            Buku nilai tahfidz diikat ke halaqah Anda — bukan rombel. Nilai diisi dengan kolom
+                            Ziyadah, Rabt, STS, dan SAS dan tersimpan otomatis.
                         </p>
                     </div>
                     <div class="table-responsive">
@@ -63,7 +63,7 @@
                                 <tr>
                                     <th class="text-center" style="width:50px;">No</th>
                                     <th>Halaqah</th>
-                                    <th>Rombel Santri</th>
+                                    <th>Rombel / Tingkat Santri</th>
                                     <th>Mata Pelajaran</th>
                                     <th class="text-center">Santri</th>
                                     <th class="text-center">Semester</th>
@@ -75,7 +75,7 @@
                                     <tr>
                                         <td class="text-center text-muted">{{ $i + 1 }}</td>
                                         <td class="fw-semibold">{{ $row['group']->name }}</td>
-                                        <td class="small text-muted">{{ $row['group']->studyGroup?->name ?? '—' }}</td>
+                                        <td class="small text-muted">Halaqah · {{ $row['group']->studyGroup?->name ?? 'lintas rombel' }}</td>
                                         <td>{{ $row['subject']?->name ?? '—' }}</td>
                                         <td class="text-center">{{ $row['member_count'] }} santri</td>
                                         <td class="text-center">
@@ -136,8 +136,8 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="row g-3 align-items-center">
                         <div class="col-sm">
-                            <h5 class="card-title mb-0">Mapel Saya</h5>
-                            <p class="text-muted mb-0 small">Daftar mapel &amp; kelas yang Anda ampu. Pilih salah satu untuk membuka nilai dan perangkat ajar.</p>
+                            <h5 class="card-title mb-0">Nilai Saya</h5>
+                            <p class="text-muted mb-0 small">Daftar buku nilai yang Anda ampu. Mapel umum dibuka per rombel; tahfidz dibuka per halaqah.</p>
                         </div>
                     </div>
                 </div>

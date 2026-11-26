@@ -98,6 +98,7 @@ class TahfidzGradebookService
             ->pluck('total', 'tahfidz_group_id');
 
         return $books
+            ->unique(fn (TahfidzGradebook $book) => $book->tahfidz_group_id.'|'.$book->subject_id)
             ->map(fn (TahfidzGradebook $book) => [
                 'book' => $book,
                 'group' => $groups->get($book->tahfidz_group_id),
@@ -164,6 +165,36 @@ class TahfidzGradebookService
             ->unique('id')
             ->sortBy([['semester', 'asc'], ['tahfidz_group_id', 'asc']])
             ->groupBy('semester');
+    }
+
+    /**
+     * Pastikan buku halaqah ada untuk setiap mapel tahfidz di sekolahnya.
+     *
+     * Dipakai halaman Buku Nilai Halaqah: guru membuka halaqah lalu langsung
+     * menilai, tanpa perlu membuat buku lebih dulu.
+     *
+     * @return Collection<int, TahfidzGradebook>
+     */
+    public function ensureBooks(TahfidzGroup $group, string $academicYearId): Collection
+    {
+        return $this->tahfidzSubjectsFor($group, $academicYearId)
+            ->map(fn (Subject $subject) => TahfidzGradebook::firstOrCreate(
+                [
+                    'tahfidz_group_id' => $group->id,
+                    'subject_id' => $subject->id,
+                    'academic_year_id' => $academicYearId,
+                    'semester' => $this->semesterFor($group, $academicYearId),
+                ],
+                [
+                    'school_id' => $group->school_id,
+                    'is_active' => true,
+                    'weight_ziyadah' => self::DEFAULT_WEIGHTS['ziyadah'],
+                    'weight_rabt' => self::DEFAULT_WEIGHTS['rabt'],
+                    'weight_sts' => self::DEFAULT_WEIGHTS['sts'],
+                    'weight_sas' => self::DEFAULT_WEIGHTS['sas'],
+                ],
+            ))
+            ->values();
     }
 
     /**
