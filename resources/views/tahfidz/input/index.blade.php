@@ -55,7 +55,7 @@
                 <div class="card-body border-bottom">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <span class="text-muted small me-1">Input:</span>
-                        <button type="button" class="btn btn-success" onclick="openHafalanModal('ziyadah')">
+                        <button type="button" class="btn btn-primary" onclick="openHafalanModal('ziyadah')">
                             <i class="ri-add-line me-1"></i>Input Ziyadah
                         </button>
                         <button type="button" class="btn btn-primary" onclick="openHafalanModal('robet')">
@@ -137,7 +137,7 @@
                                 <td class="fw-medium">{{ $member->student?->name }}</td>
                                 <td>{{ $member->student?->nis }}</td>
                                 <td>{{ $member->group?->name }}</td>
-                                <td class="text-end"><a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId,'student_id'=>$member->student_id]) }}" class="btn btn-sm btn-success"><i class="ri-arrow-right-line me-1"></i>Pilih</a></td>
+                                <td class="text-end"><a href="{{ route('user.tahfidz.input.index', ['userId'=>$userId,'student_id'=>$member->student_id]) }}" class="btn btn-sm btn-primary"><i class="ri-arrow-right-line me-1"></i>Pilih</a></td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="text-center text-muted py-5"><i class="ri-user-search-line fs-3 d-block mb-2"></i>Belum ada santri di halaqah Anda. Gunakan pencarian di atas untuk santri dari halaqah lain.</td></tr>
@@ -157,7 +157,7 @@
                         <input type="hidden" name="return_to" value="input">
                         <input type="hidden" name="tahfidz_group_id" value="{{ $selectedGroup?->id }}">
                         <input type="hidden" name="student_id" value="{{ $selected->id }}">
-                        <div class="modal-header bg-success-subtle"><h5 class="modal-title"><i class="ri-add-line me-1"></i>Tambah Setoran — {{ $selected->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-header bg-primary-subtle"><h5 class="modal-title"><i class="ri-add-line me-1"></i>Tambah Setoran — {{ $selected->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body">
                         <div class="alert alert-warning d-none" id="draftBar">
                             <div class="form-check">
@@ -188,7 +188,7 @@
                                     @foreach(['ziyadah' => 'Ziyadah', 'robet' => 'Rabt'] as $jenisValue => $jenisLabel)
                                         <input type="radio" class="btn-check" name="setoran_type" id="jenis_{{ $jenisValue }}"
                                                value="{{ $jenisValue }}" autocomplete="off" @checked($oldJenis === $jenisValue) required>
-                                        <label class="btn btn-outline-success" for="jenis_{{ $jenisValue }}">{{ $jenisLabel }}</label>
+                                        <label class="btn btn-outline-primary" for="jenis_{{ $jenisValue }}">{{ $jenisLabel }}</label>
                                     @endforeach
                                 </div>
                                 <div class="form-text">Ziyadah = hafalan baru. Rabt = mengikat hafalan lama agar tetap terjaga.</div>
@@ -201,7 +201,7 @@
                                 @if($lastPosition)
                                     <button type="button" class="btn btn-outline-primary btn-sm" id="useLastPosition" data-last="{{ json_encode($lastPosition, JSON_HEX_APOS | JSON_HEX_QUOT) }}"><i class="ri-history-line me-1"></i>Ambil Posisi Terakhir</button>
                                 @endif
-                                <span class="badge bg-success-subtle text-success ms-auto" id="scorePreview">Nilai akhir: otomatis</span>
+                                <span class="badge bg-primary-subtle text-primary ms-auto" id="scorePreview">Nilai akhir: otomatis</span>
                             </div>
                             <div class="col-12"><label class="form-label">Catatan Guru <span class="text-muted small">(opsional)</span></label><textarea name="catatan_guru" rows="2" class="form-control" placeholder="Catatan singkat...">{{ old('catatan_guru') }}</textarea></div>
                         </div>
@@ -303,7 +303,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div>
+                    </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div>
                     </form>
                 </div>
             </div>

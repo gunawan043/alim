@@ -82,7 +82,7 @@
             </form>
 
             <div class="d-flex flex-wrap gap-2 mt-2">
-                <span class="badge bg-success-subtle text-success">Ziyadah {{ $ziyadahCount }}</span>
+                <span class="badge bg-primary-subtle text-primary">Ziyadah {{ $ziyadahCount }}</span>
                 <span class="badge bg-primary-subtle text-primary">Rabt {{ $rabtCount }}</span>
                 @if($search !== '')
                     <span class="badge bg-info-subtle text-info">Hasil pencarian: “{{ $search }}”</span>
@@ -147,7 +147,7 @@
                                             <div class="small">
                                                 @if($ziyadah)
                                                     <div>
-                                                        <span class="badge bg-success-subtle text-success me-1">Ziyadah</span>
+                                                        <span class="badge bg-primary-subtle text-primary me-1">Ziyadah</span>
                                                         {{ $ziyadah->surah_start_name ?? '—' }}{{ $ziyadah->ayat_start ? ':'.$ziyadah->ayat_start : '' }}
                                                         @if($ziyadah->nilai_setoran !== null)<span class="text-muted">· nilai {{ $ziyadah->nilai_setoran }}</span>@endif
                                                     </div>
@@ -165,14 +165,14 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-{{ $hasAny ? 'success' : 'secondary' }}-subtle text-{{ $hasAny ? 'success' : 'secondary' }}">
+                                        <span class="badge bg-{{ $hasAny ? 'primary' : 'secondary' }}-subtle text-{{ $hasAny ? 'primary' : 'secondary' }}">
                                             {{ $hasAny ? 'Terisi' : 'Belum' }}
                                         </span>
                                     </td>
                                     <td class="text-end">
                                         <div class="sh-actions d-inline-flex gap-2">
                                             <a href="{{ $entryUrl('ziyadah') }}"
-                                               class="btn btn-sm {{ $ziyadah ? 'btn-soft-success' : 'btn-success' }}">
+                                               class="btn btn-sm {{ $ziyadah ? 'btn-soft-primary' : 'btn-primary' }}">
                                                 <i class="ri-add-line me-1"></i>{{ $ziyadah ? 'Edit Ziyadah' : 'Ziyadah' }}
                                             </a>
                                             <a href="{{ $entryUrl('robet') }}"

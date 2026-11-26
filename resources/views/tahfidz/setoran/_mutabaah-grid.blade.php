@@ -78,7 +78,7 @@
                         <input type="text" maxlength="3000" class="form-control form-control-sm mutabaah-field" data-field="catatan_musyrif" value="{{ $value('catatan_musyrif') }}" aria-label="Catatan {{ $student->name }}">
                     </td>
                     <td class="text-end text-nowrap">
-                        <button type="button" class="btn btn-sm btn-success mutabaah-save" title="Simpan mutaba'ah santri ini"
+                        <button type="button" class="btn btn-sm btn-primary mutabaah-save" title="Simpan mutaba'ah santri ini"
                                 data-student="{{ $student->id }}" data-name="{{ $student->name }}"><i class="ri-save-line"></i></button>
                         <a class="btn btn-sm btn-outline-dark" target="_blank"
                            href="{{ str_replace('__SID__', $student->id, $mutabaahPrintBase) }}?month={{ \Carbon\Carbon::parse($dateValue)->format('Y-m') }}&group_id={{ $group->id }}"

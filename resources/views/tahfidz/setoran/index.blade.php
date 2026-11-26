@@ -33,7 +33,7 @@
             <div class="d-flex gap-2">
                 <a href="{{ route('user.tahfidz.halaqah.index', ['userId'=>$userId]) }}" class="btn btn-soft-info"><i class="ri-team-line me-1"></i>Halaqah</a>
                 @if($groups->isNotEmpty())
-                    <button type="button" class="btn btn-success" onclick="openSetoranModal()"><i class="ri-add-line me-1"></i>Input Setoran</button>
+                    <button type="button" class="btn btn-primary" onclick="openSetoranModal()"><i class="ri-add-line me-1"></i>Input Setoran</button>
                 @endif
             </div>
         </div>
@@ -62,7 +62,7 @@
                                 @if($setoran->verification_status !== 'verified' || $setoran->verification_notes === 'auto-verified')
                                     <a href="{{ route('user.tahfidz.setoran.edit', ['userId'=>$userId,'id'=>$setoran->id]) }}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="ri-edit-line"></i></a>
                                     @if($canVerify && $setoran->verification_status === 'pending')
-                                        <form method="POST" action="{{ route('user.tahfidz.setoran.verify', ['userId'=>$userId,'id'=>$setoran->id]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-success" title="Verifikasi manual"><i class="ri-check-double-line"></i></button></form>
+                                        <form method="POST" action="{{ route('user.tahfidz.setoran.verify', ['userId'=>$userId,'id'=>$setoran->id]) }}" class="d-inline">@csrf<button class="btn btn-sm btn-outline-primary" title="Verifikasi manual"><i class="ri-check-double-line"></i></button></form>
                                     @endif
                                     <button type="button" class="btn btn-sm btn-outline-danger delete-setoran" title="Hapus"
                                             data-action="{{ route('user.tahfidz.setoran.destroy', ['userId'=>$userId,'id'=>$setoran->id]) }}"
@@ -87,7 +87,7 @@
                         @csrf
                         <div class="modal-header bg-primary-subtle"><h5 class="modal-title"><i class="ri-file-add-line me-1"></i>Input Setoran</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body">
-                            <div class="alert alert-light border small mb-3 d-flex flex-wrap justify-content-between gap-2"><span><i class="ri-lightbulb-line text-warning me-1"></i>Pilih santri; juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Detail dapat diubah.</span><span class="badge bg-success-subtle text-success" id="setoranScorePreview">Nilai akhir otomatis</span></div>
+                            <div class="alert alert-light border small mb-3 d-flex flex-wrap justify-content-between gap-2"><span><i class="ri-lightbulb-line text-warning me-1"></i>Pilih santri; juz, surah, dan ayat awal otomatis melanjutkan setoran terakhir. Detail dapat diubah.</span><span class="badge bg-primary-subtle text-primary" id="setoranScorePreview">Nilai akhir otomatis</span></div>
                             <div class="row g-3">
                                 <div class="col-md-5"><label class="form-label">Halaqah <span class="text-danger">*</span></label><select name="tahfidz_group_id" id="setoranGroup" class="form-select" required onchange="fillSetoranStudents(this.value)">@foreach($groups as $g)<option value="{{ $g->id }}" @selected((string)old('tahfidz_group_id')===(string)$g->id)>{{ $g->name }} — {{ $g->school?->name }}</option>@endforeach</select></div>
                                 <div class="col-md-4"><label class="form-label">Santri <span class="text-danger">*</span></label><select name="student_id" id="setoranStudent" class="form-select" required onchange="applySetoranLastPosition(this.value)"><option value="">—</option></select></div>

@@ -44,7 +44,7 @@
             <div class="col-md-2"><label class="form-label">Jali</label><input type="number" step="0.01" min="0" max="100" name="jali" class="form-control" value="{{ $val('jali') }}"></div>
             <div class="col-md-2"><label class="form-label">Nilai Akhir</label><input type="number" step="0.01" min="0" max="100" name="nilai_setoran" class="form-control" value="{{ $val('nilai_setoran') }}" placeholder="Otomatis"></div>
             <div class="col-md-8"><label class="form-label">Catatan Guru</label><textarea name="catatan_guru" class="form-control" rows="2">{{ $val('catatan_guru') }}</textarea></div>
-        </div></div><div class="card-footer d-flex justify-content-end gap-2"><a href="{{ route('user.tahfidz.setoran.index', ['userId'=>$userId]) }}" class="btn btn-light">Batal</a><button class="btn btn-success"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div></div>
+        </div></div><div class="card-footer d-flex justify-content-end gap-2"><a href="{{ route('user.tahfidz.setoran.index', ['userId'=>$userId]) }}" class="btn btn-light">Batal</a><button class="btn btn-primary"><i class="ri-save-line me-1"></i>Simpan Setoran</button></div></div>
     </form>
 @endsection
 
