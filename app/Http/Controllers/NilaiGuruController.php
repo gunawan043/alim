@@ -25,6 +25,7 @@ use App\Services\GuardianGradeColumnService;
 use App\Services\NilaiPublishNotificationService;
 use App\Services\SumatifHarianService;
 use App\Services\SumatifKomponenService;
+use App\Services\TahfidzGradebookService;
 use App\Support\NilaiMurniRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -41,6 +42,11 @@ class NilaiGuruController extends Controller
     public function index(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
+
+        // Guru tahfidz memakai buku HALAQAH, bukan buku mapel per rombel.
+        // Daftarnya dipisah total agar tidak tercampur format mapel umum.
+        $tahfidzRows = app(TahfidzGradebookService::class)
+            ->bookRowsForTeacher(auth()->id(), $schoolId);
 
         // Menu Guru selalu bekerja pada lingkup pribadi: hanya buku untuk
         // mapel/rombel tempat guru ini ditugaskan. Akses lintas guru ada di
@@ -60,7 +66,7 @@ class NilaiGuruController extends Controller
             ->filter()->sortBy('name')->values();
 
         return view('nilai-guru.index', compact(
-            'userId', 'adminBooks', 'subjects'
+            'userId', 'adminBooks', 'subjects', 'tahfidzRows'
         ));
     }
 

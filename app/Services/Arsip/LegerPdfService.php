@@ -131,6 +131,59 @@ class LegerPdfService
             }
         }
 
+        // Mapel tahfidz memakai format penilaiannya sendiri: Ziyadah, Rabt,
+        // STS, SAS dari buku halaqah. Di leger kolom Ziyadah dan Rabt tidak
+        // bisa diwakili satu angka, jadi ditampilkan sebagai sub-kolom di
+        // samping nilai akhir — bukan memakai mekanisme komponen mapel umum.
+        $tahfidzColumns = [];
+        $tahfidzValues = [];
+        $tahfidzScores = [];
+        $tahfidzWeights = [];
+
+        $tahfidzRows = collect();
+        if ($students->isNotEmpty() && $selectedAyId) {
+            $tahfidzRows = \App\Models\TahfidzGradebookScore::query()
+                ->with('gradebook:id,tahfidz_group_id,subject_id,semester,is_active')
+                ->whereIn('student_id', $students->pluck('student_id'))
+                ->whereHas('gradebook', fn ($q) => $q
+                    ->whereIn('subject_id', $subjectMap->pluck('id'))
+                    ->where('academic_year_id', $selectedAyId)
+                    ->where('semester', $selectedSem)
+                    ->where('is_active', true))
+                ->get();
+        }
+
+        foreach ($subjectMap as $subject) {
+            if (! app(TahfidzRaporService::class)->isTahfidzSubject($subject)) {
+                continue;
+            }
+
+            $tahfidzColumns[$subject->id] = ['ziyadah' => 'Ziyadah', 'rabt' => 'Rabt'];
+
+            foreach ($students as $history) {
+                $sid = $history->student_id;
+                $score = $tahfidzRows->first(
+                    fn ($row) => $row->student_id === $sid
+                        && $row->gradebook?->subject_id === $subject->id,
+                );
+
+                $tahfidzScores[$sid][$subject->id] = $score;
+                $tahfidzValues[$sid][$subject->id] = [
+                    'ziyadah' => $score?->ziyadah,
+                    'rabt' => $score?->rabt,
+                ];
+
+                // Bobot diambil dari buku halaqah santri ini; satu santri bisa
+                // berada di halaqah berbeda dari teman sekelasnya.
+                if ($score && ! isset($tahfidzWeights[$subject->id])) {
+                    $book = \App\Models\TahfidzGradebook::find($score->tahfidz_gradebook_id);
+                    if ($book) {
+                        $tahfidzWeights[$subject->id] = $book->weights();
+                    }
+                }
+            }
+        }
+
         // Komponen STS/SAS per mapel (mis. Praktik & Tulis). Hanya mapel yang
         // punya komponen yang mendapat sub-kolom tambahan di leger.
         $komponenService = app(\App\Services\SumatifKomponenService::class);
@@ -256,6 +309,10 @@ class LegerPdfService
             'jumlahJuzMap' => $jumlahJuzMap,
             'componentColumns' => $componentColumns,
             'componentValues' => $componentValues,
+            'tahfidzColumns' => $tahfidzColumns,
+            'tahfidzValues' => $tahfidzValues,
+            'tahfidzScores' => $tahfidzScores,
+            'tahfidzWeights' => $tahfidzWeights,
             'predicateNotes' => $predicateNotes,
             'predicateNotesAr' => $predicateNotesAr,
         ];

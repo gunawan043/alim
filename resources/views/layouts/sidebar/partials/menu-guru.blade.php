@@ -33,6 +33,15 @@
         }
     };
 
+    // Guru halaqah tahfidz: buku nilainya diikat ke halaqah, bukan mapel × rombel.
+    $guruMenuHalaqah = $guruMenuUserId && \App\Models\TahfidzGroup::query()
+        ->where('is_active', true)
+        ->where(fn ($q) => $q
+            ->where('teacher_id', $guruMenuUserId)
+            ->orWhere('coordinator_id', $guruMenuUserId)
+            ->orWhereHas('teachers', fn ($t) => $t->where('user_id', $guruMenuUserId)->where('is_active', true)))
+        ->exists();
+
     $guruSectionOpen = static function (array $prefixes) use ($currentRoute): bool {
         foreach ($prefixes as $prefix) {
             if ($prefix !== '' && str_starts_with((string) $currentRoute, $prefix)) {
@@ -135,13 +144,21 @@
 </x-sidebar-section>
 
 <x-sidebar-section id="guru_menu_nilai" label="Nilai &amp; Asesmen" icon="ri-survey-line"
-    :open="$guruSectionOpen(['user.schools.guru-mapel.', 'user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.', 'user.ljk.'])">
+    :open="$guruSectionOpen(['user.schools.guru-mapel.', 'user.tahfidz.penilaian.', 'user.asesmen.', 'user.bank-soal.', 'user.kisi-kisi-soal.', 'user.paket-soal.', 'user.ljk.'])">
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.schools.guru-mapel.index') }}">
-            <i class="ri-book-3-line"></i><span>Mapel Saya</span>
+            <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>
         </a>
     </li>
+    @if($guruMenuHalaqah)
+        <li class="nav-item">
+            <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.penilaian.']) ? ' active' : '' }}"
+               href="{{ $guruMenuUrl('user.tahfidz.penilaian.index') }}">
+                <i class="ri-file-list-3-line"></i><span>Buku Nilai Halaqah</span>
+            </a>
+        </li>
+    @endif
     <li class="nav-item">
         <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.asesmen.']) ? ' active' : '' }}"
            href="{{ $guruMenuUrl('user.asesmen.index') }}">

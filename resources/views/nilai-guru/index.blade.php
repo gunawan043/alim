@@ -42,6 +42,66 @@
     @endphp
 
     {{-- ============================================================
+         BUKU HALAQAH — khusus guru tahfidz
+         Berbeda dari buku mapel: dinilai per halaqah dengan kolom
+         Ziyadah, Rabt, STS, SAS. Tidak dicampur dengan daftar mapel.
+    ============================================================ --}}
+    @if(($tahfidzRows ?? collect())->isNotEmpty())
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header border-bottom-dashed">
+                        <h5 class="card-title mb-0"><i class="ri-book-3-line me-2 text-primary"></i>Buku Nilai Halaqah</h5>
+                        <p class="text-muted mb-0 small">
+                            Buku nilai tahfidz diikat ke halaqah Anda. Nilai diisi dengan kolom
+                            Ziyadah, Rabt, STS, dan SAS.
+                        </p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width:50px;">No</th>
+                                    <th>Halaqah</th>
+                                    <th>Rombel Santri</th>
+                                    <th>Mata Pelajaran</th>
+                                    <th class="text-center">Santri</th>
+                                    <th class="text-center">Semester</th>
+                                    <th class="text-center" style="width:110px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($tahfidzRows as $i => $row)
+                                    <tr>
+                                        <td class="text-center text-muted">{{ $i + 1 }}</td>
+                                        <td class="fw-semibold">{{ $row['group']->name }}</td>
+                                        <td class="small text-muted">{{ $row['group']->studyGroup?->name ?? '—' }}</td>
+                                        <td>{{ $row['subject']?->name ?? '—' }}</td>
+                                        <td class="text-center">{{ $row['member_count'] }} santri</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-{{ $row['book']->semester == 'ganjil' ? 'info' : 'warning' }}-subtle text-{{ $row['book']->semester == 'ganjil' ? 'info' : 'warning' }}">
+                                                {{ ucfirst($row['book']->semester) }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{{ route('user.tahfidz.penilaian.index', ['userId' => $userId, 'group_id' => $row['group']->id, 'subject_id' => $row['subject']?->id, 'semester' => $row['book']->semester]) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="ri-folder-open-line me-1"></i> Buka
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Guru tahfidz tidak mengampu mapel umum: blok ini tidak ditampilkan. --}}
+    @if($allBooks->isNotEmpty())
+    {{-- ============================================================
          STATS CARDS
     ============================================================ --}}
     <div class="row">
@@ -188,4 +248,5 @@
             </div>
         </div>
     </div>
+    @endif
 @endsection

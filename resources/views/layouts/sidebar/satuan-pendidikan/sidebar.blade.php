@@ -177,6 +177,16 @@
     // tetapi menunya tidak pernah tampil.
     $isKoorGuruTahfidz = $hasTugas('Koordinator Guru Tahfidz') || $hasTugas('Koordinator Guru Tahfiz');
 
+    // Guru pengajar halaqah (bukan koordinator) tetap butuh pintu ke buku
+    // nilainya sendiri, karena buku tahfidz diikat ke halaqah — bukan rombel.
+    $isGuruHalaqah = \App\Models\TahfidzGroup::query()
+        ->where('is_active', true)
+        ->where(fn ($q) => $q
+            ->where('teacher_id', auth()->id())
+            ->orWhere('coordinator_id', auth()->id())
+            ->orWhereHas('teachers', fn ($t) => $t->where('user_id', auth()->id())->where('is_active', true)))
+        ->exists();
+
     $isKoorMapel       = $isKoorGuruUmum || $isKoorGuruAgama || $isKoorGuruHadits || $isKoorGuruArab || $isKoorGuruTahfidz;
 
     // Koordinator/tim bukan "guru murni": menu manajerial mereka tidak boleh
@@ -636,8 +646,19 @@
             <li class="nav-item">
                 <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.schools.guru-mapel.']) ? ' active' : '' }}"
                    href="{{ route('user.schools.guru-mapel.index', ['userId' => $userId]) }}">
-                    <i class="ri-book-3-line"></i><span>Mapel Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
+                    <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
             </li>
+
+            @if($isKoorTahfidz || $isGuruHalaqah)
+                {{-- Guru halaqah membuka Buku Nilai Saya: isinya buku halaqah
+                     (Ziyadah, Rabt, STS, SAS), bukan buku mapel per rombel. --}}
+                <li class="nav-item">
+                    <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.penilaian.']) ? ' active' : '' }}"
+                       href="{{ route('user.tahfidz.penilaian.index', ['userId' => $userId]) }}">
+                        <i class="ri-file-list-3-line"></i><span>Buku Nilai Halaqah</span>
+                    </a>
+                </li>
+            @endif
 
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen', ['asesmenFull' => true])
         </x-sidebar-section>

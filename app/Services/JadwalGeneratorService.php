@@ -302,6 +302,19 @@ class JadwalGeneratorService
             }
         }
 
+        // Hormati penanda resmi walau nama mapelnya tidak menyebut tahfidz
+        // (mis. mapel diganti nama menjadi "Al-Qur'an Intensif").
+        $query = Subject::query()->where('is_active', true)
+            ->where('penilaian_format', TahfidzSubjectResolver::FORMAT_TAHFIDZ);
+
+        if ($schoolId) {
+            $query->where('school_id', $schoolId);
+        }
+
+        foreach ($query->pluck('id') as $subjectId) {
+            $this->tahfidzSubjectIds[$subjectId] = true;
+        }
+
         if (empty($this->tahfidzSubjectIds)) {
             return;
         }
@@ -418,9 +431,13 @@ class JadwalGeneratorService
     }
 
     /**
-     * Apakah mapel ini termasuk rumpun tahfidz?
-     * Sumber utama: `subject_groups.name` mengandung "tahfidz"/"tahfiz".
-     * Setting `tahfidz.subject_ids` (dipisah koma) menimpa deteksi ini.
+     * Apakah mapel ini memakai format penilaian tahfidz?
+     *
+     * Sumber kebenaran: kolom `subjects.penilaian_format` lewat
+     * TahfidzSubjectResolver — sama dengan yang dipakai rapor, leger, dan
+     * sidebar. Sebelumnya fungsi ini punya aturan sendiri sehingga mapel
+     * tertentu dinilai tahfidz pada rapor tetapi dijadwalkan seperti mapel
+     * umum. Setting `tahfidz.subject_ids` tetap dihormati.
      */
     private function isTahfidzSubject(?string $subjectId): bool
     {
@@ -436,15 +453,14 @@ class JadwalGeneratorService
             return $this->tahfidzSubjectIds[$subjectId] = false;
         }
 
-        $subject = Subject::with('subjectGroup')->find($subjectId);
-
-        return $this->tahfidzSubjectIds[$subjectId] = $subject
-            ? $this->subjectLooksLikeTahfidz($subject)
-            : false;
+        return $this->tahfidzSubjectIds[$subjectId] = app(TahfidzSubjectResolver::class)
+            ->isTahfidzId($subjectId);
     }
 
     private function subjectLooksLikeTahfidz(Subject $subject): bool
     {
+        // Deteksi nama/rumpun lama dipertahankan hanya untuk merintis daftar
+        // awal penempatan blok, bukan untuk menentukan format penilaian.
         $group = mb_strtolower($subject->subjectGroup?->name ?? '');
         $name = mb_strtolower($subject->name ?? '');
         $code = mb_strtolower($subject->code ?? '');

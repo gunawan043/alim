@@ -200,17 +200,33 @@ class TahfidzPenilaianController extends Controller
 
         if (! $this->access->canViewAllSchools($user)) {
             if ($this->access->isSchoolCoordinator($user, $schoolId) || $this->access->isSchoolLeader($user)) {
-                $query->where('school_id', $schoolId);
+                // Tanpa school_id (kepegawaian belum diisi), filter ini akan
+                // mengosongkan hasil padahal guru tetap berhak melihat
+                // halaqahnya sendiri. Jatuh ke lingkup pribadi.
+                if ($schoolId) {
+                    $query->where('school_id', $schoolId);
+                } else {
+                    $this->scopeToOwnHalakah($query, $user);
+                }
             } else {
-                $query->where(function ($q) use ($user) {
-                    $q->where('teacher_id', $user->id)
-                        ->orWhere('coordinator_id', $user->id)
-                        ->orWhereHas('teachers', fn ($t) => $t->where('user_id', $user->id)->where('is_active', true));
-                });
+                $this->scopeToOwnHalakah($query, $user);
             }
         }
 
         return $query->orderBy('name')->get();
+    }
+
+    /**
+     * Halaqah tempat guru ini mengajar — sumbernya sama dengan daftar buku
+     * nilai (teacher_id halaqah atau tabel pengajar halaqah).
+     */
+    private function scopeToOwnHalakah($query, $user): void
+    {
+        $query->where(function ($q) use ($user) {
+            $q->where('teacher_id', $user->id)
+                ->orWhere('coordinator_id', $user->id)
+                ->orWhereHas('teachers', fn ($t) => $t->where('user_id', $user->id)->where('is_active', true));
+        });
     }
 
     private function schoolId(Request $request): ?string

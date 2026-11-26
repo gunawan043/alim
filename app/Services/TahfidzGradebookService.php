@@ -65,6 +65,51 @@ class TahfidzGradebookService
     }
 
     /**
+     * Buku nilai halaqah untuk daftar "Buku Nilai Saya".
+     *
+     * Guru tahfidz TIDAK mengajar mapel umum, jadi daftar ini murni buku
+     * halaqah — tidak dicampur dengan buku mapel per rombel. Satu baris per
+     * halaqah; mapel tahfidz hanya satu sehingga mapel tidak perlu dipilih
+     * (bila data lama memuat lebih dari satu, baris tetap dipisah mapel).
+     *
+     * @return Collection<int, array{book: TahfidzGradebook, group: TahfidzGroup, subject: ?Subject, member_count: int}>
+     */
+    public function bookRowsForTeacher(string $teacherId, ?string $schoolId = null, ?string $academicYearId = null): Collection
+    {
+        $books = $this->booksForTeacher($teacherId, $schoolId, $academicYearId)->flatten();
+
+        if ($books->isEmpty()) {
+            return collect();
+        }
+
+        $groups = TahfidzGroup::query()
+            ->with(['studyGroup:id,name', 'school:id,name'])
+            ->whereIn('id', $books->pluck('tahfidz_group_id')->unique())
+            ->get()
+            ->keyBy('id');
+
+        // Jumlah anggota aktif per halaqah, agar guru tahu isi buku sebelum membuka.
+        $memberCounts = TahfidzGroupMember::query()
+            ->whereIn('tahfidz_group_id', $groups->keys())
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->whereIn('status', self::ACTIVE_MEMBER_STATUSES)
+            ->selectRaw('tahfidz_group_id, COUNT(*) as total')
+            ->groupBy('tahfidz_group_id')
+            ->pluck('total', 'tahfidz_group_id');
+
+        return $books
+            ->map(fn (TahfidzGradebook $book) => [
+                'book' => $book,
+                'group' => $groups->get($book->tahfidz_group_id),
+                'subject' => $book->subject,
+                'member_count' => (int) ($memberCounts[$book->tahfidz_group_id] ?? 0),
+            ])
+            ->filter(fn ($row) => $row['group'] !== null)
+            ->sortBy(fn ($row) => ($row['group']->name ?? '').' '.($row['subject']?->name ?? ''))
+            ->values();
+    }
+
+    /**
      * Buku nilai (per halaqah) untuk guru, dikelompokkan per semester.
      *
      * Buku dibuat otomatis saat pertama dibuka: satu buku per halaqah untuk
