@@ -353,6 +353,13 @@
                     <input type="hidden" name="semester" value="{{ $semester }}">
                 </form>
 
+                @if($canEditJp ?? false)
+                    <form id="jpFormPeta" method="POST" action="{{ route('user.kurikulum.jp.save', ['userId' => $userId]) }}">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
+                    </form>
+                @endif
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle table-freeze mb-0">
                         <thead class="table-light">
@@ -381,8 +388,22 @@
                                             <span class="text-muted">—</span>
                                         @endif
                                     </td>
-                                    <td>{{ $row['subject'] }}</td>
-                                    <td class="text-center">{{ $row['weekly_hours'] }}</td>
+                                    <td class="text-center">{{ $row['subject'] }}</td>
+                                    <td class="text-center">
+                                        @if($canEditJp ?? false)
+                                            <input type="number"
+                                                   form="jpFormPeta"
+                                                   name="jp[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}]"
+                                                   value="{{ $row['weekly_hours'] }}"
+                                                   min="0" max="40" step="1"
+                                                   class="form-control form-control-sm text-center jp-input"
+                                                   data-grade="{{ $row['grade_level_id'] }}"
+                                                   style="width:80px;margin:0 auto"
+                                                   title="JP per minggu untuk mapel ini di tingkat {{ $row['grade'] }}">
+                                        @else
+                                            <span class="fw-semibold">{{ $row['weekly_hours'] }}</span>
+                                        @endif
+                                    </td>
                                     <td class="text-center fw-semibold">{{ $row['jp_efektif'] }}</td>
                                     <td class="text-center">
                                         @if($canEditKktp ?? false)
@@ -443,11 +464,24 @@
                     </table>
                 </div>
 
-                @if($canEditKktp ?? false)
-                    <div class="d-flex justify-content-end p-3 border-top">
-                        <button type="submit" form="kktpFormPeta" class="btn btn-success btn-sm">
-                            <i class="ri-save-line me-1"></i>Simpan N-KKTP
-                        </button>
+                @if(($canEditJp ?? false) || ($canEditKktp ?? false))
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top">
+                        <span class="text-muted small">
+                            <i class="ri-information-line me-1"></i>
+                            JP di sini adalah sumber utama: perubahan otomatis menyinkron ke rombel dan pembagian tugas guru.
+                        </span>
+                        <div class="d-flex gap-2">
+                            @if($canEditJp ?? false)
+                                <button type="submit" form="jpFormPeta" class="btn btn-primary btn-sm">
+                                    <i class="ri-save-line me-1"></i>Simpan JP
+                                </button>
+                            @endif
+                            @if($canEditKktp ?? false)
+                                <button type="submit" form="kktpFormPeta" class="btn btn-success btn-sm">
+                                    <i class="ri-save-line me-1"></i>Simpan N-KKTP
+                                </button>
+                            @endif
+                        </div>
                     </div>
                 @endif
             </div>

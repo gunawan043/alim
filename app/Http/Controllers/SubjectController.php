@@ -9,6 +9,11 @@ use App\Models\School;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
+use App\Models\User;
+use App\Services\AcademicPeriodService;
+use App\Services\KurikulumAccess;
+use App\Services\PekanEfektifService;
+use App\Services\SubjectHoursSynchronizer;
 use App\Support\SubjectArabicName;
 use Illuminate\Http\Request;
 
@@ -239,18 +244,21 @@ class SubjectController extends Controller
         $synced = 0;
 
         foreach ($grades as $grade) {
-            GradeLevelSubject::updateOrCreate(
-                [
-                    'academic_year_id' => $activeAy?->id,
-                    'grade_level_id' => $grade->id,
-                    'subject_id' => $subject->id,
-                    'track' => null,
-                ],
-                [
-                    'allocation_hours' => (int) ($subject->credit_hours ?: 2),
-                    'is_active' => true,
-                ]
-            );
+            // JP yang sudah diatur di Peta Kurikulum tidak boleh ditimpa oleh
+            // nilai bawaan mapel; hanya baris baru / kosong yang diisi.
+            $row = GradeLevelSubject::firstOrNew([
+                'academic_year_id' => $activeAy?->id,
+                'grade_level_id' => $grade->id,
+                'subject_id' => $subject->id,
+                'track' => null,
+            ]);
+
+            if (! $row->exists || (int) $row->allocation_hours <= 0) {
+                $row->allocation_hours = (int) ($subject->credit_hours ?: 2);
+            }
+
+            $row->is_active = true;
+            $row->save();
 
             $synced++;
         }
@@ -281,43 +289,24 @@ class SubjectController extends Controller
 
         $hours = (int) ($subject->credit_hours ?: 2);
 
-        $gradeRows = GradeLevelSubject::query()
+        $jumlahTingkat = GradeLevelSubject::query()
             ->where('academic_year_id', $activeAyId)
             ->where('subject_id', $subject->id)
-            ->get();
+            ->count();
 
-        if ($gradeRows->isEmpty()) {
+        if ($jumlahTingkat === 0) {
             return ['diisi' => 0, 'dipertahankan' => 0];
         }
 
-        // Hanya tingkat tanpa JP yang diisi; yang sudah diatur dibiarkan.
-        $kosong = $gradeRows->filter(fn (GradeLevelSubject $row) => (int) $row->allocation_hours <= 0);
-        $dibiarkan = $gradeRows->count() - $kosong->count();
+        // Jalur sinkron yang sama dengan Peta Kurikulum & JP per Tingkat:
+        // hanya tingkat yang belum punya JP yang diisi.
+        $hasil = app(SubjectHoursSynchronizer::class)
+            ->fillEmptyGradeLevels($subject->id, $activeAyId, $hours);
 
-        if ($kosong->isEmpty()) {
-            return ['diisi' => 0, 'dipertahankan' => $dibiarkan];
-        }
-
-        GradeLevelSubject::whereIn('id', $kosong->pluck('id'))
-            ->update(['allocation_hours' => $hours]);
-
-        $gradeLevelIds = $kosong->pluck('grade_level_id');
-
-        $groupIds = StudyGroup::query()
-            ->whereIn('grade_level_id', $gradeLevelIds)
-            ->where('school_id', $subject->school_id)
-            ->where('is_active', true)
-            ->pluck('id');
-
-        if ($groupIds->isNotEmpty()) {
-            StudyGroupSubject::query()
-                ->whereIn('study_group_id', $groupIds)
-                ->where('subject_id', $subject->id)
-                ->where(fn ($q) => $q->whereNull('weekly_hours')->orWhere('weekly_hours', '<=', 0))
-                ->update(['weekly_hours' => $hours]);
-        }
-
-        return ['diisi' => $kosong->count(), 'dipertahankan' => $dibiarkan];
+        return [
+            'diisi' => $hasil['tingkat'],
+            'dipertahankan' => $jumlahTingkat - $hasil['tingkat'],
+        ];
     }
 
     public function syncGrades(Request $request, string $userId, string $id)
@@ -342,7 +331,120 @@ class SubjectController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        return view('subjects.show', compact('subject', 'userId'));
+        // JP per tingkat: sumber yang sama dengan Peta Kurikulum, supaya
+        // pengaturan bisa dilakukan dari menu Mapel tanpa menggandakan mapel.
+        $academicYear = AcademicYear::where('is_active', true)->first();
+
+        // Minggu efektif dari Kalender → Pekan Efektif, sumber yang sama
+        // dengan Peta Kurikulum.
+        $semesterGanjil = $academicYear?->semester !== 'genap';
+        $ringkasan = ($schoolId && $academicYear)
+            ? app(PekanEfektifService::class)->summary($schoolId, $academicYear->id, $semesterGanjil ? 1 : 2)
+            : null;
+        $mingguEfektif = (int) ($ringkasan['minggu_efektif'] ?? 0);
+
+        $gradeHours = GradeLevelSubject::query()
+            ->where('subject_id', $subject->id)
+            ->when($academicYear, fn ($q) => $q->forAcademicYear($academicYear->id)->orderByAcademicYearFirst())
+            ->with('gradeLevel')
+            ->get()
+            ->unique('grade_level_id')
+            ->filter(fn (GradeLevelSubject $row) => $row->gradeLevel !== null)
+            ->sortBy(fn (GradeLevelSubject $row) => $row->gradeLevel->level ?? 0)
+            ->map(fn (GradeLevelSubject $row) => [
+                'grade_level_id' => $row->grade_level_id,
+                'grade' => $row->gradeLevel->name,
+                'level' => $row->gradeLevel->level,
+                'fase' => $row->gradeLevel->fase,
+                'hours' => (int) $row->allocation_hours,
+                'rombel' => (int) StudyGroup::query()
+                    ->where('grade_level_id', $row->grade_level_id)
+                    ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+                    ->where('is_active', true)
+                    ->count(),
+            ])
+            ->map(fn (array $row) => $row + ['jp_efektif' => $row['hours'] * $mingguEfektif])
+            ->values();
+
+        $canEditGradeHours = $this->canEditGradeHours(request()->user());
+
+        return view('subjects.show', compact(
+            'subject',
+            'userId',
+            'academicYear',
+            'gradeHours',
+            'canEditGradeHours'
+        ));
+    }
+
+    /**
+     * Simpan JP per tingkat dari menu Mapel.
+     *
+     * Menulis ke grade_level_subjects lewat SubjectHoursSynchronizer, jalur
+     * yang sama dengan Peta Kurikulum, agar rombel dan penugasan guru ikut
+     * menyesuaikan.
+     *
+     * Format: jp[grade_level_id] = jumlah JP per minggu.
+     */
+    public function saveGradeHours(Request $request, string $userId, string $id)
+    {
+        $subject = Subject::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $subject->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        abort_unless(
+            $this->canEditGradeHours($request->user()),
+            403,
+            'Hanya tim kurikulum yang dapat mengatur JP per tingkat.'
+        );
+
+        $data = $request->validate([
+            'academic_year_id' => 'nullable|exists:academic_years,id',
+            'jp' => 'required|array',
+            'jp.*' => 'nullable|integer|min:0|max:40',
+        ]);
+
+        $academicYearId = $data['academic_year_id'] ?? AcademicYear::where('is_active', true)->value('id');
+
+        if (! $academicYearId) {
+            return back()->with('error', 'Tahun ajaran aktif belum ditentukan.');
+        }
+
+        app(AcademicPeriodService::class)->assertNotLocked($academicYearId, 'JP per tingkat');
+
+        $synchronizer = app(SubjectHoursSynchronizer::class);
+        $rombel = 0;
+        $guru = 0;
+
+        foreach ($data['jp'] as $gradeLevelId => $hours) {
+            $hasil = $synchronizer->applyGradeLevelHours(
+                $subject->id,
+                (string) $gradeLevelId,
+                $academicYearId,
+                (int) $hours,
+            );
+
+            $rombel += $hasil['rombel'];
+            $guru += $hasil['guru'];
+        }
+
+        $pesan = 'JP per tingkat tersimpan.';
+        if ($rombel > 0 || $guru > 0) {
+            $pesan .= " Tersinkron ke {$rombel} rombel dan {$guru} penugasan guru.";
+        }
+
+        return back()->with('success', $pesan);
+    }
+
+    /**
+     * Hak mengatur JP per tingkat. Disamakan dengan editor Peta Kurikulum.
+     */
+    private function canEditGradeHours(?User $user): bool
+    {
+        return $user !== null && app(KurikulumAccess::class)->isKurikulumEditor($user);
     }
 
     public function edit(string $userId, string $id)

@@ -1200,6 +1200,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 });
 
                 Route::get('/', [KurikulumController::class, 'index'])->name('index');
+                Route::post('/jp', [KurikulumController::class, 'saveJp'])->name('jp.save');
                 Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
                 Route::post('/siapkan', [KurikulumController::class, 'siapkan'])->name('siapkan');
 
@@ -1801,6 +1802,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('/{id}', [SubjectController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [SubjectController::class, 'edit'])->name('edit');
                 Route::post('/{id}/sync-grades', [SubjectController::class, 'syncGrades'])->name('sync-grades');
+                // JP per tingkat dari menu Mapel — satu jalur dengan Peta Kurikulum.
+                Route::post('/{id}/jp-tingkat', [SubjectController::class, 'saveGradeHours'])->name('grade-hours.save');
                 Route::put('/{id}/names', [SubjectController::class, 'updateNames'])->name('names.update');
                 Route::put('/{id}', [SubjectController::class, 'update'])->name('update');
                 Route::delete('/{id}', [SubjectController::class, 'destroy'])->name('destroy');

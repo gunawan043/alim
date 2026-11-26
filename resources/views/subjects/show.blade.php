@@ -108,6 +108,86 @@
                     <a href="{{ route('user.subjects.index', ['userId' => $userId]) }}" class="btn btn-light">Kembali</a>
                 </div>
             </div>
+
+            {{-- JP PER TINGKAT: sumber yang sama dengan Peta Kurikulum. --}}
+            <div class="card mt-3">
+                <div class="card-header border-bottom-dashed d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-stack-line text-primary me-1"></i>JP per Tingkat
+                    </h5>
+                    <span class="text-muted small">
+                        {{ $academicYear?->name ?? 'Tahun ajaran aktif' }} &middot; 1 mapel boleh berbeda JP antar tingkat
+                    </span>
+                </div>
+                <div class="card-body">
+                    @if($gradeHours->isEmpty())
+                        <div class="text-center text-muted py-4">
+                            <i class="ri-stack-line fs-1 d-block mb-2"></i>
+                            Mapel ini belum dipasang di tingkat mana pun.
+                            <br>
+                            <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}" class="btn btn-sm btn-outline-primary mt-2">
+                                Buka Data Kelas
+                            </a>
+                        </div>
+                    @else
+                        <form method="POST" action="{{ route('user.subjects.grade-hours.save', ['userId' => $userId, 'id' => $subject->id]) }}">
+                            @csrf
+                            @if($academicYear)
+                                <input type="hidden" name="academic_year_id" value="{{ $academicYear->id }}">
+                            @endif
+
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tingkat</th>
+                                            <th class="text-center" style="width:120px">JP / Minggu</th>
+                                            <th class="text-center" style="width:110px">JP Efektif</th>
+                                            <th class="text-center" style="width:90px">Rombel</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($gradeHours as $row)
+                                            <tr>
+                                                <td class="fw-medium">
+                                                    {{ $row['grade'] }}
+                                                    @if($row['fase'])
+                                                        <span class="badge bg-info-subtle text-info ms-1">{{ $row['fase'] }}</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="number"
+                                                           name="jp[{{ $row['grade_level_id'] }}]"
+                                                           value="{{ $row['hours'] }}"
+                                                           min="0" max="40" step="1"
+                                                           class="form-control form-control-sm text-center"
+                                                           style="width:80px;margin:0 auto">
+                                                </td>
+                                                <td class="text-center text-muted">{{ $row['jp_efektif'] }}</td>
+                                                <td class="text-center text-muted">{{ $row['rombel'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+                                <span class="text-muted small">
+                                    <i class="ri-information-line me-1"></i>
+                                    Perubahan menyinkron otomatis ke rombel dan pembagian tugas guru.
+                                </span>
+                                @if($canEditGradeHours)
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="ri-save-line me-1"></i>Simpan JP per Tingkat
+                                    </button>
+                                @else
+                                    <span class="badge bg-secondary-subtle text-secondary">Hanya lihat</span>
+                                @endif
+                            </div>
+                        </form>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-4">

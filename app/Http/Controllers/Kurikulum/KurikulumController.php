@@ -9,6 +9,7 @@ use App\Models\CapaianPembelajaran;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\StudyGroup;
+use App\Models\Subject;
 use App\Models\SubjectKktp;
 use App\Models\TeachingAssignment;
 use App\Models\TujuanPembelajaran;
@@ -16,6 +17,7 @@ use App\Services\AcademicPeriodService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
+use App\Services\SubjectHoursSynchronizer;
 use App\Services\TeachingHoursResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -250,6 +252,11 @@ class KurikulumController extends Controller
             ->contains(fn ($n) => str_contains(mb_strtolower((string) $n), 'koordinator guru'));
         $canEditKktp = $access->isKurikulumTeam($request->user()) || $isKoorMapelUser;
 
+        // JP adalah sumber utama struktur, sehingga hak mengubahnya mengikuti
+        // editor kurikulum (tim/koordinator kurikulum, super admin) — sama
+        // dengan hak menyiapkan Peta Kurikulum, bukan sekadar melihat KKTP.
+        $canEditJp = $access->isKurikulumEditor($request->user()) && ! $isArchive;
+
         // ── Total JP per tingkat (struktur periode terpilih, bukan baris tampil) ──
         $jpTotals = GradeLevelSubject::query()
             ->when($schoolId, fn ($q) => $q->whereHas('gradeLevel', fn ($g) => $g->where('school_id', $schoolId)))
@@ -289,6 +296,7 @@ class KurikulumController extends Controller
             'gradeLevelOptions',
             'gradeLevelId',
             'canEditKktp',
+            'canEditJp',
             'canPrepare',
             'taughtSubjectIds',
             'taughtPairs',
@@ -443,6 +451,88 @@ class KurikulumController extends Controller
             'success',
             "Peta Kurikulum {$targetAy?->name} disiapkan: {$createdStructure} baris struktur, {$createdKktp} KKTP, dan {$createdCp} CP disalin (TA sumber tidak diubah)."
         );
+    }
+
+    /**
+     * Simpan JP per (mapel × tingkat) langsung dari Peta Kurikulum.
+     *
+     * Ini pintu utama pengaturan JP: cukup satu mapel dengan JP berbeda per
+     * tingkat (mis. Bahasa Indonesia 4 JP di kelas 7, 3 JP di kelas 8) tanpa
+     * perlu menggandakan mapel.
+     *
+     * Setiap nilai disebarkan lewat SubjectHoursSynchronizer sehingga JP
+     * rombel dan pembagian tugas guru ikut menyesuaikan.
+     *
+     * Format: jp[grade_level_id][subject_id] = jumlah JP per minggu.
+     */
+    public function saveJp(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $user = $request->user();
+
+        abort_unless(
+            app(KurikulumAccess::class)->isKurikulumEditor($user),
+            403,
+            'Hanya tim kurikulum yang dapat mengatur JP Peta Kurikulum.'
+        );
+
+        $data = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'jp' => 'required|array',
+            'jp.*' => 'array',
+            'jp.*.*' => 'nullable|integer|min:0|max:40',
+        ]);
+
+        app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'JP Peta Kurikulum');
+
+        // Hanya tingkat milik satuan pendidikan ini yang boleh diubah.
+        $gradeLevelIds = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->whereIn('id', array_keys($data['jp']))
+            ->pluck('id')
+            ->all();
+
+        abort_if($gradeLevelIds === [], 403, 'Tingkat yang dikirim bukan milik satuan pendidikan Anda.');
+
+        $subjectIds = Subject::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->pluck('id')
+            ->all();
+
+        $synchronizer = app(SubjectHoursSynchronizer::class);
+        $diubah = 0;
+        $rombel = 0;
+        $guru = 0;
+
+        foreach ($data['jp'] as $gradeLevelId => $subjects) {
+            if (! in_array($gradeLevelId, $gradeLevelIds, true)) {
+                continue;
+            }
+
+            foreach ((array) $subjects as $subjectId => $hours) {
+                if (! in_array($subjectId, $subjectIds, true)) {
+                    continue;
+                }
+
+                $hasil = $synchronizer->applyGradeLevelHours(
+                    $subjectId,
+                    $gradeLevelId,
+                    $data['academic_year_id'],
+                    (int) $hours,
+                );
+
+                $diubah++;
+                $rombel += $hasil['rombel'];
+                $guru += $hasil['guru'];
+            }
+        }
+
+        $pesan = "JP tersimpan ({$diubah} mapel-tingkat).";
+        if ($rombel > 0 || $guru > 0) {
+            $pesan .= " Tersinkron ke {$rombel} rombel dan {$guru} penugasan guru.";
+        }
+
+        return back()->with('success', $pesan);
     }
 
     /**
