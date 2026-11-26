@@ -206,7 +206,14 @@ class TahfidzAccess
     public function isTahfidzTeacher(User $user): bool
     {
         $jabatan = $this->jabatan($user);
-        if (str_contains($jabatan, 'guru tahfidz') || str_contains($jabatan, 'koordinator guru tahfidz')) {
+        if (str_contains($jabatan, 'guru tahfidz') || str_contains($jabatan, 'guru tahfiz')
+            || str_contains($jabatan, 'koordinator guru tahfidz') || str_contains($jabatan, 'koordinator guru tahfiz')) {
+            return true;
+        }
+
+        // Penugasan halaqah (Musyrif Tahfidz / Koordinator Halaqah) sering
+        // dicatat di Other Teacher Tasks, bukan sebagai jabatan.
+        if ($this->hasCoordinatorTask($user) || $this->hasTahfidzTaskInOtherTasks($user)) {
             return true;
         }
 
@@ -221,6 +228,19 @@ class TahfidzAccess
                 ->where('user_id', $user->id)
                 ->where('is_active', true)
                 ->exists();
+    }
+
+    private function hasTahfidzTaskInOtherTasks(User $user): bool
+    {
+        if (! Schema::hasTable('other_teacher_tasks')) {
+            return false;
+        }
+
+        return OtherTeacherTask::query()
+            ->where('teacher_id', $user->id)
+            ->where('is_active', true)
+            ->pluck('task_name')
+            ->contains(fn ($name) => (bool) preg_match('/tahfi[dz]/i', (string) $name));
     }
 
     public function canInputSetoran(User $user, TahfidzGroup $group): bool
