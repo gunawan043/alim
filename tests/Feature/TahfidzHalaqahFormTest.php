@@ -6,12 +6,14 @@ use App\Models\AcademicYear;
 use App\Models\GtkAdditionalTask;
 use App\Models\GtkEmployment;
 use App\Models\GradeLevel;
+use App\Models\OtherTeacherTask;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\TahfidzGroup;
 use App\Models\User;
 use App\Models\WorkUnit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TahfidzHalaqahFormTest extends TestCase
@@ -173,6 +175,90 @@ class TahfidzHalaqahFormTest extends TestCase
         // Gender tetap tampil, tetapi terkunci (bukan pilihan).
         $this->assertStringContainsString('name="gender"', $html);
         $this->assertStringNotContainsString('<select name="gender"', $html);
+    }
+
+    /**
+     * Kasus nyata: koordinator tercatat di halaman Other Teacher Tasks,
+     * bukan di SK kepegawaian (gtk_additional_tasks).
+     */
+    public function test_koordinator_dari_other_teacher_tasks_dapat_membuat_halaqah(): void
+    {
+        $koordinator = $this->employmentUser('Koor Matriks', 'koor.matriks@test.local', 'Guru Tahfidz');
+
+        OtherTeacherTask::create([
+            'teacher_id' => $koordinator->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->year->id,
+            'task_name' => 'Koordinator Guru Tahfidz',
+            'is_active' => true,
+        ]);
+
+        $this->assertTrue(
+            app(\App\Services\TahfidzAccess::class)->isSchoolCoordinator($koordinator->fresh(), $this->school->id, $this->year->id),
+            'Tugas tambahan dari Other Teacher Tasks harus diakui.'
+        );
+
+        $this->actingAs($koordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$koordinator->id}/tahfidz/halaqah")
+            ->assertOk()
+            ->assertSee('onclick="openHalaqahModal()"', false);
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
+    }
+
+    public function test_tugas_other_teacher_tasks_yang_nonaktif_tidak_diakui(): void
+    {
+        $koordinator = $this->employmentUser('Koor Nonaktif', 'koor.off@test.local', 'Guru Tahfidz');
+
+        OtherTeacherTask::create([
+            'teacher_id' => $koordinator->id,
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->year->id,
+            'task_name' => 'Koordinator Guru Tahfidz',
+            'is_active' => false,
+        ]);
+
+        $this->assertFalse(
+            app(\App\Services\TahfidzAccess::class)->isSchoolCoordinator($koordinator->fresh(), $this->school->id)
+        );
+    }
+
+    /**
+     * Kepegawaian hanya menyimpan penempatan unit kerja (school_id NULL).
+     * Sekolah harus tetap terbaca lewat unit kerja, jangan hilang.
+     */
+    public function test_koordinator_tanpa_school_id_kepegawaian_tetap_bisa_membuat_halaqah(): void
+    {
+        $koordinator = $this->employmentUser('Koor Unit Kerja', 'koor.wu@test.local', 'Guru Tahfidz');
+        GtkEmployment::where('user_id', $koordinator->id)->update(['school_id' => null]);
+        // Penempatan unit kerja adalah sumber cadangan sekolah.
+        DB::table('gtk_work_unit')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $koordinator->id,
+            'work_unit_id' => $this->unit->id,
+            'jabatan' => 'Guru Tahfidz',
+            'is_primary' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        GtkAdditionalTask::create([
+            'user_id' => $koordinator->id,
+            'nama_tugas' => 'Koordinator Guru Tahfidz',
+        ]);
+
+        $this->actingAs($koordinator)
+            ->get("/{$koordinator->id}/tahfidz/halaqah")
+            ->assertOk()
+            ->assertSee('onclick="openHalaqahModal()"', false)
+            ->assertSee($this->school->name);
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
     }
 
     public function test_dialog_tambah_halaqah_di_halaman_index_mengikuti_aturan_baru(): void

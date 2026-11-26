@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\GtkAdditionalTask;
 use App\Models\GtkEmployment;
+use App\Models\OtherTeacherTask;
 use App\Models\TahfidzCoordinator;
 use App\Models\TahfidzGroup;
 use App\Models\TahfidzGroupTeacher;
@@ -50,16 +51,13 @@ class TahfidzAccess
 
     public function isSchoolCoordinator(User $user, ?string $schoolId = null, ?string $academicYearId = null): bool
     {
-        // Tugas tambahan "Koordinator … Tahfidz" berlaku sampai tanggal
-        // berakhirnya (tst), TIDAK terikat tahun ajaran. Karena itu tugas
-        // tambahan diperiksa lebih dulu: tabel tahfidz_coordinators hanya
-        // menyimpan pendaftaran per tahun ajaran dan tidak selalu terisi.
-        if ($this->hasCoordinatorTask($user)) {
-            if (! $schoolId) {
-                return true;
-            }
-
-            return GtkEmployment::query()->where('user_id', $user->id)->where('school_id', $schoolId)->exists();
+        // Tugas tambahan bisa tersimpan di dua tempat: gtk_additional_tasks
+        // (SK kepegawaian) dan other_teacher_tasks (penugasan dari matriks SK,
+        // halaman Other Teacher Tasks). Keduanya harus diakui — koordinator
+        // yang tercatat di halaman tugas lainnya dulu tidak bisa mengelola
+        // halaqah karena hanya satu tabel yang dibaca.
+        if ($this->hasCoordinatorTask($user, $schoolId)) {
+            return true;
         }
 
         if (! Schema::hasTable('tahfidz_coordinators')) {
@@ -77,12 +75,26 @@ class TahfidzAccess
     /**
      * Apakah pengguna memegang tugas tambahan koordinator tahfidz yang berlaku.
      *
-     * Dibaca langsung dari tabel (bukan lewat relasi tugasTambahan) agar tugas
-     * yang masih berlaku tetapi tidak punya tanggal berakhir tetap dikenali.
-     * Nama tugas dicocokkan longgar: "Koordinator Guru Tahfidz",
-     * "Koordinator Tahfidz", dan "Koordinator Tahfiz" sama-sama diterima.
+     * Sumber yang dibaca:
+     * 1. gtk_additional_tasks — SK kepegawaian; masa berlaku dari tst.
+     * 2. other_teacher_tasks — penugasan dari matriks SK; berlaku selama
+     *    barisnya aktif dan (bila diisi) tahun ajarannya masih berjalan.
+     *
+     * Dibaca langsung dari tabel (bukan lewat relasi) agar tugas yang masih
+     * berlaku tetapi tidak punya tanggal berakhir tetap dikenali. Nama tugas
+     * dicocokkan longgar: "Koordinator Guru Tahfidz", "Koordinator Tahfidz",
+     * dan "Koordinator Tahfiz" sama-sama diterima.
      */
-    public function hasCoordinatorTask(User $user): bool
+    public function hasCoordinatorTask(User $user, ?string $schoolId = null): bool
+    {
+        if ($this->hasCoordinatorTaskInSk($user)) {
+            return true;
+        }
+
+        return $this->hasCoordinatorTaskInOtherTasks($user, $schoolId);
+    }
+
+    private function hasCoordinatorTaskInSk(User $user): bool
     {
         if (! Schema::hasTable('gtk_additional_tasks')) {
             return false;
@@ -92,17 +104,36 @@ class TahfidzAccess
             ->where('user_id', $user->id)
             ->where(fn ($q) => $q->whereNull('tst')->orWhereDate('tst', '>=', today()))
             ->pluck('nama_tugas')
-            ->contains(function ($name) {
-                $name = strtolower(trim((string) $name));
+            ->contains($this->isCoordinatorTaskName(...));
+    }
 
-                return str_contains($name, 'koordinator')
-                    && (str_contains($name, 'tahfidz') || str_contains($name, 'tahfiz'));
-            });
+    private function hasCoordinatorTaskInOtherTasks(User $user, ?string $schoolId): bool
+    {
+        if (! Schema::hasTable('other_teacher_tasks')) {
+            return false;
+        }
+
+        return OtherTeacherTask::query()
+            ->where('teacher_id', $user->id)
+            ->where('is_active', true)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->pluck('task_name')
+            ->contains($this->isCoordinatorTaskName(...));
+    }
+
+    public function isCoordinatorTaskName(?string $name): bool
+    {
+        $name = strtolower(trim((string) $name));
+
+        return str_contains($name, 'koordinator')
+            && (str_contains($name, 'tahfidz') || str_contains($name, 'tahfiz'));
     }
 
     /**
      * Nama tugas koordinator tahfidz sudah diakui, baik ejaan "tahfidz"
      * maupun "tahfiz". Dipakai juga oleh query yang mencari koordinator.
+     *
+     * @return \Closure(\Illuminate\Database\Eloquent\Builder): void
      */
     public function coordinatorTaskLike(): \Closure
     {
@@ -246,7 +277,8 @@ class TahfidzAccess
      * kolom coordinator_id secara otomatis saat membuat halaqah.
      *
      * Urutan sumber: tabel tahfidz_coordinators, lalu tugas tambahan
-     * "Koordinator Guru Tahfidz" pada GTK sekolah tersebut.
+     * "Koordinator Guru Tahfidz" pada GTK sekolah tersebut — baik dari
+     * gtk_additional_tasks maupun other_teacher_tasks.
      */
     public function coordinatorForSchool(?string $schoolId, ?string $academicYearId = null): ?User
     {
@@ -267,12 +299,44 @@ class TahfidzAccess
             }
         }
 
-        return User::query()
+        $fromSk = User::query()
             ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->whereHas('tugasTambahan', $this->coordinatorTaskLike())
             ->orderBy('name')
             ->first();
+
+        if ($fromSk) {
+            return $fromSk;
+        }
+
+        // Penugasan dari matriks SK tidak selalu punya baris kepegawaian,
+        // jadi sekolah dicocokkan lewat kolom school_id pada tugasnya.
+        if (! Schema::hasTable('other_teacher_tasks')) {
+            return null;
+        }
+
+        $teacherId = OtherTeacherTask::query()
+            ->where('school_id', $schoolId)
+            ->where('is_active', true)
+            ->where(fn ($q) => $q->where('task_name', 'like', '%Koordinator%')
+                ->where(fn ($inner) => $inner->where('task_name', 'like', '%Tahfidz%')
+                    ->orWhere('task_name', 'like', '%Tahfiz%')))
+            ->value('teacher_id');
+
+        return $teacherId ? User::find($teacherId) : null;
+    }
+
+    /**
+     * Satuan pendidikan tempat pengguna bertugas.
+     *
+     * Kepegawaian dengan school_id kosong (hanya penempatan unit kerja)
+     * banyak terjadi, sehingga unit kerjanya diterjemahkan ke sekolah
+     * sebelum jatuh ke daftar penempatan.
+     */
+    public function schoolIdFor(User $user): ?string
+    {
+        return app(\App\Services\SchoolGroupService::class)->getUserSchool($user)?->id;
     }
 
     private function isDepartmentGroup(TahfidzGroup $group): bool

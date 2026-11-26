@@ -880,6 +880,13 @@ class HalaqahController extends Controller
 
     private function schoolId(Request $request): ?string
     {
-        return $request->attributes->get('schoolContextId') ?: $request->user()?->employment?->school_id;
+        $user = $request->user();
+
+        // Konteks sekolah bisa kosong ketika kepegawaian hanya diisi lewat
+        // unit kerja (school_id NULL). Tanpa cadangan ini halaman memakai
+        // sekolah "tanpa nama", sehingga koordinator tidak dikenali dan
+        // tombol tambah halaqah tidak pernah muncul.
+        return $request->attributes->get('schoolContextId')
+            ?: $this->access->schoolIdFor($user);
     }
 }
