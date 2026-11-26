@@ -109,7 +109,13 @@ class TahfidzSetoranBulkTest extends TestCase
             ->assertSee('Santri Alif')
             ->assertSee('Santri Ba')
             ->assertSee('Ziyadah')
-            ->assertSee('Rabt');
+            ->assertSee('Rabt')
+            // Form bertahap per santri, bukan tabel lebar.
+            ->assertSee('Jenis setoran')
+            ->assertSee('Materi setoran')
+            ->assertSee('Penilaian')
+            ->assertSee('Nilai tikrar')
+            ->assertDontSee('bulk-table');
     }
 
     public function test_grid_menampilkan_isi_setoran_yang_sudah_ada_pada_tanggal_itu(): void
