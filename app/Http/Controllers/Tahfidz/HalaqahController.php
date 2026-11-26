@@ -29,9 +29,6 @@ use Illuminate\Validation\ValidationException;
 
 class HalaqahController extends Controller
 {
-    /** True bila daftar guru halaqah jatuh ke fallback seluruh GTK sekolah. */
-    private bool $teacherFallback = false;
-
     public function __construct(
         private readonly TahfidzAccess $access,
         private readonly TahfidzProgressService $progress,
@@ -83,6 +80,14 @@ class HalaqahController extends Controller
         $validated = $this->validateGroup($request);
         $school = School::findOrFail($validated['school_id']);
 
+        // Sekolah di luar kewenangan tidak boleh dipakai untuk membuat halaqah.
+        $this->assertSchoolAllowed($request, $school->id);
+
+        // Gender mengikuti gender satuan pendidikan, bukan pilihan pengguna.
+        $gender = $school->school_gender ?: ($validated['gender'] ?? 'putra');
+        $coordinatorId = $this->access->coordinatorForSchool($school->id, $validated['academic_year_id'])?->id
+            ?? ($validated['coordinator_id'] ?? null);
+
         $group = TahfidzGroup::create([
             'work_unit_id' => $school->work_unit_id,
             'school_id' => $school->id,
@@ -93,9 +98,9 @@ class HalaqahController extends Controller
             'curriculum_id' => $validated['curriculum_id'] ?? null,
             'name' => $validated['name'],
             'code' => $validated['code'] ?? null,
-            'gender' => $validated['gender'],
+            'gender' => $gender,
             'teacher_id' => $validated['teacher_id'],
-            'coordinator_id' => $validated['coordinator_id'] ?? null,
+            'coordinator_id' => $coordinatorId,
             'max_members' => $validated['max_members'] ?? null,
             'room' => $validated['room'] ?? null,
             'is_active' => $request->boolean('is_active', true),
@@ -197,6 +202,11 @@ class HalaqahController extends Controller
         $this->authorizeGroupManage($request, $group);
         $validated = $this->validateGroup($request, $group);
         $school = School::findOrFail($validated['school_id']);
+        $this->assertSchoolAllowed($request, $school->id);
+
+        $gender = $school->school_gender ?: ($validated['gender'] ?? $group->gender);
+        $coordinatorId = $this->access->coordinatorForSchool($school->id, $validated['academic_year_id'])?->id
+            ?? $group->coordinator_id;
 
         $group->update([
             'work_unit_id' => $school->work_unit_id,
@@ -208,9 +218,9 @@ class HalaqahController extends Controller
             'curriculum_id' => $validated['curriculum_id'] ?? null,
             'name' => $validated['name'],
             'code' => $validated['code'] ?? null,
-            'gender' => $validated['gender'],
+            'gender' => $gender,
             'teacher_id' => $validated['teacher_id'],
-            'coordinator_id' => $validated['coordinator_id'] ?? null,
+            'coordinator_id' => $coordinatorId,
             'max_members' => $validated['max_members'] ?? null,
             'room' => $validated['room'] ?? null,
             'is_active' => $request->boolean('is_active', true),
@@ -343,7 +353,8 @@ class HalaqahController extends Controller
     }
 
     /**
-     * Tingkat halaqah: ikut rombel bila dipilih, atau dari pilihan eksplisit.
+     * Tingkat halaqah dipilih langsung sebagai kelas (1, 2, 3 …), bukan
+     * diturunkan dari rombel: satu halaqah boleh lintas rombel.
      *
      * @param  array<string, mixed>  $validated
      */
@@ -630,18 +641,26 @@ class HalaqahController extends Controller
     {
         $schoolId = $group?->school_id ?? $this->schoolId($request);
         $academicYears = AcademicYear::orderByDesc('start_date')->get();
-        $schools = $this->access->canViewAllSchools($request->user()) ? School::orderBy('name')->get(['id', 'name']) : School::whereKey($schoolId)->get(['id', 'name']);
-        $studyGroups = StudyGroup::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->orderBy('name')->get(['id', 'name', 'academic_year_id', 'grade_level_id']);
+        $canChooseSchool = $this->canChooseSchoolOnForm($request, $group);
+        $schools = $canChooseSchool
+            ? School::orderBy('name')->get(['id', 'name', 'school_gender'])
+            : School::whereKey($schoolId)->get(['id', 'name', 'school_gender']);
         $gradeLevels = GradeLevel::query()
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
             ->orderBy('level')
             ->get(['id', 'name', 'level']);
-        $packages = TahfidzPackage::where('is_active', true)->orderBy('name')->get(['id', 'name']);
-        $curricula = TahfidzCurriculum::query()->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))->where('is_active', true)->orderByDesc('created_at')->get(['id', 'grade_level_id', 'academic_year_id', 'semester']);
 
         // Guru halaqah hanya Guru Tahfidz pada satuan pendidikan tersebut.
         $teachers = $this->tahfidzTeachers($schoolId, $group);
+
+        // Koordinator diisi otomatis dari tugas tambahan, tidak dipilih manual.
+        $autoCoordinator = $group?->coordinator
+            ?? $this->access->coordinatorForSchool($schoolId, $group?->academic_year_id);
+
+        // Gender halaqah mengikuti gender satuan pendidikan (tidak dipilih).
+        $schoolGender = $schools->firstWhere('id', $schoolId)?->school_gender
+            ?? $group?->gender;
 
         // Santri tinggal ditarik dari daftar santri sekolah. Kelasnya ikut dimuat
         // agar form dapat menandai tingkat/rombel setiap santri.
@@ -658,29 +677,39 @@ class HalaqahController extends Controller
             'group' => $group,
             'academicYears' => $academicYears,
             'schools' => $schools,
-            'studyGroups' => $studyGroups,
+            'canChooseSchool' => $canChooseSchool,
             'gradeLevels' => $gradeLevels,
-            'packages' => $packages,
-            'curricula' => $curricula,
             'teachers' => $teachers,
-            'teacherFallback' => $this->teacherFallback,
+            'autoCoordinator' => $autoCoordinator,
+            'schoolGender' => $schoolGender,
             'students' => $students,
             'schoolId' => $schoolId,
         ];
     }
 
     /**
+     * Sekolah hanya dapat dipilih oleh Departemen Tahfidz (dan super admin).
+     * Selain itu sekolah dikunci pada konteks satuan pendidikan pengguna.
+     */
+    private function canChooseSchoolOnForm(Request $request, ?TahfidzGroup $group = null): bool
+    {
+        if ($group) {
+            return false;
+        }
+
+        return $this->access->canViewAllSchools($request->user());
+    }
+
+    /**
      * Guru yang boleh mengampu halaqah: Guru Tahfidz di satuan pendidikan
      * tersebut (dari jabatan, role, tugas tambahan, atau penugasan halaqah
-     * yang sudah ada). Bila belum ada yang terdaftar, seluruh GTK sekolah
-     * ditampilkan agar halaqah tetap dapat dibuat.
+     * yang sudah ada). Daftar TIDAK diperlebar ke seluruh GTK: guru non-tahfidz
+     * tidak boleh tampil di pilihan pengampu.
      *
      * @return Collection<int, User>
      */
     private function tahfidzTeachers(?string $schoolId, ?TahfidzGroup $group = null): Collection
     {
-        $this->teacherFallback = false;
-
         if (! $schoolId) {
             return collect();
         }
@@ -729,21 +758,13 @@ class HalaqahController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        if ($teachers->isEmpty()) {
-            $this->teacherFallback = true;
-
-            $teachers = User::query()
-                ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get(['id', 'name']);
-        }
-
         return $teachers;
     }
 
     private function validateGroup(Request $request, ?TahfidzGroup $group = null): array
     {
+        $schoolId = $group?->school_id ?? $this->schoolId($request);
+
         $validated = $request->validate([
             'school_id' => 'required|exists:schools,id',
             'academic_year_id' => 'required|exists:academic_years,id',
@@ -753,7 +774,7 @@ class HalaqahController extends Controller
             'curriculum_id' => 'nullable|exists:tahfidz_curriculums,id',
             'name' => 'required|string|max:100',
             'code' => 'nullable|string|max:20',
-            'gender' => 'required|in:putra,putri',
+            'gender' => 'nullable|in:putra,putri',
             'teacher_id' => 'required|exists:users,id',
             'coordinator_id' => 'nullable|exists:users,id',
             'max_members' => 'nullable|integer|min:1|max:100',
@@ -763,9 +784,28 @@ class HalaqahController extends Controller
             'member_ids.*' => 'exists:students,id',
         ]);
 
+        // Form mengunci sekolah pada satuan pendidikan pengguna; hanya
+        // Departemen Tahfidz yang boleh memilih sekolah lain.
+        if (! $this->access->canViewAllSchools($request->user())) {
+            $validated['school_id'] = $schoolId ?? $validated['school_id'];
+        }
+
         $this->assertTeacherIsTahfidz($validated['teacher_id'], $validated['school_id'], $group);
 
         return $validated;
+    }
+
+    private function assertSchoolAllowed(Request $request, string $schoolId): void
+    {
+        if ($this->access->canViewAllSchools($request->user())) {
+            return;
+        }
+
+        abort_unless(
+            (string) $schoolId === (string) $this->schoolId($request),
+            403,
+            'Anda hanya dapat mengelola halaqah pada satuan pendidikan Anda.'
+        );
     }
 
     private function assertTeacherIsTahfidz(string $teacherId, string $schoolId, ?TahfidzGroup $group = null): void

@@ -335,8 +335,10 @@ use App\Http\Controllers\SuratVerificationController;
 use App\Http\Controllers\System\SystemDashboardController;
 use App\Http\Controllers\System\ViewAsController;
 use App\Http\Controllers\Tahfidz\HalaqahController;
+use App\Http\Controllers\Tahfidz\HalaqahImportController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
+use App\Http\Controllers\Tahfidz\TahfidzSetoranBulkController;
 use App\Http\Controllers\Tahfidz\TahfidzAttendanceController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
 use App\Http\Controllers\Tahfidz\TahfidzConsistencyController;
@@ -816,6 +818,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::get('/', [HalaqahController::class, 'index'])->name('index');
                     Route::get('/create', [HalaqahController::class, 'create'])->name('create');
                     Route::post('/', [HalaqahController::class, 'store'])->name('store');
+                    // Impor halaqah — didahulukan sebelum /{id} agar tidak ditangkap sebagai id.
+                    Route::get('/import', [HalaqahImportController::class, 'form'])->name('import.form');
+                    Route::post('/import', [HalaqahImportController::class, 'preview'])->name('import.preview');
+                    Route::post('/import/store', [HalaqahImportController::class, 'store'])->name('import.store');
+                    Route::get('/import/template', [HalaqahImportController::class, 'template'])->name('import.template');
                     Route::get('/{id}', [HalaqahController::class, 'show'])->name('show');
                     Route::get('/{id}/edit', [HalaqahController::class, 'edit'])->name('edit');
                     Route::put('/{id}', [HalaqahController::class, 'update'])->name('update');
@@ -829,6 +836,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                     Route::put('/{id}/schedules/{scheduleId}', [HalaqahController::class, 'updateSchedule'])->name('schedules.update');
                     Route::delete('/{id}/schedules/{scheduleId}', [HalaqahController::class, 'destroySchedule'])->name('schedules.destroy');
                     Route::post('/{id}/members/{memberId}/remove', [HalaqahController::class, 'removeMember'])->name('members.remove');
+                });
+
+                Route::prefix('setoran-harian')->name('setoran-bulk.')->group(function () {
+                    Route::get('/', [TahfidzSetoranBulkController::class, 'index'])->name('index');
+                    Route::post('/', [TahfidzSetoranBulkController::class, 'store'])->name('store');
                 });
 
                 Route::prefix('setoran')->name('setoran.')->group(function () {

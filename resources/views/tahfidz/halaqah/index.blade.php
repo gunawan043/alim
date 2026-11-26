@@ -44,6 +44,7 @@
             <div class="d-flex gap-2">
                 <a href="{{ route('user.tahfidz.setoran.index', ['userId' => $userId]) }}" class="btn btn-soft-info"><i class="ri-file-add-line me-1"></i>Setoran</a>
                 @if($canManage)
+                    <a href="{{ route('user.tahfidz.halaqah.import.form', ['userId' => $userId]) }}" class="btn btn-outline-success"><i class="ri-upload-2-line me-1"></i>Impor</a>
                     <button type="button" class="btn btn-success" onclick="openHalaqahModal()"><i class="ri-add-line me-1"></i>Tambah Halaqah</button>
                 @endif
             </div>

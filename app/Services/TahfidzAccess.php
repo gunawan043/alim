@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\GtkAdditionalTask;
 use App\Models\GtkEmployment;
 use App\Models\TahfidzCoordinator;
 use App\Models\TahfidzGroup;
@@ -66,19 +67,42 @@ class TahfidzAccess
 
         // Kompatibilitas data lama: tugas tambahan Koordinator Guru Tahfidz
         // tetap diakui sebagai koordinator sekolah.
-        $tasks = method_exists($user, 'tugasTambahan')
-            ? $user->tugasTambahan->pluck('nama')->map(fn ($name) => strtolower(trim((string) $name)))->all()
-            : [];
+        // Kolomnya `nama_tugas` (lihat migrasi gtk_additional_tasks), bukan `nama`.
+        if ($this->hasCoordinatorTask($user)) {
+            if (! $schoolId) {
+                return true;
+            }
 
-        if (! in_array('koordinator guru tahfidz', $tasks, true)) {
+            return GtkEmployment::query()->where('user_id', $user->id)->where('school_id', $schoolId)->exists();
+        }
+
+        return false;
+    }
+
+    /**
+     * Apakah pengguna memegang tugas tambahan koordinator tahfidz yang berlaku.
+     *
+     * Dibaca langsung dari tabel (bukan lewat relasi tugasTambahan) agar tugas
+     * yang masih berlaku tetapi tidak punya tanggal berakhir tetap dikenali.
+     * Nama tugas dicocokkan longgar: "Koordinator Guru Tahfidz",
+     * "Koordinator Tahfidz", dan "Koordinator Tahfiz" sama-sama diterima.
+     */
+    public function hasCoordinatorTask(User $user): bool
+    {
+        if (! Schema::hasTable('gtk_additional_tasks')) {
             return false;
         }
 
-        if (! $schoolId) {
-            return true;
-        }
+        return GtkAdditionalTask::query()
+            ->where('user_id', $user->id)
+            ->where(fn ($q) => $q->whereNull('tst')->orWhereDate('tst', '>=', today()))
+            ->pluck('nama_tugas')
+            ->contains(function ($name) {
+                $name = strtolower(trim((string) $name));
 
-        return GtkEmployment::query()->where('user_id', $user->id)->where('school_id', $schoolId)->exists();
+                return str_contains($name, 'koordinator')
+                    && (str_contains($name, 'tahfidz') || str_contains($name, 'tahfiz'));
+            });
     }
 
     public function isSchoolLeader(User $user): bool
@@ -209,6 +233,43 @@ class TahfidzAccess
     public function departmentWorkUnit(): ?WorkUnit
     {
         return WorkUnit::query()->where('code', self::DEPARTMENT_CODE)->first();
+    }
+
+    /**
+     * Koordinator tahfidz sebuah satuan pendidikan, dipakai untuk mengisi
+     * kolom coordinator_id secara otomatis saat membuat halaqah.
+     *
+     * Urutan sumber: tabel tahfidz_coordinators, lalu tugas tambahan
+     * "Koordinator Guru Tahfidz" pada GTK sekolah tersebut.
+     */
+    public function coordinatorForSchool(?string $schoolId, ?string $academicYearId = null): ?User
+    {
+        if (! $schoolId) {
+            return null;
+        }
+
+        if (Schema::hasTable('tahfidz_coordinators')) {
+            $registered = TahfidzCoordinator::query()
+                ->where('school_id', $schoolId)
+                ->where('is_active', true)
+                ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($registered?->user_id) {
+                return User::find($registered->user_id);
+            }
+        }
+
+        return User::query()
+            ->whereHas('employment', fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->whereHas('tugasTambahan', fn ($t) => $t
+                ->where('nama_tugas', 'like', '%Koordinator%')
+                ->where(fn ($q) => $q->where('nama_tugas', 'like', '%Tahfidz%')
+                    ->orWhere('nama_tugas', 'like', '%Tahfiz%')))
+            ->orderBy('name')
+            ->first();
     }
 
     private function isDepartmentGroup(TahfidzGroup $group): bool
