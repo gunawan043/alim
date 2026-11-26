@@ -860,6 +860,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::prefix('setoran-harian')->name('setoran-bulk.')->group(function () {
                     Route::get('/', [TahfidzSetoranBulkController::class, 'index'])->name('index');
                     Route::post('/', [TahfidzSetoranBulkController::class, 'store'])->name('store');
+                    Route::get('/santri/{studentId}', [TahfidzSetoranBulkController::class, 'entry'])->name('entry');
                 });
 
                 Route::prefix('setoran')->name('setoran.')->group(function () {

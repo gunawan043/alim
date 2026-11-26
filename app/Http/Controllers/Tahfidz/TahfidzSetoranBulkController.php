@@ -78,6 +78,45 @@ class TahfidzSetoranBulkController extends Controller
     }
 
     /**
+     * Halaman input setoran untuk satu santri (Ziyadah atau Rabt).
+     *
+     * Dipakai dari tombol di daftar halaqah agar guru tidak harus mengisi
+     * grid seluruh halaqah. Penyimpanan memakai aksi bulk yang sama, jadi
+     * aturan validasi dan verifikasi tidak diduplikasi.
+     */
+    public function entry(Request $request, string $userId, string $studentId)
+    {
+        $groups = $this->accessibleGroups($request);
+
+        $groupId = $request->input('group_id', $groups->first()?->id);
+        $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
+        abort_unless($group, 404, 'Halaqah tidak ditemukan.');
+
+        $row = $this->setoranRows($group, $this->safeDate($request->input('date')))
+            ->firstWhere(fn ($item) => $item['student']?->id === $studentId);
+
+        abort_unless($row, 404, 'Santri bukan anggota aktif halaqah ini.');
+
+        $jenis = in_array($request->input('jenis'), ['ziyadah', 'robet'], true)
+            ? $request->input('jenis')
+            : 'ziyadah';
+
+        return view('tahfidz.setoran.entry', [
+            'userId' => $userId,
+            'group' => $group,
+            'student' => $row['student'],
+            'ziyadah' => $row['ziyadah'],
+            'rabt' => $row['rabt'],
+            'last' => $row['last'],
+            'date' => $this->safeDate($request->input('date')),
+            'jenis' => $jenis,
+            'surahs' => TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']),
+            'statusLabels' => ['lulus' => 'Lulus', 'ulang' => 'Ulang', 'ditunda' => 'Ditunda'],
+            'rabtLabels' => ['siap' => 'Siap', 'belum_siap' => 'Belum siap', 'perlu_diulang' => 'Perlu diulang'],
+        ]);
+    }
+
+    /**
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     private function setoranRows(TahfidzGroup $group, string $date)

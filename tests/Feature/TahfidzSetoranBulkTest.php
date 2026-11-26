@@ -110,12 +110,54 @@ class TahfidzSetoranBulkTest extends TestCase
             ->assertSee('Santri Ba')
             ->assertSee('Ziyadah')
             ->assertSee('Rabt')
-            // Form bertahap per santri, bukan tabel lebar.
-            ->assertSee('Jenis setoran')
-            ->assertSee('Materi setoran')
-            ->assertSee('Penilaian')
-            ->assertSee('Nilai tikrar')
+            // Daftar santri dengan tombol aksi, bukan tabel isian lebar.
+            ->assertSee('Belum ada setoran')
             ->assertDontSee('bulk-table');
+    }
+
+    public function test_tombol_ziyadah_dan_rabt_membuka_halaman_input_per_santri(): void
+    {
+        $list = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get(route('user.tahfidz.setoran-bulk.index', ['userId' => $this->teacher->id, 'group_id' => $this->group->id]));
+
+        // Tiap santri punya dua tautan aksi, satu per jenis setoran.
+        $entryBase = "/{$this->teacher->id}/tahfidz/setoran-harian/santri/{$this->santriA->id}";
+        $list->assertOk()->assertSee($entryBase, false);
+
+        $html = $list->getContent();
+        $this->assertMatchesRegularExpression(
+            '/'.preg_quote($entryBase, '/').'\?[^"]*jenis=ziyadah/',
+            $html,
+            'Tautan Ziyadah per santri harus tersedia.',
+        );
+        $this->assertMatchesRegularExpression(
+            '/'.preg_quote($entryBase, '/').'\?[^"]*jenis=robet/',
+            $html,
+            'Tautan Rabt per santri harus tersedia.',
+        );
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get(route('user.tahfidz.setoran-bulk.entry', [
+                'userId' => $this->teacher->id, 'studentId' => $this->santriA->id,
+                'group_id' => $this->group->id, 'jenis' => 'robet',
+            ]))
+            ->assertOk()
+            ->assertSee('Santri Alif')
+            ->assertSee('Nilai Rabt')
+            ->assertSee('Detail Hafalan');
+
+        // Santri di luar halaqah tidak boleh dibuka lewat URL langsung.
+        $outside = Student::create([
+            'school_id' => $this->school->id, 'name' => 'Santri Luar', 'nis' => 'OUT-9',
+            'gender' => 'putra', 'status' => 'active',
+        ]);
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get(route('user.tahfidz.setoran-bulk.entry', [
+                'userId' => $this->teacher->id, 'studentId' => $outside->id,
+                'group_id' => $this->group->id, 'jenis' => 'ziyadah',
+            ]))
+            ->assertNotFound();
     }
 
     public function test_grid_menampilkan_isi_setoran_yang_sudah_ada_pada_tanggal_itu(): void
@@ -145,9 +187,9 @@ class TahfidzSetoranBulkTest extends TestCase
             ]));
 
         $response->assertOk()
-            ->assertSee('is-filled')
             ->assertSee('Al-Ikhlas')
-            ->assertSee('77');
+            ->assertSee('77')
+            ->assertSee('Edit Rabt');
     }
 
     public function test_ziyadah_dan_rabt_disimpan_sekaligus_dengan_nilai_tikrar(): void
