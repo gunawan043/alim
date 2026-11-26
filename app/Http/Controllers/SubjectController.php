@@ -398,7 +398,7 @@ class SubjectController extends Controller
         abort_unless(
             $this->canEditGradeHours($request->user()),
             403,
-            'Hanya tim kurikulum yang dapat mengatur JP per tingkat.'
+            'Anda tidak berwenang mengatur JP per tingkat.'
         );
 
         $data = $request->validate([
@@ -440,11 +440,12 @@ class SubjectController extends Controller
     }
 
     /**
-     * Hak mengatur JP per tingkat. Disamakan dengan editor Peta Kurikulum.
+     * Hak mengatur JP per tingkat. Satu aturan dengan Peta Kurikulum:
+     * tim/koordinator kurikulum + Kepala/Wakil Satuan Pendidikan.
      */
     private function canEditGradeHours(?User $user): bool
     {
-        return $user !== null && app(KurikulumAccess::class)->isKurikulumEditor($user);
+        return $user !== null && app(KurikulumAccess::class)->canManageSubjectHours($user);
     }
 
     public function edit(string $userId, string $id)

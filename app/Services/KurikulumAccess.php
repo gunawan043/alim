@@ -56,6 +56,22 @@ class KurikulumAccess
     }
 
     /**
+     * Hak mengatur JP (struktur jam pelajaran per tingkat).
+     *
+     * JP adalah struktur operasional, bukan dokumen pembelajaran guru.
+     * Karena itu Kepala/Wakil Satuan Pendidikan ikut boleh mengubahnya,
+     * meski kebijakan "pengawas tidak mengedit dokumen guru" tetap berlaku
+     * untuk CP/TP/ATP/Perangkat.
+     *
+     * Termasuk: editor kurikulum (tim/koordinator kurikulum, super admin)
+     * + pengawas kurikulum (Kepala/Wakil Satuan Pendidikan).
+     */
+    public function canManageSubjectHours(User $user): bool
+    {
+        return $this->isKurikulumEditor($user) || $this->isKurikulumSupervisor($user);
+    }
+
+    /**
      * Tim kurikulum (editor + pengawas): boleh melihat seluruh dokumen sekolah.
      */
     public function isKurikulumTeam(User $user): bool

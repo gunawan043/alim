@@ -286,6 +286,54 @@ class JpTerpusatSinkronTest extends TestCase
             ->assertForbidden();
     }
 
+
+    public function test_wakil_kepala_sekolah_boleh_mengubah_jp(): void
+    {
+        $wakil = $this->makeUserWithJabatan('Wakil KSP JP', 'wakil.jp@test.local', 'Wakil Kepala Satuan Pendidikan');
+
+        $this->actingAs($wakil)
+            ->post(route('user.kurikulum.jp.save', ['userId' => $wakil->id]), [
+                'academic_year_id' => $this->ay->id,
+                'jp' => [
+                    $this->kelas7->id => [$this->bind->id => 4],
+                    $this->kelas8->id => [$this->bind->id => 3],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(4, $this->jp($this->kelas7));
+        $this->assertSame(3, $this->jp($this->kelas8));
+    }
+
+    public function test_kepala_sekolah_boleh_mengubah_jp_dari_menu_mapel(): void
+    {
+        $kepala = $this->makeUserWithJabatan('Kepala KSP JP', 'kepala.jp@test.local', 'Kepala Satuan Pendidikan');
+
+        $this->actingAs($kepala)
+            ->post(route('user.subjects.grade-hours.save', [
+                'userId' => $kepala->id,
+                'id' => $this->bind->id,
+            ]), [
+                'academic_year_id' => $this->ay->id,
+                'jp' => [$this->kelas7->id => 6],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(6, $this->jp($this->kelas7));
+        $this->assertSame(6, $this->jpRombel($this->rombel7));
+    }
+
+    public function test_wakil_kepala_melihat_input_jp_di_peta_kurikulum(): void
+    {
+        $wakil = $this->makeUserWithJabatan('Wakil KSP UI', 'wakil.ui@test.local', 'Wakil Kepala Satuan Pendidikan');
+
+        $this->actingAs($wakil)
+            ->get(route('user.kurikulum.index', ['userId' => $wakil->id]))
+            ->assertOk()
+            ->assertSee('jpFormPeta')
+            ->assertSee('Simpan JP');
+    }
+
     private function makeKurikulumUser(): User
     {
         $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 3]);
@@ -320,6 +368,43 @@ class JpTerpusatSinkronTest extends TestCase
         ]);
 
         $roleDimension = implode(',', $user->fresh()->effectiveRoles()) ?: 'default';
+
+        return $user;
+    }
+
+
+    private function makeUserWithJabatan(string $name, string $email, string $jabatan): User
+    {
+        $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 3]);
+
+        $user = User::create([
+            'name' => $name,
+            'email' => $email,
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $user->assignRole($role);
+
+        DB::table('gtk_employments')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'school_id' => $this->school->id,
+            'status_kepegawaian' => 'GTY',
+            'jenis_gtk' => 'Tenaga Kependidikan',
+            'jabatan' => $jabatan,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('gtk_work_unit')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'work_unit_id' => $this->school->work_unit_id,
+            'jabatan' => $jabatan,
+            'is_primary' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return $user;
     }

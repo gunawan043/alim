@@ -252,10 +252,9 @@ class KurikulumController extends Controller
             ->contains(fn ($n) => str_contains(mb_strtolower((string) $n), 'koordinator guru'));
         $canEditKktp = $access->isKurikulumTeam($request->user()) || $isKoorMapelUser;
 
-        // JP adalah sumber utama struktur, sehingga hak mengubahnya mengikuti
-        // editor kurikulum (tim/koordinator kurikulum, super admin) — sama
-        // dengan hak menyiapkan Peta Kurikulum, bukan sekadar melihat KKTP.
-        $canEditJp = $access->isKurikulumEditor($request->user()) && ! $isArchive;
+        // JP adalah struktur operasional, bukan dokumen guru: tim/koordinator
+        // kurikulum DAN Kepala/Wakil Satuan Pendidikan boleh mengubahnya.
+        $canEditJp = $access->canManageSubjectHours($request->user()) && ! $isArchive;
 
         // ── Total JP per tingkat (struktur periode terpilih, bukan baris tampil) ──
         $jpTotals = GradeLevelSubject::query()
@@ -471,9 +470,9 @@ class KurikulumController extends Controller
         $user = $request->user();
 
         abort_unless(
-            app(KurikulumAccess::class)->isKurikulumEditor($user),
+            app(KurikulumAccess::class)->canManageSubjectHours($user),
             403,
-            'Hanya tim kurikulum yang dapat mengatur JP Peta Kurikulum.'
+            'Anda tidak berwenang mengatur JP Peta Kurikulum.'
         );
 
         $data = $request->validate([
