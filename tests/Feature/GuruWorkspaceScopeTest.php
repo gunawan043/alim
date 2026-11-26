@@ -315,7 +315,11 @@ class GuruWorkspaceScopeTest extends TestCase
             ->get('/'.$tahfidz->id.'/dashboard/satuan-pendidikan');
 
         $response->assertOk();
-        $response->assertSee('sp_sec_guru_tahfidz', false);
+        // Menu tahfidz tidak lagi dibungkus satu grup; menu harian tampil
+        // langsung, menu pendukung dikelompokkan per fungsi.
+        $response->assertSee('Absensi Halaqah');
+        $response->assertSee('id="sp_sec_guru_tahfidz_santri"', false);
+        $response->assertSee('id="sp_sec_guru_tahfidz_nilai"', false);
         $response->assertSee('sp_sec_guru_nilai', false);
         $response->assertSee('Buku Nilai Saya');
     }

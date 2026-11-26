@@ -247,7 +247,8 @@ class SatuanPendidikanSidebarTest extends TestCase
         $response->assertOk();
 
         // Menu guru harus muncul walau jabatannya struktural...
-        $response->assertSee('Menu Guru');
+        // Label topiknya "Mengajar · ..." sejak menu guru dipecah per topik.
+        $response->assertSee('Mengajar ·');
         $response->assertSee('id="sp_sec_guru_absensi"', false);
         $response->assertSee('id="sp_sec_guru_kurikulum"', false);
         $response->assertSee('id="sp_sec_guru_nilai"', false);
@@ -263,5 +264,48 @@ class SatuanPendidikanSidebarTest extends TestCase
             strpos($html, 'sp_sec_guru_absensi'),
             'Menu guru harus tampil sebelum menu manajemen.'
         );
+    }
+
+    public function test_menu_guru_tahfidz_menaruh_menu_harian_di_atas_tanpa_grup(): void
+    {
+        $user = $this->makeUser('Satuan Pendidikan', 'GURU TAHFIDZ');
+
+        // makeUser() menjadikan user kepala sekolah; lepaskan agar guru tahfidz
+        // murni yang diuji, bukan pemegang jabatan struktural.
+        School::where('principal_user_id', $user->id)->update(['principal_user_id' => null]);
+
+        $response = $this->actingAs($user->fresh())
+            ->get('/'.$user->id.'/dashboard/satuan-pendidikan');
+
+        $response->assertOk();
+
+        // Menu guru tampil sebagai topik "Mengajar · ...", bukan "Menu Guru".
+        $response->assertSee('Mengajar · Guru');
+
+        // Menu harian berdiri sendiri — tidak dibungkus grup Tahfidz lagi.
+        foreach (['Absensi Halaqah', 'Input Setoran Harian', 'Lembar Monitoring', 'Buku Nilai'] as $label) {
+            $response->assertSee($label);
+        }
+        $response->assertDontSee('id="sp_sec_guru_tahfidz"', false);
+
+        // Menu pendukung dikelompokkan per fungsi.
+        $response->assertSee('id="sp_sec_guru_tahfidz_santri"', false);
+        $response->assertSee('id="sp_sec_guru_tahfidz_nilai"', false);
+
+        // Menu harian harus muncul sebelum grup pendukungnya.
+        $html = $response->getContent();
+        $this->assertLessThan(
+            strpos($html, 'sp_sec_guru_tahfidz_santri'),
+            strpos($html, 'Input Setoran Harian'),
+            'Input Setoran Harian harus tampil sebelum grup Santri & Target.'
+        );
+        $this->assertLessThan(
+            strpos($html, 'sp_sec_guru_tahfidz_nilai'),
+            strpos($html, 'Lembar Monitoring'),
+            'Lembar Monitoring harus tampil sebelum grup Nilai & Ujian.'
+        );
+
+        // Tidak ada tautan ganda untuk menu harian.
+        $this->assertSame(1, substr_count($html, '>Input Setoran Harian<'));
     }
 }

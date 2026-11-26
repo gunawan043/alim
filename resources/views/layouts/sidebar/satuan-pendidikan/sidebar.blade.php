@@ -586,12 +586,11 @@
     <li class="menu-title"><span>{{ $mengajarLabel }}</span></li>
 
     @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
-        {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
-        <x-sidebar-section id="sp_sec_guru_tahfidz" label="Tahfidz" icon="ri-book-read-line"
-            :open="$sectionOpen(['user.tahfidz.workspace.', 'user.tahfidz.setoran-bulk.', 'user.tahfidz.setoran.', 'user.tahfidz.monitoring.sheet.', 'user.tahfidz.gradebook.', 'user.tahfidz.reports.', 'user.tahfidz.attendance.', 'user.tahfidz.tasmi.', 'user.tahfidz.halaqah.', 'user.tahfidz.progress.', 'user.tahfidz.monitoring.', 'user.tahfidz.interventions.', 'user.tahfidz.targets.', 'user.tahfidz.muqorror.', 'user.tahfidz.rpp.', 'user.teacher-qr.'])">
-            @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'self'])
-            @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'teacher'])
-        </x-sidebar-section>
+        {{-- Guru Tahfidz: menu harian (absensi, setoran, monitoring, nilai)
+             ditampilkan terbuka di paling atas — tidak dibungkus grup —
+             karena dipakai setiap hari. Menu pendukung baru dikelompokkan. --}}
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'self'])
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'teacher'])
     @endif
 
     {{-- Guru Tahfidz yang juga memegang SK mengajar mapel tetap mendapat menu
