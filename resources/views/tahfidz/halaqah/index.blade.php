@@ -6,9 +6,13 @@
         $userId = $userId ?? auth()->id();
         $formSchools = $form['schools'] ?? collect();
         $formYears = $form['academicYears'] ?? collect();
-        $formStudyGroups = $form['studyGroups'] ?? collect();
-        $formPackages = $form['packages'] ?? collect();
+        $formGradeLevels = $form['gradeLevels'] ?? collect();
         $formTeachers = $form['teachers'] ?? collect();
+        $formCanChooseSchool = $form['canChooseSchool'] ?? false;
+        $formSchoolId = $form['schoolId'] ?? null;
+        $formGender = $form['schoolGender'] ?? 'putra';
+        $formCoordinator = $form['autoCoordinator'] ?? null;
+        $lockedSchoolName = $formSchools->firstWhere('id', $formSchoolId)?->name ?? '—';
     @endphp
     @include('tahfidz._styles')
 
@@ -53,7 +57,7 @@
             <form method="GET" class="row g-2 align-items-end">
                 <div class="col-md-4"><label class="form-label small">Tahun Ajaran</label><select name="academic_year_id" id="halaqah_academic_year_id" class="form-select" onchange="this.form.submit()">@foreach($academicYears as $ay)<option value="{{ $ay->id }}" @selected($academicYearId === $ay->id)>{{ $ay->name }} — {{ ucfirst($ay->semester) }}</option>@endforeach</select></div>
                 @if($schools->isNotEmpty())<div class="col-md-4"><label class="form-label small">Sekolah</label><select name="school_id" id="halaqah_school_id" class="form-select" onchange="this.form.submit()"><option value="">Semua</option>@foreach($schools as $school)<option value="{{ $school->id }}" @selected(request('school_id')===$school->id)>{{ $school->name }}</option>@endforeach</select></div>@endif
-                <div class="col-md-4"><label class="form-label small">Kelas</label><select name="study_group_id" id="halaqah_study_group_id" class="form-select" onchange="this.form.submit()"><option value="">Semua</option>@foreach($formStudyGroups as $sg)<option value="{{ $sg->id }}" @selected(request('study_group_id')===$sg->id)>{{ $sg->name }}</option>@endforeach</select></div>
+                <div class="col-md-4"><label class="form-label small">Kelas</label><select name="grade_level_id" class="form-select" onchange="this.form.submit()"><option value="">Semua</option>@foreach($formGradeLevels as $grade)<option value="{{ $grade->id }}" @selected(request('grade_level_id')===$grade->id)>{{ $grade->name }}</option>@endforeach</select></div>
             </form>
         </div>
         <div class="table-responsive">
@@ -64,7 +68,7 @@
                         <tr>
                             <td><div class="fw-medium">{{ $group->name }}</div><div class="text-muted small">{{ strtoupper($group->gender) }} · {{ $group->code ?? '—' }}</div></td>
                             <td>{{ $group->school?->name ?? '—' }}</td>
-                            <td>{{ $group->studyGroup?->name ?? '—' }}</td>
+                            <td>{{ $group->gradeLevel?->name ?? $group->studyGroup?->name ?? '—' }}</td>
                             <td>{{ $group->teacher?->name ?? '—' }}<div class="text-muted small">{{ $group->coordinator?->name ? 'Koor: '.$group->coordinator->name : '' }}</div></td>
                             <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{ $group->members_count }}</span></td>
                             <td>{!! $group->is_active ? '<span class="badge bg-success-subtle text-success">Aktif</span>' : '<span class="badge bg-secondary-subtle text-secondary">Nonaktif</span>' !!}</td>
@@ -76,16 +80,12 @@
                                             'id' => $group->id,
                                             'school_id' => $group->school_id,
                                             'academic_year_id' => $group->academic_year_id,
-                                            'study_group_id' => $group->study_group_id,
-                                            'tahfidz_package_id' => $group->tahfidz_package_id,
-                                            'curriculum_id' => $group->curriculum_id,
+                                            'grade_level_id' => $group->grade_level_id,
                                             'name' => $group->name,
                                             'code' => $group->code,
                                             'gender' => $group->gender,
                                             'teacher_id' => $group->teacher_id,
-                                            'coordinator_id' => $group->coordinator_id,
                                             'max_members' => $group->max_members,
-                                            'room' => $group->room,
                                             'is_active' => (bool) $group->is_active,
                                             'notes' => $group->notes,
                                         ];
@@ -114,18 +114,50 @@
                         <input type="hidden" name="_method" value="PUT" id="halaqahMethod" disabled>
                         <div class="modal-header bg-primary-subtle"><h5 class="modal-title" id="halaqahModalTitle"><i class="ri-team-line me-1"></i>Tambah Halaqah</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body"><div class="row g-3">
-                            <div class="col-md-6"><label class="form-label">Sekolah <span class="text-danger">*</span></label><select name="school_id" class="form-select" required>@foreach($formSchools as $school)<option value="{{ $school->id }}" @selected((string)old('school_id', $form['schoolId'])===(string)$school->id)>{{ $school->name }}</option>@endforeach</select></div>
-                            <div class="col-md-6"><label class="form-label">Tahun Ajaran <span class="text-danger">*</span></label><select name="academic_year_id" class="form-select" required>@foreach($formYears as $ay)<option value="{{ $ay->id }}" @selected((string)old('academic_year_id', $academicYearId)===(string)$ay->id)>{{ $ay->name }} — {{ ucfirst($ay->semester) }}</option>@endforeach</select></div>
-                            <div class="col-md-6"><label class="form-label">Kelas / Rombel</label><select name="study_group_id" class="form-select"><option value="">—</option>@foreach($formStudyGroups as $sg)<option value="{{ $sg->id }}" @selected((string)old('study_group_id')===(string)$sg->id)>{{ $sg->name }}</option>@endforeach</select></div>
-                            <div class="col-md-6"><label class="form-label">Nama Halaqah <span class="text-danger">*</span></label><input name="name" id="halaqah_name" class="form-control" value="{{ old('name') }}" required maxlength="100" placeholder="Mis. Halaqah 7A Putra"></div>
-                            <div class="col-md-4"><label class="form-label">Paket</label><select name="tahfidz_package_id" id="halaqah_tahfidz_package_id" class="form-select"><option value="">—</option>@foreach($formPackages as $package)<option value="{{ $package->id }}" @selected((string)old('tahfidz_package_id')===(string)$package->id)>{{ $package->name }}</option>@endforeach</select></div>
-                            <div class="col-md-4"><label class="form-label">Kurikulum</label><select name="curriculum_id" id="halaqah_curriculum_id" class="form-select"><option value="">—</option>@foreach(($form['curricula'] ?? collect()) as $curriculum)<option value="{{ $curriculum->id }}" @selected((string)old('curriculum_id')===(string)$curriculum->id)>#{{ substr($curriculum->id,0,8) }} ({{ $curriculum->semester }})</option>@endforeach</select></div>
-                            <div class="col-md-4"><label class="form-label">Gender <span class="text-danger">*</span></label><select name="gender" id="halaqah_gender" class="form-select" required><option value="putra" @selected(old('gender')==='putra')>Putra</option><option value="putri" @selected(old('gender')==='putri')>Putri</option></select></div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sekolah <span class="text-danger">*</span></label>
+                                @if($formCanChooseSchool)
+                                    <select name="school_id" id="halaqah_school_id" class="form-select" required>
+                                        @foreach($formSchools as $school)<option value="{{ $school->id }}" @selected((string)old('school_id', $formSchoolId)===(string)$school->id)>{{ $school->name }}</option>@endforeach
+                                    </select>
+                                @else
+                                    <input type="text" class="form-control" value="{{ $lockedSchoolName }}" readonly disabled>
+                                    <input type="hidden" name="school_id" value="{{ $formSchoolId }}">
+                                    <div class="form-text">Otomatis mengikuti satuan pendidikan Anda.</div>
+                                @endif
+                            </div>
+                            <div class="col-md-6"><label class="form-label">Tahun Ajaran <span class="text-danger">*</span></label><select name="academic_year_id" id="halaqah_academic_year_id" class="form-select" required>@foreach($formYears as $ay)<option value="{{ $ay->id }}" @selected((string)old('academic_year_id', $academicYearId)===(string)$ay->id)>{{ $ay->name }} — {{ ucfirst($ay->semester) }}</option>@endforeach</select></div>
+                            <div class="col-md-6">
+                                <label class="form-label">Kelas</label>
+                                <select name="grade_level_id" id="halaqah_grade_level_id" class="form-select"><option value="">—</option>@foreach($formGradeLevels as $grade)<option value="{{ $grade->id }}" @selected((string)old('grade_level_id')===(string)$grade->id)>{{ $grade->name }}</option>@endforeach</select>
+                                <div class="form-text">Halaqah boleh lintas rombel, tetapi satu kelas.</div>
+                            </div>
+                            <div class="col-md-6"><label class="form-label">Nama Halaqah <span class="text-danger">*</span></label><input name="name" id="halaqah_name" class="form-control" value="{{ old('name') }}" required maxlength="100" placeholder="Mis. Halaqah Umar bin Khattab"></div>
+                            <div class="col-md-4">
+                                <label class="form-label">Gender</label>
+                                <input type="text" class="form-control" value="{{ $formGender === 'putri' ? 'Putri' : 'Putra' }}" readonly disabled>
+                                <input type="hidden" name="gender" value="{{ $formGender }}">
+                                <div class="form-text">Mengikuti gender satuan pendidikan.</div>
+                            </div>
                             <div class="col-md-4"><label class="form-label">Kode</label><input name="code" id="halaqah_code" class="form-control" value="{{ old('code') }}" maxlength="20"></div>
-                            <div class="col-md-4"><label class="form-label">Guru Halaqah <span class="text-danger">*</span></label><select name="teacher_id" id="halaqah_teacher_id" class="form-select" required><option value="">—</option>@foreach($formTeachers as $teacher)<option value="{{ $teacher->id }}" @selected((string)old('teacher_id')===(string)$teacher->id)>{{ $teacher->name }}</option>@endforeach</select></div>
-                            <div class="col-md-4"><label class="form-label">Koordinator</label><select name="coordinator_id" id="halaqah_coordinator_id" class="form-select"><option value="">—</option>@foreach($formTeachers as $teacher)<option value="{{ $teacher->id }}" @selected((string)old('coordinator_id')===(string)$teacher->id)>{{ $teacher->name }}</option>@endforeach</select></div>
+                            <div class="col-md-4">
+                                <label class="form-label">Guru Halaqah <span class="text-danger">*</span></label>
+                                <select name="teacher_id" id="halaqah_teacher_id" class="form-select" required><option value="">—</option>@foreach($formTeachers as $teacher)<option value="{{ $teacher->id }}" @selected((string)old('teacher_id')===(string)$teacher->id)>{{ $teacher->name }}</option>@endforeach</select>
+                                <div class="form-text">
+                                    @if($formTeachers->isEmpty())
+                                        <span class="text-warning">Belum ada Guru Tahfidz terdaftar di satuan pendidikan ini.</span>
+                                    @else
+                                        Hanya Guru Tahfidz pada satuan pendidikan ini.
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Koordinator</label>
+                                <input type="text" class="form-control" value="{{ $formCoordinator->name ?? 'Belum ada koordinator' }}" readonly disabled>
+                                @if($formCoordinator)<input type="hidden" name="coordinator_id" value="{{ $formCoordinator->id }}">@endif
+                                <div class="form-text">Otomatis dari tugas tambahan Koordinator Guru Tahfidz.</div>
+                            </div>
                             <div class="col-md-4"><label class="form-label">Maks. Anggota</label><input type="number" name="max_members" id="halaqah_max_members" min="1" max="100" class="form-control" value="{{ old('max_members') }}"></div>
-                            <div class="col-md-4"><label class="form-label">Ruang</label><input name="room" id="halaqah_room" class="form-control" value="{{ old('room') }}" maxlength="100"></div>
                             <div class="col-md-4 d-flex align-items-end"><div class="form-check form-switch"><input type="checkbox" name="is_active" value="1" class="form-check-input" id="halaqah_is_active" @checked(old('is_active', true))><label class="form-check-label" for="halaqahActive">Aktif</label></div></div>
                             <div class="col-12"><label class="form-label">Catatan</label><textarea name="notes" id="halaqah_notes" class="form-control" rows="2">{{ old('notes') }}</textarea></div>
                         </div></div>
@@ -169,7 +201,7 @@
         document.getElementById('halaqahMethod').disabled = false;
         document.getElementById('halaqahModalTitle').innerHTML = '<i class="ri-edit-line me-1"></i>Edit Halaqah';
         document.getElementById('halaqahSubmit').innerHTML = '<i class="ri-save-line me-1"></i>Simpan Perubahan';
-        ['school_id','academic_year_id','study_group_id','tahfidz_package_id','curriculum_id','name','code','gender','teacher_id','coordinator_id','max_members','room','notes'].forEach(function (key) { setHalaqahField(key, data[key]); });
+        ['school_id','academic_year_id','grade_level_id','name','code','teacher_id','max_members','notes'].forEach(function (key) { setHalaqahField(key, data[key]); });
         document.getElementById('halaqah_is_active').checked = !! data.is_active;
         bootstrap.Modal.getOrCreateInstance(document.getElementById('halaqahModal')).show();
     }

@@ -338,6 +338,7 @@ use App\Http\Controllers\Tahfidz\HalaqahController;
 use App\Http\Controllers\Tahfidz\HalaqahImportController;
 use App\Http\Controllers\Tahfidz\MutabaahController;
 use App\Http\Controllers\Tahfidz\SetoranController;
+use App\Http\Controllers\TahfidzSubjectFormatController;
 use App\Http\Controllers\Tahfidz\TahfidzSetoranBulkController;
 use App\Http\Controllers\Tahfidz\TahfidzAttendanceController;
 use App\Http\Controllers\Tahfidz\TahfidzAuditController;
@@ -738,6 +739,11 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 // Referensi read-only: standar penilaian & pemetaan surah–juz.
                 Route::get('standar-penilaian', [TahfidzStandardController::class, 'index'])->name('standards.index');
                 Route::get('mapping-surah-juz', [TahfidzStandardController::class, 'mapping'])->name('mapping.index');
+
+                // Penanda format penilaian tahfidz — satu sumber kebenaran untuk
+                // rapor, leger, jadwal, dan sidebar.
+                Route::get('format-penilaian', [TahfidzSubjectFormatController::class, 'index'])->name('format.index');
+                Route::put('format-penilaian', [TahfidzSubjectFormatController::class, 'update'])->name('format.update');
 
                 Route::prefix('muqorror')->name('muqorror.')->group(function () {
                     Route::get('/', [TahfidzMasterController::class, 'muqorrorIndex'])->name('index');

@@ -50,24 +50,10 @@ class TahfidzAccess
 
     public function isSchoolCoordinator(User $user, ?string $schoolId = null, ?string $academicYearId = null): bool
     {
-        if (! Schema::hasTable('tahfidz_coordinators')) {
-            return false;
-        }
-
-        $registered = TahfidzCoordinator::query()
-            ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
-            ->exists();
-
-        if ($registered) {
-            return true;
-        }
-
-        // Kompatibilitas data lama: tugas tambahan Koordinator Guru Tahfidz
-        // tetap diakui sebagai koordinator sekolah.
-        // Kolomnya `nama_tugas` (lihat migrasi gtk_additional_tasks), bukan `nama`.
+        // Tugas tambahan "Koordinator … Tahfidz" berlaku sampai tanggal
+        // berakhirnya (tst), TIDAK terikat tahun ajaran. Karena itu tugas
+        // tambahan diperiksa lebih dulu: tabel tahfidz_coordinators hanya
+        // menyimpan pendaftaran per tahun ajaran dan tidak selalu terisi.
         if ($this->hasCoordinatorTask($user)) {
             if (! $schoolId) {
                 return true;
@@ -76,7 +62,16 @@ class TahfidzAccess
             return GtkEmployment::query()->where('user_id', $user->id)->where('school_id', $schoolId)->exists();
         }
 
-        return false;
+        if (! Schema::hasTable('tahfidz_coordinators')) {
+            return false;
+        }
+
+        return TahfidzCoordinator::query()
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
+            ->exists();
     }
 
     /**

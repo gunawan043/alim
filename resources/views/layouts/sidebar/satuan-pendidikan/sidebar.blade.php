@@ -171,7 +171,11 @@
     $isKoorGuruAgama   = $hasTugas('Koordinator Guru Agama');
     $isKoorGuruHadits  = $hasTugas('Koordinator Guru Hadits');
     $isKoorGuruArab    = $hasTugas('Koordinator Guru Bahasa Arab');
-    $isKoorGuruTahfidz = $hasTugas('Koordinator Guru Tahfidz');
+    // Tugas tambahan selalu teks bebas, sehingga nama "Koordinator Guru Tahfiz"
+    // (ejaan tanpa "dz") juga harus dikenali — sama dengan aturan di
+    // TahfidzAccess). Tanpa ini koordinator bisa masuk ke halaman halaqah
+    // tetapi menunya tidak pernah tampil.
+    $isKoorGuruTahfidz = $hasTugas('Koordinator Guru Tahfidz') || $hasTugas('Koordinator Guru Tahfiz');
 
     $isKoorMapel       = $isKoorGuruUmum || $isKoorGuruAgama || $isKoorGuruHadits || $isKoorGuruArab || $isKoorGuruTahfidz;
 
@@ -192,7 +196,7 @@
 
     $isKoorTahfidz = $isKoorGuruTahfidz
         || $hasJabatan('Koordinator Tahfidz') || $hasJabatan('Koordinator Tahfidz Al-Qur\'an')
-        || $tugasMatches('koordinator tahfidz');
+        || $tugasMatches('koordinator tahfidz') || $tugasMatches('koordinator tahfiz');
 
     /* ── Bedakan jabatan struktural vs tugas tambahan (untuk label menu) ─
        PENTING: `$hasJabatan()` membaca juga tugas tambahan dari SK/penugasan
@@ -574,7 +578,7 @@
     @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
         {{-- Guru Tahfidz: buku kerja halaqah + kehadiran --}}
         <x-sidebar-section id="sp_sec_guru_tahfidz" label="Tahfidz" icon="ri-book-read-line"
-            :open="$sectionOpen(['user.tahfidz.workspace.', 'user.tahfidz.setoran.', 'user.tahfidz.monitoring.sheet.', 'user.tahfidz.gradebook.', 'user.tahfidz.reports.', 'user.tahfidz.attendance.', 'user.tahfidz.tasmi.', 'user.tahfidz.halaqah.', 'user.tahfidz.progress.', 'user.tahfidz.monitoring.', 'user.tahfidz.interventions.', 'user.tahfidz.targets.', 'user.tahfidz.muqorror.', 'user.tahfidz.rpp.', 'user.teacher-qr.'])">
+            :open="$sectionOpen(['user.tahfidz.workspace.', 'user.tahfidz.setoran-bulk.', 'user.tahfidz.setoran.', 'user.tahfidz.monitoring.sheet.', 'user.tahfidz.gradebook.', 'user.tahfidz.reports.', 'user.tahfidz.attendance.', 'user.tahfidz.tasmi.', 'user.tahfidz.halaqah.', 'user.tahfidz.progress.', 'user.tahfidz.monitoring.', 'user.tahfidz.interventions.', 'user.tahfidz.targets.', 'user.tahfidz.muqorror.', 'user.tahfidz.rpp.', 'user.teacher-qr.'])">
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'self'])
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'teacher'])
         </x-sidebar-section>

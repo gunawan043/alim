@@ -114,17 +114,46 @@ class TahfidzHalaqahFormTest extends TestCase
 
     public function test_tugas_tambahan_yang_sudah_berakhir_tidak_diakui(): void
     {
-        $user = $this->employmentUser('Koordinator Lama', 'koord.lama@test.local', 'Guru Tahfidz');
+        $lama = $this->employmentUser('Koordinator Lama', 'koord.lama@test.local', 'Guru Tahfidz');
+
         GtkAdditionalTask::create([
-            'user_id' => $user->id,
+            'user_id' => $lama->id,
             'nama_tugas' => 'Koordinator Guru Tahfidz',
             'tst' => now()->subYear()->toDateString(),
         ]);
 
         $this->assertFalse(
-            app(\App\Services\TahfidzAccess::class)->isSchoolCoordinator($user->fresh(), $this->school->id),
+            app(\App\Services\TahfidzAccess::class)->isSchoolCoordinator($lama->fresh(), $this->school->id),
             'Tugas tambahan yang sudah berakhir tidak boleh diakui.'
         );
+    }
+
+    /**
+     * Gejala di produksi: halaman index mengirim tahun ajaran aktif, sehingga
+     * koordinator hanya dikenali bila punya baris di tahfidz_coordinators —
+     * tabel yang tidak pernah diisi aplikasi. Tombol Tambah Halaqah hilang.
+     */
+    public function test_koordinator_tetap_diakui_saat_tahun_ajaran_diisi(): void
+    {
+        $access = app(\App\Services\TahfidzAccess::class);
+
+        $this->assertTrue(
+            $access->isSchoolCoordinator($this->coordinator->fresh(), $this->school->id, $this->year->id),
+            'Tahun ajaran tidak boleh menggugurkan pengakuan koordinator dari tugas tambahan.'
+        );
+
+        $response = $this->actingAs($this->coordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->coordinator->id}/tahfidz/halaqah?academic_year_id={$this->year->id}")
+            ->assertOk();
+
+        $html = $response->getContent();
+
+        $this->assertStringContainsString('Tambah Halaqah', $html, 'Tombol Tambah Halaqah harus muncul untuk koordinator.');
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
     }
 
     public function test_form_hanya_menampilkan_field_yang_diperlukan(): void
@@ -144,6 +173,53 @@ class TahfidzHalaqahFormTest extends TestCase
         // Gender tetap tampil, tetapi terkunci (bukan pilihan).
         $this->assertStringContainsString('name="gender"', $html);
         $this->assertStringNotContainsString('<select name="gender"', $html);
+    }
+
+    public function test_dialog_tambah_halaqah_di_halaman_index_mengikuti_aturan_baru(): void
+    {
+        GradeLevel::create(['school_id' => $this->school->id, 'level' => 1, 'name' => 'Kelas 1', 'is_active' => true]);
+
+        $html = $this->actingAs($this->coordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->coordinator->id}/tahfidz/halaqah")
+            ->assertOk()
+            ->assertSee('Tambah Halaqah')
+            ->getContent();
+
+        // Modal di halaman index harus memakai aturan form yang sama: tanpa
+        // rombel/paket/kurikulum/ruang, kelas = tingkat, gender & koordinator terkunci.
+        foreach (['name="study_group_id"', 'name="tahfidz_package_id"', 'name="curriculum_id"', 'name="room"', '<select name="gender"', '<select name="coordinator_id"'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $html, "Field {$forbidden} seharusnya tidak tampil di dialog tambah halaqah.");
+        }
+
+        $this->assertStringContainsString('name="grade_level_id"', $html);
+        $this->assertStringContainsString('Kelas 1', $html);
+        $this->assertStringContainsString('name="coordinator_id"', $html);
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
+    }
+
+    public function test_menu_halaqah_tertaut_dari_dashboard_koordinator(): void
+    {
+        // Sidebar dibangun penuh (butuh katalog permission), jadi uji tautannya
+        // langsung dan pastikan halaman halaqah memberi tombol tambah.
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+
+        $html = $this->actingAs($this->coordinator)
+            ->withSession(['sa_school_id' => $this->school->id])
+            ->get("/{$this->coordinator->id}/tahfidz/halaqah")
+            ->assertOk()
+            ->assertSee('Tambah Halaqah')
+            ->assertSee(route('user.tahfidz.halaqah.index', ['userId' => $this->coordinator->id]))
+            ->getContent();
+
+        $this->assertStringContainsString('Halaqah', $html);
+
+        while (ob_get_level() > 1) {
+            ob_end_clean();
+        }
     }
 
     public function test_koordinator_dan_gender_diisi_otomatis_saat_menyimpan(): void

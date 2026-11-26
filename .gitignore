@@ -46,3 +46,7 @@ opencode.jsonc
 # dibuang dari git archive oleh .gitattributes, sehingga rsync --delete
 # menghapusnya tiap deploy dan membuat worktree server kotor.
 public/build/**/CHANGELOG.md
+
+# Duplikat iCloud (file " 2.php") — jangan pernah di-commit
+* 2.php
+* 2.blade.php

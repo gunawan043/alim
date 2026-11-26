@@ -44,11 +44,11 @@ class HalaqahController extends Controller
         $activeYear = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
         $academicYearId = $request->input('academic_year_id', $activeYear?->id);
 
-        $query = TahfidzGroup::with(['school:id,name', 'studyGroup:id,name', 'package:id,name', 'teacher:id,name', 'coordinator:id,name'])
+        $query = TahfidzGroup::with(['school:id,name', 'studyGroup:id,name', 'gradeLevel:id,name', 'package:id,name', 'teacher:id,name', 'coordinator:id,name'])
             ->withCount('members')
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
             ->when($request->filled('school_id'), fn ($q) => $q->where('school_id', $request->school_id))
-            ->when($request->filled('study_group_id'), fn ($q) => $q->where('study_group_id', $request->study_group_id));
+            ->when($request->filled('grade_level_id'), fn ($q) => $q->where('grade_level_id', $request->grade_level_id));
 
         $this->scopeGroups($query, $request, $schoolId, $academicYearId);
 
