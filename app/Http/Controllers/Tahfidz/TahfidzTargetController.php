@@ -11,6 +11,7 @@ use App\Services\TahfidzAccess;
 use App\Services\TahfidzProgressService;
 use App\Services\TahfidzTargetService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TahfidzTargetController extends Controller
 {
@@ -57,9 +58,17 @@ class TahfidzTargetController extends Controller
             ->where('status', 'aktif')
             ->get()->pluck('student')->filter()->unique('id')->sortBy('name')->values();
 
-        $directions = $students->mapWithKeys(function ($student) use ($groups) {
-            $group = $groups->first();
-            $schoolId = $group?->school_id;
+        // Arah juz ditentukan per halaqah santri itu sendiri: satu pengguna
+        // bisa memegang beberapa halaqah lintas satuan pendidikan, sehingga
+        // memakai sekolah halaqah pertama saja akan salah untuk yang lain.
+        $studentGroupSchool = TahfidzGroupMember::whereIn('tahfidz_group_id', $groupIds)
+            ->when($academicYear, fn ($q) => $q->where('academic_year_id', $academicYear->id))
+            ->where('status', 'aktif')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(string) $row->student_id => $groups->firstWhere('id', $row->tahfidz_group_id)?->school_id]);
+
+        $directions = $students->mapWithKeys(function ($student) use ($studentGroupSchool) {
+            $schoolId = $studentGroupSchool[(string) $student->id] ?? null;
             $isAlumni = $this->targets->isAlumni($student, $schoolId);
 
             return [(string) $student->id => [
@@ -76,7 +85,19 @@ class TahfidzTargetController extends Controller
             'average_pages' => $targets->whereNotNull('target_halaman')->avg('target_halaman'),
         ];
 
-        return view('tahfidz.targets.index', compact('userId', 'groups', 'inputGroups', 'targets', 'students', 'members', 'stats', 'academicYear', 'directions'));
+        // Muqorror yang benar-benar dipakai tiap halaqah, agar jenjang yang
+        // berlaku (SD/SMP/SMA) terlihat jelas di layar, bukan tersembunyi.
+        $planInfo = $inputGroups->mapWithKeys(function (TahfidzGroup $group) {
+            $plan = $this->targets->planForGroup($group);
+
+            return [(string) $group->id => [
+                'jenjang' => strtoupper((string) ($this->targets->jenjangForGroup($group) ?? '—')),
+                'plan' => $plan?->title,
+                'months' => $plan?->months->count() ?? 0,
+            ]];
+        });
+
+        return view('tahfidz.targets.index', compact('userId', 'groups', 'inputGroups', 'targets', 'students', 'members', 'stats', 'academicYear', 'directions', 'planInfo'));
     }
 
     public function store(Request $request, string $userId)
@@ -134,6 +155,104 @@ class TahfidzTargetController extends Controller
         return back()->with('success', 'Target hafalan diperbarui.');
     }
 
+    /**
+     * Ubah target sekaligus untuk banyak santri dalam satu halaqah.
+     *
+     * Hanya nilai yang diisi yang ditimpa. Juz awal/akhir yang dikosongkan
+     * mengikuti arah santri (alumni 1→30, non-alumni 30→1).
+     */
+    public function bulkUpdate(Request $request, string $userId)
+    {
+        $group = $this->groupFromRequest($request);
+        $this->authorizeInput($request, $group);
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'tahfidz_group_id' => 'required|exists:tahfidz_groups,id',
+            'semester' => 'required|in:ganjil,genap',
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'string',
+            'bulan_dari' => 'required|integer|min:1|max:12',
+            'bulan_sampai' => 'required|integer|min:1|max:12|gte:bulan_dari',
+            'juz_start' => 'nullable|integer|min:1|max:30',
+            'juz_end' => 'nullable|integer|min:1|max:30',
+            'target_halaman' => 'nullable|numeric|min:0|max:604',
+            'target_hadits' => 'nullable|integer|min:0|max:1000',
+            'notes' => 'nullable|string|max:2000',
+        ]);
+
+        if (isset($validated['juz_start'], $validated['juz_end'])
+            && ($validated['juz_start'] ?? null) !== null
+            && ($validated['juz_end'] ?? null) !== null
+            && $validated['juz_end'] < $validated['juz_start']) {
+            return back()->withErrors(['juz_end' => 'Juz akhir tidak boleh lebih kecil dari juz awal.'])->withInput();
+        }
+
+        $members = TahfidzGroupMember::with('student:id,name')
+            ->where('tahfidz_group_id', $group->id)
+            ->whereIn('student_id', $validated['student_ids'])
+            ->where('status', 'aktif')
+            ->get();
+
+        if ($members->isEmpty()) {
+            return back()->withErrors(['student_ids' => 'Tidak ada santri aktif halaqah ini yang dipilih.'])->withInput();
+        }
+
+        $notes = $validated['notes'] ?? null;
+
+        DB::transaction(function () use ($group, $user, $validated, $members, $notes) {
+            foreach ($members as $member) {
+                $student = $member->student;
+                if (! $student) {
+                    continue;
+                }
+
+                $juzStart = $validated['juz_start'] ?? $this->targets->nextJuzFor($student, $group);
+                $juzEnd = $validated['juz_end'] ?? $juzStart;
+
+                foreach (range($validated['bulan_dari'], $validated['bulan_sampai']) as $month) {
+                    $payload = [
+                        'assigned_by' => $user?->id,
+                        'notes' => $notes,
+                    ];
+
+                    // Juz/halaman/hadits hanya ditimpa bila memang diisi, agar
+                    // target bulan lain tidak ikut terhapus saat ubah massal.
+                    if (($validated['juz_start'] ?? null) !== null || ! $this->hasAnyTarget($student->id, $group, $validated['semester'], $month)) {
+                        $payload['juz_start'] = $juzStart;
+                        $payload['juz_end'] = $juzEnd;
+                    }
+                    if (($validated['target_halaman'] ?? null) !== null) {
+                        $payload['target_halaman'] = $validated['target_halaman'];
+                    }
+                    if (($validated['target_hadits'] ?? null) !== null) {
+                        $payload['target_hadits'] = $validated['target_hadits'];
+                    }
+
+                    TahfidzStudentTarget::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'tahfidz_group_id' => $group->id,
+                            'academic_year_id' => $group->academic_year_id,
+                            'semester' => $validated['semester'],
+                            'target_bulan' => $month,
+                        ],
+                        $payload
+                    );
+                }
+
+                $this->progress->recalculateStudent($student->id, $group->academic_year_id, $group->id, $validated['semester']);
+            }
+        });
+
+        return back()->with('success', sprintf(
+            'Target %d santri pada bulan %d–%d berhasil diperbarui.',
+            $members->count(),
+            $validated['bulan_dari'],
+            $validated['bulan_sampai']
+        ));
+    }
+
     public function destroy(Request $request, string $userId, string $id)
     {
         $target = TahfidzStudentTarget::findOrFail($id);
@@ -187,11 +306,21 @@ class TahfidzTargetController extends Controller
         return $validated;
     }
 
+    private function hasAnyTarget(string $studentId, TahfidzGroup $group, string $semester, int $month): bool
+    {
+        return TahfidzStudentTarget::where('student_id', $studentId)
+            ->where('tahfidz_group_id', $group->id)
+            ->where('academic_year_id', $group->academic_year_id)
+            ->where('semester', $semester)
+            ->where('target_bulan', $month)
+            ->exists();
+    }
+
     private function groupFromRequest(Request $request): TahfidzGroup
     {
         $groupId = $request->input('tahfidz_group_id');
         $group = TahfidzGroup::findOrFail($groupId);
-        $schoolId = $request->attributes->get('schoolContextId') ?: $request->user()?->employment?->school_id;
+        $schoolId = $request->attributes->get('schoolContextId') ?: $this->access->schoolIdFor($request->user());
         abort_unless(
             $this->access->canViewAllSchools($request->user())
             || (string) $group->school_id === (string) $schoolId,
@@ -209,7 +338,7 @@ class TahfidzTargetController extends Controller
     private function accessibleGroups(Request $request, ?string $academicYearId)
     {
         $user = $request->user();
-        $schoolId = $request->attributes->get('schoolContextId') ?: $user?->employment?->school_id;
+        $schoolId = $request->attributes->get('schoolContextId') ?: $this->access->schoolIdFor($user);
         $query = TahfidzGroup::query()->where('is_active', true)
             ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId));
 
@@ -230,7 +359,7 @@ class TahfidzTargetController extends Controller
     private function authorizeView(Request $request): void
     {
         $user = $request->user();
-        $schoolId = $request->attributes->get('schoolContextId') ?: $user?->employment?->school_id;
+        $schoolId = $request->attributes->get('schoolContextId') ?: $this->access->schoolIdFor($user);
         abort_unless(
             $this->access->canViewAllSchools($user)
             || $this->access->isSchoolCoordinator($user, $schoolId)

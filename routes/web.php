@@ -774,6 +774,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::get('progress', [TahfidzProgressController::class, 'index'])->name('progress.index');
                 Route::get('targets', [TahfidzTargetController::class, 'index'])->name('targets.index');
                 Route::post('targets', [TahfidzTargetController::class, 'store'])->name('targets.store');
+                Route::post('targets/bulk', [TahfidzTargetController::class, 'bulkUpdate'])->name('targets.bulk');
                 Route::put('targets/{id}', [TahfidzTargetController::class, 'update'])->name('targets.update');
                 Route::delete('targets/{id}', [TahfidzTargetController::class, 'destroy'])->name('targets.destroy');
                 Route::get('audit', [TahfidzAuditController::class, 'index'])->name('audit.index');

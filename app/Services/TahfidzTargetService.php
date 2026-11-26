@@ -17,10 +17,20 @@ use Illuminate\Support\Facades\DB;
  */
 class TahfidzTargetService
 {
+    /**
+     * Muqorror yang dipakai sebuah halaqah.
+     *
+     * Jenjang diambil dari satuan pendidikan (Sekolah Dasar → muqorror SD,
+     * Sekolah Menengah Pertama → SMP, dan seterusnya). Sebelumnya jenjang
+     * dibaca dari rombel halaqah, padahal halaqah sengaja tidak terikat
+     * rombel — akibatnya jenjang selalu kosong dan halaqah SD memakai
+     * muqorror SMA yang kebetulan urutan pertama.
+     */
     public function planForGroup(TahfidzGroup $group): ?TahfidzMuqorrorPlan
     {
-        $group->loadMissing('studyGroup', 'academicYear');
-        $gradeId = $group->studyGroup?->grade_level_id;
+        $group->loadMissing('gradeLevel', 'studyGroup.gradeLevel', 'school', 'academicYear');
+        $gradeId = $group->grade_level_id ?: $group->studyGroup?->grade_level_id;
+        $jenjang = $this->jenjangForGroup($group);
         $semester = $group->academicYear?->semester ?: 'ganjil';
 
         $plans = TahfidzMuqorrorPlan::with('months')
@@ -33,11 +43,21 @@ class TahfidzTargetService
             })
             ->get();
 
+        // Muqorror dengan jenjang berbeda TIDAK boleh dipakai: target SD
+        // tidak sama dengan SMA. Bila tidak ada yang cocok, hasilnya null
+        // sehingga pemanggil memberi pesan, bukan diam-diam memakai jenjang lain.
+        $plans = $plans->filter(fn (TahfidzMuqorrorPlan $plan) => $plan->jenjang === null
+            || $jenjang === null
+            || strtolower((string) $plan->jenjang) === $jenjang);
+
         return $plans
-            ->sortByDesc(function (TahfidzMuqorrorPlan $plan) use ($gradeId, $group) {
+            ->sortByDesc(function (TahfidzMuqorrorPlan $plan) use ($gradeId, $jenjang, $group) {
                 $score = 0;
                 if ($gradeId && (string) $plan->grade_level_id === (string) $gradeId) {
                     $score += 10;
+                }
+                if ($jenjang && strtolower((string) $plan->jenjang) === $jenjang) {
+                    $score += 5;
                 }
                 if ((string) $plan->school_id === (string) $group->school_id) {
                     $score += 2;
@@ -46,6 +66,27 @@ class TahfidzTargetService
                 return $score;
             })
             ->first();
+    }
+
+    /**
+     * Jenjang halaqah: sd/smp/sma. Diambil dari jenjang satuan pendidikan,
+     * bukan dari rombel.
+     */
+    public function jenjangForGroup(TahfidzGroup $group): ?string
+    {
+        $level = strtolower((string) ($group->school?->school_level ?? ''));
+
+        if (str_starts_with($level, 'sd')) {
+            return 'sd';
+        }
+        if (str_starts_with($level, 'smp')) {
+            return 'smp';
+        }
+        if (str_starts_with($level, 'sma') || str_starts_with($level, 'smk') || str_starts_with($level, 'ma')) {
+            return 'sma';
+        }
+
+        return null;
     }
 
     public function applyToGroup(TahfidzGroup $group, ?string $userId = null): int
@@ -109,6 +150,11 @@ class TahfidzTargetService
         return $written;
     }
 
+    /**
+     * Alumni = santri yang sekolah asalnya sama dengan satuan pendidikan
+     * tempat ia sekarang belajar. Alumni mulai dari juz 1 (depan),
+     * non-alumni mulai dari juz 30 (belakang).
+     */
     public function isAlumni(Student $student, ?string $schoolId): bool
     {
         return $student->origin_school_id !== null
