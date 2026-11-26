@@ -81,8 +81,12 @@
                                 <div class="form-text">Menentukan pengelompokan di daftar mapel.</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Jam Pelajaran / Minggu <span class="text-danger">*</span></label>
+                                <label class="form-label">JP Bawaan / Minggu <span class="text-danger">*</span></label>
                                 <input type="number" name="credit_hours" class="form-control" value="{{ old('credit_hours', 2) }}" min="1" max="20" required placeholder="1–20">
+                                <div class="form-text">
+                                    Dipakai saat mapel diterapkan ke tingkat. JP per tingkat
+                                    dapat diubah menyusul di <strong>Peta Kurikulum</strong>.
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Deskripsi</label>

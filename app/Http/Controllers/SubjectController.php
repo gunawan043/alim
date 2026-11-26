@@ -259,16 +259,24 @@ class SubjectController extends Controller
     }
 
     /**
-     * Teruskan perubahan JP master ke alokasi tingkat aktif
-     * (grade_level_subjects), lalu ke rombel (study_group_subjects).
-     * Tanpa ini, JP di halaman Edit Mapel hanya mengubah master dan tidak
-     * pernah sampai ke jadwal / buku nilai / pekan efektif.
+     * Sebarkan JP master ke tingkat & rombel yang BELUM punya JP.
+     *
+     * JP master di halaman Edit Mapel adalah NILAI BAWAAN, bukan ketetapan.
+     * Satu mapel boleh berbeda JP antar tingkat (mis. Matematika 3 JP di
+     * kelas 7 dan 4 JP di kelas 9), dan perbedaan itu diatur di Peta
+     * Kurikulum. Karena itu tingkat yang sudah punya alokasi sendiri TIDAK
+     * boleh ditimpa — menimpanya akan menghapus perbedaan tersebut diam-diam.
+     *
+     * Yang diisi hanya tingkat dengan alokasi kosong (0 / null), sehingga
+     * perubahan JP master tidak pernah merusak Peta Kurikulum.
+     *
+     * @return array{diisi: int, dipertahankan: int}
      */
-    private function propagateHoursToActiveYear(Subject $subject): int
+    private function propagateHoursToActiveYear(Subject $subject): array
     {
         $activeAyId = AcademicYear::where('is_active', true)->value('id');
         if (! $activeAyId) {
-            return 0;
+            return ['diisi' => 0, 'dipertahankan' => 0];
         }
 
         $hours = (int) ($subject->credit_hours ?: 2);
@@ -279,12 +287,21 @@ class SubjectController extends Controller
             ->get();
 
         if ($gradeRows->isEmpty()) {
-            return 0;
+            return ['diisi' => 0, 'dipertahankan' => 0];
         }
 
-        $gradeLevelIds = $gradeRows->pluck('grade_level_id');
+        // Hanya tingkat tanpa JP yang diisi; yang sudah diatur dibiarkan.
+        $kosong = $gradeRows->filter(fn (GradeLevelSubject $row) => (int) $row->allocation_hours <= 0);
+        $dibiarkan = $gradeRows->count() - $kosong->count();
 
-        GradeLevelSubject::whereIn('id', $gradeRows->pluck('id'))->update(['allocation_hours' => $hours]);
+        if ($kosong->isEmpty()) {
+            return ['diisi' => 0, 'dipertahankan' => $dibiarkan];
+        }
+
+        GradeLevelSubject::whereIn('id', $kosong->pluck('id'))
+            ->update(['allocation_hours' => $hours]);
+
+        $gradeLevelIds = $kosong->pluck('grade_level_id');
 
         $groupIds = StudyGroup::query()
             ->whereIn('grade_level_id', $gradeLevelIds)
@@ -296,10 +313,11 @@ class SubjectController extends Controller
             StudyGroupSubject::query()
                 ->whereIn('study_group_id', $groupIds)
                 ->where('subject_id', $subject->id)
+                ->where(fn ($q) => $q->whereNull('weekly_hours')->orWhere('weekly_hours', '<=', 0))
                 ->update(['weekly_hours' => $hours]);
         }
 
-        return $gradeRows->count();
+        return ['diisi' => $kosong->count(), 'dipertahankan' => $dibiarkan];
     }
 
     public function syncGrades(Request $request, string $userId, string $id)
@@ -388,14 +406,23 @@ class SubjectController extends Controller
 
         $subject->update($data);
 
-        // JP master yang berubah harus ikut ke tingkat & rombel tahun ajaran aktif.
-        $syncedTingkat = $hoursChanged ? $this->propagateHoursToActiveYear($subject) : 0;
+        // JP master adalah nilai bawaan. Hanya tingkat tanpa JP yang diisi;
+        // JP yang sudah diatur di Peta Kurikulum dibiarkan apa adanya.
+        $hasil = $hoursChanged ? $this->propagateHoursToActiveYear($subject) : ['diisi' => 0, 'dipertahankan' => 0];
 
         $message = 'Mata pelajaran berhasil diperbarui.';
         if ($hoursChanged) {
-            $message .= $syncedTingkat > 0
-                ? " JP {$data['credit_hours']} diterapkan ke {$syncedTingkat} tingkat pada tahun ajaran aktif."
-                : ' Mapel belum terpasang di tingkat mana pun — JP akan dipakai saat diterapkan.';
+            if ($hasil['diisi'] > 0) {
+                $message .= " JP {$data['credit_hours']} diisi ke {$hasil['diisi']} tingkat yang belum punya JP.";
+            }
+
+            if ($hasil['dipertahankan'] > 0) {
+                $message .= " JP {$hasil['dipertahankan']} tingkat lain tidak diubah karena sudah diatur di Peta Kurikulum.";
+            }
+
+            if ($hasil['diisi'] === 0 && $hasil['dipertahankan'] === 0) {
+                $message .= ' Mapel belum terpasang di tingkat mana pun — JP akan dipakai saat diterapkan.';
+            }
         }
 
         return redirect()->route('user.subjects.show', ['userId' => $userId, 'id' => $subject->id])

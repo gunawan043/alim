@@ -77,8 +77,14 @@
                                 <div class="form-text">Menentukan pengelompokan di daftar mapel (Fikih, Ushul Fikih → Agama).</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Jam Pelajaran / Minggu <span class="text-danger">*</span></label>
+                                <label class="form-label">JP Bawaan / Minggu <span class="text-danger">*</span></label>
                                 <input type="number" name="credit_hours" class="form-control" value="{{ old('credit_hours', $subject->credit_hours) }}" min="1" max="20" required>
+                                <div class="form-text">
+                                    Nilai bawaan saja. JP per tingkat diatur di
+                                    <strong>Peta Kurikulum</strong>, sehingga satu mapel boleh
+                                    berbeda JP antar tingkat (mis. 4 JP di kelas 7, 3 JP di kelas 8).
+                                    Tingkat yang sudah punya JP tidak akan diubah dari sini.
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Deskripsi</label>
