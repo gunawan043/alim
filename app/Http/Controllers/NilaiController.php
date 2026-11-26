@@ -14,8 +14,10 @@ use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Services\AcademicPeriodService;
 use App\Services\Arsip\NilaiBookArchiver;
+use App\Services\DecreePeriodService;
 use App\Services\Evaluasi\ReviewWorkflowService;
 use App\Services\KurikulumAccess;
+use App\Services\TahfidzGradebookService;
 use App\Services\Notifications\GuardianWhatsAppNotifier;
 use App\Services\SumatifHarianService;
 use App\Support\UserJabatan;
@@ -119,7 +121,17 @@ class NilaiController extends Controller
                 return redirect()->route('user.schools.guru-mapel.index', ['userId' => $userId]);
             }
 
-            abort(403, 'Data Nilai hanya untuk KSP, Waka, Kurikulum, dan TU. Guru mapel menggunakan Buku Nilai Saya.');
+            // Guru tahfidz: bukunya buku halaqah, bukan buku mapel per rombel.
+            // Tanpa cabang ini guru halaqah ditolak 403 padahal ia punya buku.
+            $hasHalaqahBook = $user && app(TahfidzGradebookService::class)
+                ->bookRowsForTeacher($user->id, $schoolId)
+                ->isNotEmpty();
+
+            if ($hasHalaqahBook) {
+                return redirect()->route('user.schools.guru-mapel.index', ['userId' => $userId]);
+            }
+
+            abort(403, 'Data Nilai adalah area departemen (KSP, Waka, Kurikulum, TU). Buku nilai Anda dibuka lewat menu Buku Nilai Anda.');
         }
 
         // ARSIP PERIODE: seluruh tahun ajaran dapat dipilih (termasuk TA lama).
@@ -135,10 +147,17 @@ class NilaiController extends Controller
         $isArchiveAy = $selectedAcademicYearId && $activeAcademicYearId
             && (string) $selectedAcademicYearId !== (string) $activeAcademicYearId;
 
-        // Auto-select semester dari request; default mengikuti semester TA terpilih.
+        // Semester mengikuti SK pembagian tugas yang berlaku, bukan kolom
+        // academic_years.semester (kolom itu hanya menyimpan satu semester
+        // untuk sepasang tahun ajaran, sehingga buku ganjil/genap tertukar).
+        $period = app(DecreePeriodService::class)->resolve($schoolId, $selectedAcademicYearId);
+
+        // Permintaan eksplisit dari admin tetap dihormati (mis. membuka arsip
+        // semester lalu), tetapi tanpa pilihan itu SK yang menentukan.
         $selectedSemester = $request->filled('semester')
             ? $request->semester
-            : ($academicYears->firstWhere('id', $selectedAcademicYearId)?->semester === 'genap' ? 'genap' : 'ganjil');
+            : $period['semester'];
+        $decreePeriod = $period;
 
         // Rombel = sumber daftar kelas. Buku Admin Guru hanya dipakai untuk
         // menghitung mapel & mengarahkan aksi, sehingga kelas tetap tampil
@@ -162,9 +181,11 @@ class NilaiController extends Controller
 
             if ($fallbackAyId) {
                 $selectedAcademicYearId = $fallbackAyId;
+                // Tahun ajaran berubah → semester ditinjau ulang dari SK.
+                $decreePeriod = app(DecreePeriodService::class)->resolve($schoolId, $selectedAcademicYearId);
                 $selectedSemester = $request->filled('semester')
                     ? $request->semester
-                    : ($academicYears->firstWhere('id', $selectedAcademicYearId)?->semester === 'genap' ? 'genap' : 'ganjil');
+                    : $decreePeriod['semester'];
                 $isArchiveAy = $activeAcademicYearId
                     && (string) $selectedAcademicYearId !== (string) $activeAcademicYearId;
                 $rombelFallback = true;
@@ -225,7 +246,7 @@ class NilaiController extends Controller
         return view('nilai.index', compact(
             'academicYears', 'kelasList', 'gradeLevelIds',
             'userId', 'isPrivileged', 'selectedAcademicYearId', 'selectedSemester',
-            'activeAcademicYearId', 'isArchiveAy', 'rombelFallback'
+            'activeAcademicYearId', 'isArchiveAy', 'rombelFallback', 'decreePeriod'
         ));
     }
 

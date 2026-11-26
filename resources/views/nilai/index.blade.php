@@ -142,10 +142,31 @@
                         <i class="ri-stack-line me-1"></i>
                         Semester {{ $selectedSemester === 'ganjil' ? 'Ganjil' : 'Genap' }}{{ $selectedGl ? " — $selectedGl" : '' }}
                     </p>
+                    @if (($decreePeriod['source'] ?? null) === 'decree' && ($decreePeriod['decree'] ?? null))
+                        <p class="mb-0 stat-label mt-1">
+                            <i class="ri-file-shield-2-line me-1"></i>
+                            Berdasarkan SK: {{ $decreePeriod['decree']->decree_number }}
+                            <span class="text-muted">({{ app(\App\Services\DecreePeriodService::class)->periodLabel($decreePeriod['decree']) }})</span>
+                        </p>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
+    @endif
+
+    @if (! empty($decreePeriod['message']))
+        <div class="alert alert-{{ ($decreePeriod['state'] ?? '') === 'expired' ? 'warning' : 'info' }} d-flex align-items-start gap-2 py-2 mb-3">
+            <i class="ri-{{ ($decreePeriod['state'] ?? '') === 'expired' ? 'error-warning' : 'information' }}-line fs-18 mt-1"></i>
+            <div class="small">
+                <strong>Periode nilai mengikuti SK pembagian tugas.</strong>
+                {{ $decreePeriod['message'] }}
+                @if (($decreePeriod['state'] ?? '') === 'expired')
+                    <a href="{{ route('user.institution-decrees.index', ['userId' => $userId]) }}"
+                       class="alert-link ms-1">Kelola SK</a>
+                @endif
+            </div>
+        </div>
     @endif
 
     <div class="row">

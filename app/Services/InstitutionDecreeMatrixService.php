@@ -493,6 +493,7 @@ class InstitutionDecreeMatrixService
                 ],
                 [
                     'school_id' => $schoolId,
+                    'decree_id' => $decree->id,
                     'kktp_id' => $kktpCache[$kktpKey]?->id,
                     'is_active' => true,
                 ]

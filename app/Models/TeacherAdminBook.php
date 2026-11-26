@@ -28,6 +28,7 @@ class TeacherAdminBook extends Model
         'study_group_id',
         'school_id',
         'academic_year_id',
+        'decree_id',
         'semester',
         'teaching_id',
         'kktp_id',
@@ -98,6 +99,14 @@ class TeacherAdminBook extends Model
     public function studyGroup(): BelongsTo
     {
         return $this->belongsTo(StudyGroup::class, 'study_group_id');
+    }
+
+    /**
+     * SK pembagian tugas yang menerbitkan buku nilai ini.
+     */
+    public function decree(): BelongsTo
+    {
+        return $this->belongsTo(InstitutionDecree::class, 'decree_id');
     }
 
     public function school(): BelongsTo
