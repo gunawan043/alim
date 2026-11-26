@@ -65,7 +65,7 @@ class StudentMahromImportController extends Controller
                 'activeDormitoryResident.dormitory:id,name',
                 'mahroms' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('relationship'),
             ])
-            ->orderBy('name')
+            ->preferredOrder()
             ->get();
 
         return (new StudentMahromTemplateExport(filled: true, students: $students, maxMahrom: $maxMahrom))

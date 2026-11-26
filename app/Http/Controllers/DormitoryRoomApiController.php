@@ -456,7 +456,7 @@ class DormitoryRoomApiController extends Controller
                 ->orWhere('nis', 'like', "%{$needle}%"));
         }
 
-        $students = $query->orderBy('name')->limit(300)->get(['id', 'name', 'nis', 'nisn', 'gender', 'boarding_status']);
+        $students = $query->preferredOrder()->limit(300)->get(['id', 'name', 'nis', 'nisn', 'gender', 'boarding_status']);
 
         $data = $students->map(function ($student) use ($residents, $dormitory) {
             $resident = $residents->get($student->id);

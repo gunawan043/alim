@@ -62,7 +62,7 @@ class StudentMoveController extends Controller
 
             $students = Student::whereIn('id', $studentIds)
                 ->where('status', 'active')
-                ->orderBy('name')
+                ->preferredOrder()
                 ->get(['id', 'name', 'nisn', 'gender', 'birth_place', 'birth_date']);
         }
 

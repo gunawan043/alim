@@ -56,7 +56,7 @@ class LatenessController extends Controller
                         ->orWhere('nisn', 'like', "%{$search}%");
                 });
             })
-            ->orderBy('name')
+            ->preferredOrder()
             ->limit(50)
             ->get(['id', 'name', 'nis', 'nisn']);
 

@@ -158,7 +158,7 @@ class StudentAchievementController extends Controller
         if ($schoolId) {
             $studentQuery->where('school_id', $schoolId);
         }
-        $allStudents = $studentQuery->orderBy('name')->get();
+        $allStudents = $studentQuery->preferredOrder()->get();
         $groupedStudents = [];
         foreach ($allStudents as $s) {
             $sg = $s->currentClassHistory?->studyGroup;

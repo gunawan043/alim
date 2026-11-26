@@ -36,7 +36,7 @@ class StudyGroupApiController extends Controller
         $query = Student::where('school_id', $studyGroup->school_id)
             ->whereNotIn('id', $assignedStudentIds)
             ->where('status', 'active')
-            ->orderBy('name');
+            ->preferredOrder();
 
         if ($request->filled('q')) {
             $query->where(fn ($sq) => $sq

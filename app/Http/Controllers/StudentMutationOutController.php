@@ -135,7 +135,7 @@ class StudentMutationOutController extends Controller
             $studentQuery->where('school_id', $schoolContextId);
         }
 
-        $allStudents = $studentQuery->orderBy('name')->get();
+        $allStudents = $studentQuery->preferredOrder()->get();
 
         if ($schoolGender) {
             $preferredGender = $schoolGender === 'putra' ? 'L' : 'P';
@@ -750,7 +750,7 @@ class StudentMutationOutController extends Controller
                     ->orWhere('uuid', 'like', "%{$keyword}%");
             });
         }
-        $query->orderBy('name')->take(15);
+        $query->preferredOrder()->take(15);
         $students = $query->get(['id', 'uuid', 'name', 'nisn', 'status']);
 
         return response()->json($students);

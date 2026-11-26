@@ -26,7 +26,7 @@ class StudentArabicNameController extends Controller
         $missingStudents = Student::query()
             ->where('school_id', $schoolId)
             ->where(fn ($q) => $q->whereNull('name_ar')->orWhere('name_ar', ''))
-            ->orderBy('name')
+            ->preferredOrder()
             ->limit(30)
             ->get(['id', 'nis', 'nisn', 'name', 'name_ar']);
 
@@ -45,7 +45,7 @@ class StudentArabicNameController extends Controller
 
         $query = Student::query()
             ->where('school_id', $schoolId)
-            ->orderBy('name');
+            ->preferredOrder();
 
         match ($status) {
             'pending' => $query->where('name_ar_status', 'pending'),

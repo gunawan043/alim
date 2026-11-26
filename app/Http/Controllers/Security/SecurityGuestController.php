@@ -54,7 +54,7 @@ class SecurityGuestController extends Controller
         $dormitories = Dormitory::query()->where('is_active', true)->orderBy('name')->get();
         $students = Student::query()
             ->where('status', 'active')
-            ->orderBy('name')
+            ->preferredOrder()
             ->limit(500)
             ->get(['id', 'name', 'nisn']);
 

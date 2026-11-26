@@ -1108,7 +1108,7 @@ class LabController extends Controller
         $lab = $ctx['lab'];
         $incidents = $lab ? $lab->incidents()->latest('incident_date')->paginate(15)->withQueryString() : collect();
         $referrals = $lab ? UksReferral::where('school_id', $ctx['schoolId'])->latest('referred_at')->limit(50)->get() : collect();
-        $students = $lab ? \App\Models\Student::where('school_id', $ctx['schoolId'])->where('status', 'active')->orderBy('name')->get(['id', 'name', 'nis']) : collect();
+        $students = $lab ? \App\Models\Student::where('school_id', $ctx['schoolId'])->where('status', 'active')->preferredOrder()->get(['id', 'name', 'nis']) : collect();
 
         return view('lab.incident', array_merge($ctx, compact('lab', 'incidents', 'referrals', 'students')));
     }

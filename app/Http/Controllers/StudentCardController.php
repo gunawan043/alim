@@ -49,7 +49,7 @@ class StudentCardController extends Controller
             });
         }
 
-        $students = (clone $query)->orderBy('name')->limit(50)->get();
+        $students = (clone $query)->preferredOrder()->limit(50)->get();
         $selected = null;
 
         if ($request->filled('student_id')) {
@@ -318,7 +318,7 @@ class StudentCardController extends Controller
             });
         }
 
-        $students = $query->orderBy('name')->limit(100)->get();
+        $students = $query->preferredOrder()->limit(100)->get();
 
         if ($students->isEmpty()) {
             return back()->with('error', 'Tidak ada santri yang cocok untuk dicetak.');

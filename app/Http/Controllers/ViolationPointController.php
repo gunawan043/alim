@@ -57,7 +57,7 @@ class ViolationPointController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $students = $schoolId
-            ? Student::where('school_id', $schoolId)->where('status', 'active')->orderBy('name')->get()
+            ? Student::where('school_id', $schoolId)->where('status', 'active')->preferredOrder()->get()
             : Student::where('status', 'active')->orderBy('name')->get();
 
         $studyGroups = $schoolId
@@ -106,7 +106,7 @@ class ViolationPointController extends Controller
         $schoolId = $request->attributes->get('schoolContextId');
 
         $students = $schoolId
-            ? Student::where('school_id', $schoolId)->where('status', 'active')->orderBy('name')->get()
+            ? Student::where('school_id', $schoolId)->where('status', 'active')->preferredOrder()->get()
             : Student::where('status', 'active')->orderBy('name')->get();
 
         $studyGroups = $schoolId

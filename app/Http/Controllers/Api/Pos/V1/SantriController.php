@@ -34,7 +34,7 @@ class SantriController extends PosApiController
         $this->applyFilters($query, $request);
 
         $paginator = $query
-            ->orderBy('name')
+            ->preferredOrder()
             ->paginate($this->perPage($request))
             ->through(fn (Student $student) => $this->format($student));
 

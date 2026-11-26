@@ -111,7 +111,7 @@ class PatientController extends Controller
 
         $students = Student::where('status', 'active')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
-            ->orderBy('name')
+            ->preferredOrder()
             ->get();
 
         $dormitories = Dormitory::where('is_active', true)

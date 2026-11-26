@@ -68,7 +68,7 @@ class GlobalSearchController extends Controller
                     ->orWhere('nisn', 'like', '%'.$query.'%')
                     ->orWhere('nis', 'like', '%'.$query.'%');
             })
-            ->orderBy('name')
+            ->preferredOrder()
             ->limit(8)
             ->get(['id', 'name', 'nisn', 'status'])
             ->map(fn (Student $student) => [

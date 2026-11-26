@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\SchoolUnitService;
 use App\Services\StudentEnrollmentService;
 use App\Services\Uks\StudentHealthSyncService;
+use App\Support\StudentOrder;
 use App\Support\UserJabatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -145,7 +146,7 @@ class StudentController extends Controller
             }
         }
 
-        $students = $query->orderBy('name')->paginate(20)->withQueryString();
+        $students = $query->preferredOrder()->paginate(20)->withQueryString();
         $schools = School::orderBy('name')->get();
         $provinces = Province::orderBy('name')->get();
         $gradeLevels = $schoolId
@@ -310,6 +311,11 @@ class StudentController extends Controller
             || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['Super Admin', 'Pimpinan', 'Humas Personalia', 'Keuangan']))
         );
 
+        $studentOrder = StudentOrder::resolve($request, $schoolId);
+        // Menetapkan urutan bawaan mengubah tampilan semua modul, jadi hanya
+        // untuk pengelola data santri — bukan wali kelas atau petugas asrama.
+        $canManageStudentOrder = $user && $this->hasBroadStudentAccess($user) && ! $user->isDormitoryUser();
+
         return view('students.index', compact(
             'students', 'schools', 'userId', 'showSchoolColumn',
             'totalAll', 'totalActive',
@@ -318,8 +324,27 @@ class StudentController extends Controller
             'provinces', 'overCapacityRombels', 'isCurrentRombelOverCapacity',
             'gradeLevels', 'mutationInCount', 'mutationOutCount',
             'academicYears', 'selectedAcademicYearId', 'rombelDisplayAyId', 'activeAcademicYearId', 'isArchiveAy',
-            'showArchived',
+            'showArchived', 'studentOrder', 'canManageStudentOrder',
         ))->with('isDormitoryUser', optional($request->user())->isDormitoryUser() && ! optional($request->user())->isHomeroomTeacher());
+    }
+
+    /**
+     * Simpan urutan daftar santri pilihan admin sebagai bawaan sekolah.
+     * Berlaku untuk seluruh modul karena semua daftar memakai scope
+     * Student::preferredOrder().
+     */
+    public function saveOrderDefault(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        abort_unless($schoolId, 403, 'Urutan santri disimpan per satuan pendidikan.');
+
+        $validated = $request->validate([
+            'order' => ['required', Rule::in(StudentOrder::ALLOWED)],
+        ]);
+
+        StudentOrder::saveDefault($schoolId, $validated['order']);
+
+        return back()->with('success', 'Urutan daftar santri disimpan untuk sekolah ini ('.StudentOrder::label($validated['order']).').');
     }
 
     /**

@@ -76,7 +76,7 @@ class DormitoryBoardingController extends Controller
                 ->orWhere('nis', 'like', "%{$needle}%"));
         }
 
-        $students = $query->orderBy('name')->paginate(25)->withQueryString();
+        $students = $query->preferredOrder()->paginate(25)->withQueryString();
 
         return view('dormitory.students.boarding', [
             'userId' => $userId,

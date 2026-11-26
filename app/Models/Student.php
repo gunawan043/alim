@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Traits\LogsDeletion;
 use App\Services\UnifiedStudentTimelineService;
+use App\Support\StudentOrder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -338,6 +339,18 @@ class Student extends Model
     public function scopeBySchool($q, $sid)
     {
         return $q->where('school_id', $sid);
+    }
+
+    /**
+     * Urutan daftar santri sesuai pengaturan sekolah (nama/NIS).
+     *
+     * Dipakai semua modul supaya daftar santri tidak pernah berbeda urutan
+     * antar halaman. Tanpa argumen, urutannya diambil dari `?sort=` request
+     * lalu bawaan sekolah.
+     */
+    public function scopePreferredOrder(Builder $q, ?string $order = null): Builder
+    {
+        return StudentOrder::apply($q, $order ?? StudentOrder::resolve(request(), request()->attributes->get('schoolContextId')));
     }
 
     // ── Achievements ────────────────────────────────────────────

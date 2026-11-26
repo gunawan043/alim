@@ -618,7 +618,7 @@ class StudentMahromController extends Controller
                 'currentClassHistory.studyGroup.gradeLevel',
                 'activeDormitoryResident.room',
             ])
-            ->orderBy('name');
+            ->preferredOrder();
 
         // Context sekolah selalu menjadi batas utama.
         $schoolId = request()->attributes->get('schoolContextId');

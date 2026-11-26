@@ -130,7 +130,7 @@ class DormitoryStudentOperatorController extends Controller
         $students = Student::query()
             ->whereIn('id', DormitoryResident::where('dormitory_id', $dormitory->id)->where('is_active', true)->pluck('student_id'))
             ->when($search !== '', fn ($q) => $q->where(fn ($inner) => $inner->where('name', 'like', '%'.$search.'%')->orWhere('nis', 'like', '%'.$search.'%')->orWhere('nisn', 'like', '%'.$search.'%')))
-            ->orderBy('name')->limit(50)->get(['id', 'name', 'nis', 'nisn']);
+            ->preferredOrder()->limit(50)->get(['id', 'name', 'nis', 'nisn']);
 
         return response()->json(['results' => $students->map(fn ($student) => [
             'id' => $student->id,

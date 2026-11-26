@@ -131,7 +131,7 @@ class StudentHealthMetricController extends Controller
             $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
         }
 
-        $students = $studentQuery->orderBy('name')->get();
+        $students = $studentQuery->preferredOrder()->get();
         $groupedStudents = [];
         foreach ($students as $s) {
             $sg = $s->currentClassHistory?->studyGroup;
@@ -196,7 +196,7 @@ class StudentHealthMetricController extends Controller
             $studentQuery->where('gender', $schoolGender === 'putra' ? 'L' : 'P');
         }
 
-        $students = $studentQuery->orderBy('name')->get();
+        $students = $studentQuery->preferredOrder()->get();
         $groupedStudents = [];
         foreach ($students as $s) {
             $sg = $s->currentClassHistory?->studyGroup;

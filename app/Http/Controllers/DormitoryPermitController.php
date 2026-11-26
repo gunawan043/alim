@@ -383,9 +383,13 @@ class DormitoryPermitController extends Controller
             ->where('is_active', true)
             ->whereNotNull('room_id')
             ->whereNotIn('student_id', $activePermitStudentIds)
-            ->get()
-            ->sortBy(fn ($r) => $r->student?->name)
-            ->values();
+            ->get();
+
+        $residents = \App\Support\StudentOrder::sortCollection(
+            $residents,
+            fn ($r) => $r->student,
+            \App\Support\StudentOrder::resolve(request(), request()->attributes->get('schoolContextId'))
+        );
 
         $permitTypes = PermitType::active()->ordered()->get();
 

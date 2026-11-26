@@ -74,7 +74,7 @@ class StudentDapodikExportController extends Controller
             ->when($mappingStatus === 'unmapped', function ($query) use ($yearId) {
                 $query->whereDoesntHave('dapodikMappings', fn ($q) => $q->where('academic_year_id', $yearId));
             })
-            ->orderBy('name');
+            ->preferredOrder();
 
         $students = $studentsQuery->paginate(50)->withQueryString();
 
@@ -178,7 +178,7 @@ class StudentDapodikExportController extends Controller
             }])
             ->where('school_id', $primarySchoolId)
             ->where('status', 'active')
-            ->orderBy('name')
+            ->preferredOrder()
             ->get();
 
         $filename = 'Dapodik-'.str_replace(['/', '\\', ' '], '-', (string) ($year?->name ?? 'semua'))
