@@ -52,6 +52,7 @@ class TahfidzSetoranBulkController extends Controller
                 'rows' => collect(),
                 'surahs' => collect(),
                 'date' => null,
+                'search' => '',
                 'kegiatan' => self::KEGIATAN,
             ]);
         }
@@ -59,14 +60,28 @@ class TahfidzSetoranBulkController extends Controller
         $groupId = $request->input('group_id', $groups->first()->id);
         $group = $groups->firstWhere('id', $groupId) ?? $groups->first();
         $date = $this->safeDate($request->input('date'));
+        $search = trim((string) $request->input('q', ''));
+
+        $rows = $this->setoranRows($group, $date);
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $rows = $rows->filter(function ($row) use ($needle) {
+                $student = $row['student'];
+
+                return str_contains(mb_strtolower((string) $student?->name), $needle)
+                    || str_contains(mb_strtolower((string) $student?->nis), $needle);
+            })->values();
+        }
 
         return view('tahfidz.setoran.bulk', [
             'userId' => $userId,
             'groups' => $groups,
             'group' => $group,
-            'rows' => $this->setoranRows($group, $date),
+            'rows' => $rows,
             'surahs' => TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']),
             'date' => $date,
+            'search' => $search,
             'kegiatan' => self::KEGIATAN,
         ]);
     }

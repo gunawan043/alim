@@ -50,7 +50,7 @@
 
         <div class="card-body border-bottom">
             <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-5">
+                <div class="col-md-4">
                     <label class="form-label small">Halaqah</label>
                     <select name="group_id" class="form-select" onchange="this.form.submit()" @disabled($groups->isEmpty())>
                         @forelse($groups as $g)
@@ -64,12 +64,30 @@
                     <label class="form-label small">Tanggal Setoran</label>
                     <input type="date" name="date" value="{{ $dateValue }}" class="form-control" onchange="this.form.submit()">
                 </div>
-                <div class="col-md-4 d-flex flex-wrap justify-content-md-end gap-2">
-                    <span class="badge bg-success-subtle text-success align-self-center">Ziyadah {{ $ziyadahCount }}</span>
-                    <span class="badge bg-primary-subtle text-primary align-self-center">Rabt {{ $rabtCount }}</span>
-                    <span class="badge bg-light text-body align-self-center">{{ $filledCount }} / {{ $rows->count() }} santri</span>
+                <div class="col-md-4">
+                    <label class="form-label small">Cari Nama Santri</label>
+                    <div class="input-group">
+                        <input type="text" name="q" value="{{ $search }}" class="form-control"
+                               placeholder="Nama atau NIS..." autocomplete="off">
+                        <button type="submit" class="btn btn-primary" title="Cari"><i class="ri-search-line"></i></button>
+                        @if($search !== '')
+                            <a href="{{ route('user.tahfidz.setoran-bulk.index', ['userId' => $userId, 'group_id' => $selectedGroupId, 'date' => $dateValue]) }}"
+                               class="btn btn-light" title="Hapus pencarian"><i class="ri-close-line"></i></a>
+                        @endif
+                    </div>
+                </div>
+                <div class="col-md-1 d-flex">
+                    <span class="badge bg-light text-body align-self-end mb-2">{{ $filledCount }}/{{ $rows->count() }}</span>
                 </div>
             </form>
+
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <span class="badge bg-success-subtle text-success">Ziyadah {{ $ziyadahCount }}</span>
+                <span class="badge bg-primary-subtle text-primary">Rabt {{ $rabtCount }}</span>
+                @if($search !== '')
+                    <span class="badge bg-info-subtle text-info">Hasil pencarian: “{{ $search }}”</span>
+                @endif
+            </div>
         </div>
 
         @if(! $group)

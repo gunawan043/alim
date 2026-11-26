@@ -159,6 +159,16 @@
                         <input type="hidden" name="student_id" value="{{ $selected->id }}">
                         <div class="modal-header bg-success-subtle"><h5 class="modal-title"><i class="ri-add-line me-1"></i>Tambah Setoran — {{ $selected->name }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body">
+                        <div class="alert alert-warning d-none" id="draftBar">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="draftRestore" checked>
+                                <label class="form-check-label small" for="draftRestore">
+                                    <i class="ri-draft-line me-1"></i>
+                                    Ada isian yang belum tersimpan pada perangkat ini. Biarkan tercentang untuk melanjutkan isian tersebut,
+                                    atau hilangkan centangnya untuk mulai dari kosong.
+                                </label>
+                            </div>
+                        </div>
                         @php
                             $lastPosition = $lastSetoran ? [
                                 'juz' => $lastSetoran->juz,
@@ -180,9 +190,6 @@
                                                value="{{ $jenisValue }}" autocomplete="off" @checked($oldJenis === $jenisValue) required>
                                         <label class="btn btn-outline-success" for="jenis_{{ $jenisValue }}">{{ $jenisLabel }}</label>
                                     @endforeach
-                                    <input type="radio" class="btn-check" name="setoran_type" id="jenis_none"
-                                           value="" autocomplete="off" @checked(! in_array($oldJenis, ['ziyadah', 'robet'], true)) required>
-                                    <label class="btn btn-outline-secondary" for="jenis_none" title="Belum memilih jenis — pilih Ziyadah atau Rabt untuk menyimpan">—</label>
                                 </div>
                                 <div class="form-text">Ziyadah = hafalan baru. Rabt = mengikat hafalan lama agar tetap terjaga.</div>
                             </div>
@@ -201,27 +208,98 @@
 
                         <div class="mt-3" id="setoranDetail">
                             <div class="border rounded p-3 bg-light-subtle">
-                                <div class="fw-semibold mb-2"><i class="ri-list-settings-line me-1"></i>Detail Hafalan</div>
-                                <div class="row g-3">
-                                    <div class="col-md-2"><label class="form-label small">Pekan</label><input type="number" name="week_number" min="1" max="6" class="form-control" value="{{ old('week_number') }}"></div>
-                                    <div class="col-md-4"><label class="form-label small">Metode</label><input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Awal</label><select name="surah_start_name" id="smart_surah_start" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                    <div class="fw-semibold"><i class="ri-list-settings-line me-1"></i>Detail Hafalan</div>
+                                    <span class="badge bg-primary-subtle text-primary" id="positionPreview">Halaman dan baris otomatis</span>
+                                </div>
+
+                                {{-- Rentang ayat: inti setoran, diisi lebih dulu. --}}
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label small">Surah awal</label>
+                                        <select name="surah_start_name" id="smart_surah_start" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_start_name', $lastPosition['surah_start_name'] ?? null)===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if(old('surah_start_name') && ! $surahs->contains('name_latin', old('surah_start_name')))<option value="{{ old('surah_start_name') }}" selected>{{ old('surah_start_name') }}</option>@endif
-</select></div>
-                                    <div class="col-md-2"><label class="form-label small">Ayat Awal</label><input type="number" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start', $lastPosition['ayat_start'] ?? null) }}"></div>
-                                    <div class="col-md-3"><label class="form-label small">Surah Akhir</label><select name="surah_end_name" id="surahEndPicker" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Pilih Surah —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
+</select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">Ayat awal</label>
+                                        <input type="number" min="1" name="ayat_start" id="smart_ayat_start" class="form-control" value="{{ old('ayat_start', $lastPosition['ayat_start'] ?? null) }}">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small">Surah akhir <span class="fw-normal text-muted">(kosongkan bila sama)</span></label>
+                                        <select name="surah_end_name" id="surahEndPicker" class="form-select surah-picker" data-placeholder="Cari nama surah..."><option value="">— Sama dengan surah awal —</option>@foreach($surahs as $surah)<option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}" @selected(old('surah_end_name')===$surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }} — {{ $surah->name_arabic }}</option>@endforeach
 @if(old('surah_end_name') && ! $surahs->contains('name_latin', old('surah_end_name')))<option value="{{ old('surah_end_name') }}" selected>{{ old('surah_end_name') }}</option>@endif
-</select></div>
-                                    <div class="col-md-2"><label class="form-label small">Ayat Akhir</label><input type="number" name="ayat_end" class="form-control" value="{{ old('ayat_end') }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Halaman Awal</label><input type="number" step="0.1" name="halaman_start" id="smart_halaman_start" class="form-control" value="{{ old('halaman_start', $lastPosition['halaman_start'] ?? null) }}"></div>
-                                    <div class="col-md-1"><label class="form-label small">Baris</label><input type="number" min="1" max="20" name="baris_start" id="smart_baris_start" class="form-control" value="{{ old('baris_start', $lastPosition['baris_start'] ?? null) }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Halaman Akhir</label><input type="number" step="0.1" name="halaman_end" id="smart_halaman_end" class="form-control" value="{{ old('halaman_end') }}"></div>
-                                    <div class="col-md-1"><label class="form-label small">Baris</label><input type="number" min="1" max="20" name="baris_end" id="smart_baris_end" class="form-control" value="{{ old('baris_end') }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Jml Halaman</label><input type="number" step="0.1" name="jumlah_halaman" id="smart_jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis"></div>
-                                    <div class="col-md-2"><label class="form-label small">Jml Baris</label><input type="number" name="jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Khofi</label><input type="number" step="0.01" min="0" max="100" name="khofi" id="smart_khofi" class="form-control" value="{{ old('khofi') }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Jali</label><input type="number" step="0.01" min="0" max="100" name="jali" id="smart_jali" class="form-control" value="{{ old('jali') }}"></div>
-                                    <div class="col-md-2"><label class="form-label small">Nilai Akhir</label><input type="number" step="0.01" min="0" max="100" name="nilai_setoran" id="smart_nilai_setoran" class="form-control" value="{{ old('nilai_setoran') }}" placeholder="Otomatis"></div>
+</select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small">Ayat akhir</label>
+                                        <input type="number" min="1" name="ayat_end" id="smart_ayat_end" class="form-control" value="{{ old('ayat_end') }}">
+                                    </div>
+                                </div>
+
+                                <hr class="my-3">
+
+                                {{-- Posisi mushaf: terisi otomatis dari dataset Madinah. --}}
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                    <div class="small fw-semibold text-muted">Posisi Mushaf Madinah</div>
+                                    <div class="small text-muted" id="pageHint">
+                                        <i class="ri-bookmark-line me-1"></i>Otomatis setelah surah dan ayat dipilih.
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Halaman awal</label>
+                                        <input type="number" step="1" min="1" max="604" name="halaman_start" id="smart_halaman_start" class="form-control" value="{{ old('halaman_start', $lastPosition['halaman_start'] ?? null) }}">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Baris awal</label>
+                                        <input type="number" min="1" max="15" name="baris_start" id="smart_baris_start" class="form-control" value="{{ old('baris_start', $lastPosition['baris_start'] ?? null) }}">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Halaman akhir</label>
+                                        <input type="number" step="1" min="1" max="604" name="halaman_end" id="smart_halaman_end" class="form-control" value="{{ old('halaman_end') }}">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Baris akhir</label>
+                                        <input type="number" min="1" max="15" name="baris_end" id="smart_baris_end" class="form-control" value="{{ old('baris_end') }}">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Jml halaman</label>
+                                        <input type="number" step="1" min="0" name="jumlah_halaman" id="smart_jumlah_halaman" class="form-control" value="{{ old('jumlah_halaman') }}" placeholder="Otomatis">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Jml baris</label>
+                                        <input type="number" min="0" name="jumlah_baris" id="smart_jumlah_baris" class="form-control" value="{{ old('jumlah_baris') }}" placeholder="Otomatis">
+                                    </div>
+                                </div>
+                                <div class="form-text mt-1">
+                                    Jumlah baris mengikuti kaidah Mushaf Madinah: 15 baris per halaman, halaman penuh dihitung 15 baris.
+                                </div>
+
+                                <hr class="my-3">
+
+                                {{-- Penilaian tambahan di luar nilai hafalan. --}}
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small">Pekan</label>
+                                        <input type="number" name="week_number" min="1" max="6" class="form-control" value="{{ old('week_number') }}">
+                                    </div>
+                                    <div class="col-12 col-md-5">
+                                        <label class="form-label small">Metode</label>
+                                        <input name="metode_pembelajaran" class="form-control" value="{{ old('metode_pembelajaran') }}" placeholder="Talaqqi/Tasmi/Mandiri">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Khofi</label>
+                                        <input type="number" step="0.01" min="0" max="100" name="khofi" id="smart_khofi" class="form-control" value="{{ old('khofi') }}">
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label small">Jali</label>
+                                        <input type="number" step="0.01" min="0" max="100" name="jali" id="smart_jali" class="form-control" value="{{ old('jali') }}">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small">Nilai akhir</label>
+                                        <input type="number" step="0.01" min="0" max="100" name="nilai_setoran" id="smart_nilai_setoran" class="form-control" value="{{ old('nilai_setoran') }}" placeholder="Otomatis">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -243,19 +321,14 @@
         }
         if (window.bootstrap) bootstrap.Modal.getOrCreateInstance(document.getElementById('hafalanModal')).show();
     }
-    // "—" hanya penanda belum memilih jenis. Setoran butuh jenis agar bisa
-    // dinilai, jadi radio itu dinonaktifkan saat disimpan (field tidak terkirim,
-    // dan validasi required langsung menunjuk tombol yang harus dipilih).
-    document.addEventListener('submit', function (event) {
-        if (event.target.querySelector('#jenis_none')) {
-            document.getElementById('jenis_none').disabled = true;
-        }
-    }, true);
+    // Setoran wajib punya jenis; tidak ada lagi pilihan "—".
     document.addEventListener('DOMContentLoaded', function () {
         const quranPositionUrl = @json(route('user.tahfidz.quran-position', ['userId' => $userId]));
         const pageStart = document.getElementById('smart_halaman_start');
         const pageEnd = document.getElementById('smart_halaman_end');
         const pageCount = document.getElementById('smart_jumlah_halaman');
+        const lineCount = document.getElementById('smart_jumlah_baris');
+        const positionPreview = document.getElementById('positionPreview');
         const scorePreview = document.getElementById('scorePreview');
 
         async function fillSmartQuranPosition() {
@@ -282,6 +355,14 @@
                 document.getElementById('smart_halaman_end').value = data.position.page_end;
                 document.getElementById('smart_baris_end').value = data.position.line_end;
                 calculatePages();
+                // Server sudah menghitung jumlah baris dengan kaidah Mushaf
+                // Madinah (15 baris/halaman), jadi tidak dihitung ulang di sini.
+                if (lineCount && data.position.lines) {
+                    lineCount.value = data.position.lines;
+                }
+                if (positionPreview) {
+                    positionPreview.textContent = `Halaman ${data.position.page_start}–${data.position.page_end} · baris ${data.position.line_start}–${data.position.line_end}`;
+                }
             } catch (e) {}
         }
 
@@ -320,6 +401,100 @@
             radio.addEventListener('change', syncHasilLabel);
         });
         syncHasilLabel();
+
+        // ── Draf isian ──────────────────────────────────────────────────
+        // Modal bisa tertutup tanpa sengaja (klik luar, Esc, pindah halaman).
+        // Isian disimpan ke localStorage per santri + jenis + tanggal, lalu
+        // dipulihkan saat modal dibuka lagi. Draf dihapus setelah tersimpan.
+        const form = document.querySelector('#hafalanModal form');
+        const modalEl = document.getElementById('hafalanModal');
+        const draftKeyBase = 'alim.setoran.draft.' + @json($selected?->id ?? '');
+        const draftBar = document.getElementById('draftBar');
+        const draftCheck = document.getElementById('draftRestore');
+
+        function currentDraftKey() {
+            const jenis = document.querySelector('input[name="setoran_type"]:checked')?.value || 'ziyadah';
+            const date = document.getElementById('smart_setoran_date')?.value || '';
+            return draftKeyBase + '.' + jenis + '.' + date;
+        }
+
+        function collectDraft() {
+            if (! form) return null;
+            const data = {};
+            new FormData(form).forEach(function (value, key) {
+                if (key === '_token') return;
+                data[key] = value;
+            });
+            return data;
+        }
+
+        function saveDraft() {
+            if (! form) return;
+            try {
+                const hasContent = ['smart_ayat_start', 'smart_hasil', 'smart_nilai_tikrar', 'smart_halaman_start']
+                    .some(id => document.getElementById(id)?.value);
+                if (! hasContent) return;
+                localStorage.setItem(currentDraftKey(), JSON.stringify({
+                    saved_at: Date.now(),
+                    fields: collectDraft(),
+                }));
+            } catch (e) {}
+        }
+
+        function clearDraft() {
+            try {
+                Object.keys(localStorage)
+                    .filter(k => k.indexOf(draftKeyBase + '.') === 0)
+                    .forEach(k => localStorage.removeItem(k));
+            } catch (e) {}
+        }
+
+        function restoreDraft() {
+            if (! form) return;
+            let draft = null;
+            try { draft = JSON.parse(localStorage.getItem(currentDraftKey()) || 'null'); } catch (e) { draft = null; }
+            if (! draft || ! draft.fields) {
+                if (draftBar) draftBar.classList.add('d-none');
+                return;
+            }
+            Object.keys(draft.fields).forEach(function (key) {
+                const field = form.querySelector('[name="' + key + '"]');
+                if (! field) return;
+                if (field.type === 'radio') {
+                    const radio = form.querySelector('[name="' + key + '"][value="' + draft.fields[key] + '"]');
+                    if (radio) radio.checked = true;
+                } else if (field.type === 'checkbox') {
+                    field.checked = draft.fields[key] === 'on' || draft.fields[key] === '1';
+                } else {
+                    field.value = draft.fields[key];
+                }
+            });
+            syncHasilLabel();
+            calculateScore();
+        }
+
+        document.addEventListener('input', saveDraft, true);
+        document.addEventListener('change', saveDraft, true);
+        window.addEventListener('beforeunload', saveDraft);
+
+        if (draftBar) {
+            const existing = (function () {
+                try { return localStorage.getItem(currentDraftKey()); } catch (e) { return null; }
+            })();
+            if (existing) {
+                draftBar.classList.remove('d-none');
+                if (draftCheck) draftCheck.checked = true;
+                restoreDraft();
+            }
+        }
+
+        if (draftCheck) {
+            draftCheck.addEventListener('change', function () {
+                if (this.checked) restoreDraft(); else clearDraft();
+            });
+        }
+
+        form?.addEventListener('submit', clearDraft);
         ['smart_surah_start', 'surahEndPicker', 'smart_ayat_start'].forEach(function (id) {
             const field = document.getElementById(id);
             if (! field) return;

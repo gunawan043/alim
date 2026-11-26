@@ -389,6 +389,44 @@ class TahfidzSetoranBulkTest extends TestCase
             ->assertSee('Format Penilaian Mapel');
     }
 
+    public function test_pencarian_nama_santri_menyaring_daftar(): void
+    {
+        $base = route('user.tahfidz.setoran-bulk.index', ['userId' => $this->teacher->id, 'group_id' => $this->group->id]);
+
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get($base.'&q=Alif')
+            ->assertOk()
+            ->assertSee('Santri Alif')
+            ->assertDontSee('Santri Ba');
+
+        // Pencarian juga mengenali NIS.
+        $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])
+            ->get($base.'&q='.$this->santriB->nis)
+            ->assertOk()
+            ->assertSee('Santri Ba')
+            ->assertDontSee('Santri Alif');
+    }
+
+    public function test_jumlah_baris_dihitung_dengan_kaidah_mushaf_madinah(): void
+    {
+        $service = app(\App\Services\QuranPositionService::class);
+
+        // Al-Fatihah 1–7 duduk di halaman 1 baris 2–8 → 7 baris.
+        $this->assertSame(7, $service->countLines(1, 2, 1, 8));
+
+        // Satu halaman penuh selalu 15 baris.
+        $this->assertSame(15, $service->countLines(1, 1, 1, 15));
+
+        // Lintas halaman: 14 sisa baris halaman awal + 5 baris halaman akhir.
+        $this->assertSame(19, $service->countLines(1, 2, 2, 5));
+
+        // Tiga halaman: sisa awal + satu halaman penuh (15) + baris akhir.
+        $this->assertSame(14 + 15 + 7, $service->countLines(1, 2, 3, 7));
+
+        // Rentang terbalik tidak menghasilkan angka negatif.
+        $this->assertSame(0, $service->countLines(3, 2, 2, 5));
+    }
+
     public function test_halaman_setoran_harian_tidak_lagi_memuat_tab_mutabaah(): void
     {
         $response = $this->actingAs($this->admin)->withSession(['sa_school_id' => $this->school->id])

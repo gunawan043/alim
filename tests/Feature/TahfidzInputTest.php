@@ -98,8 +98,11 @@ class TahfidzInputTest extends TestCase
             ->assertSee('Ganti Santri')
             ->assertSee('id="jenis_ziyadah"', false)
             ->assertSee('id="jenis_robet"', false)
-            ->assertSee('id="jenis_none"', false)
+            // Pilihan "—" dihapus: setoran wajib punya jenis.
+            ->assertDontSee('id="jenis_none"', false)
             ->assertSee('Nilai Tikrar')
+            ->assertSee('Jml baris')
+            ->assertSee('draftBar', false)
             ->assertDontSee('value="murajaah"', false);
 
         $this->actingAs($admin)->withSession(['sa_school_id' => $school->id])

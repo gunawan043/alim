@@ -82,6 +82,36 @@ class QuranPositionService
             'line_start' => $start['line_start'],
             'page_end' => $end['page_end'],
             'line_end' => $end['line_end'],
+            'lines' => $this->countLines(
+                $start['page_start'], $start['line_start'],
+                $end['page_end'], $end['line_end'],
+            ),
         ];
+    }
+
+    /**
+     * Jumlah baris yang ditempuh pada Mushaf Madinah (15 baris per halaman).
+     *
+     * Setiap halaman penuh membawa 15 baris, jadi rentang lintas halaman
+     * dihitung 15 baris untuk tiap halaman perantara, ditambah sisa baris
+     * di halaman awal dan halaman akhir. Halaman satu ini dihitung selisih
+     * barisnya saja (inklusif).
+     */
+    public function countLines(int $pageStart, int $lineStart, int $pageEnd, int $lineEnd): int
+    {
+        if ($pageEnd < $pageStart) {
+            return 0;
+        }
+
+        if ($pageEnd === $pageStart) {
+            return max(0, $lineEnd - $lineStart + 1);
+        }
+
+        // Sisa baris pada halaman awal, termasuk baris tempat ayat mulai.
+        $firstPage = max(0, 15 - $lineStart + 1);
+        $middle = max(0, $pageEnd - $pageStart - 1) * 15;
+        $lastPage = min(15, max(0, $lineEnd));
+
+        return $firstPage + $middle + $lastPage;
     }
 }
