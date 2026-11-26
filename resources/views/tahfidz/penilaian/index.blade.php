@@ -285,6 +285,100 @@
                     </div>
                 </div>
 
+                {{-- Materi ujian STS & SAS. Disimpan per buku (halaqah + mapel
+                     + semester) karena satu halaqah diuji materi yang sama.
+                     Bentuk isian mengikuti setoran: surah, ayat, juz, halaman. --}}
+                @foreach(['sts' => 'STS', 'sas' => 'SAS'] as $jenisKey => $jenisLabel)
+                    @php $materi = $book->examMaterial($jenisKey); @endphp
+                    <div class="px-4 pt-3">
+                        <div class="border rounded p-3" style="background:var(--bs-tertiary-bg);">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                <div class="fw-semibold" style="font-size:13px;">
+                                    <i class="ri-file-text-line me-1 text-primary"></i>Materi Ujian {{ $jenisLabel }}
+                                </div>
+                                <span class="badge {{ $materi ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary' }} exam-preview" data-exam="{{ $jenisKey }}">
+                                    @if($materi)
+                                        {{ $materi['surah_start'] ?? '—' }}{{ $materi['ayah_start'] ? ':'.$materi['ayah_start'] : '' }}
+                                        @if($materi['surah_end'] || $materi['ayah_end'])
+                                            – {{ $materi['surah_end'] ?: $materi['surah_start'] }}{{ $materi['ayah_end'] ? ':'.$materi['ayah_end'] : '' }}
+                                        @endif
+                                        @if($materi['juz']) · Juz {{ $materi['juz'] }} @endif
+                                    @else
+                                        Belum diisi
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Surah awal</label>
+                                    <select name="materi[{{ $jenisKey }}][surah_start]" class="form-select form-select-sm exam-surah"
+                                            data-exam="{{ $jenisKey }}" data-role="start">
+                                        <option value="">— Pilih surah —</option>
+                                        @foreach($surahs as $surah)
+                                            <option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}"
+                                                    @selected(($materi['surah_start'] ?? null) === $surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Ayat awal</label>
+                                    <input type="number" min="1" name="materi[{{ $jenisKey }}][ayah_start]"
+                                           class="form-control form-control-sm exam-ayat" data-exam="{{ $jenisKey }}" data-role="start"
+                                           value="{{ $materi['ayah_start'] ?? '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Surah akhir <span class="fw-normal text-muted">(kosongkan bila sama)</span></label>
+                                    <select name="materi[{{ $jenisKey }}][surah_end]" class="form-select form-select-sm exam-surah"
+                                            data-exam="{{ $jenisKey }}" data-role="end">
+                                        <option value="">— Sama dengan surah awal —</option>
+                                        @foreach($surahs as $surah)
+                                            <option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}"
+                                                    @selected(($materi['surah_end'] ?? null) === $surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Ayat akhir</label>
+                                    <input type="number" min="1" name="materi[{{ $jenisKey }}][ayah_end]"
+                                           class="form-control form-control-sm exam-ayat" data-exam="{{ $jenisKey }}" data-role="end"
+                                           value="{{ $materi['ayah_end'] ?? '' }}">
+                                </div>
+
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Juz</label>
+                                    <input type="number" min="1" max="30" name="materi[{{ $jenisKey }}][juz]"
+                                           class="form-control form-control-sm" value="{{ $materi['juz'] ?? '' }}">
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Halaman</label>
+                                    <input type="number" min="1" max="604" name="materi[{{ $jenisKey }}][page_start]"
+                                           id="page-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['page_start'] ?? '' }}">
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Baris</label>
+                                    <input type="number" min="1" max="15" name="materi[{{ $jenisKey }}][line_start]"
+                                           id="line-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['line_start'] ?? '' }}">
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Hal. akhir</label>
+                                    <input type="number" min="1" max="604" name="materi[{{ $jenisKey }}][page_end]"
+                                           id="pageend-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['page_end'] ?? '' }}">
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label small mb-1">Baris akhir</label>
+                                    <input type="number" min="1" max="15" name="materi[{{ $jenisKey }}][line_end]"
+                                           id="lineend-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['line_end'] ?? '' }}">
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-text mb-0" id="hint-{{ $jenisKey }}">
+                                        <i class="ri-bookmark-line me-1"></i>Halaman dan baris terisi otomatis dari Mushaf Madinah.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+
                 @if($rows->isEmpty())
                     <div class="text-center py-5">
                         <div class="avatar-lg mx-auto mb-3">
@@ -571,10 +665,84 @@
             el.addEventListener('change', onChange);
         });
 
+        // Materi ujian ikut tersimpan lewat autosave yang sama.
+        form.querySelectorAll('.exam-surah, .exam-ayat, input[name^="materi["]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                dirty = true;
+                clearTimeout(timer);
+                timer = setTimeout(function () { timer = null; save(); }, 1500);
+            });
+        });
+
         // Nilai tetap tersimpan sebelum halaman ditinggalkan.
         window.addEventListener('beforeunload', function () {
             if (dirty) save();
         });
+    })();
+
+    // ── Materi ujian STS/SAS: halaman & baris otomatis ───────────────────
+    (function () {
+        var positionUrl = @json(route('user.tahfidz.quran-position', ['userId' => $userId]));
+
+        document.querySelectorAll('.exam-surah').forEach(function (select) {
+            select.addEventListener('change', function () {
+                fillExam(this.dataset.exam);
+            });
+        });
+        document.querySelectorAll('.exam-ayat').forEach(function (input) {
+            input.addEventListener('change', function () {
+                fillExam(this.dataset.exam);
+            });
+        });
+
+        function fillExam(jenis) {
+            var startSelect = document.querySelector('.exam-surah[data-exam="' + jenis + '"][data-role="start"]');
+            var endSelect = document.querySelector('.exam-surah[data-exam="' + jenis + '"][data-role="end"]');
+            var startAyah = document.querySelector('.exam-ayat[data-exam="' + jenis + '"][data-role="start"]');
+            var endAyah = document.querySelector('.exam-ayat[data-exam="' + jenis + '"][data-role="end"]');
+            var hint = document.getElementById('hint-' + jenis);
+
+            var s = startSelect && startSelect.selectedOptions[0] && startSelect.selectedOptions[0].dataset.number;
+            var a = startAyah && startAyah.value;
+            if (! s || ! a) return;
+
+            var es = (endSelect && endSelect.selectedOptions[0] && endSelect.selectedOptions[0].dataset.number) || s;
+            var ea = (endAyah && endAyah.value) || a;
+
+            var url = new URL(positionUrl, window.location.origin);
+            url.searchParams.set('surah_start', s);
+            url.searchParams.set('ayah_start', a);
+            url.searchParams.set('surah_end', es);
+            url.searchParams.set('ayah_end', ea);
+
+            fetch(url, { headers: { Accept: 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (! data.found || ! data.position) {
+                        if (hint) hint.innerHTML = '<i class="ri-error-warning-line me-1 text-warning"></i>Posisi ayat tidak ditemukan, isi halaman dan baris manual.';
+                        return;
+                    }
+                    document.getElementById('page-' + jenis).value = data.position.page_start;
+                    document.getElementById('line-' + jenis).value = data.position.line_start;
+                    document.getElementById('pageend-' + jenis).value = data.position.page_end;
+                    document.getElementById('lineend-' + jenis).value = data.position.line_end;
+                    if (hint) {
+                        hint.innerHTML = '<i class="ri-bookmark-line me-1"></i>Halaman ' + data.position.page_start + '–'
+                            + data.position.page_end + ' · baris ' + data.position.line_start + '–' + data.position.line_end;
+                    }
+                    // Ringkasan materi ikut diperbarui tanpa menunggu simpan.
+                    var badge = document.querySelector('.exam-preview[data-exam="' + jenis + '"]');
+                    if (badge) {
+                        var surahName = startSelect.selectedOptions[0].textContent.trim();
+                        var endName = (endSelect && endSelect.value) ? endSelect.value : surahName;
+                        badge.textContent = surahName + ':' + a + (endName !== surahName || ea !== a ? ' – ' + endName + ':' + ea : '');
+                        badge.className = 'badge bg-primary-subtle text-primary exam-preview';
+                    }
+                })
+                .catch(function () {
+                    if (hint) hint.innerHTML = '<i class="ri-error-warning-line me-1 text-warning"></i>Gagal mengambil posisi ayat, isi halaman dan baris manual.';
+                });
+        }
     })();
 </script>
 @endsection

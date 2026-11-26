@@ -159,6 +159,82 @@ class TahfidzPenilaianPageTest extends TestCase
         $this->assertSame(40.0, TahfidzGradebook::find($book->id)->weight_ziyadah);
     }
 
+    public function test_materi_ujian_sts_dan_sas_tersimpan_di_buku_halaqah(): void
+    {
+        $teacher = $this->makeTeacher('Guru Materi', 'guru.materi@test.local');
+        $group = $this->makeGroup('Halaqah Materi', $teacher, ['Santri Materi']);
+
+        $book = app(TahfidzGradebookService::class)
+            ->booksForTeacher($teacher->id, $this->school->id, $this->year->id)->flatten()->first();
+        $studentId = $group->members()->first()->student_id;
+
+        $this->actingAs($teacher)
+            ->postJson(route('user.tahfidz.penilaian.store', ['userId' => $teacher->id]), [
+                'tahfidz_group_id' => $group->id,
+                'tahfidz_gradebook_id' => $book->id,
+                'semester' => 'ganjil',
+                'scores' => [$studentId => ['sts' => 88, 'sas' => 91]],
+                'materi' => [
+                    'sts' => ['surah_start' => 'An-Naba', 'ayah_start' => 1, 'surah_end' => 'An-Naba', 'ayah_end' => 20, 'juz' => 30],
+                    'sas' => ['surah_start' => 'Al-Fatihah', 'ayah_start' => 1, 'surah_end' => 'Al-Fatihah', 'ayah_end' => 7, 'juz' => 1],
+                ],
+            ])
+            ->assertOk();
+
+        $book->refresh();
+
+        // Materi disimpan di buku (per halaqah), bukan di baris nilai santri.
+        $this->assertSame('An-Naba', $book->sts_surah_start);
+        $this->assertSame(20, $book->sts_ayah_end);
+        $this->assertSame('Al-Fatihah', $book->sas_surah_start);
+        $this->assertSame(1, $book->sas_juz);
+        $this->assertStringContainsString('Juz 30', (string) $book->sts_material);
+        $this->assertStringContainsString('An-Naba', (string) $book->sts_material);
+
+        $material = $book->examMaterial('sts');
+        $this->assertNotNull($material);
+        $this->assertSame('An-Naba', $material['surah_start']);
+        $this->assertSame(20, $material['ayah_end']);
+        $this->assertSame('Al-Fatihah', $book->examMaterial('sas')['surah_start']);
+        $this->assertNull((new TahfidzGradebook)->examMaterial('sts'));
+    }
+
+    public function test_materi_ujian_mengambil_halaman_dan_baris_dari_mushaf(): void
+    {
+        // Dataset posisi ayat belum ada di SQLite uji, jadi posisi dilewati
+        // dan yang diuji hanya perilaku saat guru mengisi manual.
+        $teacher = $this->makeTeacher('Guru Mushaf', 'guru.mushaf@test.local');
+        $group = $this->makeGroup('Halaqah Mushaf', $teacher, ['Santri Mushaf']);
+
+        $book = app(TahfidzGradebookService::class)
+            ->booksForTeacher($teacher->id, $this->school->id, $this->year->id)->flatten()->first();
+        $studentId = $group->members()->first()->student_id;
+
+        $this->actingAs($teacher)
+            ->postJson(route('user.tahfidz.penilaian.store', ['userId' => $teacher->id]), [
+                'tahfidz_group_id' => $group->id,
+                'tahfidz_gradebook_id' => $book->id,
+                'semester' => 'ganjil',
+                'scores' => [$studentId => ['sts' => 80]],
+                'materi' => [
+                    'sts' => [
+                        'surah_start' => 'An-Naba', 'ayah_start' => 1,
+                        'surah_end' => 'An-Nas', 'ayah_end' => 6,
+                        'juz' => 30, 'page_start' => 582, 'line_start' => 1,
+                        'page_end' => 604, 'line_end' => 15,
+                    ],
+                ],
+            ])
+            ->assertOk();
+
+        $book->refresh();
+        $this->assertSame(582, $book->sts_page_start);
+        $this->assertSame(604, $book->sts_page_end);
+        $this->assertSame(15, $book->sts_line_end);
+        $this->assertStringContainsString('An-Naba:1', (string) $book->sts_material);
+        $this->assertStringContainsString('An-Nas:6', (string) $book->sts_material);
+    }
+
     private function makeTeacher(string $name, string $email): User
     {
         $user = User::create([

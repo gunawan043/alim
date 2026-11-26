@@ -115,6 +115,7 @@ class TahfidzPenilaianController extends Controller
             'search' => $search,
             'columns' => self::COLUMNS,
             'columnLabels' => self::COLUMN_LABELS,
+            'surahs' => \App\Models\TahfidzSurahMaster::orderBy('number')->get(['number', 'name_latin', 'name_arabic']),
             'weightErrors' => [],
         ]);
     }
@@ -136,6 +137,24 @@ class TahfidzPenilaianController extends Controller
             'scores.*.sts' => 'nullable|numeric|min:0|max:100',
             'scores.*.sas' => 'nullable|numeric|min:0|max:100',
             'scores.*.ket' => 'nullable|string|max:100',
+            'materi.sts.surah_start' => 'nullable|string|max:100',
+            'materi.sts.ayah_start' => 'nullable|integer|min:1',
+            'materi.sts.surah_end' => 'nullable|string|max:100',
+            'materi.sts.ayah_end' => 'nullable|integer|min:1',
+            'materi.sts.juz' => 'nullable|integer|min:1|max:30',
+            'materi.sts.page_start' => 'nullable|integer|min:1|max:604',
+            'materi.sts.line_start' => 'nullable|integer|min:1|max:15',
+            'materi.sts.page_end' => 'nullable|integer|min:1|max:604',
+            'materi.sts.line_end' => 'nullable|integer|min:1|max:15',
+            'materi.sas.surah_start' => 'nullable|string|max:100',
+            'materi.sas.ayah_start' => 'nullable|integer|min:1',
+            'materi.sas.surah_end' => 'nullable|string|max:100',
+            'materi.sas.ayah_end' => 'nullable|integer|min:1',
+            'materi.sas.juz' => 'nullable|integer|min:1|max:30',
+            'materi.sas.page_start' => 'nullable|integer|min:1|max:604',
+            'materi.sas.line_start' => 'nullable|integer|min:1|max:15',
+            'materi.sas.page_end' => 'nullable|integer|min:1|max:604',
+            'materi.sas.line_end' => 'nullable|integer|min:1|max:15',
         ]);
 
         $group = TahfidzGroup::findOrFail($validated['tahfidz_group_id']);
@@ -150,6 +169,11 @@ class TahfidzPenilaianController extends Controller
 
         $academicYear = AcademicYear::where('is_active', true)->first();
         abort_unless($academicYear, 422, 'Belum ada tahun ajaran aktif.');
+
+        // Materi ujian disimpan ke buku (per halaqah), bukan per santri.
+        if (is_array($request->input('materi'))) {
+            $this->saveExamMaterials($book, $request->input('materi'));
+        }
 
         $members = $this->books->activeMembers($group, $academicYear->id);
 
@@ -224,6 +248,106 @@ class TahfidzPenilaianController extends Controller
         }
 
         return $redirect->with('success', 'Nilai dan bobot tersimpan. NR Final dihitung ulang untuk seluruh santri.');
+    }
+
+    /**
+     * Simpan materi ujian STS/SAS pada buku.
+     *
+     * Halaman dan baris diambil dari dataset Mushaf Madinah bila surah dan
+     * ayat sudah dipilih, sehingga guru tidak perlu mengisinya sendiri. Isian
+     * manual tetap dipakai bila guru mengubahnya.
+     *
+     * @param  array<string, array<string, mixed>>  $materi
+     */
+    private function saveExamMaterials(TahfidzGradebook $book, array $materi): void
+    {
+        $positions = app(\App\Services\QuranPositionService::class);
+        $updates = [];
+
+        foreach (['sts' => 'STS', 'sas' => 'SAS'] as $jenis => $label) {
+            $row = $materi[$jenis] ?? null;
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $surahStart = $this->nullIfBlank($row['surah_start'] ?? null);
+            $surahEnd = $this->nullIfBlank($row['surah_end'] ?? null) ?: $surahStart;
+            $ayahStart = $this->nullIfBlank($row['ayah_start'] ?? null);
+            $ayahEnd = $this->nullIfBlank($row['ayah_end'] ?? null) ?: $ayahStart;
+
+            $pageStart = $this->nullIfBlank($row['page_start'] ?? null);
+            $lineStart = $this->nullIfBlank($row['line_start'] ?? null);
+            $pageEnd = $this->nullIfBlank($row['page_end'] ?? null);
+            $lineEnd = $this->nullIfBlank($row['line_end'] ?? null);
+
+            // Lengkapi posisi yang belum diisi dari dataset Mushaf.
+            $nomorAwal = $this->surahNumber($surahStart);
+            if (($pageStart === null || $lineStart === null) && $nomorAwal && $ayahStart) {
+                $position = $positions->range(
+                    $nomorAwal,
+                    (int) $ayahStart,
+                    $this->surahNumber($surahEnd) ?: $nomorAwal,
+                    $ayahEnd ? (int) $ayahEnd : null,
+                );
+
+                if ($position) {
+                    $pageStart ??= $position['page_start'];
+                    $lineStart ??= $position['line_start'];
+                    $pageEnd ??= $position['page_end'];
+                    $lineEnd ??= $position['line_end'];
+                }
+            }
+
+            $updates[$jenis.'_surah_start'] = $surahStart;
+            $updates[$jenis.'_surah_end'] = $surahEnd;
+            $updates[$jenis.'_ayah_start'] = $ayahStart;
+            $updates[$jenis.'_ayah_end'] = $ayahEnd;
+            $updates[$jenis.'_juz'] = $this->nullIfBlank($row['juz'] ?? null);
+            $updates[$jenis.'_page_start'] = $pageStart;
+            $updates[$jenis.'_line_start'] = $lineStart;
+            $updates[$jenis.'_page_end'] = $pageEnd;
+            $updates[$jenis.'_line_end'] = $lineEnd;
+            $updates[$jenis.'_material'] = $this->materialLabel(
+                $surahStart, $ayahStart, $surahEnd, $ayahEnd, $updates[$jenis.'_juz'] ?? null,
+            );
+        }
+
+        if ($updates !== []) {
+            $book->update($updates);
+        }
+    }
+
+    /**
+     * Ringkasan materi untuk ditampilkan, mis. "Juz 30 · An-Naba 1 – An-Nas 6".
+     */
+    private function materialLabel(?string $surahStart, $ayahStart, ?string $surahEnd, $ayahEnd, $juz): ?string
+    {
+        if (! $surahStart) {
+            return null;
+        }
+
+        $range = $surahStart.($ayahStart ? ':'.$ayahStart : '');
+        if ($surahEnd && $surahEnd !== $surahStart) {
+            $range .= ' – '.$surahEnd.($ayahEnd ? ':'.$ayahEnd : '');
+        } elseif ($ayahEnd && $ayahEnd != $ayahStart) {
+            $range .= '–'.$ayahEnd;
+        }
+
+        return trim(($juz ? 'Juz '.$juz.' · ' : '').$range);
+    }
+
+    private function surahNumber(?string $name): ?int
+    {
+        if (blank($name)) {
+            return null;
+        }
+
+        return \App\Models\TahfidzSurahMaster::where('name_latin', $name)->value('number');
+    }
+
+    private function nullIfBlank($value): mixed
+    {
+        return ($value === null || $value === '') ? null : $value;
     }
 
     /**
