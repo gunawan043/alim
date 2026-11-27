@@ -437,6 +437,13 @@
                                 <thead class="table-light text-center">
                                     @php
                                         $isSasLeger = ($legerMode ?? 'sts') === 'sas';
+                                        $tahfidzColumns = $tahfidzColumns ?? [];
+                                        $tahfidzValues = $tahfidzValues ?? [];
+                                        // Mapel tahfidz memakai kolom sendiri (NPT | Ziyadah | Rabt |
+                                        // Tikrar | STS | SAS), tidak memakai kolom STS/SAS mapel umum.
+                                        $legerSubjectCols = fn ($subject) => isset($tahfidzColumns[$subject->id])
+                                            ? count($tahfidzColumns[$subject->id])
+                                            : 2;
                                         $umumCount = $subjectMap->count() - ($agamaCount ?? 0);
                                         // Rencana kolom eksplisit — tidak ada span yang boleh tumpang tindih.
                                         // Baris: 1 grup · 2 nama mapel + S/I/A · 3 N/Jumlah (SAS) · 4 KKTP · 5 Bobot (SAS)
@@ -456,10 +463,10 @@
                                             <th colspan="3" class="align-middle" style="background:var(--bs-primary-bg-subtle);color:var(--bs-primary-text-emphasis);letter-spacing:0.4px;">TAHFIDZ</th>
                                         @endif
                                         @if(($agamaCount ?? 0) > 0)
-                                            <th colspan="{{ $agamaCount * 2 }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
+                                            <th colspan="{{ collect($subjectMap->take($agamaCount ?? 0))->sum($legerSubjectCols) }}" class="align-middle bg-success-subtle text-success" style="letter-spacing:0.5px;">AGAMA</th>
                                         @endif
                                         @if($umumCount > 0)
-                                            <th colspan="{{ $umumCount * 2 }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
+                                            <th colspan="{{ collect($subjectMap->slice($agamaCount ?? 0))->sum($legerSubjectCols) }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
                                         @if($isSasLeger)
                                             <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
@@ -477,7 +484,7 @@
                                         <th colspan="3" class="bg-secondary-subtle text-secondary">PRESENSI</th>
                                     </tr>
                                     {{-- Baris 2: nama kolom mapel + S/I/A di bawah PRESENSI --}}
-                                    <tr class="text-center">
+                                    <tr class="text-center leger-subhead">
                                         @if($isSasLeger)
                                             @foreach(['doa' => 'Do\'a', 'hiwar' => 'Hiwar', 'conv' => 'Conversation'] as $key => $label)
                                                 <th rowspan="1" style="background:var(--bs-warning-bg-subtle);" data-sort="{{ $key }}">{{ $label }}</th>
@@ -487,7 +494,8 @@
                                             @endforeach
                                         @endif
                                         @foreach($subjectMap as $subject)
-                                            <th colspan="2" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
+                                            @php $thfCols = $tahfidzColumns[$subject->id] ?? []; @endphp
+                                            <th colspan="{{ $legerSubjectCols($subject) }}" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
                                                 <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px;">
                                                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
                                                 </div>
@@ -497,6 +505,23 @@
                                         <th class="bg-warning-subtle text-warning" data-sort="i">I</th>
                                         <th class="bg-danger-subtle text-danger" data-sort="a">A</th>
                                     </tr>
+                                    {{-- Baris 2b: nama kolom nilai tahfidz (NPT | Ziyadah | Rabt | Tikrar | STS | SAS) --}}
+                                    @if(! empty($tahfidzColumns))
+                                        <tr class="text-center leger-subhead">
+                                            <td colspan="{{ $isSasLeger ? 6 : 3 }}" style="background:var(--bs-tertiary-bg);"></td>
+                                            @foreach($subjectMap as $subject)
+                                                @php $thfCols = $tahfidzColumns[$subject->id] ?? []; @endphp
+                                                @if($thfCols === [])
+                                                    <td colspan="2" style="background:var(--bs-tertiary-bg);"></td>
+                                                @else
+                                                    @foreach($thfCols as $key => $label)
+                                                        <th style="background:var(--bs-tertiary-bg);font-size:9px;white-space:nowrap;" title="{{ $label }} tahfidz {{ $subject->name }}" data-sort="thf-{{ $subject->id }}-{{ $key }}">{{ $label }}</th>
+                                                    @endforeach
+                                                @endif
+                                            @endforeach
+                                            <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
+                                        </tr>
+                                    @endif
                                     @if($isSasLeger)
                                         {{-- Baris 3 (SAS): N | Jumlah per mapel; sisa kolom ditutup sel pembentang --}}
                                         <tr class="text-center">
@@ -525,14 +550,14 @@
                                         @endif
                                         @foreach($subjectMap as $subject)
                                             @php $book = $bookMap[$subject->id] ?? null; @endphp
-                                            <th colspan="2" class="kktp-cell">
+                                            <th colspan="{{ $legerSubjectCols($subject) }}" class="kktp-cell">
                                                 @if($book)
                                                     <input type="number" class="kktp-input"
                                                            name="leger_kkm[{{ $book->id }}]"
-                                                           value="{{ $book?->kktp?->kkm_score ?? 75 }}"
+                                                           value="{{ ($kktpLevelMap[$subject->id] ?? null)?->kkm_score ?? $book?->kktp?->kkm_score ?? 75 }}"
                                                            min="0" max="100" step="0.01"
                                                            oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;"
-                                                           title="KKTP {{ $subject->name }}">
+                                                           title="KKTP {{ $subject->name }} — berlaku untuk seluruh rombel di tingkat ini">
                                                 @else
                                                     <span style="font-weight:700;color:var(--bs-secondary-color);">—</span>
                                                 @endif
@@ -557,7 +582,7 @@
                                                         ? rtrim(rtrim(number_format((float) $bobotJp, 2, '.', ''), '0'), '.')
                                                         : '';
                                                 @endphp
-                                                <th colspan="2" class="bobot-cell" title="Bobot {{ $subject->name }} — kosong berarti JP ÷ 2 ({{ $bobotJpText ?: '—' }}); JP 1 tetap 1">
+                                                <th colspan="{{ $legerSubjectCols($subject) }}" class="bobot-cell" title="Bobot {{ $subject->name }} — kosong berarti JP ÷ 2 ({{ $bobotJpText ?: '—' }}); JP 1 tetap 1">
                                                     <input type="number" class="bobot-input"
                                                            name="leger_bobot[{{ $subject->id }}]"
                                                            value="{{ $bobotVal }}"
@@ -647,6 +672,7 @@
                                                     $book = $bookMap[$subject->id] ?? null;
                                                     $n = $book ? ($nilaiMap[$student->id][$book->id] ?? null) : null;
                                                     $kkm = $book?->kktp?->kkm_score ?? 75;
+                                                    $thfCols = $tahfidzColumns[$subject->id] ?? [];
                                                     $stsVal = $nilaiTahfidzMap[$student->id][$book?->id] ?? null;
                                                     if ($stsVal === null) {
                                                         $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
@@ -655,6 +681,24 @@
                                                     $bobotEfektif = (float) ($bobotMap[$subject->id] ?? 0);
                                                     $nilaiTertimbang = $stsVal !== null ? $bobotEfektif * (float) $stsVal : null;
                                                 @endphp
+                                                @if($thfCols !== [])
+                                                    @foreach($thfCols as $thfKey => $thfLabel)
+                                                        @php
+                                                            $thfVal = $tahfidzValues[$sid][$subject->id][$thfKey] ?? null;
+                                                            $thfBelow = in_array($thfKey, ['npt', 'ziyadah', 'rabt', 'tikrar'], true)
+                                                                && $thfVal !== null && $thfVal < $kkm;
+                                                        @endphp
+                                                        <td style="text-align:center;background:var(--bs-success-bg-subtle);" data-col="thf-{{ $subject->id }}-{{ $thfKey }}" title="{{ $thfLabel }} {{ $subject->name }}">
+                                                            @if($book)
+                                                                <span class="fw-semibold{{ $thfBelow ? ' text-danger' : '' }}">
+                                                                    {{ $thfVal !== null ? number_format($thfVal, 0, '.', '') : '---' }}
+                                                                </span>
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </td>
+                                                    @endforeach
+                                                @else
                                                 <td style="text-align:center;" data-col="subject-{{ $subject->id }}">
                                                     @if($book)
                                                         <span class="fw-semibold{{ $belowKkm ? ' text-danger' : '' }}">
@@ -672,6 +716,7 @@
                                                             <span class="text-muted">—</span>
                                                         @endif
                                                     </td>
+                                                @endif
                                                 @endif
                                             @endforeach
                                             @if($isSasLeger)

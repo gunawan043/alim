@@ -20,6 +20,7 @@ use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
+use App\Models\TahfidzGradebookScore;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
@@ -34,6 +35,8 @@ use App\Services\NotificationUniversalService;
 use App\Services\Pdf\DocumentPdfService;
 use App\Services\SumatifHarianService;
 use App\Services\SumatifKomponenService;
+use App\Services\SubjectKktpService;
+use App\Services\TahfidzLegerColumns;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use App\Support\NilaiMurniRule;
@@ -391,21 +394,25 @@ class NilaiKelasController extends Controller
             }
         }
 
-        // Bobot per mapel (khusus SAS): override manual, jatuh ke JP bila kosong.
-        $bobotRows = StudyGroupSubject::query()
-            ->where('study_group_id', $studyGroup->id)
-            ->where('academic_year_id', $selectedAyId)
-            ->whereIn('subject_id', $subjectMap->pluck('id')->all())
-            ->get();
+        // Bobot per mapel (khusus SAS) — dibaca dari TINGKAT (Peta Kurikulum):
+        // satu bobot untuk semua rombel. Kosong = JP ÷ 2.
+        $bobotLevelMeta = app(\App\Services\RaporSubjectOrderService::class)
+            ->structureMeta($studyGroup->grade_level_id, $selectedAyId, $subjectMap->pluck('id')->all());
+
+        // KKTP yang ditampilkan adalah milik TINGKAT (satu untuk semua rombel).
+        $kktpLevelMap = app(SubjectKktpService::class)
+            ->mapForGradeLevel($schoolId, $studyGroup->grade_level_id, $selectedAyId, $selectedSemester);
 
         $bobotMap = [];
         $bobotManualMap = [];
         $bobotJpMap = [];
-        foreach ($bobotRows as $row) {
-            $bobotMap[$row->subject_id] = $row->effectiveBobot();
-            $bobotManualMap[$row->subject_id] = $row->bobot !== null ? (float) $row->bobot : null;
-            $bobotJpMap[$row->subject_id] = $row->weekly_hours !== null
-                ? StudyGroupSubject::bobotDariJp($row->weekly_hours)
+        foreach ($subjectMap as $subject) {
+            $meta = $bobotLevelMeta->get($subject->id);
+
+            $bobotMap[$subject->id] = $meta?->effectiveBobot() ?? 0.0;
+            $bobotManualMap[$subject->id] = $meta?->bobot;
+            $bobotJpMap[$subject->id] = $meta
+                ? StudyGroupSubject::bobotDariJp($meta->allocation_hours)
                 : null;
         }
 
@@ -486,6 +493,40 @@ class NilaiKelasController extends Controller
             (string) $selectedSemester,
         );
 
+        // Kolom nilai tahfidz di leger: NPT | Ziyadah | Rabt | Tikrar | STS | SAS.
+        // Mapel tahfidz memakai kolom ini, bukan kolom STS/SAS mapel umum.
+        $tahfidzColumns = [];
+        $tahfidzValues = [];
+        $tahfidzBooks = $subjectMap
+            ->filter(fn ($subject) => app(TahfidzRaporService::class)->isTahfidzSubject($subject))
+            ->map(fn ($subject) => $bookMap[$subject->id] ?? null)
+            ->filter()
+            ->values();
+
+        if ($tahfidzBooks->isNotEmpty()) {
+            $tahfidzScores = TahfidzGradebookScore::query()
+                ->with('gradebook:id,subject_id,tahfidz_group_id')
+                ->whereIn('student_id', $students->pluck('student_id'))
+                ->whereHas('gradebook', fn ($q) => $q
+                    ->whereIn('subject_id', $tahfidzBooks->pluck('subject_id'))
+                    ->where('academic_year_id', $selectedAyId)
+                    ->where('semester', $selectedSemester)
+                    ->where('is_active', true))
+                ->get();
+
+            $tahfidzColumns = $tahfidzBooks->mapWithKeys(fn ($book) => [
+                $book->subject_id => TahfidzLegerColumns::COLUMNS,
+            ])->all();
+
+            $tahfidzValues = app(TahfidzLegerColumns::class)->valuesFor(
+                $tahfidzBooks,
+                $tahfidzScores,
+                $students->pluck('student_id'),
+                $selectedAy,
+                $selectedSemester,
+            );
+        }
+
         // Komponen STS/SAS buku aktif (mis. Praktik & Tulis). Kosong = fitur mati.
         $komponenService = app(SumatifKomponenService::class);
         $stsColumns = $activeBook ? $komponenService->columnsFor($activeBook, 'sts') : [];
@@ -508,9 +549,10 @@ class NilaiKelasController extends Controller
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'presensiManualMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'predicateNotes', 'predicateNotesAr',
+            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'kktpLevelMap', 'predicateNotes', 'predicateNotesAr',
             'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional',
-            'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap'
+            'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap',
+            'tahfidzColumns', 'tahfidzValues'
         ));
     }
 
@@ -853,9 +895,15 @@ class NilaiKelasController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            // ── Simpan KKTP inline (jika ada) ──
+            // ── Simpan KKTP per TINGKAT (bukan per rombel) ──
+            // KKTP satu untuk seluruh rombel di tingkat itu, dan Peta Kurikulum
+            // adalah sumbernya. Nilai dari leger ditulis ke baris tingkat sekaligus
+            // diselaraskan ke semua buku nilai, sehingga Peta langsung berubah.
             if ($request->filled('leger_kkm')) {
                 $request->validate(['leger_kkm.*' => 'nullable|numeric|min:0|max:100']);
+
+                $kktpByGrade = [];
+
                 foreach ($request->leger_kkm as $bookId => $kkmVal) {
                     $book = $allBooks->get($bookId);
                     if (! $book || $kkmVal === null) {
@@ -864,60 +912,48 @@ class NilaiKelasController extends Controller
                     abort_if($book->isLocked(), 403, 'Buku nilai '.($book->subject?->name ?? '').' sudah dikunci.');
                     abort_if($book->isPublished(), 403, 'Nilai '.($book->subject?->name ?? 'mapel').' sudah dipublikasikan. Batalkan publikasi terlebih dahulu.');
 
-                    $existing = SubjectKktp::where('subject_id', $book->subject_id)
-                        ->where('school_id', $schoolId)
-                        ->where('grade_level_id', $book->studyGroup->gradeLevel->id ?? null)
-                        ->where('academic_year_id', $selectedAyId)
-                        ->where('semester', $selectedSem)
-                        ->first();
-
-                    if ($existing) {
-                        $existing->updateQuietly([
-                            'kkm_score' => $kkmVal,
-                            'kktp_score' => $kkmVal,
-                        ]);
-                        $kktpId = $existing->id;
-                    } else {
-                        $kktp = SubjectKktp::create([
-                            'subject_id' => $book->subject_id,
-                            'school_id' => $schoolId,
-                            'grade_level_id' => $book->studyGroup->gradeLevel->id ?? null,
-                            'academic_year_id' => $selectedAyId,
-                            'semester' => $selectedSem,
-                            'kkm_score' => $kkmVal,
-                            'kktp_score' => $kkmVal,
-                            'created_by' => $userId,
-                        ]);
-                        $kktpId = $kktp->id;
-                    }
-
-                    // Update kktp_id di book
-                    $book->updateQuietly(['kktp_id' => $kktpId]);
-                }
-            }
-
-            // ── Simpan bobot rapor SAS per mapel (kosong = kembali ke JP) ──
-            if ($request->filled('leger_bobot')) {
-                $request->validate(['leger_bobot.*' => 'nullable|numeric|min:0|max:99']);
-
-                $subjectIds = $allBooks->pluck('subject_id')->filter()->unique()->all();
-
-                foreach ($request->leger_bobot as $subjectId => $rawBobot) {
-                    if (! in_array($subjectId, $subjectIds, true)) {
+                    $gradeLevelId = $book->studyGroup?->gradeLevel?->id;
+                    if (! $gradeLevelId) {
                         continue;
                     }
 
-                    $rawBobot = is_string($rawBobot) ? str_replace(',', '.', trim($rawBobot)) : $rawBobot;
-                    $bobot = ($rawBobot === null || $rawBobot === '')
-                        ? null
-                        : round(max(0, (float) $rawBobot), 2);
-
-                    StudyGroupSubject::query()
-                        ->where('study_group_id', $studyGroupId)
-                        ->where('academic_year_id', $selectedAyId)
-                        ->where('subject_id', $subjectId)
-                        ->update(['bobot' => $bobot]);
+                    $kktpByGrade[$gradeLevelId][$book->subject_id] = $kkmVal;
                 }
+
+                $kktpService = app(SubjectKktpService::class);
+                foreach ($kktpByGrade as $gradeLevelId => $subjects) {
+                    $kktpService->saveForGradeLevel(
+                        $schoolId,
+                        (string) $gradeLevelId,
+                        $selectedAyId,
+                        $selectedSem,
+                        $subjects,
+                        $userId,
+                    );
+                }
+            }
+
+            // ── Simpan bobot rapor SAS per TINGKAT (kosong = kembali ke JP ÷ 2) ──
+            if ($request->filled('leger_bobot')) {
+                // Koma desimal ("3,5") dinormalkan dulu: TU mengisi angkanya manual.
+                $bobotRows = collect($request->leger_bobot)
+                    ->map(fn ($v) => is_string($v) ? str_replace(',', '.', trim($v)) : $v)
+                    ->all();
+
+                $request->merge(['leger_bobot' => $bobotRows]);
+                $request->validate(['leger_bobot.*' => 'nullable|numeric|min:0|max:99']);
+
+                $subjectIds = $allBooks->pluck('subject_id')->filter()->unique()->all();
+                $bobotInput = collect($bobotRows)
+                    ->filter(fn ($v, $subjectId) => in_array($subjectId, $subjectIds, true))
+                    ->all();
+
+                $orderService = app(\App\Services\RaporSubjectOrderService::class);
+                $orderService->saveBobotGradeLevel(
+                    (string) $studyGroup->grade_level_id,
+                    $selectedAyId,
+                    $bobotInput,
+                );
             }
 
             // ── Simpan catatan rapor per predikat (per rombel) ──
@@ -1028,8 +1064,8 @@ class NilaiKelasController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 $message = match (true) {
                     $request->filled('leger_sts') => 'Leger disimpan.',
-                    $request->filled('leger_kkm') => 'KKTP disimpan.',
-                    $request->filled('leger_bobot') => 'Bobot disimpan.',
+                    $request->filled('leger_kkm') => 'KKTP disimpan untuk seluruh rombel di tingkat ini.',
+                    $request->filled('leger_bobot') => 'Bobot disimpan untuk seluruh rombel di tingkat ini.',
                     default => 'Catatan predikat disimpan.',
                 };
 
@@ -1053,7 +1089,9 @@ class NilaiKelasController extends Controller
                 && ! $request->filled('leger_kkm')
                 && ! $request->filled('leger_bobot')
                     ? 'Catatan predikat berhasil disimpan.'
-                    : 'Leger berhasil disimpan.';
+                    : ($request->filled('leger_kkm') || $request->filled('leger_bobot')
+                        ? 'Leger berhasil disimpan. KKTP/bobot berlaku untuk seluruh rombel di tingkat ini.'
+                        : 'Leger berhasil disimpan.');
 
             return redirect($backUrl)->with('success', $pesan);
         }
@@ -1413,18 +1451,22 @@ class NilaiKelasController extends Controller
             )
             : [];
 
-        // Bobot efektif tiap mapel: override manual, atau JP ÷ 2 sebagai default.
-        $subjectBobotMap = StudyGroupSubject::query()
-            ->where('study_group_id', $studyGroup->id)
-            ->where('academic_year_id', $selectedAyId)
-            ->whereIn('subject_id', $selectedSubjectIds)
-            ->get()
-            ->mapWithKeys(fn ($row) => [$row->subject_id => [
-                'bobot' => $row->bobot,
-                'jp' => $row->weekly_hours,
-                'default' => StudyGroupSubject::bobotDariJp($row->weekly_hours),
-                'efektif' => $row->effectiveBobot(),
-            ]])
+        // Bobot efektif tiap mapel — dibaca dari TINGKAT (Peta Kurikulum):
+        // override tingkat bila ada, atau JP tingkat ÷ 2 sebagai default.
+        $bobotLevelMeta = app(\App\Services\RaporSubjectOrderService::class)
+            ->structureMeta($studyGroup->grade_level_id, $selectedAyId, $selectedSubjectIds);
+
+        $subjectBobotMap = collect($selectedSubjectIds)
+            ->mapWithKeys(function ($subjectId) use ($bobotLevelMeta) {
+                $meta = $bobotLevelMeta->get($subjectId);
+
+                return [$subjectId => [
+                    'bobot' => $meta?->bobot,
+                    'jp' => $meta?->allocation_hours,
+                    'default' => StudyGroupSubject::bobotDariJp($meta?->allocation_hours),
+                    'efektif' => $meta?->effectiveBobot() ?? 0.0,
+                ]];
+            })
             ->all();
 
         // KKTP efektif tiap mapel diambil dari buku ajar (subject_kktp) agar
@@ -2281,28 +2323,18 @@ class NilaiKelasController extends Controller
             ->pluck('id')
             ->all();
 
-        // Bobot rapor SAS per mapel. Kosong = kembali ke JP rombel.
+        // Bobot rapor SAS per mapel. Bobot berlaku untuk TINGKAT (semua rombel),
+        // jadi nilai dari halaman ini ditulis ke Peta Kurikulum. Kosong = JP ÷ 2.
         // Menerima koma desimal (mis. "2,5") karena diisi manual oleh TU.
-        $bobotInput = (array) $request->input('subject_bobot', []);
-        foreach ($bobotInput as $subjectId => $raw) {
-            if (! in_array($subjectId, $available, true)) {
-                continue;
-            }
+        $bobotInput = collect((array) $request->input('subject_bobot', []))
+            ->filter(fn ($raw, $subjectId) => in_array($subjectId, $available, true))
+            ->all();
 
-            $raw = trim((string) $raw);
-            $bobot = null;
-
-            if ($raw !== '') {
-                $raw = str_replace(',', '.', $raw);
-                $bobot = is_numeric($raw) && (float) $raw >= 0 ? round((float) $raw, 2) : null;
-            }
-
-            StudyGroupSubject::query()
-                ->where('study_group_id', $studyGroup->id)
-                ->where('academic_year_id', $validated['academic_year_id'])
-                ->where('subject_id', $subjectId)
-                ->update(['bobot' => $bobot]);
-        }
+        app(\App\Services\RaporSubjectOrderService::class)->saveBobotGradeLevel(
+            (string) $studyGroup->grade_level_id,
+            (string) $validated['academic_year_id'],
+            $bobotInput,
+        );
 
         // Nama Latin & Arab disimpan di master mapel (berlaku untuk semua rombel).
         $nameInput = (array) $request->input('subject_name', []);
@@ -2332,7 +2364,7 @@ class NilaiKelasController extends Controller
         // KKTP sengaja tidak diubah dari sini: nilainya satu untuk seluruh
         // rombel di tingkat itu dan diatur di Peta Kurikulum.
 
-        return back()->with('success', 'Bobot dan nama mapel rapor tersimpan. Urutan, daftar mapel, dan KKTP diatur di Peta Kurikulum.');
+        return back()->with('success', 'Bobot dan nama mapel rapor tersimpan. Bobot berlaku untuk seluruh rombel di tingkat ini; urutan, daftar mapel, dan KKTP diatur di Peta Kurikulum.');
     }
 
     /**

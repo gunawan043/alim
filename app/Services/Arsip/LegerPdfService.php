@@ -8,7 +8,6 @@ use App\Models\LegerPresensi;
 use App\Models\NilaiSumatif;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
-use App\Models\StudyGroupSubject;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Services\RaporSubjectOrderService;
@@ -143,10 +142,9 @@ class LegerPdfService
             }
         }
 
-        // Mapel tahfidz memakai format penilaiannya sendiri: Ziyadah, Rabt,
-        // STS, SAS dari buku halaqah. Di leger kolom Ziyadah dan Rabt tidak
-        // bisa diwakili satu angka, jadi ditampilkan sebagai sub-kolom di
-        // samping nilai akhir — bukan memakai mekanisme komponen mapel umum.
+        // Mapel tahfidz memakai format penilaiannya sendiri: NPT, Ziyadah,
+        // Rabt, Tikrar, STS, SAS. Nilai diambil dari buku halaqah; NPT dan
+        // Tikrar dari capaian target serta setoran (lihat TahfidzLegerColumns).
         $tahfidzColumns = [];
         $tahfidzValues = [];
         $tahfidzScores = [];
@@ -165,32 +163,41 @@ class LegerPdfService
                 ->get();
         }
 
-        foreach ($subjectMap as $subject) {
-            if (! app(TahfidzRaporService::class)->isTahfidzSubject($subject)) {
-                continue;
-            }
+        $tahfidzBooks = $subjectMap
+            ->filter(fn ($subject) => app(TahfidzRaporService::class)->isTahfidzSubject($subject))
+            ->map(fn ($subject) => $bookMap[$subject->id] ?? null)
+            ->filter()
+            ->values();
 
-            $tahfidzColumns[$subject->id] = ['ziyadah' => 'Ziyadah', 'rabt' => 'Rabt'];
+        if ($tahfidzBooks->isNotEmpty()) {
+            $tahfidzColumns = $tahfidzBooks->mapWithKeys(fn ($book) => [
+                $book->subject_id => \App\Services\TahfidzLegerColumns::COLUMNS,
+            ])->all();
 
-            foreach ($students as $history) {
-                $sid = $history->student_id;
-                $score = $tahfidzRows->first(
-                    fn ($row) => $row->student_id === $sid
-                        && $row->gradebook?->subject_id === $subject->id,
-                );
+            $tahfidzValues = app(\App\Services\TahfidzLegerColumns::class)->valuesFor(
+                $tahfidzBooks,
+                $tahfidzRows,
+                $students->pluck('student_id'),
+                $selectedAy,
+                $selectedSem,
+            );
 
-                $tahfidzScores[$sid][$subject->id] = $score;
-                $tahfidzValues[$sid][$subject->id] = [
-                    'ziyadah' => $score?->ziyadah,
-                    'rabt' => $score?->rabt,
-                ];
+            foreach ($tahfidzBooks as $book) {
+                foreach ($students as $history) {
+                    $sid = $history->student_id;
+                    $tahfidzScores[$sid][$book->subject_id] = $tahfidzRows->first(
+                        fn ($row) => $row->student_id === $sid
+                            && $row->gradebook?->subject_id === $book->subject_id,
+                    );
+                }
 
                 // Bobot diambil dari buku halaqah santri ini; satu santri bisa
                 // berada di halaqah berbeda dari teman sekelasnya.
-                if ($score && ! isset($tahfidzWeights[$subject->id])) {
-                    $book = \App\Models\TahfidzGradebook::find($score->tahfidz_gradebook_id);
-                    if ($book) {
-                        $tahfidzWeights[$subject->id] = $book->weights();
+                $sample = collect($tahfidzScores)->pluck($book->subject_id)->filter()->first();
+                if ($sample) {
+                    $weightBook = \App\Models\TahfidzGradebook::find($sample->tahfidz_gradebook_id);
+                    if ($weightBook) {
+                        $tahfidzWeights[$book->subject_id] = $weightBook->weights();
                     }
                 }
             }
@@ -239,16 +246,13 @@ class LegerPdfService
             (string) $selectedSem,
         );
 
-        // Bobot per mapel (khusus SAS): override manual, jatuh ke JP bila kosong.
-        $bobotMap = StudyGroupSubject::query()
-            ->where('study_group_id', $studyGroupId)
-            ->where('academic_year_id', $selectedAyId)
-            ->whereIn('subject_id', $subjectMap->pluck('id')->all())
-            ->get()
-            ->mapWithKeys(fn ($row) => [
-                $row->subject_id => $row->effectiveBobot(),
-            ])
-            ->all();
+        // Bobot per mapel (khusus SAS) dibaca dari TINGKAT (Peta Kurikulum):
+        // satu bobot untuk semua rombel. Kosong = JP ÷ 2.
+        $bobotMap = $orderService->bobotForGradeLevel(
+            $studyGroup->grade_level_id,
+            $selectedAyId,
+            $subjectMap->pluck('id')->all(),
+        );
 
         $legerAggMap = [];
         $legerJumlahMap = [];

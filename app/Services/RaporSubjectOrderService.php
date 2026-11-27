@@ -116,6 +116,55 @@ class RaporSubjectOrderService
     }
 
     /**
+     * Bobot rapor SAS per mapel untuk satu tingkat.
+     *
+     * Bobot adalah properti TINGKAT: leger, buku nilai, dan rapor membaca angka
+     * yang sama untuk semua rombel. Belum diatur → JP ÷ 2 (JP 1 tetap 1).
+     *
+     * @return array<string, float> [subject_id => bobot efektif]
+     */
+    public function bobotForGradeLevel(?string $gradeLevelId, ?string $academicYearId, array $subjectIds): array
+    {
+        if (! $gradeLevelId || $subjectIds === []) {
+            return [];
+        }
+
+        return $this->structureMeta($gradeLevelId, $academicYearId, $subjectIds)
+            ->map(fn (GradeLevelSubject $meta) => $meta->effectiveBobot())
+            ->all();
+    }
+
+    /**
+     * Simpan bobot rapor SAS satu tingkat. Kosong = kembali ke JP ÷ 2.
+     *
+     * @param  array<string, mixed>  $values  [subject_id => bobot]
+     */
+    public function saveBobotGradeLevel(string $gradeLevelId, ?string $academicYearId, array $values): int
+    {
+        $structures = $this->structureMeta($gradeLevelId, $academicYearId, array_keys($values));
+        $diubah = 0;
+
+        foreach ($values as $subjectId => $raw) {
+            $structure = $structures->get($subjectId);
+
+            if (! $structure) {
+                continue;
+            }
+
+            $raw = is_string($raw) ? str_replace(',', '.', trim($raw)) : $raw;
+            $bobot = ($raw === null || $raw === '' || ! is_numeric($raw))
+                ? null
+                : round(max(0, (float) $raw), 2);
+
+            $structure->bobot = $bobot;
+            $structure->save();
+            $diubah++;
+        }
+
+        return $diubah;
+    }
+
+    /**
      * Metadata urutan + status pondok/dinas per mapel pada satu tingkat.
      *
      * Baris versi TA terpilih diprioritaskan; baris tanpa TA (lama) menjadi

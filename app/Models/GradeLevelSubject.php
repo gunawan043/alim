@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\StudyGroupSubject;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,7 @@ class GradeLevelSubject extends Model
         'track',
         'sort_order',
         'subject_source',
+        'bobot',
         'is_active',
     ];
 
@@ -34,7 +36,23 @@ class GradeLevelSubject extends Model
         'is_active' => 'boolean',
         'allocation_hours' => 'integer',
         'sort_order' => 'integer',
+        'bobot' => 'float',
     ];
+
+    /**
+     * Bobot rapor SAS untuk tingkat ini.
+     *
+     * Bobot adalah properti TINGKAT — satu nilai untuk semua rombel — sehingga
+     * leger, buku nilai, dan rapor selalu membaca angka yang sama.
+     */
+    public function effectiveBobot(): float
+    {
+        if ($this->bobot !== null) {
+            return (float) $this->bobot;
+        }
+
+        return StudyGroupSubject::bobotDariJp($this->allocation_hours);
+    }
 
     /** Asal mapel. Rapor mencetak blok Pondok lebih dulu, lalu Dinas. */
     public const SOURCE_PONDOK = 'pondok';

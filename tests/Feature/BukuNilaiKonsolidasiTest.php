@@ -404,8 +404,22 @@ class BukuNilaiKonsolidasiTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Bobot: Matematika 3, Bahasa Arab 1.
+        // Bobot: Matematika 3, Bahasa Arab 1 — disimpan di TINGKAT (Peta Kurikulum).
         foreach ([[$this->subject->id, 3.0], [$arab->id, 1.0]] as [$subjectId, $bobot]) {
+            // Tanpa baris struktur? buat sendiri agar tes tidak bergantung pada seed.
+            GradeLevelSubject::updateOrCreate(
+                [
+                    'grade_level_id' => $this->studyGroup->grade_level_id,
+                    'subject_id' => $subjectId,
+                    'academic_year_id' => $this->ay->id,
+                ],
+                [
+                    'allocation_hours' => (int) $bobot,
+                    'bobot' => $bobot,
+                    'is_active' => true,
+                ]
+            );
+
             StudyGroupSubject::updateOrCreate(
                 [
                     'study_group_id' => $this->studyGroup->id,

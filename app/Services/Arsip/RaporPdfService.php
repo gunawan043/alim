@@ -12,7 +12,6 @@ use App\Models\RaportRegistration;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\StudyGroup;
-use App\Models\StudyGroupSubject;
 use App\Models\TeacherAdminBook;
 use App\Services\ArabicName\ArabicNameResolver;
 use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
@@ -238,7 +237,7 @@ class RaporPdfService
             $schoolId, $studyGroup->id, $selectedAyId, $selectedSem
         );
 
-        $bobotMap = $this->bobotMap($studyGroup->id, $selectedAyId, $subjectMap->pluck('id')->all());
+        $bobotMap = $this->bobotMap($studyGroup->grade_level_id, $selectedAyId, $subjectMap->pluck('id')->all());
 
         $students = collect($students)->filter(fn ($s) => $s instanceof Student)->values();
         $studentIds = $students->pluck('id')->all();
@@ -335,7 +334,7 @@ class RaporPdfService
             $schoolId, $studyGroupId, $selectedAyId, $selectedSem
         );
 
-        $bobotMap = $this->bobotMap($studyGroupId, $selectedAyId, $subjectMap->pluck('id')->all());
+        $bobotMap = $this->bobotMap($studyGroup->grade_level_id, $selectedAyId, $subjectMap->pluck('id')->all());
 
         $nilaiMap = [];
         $studentNilaiRows = NilaiSumatif::whereIn('admin_book_id', $bookMap->pluck('id'))
@@ -498,23 +497,20 @@ class RaporPdfService
      * @param  array<int, string>  $subjectIds
      * @return array<string, float>
      */
-    private function bobotMap(string $studyGroupId, string $selectedAyId, array $subjectIds): array
+    /**
+     * Bobot rapor per mapel — dibaca dari TINGKAT (Peta Kurikulum), sehingga
+     * semua rombel mencetak bobot yang sama. Kosong = JP ÷ 2.
+     */
+    private function bobotMap(?string $gradeLevelId, string $selectedAyId, array $subjectIds): array
     {
         $subjectIds = array_values(array_filter($subjectIds));
 
-        if ($subjectIds === []) {
+        if ($subjectIds === [] || ! $gradeLevelId) {
             return [];
         }
 
-        return StudyGroupSubject::query()
-            ->where('study_group_id', $studyGroupId)
-            ->where('academic_year_id', $selectedAyId)
-            ->whereIn('subject_id', $subjectIds)
-            ->get()
-            ->mapWithKeys(fn ($row) => [
-                $row->subject_id => $row->effectiveBobot(),
-            ])
-            ->all();
+        return app(RaporSubjectOrderService::class)
+            ->bobotForGradeLevel($gradeLevelId, $selectedAyId, $subjectIds);
     }
 
     /**

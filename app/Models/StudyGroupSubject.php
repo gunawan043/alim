@@ -109,10 +109,24 @@ class StudyGroupSubject extends Model
     }
 
     /**
-     * Bobot efektif: override manual bila diisi, selain itu JP ÷ 2.
+     * Bobot efektif rombel ini.
+     *
+     * Bobot rapor ditetapkan per TINGKAT (satu nilai untuk semua rombel).
+     * Kolom `bobot` di tabel ini hanya dipakai sebagai cadangan bila baris
+     * tingkat tidak ditemukan, sehingga angka lama tidak hilang tanpa jejak.
      */
     public function effectiveBobot(): float
     {
+        $gradeLevelId = $this->studyGroup?->grade_level_id;
+        $levelBobot = $gradeLevelId
+            ? (app(\App\Services\RaporSubjectOrderService::class)
+                ->bobotForGradeLevel($gradeLevelId, $this->academic_year_id, [(string) $this->subject_id])[$this->subject_id] ?? null)
+            : null;
+
+        if ($levelBobot !== null) {
+            return (float) $levelBobot;
+        }
+
         return $this->bobot !== null
             ? (float) $this->bobot
             : self::bobotDariJp($this->weekly_hours);

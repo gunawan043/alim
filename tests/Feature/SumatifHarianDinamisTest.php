@@ -1267,7 +1267,7 @@ class SumatifHarianDinamisTest extends TestCase
             ]
         );
 
-        $res->assertOk()->assertJson(['success' => true, 'message' => 'KKTP disimpan.']);
+        $res->assertOk()->assertJson(['success' => true, 'message' => 'KKTP disimpan untuk seluruh rombel di tingkat ini.']);
 
         $row = DB::table('subject_kktp')
             ->where('subject_id', $this->subject->id)

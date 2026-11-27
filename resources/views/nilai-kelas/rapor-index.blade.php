@@ -661,7 +661,7 @@
                                                     : '';
                                             @endphp
                                             <tr class="subject-row" data-subject-id="{{ $subject->id }}">
-                                                <td class="text-center">
+                                                <td class="text-center" title="Urutan cetak, mengikuti Peta Kurikulum tingkat ini">
                                                     <span class="badge bg-light text-dark">{{ $loop->iteration }}</span>
                                                 </td>
                                                 <td>
@@ -715,7 +715,7 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <small class="text-muted"><i class="ri-information-line me-1"></i>Hanya nama dan bobot yang diatur di sini. Bobot kosong = JP ÷ 2 (JP 1 tetap 1); boleh desimal (mis. 2,5). Nama Latin/Arab disimpan ke master mapel sehingga berlaku untuk semua rombel. Urutan mapel, Pondok/Dinas, daftar mapel, dan KKTP diatur per tingkat di Peta Kurikulum.</small>
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Yang diatur di sini: nama Latin/Arab dan bobot. Bobot dan urutan berlaku untuk seluruh rombel di tingkat ini; bobot kosong = JP ÷ 2 (JP 1 tetap 1), boleh desimal (mis. 2,5). Nomor di kolom pertama adalah urutan cetak dari Peta Kurikulum; ubah urutan, Pondok/Dinas, daftar mapel, dan KKTP di sana.</small>
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="ri-save-3-line me-1"></i>Simpan Nama &amp; Bobot
                                 </button>
