@@ -381,7 +381,9 @@
                         </thead>
                         <tbody>
                             @forelse($rows as $row)
-                                <tr>
+                                <tr data-peta-row
+                                    data-grade="{{ $row['grade_level_id'] }}"
+                                    data-subject="{{ $row['subject_id'] }}">
                                     <td class="fw-medium">{{ $row['grade'] }}</td>
                                     <td class="text-center">
                                         @if($row['fase'])
@@ -399,6 +401,7 @@
                                                    value="{{ $row['weekly_hours'] }}"
                                                    min="0" max="40" step="1"
                                                    class="form-control form-control-sm text-center jp-input"
+                                                   data-order-field="jp"
                                                    data-grade="{{ $row['grade_level_id'] }}"
                                                    style="width:80px;margin:0 auto"
                                                    title="JP per minggu untuk mapel ini di tingkat {{ $row['grade'] }}">
@@ -436,6 +439,9 @@
                                             <div class="rapor-order-control">
                                                 <a href="{{ route('user.kurikulum.struktur.move', ['userId' => $userId, 'grade_level_id' => $row['grade_level_id'], 'subject_id' => $row['subject_id'], 'direction' => 'up', 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
                                                    class="rapor-order-btn rapor-order-up"
+                                                   data-order-move="up"
+                                                   data-grade="{{ $row['grade_level_id'] }}"
+                                                   data-subject="{{ $row['subject_id'] }}"
                                                    title="Naikkan urutan {{ $row['subject'] }}"
                                                    aria-label="Naikkan urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
                                                     <i class="ri-arrow-up-s-line"></i>
@@ -443,6 +449,7 @@
                                                 <input type="number"
                                                        form="petaForm"
                                                        name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][urutan]"
+                                                   data-order-field="urutan"
                                                        value="{{ $row['sort_order'] }}"
                                                        min="-99" max="999" step="1"
                                                        placeholder="—"
@@ -451,6 +458,9 @@
                                                        aria-label="Urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
                                                 <a href="{{ route('user.kurikulum.struktur.move', ['userId' => $userId, 'grade_level_id' => $row['grade_level_id'], 'subject_id' => $row['subject_id'], 'direction' => 'down', 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
                                                    class="rapor-order-btn rapor-order-down"
+                                                   data-order-move="down"
+                                                   data-grade="{{ $row['grade_level_id'] }}"
+                                                   data-subject="{{ $row['subject_id'] }}"
                                                    title="Turunkan urutan {{ $row['subject'] }}"
                                                    aria-label="Turunkan urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
                                                     <i class="ri-arrow-down-s-line"></i>
@@ -472,6 +482,7 @@
                                                    value="{{ $row['kktp'] ?? '' }}"
                                                    min="0" max="100" placeholder="—"
                                                    class="form-control form-control-sm text-center"
+                                                   data-order-field="kktp"
                                                    style="width:80px;margin:0 auto"
                                                    title="N-KKTP (0-100)">
                                         @else
@@ -539,6 +550,73 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    // Panah urutan menyimpan lewat fetch lalu memindahkan baris di layar,
+    // jadi halaman tidak dimuat ulang dan input yang sedang diisi tidak hilang.
+    document.addEventListener('click', async function (event) {
+        const btn = event.target.closest('[data-order-move]');
+        if (!btn) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (btn.dataset.working === '1') {
+            return;
+        }
+        btn.dataset.working = '1';
+
+        try {
+            const response = await fetch(btn.href, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+
+            const data = await response.json();
+            applyOrder(btn.dataset.grade, data.subjects || []);
+        } catch (error) {
+            // Gagal (mis. tahun ajaran terkunci): pakai jalur biasa supaya pesan error muncul.
+            window.location.href = btn.href;
+        } finally {
+            btn.dataset.working = '';
+        }
+    });
+
+    function applyOrder(gradeId, subjects) {
+        const rows = Array.from(document.querySelectorAll('[data-peta-row]'))
+            .filter((row) => row.dataset.grade === gradeId);
+
+        if (rows.length === 0) {
+            return;
+        }
+
+        const bySubject = new Map(rows.map((row) => [row.dataset.subject, row]));
+        const anchor = rows[0].parentNode;
+
+        subjects.forEach((item) => {
+            const row = bySubject.get(item.id);
+            if (!row) {
+                return;
+            }
+
+            const input = row.querySelector('[data-order-field="urutan"]');
+            if (input) {
+                input.value = item.sort_order === null || item.sort_order === undefined ? '' : item.sort_order;
+            }
+
+            anchor.appendChild(row);
+        });
+    }
+})();
+</script>
+@endpush
 
 @section('modal')
     <x-modal-confirm id="siapkanPetaModal"

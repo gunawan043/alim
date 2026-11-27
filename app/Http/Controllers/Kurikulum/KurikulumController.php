@@ -268,6 +268,18 @@ class KurikulumController extends Controller
             return $row;
         });
 
+        // Urutkan baris sesuai susunan rapor (blok Pondok → Pondok + Dinas →
+        // Dinas, lalu nomor urut), per tingkat — sama persis dengan cetakan.
+        $raporOrder = app(RaporSubjectOrderService::class);
+        $rows = $rows
+            ->groupBy('grade_level_id')
+            ->flatMap(fn ($gradeRows, $rowGradeId) => $raporOrder->sortSubjects(
+                Subject::query()->whereIn('id', $gradeRows->pluck('subject_id'))->get(),
+                (string) $rowGradeId,
+                $academicYearId,
+            )->map(fn (Subject $subject) => $gradeRows->firstWhere('subject_id', $subject->id))->filter()->values())
+            ->values();
+
         // Izin atur KKTP: tim kurikulum atau koordinator mapel.
         $isKoorMapelUser = (bool) optional($request->user()?->tugasTambahan)
             ->pluck('nama')
@@ -684,7 +696,10 @@ class KurikulumController extends Controller
             'grade_level_id' => 'required|exists:grade_levels,id',
             'subject_id' => 'required|exists:subjects,id',
             'direction' => 'required|in:up,down',
+            'semester' => 'nullable|in:ganjil,genap',
         ]);
+
+        $semester = $data['semester'] ?? 'ganjil';
 
         app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'Susunan Rapor Peta Kurikulum');
 
@@ -762,7 +777,7 @@ class KurikulumController extends Controller
 
         // Bila daftar mapel rapor tingkat belum pernah diatur, tetapkan seluruh
         // mapel dengan susunan baru agar cetakan langsung mengikutinya.
-        if ($orderService->reportSubjectIds($schoolId, $data['academic_year_id'], $data['semester'], $gradeLevel->id) === null) {
+        if ($orderService->reportSubjectIds($schoolId, $data['academic_year_id'], $semester, $gradeLevel->id) === null) {
             $ids = $orderService
                 ->sortSubjects(
                     Subject::query()->whereIn('id', $structures->pluck('subject_id'))->get(),
@@ -775,15 +790,53 @@ class KurikulumController extends Controller
             $orderService->saveReportSubjects(
                 $schoolId,
                 $data['academic_year_id'],
-                $data['semester'],
+                $semester,
                 $gradeLevel->id,
                 $ids,
             );
         }
 
+        // Panah dipanggil lewat fetch(): kembalikan susunan terbaru agar baris
+        // di layar langsung berpindah tanpa memuat ulang halaman.
+        if ($request->expectsJson()) {
+            return response()->json($this->urutanTingkat($schoolId, $gradeLevel->id, $data['academic_year_id'], $semester));
+        }
+
         // Tanpa flash: panah dipakai berulang, dan tabel sudah langsung
         // menunjukkan urutan baru sehingga modal "Berhasil" hanya mengganggu.
         return back();
+    }
+
+    /**
+     * Susunan rapor satu tingkat untuk konsumsi layar: ID mapel yang masuk
+     * rapor (urutan cetak) beserta nomor urutnya masing-masing.
+     *
+     * @return array{subjects: array<int, array{id: string, sort_order: int|null}>, report_ids: array<int, string>|null}
+     */
+    private function urutanTingkat(?string $schoolId, string $gradeLevelId, string $academicYearId, string $semester): array
+    {
+        $orderService = app(RaporSubjectOrderService::class);
+
+        $structures = GradeLevelSubject::query()
+            ->where('grade_level_id', $gradeLevelId)
+            ->forAcademicYear($academicYearId)
+            ->orderByAcademicYearFirst()
+            ->get()
+            ->unique('subject_id');
+
+        $sorted = $orderService->sortSubjects(
+            Subject::query()->whereIn('id', $structures->pluck('subject_id'))->get(),
+            $gradeLevelId,
+            $academicYearId,
+        );
+
+        return [
+            'subjects' => $sorted->map(fn (Subject $subject) => [
+                'id' => $subject->id,
+                'sort_order' => $structures->firstWhere('subject_id', $subject->id)?->sort_order,
+            ])->values()->all(),
+            'report_ids' => $orderService->reportSubjectIds($schoolId, $academicYearId, $semester, $gradeLevelId),
+        ];
     }
 
     /**

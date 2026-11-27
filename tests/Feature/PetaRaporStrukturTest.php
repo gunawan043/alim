@@ -371,4 +371,52 @@ class PetaRaporStrukturTest extends TestCase
         $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
         $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupB));
     }
+
+    public function test_panah_mengembalikan_json_susunan_terbaru(): void
+    {
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 3]);
+        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
+
+        $response = $this->actingAs($this->kurikulum)
+            ->getJson(route('user.kurikulum.struktur.move', [
+                'userId' => $this->kurikulum->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'grade_level_id' => $this->grade->id,
+                'subject_id' => $this->subjects['MTK']->id,
+                'direction' => 'up',
+            ]));
+
+        $response->assertOk();
+        $codes = array_map(fn ($row) => array_search($row['id'], array_map(fn ($s) => $s->id, $this->subjects), true), $response->json('subjects'));
+
+        // MTK (nomor 3, Dinas) naik satu langkah → bertukar dengan BAR (nomor 2).
+        $this->assertSame(['FQH', 'BAR', 'MTK'], $codes);
+        // JSON sudah membawa nomor urut baru: MTK 2 dan BAR 3.
+        $orders = collect($response->json('subjects'))->pluck('sort_order', 'id');
+        $this->assertSame(2, (int) $orders[$this->subjects['MTK']->id]);
+        $this->assertSame(3, (int) $orders[$this->subjects['BAR']->id]);
+    }
+
+    public function test_halaman_peta_menampilkan_baris_sesuai_nomor_urutan(): void
+    {
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 3]);
+        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
+
+        $html = $this->actingAs($this->kurikulum)
+            ->get('/'.$this->kurikulum->id.'/kurikulum?grade_level_id='.$this->grade->id)
+            ->assertOk()
+            ->getContent();
+
+        $positions = [];
+        foreach (['BAR' => 'Bahasa Arab', 'FQH' => 'Fiqih', 'MTK' => 'Matematika'] as $code => $name) {
+            $positions[$code] = strpos($html, 'data-subject="'.$this->subjects[$code]->id.'"');
+        }
+
+        $this->assertNotFalse($positions['BAR']);
+        $this->assertTrue($positions['BAR'] < $positions['FQH'], 'Bahasa Arab (nomor 1) harus tampil sebelum Fiqih');
+        $this->assertTrue($positions['FQH'] < $positions['MTK'], 'Fiqih harus tampil sebelum Matematika');
+    }
 }
