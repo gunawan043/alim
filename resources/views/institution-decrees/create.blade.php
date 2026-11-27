@@ -410,6 +410,8 @@
                                 <option value="{{ $type['kode'] }}"
                                         data-code="{{ $type['kode'] }}"
                                         data-name="{{ $type['nama'] }}"
+                                        data-type-id="{{ $type['id'] }}"
+                                        data-pendamping="{{ ! empty($type['pendamping']) ? '1' : '0' }}"
                                         data-hours="{{ $type['hours'] }}">{{ $type['nama'] }}</option>
                             @endforeach
                             <option value="kesiswaan">Kesiswaan / PD / PO</option>
@@ -432,6 +434,53 @@
                             <label class="form-label small mb-1">Jam per Minggu</label>
                             <input type="number" id="taskHoursOnly" class="form-control" value="3" min="0" max="40">
                         </div>
+                    </div>
+
+                    {{-- Guru Pendamping: pilih mapel lalu kelasnya. JP dihitung
+                         dari Peta Kurikulum, tanpa isian manual. --}}
+                    <div id="pendampingTaskWrap" class="mb-3" style="display:none;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <label class="form-label small mb-0">Mapel &amp; kelas yang didampingi</label>
+                            <span class="badge bg-primary-subtle text-primary" id="pendampingTaskSummary">Belum ada pilihan</span>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            Pilih mapel lebih dulu, lalu centang kelas untuk mapel tersebut.
+                            JP dihitung otomatis dari Peta Kurikulum.
+                        </p>
+
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-light"><i class="ri-search-line"></i></span>
+                            <input type="search" class="form-control" id="pendampingTaskSearch"
+                                   placeholder="Cari nama mapel…" autocomplete="off">
+                        </div>
+                        <div id="pendampingTaskEmpty" class="alert alert-light border mb-2 small d-none">
+                            Tidak ada mapel yang cocok dengan pencarian.
+                        </div>
+
+                        <div class="border rounded p-2 mb-2" style="max-height:180px;overflow:auto">
+                            @php $pendampingSubjectIds = collect($pendampingSubjects ?? []); @endphp
+                            @foreach(($subjects ?? collect())->filter(fn ($s) => $pendampingSubjectIds->contains((string) $s->id)) as $subject)
+                                <label class="form-check pendamping-task-item d-inline-block me-3 mb-1"
+                                       data-name="{{ \Illuminate\Support\Str::lower($subject->name.' '.$subject->code) }}">
+                                    <input type="checkbox" class="form-check-input pendamping-task-subject"
+                                           value="{{ $subject->id }}" data-label="{{ $subject->name }}">
+                                    <span class="form-check-label small">
+                                        {{ $subject->name }}
+                                        @if($subject->code)<span class="text-muted">({{ $subject->code }})</span>@endif
+                                    </span>
+                                </label>
+                            @endforeach
+
+                            @if($pendampingSubjectIds->isEmpty())
+                                <div class="text-muted small">
+                                    Belum ada mapel untuk Guru Pendamping.
+                                    Atur dulu di halaman
+                                    <a href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">Tugas Tambahan</a>.
+                                </div>
+                            @endif
+                        </div>
+
+                        <div id="pendampingTaskClasses"></div>
                     </div>
 
                     <div id="customTaskWrap" style="display:none;">
@@ -516,7 +565,7 @@ const teachers        = {!! json_encode($teachers->map(function ($t) use ($cross
     ];
 })->values()->toArray()) !!};
 const subjects        = {!! json_encode($subjects->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values()->toArray()) !!};
-const studyGroups     = {!! json_encode($studyGroups->map(fn($sg) => ['id' => $sg->id, 'name' => $sg->name, 'level' => $sg->gradeLevel->level ?? 0])->toArray()) !!};
+const studyGroups     = {!! json_encode($studyGroups->map(fn($sg) => ['id' => $sg->id, 'name' => $sg->name, 'level' => $sg->gradeLevel->level ?? 0, 'gradeLevelId' => $sg->grade_level_id])->toArray()) !!};
 const currentAssignments = {!! json_encode($currentAssignments) !!};
 const currentTasks       = {!! json_encode($currentTasks) !!};
 const currentPositions   = {!! json_encode($currentPositions) !!};
@@ -524,6 +573,10 @@ const currentPositionIds = {!! json_encode($currentPositionIds) !!};
 const positionOptions    = {!! json_encode($positionOptions) !!};
 const jpDefaults         = {!! json_encode($jpDefaults) !!};
 const taskTypeOptions    = {!! json_encode($taskTypeOptions) !!};
+// Guru Pendamping: mapel yang boleh didampingi + JP per tingkat dari
+// Peta Kurikulum (kunci "grade_level_id|subject_id").
+const pendampingSubjectIds     = {!! json_encode(array_values($pendampingSubjects ?? [])) !!};
+const pendampingHoursByGrade   = {!! json_encode($pendampingHoursByGrade ?? []) !!};
 const draftStorageKey    = {!! json_encode('institution-decree-draft:v3:'.$userId.':'.($selectedSchoolId ?? 'none').':'.($selectedAyId ?? 'none').':'.($isEdit ? $decree->id : 'new')) !!};
 const AUTOSAVE_DELAY     = 2500;
 
@@ -1165,18 +1218,164 @@ function showAddTask(tid = null) {
 function toggleTaskFields() {
     const select = document.getElementById('taskTypeSelect');
     const type = select.value;
-    const code = (select.selectedOptions[0]?.dataset.code || type || '').toLowerCase();
-    const isWali = type === 'wali_kelas' || code === 'wali-kelas' || /wali kelas/i.test(select.selectedOptions[0]?.dataset.name || '');
+    const option = select.selectedOptions[0];
+    const code = (option?.dataset.code || type || '').toLowerCase();
+    const isWali = type === 'wali_kelas' || code === 'wali-kelas' || /wali kelas/i.test(option?.dataset.name || '');
     const isKoordinator = type === 'koordinator';
     const isCustom = type === 'custom' || type === 'kesiswaan';
-    const isMaster = !!select.selectedOptions[0]?.dataset.code && !isWali && !isKoordinator;
+    // Guru Pendamping memilih mapel & kelas; JP berasal dari Peta Kurikulum,
+    // jadi isian Jam per Minggu tidak ditampilkan.
+    const isPendamping = option?.dataset.pendamping === '1';
+    const isMaster = !!option?.dataset.code && !isWali && !isKoordinator && !isPendamping;
 
     document.getElementById('rombelSelectWrap').style.display = isWali ? '' : 'none';
     document.getElementById('koordinatorMapelWrap').style.display = isKoordinator ? '' : 'none';
     document.getElementById('customTaskWrap').style.display = isCustom ? '' : 'none';
     document.getElementById('taskHoursOnlyWrap').style.display = isMaster ? '' : 'none';
-    if (isMaster) { document.getElementById('taskHoursOnly').value = select.selectedOptions[0]?.dataset.hours || 3; }
+    document.getElementById('pendampingTaskWrap').style.display = isPendamping ? '' : 'none';
+    if (isMaster) { document.getElementById('taskHoursOnly').value = option?.dataset.hours || 3; }
+
+    if (isPendamping) {
+        resetPendampingPicker();
+        document.querySelectorAll('.pendamping-task-subject').forEach(cb => {
+            cb.checked = !!pendampingSelection[cb.value];
+            if (pendampingSelection[cb.value] && cb.closest('.pendamping-task-item')) {
+                cb.closest('.pendamping-task-item').classList.remove('d-none');
+            }
+        });
+        if (!pendampingActive && Object.keys(pendampingSelection).length) {
+            pendampingActive = Object.keys(pendampingSelection)[0];
+        }
+        renderPendampingClasses();
+        refreshPendampingSummary();
+    }
 }
+
+/* ---------------------------------------------------------------------
+   GURU PENDAMPING: mapel -> kelas
+   --------------------------------------------------------------------- */
+// subjectId -> { label, groups: {groupId: name} }
+let pendampingSelection = {};
+let pendampingActive = null;
+
+function pendampingHoursFor(subjectId, sgId) {
+    const sg = studyGroups.find(s => String(s.id) === String(sgId));
+    if (!sg) return 0;
+    // JP dibaca dari Peta Kurikulum per tingkat: kunci "grade_level_id|subject_id".
+    const key = `${sg.gradeLevelId}|${subjectId}`;
+    return parseFloat(pendampingHoursByGrade[key]) || 0;
+}
+
+function resetPendampingPicker() {
+    pendampingSelection = {};
+    pendampingActive = null;
+    document.querySelectorAll('.pendamping-task-subject').forEach(cb => { cb.checked = false; });
+    const search = document.getElementById('pendampingTaskSearch');
+    if (search) search.value = '';
+    const empty = document.getElementById('pendampingTaskEmpty');
+    if (empty) empty.classList.add('d-none');
+    renderPendampingClasses();
+    refreshPendampingSummary();
+}
+
+function refreshPendampingSummary() {
+    const badge = document.getElementById('pendampingTaskSummary');
+    if (!badge) return;
+    const ids = Object.keys(pendampingSelection).filter(id => Object.keys(pendampingSelection[id].groups).length);
+    if (!ids.length) { badge.textContent = 'Belum ada pilihan'; return; }
+    const pairs = ids.reduce((sum, id) => sum + Object.keys(pendampingSelection[id].groups).length, 0);
+    badge.textContent = `${ids.length} mapel · ${pairs} kelas`;
+}
+
+function renderPendampingClasses() {
+    const box = document.getElementById('pendampingTaskClasses');
+    if (!box) return;
+    box.innerHTML = '';
+
+    if (!pendampingActive || !pendampingSelection[pendampingActive]) {
+        box.innerHTML = '<div class="text-muted small">Centang salah satu mapel di atas untuk memilih kelasnya.</div>';
+        return;
+    }
+
+    if (!studyGroups.length) {
+        box.innerHTML = '<div class="alert alert-light border mb-0 small">Belum ada kelas aktif pada tahun ajaran ini.</div>';
+        return;
+    }
+
+    const head = document.createElement('div');
+    head.className = 'fw-semibold small mb-2';
+    head.textContent = 'Kelas untuk ' + pendampingSelection[pendampingActive].label;
+    box.appendChild(head);
+
+    const row = document.createElement('div');
+    row.className = 'row g-1';
+    studyGroups.forEach(sg => {
+        const col = document.createElement('div');
+        col.className = 'col-md-3 col-6';
+        const wrap = document.createElement('label');
+        wrap.className = 'form-check mb-0';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'form-check-input pendamping-task-pair';
+        input.value = sg.id;
+        input.checked = !!pendampingSelection[pendampingActive].groups[sg.id];
+        const text = document.createElement('span');
+        text.className = 'form-check-label small';
+        text.textContent = sg.name;
+        wrap.appendChild(input); wrap.appendChild(text);
+        col.appendChild(wrap); row.appendChild(col);
+    });
+    box.appendChild(row);
+}
+
+document.addEventListener('change', function (event) {
+    const cb = event.target;
+    if (cb.classList.contains('pendamping-task-subject')) {
+        if (cb.checked) {
+            pendampingSelection[cb.value] = pendampingSelection[cb.value] || { label: cb.dataset.label || '', groups: {} };
+            pendampingActive = cb.value;
+        } else {
+            delete pendampingSelection[cb.value];
+            if (pendampingActive === cb.value) {
+                const rest = Object.keys(pendampingSelection);
+                pendampingActive = rest.length ? rest[0] : null;
+            }
+        }
+        renderPendampingClasses();
+        refreshPendampingSummary();
+    }
+
+    if (cb.classList.contains('pendamping-task-pair') && pendampingActive && pendampingSelection[pendampingActive]) {
+        const label = cb.parentNode.querySelector('.form-check-label');
+        if (cb.checked) {
+            pendampingSelection[pendampingActive].groups[cb.value] = label ? label.textContent.trim() : cb.value;
+        } else {
+            delete pendampingSelection[pendampingActive].groups[cb.value];
+        }
+        refreshPendampingSummary();
+    }
+});
+
+document.addEventListener('click', function (event) {
+    const item = event.target.closest('.pendamping-task-item');
+    if (!item) return;
+    const cb = item.querySelector('.pendamping-task-subject');
+    if (!cb || event.target === cb) return;
+    if (pendampingSelection[cb.value]) { pendampingActive = cb.value; renderPendampingClasses(); }
+});
+
+document.addEventListener('input', function (event) {
+    if (event.target.id !== 'pendampingTaskSearch') return;
+    const term = event.target.value.trim().toLowerCase();
+    let shown = 0;
+    document.querySelectorAll('.pendamping-task-item').forEach(item => {
+        const hit = term === '' || (item.dataset.name || '').includes(term);
+        item.classList.toggle('d-none', !hit);
+        if (hit) shown++;
+    });
+    const empty = document.getElementById('pendampingTaskEmpty');
+    if (empty) empty.classList.toggle('d-none', shown > 0);
+});
 
 function addTaskFromModal() {
     const tid = document.getElementById('taskTeacherSelect').value;
@@ -1187,12 +1386,40 @@ function addTaskFromModal() {
     const teacher = teachers.find(t => String(t.id) === String(tid));
     if (!teacher) { showWarning('Guru tidak ditemukan.'); return; }
 
-    let taskCode = '', taskName = '', hours = 0, rombelId = null;
+    let taskCode = '', taskName = '', hours = 0, rombelId = null, pendamping = null;
     const selectedOption = document.getElementById('taskTypeSelect').selectedOptions[0];
     const selectedCode = selectedOption?.dataset.code || '';
     const selectedName = selectedOption?.dataset.name || selectedOption?.text || '';
 
-    if (type === 'wali_kelas' || selectedCode === 'wali-kelas') {
+    if (selectedOption?.dataset.pendamping === '1') {
+        // Guru Pendamping: yang disimpan adalah pasangan mapel-kelas, dan JP
+        // dijumlahkan dari Peta Kurikulum — bukan diketik manual.
+        const pairs = Object.keys(pendampingSelection)
+            .map(subjectId => ({
+                subject_id: subjectId,
+                subject: pendampingSelection[subjectId].label,
+                group_ids: Object.keys(pendampingSelection[subjectId].groups),
+            }))
+            .filter(row => row.group_ids.length);
+
+        if (!pairs.length) {
+            showWarning('Pilih minimal satu mapel dan satu kelas untuk Guru Pendamping.');
+            return;
+        }
+
+        taskCode = selectedCode;
+        taskName = selectedName || selectedCode;
+        pendamping = pairs.map(row => ({
+            subject_id: row.subject_id,
+            subject: row.subject,
+            group_ids: row.group_ids,
+            rombel: row.group_ids.map(id => (studyGroups.find(sg => String(sg.id) === String(id))?.name) || id),
+        }));
+        hours = pairs.reduce(
+            (sum, row) => sum + row.group_ids.reduce((acc, gid) => acc + pendampingHoursFor(row.subject_id, gid), 0),
+            0
+        );
+    } else if (type === 'wali_kelas' || selectedCode === 'wali-kelas') {
         const sgId = document.getElementById('taskRombelSelect').value;
         if (!sgId) { showWarning('Pilih rombel untuk Wali Kelas.'); return; }
         const sgName = document.querySelector(`#taskRombelSelect option[value="${sgId}"]`)?.text || '';
@@ -1228,7 +1455,10 @@ function addTaskFromModal() {
     const duplicate = activeTasks[tid].some(t => t.code === taskCode && (!rombelId || String(t.studyGroupId) === String(rombelId)));
     if (duplicate) { showWarning('Tugas tersebut sudah ada untuk GTK ini.'); return; }
 
-    activeTasks[tid].push({ name: taskName, code: taskCode, hours, studyGroupId: rombelId });
+    activeTasks[tid].push({ name: taskName, code: taskCode, hours, studyGroupId: rombelId, pendamping });
+
+    document.getElementById('taskTypeSelect').value = '';
+    toggleTaskFields();
     renderMatrix();
     scheduleAutosave();
 
@@ -1506,6 +1736,10 @@ document.getElementById('decreeForm').addEventListener('submit', function () {
             tasksArr.push({
                 teacher_id: tid, task_name: t.name, task_code: t.code,
                 weekly_hours: t.hours, study_group_id: t.studyGroupId || null,
+                pendamping: (t.pendamping || []).map(row => ({
+                    subject_id: row.subject_id,
+                    group_ids: row.group_ids,
+                })),
             });
         });
     });
@@ -1591,6 +1825,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hours: task.hours,
             studyGroupId: task.studyGroupId ?? task.study_group_id ?? null,
             rombel: task.rombel || null,
+            pendamping: task.pendamping || [],
         }));
     });
 

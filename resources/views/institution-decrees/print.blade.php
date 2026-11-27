@@ -87,6 +87,9 @@
                 <td class="text-center" style="font-size:9px; line-height:1.4;">
                     @forelse($row['tasks'] as $task)
                         <div>{{ $task['name'] }} ({{ (int) $task['weekly_hours'] }}JP)</div>
+                        @foreach(($task['pendamping'] ?? []) as $pair)
+                            <div style="font-size:8px;">{{ $pair['subject'] }}: {{ implode(', ', $pair['rombel']) }}</div>
+                        @endforeach
                     @empty — @endforelse
                 </td>
                 <td class="text-center fw-bold bg-primary-subtle">{{ (int) $row['total_hours'] }}</td>

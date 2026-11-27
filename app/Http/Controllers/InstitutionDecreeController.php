@@ -9,6 +9,7 @@ use App\Models\AdditionalTaskType;
 use App\Models\AdditionalTaskTypeWorkUnitHour;
 use App\Models\GtkAdditionalTask;
 use App\Models\GtkCrossUnitAssignment;
+use App\Models\GradeLevelSubject;
 use App\Models\GtkEmployment;
 use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
@@ -146,6 +147,8 @@ class InstitutionDecreeController extends Controller
         $positionOptions = collect();
         $jpDefaults = [];
         $taskTypeOptions = collect();
+        $pendampingSubjects = [];
+        $pendampingHoursByGrade = [];
         if ($teachers->isNotEmpty()) {
             $teacherIds = $teachers->pluck('id');
             $workUnitId = $selectedSchool?->work_unit_id;
@@ -305,7 +308,22 @@ class InstitutionDecreeController extends Controller
                 'nama' => $type->nama,
                 'kode' => $type->kode,
                 'hours' => (float) ($taskHourMap[$type->id] ?? ($type->kode === 'wali-kelas' ? 12 : 3)),
+                'pendamping' => $type->isGuruPendamping(),
             ])->values();
+
+            // Mapel yang boleh didampingi, dari master tipe tugas.
+            $pendampingSubjects = AdditionalTaskType::guruPendamping()?->subjects()
+                ->pluck('subject_id')
+                ->map(fn ($id) => (string) $id)
+                ->all() ?? [];
+
+            // JP per mapel untuk tingkat kelas pada tahun ajaran SK ini.
+            $pendampingHoursByGrade = GradeLevelSubject::query()
+                ->when($selectedAyId, fn ($q) => $q->forAcademicYear($selectedAyId)->orderByAcademicYearFirst())
+                ->get(['subject_id', 'grade_level_id', 'allocation_hours'])
+                ->groupBy(fn ($row) => $row->grade_level_id.'|'.$row->subject_id)
+                ->map(fn ($rows) => (int) $rows->first()->allocation_hours)
+                ->all();
 
             $positionOrder = $positionOptions->mapWithKeys(
                 fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
@@ -326,7 +344,7 @@ class InstitutionDecreeController extends Controller
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions', 'crossUnitByTeacher'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions', 'crossUnitByTeacher', 'pendampingSubjects', 'pendampingHoursByGrade'
         ));
     }
 
@@ -688,7 +706,12 @@ class InstitutionDecreeController extends Controller
             ])->values()->all())
             ->all();
 
-        $currentTasks = OtherTeacherTask::with(['additionalTaskType:id,nama,kode', 'studyGroup:id,name'])
+        $currentTasks = OtherTeacherTask::with([
+            'additionalTaskType:id,nama,kode',
+            'studyGroup:id,name',
+            'pendampingSubjects.subject:id,name',
+            'pendampingSubjects.studyGroup:id,name',
+        ])
             ->where('decree_id', $decree->id)
             ->where('is_active', true)
             ->get()
@@ -699,6 +722,18 @@ class InstitutionDecreeController extends Controller
                 'code' => $task->additionalTaskType?->kode ?? $task->task_code,
                 'study_group_id' => $task->study_group_id,
                 'rombel' => $task->studyGroup?->name,
+                // Pasangan mapel–kelas untuk Guru Pendamping. Mapel yang sama
+                // di beberapa kelas digabung agar tabel tidak berulang.
+                'pendamping' => $task->pendampingSubjects
+                    ->groupBy(fn ($p) => (string) $p->subject_id)
+                    ->map(fn ($pairs) => [
+                        'subject_id' => (string) $pairs->first()->subject_id,
+                        'subject' => $pairs->first()->subject?->name,
+                        'group_ids' => $pairs->map(fn ($p) => (string) $p->study_group_id)->values()->all(),
+                        'rombel' => $pairs->map(fn ($p) => $p->studyGroup?->name)->filter()->values()->all(),
+                    ])
+                    ->values()
+                    ->all(),
             ])->values()->all())
             ->all();
 

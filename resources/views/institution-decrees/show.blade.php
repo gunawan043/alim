@@ -286,6 +286,11 @@
                                                             @if($task['study_group_name']) · {{ $task['study_group_name'] }} @endif
                                                             @if($task['weekly_hours']) · {{ (int) $task['weekly_hours'] }} JP @endif
                                                         </span>
+                                                        @foreach(($task['pendamping'] ?? []) as $pair)
+                                                            <div class="small text-muted">
+                                                                {{ $pair['subject'] }}: {{ implode(', ', $pair['rombel']) }}
+                                                            </div>
+                                                        @endforeach
                                                     @endif
                                                 </td>
                                                 @foreach($sortedGrades as $grade)

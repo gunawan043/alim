@@ -9,6 +9,7 @@ use App\Models\GtkEmployment;
 use App\Models\GtkWorkUnit;
 use App\Models\InstitutionDecree;
 use App\Models\OtherTeacherTask;
+use App\Models\OtherTeacherTaskSubject;
 use App\Models\School;
 use App\Models\StructuralAssignment;
 use App\Models\StructuralPosition;
@@ -19,6 +20,7 @@ use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\User;
 use App\Services\DecreePositionOrdering;
+use App\Services\GuruPendampingHours;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -34,6 +36,10 @@ use Illuminate\Support\Str;
  */
 class InstitutionDecreeMatrixService
 {
+    public function __construct(private GuruPendampingHours $pendamping)
+    {
+    }
+
     /**
      * Data untuk halaman detail/cetak. Default memakai snapshot agar cetak ulang
      * tidak berubah ketika data master diperbarui.
@@ -117,7 +123,12 @@ class InstitutionDecreeMatrixService
             ->get()
             ->keyBy('user_id');
 
-        $tasks = OtherTeacherTask::with(['additionalTaskType:id,nama,kode', 'studyGroup:id,name'])
+        $tasks = OtherTeacherTask::with([
+            'additionalTaskType:id,nama,kode',
+            'studyGroup:id,name',
+            'pendampingSubjects.subject:id,name',
+            'pendampingSubjects.studyGroup:id,name',
+        ])
             ->where('academic_year_id', $ayId)
             ->where('school_id', $schoolId)
             ->where(fn ($q) => $q->where('decree_id', $decree->id)->orWhereNull('decree_id'))
@@ -218,6 +229,15 @@ class InstitutionDecreeMatrixService
                 'study_group_id' => $task->study_group_id,
                 'study_group_name' => $task->studyGroup?->name,
                 'weekly_hours' => (int) $task->weekly_hours,
+                // Guru Pendamping: rincian mapel beserta kelasnya.
+                'pendamping' => $task->pendampingSubjects
+                    ->groupBy(fn ($p) => (string) $p->subject_id)
+                    ->map(fn ($pairs) => [
+                        'subject' => $pairs->first()->subject?->name ?? '-',
+                        'rombel' => $pairs->map(fn ($p) => $p->studyGroup?->name)->filter()->values()->all(),
+                    ])
+                    ->values()
+                    ->all(),
             ])->values()->all();
 
             $taskHours = (int) $teacherTasks->sum('weekly_hours');
@@ -513,6 +533,57 @@ class InstitutionDecreeMatrixService
         ];
     }
 
+    /**
+     * Payload pasangan mapel–kelas dari klien: [{subject_id, group_ids: []}].
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function pendampingPayload(array $task): array
+    {
+        $rows = $task['pendamping'] ?? [];
+
+        if (! is_array($rows)) {
+            return [];
+        }
+
+        $payload = [];
+        foreach ($rows as $row) {
+            if (! is_array($row) || empty($row['subject_id'])) {
+                continue;
+            }
+            $groups = array_values(array_filter(array_map('strval', (array) ($row['group_ids'] ?? []))));
+            if ($groups !== []) {
+                $payload[(string) $row['subject_id']] = $groups;
+            }
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Simpan ulang pasangan mapel–kelas milik satu tugas.
+     *
+     * @param  array<string, array<int, string>>|null  $pairs
+     */
+    private function syncPendampingPairs(OtherTeacherTask $task, ?array $pairs): void
+    {
+        if ($pairs === null) {
+            return;
+        }
+
+        $task->pendampingSubjects()->delete();
+
+        foreach ($pairs as $subjectId => $groupIds) {
+            foreach ($groupIds as $groupId) {
+                OtherTeacherTaskSubject::create([
+                    'other_teacher_task_id' => $task->id,
+                    'subject_id' => $subjectId,
+                    'study_group_id' => $groupId,
+                ]);
+            }
+        }
+    }
+
     private function syncTasks(InstitutionDecree $decree, array $tasks, string $schoolId, bool $replace): array
     {
         $ayId = $decree->academic_year_id;
@@ -581,6 +652,14 @@ class InstitutionDecreeMatrixService
                 ?: 'custom-'.Str::slug($name);
             $code = Str::limit((string) $code, 50, '');
 
+            // Guru Pendamping: simpan pasangan mapel–kelas dan hitung JP dari
+            // Peta Kurikulum, mengabaikan angka JP kiriman klien.
+            $pairs = [];
+            if ($type?->isGuruPendamping()) {
+                $pairs = $this->pendamping->pairing($type, $this->pendampingPayload($task));
+                $studyGroupId = null;
+            }
+
             $payload = [
                 'teacher_id' => $teacherId,
                 'school_id' => $schoolId,
@@ -591,7 +670,9 @@ class InstitutionDecreeMatrixService
                 'study_group_id' => $studyGroupId,
                 'task_name' => $type?->nama ?? $name,
                 'task_code' => $code,
-                'weekly_hours' => max(0, (int) ($task['weekly_hours'] ?? 0)),
+                'weekly_hours' => $pairs
+                    ? $this->pendamping->totalHours($type, $pairs, $schoolId)
+                    : max(0, (int) ($task['weekly_hours'] ?? 0)),
                 'is_active' => true,
             ];
 
@@ -615,12 +696,15 @@ class InstitutionDecreeMatrixService
                 $used[$model->id] = true;
                 $created++;
             }
+
+            $this->syncPendampingPairs($model, $type?->isGuruPendamping() ? $pairs : null);
         }
 
         $deleted = 0;
         if ($replace) {
             foreach ($managed as $row) {
                 if (! isset($used[$row->id])) {
+                    $row->pendampingSubjects()->delete();
                     $row->delete();
                     $deleted++;
                 }
