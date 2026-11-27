@@ -522,7 +522,7 @@ class NilaiKelasController extends Controller
                 $tahfidzBooks,
                 $tahfidzScores,
                 $students->pluck('student_id'),
-                $selectedAy,
+                $academicYears->firstWhere('id', $selectedAyId),
                 $selectedSemester,
             );
         }
