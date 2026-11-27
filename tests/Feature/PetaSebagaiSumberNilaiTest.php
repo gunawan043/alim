@@ -6,7 +6,10 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\Role;
+use App\Models\NilaiSumatif;
 use App\Models\School;
+use App\Models\Student;
+use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
@@ -271,5 +274,78 @@ class PetaSebagaiSumberNilaiTest extends TestCase
 
         // Halaman rapor menampilkan nomor urut dari Peta (BAR 1, FQH 2, MTK 3).
         $response->assertSeeInOrder(['Bahasa Arab', 'Fiqih', 'Matematika']);
+    }
+
+    public function test_filter_leger_pondok_menghitung_rata_rata_dari_mapel_pondok_saja(): void
+    {
+        // Pondok: Bahasa Arab; Pondok + Dinas: Fiqih; Dinas: Matematika.
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok']);
+        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok_dinas']);
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas']);
+
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'SANTRI FILTER',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        StudentClassHistory::create([
+            'student_id' => $student->id,
+            'study_group_id' => $this->groupA->id,
+            'academic_year_id' => $this->ay->id,
+            'attendance_number' => 1,
+            'is_active' => true,
+        ]);
+
+        $nilai = [
+            ['BAR', 60],
+            ['FQH', 90],
+            ['MTK', 30],
+        ];
+
+        foreach ($nilai as [$code, $score]) {
+            NilaiSumatif::create([
+                'admin_book_id' => $this->booksA[$code]->id,
+                'student_id' => $student->id,
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'sts' => $score,
+            ]);
+        }
+
+        $avg = function (string $sumber) use ($student): float {
+            $response = $this->actingAs($this->user)->get(
+                '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts'
+                .'?tab=leger&leger=sts&sumber='.$sumber
+            )->assertOk();
+
+            return (float) $response->viewData('legerAggMap')[$student->id];
+        };
+
+        // Filter juga menentukan mapel yang tampil di tabel.
+        $this->assertSame(['Bahasa Arab', 'Fiqih'], $this->filteredSubjectNames('pondok'));
+        $this->assertSame(['Fiqih', 'Matematika'], $this->filteredSubjectNames('dinas'));
+        $this->assertSame(['Bahasa Arab', 'Fiqih', 'Matematika'], $this->filteredSubjectNames('semua'));
+
+        // Pondok: BAR 60 + FQH 90 (pondok+dinas) = 75; Matematika tidak ikut.
+        $this->assertSame(75.0, $avg('pondok'));
+        // Dinas: FQH 90 + MTK 30 = 60; Bahasa Arab tidak ikut.
+        $this->assertSame(60.0, $avg('dinas'));
+        // Semua: (60 + 90 + 30) ÷ 3 = 60.
+        $this->assertSame(60.0, $avg('semua'));
+    }
+
+    private function filteredSubjectNames(string $sumber): array
+    {
+        $response = $this->actingAs($this->user)->get(
+            '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts'
+            .'?tab=leger&leger=sts&sumber='.$sumber
+        )->assertOk();
+
+        return $response->viewData('legerSubjectMap')
+            ->map(fn ($subject) => $subject->name)
+            ->values()
+            ->all();
     }
 }
