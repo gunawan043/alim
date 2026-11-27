@@ -742,7 +742,8 @@ class KurikulumController extends Controller
      *
      * Panah di Peta Kurikulum tidak mengirim form: posisi dihitung dari
      * susunan yang sedang tampil (blok Pondok → Dinas, lalu nomor urut), lalu
-     * mapel dan tetangganya bertukar posisi.
+     * mapel dan tetangganya bertukar posisi. Tidak ada pesan sukses: tabel
+     * langsung memperlihatkan hasilnya.
      */
     public function moveStruktur(Request $request, string $userId)
     {
@@ -821,6 +822,8 @@ class KurikulumController extends Controller
             );
         }
 
-        return back()->with('success', 'Urutan rapor diperbarui.');
+        // Tanpa flash: panah dipakai berulang, dan tabel sudah langsung
+        // menunjukkan urutan baru sehingga modal "Berhasil" hanya mengganggu.
+        return back();
     }
 }

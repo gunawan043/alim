@@ -278,7 +278,7 @@ class PetaRaporStrukturTest extends TestCase
         $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
 
         // Turunkan Bahasa Arab (Pondok #1) → bertukar dengan Fiqih.
-        $this->move('BAR', 'down')->assertRedirect();
+        $this->move('BAR', 'down')->assertRedirect()->assertSessionMissing('success');
         $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupA));
         $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupB));
 
