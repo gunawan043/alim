@@ -436,51 +436,22 @@
                         </div>
                     </div>
 
-                    {{-- Guru Pendamping: pilih mapel lalu kelasnya. JP dihitung
-                         dari Peta Kurikulum, tanpa isian manual. --}}
+                    {{-- Guru Pendamping: cukup pilih mapel, sama seperti memilih
+                         mapel pada tugas mengajar. Kelasnya dicentang pada kolom
+                         rombel di matriks. JP dihitung dari Peta Kurikulum. --}}
                     <div id="pendampingTaskWrap" class="mb-3" style="display:none;">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <label class="form-label small mb-0">Mapel &amp; kelas yang didampingi</label>
-                            <span class="badge bg-primary-subtle text-primary" id="pendampingTaskSummary">Belum ada pilihan</span>
-                        </div>
+                        <label class="form-label small mb-1">Mapel yang didampingi</label>
                         <p class="text-muted small mb-2">
-                            Pilih mapel lebih dulu, lalu centang kelas untuk mapel tersebut.
-                            JP dihitung otomatis dari Peta Kurikulum.
+                            Pilih mapel yang didampingi. Kelasnya centang pada kolom rombel
+                            di matriks. JP dihitung otomatis dari Peta Kurikulum.
                         </p>
 
-                        <div class="input-group input-group-sm mb-2">
-                            <span class="input-group-text bg-light"><i class="ri-search-line"></i></span>
-                            <input type="search" class="form-control" id="pendampingTaskSearch"
-                                   placeholder="Cari nama mapel…" autocomplete="off">
-                        </div>
-                        <div id="pendampingTaskEmpty" class="alert alert-light border mb-2 small d-none">
-                            Tidak ada mapel yang cocok dengan pencarian.
-                        </div>
+                        <div id="pendampingTaskRows" class="d-flex flex-column gap-2"></div>
 
-                        <div class="border rounded p-2 mb-2" style="max-height:180px;overflow:auto">
-                            @php $pendampingSubjectIds = collect($pendampingSubjects ?? []); @endphp
-                            @foreach(($subjects ?? collect())->filter(fn ($s) => $pendampingSubjectIds->contains((string) $s->id)) as $subject)
-                                <label class="form-check pendamping-task-item d-inline-block me-3 mb-1"
-                                       data-name="{{ \Illuminate\Support\Str::lower($subject->name.' '.$subject->code) }}">
-                                    <input type="checkbox" class="form-check-input pendamping-task-subject"
-                                           value="{{ $subject->id }}" data-label="{{ $subject->name }}">
-                                    <span class="form-check-label small">
-                                        {{ $subject->name }}
-                                        @if($subject->code)<span class="text-muted">({{ $subject->code }})</span>@endif
-                                    </span>
-                                </label>
-                            @endforeach
-
-                            @if($pendampingSubjectIds->isEmpty())
-                                <div class="text-muted small">
-                                    Belum ada mapel untuk Guru Pendamping.
-                                    Atur dulu di halaman
-                                    <a href="{{ route('user.gtk-additional-tasks.index', ['userId' => $userId]) }}">Tugas Tambahan</a>.
-                                </div>
-                            @endif
-                        </div>
-
-                        <div id="pendampingTaskClasses"></div>
+                        <button type="button" class="btn btn-sm btn-soft-primary mt-2"
+                                onclick="addPendampingSlot()">
+                            <i class="ri-add-line me-1"></i> Tambah Mapel
+                        </button>
                     </div>
 
                     <div id="customTaskWrap" style="display:none;">
@@ -791,6 +762,72 @@ function rombelCellHtml(tid, sub, sg) {
     </label>`;
 }
 
+/**
+ * Baris mapel milik tugas Guru Pendamping. Mapel tidak punya jam sendiri di
+ * activeSubjects — JP dihitung dari Peta Kurikulum setelah kelas dicentang
+ * pada kolom rombel, persis seperti tugas mengajar.
+ */
+function pendampingRows(tasks) {
+    return tasks
+        .filter(task => Array.isArray(task.pendamping) && task.pendamping.length)
+        .flatMap(task => task.pendamping.map(pair => ({ task, pair })));
+}
+
+function pendampingRombelCellHtml(tid, pair, sg) {
+    const subjectId = pair.subject_id;
+    if (!subjectId) return '';
+
+    // Kelas yang sudah dipilih tersimpan sebagai group_ids pada pasangan.
+    const chosen = Array.isArray(pair.group_ids) ? pair.group_ids.map(String) : [];
+    const checked = chosen.includes(String(sg.id));
+    const hours = pendampingHoursFor(subjectId, sg.id);
+
+    return `<label class="form-check d-inline-flex flex-column align-items-center gap-1 m-0">
+        <input type="checkbox" class="form-check-input rounded-circle pendamping-rombel-toggle m-0"
+               data-tid="${tid}" data-sid="${subjectId}" data-sgid="${sg.id}"
+               onchange="togglePendampingRombel(this)" title="Pilih rombel"
+               ${checked ? 'checked' : ''}>
+        <span class="jp-badge small fw-semibold text-success ${checked ? '' : 'd-none'}">${hours || 0} JP</span>
+    </label>`;
+}
+
+function togglePendampingRombel(toggle) {
+    const tid = toggle.dataset.tid;
+    const subjectId = String(toggle.dataset.sid);
+    const sgId = String(toggle.dataset.sgid);
+    const tasks = activeTasks[tid] || [];
+
+    // Semua baris Guru Pendamping dengan mapel ini pada GTK tersebut ikut
+    // berubah, karena kelas berlaku untuk mapel, bukan untuk satu baris.
+    tasks.forEach(task => {
+        if (!Array.isArray(task.pendamping)) return;
+        task.pendamping.forEach(pair => {
+            if (String(pair.subject_id) !== subjectId) return;
+            pair.group_ids = Array.isArray(pair.group_ids) ? pair.group_ids.map(String) : [];
+            const at = pair.group_ids.indexOf(sgId);
+            if (toggle.checked && at === -1) pair.group_ids.push(sgId);
+            if (!toggle.checked && at !== -1) pair.group_ids.splice(at, 1);
+            pair.rombel = pair.group_ids
+                .map(id => studyGroups.find(sg => String(sg.id) === id)?.name)
+                .filter(Boolean);
+        });
+    });
+
+    recalcPendampingHours(tid);
+    renderMatrix();
+    scheduleAutosave();
+}
+
+/** Hitung ulang JP tugas Guru Pendamping dari pasangan mapel-kelas. */
+function recalcPendampingHours(tid) {
+    (activeTasks[tid] || []).forEach(task => {
+        if (!Array.isArray(task.pendamping) || !task.pendamping.length) return;
+        task.hours = task.pendamping.reduce(
+            (sum, pair) => sum + (pair.group_ids || []).reduce(
+                (acc, gid) => acc + pendampingHoursFor(pair.subject_id, gid), 0), 0);
+    });
+}
+
 function renderTeacherRows(tbody, teacher, tid, number) {
     const subjects = activeSubjects[tid] || [];
     const tasks = activeTasks[tid] || [];
@@ -828,6 +865,24 @@ function renderTeacherRows(tbody, teacher, tid, number) {
         tr.innerHTML = cells;
         tbody.appendChild(tr);
     }
+
+    // Mapel Guru Pendamping mendapat baris sendiri agar kelasnya bisa
+    // dicentang pada kolom rombel, sama seperti tugas mengajar.
+    pendampingRows(tasks).forEach(({ task, pair }) => {
+        const tr = document.createElement('tr');
+        tr.dataset.teacher = tid;
+        tr.dataset.pendampingSubject = pair.subject_id || '';
+        tr.innerHTML = `
+            <td class="text-wrap">
+                <span class="badge bg-warning-subtle text-warning text-nowrap">${escapeHtml(pair.subject || pair.subject_id || '')}</span>
+                <span class="small text-muted ms-1">pendamping</span>
+            </td>
+            <td class="text-wrap"></td>
+            ${gradeCols.map((sg, gi) => `<td class="text-center rombel-col ${gi > 0 && sg.level !== gradeCols[gi - 1].level ? 'grade-start' : ''} grade-${gradeBand(sg.level)}">${pendampingRombelCellHtml(tid, pair, sg)}</td>`).join('')}
+            <td class="text-center fw-semibold row-jp">${pendampingPairHours(pair)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 /**
@@ -953,9 +1008,32 @@ function refreshTotal(tid) {
             if (cell) cell.textContent = subjectTotalHours(sub);
         });
 
+        // Mapel Guru Pendamping punya baris sendiri; JP-nya dari pasangan
+        // mapel-kelas yang dicentang pada kolom rombel.
+        document.querySelectorAll(`tr[data-teacher="${t}"][data-pendamping-subject]`).forEach(row => {
+            const subjectId = row.dataset.pendampingSubject;
+            const pair = pendampingPairOf(t, subjectId);
+            const cell = row.querySelector('.row-jp');
+            if (cell) cell.textContent = pair ? pendampingPairHours(pair) : 0;
+        });
+
         const totalEl = document.getElementById(`teacher-total-${t}`);
         if (totalEl) totalEl.textContent = teacherTotalHours(t);
     });
+}
+
+/** Pasangan mapel-kelas milik GTK untuk satu mapel pendamping. */
+function pendampingPairOf(tid, subjectId) {
+    for (const task of (activeTasks[tid] || [])) {
+        if (!Array.isArray(task.pendamping)) continue;
+        const pair = task.pendamping.find(p => String(p.subject_id) === String(subjectId));
+        if (pair) return pair;
+    }
+    return null;
+}
+
+function pendampingPairHours(pair) {
+    return (pair.group_ids || []).reduce((acc, gid) => acc + pendampingHoursFor(pair.subject_id, gid), 0);
 }
 
 function refreshSubjectRepeater() {
@@ -1237,17 +1315,7 @@ function toggleTaskFields() {
 
     if (isPendamping) {
         resetPendampingPicker();
-        document.querySelectorAll('.pendamping-task-subject').forEach(cb => {
-            cb.checked = !!pendampingSelection[cb.value];
-            if (pendampingSelection[cb.value] && cb.closest('.pendamping-task-item')) {
-                cb.closest('.pendamping-task-item').classList.remove('d-none');
-            }
-        });
-        if (!pendampingActive && Object.keys(pendampingSelection).length) {
-            pendampingActive = Object.keys(pendampingSelection)[0];
-        }
-        renderPendampingClasses();
-        refreshPendampingSummary();
+        if (!pendampingPicks.length) addPendampingSlot();
     }
 }
 
@@ -1255,127 +1323,83 @@ function toggleTaskFields() {
    GURU PENDAMPING: mapel -> kelas
    --------------------------------------------------------------------- */
 // subjectId -> { label, groups: {groupId: name} }
-let pendampingSelection = {};
-let pendampingActive = null;
+// Mapel yang didampingi. Kelasnya TIDAK dipilih di sini: diketikkan pada
+// kolom rombel di matriks, sama seperti tugas mengajar.
+let pendampingPicks = [];   // [{ subjectId }]
 
 function pendampingHoursFor(subjectId, sgId) {
     const sg = studyGroups.find(s => String(s.id) === String(sgId));
     if (!sg) return 0;
     // JP dibaca dari Peta Kurikulum per tingkat: kunci "grade_level_id|subject_id".
-    const key = `${sg.gradeLevelId}|${subjectId}`;
-    return parseFloat(pendampingHoursByGrade[key]) || 0;
+    return parseFloat(pendampingHoursByGrade[`${sg.gradeLevelId}|${subjectId}`]) || 0;
+}
+
+function subjectNameOf(id) {
+    const sub = subjects.find(s => String(s.id) === String(id));
+    return sub ? sub.name : '';
+}
+
+function addPendampingSlot() {
+    pendampingPicks.push({ subjectId: '' });
+    renderPendampingPicker();
+}
+
+function removePendampingSlot(index) {
+    pendampingPicks.splice(index, 1);
+    renderPendampingPicker();
 }
 
 function resetPendampingPicker() {
-    pendampingSelection = {};
-    pendampingActive = null;
-    document.querySelectorAll('.pendamping-task-subject').forEach(cb => { cb.checked = false; });
-    const search = document.getElementById('pendampingTaskSearch');
-    if (search) search.value = '';
-    const empty = document.getElementById('pendampingTaskEmpty');
-    if (empty) empty.classList.add('d-none');
-    renderPendampingClasses();
-    refreshPendampingSummary();
+    pendampingPicks = [];
+    renderPendampingPicker();
 }
 
-function refreshPendampingSummary() {
-    const badge = document.getElementById('pendampingTaskSummary');
-    if (!badge) return;
-    const ids = Object.keys(pendampingSelection).filter(id => Object.keys(pendampingSelection[id].groups).length);
-    if (!ids.length) { badge.textContent = 'Belum ada pilihan'; return; }
-    const pairs = ids.reduce((sum, id) => sum + Object.keys(pendampingSelection[id].groups).length, 0);
-    badge.textContent = `${ids.length} mapel · ${pairs} kelas`;
+function pendampingSubjectOptions(selectedId, index) {
+    const taken = pendampingPicks
+        .filter((_, i) => i !== index)
+        .map(p => String(p.subjectId));
+
+    return '<option value="">— Pilih Mapel —</option>'
+        + subjects
+            .filter(sub => !taken.includes(String(sub.id)))
+            .map(sub => `<option value="${sub.id}" ${String(sub.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(sub.name)}</option>`)
+            .join('');
 }
 
-function renderPendampingClasses() {
-    const box = document.getElementById('pendampingTaskClasses');
+function renderPendampingPicker() {
+    const box = document.getElementById('pendampingTaskRows');
     if (!box) return;
-    box.innerHTML = '';
 
-    if (!pendampingActive || !pendampingSelection[pendampingActive]) {
-        box.innerHTML = '<div class="text-muted small">Centang salah satu mapel di atas untuk memilih kelasnya.</div>';
+    if (!pendampingPicks.length) {
+        box.innerHTML = '<div class="text-muted small">Belum ada mapel. Klik "Tambah Mapel".</div>';
         return;
     }
 
-    if (!studyGroups.length) {
-        box.innerHTML = '<div class="alert alert-light border mb-0 small">Belum ada kelas aktif pada tahun ajaran ini.</div>';
-        return;
+    box.innerHTML = pendampingPicks.map((pick, index) => `
+        <div class="d-flex align-items-center gap-2">
+            <select class="form-select form-select-sm pendamping-task-subject"
+                    data-index="${index}" onchange="changePendampingSubject(this)">
+                ${pendampingSubjectOptions(pick.subjectId, index)}
+            </select>
+            <button type="button" class="btn btn-sm btn-icon btn-soft-danger flex-shrink-0"
+                    onclick="removePendampingSlot(${index})" title="Hapus Mapel">
+                <i class="ri-delete-bin-6-line"></i>
+            </button>
+        </div>`).join('');
+
+    if (typeof window.initSearchableSelects === 'function') {
+        window.initSearchableSelects(box);
     }
-
-    const head = document.createElement('div');
-    head.className = 'fw-semibold small mb-2';
-    head.textContent = 'Kelas untuk ' + pendampingSelection[pendampingActive].label;
-    box.appendChild(head);
-
-    const row = document.createElement('div');
-    row.className = 'row g-1';
-    studyGroups.forEach(sg => {
-        const col = document.createElement('div');
-        col.className = 'col-md-3 col-6';
-        const wrap = document.createElement('label');
-        wrap.className = 'form-check mb-0';
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.className = 'form-check-input pendamping-task-pair';
-        input.value = sg.id;
-        input.checked = !!pendampingSelection[pendampingActive].groups[sg.id];
-        const text = document.createElement('span');
-        text.className = 'form-check-label small';
-        text.textContent = sg.name;
-        wrap.appendChild(input); wrap.appendChild(text);
-        col.appendChild(wrap); row.appendChild(col);
-    });
-    box.appendChild(row);
 }
 
-document.addEventListener('change', function (event) {
-    const cb = event.target;
-    if (cb.classList.contains('pendamping-task-subject')) {
-        if (cb.checked) {
-            pendampingSelection[cb.value] = pendampingSelection[cb.value] || { label: cb.dataset.label || '', groups: {} };
-            pendampingActive = cb.value;
-        } else {
-            delete pendampingSelection[cb.value];
-            if (pendampingActive === cb.value) {
-                const rest = Object.keys(pendampingSelection);
-                pendampingActive = rest.length ? rest[0] : null;
-            }
-        }
-        renderPendampingClasses();
-        refreshPendampingSummary();
-    }
+function changePendampingSubject(select) {
+    const index = parseInt(select.dataset.index, 10) || 0;
+    if (!pendampingPicks[index]) return;
+    pendampingPicks[index].subjectId = select.value;
+    // Opsi dipilih ulang agar mapel yang sama tidak bisa dipilih dua kali.
+    renderPendampingPicker();
+}
 
-    if (cb.classList.contains('pendamping-task-pair') && pendampingActive && pendampingSelection[pendampingActive]) {
-        const label = cb.parentNode.querySelector('.form-check-label');
-        if (cb.checked) {
-            pendampingSelection[pendampingActive].groups[cb.value] = label ? label.textContent.trim() : cb.value;
-        } else {
-            delete pendampingSelection[pendampingActive].groups[cb.value];
-        }
-        refreshPendampingSummary();
-    }
-});
-
-document.addEventListener('click', function (event) {
-    const item = event.target.closest('.pendamping-task-item');
-    if (!item) return;
-    const cb = item.querySelector('.pendamping-task-subject');
-    if (!cb || event.target === cb) return;
-    if (pendampingSelection[cb.value]) { pendampingActive = cb.value; renderPendampingClasses(); }
-});
-
-document.addEventListener('input', function (event) {
-    if (event.target.id !== 'pendampingTaskSearch') return;
-    const term = event.target.value.trim().toLowerCase();
-    let shown = 0;
-    document.querySelectorAll('.pendamping-task-item').forEach(item => {
-        const hit = term === '' || (item.dataset.name || '').includes(term);
-        item.classList.toggle('d-none', !hit);
-        if (hit) shown++;
-    });
-    const empty = document.getElementById('pendampingTaskEmpty');
-    if (empty) empty.classList.toggle('d-none', shown > 0);
-});
 
 function addTaskFromModal() {
     const tid = document.getElementById('taskTeacherSelect').value;
@@ -1392,33 +1416,27 @@ function addTaskFromModal() {
     const selectedName = selectedOption?.dataset.name || selectedOption?.text || '';
 
     if (selectedOption?.dataset.pendamping === '1') {
-        // Guru Pendamping: yang disimpan adalah pasangan mapel-kelas, dan JP
-        // dijumlahkan dari Peta Kurikulum — bukan diketik manual.
-        const pairs = Object.keys(pendampingSelection)
-            .map(subjectId => ({
-                subject_id: subjectId,
-                subject: pendampingSelection[subjectId].label,
-                group_ids: Object.keys(pendampingSelection[subjectId].groups),
-            }))
-            .filter(row => row.group_ids.length);
+        // Guru Pendamping: cukup mapel. Kelasnya dicentang pada kolom rombel
+        // di matriks (sama seperti tugas mengajar), dan JP dihitung server
+        // dari Peta Kurikulum.
+        const subjectIds = pendampingPicks
+            .map(p => p.subjectId)
+            .filter(Boolean);
 
-        if (!pairs.length) {
-            showWarning('Pilih minimal satu mapel dan satu kelas untuk Guru Pendamping.');
+        if (!subjectIds.length) {
+            showWarning('Pilih minimal satu mapel untuk Guru Pendamping.');
             return;
         }
 
         taskCode = selectedCode;
         taskName = selectedName || selectedCode;
-        pendamping = pairs.map(row => ({
-            subject_id: row.subject_id,
-            subject: row.subject,
-            group_ids: row.group_ids,
-            rombel: row.group_ids.map(id => (studyGroups.find(sg => String(sg.id) === String(id))?.name) || id),
+        pendamping = subjectIds.map(id => ({
+            subject_id: id,
+            subject: subjectNameOf(id),
+            group_ids: [],
+            rombel: [],
         }));
-        hours = pairs.reduce(
-            (sum, row) => sum + row.group_ids.reduce((acc, gid) => acc + pendampingHoursFor(row.subject_id, gid), 0),
-            0
-        );
+        hours = 0; // Menunggu kelas dicentang di matriks.
     } else if (type === 'wali_kelas' || selectedCode === 'wali-kelas') {
         const sgId = document.getElementById('taskRombelSelect').value;
         if (!sgId) { showWarning('Pilih rombel untuk Wali Kelas.'); return; }

@@ -238,4 +238,60 @@ class DecreePendampingTaskTest extends TestCase
         $this->assertEqualsCanonicalizing(['7A', '7B'], $bySubject['Matematika']['rombel']);
         $this->assertSame(['7B'], $bySubject['IPA']['rombel']);
     }
+
+    public function test_mapel_boleh_disimpan_tanpa_kelas_lalu_kelas_dicentang_belakangan(): void
+    {
+        // Alur baru: modal SK hanya memilih mapel; kelas dicentang pada
+        // kolom rombel di matriks, seperti tugas mengajar.
+        $this->sync([[
+            'teacher_id' => $this->guru->id,
+            'task_name' => 'Guru Pendamping',
+            'task_code' => 'guru-pendamping',
+            'pendamping' => [
+                ['subject_id' => $this->matematika->id, 'group_ids' => []],
+            ],
+        ]]);
+
+        $task = OtherTeacherTask::where('teacher_id', $this->guru->id)->firstOrFail();
+
+        $this->assertSame(0, $task->weekly_hours, 'Tanpa kelas, JP belum dihitung.');
+        $this->assertSame(1, OtherTeacherTaskSubject::where('other_teacher_task_id', $task->id)->count(),
+            'Mapel tetap tercatat walau kelasnya belum dipilih.');
+
+        // Kelas dicentang di matriks: kirim ulang dengan kelasnya.
+        $this->sync([[
+            'teacher_id' => $this->guru->id,
+            'task_name' => 'Guru Pendamping',
+            'task_code' => 'guru-pendamping',
+            'pendamping' => [
+                ['subject_id' => $this->matematika->id, 'group_ids' => [$this->kelasA->id]],
+            ],
+        ]]);
+
+        $task->refresh();
+        $this->assertSame(6, $task->weekly_hours);
+        $this->assertDatabaseHas('other_teacher_task_subjects', [
+            'other_teacher_task_id' => $task->id,
+            'subject_id' => $this->matematika->id,
+            'study_group_id' => $this->kelasA->id,
+        ]);
+    }
+
+    public function test_mapel_guru_pendamping_diambil_dari_semua_mapel_satuan_pendidikan(): void
+    {
+        // Mapel yang tampil di modal harus SEMUA mapel aktif sekolah, bukan
+        // hanya yang terdaftar di master tipe tugas.
+        $tambahan = Subject::create([
+            'school_id' => $this->school->id, 'name' => 'Bahasa Arab', 'code' => 'BAR', 'is_active' => true,
+        ]);
+
+        $allowed = Subject::where('is_active', true)->where('school_id', $this->school->id)->pluck('id')->all();
+
+        $this->assertContains($tambahan->id, $allowed);
+        $this->assertNotContains(
+            AdditionalTaskSubject::pluck('subject_id')->all(),
+            [$tambahan->id],
+            'Bahasa Arab sengaja tidak terdaftar di master tipe tugas.'
+        );
+    }
 }

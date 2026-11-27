@@ -59,6 +59,12 @@ class OtherTeacherTaskController extends Controller
         }
 
         foreach ($payload as $subjectId => $groupIds) {
+            // Tanpa kelas: tetap satu baris dengan study_group_id NULL, agar
+            // mapel tidak hilang dan JP menunggu kelasnya dipilih.
+            if ($groupIds === []) {
+                $groupIds = [null];
+            }
+
             foreach ($groupIds as $groupId) {
                 OtherTeacherTaskSubject::create([
                     'other_teacher_task_id' => $task->id,

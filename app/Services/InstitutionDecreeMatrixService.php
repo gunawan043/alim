@@ -551,10 +551,10 @@ class InstitutionDecreeMatrixService
             if (! is_array($row) || empty($row['subject_id'])) {
                 continue;
             }
+            // Mapel tanpa kelas tetap dipertahankan: kelas dicentang pada
+            // kolom rombel, jadi mapel bisa tersimpan lebih dulu.
             $groups = array_values(array_filter(array_map('strval', (array) ($row['group_ids'] ?? []))));
-            if ($groups !== []) {
-                $payload[(string) $row['subject_id']] = $groups;
-            }
+            $payload[(string) $row['subject_id']] = $groups;
         }
 
         return $payload;
@@ -574,6 +574,12 @@ class InstitutionDecreeMatrixService
         $task->pendampingSubjects()->delete();
 
         foreach ($pairs as $subjectId => $groupIds) {
+            // Tanpa kelas: tetap satu baris dengan study_group_id NULL, agar
+            // mapel tidak hilang dan JP menunggu kelasnya dipilih.
+            if ($groupIds === []) {
+                $groupIds = [null];
+            }
+
             foreach ($groupIds as $groupId) {
                 OtherTeacherTaskSubject::create([
                     'other_teacher_task_id' => $task->id,
@@ -658,6 +664,12 @@ class InstitutionDecreeMatrixService
             if ($type?->isGuruPendamping()) {
                 $pairs = $this->pendamping->pairing($type, $this->pendampingPayload($task));
                 $studyGroupId = null;
+
+                $withoutGroup = collect($pairs)->filter(fn ($groups) => $groups === [])->count();
+                if ($withoutGroup > 0) {
+                    // JP tetap 0 untuk mapel itu sampai kelasnya dicentang.
+                    $messages[] = "{$name}: {$withoutGroup} mapel belum memiliki kelas; centang rombel pada matriks agar JP-nya dihitung.";
+                }
             }
 
             $payload = [

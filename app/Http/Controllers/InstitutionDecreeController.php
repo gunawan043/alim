@@ -311,11 +311,10 @@ class InstitutionDecreeController extends Controller
                 'pendamping' => $type->isGuruPendamping(),
             ])->values();
 
-            // Mapel yang boleh didampingi, dari master tipe tugas.
-            $pendampingSubjects = AdditionalTaskType::guruPendamping()?->subjects()
-                ->pluck('subject_id')
-                ->map(fn ($id) => (string) $id)
-                ->all() ?? [];
+            // Semua mapel aktif satuan pendidikan boleh didampingi, sama
+            // seperti memilih mapel pada tugas mengajar. Kelasnya tidak dipilih
+            // di sini: dicentang pada kolom rombel di matriks.
+            $pendampingSubjects = $subjects->pluck('id')->map(fn ($id) => (string) $id)->all();
 
             // JP per mapel untuk tingkat kelas pada tahun ajaran SK ini.
             $pendampingHoursByGrade = GradeLevelSubject::query()

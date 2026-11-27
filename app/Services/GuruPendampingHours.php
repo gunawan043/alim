@@ -126,9 +126,9 @@ class GuruPendampingHours
                     continue;
                 }
                 $groups = array_values(array_unique(array_filter(array_map('strval', $value))));
-                if ($groups !== []) {
-                    $pairs[$subjectId] = $groups;
-                }
+                // Mapel tanpa kelas tetap dicatat: kelas dicentang pada kolom
+                // rombel, jadi mapel boleh tersimpan sebelum kelasnya dipilih.
+                $pairs[$subjectId] = $groups;
 
                 continue;
             }
