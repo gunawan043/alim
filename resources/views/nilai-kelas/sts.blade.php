@@ -1343,11 +1343,35 @@
     th[data-dir="asc"]::after { content: " ▲"; font-size: 9px; color: var(--bs-primary); }
     th[data-dir="desc"]::after { content: " ▼"; font-size: 9px; color: var(--bs-primary); }
 
+    /* ── Grid tipis: spreadsheet, bukan tabel berbingkai tebal ──
+       Bootstrap memberi 1px penuh di setiap sisi sehingga garis vertikal
+       dan horizontal bertumpuk jadi terlihat tebal. Di sini hanya sisi kanan
+       dan bawah yang digambar — hasilnya satu garis tipis antar sel. */
+    #tab-leger.table-bordered, #tab-mapel.table-bordered { border-width: 0 !important; }
+    #tab-leger.table-bordered > :not(caption) > *, #tab-mapel.table-bordered > :not(caption) > * { border-width: 0 !important; }
+    #tab-leger.table-bordered > :not(caption) > * > *,
+    #tab-mapel.table-bordered > :not(caption) > * > * {
+        border-width: 0 !important;
+        border-right: 1px solid rgba(var(--bs-body-color-rgb), .12) !important;
+        border-bottom: 1px solid rgba(var(--bs-body-color-rgb), .12) !important;
+    }
+    /* Garis luar tabel tetap satu, sedikit lebih jelas sebagai batas area. */
+    #tab-leger.table-bordered > tbody > tr:first-child > *,
+    #tab-mapel.table-bordered > tbody > tr:first-child > * { border-top: 1px solid rgba(var(--bs-body-color-rgb), .18) !important; }
+    #tab-leger.table-bordered > * > tr > *:first-child,
+    #tab-mapel.table-bordered > * > tr > *:first-child { border-left: 1px solid rgba(var(--bs-body-color-rgb), .18) !important; }
+
     /* ── Baris ── */
     #tab-leger tbody tr, #tab-mapel tbody tr { transition: background-color .12s; }
     #tab-leger tbody tr:hover td, #tab-mapel tbody tr:hover td { background: rgba(var(--bs-primary-rgb), .05); }
+    /* Kolom beku saat hover: warnanya WAJIB sama dengan kolom lain, tetapi
+       harus OPAK — latar transparan membuat kolom yang bergeser di bawahnya
+       tembus pandang. Karena itu warna tipisnya dilapis di atas latar solid. */
     #tab-leger tbody tr:hover td[data-col="no"], #tab-leger tbody tr:hover td[data-col="nis"], #tab-leger tbody tr:hover td[data-col="name"],
-    #tab-mapel tbody tr:hover td[data-col="no"], #tab-mapel tbody tr:hover td[data-col="nis"], #tab-mapel tbody tr:hover td[data-col="name"] { background: var(--bs-secondary-bg); }
+    #tab-mapel tbody tr:hover td[data-col="no"], #tab-mapel tbody tr:hover td[data-col="nis"], #tab-mapel tbody tr:hover td[data-col="name"] {
+        background-color: var(--bs-body-bg);
+        background-image: linear-gradient(rgba(var(--bs-primary-rgb), .05), rgba(var(--bs-primary-rgb), .05));
+    }
 
     /* ── Tipografi seragam di tabel (12px) ── */
     #tab-leger, #tab-mapel { font-size: 12px; }
