@@ -64,10 +64,12 @@ class TahfidzRaporService
             return null;
         }
 
-        return match ($jenis) {
-            'sts' => $score->sts !== null ? (float) $score->sts : null,
-            default => $score->nr_final !== null ? (float) $score->nr_final : null,
-        };
+        // Leger menampilkan SATU angka untuk mapel tahfidz — NR Final —
+        // baik mode STS maupun SAS, agar sebanding dengan mapel umum.
+        // STS hanya dipakai bila NR Final belum terbentuk.
+        return $score->nr_final !== null
+            ? (float) $score->nr_final
+            : ($score->sts !== null ? (float) $score->sts : null);
     }
 
     public function jumlahJuz(string $studentId, string $academicYearId): int

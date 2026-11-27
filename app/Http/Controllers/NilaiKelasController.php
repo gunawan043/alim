@@ -20,7 +20,6 @@ use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\SubjectKktp;
-use App\Models\TahfidzGradebookScore;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
@@ -518,39 +517,9 @@ class NilaiKelasController extends Controller
             (string) $selectedSemester,
         );
 
-        // Kolom nilai tahfidz di leger: NPT | Ziyadah | Rabt | Tikrar | STS | SAS.
-        // Mapel tahfidz memakai kolom ini, bukan kolom STS/SAS mapel umum.
-        $tahfidzColumns = [];
-        $tahfidzValues = [];
-        $tahfidzBooks = $subjectMap
-            ->filter(fn ($subject) => app(TahfidzRaporService::class)->isTahfidzSubject($subject))
-            ->map(fn ($subject) => $bookMap[$subject->id] ?? null)
-            ->filter()
-            ->values();
-
-        if ($tahfidzBooks->isNotEmpty()) {
-            $tahfidzScores = TahfidzGradebookScore::query()
-                ->with('gradebook:id,subject_id,tahfidz_group_id')
-                ->whereIn('student_id', $students->pluck('student_id'))
-                ->whereHas('gradebook', fn ($q) => $q
-                    ->whereIn('subject_id', $tahfidzBooks->pluck('subject_id'))
-                    ->where('academic_year_id', $selectedAyId)
-                    ->where('semester', $selectedSemester)
-                    ->where('is_active', true))
-                ->get();
-
-            $tahfidzColumns = $tahfidzBooks->mapWithKeys(fn ($book) => [
-                $book->subject_id => TahfidzLegerColumns::COLUMNS,
-            ])->all();
-
-            $tahfidzValues = app(TahfidzLegerColumns::class)->valuesFor(
-                $tahfidzBooks,
-                $tahfidzScores,
-                $students->pluck('student_id'),
-                $academicYears->firstWhere('id', $selectedAyId),
-                $selectedSemester,
-            );
-        }
+        // Mapel tahfidz memakai satu kolom nilai seperti mapel umum: NR Final
+        // dari $nilaiTahfidzMap (TahfidzRaporService). Rincian kolom only
+        // ditampilkan di tab Mapel.
 
         // Komponen STS/SAS buku aktif (mis. Praktik & Tulis). Kosong = fitur mati.
         $komponenService = app(SumatifKomponenService::class);
@@ -602,7 +571,7 @@ class NilaiKelasController extends Controller
             'legerFilter', 'legerSubjectMap', 'legerSubjectIds', 'legerAgamaCount',
             'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional',
             'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap',
-            'tahfidzColumns', 'tahfidzValues', 'mapelIsTahfidz', 'tahfidzMapel'
+            'mapelIsTahfidz', 'tahfidzMapel'
         ));
     }
 
@@ -670,10 +639,18 @@ class NilaiKelasController extends Controller
             }
         }
 
-        $sampleBookId = $scores->first()?->tahfidz_gradebook_id;
-        $weights = $sampleBookId
-            ? (\App\Models\TahfidzGradebook::find($sampleBookId)?->weights() ?? [])
-            : [];
+        // Bobot milik DEPARTEMEN, bukan buku halaqah — satu angka untuk
+        // seluruh halaqah di sekolah ini pada periode yang sama. Buku lama
+        // disalin bobotnya di sini agar NR Final-nya ikut angka terbaru.
+        $weightService = app(\App\Services\TahfidzWeightService::class);
+        $weights = $weightService->forSchool($book->school_id, $academicYearId, $semester);
+        foreach (\App\Models\TahfidzGradebook::query()
+            ->where('school_id', $book->school_id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester', $semester)
+            ->get() as $gradebook) {
+            $weightService->applyToBook($gradebook);
+        }
 
         // Halaqah tidak terikat mapel; semua halaqah pada periode ini dipakai
         // agar guru tetap bisa mengisi santri yang belum punya baris nilai.
@@ -697,7 +674,7 @@ class NilaiKelasController extends Controller
             'rows' => $rows,
             'groups' => $groups,
             'members' => $members,
-            'book' => $sampleBookId,
+            'book' => $scores->first()?->tahfidz_gradebook_id,
         ];
     }
 
@@ -916,33 +893,9 @@ class NilaiKelasController extends Controller
             $saved += $service->saveScores($groupBook, [$studentId => $row], $members);
         }
 
-        // Bobot disimpan per halaqah bila dikirim: satu bobot untuk buku yang
-        // menampung santri-santri rombel ini.
-        $weights = (array) $request->input('weights', []);
-        $weightError = null;
-
-        if ($weights !== []) {
-            $calculator = app(\App\Services\TahfidzGradebookCalculator::class);
-            $errors = $calculator->validateWeights($weights);
-
-            if ($errors !== []) {
-                $weightError = 'Bobot tidak diubah: '.implode(' ', $errors);
-            } else {
-                $touched = $books->filter(fn ($book) => $book->scores()
-                    ->whereIn('student_id', array_keys($nilaiData))->exists());
-
-                DB::transaction(function () use ($touched, $weights) {
-                    foreach ($touched as $book) {
-                        $attributes = [];
-                        foreach (\App\Services\TahfidzGradebookCalculator::KEYS as $key) {
-                            $attributes['weight_'.$key] = (float) ($weights[$key] ?? 0);
-                        }
-                        $book->update($attributes);
-                        $book->refresh()->recalcAll();
-                    }
-                });
-            }
-        }
+        // Bobot tahfidz milik DEPARTEMEN (TahfidzWeightService); kiriman
+        // `weights` dari halaman guru sengaja diabaikan agar satu sekolah
+        // memakai angka yang sama di semua halaqah.
 
         if ($saved === 0 && $tanpaHalaqah !== []) {
             return $this->tahfidzStoreResponse($request, false,
@@ -950,15 +903,12 @@ class NilaiKelasController extends Controller
         }
 
         $message = $saved.' baris nilai tahfidz tersimpan.';
-        if ($weightError !== null) {
-            $message .= ' '.$weightError;
-        }
         if ($tanpaHalaqah !== []) {
             $names = Student::whereIn('id', $tanpaHalaqah)->pluck('name')->implode(', ');
             $message .= ' Belum masuk halaqah (tidak dinilai): '.$names.'.';
         }
 
-        return $this->tahfidzStoreResponse($request, $weightError === null, $message, $weightError === null ? 200 : 422);
+        return $this->tahfidzStoreResponse($request, true, $message, 200);
     }
 
     private function tahfidzStoreResponse(Request $request, bool $success, string $message, int $status)

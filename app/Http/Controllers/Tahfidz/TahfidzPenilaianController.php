@@ -7,10 +7,8 @@ use App\Models\AcademicYear;
 use App\Models\TahfidzGradebook;
 use App\Models\TahfidzGroup;
 use App\Services\TahfidzAccess;
-use App\Services\TahfidzGradebookCalculator;
 use App\Services\TahfidzGradebookService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Buku nilai tahfidz per halaqah.
@@ -46,7 +44,6 @@ class TahfidzPenilaianController extends Controller
     public function __construct(
         private readonly TahfidzAccess $access,
         private readonly TahfidzGradebookService $books,
-        private readonly TahfidzGradebookCalculator $calculator,
     ) {}
 
     public function index(Request $request, string $userId)
@@ -193,60 +190,18 @@ class TahfidzPenilaianController extends Controller
 
         $wantsJson = $request->ajax() || $request->wantsJson();
 
-        if (! $request->has('weights')) {
-            if ($wantsJson) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Nilai tersimpan untuk '.$saved.' santri.',
-                    'saved_rows' => $this->savedRows($book, array_keys($validated['scores'] ?? [])),
-                ]);
-            }
-
-            return $redirect->with('success', 'Nilai tersimpan untuk '.$saved.' santri.');
-        }
-
-        $weights = [];
-        foreach (TahfidzGradebookCalculator::KEYS as $key) {
-            $weights[$key] = $request->input('weights.'.$key);
-        }
-
-        $errors = $this->calculator->validateWeights($weights);
-
-        if ($errors !== []) {
-            $message = 'Nilai tersimpan, tetapi bobot tidak diubah: '.implode(' ', $errors);
-
-            if ($wantsJson) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $message,
-                    'saved_rows' => $this->savedRows($book, array_keys($validated['scores'] ?? [])),
-                ], 422);
-            }
-
-            return $redirect->with('error', $message);
-        }
-
-        DB::transaction(function () use ($book, $weights) {
-            $attributes = [];
-            foreach (TahfidzGradebookCalculator::KEYS as $key) {
-                $attributes['weight_'.$key] = (float) $weights[$key];
-            }
-            $book->update($attributes);
-
-            // Bobot baru harus langsung berlaku untuk nilai yang sudah ada,
-            // agar rapor memakai angka terbaru tanpa menunggu input ulang.
-            $book->refresh()->recalcAll();
-        });
-
+        // Bobot tahfidz milik DEPARTEMEN (TahfidzWeightService). Kiriman
+        // `weights` dari halaman guru sengaja diabaikan agar satu sekolah
+        // memakai angka yang sama di semua halaqah.
         if ($wantsJson) {
             return response()->json([
                 'success' => true,
-                'message' => 'Nilai dan bobot tersimpan.',
-                'saved_rows' => $this->savedRows($book->refresh(), array_keys($validated['scores'] ?? [])),
+                'message' => 'Nilai tersimpan untuk '.$saved.' santri.',
+                'saved_rows' => $this->savedRows($book, array_keys($validated['scores'] ?? [])),
             ]);
         }
 
-        return $redirect->with('success', 'Nilai dan bobot tersimpan. NR Final dihitung ulang untuk seluruh santri.');
+        return $redirect->with('success', 'Nilai tersimpan untuk '.$saved.' santri.');
     }
 
     /**

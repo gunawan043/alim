@@ -20,8 +20,8 @@
             && ! $students->contains(fn ($history) => $history->is_active);
         $autosaveUrl = route('user.schools.nilai-kelas.sts.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]);
         $presensiUrl = route('user.schools.nilai-kelas.presensi.store', ['userId' => $userId, 'studyGroupId' => $studyGroup->id]);
-        // Kolom nilai mapel tahfidz dipakai bersama oleh tab Mapel dan modal bobot.
-        $thfKeys = \App\Services\TahfidzGradebookService::DEFAULT_WEIGHTS;
+        // Kolom nilai mapel tahfidz (tab Mapel): NPT, Ziyadah, Rabt, Tikrar, STS, SAS.
+        $thfKeys = \App\Services\TahfidzGradebookCalculator::KEYS;
         $thfCols = \App\Services\TahfidzLegerColumns::COLUMNS;
     @endphp
 
@@ -471,13 +471,10 @@
                                 <thead class="table-light text-center">
                                     @php
                                         $isSasLeger = ($legerMode ?? 'sts') === 'sas';
-                                        $tahfidzColumns = $tahfidzColumns ?? [];
-                                        $tahfidzValues = $tahfidzValues ?? [];
-                                        // Mapel tahfidz memakai kolom sendiri (NPT | Ziyadah | Rabt |
-                                        // Tikrar | STS | SAS), tidak memakai kolom STS/SAS mapel umum.
-                                        $legerSubjectCols = fn ($subject) => isset($tahfidzColumns[$subject->id])
-                                            ? count($tahfidzColumns[$subject->id])
-                                            : 2;
+                                        // Mapel tahfidz tampil seperti mapel umum: satu kolom
+                                        // nilai (NR Final). Rincian NPT/Ziyadah/Rabt/Tikrar/STS/SAS
+                                        // ada di tab Mapel, bukan di leger.
+                                        $legerSubjectCols = fn ($subject) => $isSasLeger ? 2 : 1;
                                         // Grup AGAMA/UMUM mengikuti filter sumber: hitungannya
                                         // diambil dari controller agar colspan tidak melenceng.
                                         $agamaCount = $legerAgamaCount ?? ($agamaCount ?? 0);
@@ -531,7 +528,6 @@
                                             @endforeach
                                         @endif
                                         @foreach(($legerSubjectMap ?? $subjectMap) as $subject)
-                                            @php $thfCols = $tahfidzColumns[$subject->id] ?? []; @endphp
                                             <th colspan="{{ $legerSubjectCols($subject) }}" style="background:var(--bs-tertiary-bg);" title="{{ $subject->name }}" data-sort="subject-{{ $subject->id }}">
                                                 <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.2px;">
                                                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name) }}
@@ -542,23 +538,6 @@
                                         <th class="bg-warning-subtle text-warning" data-sort="i">I</th>
                                         <th class="bg-danger-subtle text-danger" data-sort="a">A</th>
                                     </tr>
-                                    {{-- Baris 2b: nama kolom nilai tahfidz (NPT | Ziyadah | Rabt | Tikrar | STS | SAS) --}}
-                                    @if(! empty($tahfidzColumns))
-                                        <tr class="text-center leger-subhead">
-                                            <td colspan="{{ $isSasLeger ? 6 : 3 }}" style="background:var(--bs-tertiary-bg);"></td>
-                                            @foreach(($legerSubjectMap ?? $subjectMap) as $subject)
-                                                @php $thfCols = $tahfidzColumns[$subject->id] ?? []; @endphp
-                                                @if($thfCols === [])
-                                                    <td colspan="2" style="background:var(--bs-tertiary-bg);"></td>
-                                                @else
-                                                    @foreach($thfCols as $key => $label)
-                                                        <th style="background:var(--bs-tertiary-bg);font-size:9px;white-space:nowrap;" title="{{ $label }} tahfidz {{ $subject->name }}" data-sort="thf-{{ $subject->id }}-{{ $key }}">{{ $label }}</th>
-                                                    @endforeach
-                                                @endif
-                                            @endforeach
-                                            <td colspan="3" style="background:var(--bs-tertiary-bg);"></td>
-                                        </tr>
-                                    @endif
                                     @if($isSasLeger)
                                         {{-- Baris 3 (SAS): N | Jumlah per mapel; sisa kolom ditutup sel pembentang --}}
                                         <tr class="text-center">
@@ -709,7 +688,6 @@
                                                     $book = $bookMap[$subject->id] ?? null;
                                                     $n = $book ? ($nilaiMap[$student->id][$book->id] ?? null) : null;
                                                     $kkm = $book?->kktp?->kkm_score ?? 75;
-                                                    $thfCols = $tahfidzColumns[$subject->id] ?? [];
                                                     $stsVal = $nilaiTahfidzMap[$student->id][$book?->id] ?? null;
                                                     if ($stsVal === null) {
                                                         $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
@@ -718,24 +696,6 @@
                                                     $bobotEfektif = (float) ($bobotMap[$subject->id] ?? 0);
                                                     $nilaiTertimbang = $stsVal !== null ? $bobotEfektif * (float) $stsVal : null;
                                                 @endphp
-                                                @if($thfCols !== [])
-                                                    @foreach($thfCols as $thfKey => $thfLabel)
-                                                        @php
-                                                            $thfVal = $tahfidzValues[$sid][$book?->id][$thfKey] ?? null;
-                                                            $thfBelow = in_array($thfKey, ['npt', 'ziyadah', 'rabt', 'tikrar'], true)
-                                                                && $thfVal !== null && $thfVal < $kkm;
-                                                        @endphp
-                                                        <td style="text-align:center;background:var(--bs-success-bg-subtle);" data-col="thf-{{ $subject->id }}-{{ $thfKey }}" title="{{ $thfLabel }} {{ $subject->name }}">
-                                                            @if($book)
-                                                                <span class="fw-semibold{{ $thfBelow ? ' text-danger' : '' }}">
-                                                                    {{ $thfVal !== null ? number_format($thfVal, 0, '.', '') : '---' }}
-                                                                </span>
-                                                            @else
-                                                                <span class="text-muted">—</span>
-                                                            @endif
-                                                        </td>
-                                                    @endforeach
-                                                @else
                                                 <td style="text-align:center;" data-col="subject-{{ $subject->id }}">
                                                     @if($book)
                                                         <span class="fw-semibold{{ $belowKkm ? ' text-danger' : '' }}">
@@ -753,7 +713,6 @@
                                                             <span class="text-muted">—</span>
                                                         @endif
                                                     </td>
-                                                @endif
                                                 @endif
                                             @endforeach
                                             @if($isSasLeger)
@@ -823,10 +782,10 @@
                             <small class="text-muted" style="font-size:12px;">
                                 <i class="ri-information-line me-1"></i>
                                 Leger bersifat <strong>baca-saja</strong> — nilai diambil otomatis dari <strong>tab Mapel</strong>. Input nilai (termasuk Nilai Murni STS/SAS) dilakukan di tab Mapel. Nilai Murni wajib diisi sebelum kolom STS/SAS.
-                                @if(! empty($tahfidzColumns))
+                                @if(collect(($legerSubjectMap ?? $subjectMap))->contains(fn ($s) => app(\App\Services\TahfidzRaporService::class)->isTahfidzSubject($s)))
                                     <br><i class="ri-book-open-line me-1"></i>
-                                    Mapel tahfidz memakai kolom <strong>NPT · Ziyadah · Rabt · Tikrar · STS · SAS</strong>: NPT = capaian halaman ziyadah ÷ target semester, Ziyadah/Rabt/STS/SAS dari <strong>buku nilai halaqah</strong>, Tikrar = rata-rata nilai tikrar setoran.
-                                    Tanda <strong>—</strong> berarti datanya memang belum ada (mis. santri belum masuk halaqah, belum punya target, atau belum ada setoran tikrar).
+                                    Mapel tahfidz menampilkan <strong>NR Final</strong> dari buku nilai halaqah; rincian NPT · Ziyadah · Rabt · Tikrar · STS · SAS ada di tab Mapel.
+                                    Tanda <strong>—</strong> berarti datanya memang belum ada (mis. santri belum masuk halaqah).
                                 @endif
                             </small>
                         </div>
@@ -867,12 +826,12 @@
                             <span class="badge bg-secondary-subtle text-secondary text-capitalize">
                                 {{ $activeBook->semester }}
                             </span>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#thfBobotModal" style="font-size:12px;">
-                                <i class="ri-settings-3-line me-1"></i>Kelola Bobot
-                            </button>
+                            <span class="text-muted" style="font-size:12px;">
+                                <i class="ri-lock-line me-1"></i>Bobot diatur Departemen Tahfidz
+                            </span>
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:12px;">
-                            @foreach($thfKeys as $wk => $wlabel)
+                            @foreach($thfKeys as $wk)
                                 <span class="badge bg-success-subtle text-success">
                                     {{ $thfCols[$wk] }} ({{ $thfFmt($thfW($wk)) }}%)
                                 </span>
@@ -907,7 +866,7 @@
                                     <th rowspan="2" class="align-middle bg-secondary-subtle" width="120">Keterangan</th>
                                 </tr>
                                 <tr>
-                                    @foreach($thfKeys as $wk => $wlabel)
+                                    @foreach($thfKeys as $wk)
                                         <th style="min-width:76px;white-space:nowrap;" title="{{ $thfCols[$wk] }} — bobot {{ $thfFmt($thfW($wk)) }}%">
                                             {{ $thfCols[$wk] }}<br>
                                             <small class="fw-normal">({{ $thfFmt($thfW($wk)) }}%)</small>
@@ -940,7 +899,7 @@
                                                 @endif
                                             </div>
                                         </td>
-                                        @foreach($thfKeys as $wk => $wlabel)
+                                        @foreach($thfKeys as $wk)
                                             @php
                                                 $cell = $row[$wk] ?? null;
                                                 $isAuto = in_array($wk, $thfAuto, true);
@@ -979,7 +938,7 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size:12px;">
                                 <span class="badge bg-success-subtle text-success">Tahfidz</span>
-                                <span class="text-muted">= NPT, Ziyadah, Rabt, Tikrar, STS, SAS per halaqah (bobot diatur di <strong>Kelola Bobot</strong>). Tersimpan otomatis saat mengetik.</span>
+                                <span class="text-muted">= NPT, Ziyadah, Rabt, Tikrar, STS, SAS per halaqah. Bobot NR Final ditetapkan Departemen Tahfidz. Tersimpan otomatis saat mengetik.</span>
                                 <span class="text-muted">NPT &amp; Tikrar terisi otomatis dari target &amp; setoran — boleh dikoreksi.</span>
                             </div>
                         </div>
@@ -1378,57 +1337,6 @@
                     <button type="button" class="btn btn-primary btn-sm" onclick="kolomSave()">
                         <i class="ri-save-line me-1"></i>Simpan Kolom
                     </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-{{-- Modal: Kelola Bobot NR Final mapel tahfidz --}}
-    @php
-        $thfBoRows = $tahfidzMapel['rows'] ?? [];
-        $thfBoWeights = $tahfidzMapel['weights'] ?? [];
-        $thfBoKeys = $thfKeys;
-        $thfBoCols = $thfCols;
-        $thfBoW = fn ($k) => (float) ($thfBoWeights[$k] ?? $thfBoKeys[$k] ?? 0);
-        $thfBoTotal = collect(array_keys($thfBoKeys))->sum(fn ($k) => $thfBoW($k));
-        $thfBoFmt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
-    @endphp
-    <div class="modal fade" id="thfBobotModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h6 class="modal-title"><i class="ri-scales-3-line me-1"></i>Kelola Bobot NR Final Tahfidz</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3" style="font-size:12px;">
-                        Bobot berlaku untuk semua santri rombel ini dan langsung tersimpan setelah diubah.
-                        NR Final = Σ(nilai × bobot) ÷ Σ bobot kolom yang terisi, dan <strong>total bobot harus 100%</strong>.
-                    </p>
-                    <div class="row g-2">
-                        @foreach($thfBoKeys as $wk => $wlabel)
-                            <div class="col-6 col-sm-4">
-                                <label class="form-label mb-1" style="font-size:12px;">{{ $thfBoCols[$wk] }}</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" name="weights[{{ $wk }}]" form="formMapelTahfidz"
-                                           class="form-control text-center tahfidz-weight-input" data-key="{{ $wk }}"
-                                           min="0" max="100" step="0.5" value="{{ $thfBoFmt($thfBoW($wk)) }}">
-                                    <span class="input-group-text">%</span>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between mt-3" style="font-size:12px;">
-                        <span id="thfWeightTotalModal" class="badge {{ abs($thfBoTotal - 100) < 0.001 ? 'bg-success' : 'bg-danger' }}">
-                            Total: {{ $thfBoFmt($thfBoTotal) }}%
-                        </span>
-                        <button type="button" class="btn btn-link btn-sm p-0" onclick="thfBobotReset()">
-                            <i class="ri-refresh-line me-1"></i>Kembalikan ke bobot awal
-                        </button>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
@@ -2419,13 +2327,9 @@ document.addEventListener('input', function (event) {
 
     const indDot = document.getElementById('autosave-dot');
     const indText = document.getElementById('autosave-text');
-    const totalBadge = document.getElementById('thfWeightTotal');
-    const totalBadgeModal = document.getElementById('thfWeightTotalModal');
     const keys = ['npt', 'ziyadah', 'rabt', 'tikrar', 'sts', 'sas'];
-    const defaults = @json($thfKeys);
     let timer = null;
     let saving = false;
-    let weightsDirty = false;
 
     function setIndicator(cls, text) {
         if (indDot) indDot.className = 'rounded-circle ' + cls;
@@ -2443,11 +2347,13 @@ document.addEventListener('input', function (event) {
         setTimeout(function () { setIndicator('bg-secondary', 'Menunggu…'); }, 4000);
     }
 
+    // Bobot milik departemen: dibaca sekali dari server, tidak bisa diubah guru.
+    const DEPT_WEIGHTS = @json($thfWeights ?? []);
+
     function weights() {
         const out = {};
         keys.forEach(function (k) {
-            const input = document.querySelector('.tahfidz-weight-input[data-key="' + k + '"]');
-            out[k] = input ? parseFloat(input.value) || 0 : 0;
+            out[k] = parseFloat(DEPT_WEIGHTS[k]) || 0;
         });
         return out;
     }
@@ -2478,27 +2384,10 @@ document.addEventListener('input', function (event) {
         }
     }
 
-    function refreshWeightBadges() {
-        const w = weights();
-        const total = keys.reduce(function (s, k) { return s + w[k]; }, 0);
-        const tekst = 'Total: ' + String(parseFloat(total.toFixed(1))) + '%';
-        const ok = Math.abs(total - 100) < 0.001;
-
-        if (totalBadge) {
-            totalBadge.textContent = tekst;
-            totalBadge.className = 'badge ' + (ok ? 'bg-primary-subtle text-primary' : 'bg-warning-subtle text-warning');
-        }
-        if (totalBadgeModal) {
-            totalBadgeModal.textContent = tekst;
-            totalBadgeModal.className = 'badge ' + (ok ? 'bg-success' : 'bg-danger');
-        }
-    }
-
     function save() {
         if (saving) return;
         saving = true;
         setIndicator('bg-warning', 'Menyimpan…');
-        const sentClean = ! weightsDirty;
 
         fetch(form.action, {
             method: 'POST',
@@ -2519,14 +2408,9 @@ document.addEventListener('input', function (event) {
                 showError(json && json.message ? json.message : 'Gagal menyimpan');
             }
         }).catch(function () {
-            if (sentClean) weightsDirty = true;
             showError('Gagal menyimpan');
         }).finally(function () {
             saving = false;
-            if (weightsDirty) {
-                clearTimeout(timer);
-                timer = setTimeout(save, 300);
-            }
         });
     }
 
@@ -2539,32 +2423,11 @@ document.addEventListener('input', function (event) {
         if (e.target.classList.contains('tahfidz-score-input')) {
             recalcRow(e.target.closest('tr'));
         }
-        if (e.target.classList.contains('tahfidz-weight-input')) {
-            weightsDirty = true;
-            refreshWeightBadges();
-            document.querySelectorAll('#tab-mapel tbody tr').forEach(recalcRow);
-        }
         triggerSave();
     });
 
     form.addEventListener('submit', function (e) { e.preventDefault(); save(); });
 
-    // Kembalikan ke bobot awal (belum disimpan sampai autosave jalan).
-    window.thfBobotReset = function () {
-        const total = keys.reduce(function (s, k) { return s + (parseFloat(defaults[k]) || 0); }, 0);
-        if (total !== 100) {
-            showError('Bobot awal belum berjumlah 100%.');
-            return;
-        }
-        keys.forEach(function (k) {
-            const input = document.querySelector('.tahfidz-weight-input[data-key="' + k + '"]');
-            if (input) input.value = String(parseFloat(parseFloat(defaults[k]).toFixed(1)));
-        });
-        weightsDirty = true;
-        refreshWeightBadges();
-        document.querySelectorAll('#tab-mapel tbody tr').forEach(recalcRow);
-        triggerSave();
-    };
 })();
 </script>
 @endif

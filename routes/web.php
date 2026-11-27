@@ -745,6 +745,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 // rapor, leger, jadwal, dan sidebar.
                 Route::get('format-penilaian', [TahfidzSubjectFormatController::class, 'index'])->name('format.index');
                 Route::put('format-penilaian', [TahfidzSubjectFormatController::class, 'update'])->name('format.update');
+                // Bobot NR Final tahfidz — ditetapkan Departemen Tahfidz.
+                Route::put('format-penilaian/bobot', [TahfidzSubjectFormatController::class, 'storeWeights'])->name('format.weights');
 
                 Route::prefix('muqorror')->name('muqorror.')->group(function () {
                     Route::get('/', [TahfidzMasterController::class, 'muqorrorIndex'])->name('index');

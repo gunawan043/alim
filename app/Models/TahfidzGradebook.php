@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Services\TahfidzGradebookCalculator;
-use App\Services\TahfidzGradebookService;
+use App\Services\TahfidzWeightService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -129,9 +129,14 @@ class TahfidzGradebook extends Model
         ];
 
         // Bobot 0 pada semua kolom bukan pilihan yang sah — itu tanda data
-        // belum termuat. Jatuh ke bobot awal agar nilai tidak hilang diam-diam.
+        // belum termuat. Jatuh ke bobot departemen agar nilai tidak hilang
+        // diam-diam.
         if (array_sum($weights) <= 0) {
-            return TahfidzGradebookService::DEFAULT_WEIGHTS;
+            return app(TahfidzWeightService::class)->forSchool(
+                $this->school_id,
+                $this->academic_year_id,
+                $this->semester,
+            );
         }
 
         return $weights;

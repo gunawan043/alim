@@ -85,23 +85,11 @@
     $isSas = ($jenis ?? 'sts') === 'sas';
     $componentColumns = $componentColumns ?? [];
     $componentValues = $componentValues ?? [];
-    $tahfidzColumns = $tahfidzColumns ?? [];
-    $tahfidzValues = $tahfidzValues ?? [];
-    $tahfidzWeights = $tahfidzWeights ?? [];
-    $tahfidzColumnHints = [
-        'npt' => 'Nilai Pencapaian Target: capaian halaman ziyadah ÷ target semester × 100',
-        'ziyadah' => 'rata-rata nilai ziyadah dari buku halaqah',
-        'rabt' => 'rata-rata nilai rabt dari buku halaqah',
-        'tikrar' => 'rata-rata nilai tikrar dari setoran',
-        'sts' => 'nilai STS dari buku halaqah',
-        'sas' => 'nilai SAS dari buku halaqah',
-    ];
     $predicateNotes = $predicateNotes ?? [];
     $predicateNotesAr = $predicateNotesAr ?? [];
 
     // Hitung slot kolom: 1 kolom nilai akhir + kolom komponen (bila ada).
-    // Mapel tahfidz memakai enam kolom sendiri (NPT, Ziyadah, Rabt, Tikrar,
-    // STS, SAS) dan tidak memakai kolom STS/SAS mapel umum.
+    // Mapel tahfidz memakai slot yang sama; nilainya NR Final.
     $subjectSlots = [];
     $slotCount = 0;
     $hasAnyComponent = false;
@@ -110,19 +98,11 @@
         $cols = $componentColumns[$subject->id][$jenis] ?? [];
         $subjectSlots[$subject->id] = $cols;
 
-        if (! empty($tahfidzColumns[$subject->id])) {
-            $slotCount += count($tahfidzColumns[$subject->id]);
-            continue;
-        }
-
         $slotCount += 1 + count($cols);
         if ($cols !== []) {
             $hasAnyComponent = true;
         }
     }
-
-    $hasAnyTahfidz = ! empty($tahfidzColumns);
-    $tahfidzColWidth = 1.35;
 
     // Lebar kolom memakai persentase agar tabel selalu muat satu halaman landscape.
     $fixedPct = $isSas ? 37.8 : 34.2;
@@ -152,8 +132,7 @@
             @foreach($subjectMap as $subject)
                 @php
                     $cols = $subjectSlots[$subject->id];
-                    $thfCols = $tahfidzColumns[$subject->id] ?? [];
-                    $span = $thfCols !== [] ? count($thfCols) : 1 + count($cols);
+                    $span = 1 + count($cols);
                 @endphp
                 <th colspan="{{ $span }}" style="width:{{ round($slotPct * $span, 3) }}%;background:#f5f5f5;" title="{{ $subject->name }}">
                     {{ \App\Support\AcademicNilai::shortSubjectName($subject->name, 20) }}
@@ -171,19 +150,14 @@
             <th style="width:1.6%;background:#fff8e1;">I</th>
             <th style="width:1.6%;background:#ffebee;">A</th>
         </tr>
-        @if($hasAnyComponent || $hasAnyTahfidz)
+        @if($hasAnyComponent)
             <tr class="row-komponen">
                 <th colspan="3"></th>
                 @foreach($subjectMap as $subject)
                     @php
                         $cols = $subjectSlots[$subject->id];
-                        $thfCols = $tahfidzColumns[$subject->id] ?? [];
                     @endphp
-                    @if($thfCols !== [])
-                        @foreach($thfCols as $key => $label)
-                            <th style="width:{{ $tahfidzColWidth }}%;" title="{{ $label }} — {{ $tahfidzColumnHints[$key] ?? '' }}">{{ $label }}</th>
-                        @endforeach
-                    @elseif($cols === [])
+                    @if($cols === [])
                         <th></th>
                     @else
                         @foreach($cols as $col)
@@ -198,10 +172,7 @@
         <tr class="row-kktp">
             <th colspan="3" class="name" style="background:#f0f0f0;text-align:center;">KKTP</th>
             @foreach($subjectMap as $subject)
-                @php
-                    $thfCols = $tahfidzColumns[$subject->id] ?? [];
-                    $span = $thfCols !== [] ? count($thfCols) : 1 + count($subjectSlots[$subject->id]);
-                @endphp
+                @php $span = 1 + count($subjectSlots[$subject->id]); @endphp
                 <th colspan="{{ $span }}" style="background:#f0f0f0;font-weight:700;">{{ \App\Support\AcademicNilai::kkmLabel($bookMap[$subject->id] ?? null) }}</th>
             @endforeach
             <th class="aggregate" colspan="{{ $aggColspan }}"></th>
@@ -210,17 +181,8 @@
             <tr class="row-bobot">
                 <th colspan="3" class="name" style="background:#eef7ee;text-align:center;">Bobot</th>
                 @foreach($subjectMap as $subject)
-                    @php
-                        $thfWeights = $tahfidzWeights[$subject->id] ?? null;
-                        $span = $thfWeights ? count($tahfidzColumns[$subject->id]) : 1 + count($subjectSlots[$subject->id]);
-                    @endphp
-                    <th colspan="{{ $span }}" style="background:#eef7ee;font-weight:700;">
-                        @if($thfWeights)
-                            Z{{ $thfWeights['ziyadah'] }}·R{{ $thfWeights['rabt'] }}·S{{ $thfWeights['sts'] }}·A{{ $thfWeights['sas'] }}
-                        @else
-                            {{ $bobotOf($subject->id) }}
-                        @endif
-                    </th>
+                    @php $span = 1 + count($subjectSlots[$subject->id]); @endphp
+                    <th colspan="{{ $span }}" style="background:#eef7ee;font-weight:700;">{{ $bobotOf($subject->id) }}</th>
                 @endforeach
                 <th class="aggregate" colspan="{{ $aggColspan }}"></th>
             </tr>
@@ -252,29 +214,19 @@
                 @foreach($subjectMap as $subject)
                     @php
                         $book = $bookMap[$subject->id] ?? null;
-                        $thfCols = $tahfidzColumns[$subject->id] ?? [];
                         $kkm = \App\Support\AcademicNilai::kkm($book);
                         $stsVal = $nilaiResolved[$sid][$book->id] ?? null;
                         $cols = $subjectSlots[$subject->id];
                         $compVals = $book ? ($componentValues[$sid][$book->id][$jenis] ?? []) : [];
                     @endphp
-                    @if($thfCols !== [])
-                        @foreach(array_keys($thfCols) as $thfKey)
-                            @php $thfVal = $tahfidzValues[$sid][$book->id][$thfKey] ?? null; @endphp
-                            <td class="comp tahfidz-{{ $thfKey }}">{{ $thfVal !== null ? number_format((float) $thfVal, 0) : '—' }}</td>
-                        @endforeach
+                    @foreach($cols as $col)
+                        @php $compVal = $compVals[$col['id']] ?? null; @endphp
+                        <td class="comp">{{ $compVal !== null ? number_format((float) $compVal, 0) : '—' }}</td>
+                    @endforeach
+                    @if($stsVal !== null)
+                        <td class="{{ $stsVal < $kkm ? 'below' : '' }}">{{ number_format($stsVal, 0) }}</td>
                     @else
-                        @foreach($cols as $col)
-                            @php $compVal = $compVals[$col['id']] ?? null; @endphp
-                            <td class="comp">{{ $compVal !== null ? number_format((float) $compVal, 0) : '—' }}</td>
-                        @endforeach
-                        @if($stsVal !== null)
-                            <td class="{{ $stsVal < $kkm ? 'below' : '' }}">
-                                {{ number_format($stsVal, 0) }}
-                            </td>
-                        @else
-                            <td class="empty">—</td>
-                        @endif
+                        <td class="empty">—</td>
                     @endif
                 @endforeach
                 <td class="aggregate">{{ $jumlahJuzMap[$sid] ?? 0 }}</td>

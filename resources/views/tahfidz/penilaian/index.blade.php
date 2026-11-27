@@ -273,15 +273,13 @@
                     <div class="d-flex align-items-center gap-2 flex-wrap border rounded p-2" style="background:var(--bs-tertiary-bg);">
                         <span class="fw-semibold" style="font-size:12px;">Bobot NR Final:</span>
                         @foreach($columns as $key)
-                            <div class="input-group input-group-sm" style="width:132px;">
-                                <span class="input-group-text">{{ $columnLabels[$key] }} %</span>
-                                <input type="number" name="weights[{{ $key }}]" id="w-{{ $key }}"
-                                       class="form-control weight-input text-center" min="0" max="100" step="0.5"
-                                       value="{{ old('weights.'.$key, $book->{'weight_'.$key}) }}">
-                            </div>
+                            <span class="badge bg-secondary-subtle text-secondary">
+                                {{ $columnLabels[$key] }} {{ rtrim(rtrim(number_format((float) ($weights[$key] ?? 0), 2, '.', ''), '0'), '.') }}%
+                            </span>
                         @endforeach
-                        <div id="weight-sum" class="badge bg-secondary">Total: {{ rtrim(rtrim(number_format($totalWeight, 2, '.', ''), '0'), '.') }}%</div>
-                        <span class="text-muted ms-auto" style="font-size:11px;">Total bobot harus 100%.</span>
+                        <span class="text-muted ms-auto" style="font-size:11px;">
+                            <i class="ri-lock-line me-1"></i>Bobot diatur Departemen Tahfidz dan tidak dapat diubah di sini.
+                        </span>
                     </div>
                 </div>
 
@@ -535,21 +533,6 @@
     }
 
     (function () {
-        // Indikator total bobot: hijau bila tepat 100%.
-        var inputs = document.querySelectorAll('.weight-input');
-        var sumEl = document.getElementById('weight-sum');
-        if (inputs.length && sumEl) {
-            var render = function () {
-                var total = 0;
-                inputs.forEach(function (el) { total += parseFloat(el.value) || 0; });
-                var rounded = Math.round(total * 10) / 10;
-                sumEl.textContent = 'Total: ' + rounded + '%';
-                sumEl.className = 'badge ' + (Math.abs(rounded - 100) < 0.01 ? 'bg-success' : 'bg-danger');
-            };
-            inputs.forEach(function (el) { el.addEventListener('input', render); });
-            render();
-        }
-
         // Navigasi Enter / ↑ / ↓ antar sel nilai (seperti buku nilai sumatif).
         var table = document.getElementById('tab-halaqah');
         if (table) {
@@ -655,7 +638,7 @@
             if (dirty && !timer) timer = setTimeout(function () { timer = null; save(); }, 1200);
         }
 
-        form.querySelectorAll('input.sheet-input, input.weight-input').forEach(function (el) {
+        form.querySelectorAll('input.sheet-input').forEach(function (el) {
             var onChange = function () {
                 dirty = true;
                 clearTimeout(timer);

@@ -169,19 +169,29 @@ class TahfidzGradebookHalaqahTest extends TestCase
         $santri = $this->makeStudent('Santri A', 'AA-2', $kelas);
         $this->addMember($group, $santri, 'aktif');
 
+        // Bobot milik departemen: semester ganjil = NPT 25 · Ziyadah 20 ·
+        // Rabt 20 · Tikrar 10 · STS 25 (SAS 0).
+        \App\Models\TahfidzWeightSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->year->id,
+            'semester' => 'ganjil',
+            'weight_npt' => 25, 'weight_ziyadah' => 20, 'weight_rabt' => 20,
+            'weight_tikrar' => 10, 'weight_sts' => 25, 'weight_sas' => 0,
+        ]);
+
         $service = app(TahfidzGradebookService::class);
         $book = $service->booksForTeacher($this->teacher->id, $this->school->id, $this->year->id)->flatten()->first();
         $members = $service->activeMembers($group, $this->year->id);
 
-        // 4 komponen: (80×40 + 70×20 + 90×20 + 85×20)/100 = 81
+        // NPT kosong (tidak ikut dinormalisasi): (80×20 + 70×20 + 90×25)/65 = 80.77
         $service->saveScores($book, [
             $santri->id => ['ziyadah' => 80, 'rabt' => 70, 'sts' => 90, 'sas' => 85],
         ], $members);
 
-        $this->assertSame(81.0, $book->scores()->first()->nr_final);
+        $this->assertSame(80.77, $book->scores()->first()->fresh()->nr_final);
 
-        // Ubah bobot → nilai lama harus dihitung ulang, tidak tertinggal.
-        $book->update(['weight_ziyadah' => 70, 'weight_rabt' => 10, 'weight_sts' => 10, 'weight_sas' => 10]);
+        // Departemen mengubah bobot → NR lama dihitung ulang, tidak tertinggal.
+        $book->update(['weight_npt' => 0, 'weight_ziyadah' => 70, 'weight_rabt' => 10, 'weight_tikrar' => 0, 'weight_sts' => 10, 'weight_sas' => 10]);
         $book->refresh()->recalcAll();
 
         // (80×70 + 70×10 + 90×10 + 85×10)/100 = 80.5

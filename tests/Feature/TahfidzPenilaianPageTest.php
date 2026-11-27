@@ -130,12 +130,13 @@ class TahfidzPenilaianPageTest extends TestCase
 
         $response->assertOk()->assertJson(['success' => true]);
         $response->assertJsonPath('saved_rows.0.student_id', (string) $studentId);
-        $response->assertJsonPath('saved_rows.0.nr_final', 81);
+        $response->assertJsonPath('saved_rows.0.nr_final', 80.77);
 
-        $this->assertSame(81.0, TahfidzGradebook::find($book->id)->scores()->first()->nr_final);
+        // Bobot departemen (ganjil): NPT kosong → (80×20 + 70×20 + 90×25)/65.
+        $this->assertSame(80.77, TahfidzGradebook::find($book->id)->scores()->first()->nr_final);
     }
 
-    public function test_autosave_dengan_bobot_tidak_valid_menolak_tetapi_nilai_tetap_tersimpan(): void
+    public function test_bobot_kiriman_guru_diabaikan_karena_milik_departemen(): void
     {
         $teacher = $this->makeTeacher('Guru Bobot', 'guru.bobot@test.local');
         $group = $this->makeGroup('Halaqah Bobot', $teacher, ['Santri Bobot']);
@@ -152,11 +153,24 @@ class TahfidzPenilaianPageTest extends TestCase
                 'scores' => [$studentId => ['ziyadah' => 75]],
                 'weights' => ['npt' => 0, 'ziyadah' => 60, 'rabt' => 20, 'tikrar' => 0, 'sts' => 20, 'sas' => 20],
             ])
-            ->assertStatus(422)
-            ->assertJson(['success' => false]);
+            ->assertOk()
+            ->assertJson(['success' => true]);
 
         $this->assertSame(75.0, TahfidzGradebook::find($book->id)->scores()->first()->ziyadah);
-        $this->assertSame(30.0, TahfidzGradebook::find($book->id)->weight_ziyadah);
+        // Bobot tetap bawaan departemen (ganjil): Ziyadah 20, bukan 60.
+        $this->assertSame(20.0, TahfidzGradebook::find($book->id)->weight_ziyadah);
+    }
+
+    public function test_panel_bobot_tidak_dapat_diubah_guru(): void
+    {
+        $teacher = $this->makeTeacher('Guru Panel', 'guru.panel@test.local');
+        $group = $this->makeGroup('Halaqah Panel', $teacher, ['Santri Panel']);
+
+        $this->actingAs($teacher)
+            ->get(route('user.tahfidz.penilaian.index', ['userId' => $teacher->id, 'group_id' => $group->id]))
+            ->assertOk()
+            ->assertSee('Bobot diatur Departemen Tahfidz')
+            ->assertDontSee('name="weights[', false);
     }
 
     public function test_materi_ujian_sts_dan_sas_tersimpan_di_buku_halaqah(): void

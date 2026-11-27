@@ -114,15 +114,22 @@ class TahfidzLegerPageTest extends TestCase
 
         $response->assertOk();
 
-        foreach (['NPT', 'Ziyadah', 'Rabt', 'Tikrar', 'STS', 'SAS'] as $label) {
-            $response->assertSee($label);
-        }
-        $response->assertSee('Mapel tahfidz memakai kolom');
+        // Tahfidz tampil seperti mapel umum: satu kolom nilai, bukan sub-kolom
+        // NPT/Ziyadah/Rabt/Tikrar/STS/SAS.
+        $response->assertDontSee('data-col="thf-', false);
+        $response->assertSee('Mapel tahfidz menampilkan');
+        $response->assertSee('NR Final');
     }
 
 
     public function test_tab_mapel_tahfidz_memakai_enam_kolom_dan_menyimpan_ke_halaqah(): void
     {
+        \App\Models\TahfidzWeightSetting::create([
+            'school_id' => $this->school->id,
+            'academic_year_id' => $this->year->id,
+            'semester' => 'ganjil',
+        ] + ['weight_npt' => 25, 'weight_ziyadah' => 20, 'weight_rabt' => 20, 'weight_tikrar' => 10, 'weight_sts' => 25, 'weight_sas' => 0]);
+
         $tahfidz = $this->makeSubject('THF', "Tahfidzul Qur'an", TahfidzSubjectResolver::FORMAT_TAHFIDZ);
         $book = TeacherAdminBook::create([
             'school_id' => $this->school->id, 'teacher_id' => $this->user->id,
@@ -158,7 +165,8 @@ class TahfidzLegerPageTest extends TestCase
         ]));
 
         $response->assertOk()
-            ->assertSee('Kelola Bobot')
+            ->assertSee('Bobot diatur Departemen Tahfidz')
+            ->assertDontSee('Kelola Bobot')
             ->assertSee('Nilai Tahfidz')
             ->assertSee('NR Final')
             ->assertDontSee('Asesmen Sumatif Harian');
@@ -171,8 +179,9 @@ class TahfidzLegerPageTest extends TestCase
         // Enam kolom, sama dengan leger.
         foreach (['NPT', 'Ziyadah', 'Rabt', 'Tikrar', 'STS', 'SAS'] as $label) {
             $response->assertSee($label);
-            $response->assertSee('name="weights['.strtolower($label).']"', false);
         }
+        // Guru tidak dapat mengirim bobot: tidak ada input bobot di halaman.
+        $response->assertDontSee('name="weights[', false);
 
         // Simpan nilai: masuk ke buku halaqah santri tersebut.
         $this->actingAs($this->user)->post(
@@ -198,12 +207,14 @@ class TahfidzLegerPageTest extends TestCase
         $this->assertEqualsWithDelta(60, (float) $score->tikrar, 0.01);
 
         $gradebook->refresh();
-        // Bobot dikirim 10/30/15/15/15/15, total tetap 100.
-        $this->assertEqualsWithDelta(10, (float) $gradebook->weight_npt, 0.01);
-        $this->assertEqualsWithDelta(30, (float) $gradebook->weight_ziyadah, 0.01);
-        $this->assertEqualsWithDelta(15, (float) $gradebook->weight_tikrar, 0.01);
-        // (100×10 + 90×30 + 70×15 + 60×15 + 80×15 + 100×15) ÷ 100 = 83.5
-        $this->assertEqualsWithDelta(83.5, (float) $score->fresh()->nr_final, 0.01);
+        // Bobot kiriman guru diabaikan; yang berlaku bobot Departemen Tahfidz
+        // semester ganjil: NPT 25 · Ziyadah 20 · Rabt 20 · Tikrar 10 · STS 25 (SAS 0).
+        $this->assertEqualsWithDelta(25, (float) $gradebook->weight_npt, 0.01);
+        $this->assertEqualsWithDelta(20, (float) $gradebook->weight_ziyadah, 0.01);
+        $this->assertEqualsWithDelta(10, (float) $gradebook->weight_tikrar, 0.01);
+        $this->assertEqualsWithDelta(0, (float) $gradebook->weight_sas, 0.01);
+        // (100×25 + 90×20 + 70×20 + 60×10 + 80×25) ÷ 100 = 83.0
+        $this->assertEqualsWithDelta(83.0, (float) $score->fresh()->nr_final, 0.01);
     }
 
     public function test_mapel_umum_tetap_memakai_sumatif_harian(): void

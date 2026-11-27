@@ -28,31 +28,11 @@ class TahfidzGradebookService
     public const ACTIVE_MEMBER_STATUSES = ['aktif', 'active'];
 
     /**
-     * Bobot awal NR Final format tahfidz.
+     * Bobot NR Final format tahfidz sekarang milik DEPARTEMEN.
      *
-     * Enam kolom, sama dengan leger tahfidz: NPT, Ziyadah, Rabt, Tikrar,
-     * STS, SAS. Ziyadah dan Tikrar paling besar karena menjadi capaian
-     * harian, sedangkan NPT, Rabt, serta STS/SAS melengkapinya.
+     * Lihat TahfidzWeightService::DEFAULT_GANJIL / DEFAULT_GENAP — guru tidak
+     * dapat mengubahnya, dan buku halaqah menyalin angka tersebut.
      */
-    public const DEFAULT_WEIGHTS = [
-        'npt' => 10.0,
-        'ziyadah' => 30.0,
-        'rabt' => 15.0,
-        'tikrar' => 15.0,
-        'sts' => 15.0,
-        'sas' => 15.0,
-    ];
-
-    /** Kolom bobot bila baris buku perlu diselaraskan ke enam kolom. */
-    public static function weightAttributes(): array
-    {
-        $attributes = [];
-        foreach (TahfidzGradebookCalculator::KEYS as $key) {
-            $attributes['weight_'.$key] = self::DEFAULT_WEIGHTS[$key];
-        }
-
-        return $attributes;
-    }
 
     /**
      * Halaqah tempat guru ini mengajar, pada tahun ajaran aktif.
@@ -163,8 +143,13 @@ class TahfidzGradebookService
                         'is_active' => true,
                         // Bobot awal ditulis eksplisit: kolom default database
                         // tidak ikut termuat pada model yang baru dibuat, dan
-                        // bobot 0 membuat NR Final selalu kosong.
-                        ...self::weightAttributes(),
+                        // bobot 0 membuat NR Final selalu kosong. Angkanya
+                        // mengikuti setelan Departemen Tahfidz.
+                        ...app(TahfidzWeightService::class)->bookAttributes(
+                            $group->school_id,
+                            $academicYearId,
+                            $this->semesterFor($group, $academicYearId),
+                        ),
                     ],
                 );
 
@@ -199,10 +184,15 @@ class TahfidzGradebookService
                 [
                     'school_id' => $group->school_id,
                     'is_active' => true,
-                    ...self::weightAttributes(),
+                    ...app(TahfidzWeightService::class)->bookAttributes(
+                        $group->school_id,
+                        $academicYearId,
+                        $this->semesterFor($group, $academicYearId),
+                    ),
                 ],
             ))
-            ->values();
+            ->values()
+            ->tap(fn () => app(TahfidzWeightService::class)->syncOnce($group->school_id, $academicYearId));
     }
 
     /**

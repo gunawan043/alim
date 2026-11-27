@@ -28,7 +28,7 @@ class TahfidzLegerRenderTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_leger_menampilkan_enam_kolom_tahfidz_bukan_kolom_sts_sas_umum(): void
+    public function test_leger_menampilkan_satu_kolom_nr_untuk_tahfidz(): void
     {
         $unit = WorkUnit::create(['name' => 'Unit Render', 'code' => 'UT-RND', 'type' => 'Unit Akademik', 'is_active' => true]);
         $school = School::create(['work_unit_id' => $unit->id, 'npsn' => '80808092', 'name' => 'Sekolah Render']);
@@ -95,24 +95,25 @@ class TahfidzLegerRenderTest extends TestCase
 
         $data = app(LegerPdfService::class)->buildData($school->id, $class, $year, $year->id, 'ganjil', 'sts');
 
-        $this->assertArrayHasKey($tahfidz->id, $data['tahfidzColumns']);
-        $this->assertArrayNotHasKey($umum->id, $data['tahfidzColumns'], 'Mapel umum tetap memakai format mapel umum.');
+        // Mapel tahfidz tidak lagi punya kolom sendiri di leger.
+        $this->assertArrayNotHasKey('tahfidzColumns', $data);
 
         $html = view('nilai-kelas.leger-cetak', $data + ['userId' => null])->render();
 
-        foreach (['NPT', 'Ziyadah', 'Rabt', 'Tikrar', 'STS', 'SAS'] as $label) {
-            $this->assertStringContainsString('>'.$label.'</th>', $html, "Kolom {$label} tidak ada di leger.");
+        foreach (['NPT', 'Ziyadah', 'Rabt', 'Tikrar'] as $label) {
+            $this->assertStringNotContainsString('>'.$label.'</th>', $html, "Kolom {$label} tidak boleh muncul di leger.");
         }
 
-        // Satu kolom tahfidz (6) + satu kolom mapel umum (Nilai) = 7 slot nilai.
-        $this->assertSame(7, substr_count($html, 'class="comp') + substr_count($html, 'class="below') + substr_count($html, 'class="empty'));
-        // Values on the santri row: Ziyadah 88, Rabt 76, STS 82, SAS 90.
+        // Satu slot nilai per mapel; mapel umum yang belum punya nilai adalah
+        // sel kosong (class="empty"), tahfidz terisi NR Final.
+        $slots = substr_count($html, 'class="comp') + substr_count($html, 'class="below') + substr_count($html, 'class="empty');
+        $this->assertSame(1, $slots, 'Leger hanya memuat satu sel nilai milik mapel umum (tahfidz terisi).');
+        // Nilai tahfidz di leger = NR Final.
+        $pos = strpos($html, 'Santri Render');
         $pos = strpos($html, 'Santri Render');
         $rowStart = strrpos(substr($html, 0, $pos), '<tr>');
         $rowHtml = substr($html, $rowStart);
         $rowHtml = substr($rowHtml, 0, strpos($rowHtml, '</tr>'));
-        foreach (['88', '76', '82', '90'] as $value) {
-            $this->assertStringContainsString($value, $rowHtml, "Nilai {$value} tidak tampil di baris santri.");
-        }
+        $this->assertStringContainsString('86', $rowHtml, 'NR Final tahfidz harus tampil di baris santri.');
     }
 }

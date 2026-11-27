@@ -111,8 +111,9 @@ class TahfidzRaporIntegrationTest extends TestCase
             'ziyadah' => 80, 'rabt' => 70, 'sts' => 90, 'sas' => 85, 'nr_final' => 81,
         ]);
 
+        // Leger menampilkan satu angka untuk tahfidz — NR Final — di kedua mode.
         $this->assertSame(81.0, $service->scoreFor($student->id, $book, $year->id, 'ganjil', 'sas', null));
-        $this->assertSame(90.0, $service->scoreFor($student->id, $book, $year->id, 'ganjil', 'sts', null));
+        $this->assertSame(81.0, $service->scoreFor($student->id, $book, $year->id, 'ganjil', 'sts', null));
         $this->assertSame(2, $service->jumlahJuz($student->id, $year->id));
     }
 }
