@@ -242,4 +242,26 @@ class GuruPendampingTest extends TestCase
             'Guru Pendamping tidak boleh mendapat buku nilai.'
         );
     }
+
+    public function test_panel_menanggapi_pemilihan_lewat_select2(): void
+    {
+        // Dropdown tugas tambahan memakai select2, yang TIDAK memicu event
+        // 'change' native. Tanpa penanganan select2, panel tidak pernah
+        // terbuka walau "Guru Pendamping" sudah dipilih.
+        $js = file_get_contents(public_path('build/js/guru-pendamping.js'));
+
+        $this->assertStringContainsString('select2:select', $js);
+        $this->assertStringContainsString('select2:unselect', $js);
+    }
+
+    public function test_halaman_form_memuat_script_panel_guru_pendamping(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->get(route('user.gtk-additional-tasks.create', ['userId' => $this->admin->id]));
+
+        $response->assertOk()
+            ->assertSee('guruPendampingPanel', false)
+            ->assertSee('build/js/guru-pendamping.js', false)
+            ->assertSee('data-hours-url', false);
+    }
 }

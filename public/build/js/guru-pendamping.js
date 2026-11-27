@@ -114,7 +114,32 @@
             if (active) refresh();
         }
 
-        if (taskSelect) taskSelect.addEventListener('change', togglePanel);
+        function applySelection() {
+            // select2 tidak memicu event 'change' native saat memilih lewat UI,
+            // jadi panel bisa tetap tertutup walau nilainya sudah "Guru
+            // Pendamping". Baca nilai langsung setiap kali terjadi pemilihan.
+            if (isPendamping() && panel.classList.contains('d-none')) {
+                togglePanel();
+            } else if (! isPendamping() && ! panel.classList.contains('d-none')) {
+                togglePanel();
+            }
+        }
+
+        // Select2 (dipakai dropdown tugas tambahan) memancarkan event
+        // jQuery: select2:select / select2:unselect. Tanpa ini panel tidak
+        // pernah terbuka di browser.
+        if (window.jQuery) {
+            window.jQuery(taskSelect).on('select2:select select2:unselect change', applySelection);
+        }
+
+        if (taskSelect) {
+            taskSelect.addEventListener('change', togglePanel);
+            // select2 menyembunyikan <select> asli; perubahan lewat API-nya
+            // tetap perlu ditangkap. Polling ringan hanya sebagai jaring
+            // pengaman terakhir bila event belum terpasang.
+            taskSelect.addEventListener('input', applySelection);
+        }
+
         document.querySelectorAll('.gp-subject, .gp-group').forEach(function (el) {
             el.addEventListener('change', refresh);
         });
