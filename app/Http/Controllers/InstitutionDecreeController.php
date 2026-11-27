@@ -21,6 +21,7 @@ use App\Models\StudyGroupSubject;
 use App\Models\Subject;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\DecreePositionOrdering;
 use App\Services\Documents\DocumentSigningService;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
@@ -308,17 +309,15 @@ class InstitutionDecreeController extends Controller
 
             $positionOrder = $positionOptions->mapWithKeys(
                 fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
-            );
-            $teachers = $teachers->sortBy(function ($teacher) use ($currentPositions, $positionOrder) {
-                $position = $currentPositions[$teacher->id] ?? '';
-
-                return sprintf(
-                    '%d|%03d|%s',
-                    $this->matrixPositionRank($position),
-                    $positionOrder->get(mb_strtolower(trim($position)), 999),
-                    mb_strtolower($teacher->name)
-                );
-            })->values();
+            )->all();
+            $ordering = app(DecreePositionOrdering::class);
+            $teachers = $teachers->sortBy(
+                fn ($teacher) => $ordering->sortKeyWithMaster(
+                    $currentPositions[$teacher->id] ?? '',
+                    (string) $teacher->name,
+                    $positionOrder
+                )
+            )->values();
         }
 
         // For non-global users, auto-select school from session and lock decree_type
@@ -716,11 +715,12 @@ class InstitutionDecreeController extends Controller
             ->get();
 
         if ($missingTeachers->isNotEmpty()) {
-            // Gabungkan tanpa membuang urutan jabatan dari form tambah SK.
-            // GTK tambahan diurutkan dengan aturan yang sama, bukan nama saja.
+            // Gabungkan lalu urutkan ulang dengan aturan jabatan yang sama
+            // seperti form tambah SK, bukan nama saja.
             $positionOrder = collect($data['positionOptions'] ?? [])->mapWithKeys(
                 fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
-            );
+            )->all();
+            $ordering = app(DecreePositionOrdering::class);
 
             foreach ($missingTeachers as $teacher) {
                 $data['currentPositions'][$teacher->id] ??= 'GTK';
@@ -728,16 +728,11 @@ class InstitutionDecreeController extends Controller
             }
 
             $teachers = $teachers->concat($missingTeachers)
-                ->sortBy(function ($teacher) use ($data, $positionOrder) {
-                    $position = $data['currentPositions'][$teacher->id] ?? '';
-
-                    return sprintf(
-                        '%d|%03d|%s',
-                        $this->matrixPositionRank($position),
-                        $positionOrder->get(mb_strtolower(trim((string) $position)), 999),
-                        mb_strtolower($teacher->name ?? '')
-                    );
-                })
+                ->sortBy(fn ($teacher) => $ordering->sortKeyWithMaster(
+                    $data['currentPositions'][$teacher->id] ?? '',
+                    (string) $teacher->name,
+                    $positionOrder
+                ))
                 ->values();
         }
 
@@ -1015,40 +1010,6 @@ class InstitutionDecreeController extends Controller
 
             return back()->with('error', 'Gagal menghapus Surat Keputusan.');
         }
-    }
-
-    /**
-     * Peringkat jabatan pada matriks SK: Kepala -> Wakil -> Koordinator -> Guru/Staf -> Tata Usaha.
-     */
-    private function matrixPositionRank(?string $position): int
-    {
-        $name = mb_strtolower(trim((string) $position));
-
-        if ($name === '') {
-            return 5;
-        }
-
-        if (str_contains($name, 'tata usaha') || preg_match('/\btu\b/', $name) === 1) {
-            return 9;
-        }
-
-        if (str_starts_with($name, 'kepala')) {
-            return 1;
-        }
-
-        if (str_starts_with($name, 'wakil')) {
-            return 2;
-        }
-
-        if (str_starts_with($name, 'koordinator')) {
-            return 3;
-        }
-
-        if (str_starts_with($name, 'staf') || str_starts_with($name, 'staff')) {
-            return 6;
-        }
-
-        return 4;
     }
 
     // ─────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ use App\Models\SubjectKktp;
 use App\Models\TeacherAdminBook;
 use App\Models\TeachingAssignment;
 use App\Models\User;
+use App\Services\DecreePositionOrdering;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -166,16 +167,14 @@ class InstitutionDecreeMatrixService
 
         [$positionOptions, $positionOrder] = $this->positionOrdering();
 
-        $orderedTeachers = $teachers->sortBy(function ($teacher) use ($teacherPositions, $positionOrder) {
-            $position = $teacherPositions[$teacher->id] ?? '';
-
-            return sprintf(
-                '%d|%03d|%s',
-                $this->matrixPositionRank($position),
-                $positionOrder->get(mb_strtolower(trim($position)), 999),
-                mb_strtolower($teacher->name)
-            );
-        })->values();
+        $ordering = app(DecreePositionOrdering::class);
+        $orderedTeachers = $teachers->sortBy(
+            fn ($teacher) => $ordering->sortKeyWithMaster(
+                $teacherPositions[$teacher->id] ?? '',
+                (string) $teacher->name,
+                $positionOrder
+            )
+        )->values();
 
         $rows = [];
         foreach ($orderedTeachers as $teacher) {
@@ -720,14 +719,14 @@ class InstitutionDecreeMatrixService
         // Urutkan berdasarkan jabatan (Kepala > Wakil > Koordinator > ... > TU),
         // lalu urutan jabatan di master, lalu nama — sama seperti form tambah SK.
         [, $positionOrder] = $this->positionOrdering();
-        $teacherMeta = collect($teacherMeta)->sortBy(function (array $meta) use ($positionOrder) {
-            return sprintf(
-                '%d|%03d|%s',
-                $this->matrixPositionRank($meta['position'] ?? ''),
-                $positionOrder->get(mb_strtolower(trim((string) ($meta['position'] ?? ''))), 999),
-                mb_strtolower($meta['name'] ?? '')
-            );
-        })->values()->all();
+        $ordering = app(DecreePositionOrdering::class);
+        $teacherMeta = collect($teacherMeta)->sortBy(
+            fn (array $meta) => $ordering->sortKeyWithMaster(
+                $meta['position'] ?? '',
+                (string) ($meta['name'] ?? ''),
+                $positionOrder
+            )
+        )->values()->all();
 
         $order = collect($teacherMeta)->pluck('id')->flip();
         $teachers = $teachers->sortBy(fn ($teacher) => $order->get($teacher->id, PHP_INT_MAX))->values();
@@ -814,39 +813,8 @@ class InstitutionDecreeMatrixService
                 ->get(['id', 'name', 'urutan']);
         }
 
-        $order = $positions->mapWithKeys(fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]);
+        $order = $positions->mapWithKeys(fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan])->all();
 
         return [$positions, $order];
-    }
-
-    private function matrixPositionRank(?string $position): int
-    {
-        $name = mb_strtolower(trim((string) $position));
-
-        if ($name === '') {
-            return 5;
-        }
-
-        if (str_contains($name, 'tata usaha') || preg_match('/\btu\b/', $name) === 1) {
-            return 9;
-        }
-
-        if (str_starts_with($name, 'kepala')) {
-            return 1;
-        }
-
-        if (str_starts_with($name, 'wakil')) {
-            return 2;
-        }
-
-        if (str_starts_with($name, 'koordinator')) {
-            return 3;
-        }
-
-        if (str_starts_with($name, 'staf') || str_starts_with($name, 'staff')) {
-            return 6;
-        }
-
-        return 4;
     }
 }
