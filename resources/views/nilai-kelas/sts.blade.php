@@ -383,11 +383,27 @@
                         <div class="btn-group btn-group-sm" role="group" aria-label="Filter kelompok mapel leger">
                             @foreach(['semua' => 'Semua Mapel', 'pondok' => 'Mapel Pondok', 'dinas' => 'Mapel Dinas'] as $filterKey => $filterLabel)
                                 <a href="{{ route('user.schools.nilai-kelas.sts', array_merge(['userId' => $userId, 'studyGroupId' => $studyGroup->id], request()->except('sumber'), ['tab' => 'leger', 'leger' => ($legerMode ?? 'sts'), 'sumber' => $filterKey])) }}"
-                                   class="btn {{ $legerFilter === $filterKey ? 'btn-primary' : 'btn-outline-primary' }}">
+                                   class="btn {{ $legerFilter === $filterKey ? 'btn-primary' : 'btn-outline-primary' }}"
+                                   data-leger-filter="{{ $filterKey }}">
                                     {{ $filterLabel }}
                                 </a>
                             @endforeach
                         </div>
+
+                        @if($legerFilter !== 'semua' && ($legerSubjectMap ?? $subjectMap)->isEmpty())
+                            <div class="alert alert-warning d-flex align-items-start gap-2 py-2 px-3 mt-2 mb-0 small" role="alert">
+                                <i class="ri-error-warning-line mt-1"></i>
+                                <div>
+                                    Belum ada mapel yang ditandai
+                                    <strong>{{ $legerFilter === 'pondok' ? 'Pondok' : 'Dinas' }}</strong>
+                                    untuk tingkat <strong>{{ $studyGroup->gradeLevel?->name ?? 'ini' }}</strong>,
+                                    sehingga tidak ada mapel yang bisa ditampilkan.
+                                    Atur kolom <strong>Sumber Mapel</strong> di
+                                    <a href="{{ route('user.kurikulum.index', ['userId' => $userId, 'grade_level_id' => $studyGroup->grade_level_id, 'academic_year_id' => $selectedAyId]) }}">Peta Kurikulum</a>
+                                    agar filter ini terisi.
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     {{-- Catatan rapor per predikat (dipakai bila catatan wali kosong) --}}
@@ -821,10 +837,12 @@
                 @php
                     $thfRows = $tahfidzMapel['rows'] ?? [];
                     $thfWeights = $tahfidzMapel['weights'] ?? [];
-                    $thfDefault = \App\Services\TahfidzGradebookService::DEFAULT_WEIGHTS;
-                    $thfW = fn ($k) => (float) ($thfWeights[$k] ?? $thfDefault[$k] ?? 0);
-                    $thfTotal = $thfW('ziyadah') + $thfW('rabt') + $thfW('sts') + $thfW('sas');
+                    $thfKeys = \App\Services\TahfidzGradebookService::DEFAULT_WEIGHTS;
+                    $thfCols = \App\Services\TahfidzLegerColumns::COLUMNS;
+                    $thfW = fn ($k) => (float) ($thfWeights[$k] ?? $thfKeys[$k] ?? 0);
+                    $thfTotal = collect(array_keys($thfKeys))->sum(fn ($k) => $thfW($k));
                     $thfFmt = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+                    $thfAuto = ['npt', 'tikrar'];
                 @endphp
 
                 <div class="px-4 py-3" style="background:var(--bs-tertiary-bg);border-bottom:1px solid var(--bs-border-color);">
@@ -838,7 +856,7 @@
                                 <i class="ri-community-line me-1"></i>Format Tahfidz: nilai per halaqah
                             </span>
                         </div>
-                        <div class="text-muted" style="font-size:12px;">Ziyadah · Rabt · STS · SAS — tersimpan otomatis.</div>
+                        <div class="text-muted" style="font-size:12px;">NPT · Ziyadah · Rabt · Tikrar · STS · SAS — tersimpan otomatis.</div>
                     </div>
                 </div>
 
@@ -852,9 +870,9 @@
                     <div class="px-4 pt-3 pb-2">
                         <div class="d-flex align-items-center gap-3 flex-wrap border rounded p-2" style="background:var(--bs-body-bg);">
                             <span class="fw-semibold" style="font-size:12px;">Bobot NR Final:</span>
-                            @foreach(['ziyadah' => 'Ziyadah', 'rabt' => 'Rabt', 'sts' => 'STS', 'sas' => 'SAS'] as $wk => $wlabel)
-                                <div class="input-group input-group-sm" style="width:140px;">
-                                    <span class="input-group-text">{{ $wlabel }} %</span>
+                            @foreach($thfKeys as $wk => $wlabel)
+                                <div class="input-group input-group-sm" style="width:126px;">
+                                    <span class="input-group-text">{{ $thfCols[$wk] }} %</span>
                                     <input type="number" name="weights[{{ $wk }}]" class="form-control text-center tahfidz-weight-input"
                                            data-key="{{ $wk }}" min="0" max="100" step="0.5" value="{{ $thfFmt($thfW($wk)) }}">
                                 </div>
@@ -871,13 +889,15 @@
                                     <th rowspan="2" class="align-middle text-muted" style="background:var(--bs-tertiary-bg);">No</th>
                                     <th rowspan="2" class="align-middle text-muted" style="background:var(--bs-tertiary-bg);">NIS</th>
                                     <th rowspan="2" class="align-middle text-muted text-start" style="background:var(--bs-tertiary-bg);"><i class="ri-user-line me-1"></i>Nama Santri</th>
-                                    <th colspan="4" class="bg-success-subtle text-success">Nilai Tahfidz</th>
+                                    <th colspan="6" class="bg-success-subtle text-success">Nilai Tahfidz</th>
                                     <th rowspan="2" class="align-middle bg-primary-subtle" style="min-width:90px;">NR Final</th>
                                     <th rowspan="2" class="align-middle bg-secondary-subtle" style="min-width:140px;">Keterangan</th>
                                 </tr>
                                 <tr>
-                                    @foreach(['ziyadah' => 'Ziyadah', 'rabt' => 'Rabt', 'sts' => 'STS', 'sas' => 'SAS'] as $wk => $wlabel)
-                                        <th style="min-width:88px;">{{ $wlabel }}<small class="d-block fw-normal" style="font-size:9px;">{{ $thfFmt($thfW($wk)) }}%</small></th>
+                                    @foreach($thfKeys as $wk => $wlabel)
+                                        <th style="min-width:88px;">
+                                            {{ $thfCols[$wk] }}<small class="d-block fw-normal" style="font-size:9px;">{{ $thfFmt($thfW($wk)) }}%</small>
+                                        </th>
                                     @endforeach
                                 </tr>
                             </thead>
@@ -902,11 +922,15 @@
                                                 @endif
                                             </div>
                                         </td>
-                                        @foreach(['ziyadah', 'rabt', 'sts', 'sas'] as $wk)
-                                            @php $cell = $row[$wk] ?? null; @endphp
+                                        @foreach($thfKeys as $wk => $wlabel)
+                                            @php
+                                                $cell = $row[$wk] ?? null;
+                                                $isAuto = in_array($wk, $thfAuto, true);
+                                            @endphp
                                             <td class="p-0" style="text-align:center;">
-                                                <input type="number" class="sheet-input tahfidz-score-input"
+                                                <input type="number" class="sheet-input tahfidz-score-input{{ $isAuto ? ' tahfidz-auto-input' : '' }}"
                                                        data-key="{{ $wk }}"
+                                                       @if($isAuto) data-auto="1" title="Nilai awal otomatis — boleh dikoreksi" @endif
                                                        name="nilai[{{ $student->id }}][{{ $wk }}]"
                                                        value="{{ $cell !== null ? $thfFmt($cell) : '' }}"
                                                        placeholder="---" min="0" max="100" step="0.01"
@@ -924,7 +948,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="8" class="text-center text-muted py-4"><i class="ri-group-line me-1"></i>Tidak ada Santri.</td></tr>
+                                    <tr><td colspan="10" class="text-center text-muted py-4"><i class="ri-group-line me-1"></i>Tidak ada Santri.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -934,7 +958,7 @@
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size:12px;">
                             <div class="text-muted">
                                 <span class="badge bg-success-subtle text-success">Tahfidz</span>
-                                Nilai per halaqah. NR Final = Σ(nilai × bobot) ÷ Σ bobot komponen yang terisi.
+                                Nilai per halaqah. NPT dan Tikrar terisi otomatis dari target & setoran, boleh dikoreksi. NR Final = Σ(nilai × bobot) ÷ Σ bobot komponen yang terisi.
                             </div>
                             <span id="thfSaveState" class="text-muted"><i class="ri-checkbox-circle-line me-1"></i>Tersimpan otomatis</span>
                         </div>
@@ -2321,7 +2345,7 @@ document.addEventListener('input', function (event) {
 
     const state = document.getElementById('thfSaveState');
     const totalBadge = document.getElementById('thfWeightTotal');
-    const keys = ['ziyadah', 'rabt', 'sts', 'sas'];
+    const keys = ['npt', 'ziyadah', 'rabt', 'tikrar', 'sts', 'sas'];
     let timer = null;
     let saving = false;
 
@@ -2360,10 +2384,15 @@ document.addEventListener('input', function (event) {
         state.innerHTML = (ok ? '<i class="ri-checkbox-circle-line me-1"></i>' : '<i class="ri-error-warning-line me-1"></i>') + text;
     }
 
+    // Timer belum berjalan: bobot belum disimpan ke server, jadi NR Final
+    // dihitung dengan bobot baru lebih dulu agar angkanya tidak menyesatkan.
+    let weightsDirty = false;
+
     function save() {
         if (saving) return;
         saving = true;
         setState('Menyimpan...', true);
+        const sentClean = ! weightsDirty;
 
         fetch(form.action, {
             method: 'POST',
@@ -2375,9 +2404,16 @@ document.addEventListener('input', function (event) {
         }).then(function (json) {
             setState(json.message || (json.success ? 'Tersimpan otomatis' : 'Gagal menyimpan'), json.success === true);
         }).catch(function () {
+            if (sentClean) weightsDirty = true;
             setState('Gagal menyimpan - periksa koneksi', false);
         }).finally(function () {
             saving = false;
+            // Ada perubahan bobot saat permintaan berjalan: simpan lagi
+            // supaya angka terakhir tidak tertinggal di server.
+            if (weightsDirty) {
+                clearTimeout(timer);
+                timer = setTimeout(save, 300);
+            }
         });
     }
 
@@ -2387,6 +2423,7 @@ document.addEventListener('input', function (event) {
         }
 
         if (e.target.classList.contains('tahfidz-weight-input')) {
+            weightsDirty = true;
             const w = weights();
             const total = keys.reduce(function (s, k) { return s + w[k]; }, 0);
             if (totalBadge) {

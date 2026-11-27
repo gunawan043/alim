@@ -336,6 +336,28 @@ class PetaSebagaiSumberNilaiTest extends TestCase
         $this->assertSame(60.0, $avg('semua'));
     }
 
+    public function test_sumber_mapel_diatur_di_peta_lalu_terbaca_di_filter_leger(): void
+    {
+        // Belum ada yang ditandai → kedua filter kosong.
+        $this->assertSame([], $this->filteredSubjectNames('dinas'));
+
+        // Ditandai dari Peta Kurikulum (satu pengaturan untuk seluruh tingkat).
+        $this->actingAs($this->user)->post(route('user.kurikulum.peta.save', ['userId' => $this->user->id]), [
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'struktur' => [
+                $this->grade->id => [
+                    $this->subjects['BAR']->id => ['sumber' => 'pondok', 'rapor' => '1'],
+                    $this->subjects['FQH']->id => ['sumber' => 'pondok_dinas', 'rapor' => '1'],
+                    $this->subjects['MTK']->id => ['sumber' => 'dinas', 'rapor' => '1'],
+                ],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(['Bahasa Arab', 'Fiqih'], $this->filteredSubjectNames('pondok'));
+        $this->assertSame(['Fiqih', 'Matematika'], $this->filteredSubjectNames('dinas'));
+    }
+
     private function filteredSubjectNames(string $sumber): array
     {
         $response = $this->actingAs($this->user)->get(
@@ -347,5 +369,32 @@ class PetaSebagaiSumberNilaiTest extends TestCase
             ->map(fn ($subject) => $subject->name)
             ->values()
             ->all();
+    }
+
+    public function test_filter_kosong_memberi_arahan_ke_peta_kurikulum(): void
+    {
+        // Tidak ada mapel yang ditandai Pondok/Dinas untuk tingkat ini.
+        GradeLevelSubject::where('grade_level_id', $this->grade->id)->update(['subject_source' => null]);
+
+        $response = $this->actingAs($this->user)->get(
+            '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts'
+            .'?tab=leger&leger=sts&sumber=dinas'
+        )->assertOk();
+
+        $response->assertSee('Belum ada mapel yang ditandai');
+        $response->assertSee('Peta Kurikulum');
+    }
+
+    public function test_filter_tidak_kosong_tanpa_pemberitahuan(): void
+    {
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok']);
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas']);
+
+        $response = $this->actingAs($this->user)->get(
+            '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts'
+            .'?tab=leger&leger=sts&sumber=pondok'
+        )->assertOk();
+
+        $response->assertDontSee('Belum ada mapel yang ditandai');
     }
 }
