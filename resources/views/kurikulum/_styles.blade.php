@@ -38,10 +38,40 @@
 
     /* Kolom pengaturan rapor: nomor urut & status Pondok/Dinas.
        Lebar tetap agar puluhan baris tetap sejajar saat digulir. */
+    .rapor-order-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .rapor-order-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 26px;
+        border-radius: 4px;
+        color: var(--bs-secondary-color);
+        text-decoration: none;
+        line-height: 1;
+    }
+    .rapor-order-btn:hover {
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-primary);
+    }
+    .rapor-order-btn i {
+        font-size: 16px;
+    }
     .rapor-order-input {
-        width: 64px;
-        margin: 0 auto;
+        width: 52px;
+        margin: 0;
+        -moz-appearance: textfield;
+        appearance: textfield;
         font-variant-numeric: tabular-nums;
+    }
+    .rapor-order-input::-webkit-outer-spin-button,
+    .rapor-order-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
     }
     .rapor-source-select {
         width: 96px;

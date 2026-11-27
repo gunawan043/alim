@@ -143,15 +143,17 @@ class RaporSubjectOrderService
     /**
      * Kunci pengurutan: blok (Pondok → Dinas → belum ditandai), nomor urut,
      * lalu nama mapel sebagai penstabil.
-     *
-     * @return array{0: int, 1: int, 2: string}
      */
-    private function sortKey(Subject $subject, ?GradeLevelSubject $meta): array
+    public function sortKey(Subject $subject, ?GradeLevelSubject $meta): string
     {
-        return [
+        // Kunci berupa STRING, bukan array: perbandingan array pada uasort
+        // membandingkan jumlah elemen lebih dulu dan berhenti di elemen yang
+        // belum tentu sama panjang, sehingga urutan bisa salah.
+        return sprintf(
+            '%d|%06d|%s',
             GradeLevelSubject::sourceRank($meta?->subject_source),
-            $meta?->sort_order ?? PHP_INT_MAX,
+            $meta?->sort_order ?? 999999,
             mb_strtolower((string) $subject->name),
-        ];
+        );
     }
 }

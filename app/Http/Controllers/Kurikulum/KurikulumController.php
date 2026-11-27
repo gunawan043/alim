@@ -736,4 +736,91 @@ class KurikulumController extends Controller
             "Pengaturan rapor tersimpan ({$diubah} mapel-tingkat). Rapor semua rombel pada tingkat itu mengikuti urutan ini."
         );
     }
+
+    /**
+     * Naikkan/turunkan satu mapel dalam susunan rapor satu tingkat.
+     *
+     * Panah di Peta Kurikulum tidak mengirim form: posisi dihitung dari
+     * susunan yang sedang tampil (blok Pondok → Dinas, lalu nomor urut), lalu
+     * mapel dan tetangganya bertukar posisi.
+     */
+    public function moveStruktur(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $user = $request->user();
+
+        abort_unless(
+            app(KurikulumAccess::class)->isKurikulumTeam($user),
+            403,
+            'Hanya tim kurikulum (termasuk Waka/Kepala) yang dapat mengatur urutan dan status mapel rapor.'
+        );
+
+        $data = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'grade_level_id' => 'required|exists:grade_levels,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'direction' => 'required|in:up,down',
+        ]);
+
+        app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'Susunan Rapor Peta Kurikulum');
+
+        $gradeLevel = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->findOrFail($data['grade_level_id']);
+
+        $structures = GradeLevelSubject::query()
+            ->where('grade_level_id', $gradeLevel->id)
+            ->forAcademicYear($data['academic_year_id'])
+            ->orderByAcademicYearFirst()
+            ->get()
+            ->unique('subject_id')
+            ->filter(fn ($row) => $row->is_active)
+            ->values();
+
+        $orderService = app(RaporSubjectOrderService::class);
+
+        /** @var \Illuminate\Support\Collection<int, Subject> $sorted */
+        $sorted = $orderService->sortSubjects(
+            Subject::query()->whereIn('id', $structures->pluck('subject_id'))->get(),
+            $gradeLevel->id,
+            $data['academic_year_id'],
+        );
+
+        $index = $sorted->search(fn (Subject $s) => (string) $s->id === (string) $data['subject_id']);
+        abort_if($index === false, 404, 'Mapel ini tidak ada pada struktur tingkat tersebut.');
+
+        $target = $data['direction'] === 'up' ? $index - 1 : $index + 1;
+        abort_if($target < 0 || $target >= $sorted->count(), 422, 'Mapel ini sudah berada di urutan teratas/terbawah.');
+
+        $structuresBySubject = $structures->keyBy('subject_id');
+        $moving = $structuresBySubject->get($data['subject_id']);
+        $neighbour = $structuresBySubject->get($sorted->get($target)->id);
+        abort_if(! $moving || ! $neighbour, 404, 'Mapel ini tidak ada pada struktur tingkat tersebut.');
+
+        // Urutan tujuan dihitung dari posisi tampil, bukan saling menukar nilai
+        // sort_order: dua mapel bisa bernomor sama, sehingga menukar nilainya
+        // tidak menggeser apa pun.
+        $moving->sort_order = $target + 1;
+        $neighbour->sort_order = $index + 1;
+        $moving->save();
+        $neighbour->save();
+
+        // Bila daftar mapel rapor tingkat belum pernah diatur, tetapkan seluruh
+        // mapel dengan susunan baru agar cetakan langsung mengikutinya.
+        if ($orderService->reportSubjectIds($schoolId, $data['academic_year_id'], $data['semester'], $gradeLevel->id) === null) {
+            $ids = $sorted->pluck('id')->all();
+            [$ids[$index], $ids[$target]] = [$ids[$target], $ids[$index]];
+
+            $orderService->saveReportSubjects(
+                $schoolId,
+                $data['academic_year_id'],
+                $data['semester'],
+                $gradeLevel->id,
+                $ids,
+            );
+        }
+
+        return back()->with('success', 'Urutan rapor diperbarui.');
+    }
 }

@@ -443,14 +443,28 @@
                                     </td>
                                     <td class="text-center">
                                         @if($canEditRapor ?? false)
-                                            <input type="number"
-                                                   form="strukturFormPeta"
-                                                   name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][urutan]"
-                                                   value="{{ $row['sort_order'] }}"
-                                                   min="1" max="999" step="1"
-                                                   placeholder="—"
-                                                   class="form-control form-control-sm text-center rapor-order-input"
-                                                   aria-label="Urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
+                                            <div class="rapor-order-control">
+                                                <a href="{{ route('user.kurikulum.struktur.move', ['userId' => $userId, 'grade_level_id' => $row['grade_level_id'], 'subject_id' => $row['subject_id'], 'direction' => 'up', 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
+                                                   class="rapor-order-btn rapor-order-up"
+                                                   title="Naikkan urutan {{ $row['subject'] }}"
+                                                   aria-label="Naikkan urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
+                                                    <i class="ri-arrow-up-s-line"></i>
+                                                </a>
+                                                <input type="number"
+                                                       form="strukturFormPeta"
+                                                       name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][urutan]"
+                                                       value="{{ $row['sort_order'] }}"
+                                                       min="1" max="999" step="1"
+                                                       placeholder="—"
+                                                       class="form-control form-control-sm text-center rapor-order-input"
+                                                       aria-label="Urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
+                                                <a href="{{ route('user.kurikulum.struktur.move', ['userId' => $userId, 'grade_level_id' => $row['grade_level_id'], 'subject_id' => $row['subject_id'], 'direction' => 'down', 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
+                                                   class="rapor-order-btn rapor-order-down"
+                                                   title="Turunkan urutan {{ $row['subject'] }}"
+                                                   aria-label="Turunkan urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
+                                                    <i class="ri-arrow-down-s-line"></i>
+                                                </a>
+                                            </div>
                                             <input type="hidden"
                                                    form="strukturFormPeta"
                                                    name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][rapor]"

@@ -254,4 +254,48 @@ class PetaRaporStrukturTest extends TestCase
         $this->assertSame(['FQH', 'MTK'], $this->order($this->groupA));
         $this->assertSame(['FQH', 'MTK'], $this->order($this->groupB));
     }
+
+    private function move(string $code, string $direction)
+    {
+        return $this->actingAs($this->kurikulum)->get(route(
+            'user.kurikulum.struktur.move',
+            ['userId' => $this->kurikulum->id] + [
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'grade_level_id' => $this->grade->id,
+                'subject_id' => $this->subjects[$code]->id,
+                'direction' => $direction,
+            ])
+        );
+    }
+
+    public function test_panah_naik_turun_mengubah_urutan_rapor_satu_tingkat(): void
+    {
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 1]);
+        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
+
+        $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
+
+        // Turunkan Bahasa Arab (Pondok #1) → bertukar dengan Fiqih.
+        $this->move('BAR', 'down')->assertRedirect();
+        $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupA));
+        $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupB));
+
+        // Naikkan Matematika (Dinas #1) → pindah ke posisi Dinas paling atas;
+        // blok Pondok tetap di depan karena asal mapel tidak berubah.
+        $this->move('MTK', 'up')->assertRedirect();
+        $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupA));
+    }
+
+    public function test_panah_di_ujung_tidak_bisa_melampaui_batas(): void
+    {
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 1]);
+        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
+
+        $this->move('BAR', 'up')->assertStatus(422);
+        $this->move('MTK', 'down')->assertStatus(422);
+        $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
+    }
 }
