@@ -290,6 +290,57 @@ class MapelJpPerTingkatTest extends TestCase
             ->assertSessionHasErrors('category');
     }
 
+    public function test_mengubah_kategori_mengisi_sumber_peta_yang_masih_kosong(): void
+    {
+        GradeLevelSubject::where('subject_id', $this->bind->id)->update(['subject_source' => null]);
+
+        $this->actingAs($this->admin)
+            ->put(route('user.subjects.update', [
+                'userId' => $this->admin->id,
+                'id' => $this->bind->id,
+            ]), [
+                'code' => 'BIND',
+                'name' => 'Bahasa Indonesia',
+                'category' => Subject::CATEGORY_PONDOK,
+                'kelompok' => 'bahasa',
+                'credit_hours' => 2,
+                'is_active' => 1,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            ['pondok'],
+            GradeLevelSubject::where('subject_id', $this->bind->id)
+                ->pluck('subject_source')->unique()->values()->all(),
+        );
+    }
+
+    public function test_kategori_tidak_menimpa_sumber_peta_yang_sudah_diatur(): void
+    {
+        // Sudah ditandai khusus per tingkat — jangan ditimpa kategori mapel.
+        GradeLevelSubject::where('subject_id', $this->bind->id)->update(['subject_source' => 'pondok_dinas']);
+
+        $this->actingAs($this->admin)
+            ->put(route('user.subjects.update', [
+                'userId' => $this->admin->id,
+                'id' => $this->bind->id,
+            ]), [
+                'code' => 'BIND',
+                'name' => 'Bahasa Indonesia',
+                'category' => Subject::CATEGORY_PONDOK,
+                'kelompok' => 'bahasa',
+                'credit_hours' => 2,
+                'is_active' => 1,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            ['pondok_dinas'],
+            GradeLevelSubject::where('subject_id', $this->bind->id)
+                ->pluck('subject_source')->unique()->values()->all(),
+        );
+    }
+
     private function makeUser(string $name, string $email, string $jabatan): User
     {
         $role = Role::firstOrCreate(['name' => 'Satuan Pendidikan', 'guard_name' => 'web'], ['level' => 3]);

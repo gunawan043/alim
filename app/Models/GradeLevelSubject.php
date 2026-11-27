@@ -68,6 +68,22 @@ class GradeLevelSubject extends Model
         self::SOURCE_PONDOK_DINAS => 'Pondok + Dinas',
     ];
 
+    /**
+     * Terjemahkan Kategori mapel menjadi asal mapel di Peta.
+     *
+     * Kategori dan asal di Peta sama-sama menyatakan Pondok vs Dinas, hanya
+     * beda penamaan. Null = kategori belum dikenali, Peta dibiarkan kosong.
+     */
+    public static function sourceFromCategory(?string $category): ?string
+    {
+        return match ($category) {
+            Subject::CATEGORY_PONDOK => self::SOURCE_PONDOK,
+            Subject::CATEGORY_DINAS => self::SOURCE_DINAS,
+            Subject::CATEGORY_DINAS_PONDOK => self::SOURCE_PONDOK_DINAS,
+            default => null,
+        };
+    }
+
     /** Bobot urutan blok di rapor: pondok → pondok+dinas → dinas → belum ditandai. */
     public static function sourceRank(?string $source): int
     {

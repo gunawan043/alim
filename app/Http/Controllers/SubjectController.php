@@ -257,6 +257,14 @@ class SubjectController extends Controller
                 $row->allocation_hours = (int) ($subject->credit_hours ?: 2);
             }
 
+            // Asal mapel di Peta diturunkan dari Kategori mapel selama belum
+            // diatur manual. Dua kolom ini mengukur hal yang sama (Pondok vs
+            // Dinas), jadi tidak boleh saling bertentangan — dulu mapel pondok
+            // bisa tercatat "dinas" di Peta hanya karena belum pernah ditandai.
+            if (! $row->subject_source) {
+                $row->subject_source = GradeLevelSubject::sourceFromCategory($subject->category);
+            }
+
             $row->is_active = true;
             $row->save();
 
@@ -264,6 +272,25 @@ class SubjectController extends Controller
         }
 
         return $synced;
+    }
+
+    /**
+     * Samakan asal mapel di Peta dengan Kategori mapel.
+     *
+     * Hanya baris yang belum punya sumber (NULL/kosong) yang diisi, sehingga
+     * penandaan khusus per tingkat — mis. "Pondok + Dinas" — tetap utuh.
+     */
+    private function syncSourceFromCategory(Subject $subject): void
+    {
+        $source = GradeLevelSubject::sourceFromCategory($subject->category);
+
+        if (! $source) {
+            return;
+        }
+
+        GradeLevelSubject::where('subject_id', $subject->id)
+            ->where(fn ($q) => $q->whereNull('subject_source')->orWhere('subject_source', ''))
+            ->update(['subject_source' => $source]);
     }
 
     /**
@@ -506,8 +533,15 @@ class SubjectController extends Controller
         }
 
         $hoursChanged = (int) $subject->credit_hours !== (int) $data['credit_hours'];
+        $categoryChanged = (string) $subject->category !== (string) $data['category'];
 
         $subject->update($data);
+
+        // Kategori menentukan Pondok/Dinas. Baris Peta yang belum ditandai
+        // disamakan; penandaan manual yang sudah ada tidak diubah.
+        if ($categoryChanged) {
+            $this->syncSourceFromCategory($subject);
+        }
 
         // JP master adalah nilai bawaan. Hanya tingkat tanpa JP yang diisi;
         // JP yang sudah diatur di Peta Kurikulum dibiarkan apa adanya.
