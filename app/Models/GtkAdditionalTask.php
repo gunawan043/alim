@@ -76,6 +76,22 @@ class GtkAdditionalTask extends Model
         return $this->belongsTo(AdditionalTaskType::class, 'additional_task_type_id');
     }
 
+    /**
+     * Kelas yang didampingi (khusus Guru Pendamping). JP per kelas dibaca
+     * dari Peta Kurikulum, bukan dari tabel pivot ini.
+     */
+    public function studyGroups()
+    {
+        return $this->belongsToMany(StudyGroup::class, 'gtk_additional_task_study_groups', 'gtk_additional_task_id', 'study_group_id')
+            ->using(GtkAdditionalTaskStudyGroup::class)
+            ->withTimestamps();
+    }
+
+    public function isGuruPendamping(): bool
+    {
+        return mb_strtolower(trim((string) $this->nama_tugas)) === 'guru pendamping';
+    }
+
     protected function nomorSk(): Attribute
     {
         return Attribute::make(

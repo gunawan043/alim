@@ -1919,6 +1919,8 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── GTK ADDITIONAL TASKS ───────────────────────────────
             Route::prefix('gtk-additional-tasks')->name('gtk-additional-tasks.')->group(function () {
                 Route::get('/', [GtkAdditionalTaskController::class, 'index'])->name('index');
+                // JP Guru Pendamping dari Peta Kurikulum — harus di atas /{id}.
+                Route::get('/guru-pendamping/hours', [GtkAdditionalTaskController::class, 'pendampingHours'])->name('pendamping.hours');
                 Route::get('/{id}', [GtkAdditionalTaskController::class, 'show'])->name('show');
                 Route::get('/create', [GtkAdditionalTaskController::class, 'create'])->name('create');
                 Route::post('/', [GtkAdditionalTaskController::class, 'store'])->name('store');

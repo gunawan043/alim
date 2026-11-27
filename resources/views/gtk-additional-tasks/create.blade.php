@@ -91,6 +91,8 @@
                         </div>
                     </div>
                 </div>
+
+                @include('gtk-additional-tasks.partials.guru-pendamping')
             </div>
             <div class="col-lg-4">
                 <div class="card">

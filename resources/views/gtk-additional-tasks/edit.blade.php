@@ -61,8 +61,7 @@
                                     @if($task->nama_tugas && ! in_array($task->nama_tugas, $defaultTasks ?? [], true))
                                         <option value="{{ $task->nama_tugas }}" selected>{{ $task->nama_tugas }}</option>
                                     @endif
-                                </select>nama_tugas) }}"
-                                       required>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Jam per Minggu (JP)</label>
@@ -95,6 +94,8 @@
                         </div>
                     </div>
                 </div>
+
+                @include('gtk-additional-tasks.partials.guru-pendamping')
             </div>
         </div>
     </form>

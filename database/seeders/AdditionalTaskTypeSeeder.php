@@ -33,6 +33,9 @@ class AdditionalTaskTypeSeeder extends Seeder
                     'Tim Kurikulum',
                     'Tim Kesiswaan',
                     'Bendahara Sekolah',
+                    // Guru Pendamping: tugas tambahan yang hanya memenuhi JP.
+                    // Tidak membuka Buku Nilai maupun Perangkat Ajar.
+                    'Guru Pendamping',
                 ],
             ],
             [
