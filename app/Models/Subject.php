@@ -12,6 +12,28 @@ class Subject extends Model
 {
     protected $table = 'subjects';
 
+    public const CATEGORY_DINAS = 'dinas';
+
+    public const CATEGORY_PONDOK = 'pondok';
+
+    public const CATEGORY_DINAS_PONDOK = 'dinas_pondok';
+
+    /**
+     * Kategori mapel: asal kurikulumnya (Dinas, Pondok, atau keduanya).
+     *
+     * @var array<string, string>
+     */
+    public const CATEGORY_OPTIONS = [
+        self::CATEGORY_DINAS => 'Dinas',
+        self::CATEGORY_PONDOK => 'Pondok',
+        self::CATEGORY_DINAS_PONDOK => 'Dinas + Pondok',
+    ];
+
+    public function categoryLabel(): string
+    {
+        return self::CATEGORY_OPTIONS[$this->category ?? ''] ?? (string) ($this->category ?? '—');
+    }
+
     protected $keyType = 'string';
 
     public $incrementing = false;

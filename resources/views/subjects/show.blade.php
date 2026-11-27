@@ -64,13 +64,14 @@
                         <tr>
                             <th class="text-muted">Kategori</th>
                             <td>
-                                @if($subject->category === 'nasional')
-                                    <span class="badge bg-info-subtle text-info">Nasional</span>
-                                @elseif($subject->category === 'lokal')
-                                    <span class="badge bg-warning-subtle text-warning">Lokal</span>
-                                @else
-                                    <span class="badge bg-purple-subtle text-purple">Muatan Lokal</span>
-                                @endif
+                                @php
+                                    $categoryStyle = [
+                                        \App\Models\Subject::CATEGORY_DINAS => 'bg-info-subtle text-info',
+                                        \App\Models\Subject::CATEGORY_PONDOK => 'bg-success-subtle text-success',
+                                        \App\Models\Subject::CATEGORY_DINAS_PONDOK => 'bg-primary-subtle text-primary',
+                                    ][$subject->category] ?? 'bg-secondary-subtle text-secondary';
+                                @endphp
+                                <span class="badge {{ $categoryStyle }}">{{ $subject->categoryLabel() }}</span>
                             </td>
                         </tr>
                         <tr>

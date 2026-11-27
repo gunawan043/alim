@@ -65,7 +65,7 @@
                     </div>
                 </div>
                 <p class="text-muted mb-0 stat-label">
-                    <i class="ri-information-line me-1"></i>{{ $subjects->where('category', 'nasional')->count() }} nasional · {{ $subjects->where('category', 'muatan_lokal')->count() }} muatan lokal
+                    <i class="ri-information-line me-1"></i>{{ $subjects->where('category', \App\Models\Subject::CATEGORY_DINAS)->count() }} dinas · {{ $subjects->where('category', \App\Models\Subject::CATEGORY_PONDOK)->count() }} pondok · {{ $subjects->where('category', \App\Models\Subject::CATEGORY_DINAS_PONDOK)->count() }} dinas + pondok
                 </p>
             </div>
         </div>
@@ -154,8 +154,9 @@
                                     placeholder="Cari mata pelajaran..." value="{{ request('search') }}">
                                 <select name="category" class="form-select" style="width:140px" onchange="this.form.submit()">
                                     <option value="">Kategori</option>
-                                    <option value="nasional" {{ request('category') === 'nasional' ? 'selected' : '' }}>Nasional</option>
-                                    <option value="muatan_lokal" {{ request('category') === 'muatan_lokal' ? 'selected' : '' }}>Muatan Lokal</option>
+                                    @foreach(\App\Models\Subject::CATEGORY_OPTIONS as $value => $label)
+                                        <option value="{{ $value }}" {{ request('category') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                                 <select name="is_active" class="form-select" style="width:120px" onchange="this.form.submit()">
                                     <option value="">Status</option>
@@ -180,8 +181,9 @@
                     <a href="{{ request()->fullUrlWithQuery(['is_active' => '1', 'category' => null]) }}" class="filter-badge {{ request('is_active') === '1' ? 'active' : '' }}"><i class="ri-checkbox-circle-line"></i>Aktif</a>
                     <a href="{{ request()->fullUrlWithQuery(['is_active' => '0', 'category' => null]) }}" class="filter-badge {{ request('is_active') === '0' ? 'active' : '' }}"><i class="ri-close-circle-line"></i>Nonaktif</a>
                     <span class="text-muted small ms-2 me-2">·</span>
-                    <a href="{{ request()->fullUrlWithQuery(['category' => 'nasional']) }}" class="filter-badge {{ request('category') === 'nasional' ? 'active' : '' }}"><i class="ri-flag-2-line"></i>Nasional</a>
-                    <a href="{{ request()->fullUrlWithQuery(['category' => 'muatan_lokal']) }}" class="filter-badge {{ request('category') === 'muatan_lokal' ? 'active' : '' }}"><i class="ri-plant-line"></i>Muatan Lokal</a>
+                    @foreach(\App\Models\Subject::CATEGORY_OPTIONS as $value => $label)
+                        <a href="{{ request()->fullUrlWithQuery(['category' => $value]) }}" class="filter-badge {{ request('category') === $value ? 'active' : '' }}">{{ $label }}</a>
+                    @endforeach
                 </div>
             </div>
 
@@ -236,13 +238,14 @@
                                         {{ $sub->name_ar ?: \App\Support\SubjectArabicName::resolve($sub->name) ?: '—' }}
                                     </td>
                                     <td class="text-center">
-                                        @if($sub->category === 'nasional')
-                                            <span class="badge bg-info-subtle text-info" style="font-size:11px;">Nasional</span>
-                                        @elseif($sub->category === 'muatan_lokal')
-                                            <span class="badge bg-success-subtle text-success" style="font-size:11px;">Muatan Lokal</span>
-                                        @else
-                                            <span class="badge bg-warning-subtle text-warning" style="font-size:11px;">{{ $sub->category }}</span>
-                                        @endif
+                                        @php
+                                            $categoryStyle = [
+                                                \App\Models\Subject::CATEGORY_DINAS => 'bg-info-subtle text-info',
+                                                \App\Models\Subject::CATEGORY_PONDOK => 'bg-success-subtle text-success',
+                                                \App\Models\Subject::CATEGORY_DINAS_PONDOK => 'bg-primary-subtle text-primary',
+                                            ][$sub->category] ?? 'bg-secondary-subtle text-secondary';
+                                        @endphp
+                                        <span class="badge {{ $categoryStyle }}" style="font-size:11px;">{{ $sub->categoryLabel() }}</span>
                                     </td>
                                     <td class="text-center fw-semibold">
                                         {{ $sub->credit_hours ?? '—' }} JP

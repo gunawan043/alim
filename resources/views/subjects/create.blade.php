@@ -66,10 +66,11 @@
                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>
                                 <select name="category" class="form-select" required>
                                     <option value="">— Pilih Kategori —</option>
-                                    <option value="nasional" {{ old('category') == 'nasional' ? 'selected' : '' }}>Nasional</option>
-                                    <option value="lokal" {{ old('category') == 'lokal' ? 'selected' : '' }}>Lokal</option>
-                                    <option value="muatan_lokal" {{ old('category') == 'muatan_lokal' ? 'selected' : '' }}>Muatan Lokal</option>
+                                    @foreach(\App\Models\Subject::CATEGORY_OPTIONS as $value => $label)
+                                        <option value="{{ $value }}" {{ old('category') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
+                                <div class="form-text">Asal kurikulum mapel. Dipakai sebagai filter Pondok/Dinas di leger.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Kelompok Mapel <span class="text-danger">*</span></label>
@@ -121,7 +122,7 @@
                             <li class="mb-2">Gunakan kode singkat unik per sekolah (contoh: <code>MTK</code>, <code>B.IND</code>).</li>
                             <li class="mb-2">JP/minggu menjadi alokasi dasar sebelum disesuaikan di <strong>Plotting Guru</strong> dan jadwal.</li>
                             <li class="mb-2">Mapel baru otomatis diterapkan ke <strong>semua tingkat aktif</strong> dengan JP default agar langsung masuk buku nilai/leger. Sesuaikan JP/tingkat di <strong>Tingkat &amp; Struktur Mapel</strong>.</li>
-                            <li class="mb-2">Kategori <em>Muatan Lokal</em> dipakai untuk mapel khas satuan pendidikan.</li>
+                            <li class="mb-2">Kategori <em>Dinas</em> untuk mapel kurikulum pemerintah, <em>Pondok</em> untuk mapel khas pondok, dan <em>Dinas + Pondok</em> untuk mapel yang dipakai keduanya.</li>
                             <li>Mapel nonaktif tidak dihitung pada rekap JP aktif.</li>
                         </ul>
                     </div>

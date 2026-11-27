@@ -127,7 +127,7 @@ class SubjectController extends Controller
                 'name_ar' => filled($data['name_ar'] ?? null)
                     ? $data['name_ar']
                     : SubjectArabicName::resolve($data['name']),
-                'category' => 'lokal',
+                'category' => Subject::CATEGORY_PONDOK,
                 'source' => 'pemadatan',
                 'description' => $data['description'] ?? null,
                 'is_active' => true,
@@ -189,7 +189,7 @@ class SubjectController extends Controller
             'code' => 'required|string|max:20',
             'name' => 'required|string|max:100',
             'name_ar' => 'nullable|string|max:100',
-            'category' => 'required|in:nasional,lokal,muatan_lokal',
+            'category' => 'required|in:'.implode(',', array_keys(Subject::CATEGORY_OPTIONS)),
             'kelompok' => 'required|in:agama,bahasa,umum',
             'credit_hours' => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:500',
@@ -478,7 +478,7 @@ class SubjectController extends Controller
             'code' => 'required|string|max:20',
             'name' => 'required|string|max:100',
             'name_ar' => 'nullable|string|max:100',
-            'category' => 'required|in:nasional,lokal,muatan_lokal',
+            'category' => 'required|in:'.implode(',', array_keys(Subject::CATEGORY_OPTIONS)),
             'kelompok' => 'required|in:agama,bahasa,umum',
             'credit_hours' => 'required|integer|min:1|max:20',
             'description' => 'nullable|string|max:500',

@@ -62,9 +62,9 @@
                             <div class="col-md-6">
                                 <label class="form-label">Kategori <span class="text-danger">*</span></label>
                                 <select name="category" class="form-select" required>
-                                    <option value="nasional" {{ old('category', $subject->category) == 'nasional' ? 'selected' : '' }}>Nasional</option>
-                                    <option value="lokal" {{ old('category', $subject->category) == 'lokal' ? 'selected' : '' }}>Lokal</option>
-                                    <option value="muatan_lokal" {{ old('category', $subject->category) == 'muatan_lokal' ? 'selected' : '' }}>Muatan Lokal</option>
+                                    @foreach(\App\Models\Subject::CATEGORY_OPTIONS as $value => $label)
+                                        <option value="{{ $value }}" {{ old('category', $subject->category) == $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-6">

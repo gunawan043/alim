@@ -250,7 +250,7 @@ class CurriculumStructureController extends Controller
                     [
                         'name' => $data['name'],
                         'subject_group_id' => $data['subject_group_id'] ?? null,
-                        'category' => 'nasional',
+                        'category' => \App\Models\Subject::CATEGORY_PONDOK,
                         'source' => 'pondok',
                         'is_active' => true,
                     ]

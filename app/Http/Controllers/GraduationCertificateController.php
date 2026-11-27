@@ -204,7 +204,7 @@ class GraduationCertificateController extends Controller
                 GraduationCertificateSubject::create([
                     'school_id' => $schoolId,
                     'subject_id' => $subject->id,
-                    'group_key' => $subject->category === 'muatan_lokal' ? 'muatan_lokal' : 'umum',
+                    'group_key' => $subject->category === \App\Models\Subject::CATEGORY_PONDOK ? 'muatan_lokal' : 'umum',
                     'display_name' => $subject->name,
                     'sort_order' => $order,
                     'is_visible' => true,

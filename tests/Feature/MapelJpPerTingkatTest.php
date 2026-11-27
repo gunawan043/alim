@@ -130,7 +130,7 @@ class MapelJpPerTingkatTest extends TestCase
             ]), [
                 'code' => 'BIND',
                 'name' => 'Bahasa Indonesia',
-                'category' => 'nasional',
+                'category' => \App\Models\Subject::CATEGORY_DINAS,
                 'kelompok' => 'bahasa',
                 'credit_hours' => 6,
                 'is_active' => 1,
@@ -168,7 +168,7 @@ class MapelJpPerTingkatTest extends TestCase
             ]), [
                 'code' => 'BIND',
                 'name' => 'Bahasa Indonesia',
-                'category' => 'nasional',
+                'category' => \App\Models\Subject::CATEGORY_DINAS,
                 'kelompok' => 'bahasa',
                 'credit_hours' => 5,
                 'is_active' => 1,
@@ -234,7 +234,7 @@ class MapelJpPerTingkatTest extends TestCase
             ]), [
                 'code' => 'BIND',
                 'name' => 'Bahasa Indonesia',
-                'category' => 'nasional',
+                'category' => \App\Models\Subject::CATEGORY_DINAS,
                 'kelompok' => 'bahasa',
                 'credit_hours' => 6,
                 'is_active' => 1,
@@ -244,6 +244,50 @@ class MapelJpPerTingkatTest extends TestCase
         $this->assertSame(5, (int) StudyGroupSubject::where('study_group_id', $rombel7->id)
             ->where('subject_id', $this->bind->id)
             ->value('weekly_hours'));
+    }
+
+    public function test_kategori_mapel_memakai_dinas_pondok_dan_dinas_pondok(): void
+    {
+        // Pilihan kategori di form = Dinas, Pondok, Dinas + Pondok.
+        $this->assertSame(
+            ['dinas' => 'Dinas', 'pondok' => 'Pondok', 'dinas_pondok' => 'Dinas + Pondok'],
+            Subject::CATEGORY_OPTIONS,
+        );
+
+        foreach (array_keys(Subject::CATEGORY_OPTIONS) as $category) {
+            $this->actingAs($this->admin)
+                ->put(route('user.subjects.update', [
+                    'userId' => $this->admin->id,
+                    'id' => $this->bind->id,
+                ]), [
+                    'code' => 'BIND',
+                    'name' => 'Bahasa Indonesia',
+                    'category' => $category,
+                    'kelompok' => 'bahasa',
+                    'credit_hours' => 2,
+                    'is_active' => 1,
+                ])
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame($category, $this->bind->fresh()->category);
+        }
+    }
+
+    public function test_kategori_lama_ditolak(): void
+    {
+        $this->actingAs($this->admin)
+            ->put(route('user.subjects.update', [
+                'userId' => $this->admin->id,
+                'id' => $this->bind->id,
+            ]), [
+                'code' => 'BIND',
+                'name' => 'Bahasa Indonesia',
+                'category' => 'nasional',
+                'kelompok' => 'bahasa',
+                'credit_hours' => 2,
+                'is_active' => 1,
+            ])
+            ->assertSessionHasErrors('category');
     }
 
     private function makeUser(string $name, string $email, string $jabatan): User

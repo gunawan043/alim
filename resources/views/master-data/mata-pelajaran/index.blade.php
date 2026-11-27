@@ -156,10 +156,9 @@
                     <div class="mb-3">
                         <label class="form-label">Kategori / Kelompok</label>
                         <select class="form-select" name="category" id="mapel_category">
-                            <option value="nasional">Nasional</option>
-                            <option value="muatan_lokal">Muatan Lokal</option>
-                            <option value="pilihan">Pilihan</option>
-                            <option value="lain">Lainnya</option>
+                            @foreach(\App\Models\Subject::CATEGORY_OPTIONS as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="mb-3">
@@ -202,7 +201,7 @@ document.getElementById('modalMapel').addEventListener('hidden.bs.modal', functi
     document.getElementById('mapel_id').value = '';
     document.getElementById('mapel_name').value = '';
     document.getElementById('mapel_code').value = '';
-    document.getElementById('mapel_category').value = 'nasional';
+    document.getElementById('mapel_category').value = '{{ \App\Models\Subject::CATEGORY_DINAS }}';
     document.getElementById('mapel_credit').value = '';
     document.getElementById('mapel_desc').value = '';
     document.getElementById('mapel_active').checked = true;

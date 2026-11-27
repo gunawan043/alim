@@ -18,15 +18,15 @@ class MataPelajaranController extends Controller
 
         $subjects = Subject::when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderByRaw("CASE
-                WHEN category = 'nasional' THEN 1
-                WHEN category = 'muatan_lokal' THEN 2
-                WHEN category = 'pilihan' THEN 3
+                WHEN category = 'dinas' THEN 1
+                WHEN category = 'pondok' THEN 2
+                WHEN category = 'dinas_pondok' THEN 3
                 ELSE 4 END")
             ->orderBy('name')
             ->get();
 
         $grouped = $subjects->groupBy(fn ($s) => $s->category ?? 'lain')->map(fn ($g, $k) => [
-            'label' => $k === 'nasional' ? 'Nasional' : ($k === 'muatan_lokal' ? 'Muatan Lokal' : ucfirst($k)),
+            'label' => \App\Models\Subject::CATEGORY_OPTIONS[$k] ?? ucfirst($k),
             'items' => $g,
             'count' => $g->count(),
         ])->values();
@@ -44,7 +44,7 @@ class MataPelajaranController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'nullable|string|max:50',
-            'category' => 'required|in:nasional,muatan_lokal,pilihan,lain',
+            'category' => 'required|in:'.implode(',', array_keys(\App\Models\Subject::CATEGORY_OPTIONS)),
             'credit_hours' => 'nullable|integer|min:1|max:10',
             'description' => 'nullable|string|max:500',
             'is_active' => 'nullable|boolean',
