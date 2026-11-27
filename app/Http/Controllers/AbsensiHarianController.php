@@ -113,9 +113,35 @@ class AbsensiHarianController extends Controller
             ->when($this->getSchoolId($request), fn ($q, $sid) => $q->where('school_id', $sid))
             ->exists();
 
-        if (! $isWali) {
-            abort(403, 'Absensi Kelas hanya untuk wali kelas, KSP, Waka, Kurikulum, Kesiswaan, dan TU.');
+        if (! $isWali && $this->teachingStudyGroupIds() === []) {
+            abort(403, 'Absensi Kelas hanya untuk wali kelas, guru mapel yang mengampu kelas, KSP, Waka, Kurikulum, Kesiswaan, dan TU.');
         }
+    }
+
+    /**
+     * Rombel yang boleh dibuka guru non-wali: hanya rombel yang diampu pada
+     * SK mengajar aktif. Wali kelas tetap memakai rumusnya sendiri.
+     *
+     * @return array<int, string>
+     */
+    protected function teachingStudyGroupIds(): array
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return \App\Models\TeachingAssignment::query()
+            ->where('teacher_id', $user->id)
+            ->where('status', 'active')
+            ->whereNotNull('study_group_id')
+            ->when($this->getSchoolId(request()), fn ($q, $sid) => $q->where('school_id', $sid))
+            ->when($this->getActiveAcademicYear(), fn ($q, $ay) => $q->where('academic_year_id', $ay->id))
+            ->pluck('study_group_id')
+            ->unique()
+            ->values()
+            ->all();
     }
 
     protected function isAdminOrWaka(): bool
@@ -153,12 +179,15 @@ class AbsensiHarianController extends Controller
         );
 
         $canFilterRombel = $this->canFilterRombel();
+        $teachingGroupIds = $this->teachingStudyGroupIds();
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where(fn ($w) => $w
+                ->where('homeroom_teacher_id', $user->id)
+                ->orWhereIn('id', $teachingGroupIds)))
             ->orderBy('name')
             ->get();
 
@@ -255,6 +284,7 @@ class AbsensiHarianController extends Controller
         );
 
         $canFilterRombel = $this->canFilterRombel();
+        $teachingGroupIds = $this->teachingStudyGroupIds();
 
         // Query StudyGroup langsung — bypass global scope
         $studyGroupQuery = StudyGroup::withoutGlobalScope('school_context')
@@ -264,7 +294,9 @@ class AbsensiHarianController extends Controller
             ->orderBy('name');
 
         if (! $canFilterRombel) {
-            $studyGroupQuery->where('homeroom_teacher_id', $user->id);
+            $studyGroupQuery->where(fn ($w) => $w
+                ->where('homeroom_teacher_id', $user->id)
+                ->orWhereIn('id', $teachingGroupIds));
         }
 
         $studyGroups = $studyGroupQuery->get();
@@ -334,9 +366,11 @@ class AbsensiHarianController extends Controller
             'records.*.notes' => 'nullable|string|max:255',
         ]);
 
-        // Otorisasi: hanya Admin TU / Waka / Wali Kelas rombel tsb
-        if (! $this->canFilterRombel() && ! $this->isWaliKelasOf($request, $validated['study_group_id'])) {
-            abort(403, 'Anda bukan wali kelas rombel ini.');
+        // Otorisasi: hanya Admin TU / Waka / Wali Kelas rombel tsb / guru pengampu
+        if (! $this->canFilterRombel()
+            && ! $this->isWaliKelasOf($request, $validated['study_group_id'])
+            && ! in_array($validated['study_group_id'], $this->teachingStudyGroupIds(), true)) {
+            abort(403, 'Anda bukan wali kelas atau guru pengampu rombel ini.');
         }
 
         // Validasi integritas: seluruh santri harus anggota aktif rombel ini.
@@ -432,12 +466,15 @@ class AbsensiHarianController extends Controller
         );
 
         $canFilterRombel = $this->canFilterRombel();
+        $teachingGroupIds = $this->teachingStudyGroupIds();
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where(fn ($w) => $w
+                ->where('homeroom_teacher_id', $user->id)
+                ->orWhereIn('id', $teachingGroupIds)))
             ->orderBy('name')
             ->get();
 
@@ -626,12 +663,15 @@ class AbsensiHarianController extends Controller
         );
 
         $canFilterRombel = $this->canFilterRombel();
+        $teachingGroupIds = $this->teachingStudyGroupIds();
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where(fn ($w) => $w
+                ->where('homeroom_teacher_id', $user->id)
+                ->orWhereIn('id', $teachingGroupIds)))
             ->orderBy('name')
             ->get();
 
@@ -808,12 +848,15 @@ class AbsensiHarianController extends Controller
         );
 
         $canFilterRombel = $this->canFilterRombel();
+        $teachingGroupIds = $this->teachingStudyGroupIds();
 
         $studyGroups = StudyGroup::withoutGlobalScope('school_context')
             ->with(['gradeLevel', 'homeroomTeacher'])
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('is_active', true)
-            ->when(! $canFilterRombel, fn ($q) => $q->where('homeroom_teacher_id', $user->id))
+            ->when(! $canFilterRombel, fn ($q) => $q->where(fn ($w) => $w
+                ->where('homeroom_teacher_id', $user->id)
+                ->orWhereIn('id', $teachingGroupIds)))
             ->orderBy('name')
             ->get();
 
@@ -1022,8 +1065,10 @@ class AbsensiHarianController extends Controller
     {
         $record = AdminPresensiHarian::findOrFail($recordId);
 
-        if (! $this->isAdminOrWaka() && ! $this->isWaliKelasOf($request, $record->study_group_id)) {
-            abort(403, 'Hanya wali kelas rombel atau petugas berwenang yang dapat memverifikasi.');
+        if (! $this->isAdminOrWaka()
+            && ! $this->isWaliKelasOf($request, $record->study_group_id)
+            && ! in_array($record->study_group_id, $this->teachingStudyGroupIds(), true)) {
+            abort(403, 'Hanya wali kelas rombel, guru pengampu, atau petugas berwenang yang dapat memverifikasi.');
         }
 
         $schoolId = $this->getSchoolId($request);

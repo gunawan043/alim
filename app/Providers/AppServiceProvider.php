@@ -117,6 +117,7 @@ use App\Services\Sarpras\WorkOrderExecutionService;
 use App\Services\SarprasCacheInvalidator;
 use App\Services\SystemMailSettingsService;
 use App\Services\WorkspaceActivationService;
+use App\Support\TeacherWorkspace;
 use App\View\Composers\SidebarAccessComposer;
 use App\View\Composers\SystemAdminMenuComposer;
 use Illuminate\Http\Request;
@@ -402,6 +403,22 @@ class AppServiceProvider extends ServiceProvider
             return null; // no filter — global view
         }
 
-        return $request->attributes->get('schoolContextId');
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        // GTK di luar satuan pendidikan: pakai sekolah tempat ia mengajar.
+        if (! $schoolId && $request->user()) {
+            $cacheKey = 'teacher_workspace_school.'.TeacherWorkspace::CACHE_VERSION;
+
+            if (! $request->attributes->has($cacheKey)) {
+                $request->attributes->set(
+                    $cacheKey,
+                    TeacherWorkspace::preferredSchoolId($request->user()->id)
+                );
+            }
+
+            $schoolId = $request->attributes->get($cacheKey);
+        }
+
+        return $schoolId;
     }
 }

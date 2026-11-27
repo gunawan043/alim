@@ -6,6 +6,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Services\SchoolGroupService;
 use App\Services\ViewAsService;
+use App\Support\TeacherWorkspace;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -141,6 +142,17 @@ class SchoolContextMiddleware
 
         // Scoped user: determine their school from employment/work unit
         $school = SchoolGroupService::getUserSchool($user);
+
+        // GTK yang ditempatkan di luar satuan pendidikan (mis. Kepala Asrama)
+        // tetapi punya SK mengajar: sekolahnya ditentukan dari SK mengajar,
+        // supaya Menu Guru dan data yang terkait tidak kosong.
+        if (! $school) {
+            $teacherSchoolId = TeacherWorkspace::preferredSchoolId($user->id);
+            if ($teacherSchoolId) {
+                $school = School::find($teacherSchoolId);
+            }
+        }
+
         $request->attributes->set('schoolContext', $school);
         $request->attributes->set('schoolContextId', $school?->id);
         $request->attributes->set('schoolGender', $school?->school_gender);

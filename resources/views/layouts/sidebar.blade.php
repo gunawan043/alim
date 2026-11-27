@@ -598,32 +598,18 @@
                     @endforeach
 
                     {{-- 3a-bis. Menu Guru untuk role non-Satuan Pendidikan.
-                         Guru yang berperan sebagai Pimpinan/Asrama/Departemen
-                         tetap mendapat menu mengajar lengkap sampai daftar
-                         mapel/kelas yang diampu. Sidebar Satuan Pendidikan
-                         sudah memuat menu ini, jadi tidak diulang. --}}
+                         Syaratnya bukan role/jabatan, melainkan benar-benar
+                         punya penugasan mengajar aktif: guru yang merangkap
+                         Pimpinan/Asrama/Departemen, dan GTK yang ditempatkan
+                         di luar satuan pendidikan, tetap mendapat menu
+                         mengajar. Sidebar Satuan Pendidikan sudah memuat menu
+                         ini, jadi tidak diulang. --}}
                     @php
                         $hasSatuanRoleForGuruMenu = in_array('Satuan Pendidikan', $userRoles, true);
-                        $hasTeacherWorkspace = false;
-
-                        if (! $hasSatuanRoleForGuruMenu && $user && $userId) {
-                            $activeAyForGuruMenu = \App\Models\AcademicYear::query()
-                                ->where('is_active', true)
-                                ->first();
-
-                            if ($activeAyForGuruMenu) {
-                                $hasTeacherWorkspace = \App\Models\TeachingAssignment::query()
-                                    ->where('teacher_id', $userId)
-                                    ->where('status', 'active')
-                                    ->where('academic_year_id', $activeAyForGuruMenu->id)
-                                    ->exists()
-                                    || \App\Models\TeacherAdminBook::query()
-                                        ->forTeacherWorkspace($userId)
-                                        ->where('is_active', true)
-                                        ->where('academic_year_id', $activeAyForGuruMenu->id)
-                                        ->exists();
-                            }
-                        }
+                        $hasTeacherWorkspace = ! $hasSatuanRoleForGuruMenu
+                            && $user
+                            && $userId
+                            && \App\Support\TeacherWorkspace::hasTeachingRole($userId);
                     @endphp
 
                     @if($hasTeacherWorkspace)

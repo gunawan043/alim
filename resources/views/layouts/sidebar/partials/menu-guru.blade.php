@@ -10,12 +10,17 @@
     $guruMenuUserId = $userId ?? auth()->id();
     $guruMenuAy = \App\Models\AcademicYear::query()->where('is_active', true)->first();
 
+    // Sekolah tempat guru ini mengajar. Untuk GTK yang ditempatkan di luar
+    // satuan pendidikan, konteksnya diambil dari SK mengajar — bukan asrama.
+    $guruMenuSchoolId = \App\Support\TeacherWorkspace::preferredSchoolId($guruMenuUserId);
+
     $guruMenuBooks = collect();
 
     if ($guruMenuUserId && $guruMenuAy) {
         $guruMenuBooks = \App\Models\TeacherAdminBook::query()
             ->with(['subject:id,name', 'studyGroup:id,name'])
             ->forTeacherWorkspace($guruMenuUserId)
+            ->when($guruMenuSchoolId, fn ($q, $sid) => $q->where('school_id', $sid))
             ->where('is_active', true)
             ->where('academic_year_id', $guruMenuAy->id)
             ->where('semester', $guruMenuAy->semester)
@@ -54,6 +59,20 @@
 @endphp
 
 <li class="menu-title"><span>Mengajar · Guru Mapel</span></li>
+
+@php
+    $guruMenuSchoolName = $guruMenuSchoolId
+        ? \App\Models\School::query()->whereKey($guruMenuSchoolId)->value('name')
+        : null;
+@endphp
+
+@if($guruMenuSchoolName)
+    <li class="nav-item">
+        <span class="nav-link px-3 py-1 text-muted small">
+            <i class="ri-school-line me-1"></i>{{ $guruMenuSchoolName }}
+        </span>
+    </li>
+@endif
 
 <x-sidebar-section id="guru_menu_absensi" label="Absensi" icon="ri-calendar-check-line"
     :open="$guruSectionOpen(['user.jadwal-kbm.for-teacher', 'user.teacher-qr.', 'user.absensi.harian.'])">
