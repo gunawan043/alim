@@ -166,10 +166,11 @@
                         </div>
                         <div class="col-md-3">
                             <select name="additional_task_type_id" id="taskType" class="form-control js-select2" required>
-                                <option value="">-- Pilih Tugas Tambahan --</option>
+                                <option value="">-- Cari / Pilih Tugas Tambahan --</option>
                                 @foreach($taskTypes as $type)
                                     <option value="{{ $type->id }}"
                                             data-needs-rombel="{{ $type->kode === 'wali-kelas' ? '1' : '0' }}"
+                                            data-pendamping="{{ $type->isGuruPendamping() ? '1' : '0' }}"
                                             {{ old('additional_task_type_id') === $type->id ? 'selected' : '' }}>{{ $type->nama }}</option>
                                 @endforeach
                             </select>
@@ -182,8 +183,8 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <input type="number" name="weekly_hours" class="form-control" placeholder="Jam/Minggu" min="0" max="40" required>
+                        <div class="col-md-2" id="hoursField">
+                            <input type="number" name="weekly_hours" id="weeklyHours" class="form-control" placeholder="Jam/Minggu" min="0" max="40">
                         </div>
                         <div class="col-md-2">
                             <input type="text" name="notes" class="form-control" placeholder="Keterangan (opsional)">
@@ -192,6 +193,75 @@
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="ri-add-line me-1"></i> Tambah
                             </button>
+                        </div>
+
+                        {{-- Guru Pendamping: pilih mapel, lalu kelas tiap mapel.
+                             JP dihitung dari Peta Kurikulum, tanpa isian manual. --}}
+                        <div class="col-12 d-none" id="pendampingPanel"
+                             data-hours-url="{{ route('user.other-teacher-tasks.pendamping-hours', ['userId' => $userId]) }}">
+                            <div class="border rounded-3 bg-white p-3">
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                    <div>
+                                        <div class="fw-semibold">Mapel &amp; kelas yang didampingi</div>
+                                        <div class="text-muted small">
+                                            Pilih mapel lebih dulu, lalu centang kelas untuk mapel tersebut.
+                                            JP dihitung otomatis dari Peta Kurikulum.
+                                        </div>
+                                    </div>
+                                    <span class="badge bg-primary-subtle text-primary" id="pendampingSummary">Belum ada pilihan</span>
+                                </div>
+
+                                @if($subjects->isEmpty())
+                                    <div class="alert alert-light border mb-0 small">
+                                        Belum ada mapel aktif.
+                                        <a href="{{ route('user.master-data.mata-pelajaran.index', ['userId' => $userId]) }}">Buka menu Mata Pelajaran</a>
+                                        untuk menambahkannya.
+                                    </div>
+                                @else
+                                    <div class="input-group input-group-sm mb-2">
+                                        <span class="input-group-text bg-light"><i class="ri-search-line"></i></span>
+                                        <input type="search" class="form-control" id="pendampingSearch"
+                                               placeholder="Cari nama mapel…" autocomplete="off">
+                                    </div>
+                                    <div id="pendampingEmpty" class="alert alert-light border mb-2 small d-none">
+                                        Tidak ada mapel yang cocok dengan pencarian.
+                                    </div>
+                                    <div class="border rounded p-2" style="max-height:220px;overflow:auto">
+                                        @foreach($subjects as $schoolName => $schoolSubjects)
+                                            <div class="pendamping-group">
+                                                @if($subjects->count() > 1)
+                                                    <div class="text-muted small fw-semibold px-1 pt-1">{{ $schoolName }}</div>
+                                                @endif
+                                                <div class="row g-1">
+                                                    @foreach($schoolSubjects as $subject)
+                                                        <div class="col-md-4 pendamping-item"
+                                                             data-name="{{ \Illuminate\Support\Str::lower($subject->name.' '.$subject->code) }}">
+                                                            <label class="form-check mb-0">
+                                                                <input type="checkbox" class="form-check-input pendamping-subject"
+                                                                       value="{{ $subject->id }}" data-label="{{ $subject->name }}">
+                                                                <span class="form-check-label small">
+                                                                    {{ $subject->name }}
+                                                                    @if($subject->code)<span class="text-muted">({{ $subject->code }})</span>@endif
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    <div id="pendampingClasses" class="mt-3"></div>
+                                    <div class="text-muted small mt-2">
+                                        Kelas yang bisa dipilih:
+                                        @if(($studyGroups ?? collect())->isEmpty())
+                                            <span class="text-danger">belum ada kelas aktif pada tahun ajaran ini.</span>
+                                        @else
+                                            {{ ($studyGroups ?? collect())->map(fn ($sg) => $sg->full_name ?: $sg->name)->take(12)->implode(', ') }}@if(($studyGroups ?? collect())->count() > 12) …@endif
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </form>
 
@@ -214,7 +284,16 @@
                                         <td class="fw-medium">{{ $task->teacher?->name ?? '-' }}</td>
                                         <td>
                                             {{ $task->additionalTaskType?->nama ?? $task->task_name }}
-                                            @if($task->studyGroup)
+                                            @if($task->pendampingSubjects->isNotEmpty())
+                                                @foreach($task->pendampingSubjects->groupBy(fn ($p) => $p->subject?->name ?? '-') as $subjectName => $pairs)
+                                                    <div class="small text-muted">
+                                                        {{ $subjectName }}:
+                                                        @foreach($pairs as $pair)
+                                                            <span class="badge bg-primary-subtle text-primary ms-1">{{ $pair->studyGroup?->name ?? '-' }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                @endforeach
+                                            @elseif($task->studyGroup)
                                                 <span class="badge bg-primary-subtle text-primary ms-1">{{ $task->studyGroup->name }}</span>
                                             @endif
                                         </td>
@@ -258,9 +337,11 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ asset('build/js/other-teacher-tasks.js') }}"></script>
 <script>
     $(function () {
-        $('.js-select2').select2({ width: '100%' });
+        // Semua dropdown dicari ketik: guru maupun nama tugas tambahan.
+        $('.js-select2').select2({ width: '100%', minimumResultsForSearch: 0 });
 
         function syncRombel() {
             const needsRombel = String($('#taskType').find(':selected').data('needs-rombel')) === '1';

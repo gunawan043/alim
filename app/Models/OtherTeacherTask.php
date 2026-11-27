@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class OtherTeacherTask extends Model
@@ -74,5 +75,13 @@ class OtherTeacherTask extends Model
     public function additionalTaskType(): BelongsTo
     {
         return $this->belongsTo(AdditionalTaskType::class, 'additional_task_type_id');
+    }
+
+    /**
+     * Pasangan mapel–kelas yang didampingi (khusus Guru Pendamping).
+     */
+    public function pendampingSubjects(): HasMany
+    {
+        return $this->hasMany(OtherTeacherTaskSubject::class, 'other_teacher_task_id');
     }
 }

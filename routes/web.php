@@ -1903,6 +1903,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
             // ── OTHER TEACHER TASKS (Tugas Tambahan GTK) ─────────────
             Route::prefix('other-teacher-tasks')->name('other-teacher-tasks.')->group(function () {
                 Route::get('/', [OtherTeacherTaskController::class, 'index'])->name('index');
+                Route::get('/pendamping-hours', [OtherTeacherTaskController::class, 'pendampingHours'])->name('pendamping-hours');
                 Route::post('/', [OtherTeacherTaskController::class, 'store'])->name('store');
                 Route::put('/{id}', [OtherTeacherTaskController::class, 'update'])->name('update');
                 Route::delete('/{id}', [OtherTeacherTaskController::class, 'destroy'])->name('destroy');

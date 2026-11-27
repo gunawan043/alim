@@ -5,15 +5,79 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\AdditionalTaskType;
 use App\Models\OtherTeacherTask;
+use App\Models\OtherTeacherTaskSubject;
 use App\Models\School;
 use App\Models\User;
+use App\Services\GuruPendampingHours;
 use Illuminate\Http\Request;
 
 class OtherTeacherTaskController extends Controller
 {
+    public function __construct(private GuruPendampingHours $pendamping)
+    {
+    }
+
+    /**
+     * Apakah tipe tugas yang dipilih di form adalah "Guru Pendamping".
+     */
+    private function selectedTypeIsPendamping(Request $request): bool
+    {
+        return AdditionalTaskType::resolve(
+            $request->input('additional_task_type_id'),
+            $request->input('task_name'),
+            $request->input('task_code')
+        )?->isGuruPendamping() ?? false;
+    }
+
+    /**
+     * Rapikan input pasangan mapel–kelas dan ambil hanya pasangan yang
+     * valid untuk tipe tugas ini (mapel harus terdaftar di master tipe).
+     *
+     * @param  mixed  $payload  subject_id => [study_group_id, ...]
+     * @return array<string, array<int, string>>
+     */
+    private function fillPendampingPayload(AdditionalTaskType $type, mixed $payload): array
+    {
+        if (! is_array($payload)) {
+            return [];
+        }
+
+        return $this->pendamping->pairing($type, $payload);
+    }
+
+    /**
+     * Simpan ulang pasangan mapel–kelas milik satu tugas.
+     *
+     * @param  array<string, array<int, string>>|null  $payload
+     */
+    private function syncPendampingPairs(OtherTeacherTask $task, ?array $payload): void
+    {
+        $task->pendampingSubjects()->delete();
+
+        if (! $payload) {
+            return;
+        }
+
+        foreach ($payload as $subjectId => $groupIds) {
+            foreach ($groupIds as $groupId) {
+                OtherTeacherTaskSubject::create([
+                    'other_teacher_task_id' => $task->id,
+                    'subject_id' => $subjectId,
+                    'study_group_id' => $groupId,
+                ]);
+            }
+        }
+    }
+
     public function index(Request $request, string $userId)
     {
-        $query = OtherTeacherTask::with(['teacher', 'studyGroup', 'academicYear']);
+        $query = OtherTeacherTask::with([
+            'teacher',
+            'studyGroup',
+            'academicYear',
+            'pendampingSubjects.subject:id,name',
+            'pendampingSubjects.studyGroup:id,name',
+        ]);
 
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId) {
@@ -89,14 +153,25 @@ class OtherTeacherTaskController extends Controller
                 ->get();
         }
 
+        // Mapel aktif — sumber pilihan Guru Pendamping. Tanpa konteks sekolah
+        // (Super Admin) mapel dikelompokkan per satuan pendidikan.
+        $subjects = \App\Models\Subject::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('is_active', true)
+            ->with('school:id,name')
+            ->orderBy('name')
+            ->get(['id', 'school_id', 'name', 'code'])
+            ->groupBy(fn ($s) => $s->school?->name ?? 'Mapel aktif');
+
         return view('other-teacher-tasks.index', compact(
-            'tasks', 'schools', 'academicYears', 'teachers', 'userId', 'stats', 'activeAcademicYearId', 'taskTypes', 'studyGroups'
+            'tasks', 'schools', 'academicYears', 'teachers', 'userId', 'stats', 'activeAcademicYearId', 'taskTypes', 'studyGroups', 'subjects'
         ));
     }
 
     public function store(Request $request, string $userId)
     {
         $schoolId = $request->attributes->get('schoolContextId');
+        $isPendamping = $this->selectedTypeIsPendamping($request);
 
         $rules = [
             'teacher_id' => 'required|exists:users,id',
@@ -105,8 +180,11 @@ class OtherTeacherTaskController extends Controller
             'task_name' => 'nullable|string|max:100',
             'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
-            'weekly_hours' => 'required|integer|min:0|max:40',
+            'weekly_hours' => $isPendamping ? 'nullable|integer|min:0|max:200' : 'required|integer|min:0|max:40',
             'notes' => 'nullable|string|max:255',
+            'pendamping' => 'nullable|array',
+            'pendamping.*' => 'array',
+            'pendamping.*.*' => 'exists:study_groups,id',
         ];
         if (! $schoolId) {
             $rules['school_id'] = 'required|exists:schools,id';
@@ -128,6 +206,22 @@ class OtherTeacherTaskController extends Controller
             return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
         }
 
+        $payload = $request->input('pendamping');
+
+        if ($type->isGuruPendamping()) {
+            // Guru Pendamping: mapel wajib, JP dihitung dari Peta Kurikulum.
+            $payload = $this->fillPendampingPayload($type, $payload);
+
+            if ($payload === []) {
+                return back()->withInput()->with('error', 'Pilih minimal satu mapel dan satu kelas untuk Guru Pendamping.');
+            }
+
+            $data['study_group_id'] = null;
+            $data['weekly_hours'] = $this->pendamping->totalHours($type, $payload, $data['school_id'] ?? $schoolId);
+        } else {
+            $payload = null;
+        }
+
         $data['additional_task_type_id'] = $type->id;
         $data['task_name'] = $type->nama;
         $data['task_code'] = $type->kode;
@@ -144,7 +238,8 @@ class OtherTeacherTaskController extends Controller
             }
         }
 
-        OtherTeacherTask::create($data);
+        $task = OtherTeacherTask::create($data);
+        $this->syncPendampingPairs($task, $payload);
 
         return back()->with('success', 'Tugas lain berhasil ditambahkan.');
     }
@@ -162,8 +257,11 @@ class OtherTeacherTaskController extends Controller
             'task_name' => 'nullable|string|max:100',
             'task_code' => 'nullable|string|max:50',
             'study_group_id' => 'nullable|exists:study_groups,id',
-            'weekly_hours' => 'required|integer|min:0|max:40',
+            'weekly_hours' => 'nullable|integer|min:0|max:200',
             'notes' => 'nullable|string|max:255',
+            'pendamping' => 'nullable|array',
+            'pendamping.*' => 'array',
+            'pendamping.*.*' => 'exists:study_groups,id',
         ];
 
         $data = $request->validate($rules);
@@ -178,6 +276,24 @@ class OtherTeacherTaskController extends Controller
             return back()->withInput()->with('error', 'Jenis tugas tambahan tidak dikenali. Pilih dari daftar tugas yang tersedia.');
         }
 
+        $payload = $request->input('pendamping');
+
+        if ($type->isGuruPendamping()) {
+            $payload = $this->fillPendampingPayload($type, $payload);
+
+            if ($payload === []) {
+                return back()->withInput()->with('error', 'Pilih minimal satu mapel dan satu kelas untuk Guru Pendamping.');
+            }
+
+            $data['study_group_id'] = null;
+            $data['weekly_hours'] = $this->pendamping->totalHours($type, $payload, $task->school_id);
+        } else {
+            if (! isset($data['weekly_hours']) || $data['weekly_hours'] === null) {
+                return back()->withInput()->with('error', 'Jam per minggu wajib diisi.');
+            }
+            $payload = null;
+        }
+
         $data['additional_task_type_id'] = $type->id;
         $data['task_name'] = $type->nama;
         $data['task_code'] = $type->kode;
@@ -188,18 +304,39 @@ class OtherTeacherTaskController extends Controller
         }
 
         $task->update($data);
+        $this->syncPendampingPairs($task, $payload);
 
         return back()->with('success', 'Tugas lain berhasil diperbarui.');
     }
 
-    public function destroy(Request $request, string $userId, string $id)
+    /**
+     * JP per kelas untuk mapel Guru Pendamping — dibaca dari Peta Kurikulum.
+     */
+    public function pendampingHours(Request $request)
     {
+        $type = AdditionalTaskType::resolve($request->input('task_type_id'), $request->input('task_name'));
+
+        if (! $type || ! $type->isGuruPendamping()) {
+            return response()->json(['groups' => [], 'total' => 0]);
+        }
+
+        $groupIds = array_values(array_filter((array) $request->input('group_ids', [])));
+        $rows = $this->pendamping->forGroups($type, $groupIds, $request->attributes->get('schoolContextId'));
+
+        return response()->json([
+            'groups' => array_values($rows),
+            'total' => array_sum(array_column($rows, 'total')),
+        ]);
+    }
+
+    public function destroy(Request $request, string $userId, string $id)    {
         $task = OtherTeacherTask::findOrFail($id);
         $schoolId = $request->attributes->get('schoolContextId');
         if ($schoolId && $task->school_id !== $schoolId) {
             abort(403);
         }
 
+        $task->pendampingSubjects()->delete();
         $task->delete();
 
         return back()->with('success', 'Tugas lain berhasil dihapus.');
