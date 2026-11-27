@@ -566,7 +566,7 @@ class KurikulumController extends Controller
             'struktur' => 'nullable|array',
             'struktur.*' => 'array',
             'struktur.*.*' => 'array',
-            'struktur.*.*.urutan' => 'nullable|integer|min:1|max:999',
+            'struktur.*.*.urutan' => 'nullable|integer|min:-99|max:999',
             'struktur.*.*.sumber' => 'nullable|in:'.implode(',', array_keys(GradeLevelSubject::SOURCE_OPTIONS)),
             'struktur.*.*.rapor' => 'nullable|in:0,1',
         ]);
@@ -607,7 +607,7 @@ class KurikulumController extends Controller
             'struktur' => 'nullable|array',
             'struktur.*' => 'array',
             'struktur.*.*' => 'array',
-            'struktur.*.*.urutan' => 'nullable|integer|min:1|max:999',
+            'struktur.*.*.urutan' => 'nullable|integer|min:-99|max:999',
             'struktur.*.*.sumber' => 'nullable|in:'.implode(',', array_keys(GradeLevelSubject::SOURCE_OPTIONS)),
             'struktur.*.*.rapor' => 'nullable|in:0,1',
             'kktp' => 'nullable|array',
@@ -658,10 +658,14 @@ class KurikulumController extends Controller
     /**
      * Naikkan/turunkan satu mapel dalam susunan rapor satu tingkat.
      *
-     * Panah di Peta Kurikulum tidak mengirim form: posisi dihitung dari
-     * susunan yang sedang tampil (blok Pondok → Dinas, lalu nomor urut), lalu
-     * mapel dan tetangganya bertukar posisi. Tidak ada pesan sukses: tabel
-     * langsung memperlihatkan hasilnya.
+     * Urutan rapor = satu daftar bernomor per tingkat: mapel nomor 1 dicetak
+     * paling atas. Panah ▲ = pindah satu langkah ke atas; bila mapel sudah
+     * bernomor 1 ia otomatis jadi lebih atas lagi (0, -1, …). Panah ▼ = satu
+     * langkah ke bawah (nomor bertambah). Tidak ada batas atas/bawah, jadi
+     * mapel yang nomornya masih kosong tetap bisa dinaikkan/diturunkan.
+     *
+     * Mapel yang tergeser (yang tadi menempati posisi tujuan) ikut diturunkan/
+     * dinaikkan satu langkah agar tidak terjadi nomor kembar.
      */
     public function moveStruktur(Request $request, string $userId)
     {
@@ -709,27 +713,64 @@ class KurikulumController extends Controller
         $index = $sorted->search(fn (Subject $s) => (string) $s->id === (string) $data['subject_id']);
         abort_if($index === false, 404, 'Mapel ini tidak ada pada struktur tingkat tersebut.');
 
-        $target = $data['direction'] === 'up' ? $index - 1 : $index + 1;
-        abort_if($target < 0 || $target >= $sorted->count(), 422, 'Mapel ini sudah berada di urutan teratas/terbawah.');
-
         $structuresBySubject = $structures->keyBy('subject_id');
         $moving = $structuresBySubject->get($data['subject_id']);
-        $neighbour = $structuresBySubject->get($sorted->get($target)->id);
-        abort_if(! $moving || ! $neighbour, 404, 'Mapel ini tidak ada pada struktur tingkat tersebut.');
+        abort_if(! $moving, 404, 'Mapel ini tidak ada pada struktur tingkat tersebut.');
 
-        // Urutan tujuan dihitung dari posisi tampil, bukan saling menukar nilai
-        // sort_order: dua mapel bisa bernomor sama, sehingga menukar nilainya
-        // tidak menggeser apa pun.
-        $moving->sort_order = $target + 1;
-        $neighbour->sort_order = $index + 1;
+        // Nomor urut dihitung dari posisi tampil supaya keadaan awal yang
+        // belum diatur (semua kosong) pun langsung menjadi daftar bernomor.
+        $positions = $sorted->values();
+        $currentOrder = fn (int $position, Subject $subject): int
+            => $structuresBySubject->get($subject->id)?->sort_order ?? $position + 1;
+
+        $movingOrder = $currentOrder($index, $sorted->get($index));
+        $step = $data['direction'] === 'up' ? -1 : 1;
+        $newOrder = $movingOrder + $step;
+
+        // Simpan seluruh daftar supaya nomor unik dan berurutan menurut baru.
+        $moving->sort_order = $newOrder;
         $moving->save();
-        $neighbour->save();
+
+        foreach ($positions as $position => $subject) {
+            if ((string) $subject->id === (string) $data['subject_id']) {
+                continue;
+            }
+
+            $row = $structuresBySubject->get($subject->id);
+            if (! $row) {
+                continue;
+            }
+
+            $order = $currentOrder($position, $subject);
+
+            // Mapel yang dilewati bergeser satu langkah ke arah berlawanan.
+            if ($data['direction'] === 'up' && $order >= $newOrder && $order < $movingOrder) {
+                $row->sort_order = $order + 1;
+            } elseif ($data['direction'] === 'down' && $order > $movingOrder && $order <= $newOrder) {
+                $row->sort_order = $order - 1;
+            } else {
+                // Semua mapel yang belum bernomor diberi nomor menurut posisi tampil.
+                if ($row->sort_order === null) {
+                    $row->sort_order = $position + 1;
+                } elseif (! $row->isDirty()) {
+                    continue;
+                }
+            }
+
+            $row->save();
+        }
 
         // Bila daftar mapel rapor tingkat belum pernah diatur, tetapkan seluruh
         // mapel dengan susunan baru agar cetakan langsung mengikutinya.
         if ($orderService->reportSubjectIds($schoolId, $data['academic_year_id'], $data['semester'], $gradeLevel->id) === null) {
-            $ids = $sorted->pluck('id')->all();
-            [$ids[$index], $ids[$target]] = [$ids[$target], $ids[$index]];
+            $ids = $orderService
+                ->sortSubjects(
+                    Subject::query()->whereIn('id', $structures->pluck('subject_id'))->get(),
+                    $gradeLevel->id,
+                    $data['academic_year_id'],
+                )
+                ->pluck('id')
+                ->all();
 
             $orderService->saveReportSubjects(
                 $schoolId,

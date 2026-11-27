@@ -444,9 +444,10 @@
                                                        form="petaForm"
                                                        name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][urutan]"
                                                        value="{{ $row['sort_order'] }}"
-                                                       min="1" max="999" step="1"
+                                                       min="-99" max="999" step="1"
                                                        placeholder="—"
                                                        class="form-control form-control-sm text-center rapor-order-input"
+                                                       onfocus="this.select()"
                                                        aria-label="Urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
                                                 <a href="{{ route('user.kurikulum.struktur.move', ['userId' => $userId, 'grade_level_id' => $row['grade_level_id'], 'subject_id' => $row['subject_id'], 'direction' => 'down', 'academic_year_id' => $academicYearId, 'semester' => $semester]) }}"
                                                    class="rapor-order-btn rapor-order-down"

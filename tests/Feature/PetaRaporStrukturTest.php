@@ -269,34 +269,67 @@ class PetaRaporStrukturTest extends TestCase
         );
     }
 
+    private function orders(): array
+    {
+        $rows = GradeLevelSubject::where('grade_level_id', $this->grade->id)
+            ->pluck('sort_order', 'subject_id');
+
+        $result = [];
+        foreach (['BAR', 'FQH', 'MTK'] as $code) {
+            $result[$code] = $rows->get($this->subjects[$code]->id);
+        }
+
+        return $result;
+    }
+
     public function test_panah_naik_turun_mengubah_urutan_rapor_satu_tingkat(): void
     {
-        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 1]);
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 3]);
         GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
         GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
 
         $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
 
-        // Turunkan Bahasa Arab (Pondok #1) → bertukar dengan Fiqih.
+        // Turunkan Bahasa Arab (teratas) → bertukar dengan Fiqih.
         $this->move('BAR', 'down')->assertRedirect()->assertSessionMissing('success');
         $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupA));
         $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupB));
+        $this->assertSame(['BAR' => 2, 'FQH' => 1, 'MTK' => 3], $this->orders());
 
-        // Naikkan Matematika (Dinas #1) → pindah ke posisi Dinas paling atas;
-        // blok Pondok tetap di depan karena asal mapel tidak berubah.
-        $this->move('MTK', 'up')->assertRedirect();
+        // Naikkan lagi → kembali ke atas.
+        $this->move('BAR', 'up')->assertRedirect();
+        $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
+        $this->assertSame(['BAR' => 1, 'FQH' => 2, 'MTK' => 3], $this->orders());
+    }
+
+    public function test_panah_naik_pada_mapel_nomor_satu_tetap_menaikkan_ke_atas(): void
+    {
+        // Fiqih sudah nomor 1 (teratas): panah ▲ harus tetap menaikkannya.
+        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 3]);
+        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
+        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
+
+        $this->move('FQH', 'up')->assertRedirect();
+        $this->assertSame(0, (int) $this->orders()['FQH']);
+        $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupA));
+
+        // Ditekan lagi: makin ke atas, bukan tertahan.
+        $this->move('FQH', 'up')->assertRedirect();
+        $this->assertSame(-1, (int) $this->orders()['FQH']);
         $this->assertSame(['FQH', 'BAR', 'MTK'], $this->order($this->groupA));
     }
 
-    public function test_panah_di_ujung_tidak_bisa_melampaui_batas(): void
+    public function test_panah_bekerja_saat_urutan_belum_pernah_diatur(): void
     {
-        GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->update(['subject_source' => 'dinas', 'sort_order' => 1]);
-        GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->update(['subject_source' => 'pondok', 'sort_order' => 2]);
-        GradeLevelSubject::where('subject_id', $this->subjects['BAR']->id)->update(['subject_source' => 'pondok', 'sort_order' => 1]);
-
-        $this->move('BAR', 'up')->assertStatus(422);
-        $this->move('MTK', 'down')->assertStatus(422);
+        // Semua nomor kosong → posisi tampil dipakai sebagai titik awal.
         $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
+
+        $this->move('MTK', 'up')->assertRedirect();
+
+        $this->assertSame(['BAR', 'MTK', 'FQH'], $this->order($this->groupA));
+        $this->assertSame(1, (int) $this->orders()['BAR']);
+        $this->assertSame(2, (int) $this->orders()['MTK']);
+        $this->assertSame(3, (int) $this->orders()['FQH']);
     }
 
     public function test_satu_tombol_menyimpan_jp_susunan_dan_kktp_sekaligus(): void
