@@ -535,8 +535,8 @@
                                     @endif
                                     {{-- Baris 4: KKTP — label mulai kolom 1 (No+NIS+Nama), input di tiap mapel --}}
                                     <tr>
-                                        <th colspan="3" rowspan="{{ $tailRowCount }}" class="text-start fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;text-align:left !important;" data-col="name">
-                                            <span class="bg-primary-subtle text-primary" style="display:inline-flex;align-items:center;gap:2px;margin:0;">
+                                        <th colspan="3" rowspan="{{ $tailRowCount }}" class="text-center fw-bold kktp-cell" style="background:var(--bs-tertiary-bg);vertical-align:middle;text-align:center !important;" data-col="name">
+                                            <span class="bg-primary-subtle text-primary" style="text-centerdisplay:inline-flex;align-items:center;gap:2px;margin:0;">
                                                 <i class="ri-checkbox-circle-line"></i>KKTP
                                             </span>
                                             @if($isSasLeger)
@@ -789,6 +789,7 @@
                                 @if(! empty($tahfidzColumns))
                                     <br><i class="ri-book-open-line me-1"></i>
                                     Mapel tahfidz memakai kolom <strong>NPT · Ziyadah · Rabt · Tikrar · STS · SAS</strong>: NPT = capaian halaman ziyadah ÷ target semester, Ziyadah/Rabt/STS/SAS dari <strong>buku nilai halaqah</strong>, Tikrar = rata-rata nilai tikrar setoran.
+                                    Tanda <strong>—</strong> berarti datanya memang belum ada (mis. santri belum masuk halaqah, belum punya target, atau belum ada setoran tikrar).
                                 @endif
                             </small>
                         </div>
