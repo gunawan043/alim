@@ -36,6 +36,21 @@
         border-bottom: 2px solid var(--bs-border-color);
     }
 
+    /* Kolom pengaturan rapor: nomor urut & status Pondok/Dinas.
+       Lebar tetap agar puluhan baris tetap sejajar saat digulir. */
+    .rapor-order-input {
+        width: 64px;
+        margin: 0 auto;
+        font-variant-numeric: tabular-nums;
+    }
+    .rapor-source-select {
+        width: 96px;
+        margin: 0 auto;
+    }
+    .rapor-row-belum {
+        background: var(--bs-warning-bg-subtle);
+    }
+
     /* Alur lengkap kurikulum — kartu bertahap yang dapat diklik */
     .curriculum-flow-grid {
         display: grid;

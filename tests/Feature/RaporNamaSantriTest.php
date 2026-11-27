@@ -213,7 +213,6 @@ class RaporNamaSantriTest extends TestCase
 
         $data = $service->buildSantriData(
             $this->school->id, $group, $this->ay, $this->ay->id, 'ganjil', 'sts', $student,
-            null,
             'title',
         );
 

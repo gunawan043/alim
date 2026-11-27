@@ -3,7 +3,6 @@
 namespace App\Services\Academic;
 
 use App\Models\MumtazMurtafiCandidate;
-use App\Models\RaporDistributionSetting;
 use App\Models\RaportRegistration;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
@@ -54,20 +53,7 @@ class MumtazMurtafiCandidateService
             return collect();
         }
 
-        $setting = RaporDistributionSetting::forContext(
-            $studyGroup->school_id,
-            $academicYearId,
-            $semester,
-        );
-
-        $reportSubjectIds = $setting?->reportSubjectIds();
-        if ($reportSubjectIds) {
-            $reportSubjectIds = array_values(array_intersect(
-                $reportSubjectIds,
-                $availableSubjects->pluck('id')->all()
-            ));
-        }
-
+        // Ringkasan memakai mapel rapor tingkat (sudah difilter di PdfService).
         $summaries = $this->raporPdf->summariesForStudents(
             $studyGroup->school_id,
             $studyGroup,
@@ -75,7 +61,6 @@ class MumtazMurtafiCandidateService
             $semester,
             'sas',
             $students,
-            $reportSubjectIds ?: null,
         );
 
         $qualifyingIds = [];

@@ -6,7 +6,6 @@ use App\Http\Controllers\NilaiKelasController;
 use App\Models\AcademicYear;
 use App\Models\NilaiSumatif;
 use App\Models\RaportRegistration;
-use App\Models\RaporDistributionSetting;
 use App\Models\StudentClassHistory;
 use App\Models\StudyGroup;
 use App\Models\TeacherAdminBook;
@@ -55,18 +54,20 @@ class NilaiReminderService
                     ->where('is_active', true)
                     ->pluck('student_id');
 
-                $reportSubjectIds = RaporDistributionSetting::forContext(
+                // Daftar mapel rapor per tingkat (Peta Kurikulum).
+                $reportSubjectIds = app(\App\Services\RaporSubjectOrderService::class)->reportSubjectIds(
                     $group->school_id,
                     $academicYear->id,
                     $semester,
-                )?->reportSubjectIds();
+                    $group->grade_level_id,
+                );
 
                 $books = TeacherAdminBook::with('subject')
                     ->where('study_group_id', $group->id)
                     ->where('academic_year_id', $academicYear->id)
                     ->where('semester', $semester)
                     ->where('is_active', true)
-                    ->when($reportSubjectIds, fn ($query) => $query->whereIn('subject_id', $reportSubjectIds))
+                    ->when($reportSubjectIds !== null, fn ($query) => $query->whereIn('subject_id', $reportSubjectIds ?? ['-']))
                     ->get()
                     ->reject(fn ($book) => preg_match(
                         '/liqo/i',

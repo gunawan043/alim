@@ -614,10 +614,20 @@
                 <div class="card-header border-bottom-dashed">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div>
-                            <h5 class="card-title mb-0"><i class="ri-book-open-line text-success me-1"></i>Mapel yang Masuk Rapor &amp; Urutannya</h5>
-                            <p class="text-muted mb-0 small">Centang mapel yang dicetak, ubah nama Latin/Arab, KKTP, dan bobot, lalu atur urutannya.</p>
+                            <h5 class="card-title mb-0"><i class="ri-book-open-line text-success me-1"></i>Mapel Rapor, Nama &amp; Bobot</h5>
+                            <p class="text-muted mb-0 small">
+                                Daftar mapel, urutan, Pondok/Dinas, dan KKTP ditetapkan per
+                                <strong>tingkat</strong> sehingga sama untuk semua rombel.
+                            </p>
                         </div>
-                        <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dipilih</span>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge bg-primary-subtle text-primary">{{ count($selectedSubjectIds) }} mapel dicetak</span>
+                            @if($raporSettingUrl ?? null)
+                                <a href="{{ $raporSettingUrl }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="ri-list-ordered me-1"></i>Atur Urutan &amp; Pondok/Dinas
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -636,17 +646,15 @@
                                 <table class="table table-sm table-hover align-middle mb-3">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width:60px;" class="text-center">Masuk</th>
+                                            <th style="width:60px;" class="text-center">No</th>
                                             <th style="min-width:340px;">Mata Pelajaran <span class="text-muted fw-normal">(Latin &amp; Arab)</span></th>
-                                            <th style="width:100px;" class="text-center">KKTP</th>
+                                            <th style="width:100px;" class="text-center" title="Diatur di Peta Kurikulum untuk seluruh rombel tingkat ini">KKTP</th>
                                             <th style="width:110px;" class="text-center">Bobot <span class="text-muted fw-normal">(SAS)</span></th>
-                                            <th style="width:120px;" class="text-center">Urutan</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="subjectOrderBody">
+                                    <tbody>
                                         @foreach($availableSubjects as $subject)
                                             @php
-                                                $isSelected = in_array($subject->id, $selectedSubjectIds, true);
                                                 $kktpRow = ($subjectKktpMap ?? [])[$subject->id] ?? ['kktp_id' => null, 'score' => null];
                                                 $kktpVal = $kktpRow['score'] !== null
                                                     ? rtrim(rtrim(number_format((float) $kktpRow['score'], 2, '.', ''), '0'), '.')
@@ -654,9 +662,7 @@
                                             @endphp
                                             <tr class="subject-row" data-subject-id="{{ $subject->id }}">
                                                 <td class="text-center">
-                                                    <input class="form-check-input" type="checkbox"
-                                                           name="subject_ids[]" value="{{ $subject->id }}"
-                                                           id="subject-{{ $subject->id }}" @checked($isSelected)>
+                                                    <span class="badge bg-light text-dark">{{ $loop->iteration }}</span>
                                                 </td>
                                                 <td>
                                                     <div class="d-flex align-items-start gap-1">
@@ -680,13 +686,9 @@
                                                     @endif -->
                                                 </td>
                                                 <td class="text-center">
-                                                    <input type="text" inputmode="decimal"
-                                                           name="subject_kktp[{{ $subject->id }}]"
-                                                           value="{{ old('subject_kktp.'.$subject->id, $kktpVal) }}"
-                                                           placeholder="—"
-                                                           class="form-control form-control-sm text-center mx-auto"
-                                                           style="max-width:80px;"
-                                                           aria-label="KKTP {{ $subject->name }}">
+                                                    <span class="badge {{ $kktpVal !== '' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }}">
+                                                        {{ $kktpVal !== '' ? $kktpVal : '—' }}
+                                                    </span>
                                                 </td>
                                                 <td class="text-center">
                                                     @php
@@ -706,23 +708,6 @@
                                                            style="max-width:90px;"
                                                            aria-label="Bobot {{ $subject->name }}">
                                                 </td>
-                                                <td class="text-center">
-                                                    <input type="hidden" name="subject_order[{{ $subject->id }}]"
-                                                           class="subject-order-input" value="{{ $loop->iteration }}">
-                                                    <div class="d-inline-flex align-items-center gap-1">
-                                                        <span class="badge bg-light text-dark subject-order-label">{{ $loop->iteration }}</span>
-                                                        <div class="btn-group btn-group-sm" role="group" aria-label="Atur urutan {{ $subject->name }}">
-                                                            <button type="button" class="btn btn-outline-secondary subject-move-up"
-                                                                    onclick="moveSubjectRow(this, -1)" title="Naikkan">
-                                                                <i class="ri-arrow-up-line"></i>
-                                                            </button>
-                                                            <button type="button" class="btn btn-outline-secondary subject-move-down"
-                                                                    onclick="moveSubjectRow(this, 1)" title="Turunkan">
-                                                                <i class="ri-arrow-down-line"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -730,9 +715,9 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <small class="text-muted"><i class="ri-information-line me-1"></i>Minimal satu mapel harus dipilih. Bobot kosong = JP ÷ 2 (JP 1 tetap 1); boleh desimal (mis. 2,5). Nama Latin/Arab disimpan ke master mapel sehingga berlaku untuk semua rombel. KKTP kosong = tidak diubah. Urutan mengikuti posisi baris.</small>
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Hanya nama dan bobot yang diatur di sini. Bobot kosong = JP ÷ 2 (JP 1 tetap 1); boleh desimal (mis. 2,5). Nama Latin/Arab disimpan ke master mapel sehingga berlaku untuk semua rombel. Urutan mapel, Pondok/Dinas, daftar mapel, dan KKTP diatur per tingkat di Peta Kurikulum.</small>
                                 <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="ri-save-3-line me-1"></i>Simpan Mapel, Nama, KKTP &amp; Bobot
+                                    <i class="ri-save-3-line me-1"></i>Simpan Nama &amp; Bobot
                                 </button>
                             </div>
                         </form>
@@ -1246,41 +1231,6 @@
 
 @push('scripts')
 <script>
-function renumberSubjectRows() {
-    const body = document.getElementById('subjectOrderBody');
-    if (!body) return;
-
-    const rows = Array.from(body.querySelectorAll('.subject-row'));
-
-    rows.forEach(function (row, index) {
-        const input = row.querySelector('.subject-order-input');
-        const label = row.querySelector('.subject-order-label');
-        const up = row.querySelector('.subject-move-up');
-        const down = row.querySelector('.subject-move-down');
-
-        if (input) input.value = index + 1;
-        if (label) label.textContent = index + 1;
-        if (up) up.disabled = index === 0;
-        if (down) down.disabled = index === rows.length - 1;
-    });
-}
-
-function moveSubjectRow(button, direction) {
-    const row = button.closest('.subject-row');
-    if (!row) return;
-
-    if (direction < 0 && row.previousElementSibling) {
-        row.parentNode.insertBefore(row, row.previousElementSibling);
-    } else if (direction > 0 && row.nextElementSibling) {
-        row.parentNode.insertBefore(row.nextElementSibling, row);
-    }
-
-    renumberSubjectRows();
-}
-
-document.addEventListener('DOMContentLoaded', renumberSubjectRows);
-renumberSubjectRows();
-
 (function () {
     const variantLayouts = @json($variantLayouts);
     const layoutForm = document.getElementById('layoutSettingsForm');

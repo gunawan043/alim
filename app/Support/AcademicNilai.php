@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\NilaiSumatif;
 use App\Models\TeacherAdminBook;
+use App\Services\SubjectKktpService;
 
 /**
  * Aturan nilai akademik yang dipakai bersama oleh Buku Administrasi,
@@ -69,10 +70,35 @@ class AcademicNilai
 
     /**
      * Baca kkm_score mentah tanpa memicu relasi saat FK kosong.
+     *
+     * Sumber utama adalah KKTP TINGKAT (mapel × tingkat × TA × semester) di
+     * Peta Kurikulum, sehingga semua rombel di tingkat yang sama membaca angka
+     * yang sama walau tautan kktp_id buku belum diperbarui. Tautan buku hanya
+     * cadangan bila KKTP tingkat belum diisi.
      */
     private static function rawKkm(?TeacherAdminBook $book): mixed
     {
-        if (! $book || empty($book->kktp_id)) {
+        if (! $book) {
+            return null;
+        }
+
+        if ($book->subject_id && $book->academic_year_id && $book->semester) {
+            $gradeLevelId = $book->studyGroup?->grade_level_id;
+
+            $levelKktp = app(SubjectKktpService::class)->forGradeLevel(
+                $book->school_id,
+                (string) $book->subject_id,
+                $gradeLevelId,
+                $book->academic_year_id,
+                $book->semester,
+            );
+
+            if ($levelKktp?->kkm_score !== null) {
+                return $levelKktp->kkm_score;
+            }
+        }
+
+        if (empty($book->kktp_id)) {
             return null;
         }
 
@@ -206,15 +232,5 @@ class AcademicNilai
         }
 
         return 4;
-    }
-
-    /**
-     * Urutan mapel: kelompok Agama → Arab → Hadits → Umum, lalu alfabetis.
-     *
-     * @return array{0: int, 1: string}
-     */
-    public static function subjectSortOrder(string $name, string $category): array
-    {
-        return [self::subjectGroup($name), strtolower($name)];
     }
 }

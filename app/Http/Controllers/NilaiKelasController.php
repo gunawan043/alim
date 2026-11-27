@@ -177,8 +177,12 @@ class NilaiKelasController extends Controller
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
+
+        // Susunan kolom mengikuti pengaturan TINGKAT di Peta Kurikulum:
+        // blok Pondok lebih dulu, lalu Dinas, sesuai nomor urut.
+        $orderService = app(\App\Services\RaporSubjectOrderService::class);
+        $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
 
         // FALLBACK MAPEL: buku admin belum dibuat, tetapi rombel sudah punya
         // assignment mapel (study_group_subjects). Tampilkan kolom mapel agar
@@ -192,8 +196,10 @@ class NilaiKelasController extends Controller
                 ->get()
                 ->pluck('subject')
                 ->filter()
-                ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
                 ->values();
+
+            $subjectMap = app(\App\Services\RaporSubjectOrderService::class)
+                ->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
 
             if ($subjectMap->isNotEmpty()) {
                 $subjectSource = 'rombel_assignment';
@@ -1205,8 +1211,12 @@ class NilaiKelasController extends Controller
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn ($s) => $this->subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
+
+        // Susunan kolom mengikuti pengaturan TINGKAT di Peta Kurikulum:
+        // blok Pondok lebih dulu, lalu Dinas, sesuai nomor urut.
+        $subjectMap = app(\App\Services\RaporSubjectOrderService::class)
+            ->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
 
         $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
@@ -1375,23 +1385,14 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Susunan & daftar mapel rapor berasal dari TINGKAT (Peta Kurikulum),
+        // bukan dari pengaturan rombel — semua rombel di tingkat yang sama
+        // mencetak mapel yang sama dengan urutan yang sama.
         $raporPdf = app(RaporPdfService::class);
         $availableSubjects = $selectedAyId
             ? $raporPdf->availableSubjects($schoolId, $studyGroup, (string) $selectedAyId, (string) $selectedSem)
             : collect();
-        $availableSubjectIds = $availableSubjects->pluck('id')->all();
-        $savedSubjectIds = $distributionSetting?->reportSubjectIds();
-        $selectedSubjectIds = $savedSubjectIds
-            ? array_values(array_intersect($savedSubjectIds, $availableSubjectIds))
-            : $availableSubjectIds;
-        if ($selectedSubjectIds === []) {
-            $selectedSubjectIds = $availableSubjectIds;
-        }
-
-        $subjectOrder = array_flip($selectedSubjectIds);
-        $availableSubjects = $availableSubjects
-            ->sortBy(fn ($subject) => $subjectOrder[$subject->id] ?? PHP_INT_MAX)
-            ->values();
+        $selectedSubjectIds = $availableSubjects->pluck('id')->all();
 
         // Nama Arab untuk form: master mapel dulu, lalu kamus otomatis.
         // Sumbernya sama dengan yang dipakai saat mencetak rapor.
@@ -1409,7 +1410,6 @@ class NilaiKelasController extends Controller
                 (string) $selectedSem,
                 'sas',
                 $students->pluck('student')->filter(),
-                $selectedSubjectIds,
             )
             : [];
 
@@ -1417,7 +1417,7 @@ class NilaiKelasController extends Controller
         $subjectBobotMap = StudyGroupSubject::query()
             ->where('study_group_id', $studyGroup->id)
             ->where('academic_year_id', $selectedAyId)
-            ->whereIn('subject_id', $availableSubjectIds)
+            ->whereIn('subject_id', $selectedSubjectIds)
             ->get()
             ->mapWithKeys(fn ($row) => [$row->subject_id => [
                 'bobot' => $row->bobot,
@@ -1436,7 +1436,7 @@ class NilaiKelasController extends Controller
             ->where('grade_level_id', $studyGroup->grade_level_id)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSem)
-            ->whereIn('subject_id', $availableSubjectIds)
+            ->whereIn('subject_id', $selectedSubjectIds)
             ->get()
             ->keyBy('subject_id');
 
@@ -1445,14 +1445,15 @@ class NilaiKelasController extends Controller
             ->where('study_group_id', $studyGroup->id)
             ->where('academic_year_id', $selectedAyId)
             ->where('semester', $selectedSem)
-            ->whereIn('subject_id', $availableSubjectIds)
+            ->whereIn('subject_id', $selectedSubjectIds)
             ->get()
             ->mapWithKeys(function ($book) use ($kktpBySubject) {
-                $fallback = $kktpBySubject->get($book->subject_id);
+                // KKTP tingkat adalah sumber tunggal; tautan buku hanya cadangan.
+                $levelKktp = $kktpBySubject->get($book->subject_id);
 
                 return [$book->subject_id => [
-                    'kktp_id' => $book->kktp_id ?? $fallback?->id,
-                    'score' => $book->kktp?->kkm_score ?? $fallback?->kkm_score,
+                    'kktp_id' => $levelKktp?->id ?? $book->kktp_id,
+                    'score' => $levelKktp?->kkm_score ?? $book->kktp?->kkm_score,
                 ]];
             })
             ->all();
@@ -1461,7 +1462,18 @@ class NilaiKelasController extends Controller
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
             'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'variantLayouts', 'docJenis', 'docBahasa',
             'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap', 'subjectKktpMap', 'subjectArabicMap',
-        ));
+        ) + [
+            // Urutan, daftar mapel, dan KKTP diatur di Peta Kurikulum untuk
+            // tingkat rombel ini — bukan per rombel.
+            'raporSettingUrl' => $studyGroup->grade_level_id
+                ? route('user.kurikulum.index', [
+                    'userId' => $userId,
+                    'academic_year_id' => $selectedAyId,
+                    'semester' => $selectedSem,
+                    'grade_level_id' => $studyGroup->grade_level_id,
+                ])
+                : null,
+        ]);
     }
 
     public function raporFinalize(Request $request, string $userId, string $studyGroupId)
@@ -1720,13 +1732,15 @@ class NilaiKelasController extends Controller
             ->get();
 
         if (! $onlyBook) {
-            $subjectIds = RaporDistributionSetting::forContext(
+            // Daftar mapel rapor kini ditetapkan per TINGKAT di Peta Kurikulum.
+            $subjectIds = app(\App\Services\RaporSubjectOrderService::class)->reportSubjectIds(
                 $studyGroup->school_id,
                 $academicYearId,
                 $semester,
-            )?->reportSubjectIds();
+                $studyGroup->grade_level_id,
+            );
 
-            if (! empty($subjectIds)) {
+            if ($subjectIds !== null) {
                 $books = $books->whereIn('subject_id', $subjectIds);
             }
         }
@@ -2250,47 +2264,22 @@ class NilaiKelasController extends Controller
         $access = $this->assertLegerAccess($userId, $studyGroup);
         abort_unless($access === 'full', 403, 'Pengaturan mapel rapor hanya untuk TU/Kurikulum/Kepala.');
 
+        // Daftar mapel, urutan, dan KKTP rapor TIDAK lagi diatur per rombel:
+        // semuanya ditetapkan sekali per tingkat di Peta Kurikulum agar rapor
+        // satu tingkat memakai template yang sama. Di sini hanya bobot SAS dan
+        // nama mapel (Latin/Arab) yang disimpan.
         $validated = $request->validate([
             'academic_year_id' => 'required|exists:academic_years,id',
             'semester' => 'required|in:ganjil,genap',
-            'subject_ids' => 'required|array|min:1',
-            'subject_order' => 'nullable|array',
             'subject_bobot' => 'nullable|array',
             'subject_name' => 'nullable|array',
             'subject_name_ar' => 'nullable|array',
-            'subject_kktp' => 'nullable|array',
         ]);
 
         $available = app(RaporPdfService::class)
             ->availableSubjects($schoolId, $studyGroup, (string) $validated['academic_year_id'], (string) $validated['semester'])
             ->pluck('id')
             ->all();
-
-        $selected = collect($validated['subject_ids'])
-            ->filter(fn ($id) => is_string($id) && in_array($id, $available, true))
-            ->unique()
-            ->values();
-
-        if ($selected->isEmpty()) {
-            return back()->with('error', 'Pilih minimal satu mapel yang tersedia untuk rombel ini.');
-        }
-
-        $order = (array) ($validated['subject_order'] ?? []);
-        $selected = $selected
-            ->sortBy(fn ($id) => (int) ($order[$id] ?? 9999))
-            ->values();
-
-        RaporDistributionSetting::updateOrCreate(
-            [
-                'school_id' => $studyGroup->school_id,
-                'academic_year_id' => $validated['academic_year_id'],
-                'semester' => $validated['semester'],
-            ],
-            [
-                'report_subject_ids' => $selected->all(),
-                'updated_by' => $request->user()?->id,
-            ]
-        );
 
         // Bobot rapor SAS per mapel. Kosong = kembali ke JP rombel.
         // Menerima koma desimal (mis. "2,5") karena diisi manual oleh TU.
@@ -2314,14 +2303,6 @@ class NilaiKelasController extends Controller
                 ->where('subject_id', $subjectId)
                 ->update(['bobot' => $bobot]);
         }
-
-        $books = TeacherAdminBook::query()
-            ->where('study_group_id', $studyGroup->id)
-            ->where('academic_year_id', $validated['academic_year_id'])
-            ->where('semester', $validated['semester'])
-            ->whereIn('subject_id', $available)
-            ->get()
-            ->keyBy('subject_id');
 
         // Nama Latin & Arab disimpan di master mapel (berlaku untuk semua rombel).
         $nameInput = (array) $request->input('subject_name', []);
@@ -2348,50 +2329,10 @@ class NilaiKelasController extends Controller
             }
         }
 
-        // KKTP per mapel: mengubah skor pada subject_kktp yang dipakai buku ajar.
-        $kktpInput = (array) $request->input('subject_kktp', []);
-        foreach ($kktpInput as $subjectId => $raw) {
-            if (! in_array($subjectId, $available, true)) {
-                continue;
-            }
+        // KKTP sengaja tidak diubah dari sini: nilainya satu untuk seluruh
+        // rombel di tingkat itu dan diatur di Peta Kurikulum.
 
-            $book = $books[$subjectId] ?? null;
-            if (! $book) {
-                continue;
-            }
-
-            $raw = str_replace(',', '.', trim((string) $raw));
-            if ($raw === '' || ! is_numeric($raw)) {
-                continue;
-            }
-
-            $score = round(max(0, min(100, (float) $raw)), 2);
-
-            $kktp = $book->kktp_id ? SubjectKktp::find($book->kktp_id) : null;
-            if (! $kktp) {
-                // Belum ada baris KKTP: buat untuk mapel + tingkat + TA + semester ini,
-                // lalu tautkan ke buku ajar agar rapor langsung membacanya.
-                $kktp = SubjectKktp::create([
-                    'subject_id' => $subjectId,
-                    'school_id' => $studyGroup->school_id,
-                    'grade_level_id' => $studyGroup->grade_level_id,
-                    'academic_year_id' => $validated['academic_year_id'],
-                    'semester' => $validated['semester'],
-                    'kkm_score' => $score,
-                    'kktp_score' => $score,
-                    'created_by' => $request->user()?->id,
-                ]);
-
-                $book->kktp_id = $kktp->id;
-                $book->save();
-            } else {
-                $kktp->kkm_score = $score;
-                $kktp->kktp_score = $score;
-                $kktp->save();
-            }
-        }
-
-        return back()->with('success', 'Mapel rapor, nama, KKTP, urutan, dan bobot berhasil disimpan.');
+        return back()->with('success', 'Bobot dan nama mapel rapor tersimpan. Urutan, daftar mapel, dan KKTP diatur di Peta Kurikulum.');
     }
 
     /**
@@ -2800,11 +2741,6 @@ class NilaiKelasController extends Controller
     private function subjectGroup(string $name): int
     {
         return AcademicNilai::subjectGroup($name);
-    }
-
-    private function subjectSortOrder(string $name, string $category): array
-    {
-        return [$this->subjectGroup($name), strtolower($name)];
     }
 
     private function saveDocumentLeaderOverride(?School $school, Request $request): void

@@ -19,6 +19,7 @@ use App\Services\ArabicName\Contracts\ArabicNameGeneratorContract;
 use App\Services\Documents\DocumentSigningService;
 use App\Services\Documents\DocumentVisualService;
 use App\Services\Documents\SchoolLeaderService;
+use App\Services\RaporSubjectOrderService;
 use App\Services\SchoolUnitService;
 use App\Services\Ljk\LjkPdfFonts;
 use App\Services\TahfidzRaporService;
@@ -147,9 +148,13 @@ class RaporPdfService
 
     /**
      * Mapel + buku yang dipakai rapor, sudah difilter dan diurutkan
-     * berdasarkan pengaturan mapel rapor.
+     * berdasarkan pengaturan rapor TINGKAT (Peta Kurikulum).
      *
-     * @param  array<int, string>|null  $reportSubjectIds
+     * Urutan cetak: blok Pondok → blok Dinas → belum ditandai, masing-masing
+     * mengikuti nomor urut Peta Kurikulum. Daftar mapel juga berasal dari
+     * tingkat, bukan dari rombel, sehingga semua rombel di tingkat yang sama
+     * mencetak susunan yang sama.
+     *
      * @return array{0: Collection, 1: Collection}
      */
     private function subjectBooks(
@@ -157,8 +162,9 @@ class RaporPdfService
         string $studyGroupId,
         string $selectedAyId,
         string $selectedSem,
-        ?array $reportSubjectIds = null,
     ): array {
+        $gradeLevelId = StudyGroup::query()->whereKey($studyGroupId)->value('grade_level_id');
+
         $subjectMap = TeacherAdminBook::with('subject')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->where('study_group_id', $studyGroupId)
@@ -171,14 +177,16 @@ class RaporPdfService
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn ($s) => AcademicNilai::subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
 
-        if (! empty($reportSubjectIds)) {
-            $order = array_flip($reportSubjectIds);
+        $orderService = app(RaporSubjectOrderService::class);
+        $subjectMap = $orderService->sortSubjects($subjectMap, $gradeLevelId, $selectedAyId);
+
+        $reportSubjectIds = $orderService->reportSubjectIds($schoolId, $selectedAyId, $selectedSem, $gradeLevelId);
+
+        if ($reportSubjectIds !== null) {
             $subjectMap = $subjectMap
-                ->filter(fn ($subject) => isset($order[$subject->id]))
-                ->sortBy(fn ($subject) => $order[$subject->id])
+                ->filter(fn ($subject) => in_array($subject->id, $reportSubjectIds, true))
                 ->values();
         }
 
@@ -213,10 +221,9 @@ class RaporPdfService
 
     /**
      * Ringkasan nilai/predikat/peringkat untuk tabel daftar santri.
-     * Nilai dihitung dari mapel yang dipilih dengan jenis nilai akhir (SAS).
+     * Nilai dihitung dari mapel yang dicetak rapor tingkat ini (nilai akhir SAS).
      *
      * @param  iterable<int, Student>  $students
-     * @param  array<int, string>|null  $reportSubjectIds
      * @return array<string, array{nilai: float|null, predikat: string, rank: int|null}>
      */
     public function summariesForStudents(
@@ -226,10 +233,9 @@ class RaporPdfService
         string $selectedSem,
         string $jenis,
         iterable $students,
-        ?array $reportSubjectIds = null,
     ): array {
         [$subjectMap, $bookMap] = $this->subjectBooks(
-            $schoolId, $studyGroup->id, $selectedAyId, $selectedSem, $reportSubjectIds
+            $schoolId, $studyGroup->id, $selectedAyId, $selectedSem
         );
 
         $bobotMap = $this->bobotMap($studyGroup->id, $selectedAyId, $subjectMap->pluck('id')->all());
@@ -320,14 +326,13 @@ class RaporPdfService
         string $selectedSem,
         string $jenis,
         Student $student,
-        ?array $reportSubjectIds = null,
         ?string $studentNameCase = null,
     ): array {
         $studentId = $student->id;
         $studyGroupId = $studyGroup->id;
 
         [$subjectMap, $bookMap] = $this->subjectBooks(
-            $schoolId, $studyGroupId, $selectedAyId, $selectedSem, $reportSubjectIds
+            $schoolId, $studyGroupId, $selectedAyId, $selectedSem
         );
 
         $bobotMap = $this->bobotMap($studyGroupId, $selectedAyId, $subjectMap->pluck('id')->all());
@@ -560,7 +565,6 @@ class RaporPdfService
         $layout = $layout ?? ($setting?->variantLayoutSettings($jenis, $bahasa) ?? RaporDistributionSetting::defaultLayout());
         $santri = $this->buildSantriData(
             $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student,
-            $setting?->reportSubjectIds(),
             $setting?->student_name_case,
         );
 
@@ -657,7 +661,6 @@ class RaporPdfService
 
             $santri += $this->buildSantriData(
                 $schoolId, $studyGroup, $selectedAy, $selectedAyId, $selectedSem, $jenis, $student,
-                $setting?->reportSubjectIds(),
                 $setting?->student_name_case,
             );
         }

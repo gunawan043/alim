@@ -11,6 +11,7 @@ use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\TahfidzJuzProgress;
 use App\Models\TeacherAdminBook;
+use App\Services\RaporSubjectOrderService;
 use App\Services\TahfidzRaporService;
 use App\Support\AcademicNilai;
 use Dompdf\Dompdf;
@@ -48,8 +49,19 @@ class LegerPdfService
             ->values()
             ->pluck('subject')
             ->filter()
-            ->sortBy(fn ($s) => AcademicNilai::subjectSortOrder($s->name, $s->category ?? ''))
             ->values();
+
+        // Urutan & daftar mapel mengikuti pengaturan TINGKAT di Peta Kurikulum
+        // (Pondok → Dinas → nomor urut), sama dengan rapor.
+        $orderService = app(RaporSubjectOrderService::class);
+        $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
+
+        $reportSubjectIds = $orderService->reportSubjectIds($schoolId, $selectedAyId, $selectedSem, $studyGroup->grade_level_id);
+        if ($reportSubjectIds !== null) {
+            $subjectMap = $subjectMap
+                ->filter(fn ($subject) => in_array($subject->id, $reportSubjectIds, true))
+                ->values();
+        }
 
         $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')

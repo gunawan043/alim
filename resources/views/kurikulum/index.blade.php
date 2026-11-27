@@ -40,8 +40,11 @@
     <div class="alert alert-info py-2 px-3 small d-flex align-items-start gap-2" role="alert">
         <i class="ri-information-line fs-5"></i>
         <div>
-            Peta ini adalah sumber <strong>struktur mapel per tingkat</strong> dan <strong>KKTP</strong>.
-            Struktur tersebut mengalir ke <strong>mapel rombel → buku nilai → leger</strong>,
+            Peta ini adalah sumber <strong>struktur mapel per tingkat</strong>, <strong>KKTP</strong>, dan
+            <strong>susunan rapor</strong> (urutan, Pondok/Dinas, mapel yang dicetak).
+            Rapor satu tingkat memakai template yang sama: <strong>KKTP dan susunan mapel tidak boleh berbeda antar rombel</strong> —
+            yang boleh berbeda hanya antar tingkat.
+            Struktur tersebut mengalir ke <strong>mapel rombel → buku nilai → rapor &amp; leger</strong>,
             sedangkan <strong>SK Pembagian Tugas</strong> mengisi guru pengampu dan buku nilainya.
             Filter tahun ajaran mengikuti <strong>TA aktif</strong>; pilih TA lain hanya untuk melihat arsip.
         </div>
@@ -360,6 +363,14 @@
                     </form>
                 @endif
 
+                @if($canEditRapor ?? false)
+                    <form id="strukturFormPeta" method="POST" action="{{ route('user.kurikulum.struktur.save', ['userId' => $userId]) }}">
+                        @csrf
+                        <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
+                        <input type="hidden" name="semester" value="{{ $semester }}">
+                    </form>
+                @endif
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle table-freeze mb-0">
                         <thead class="table-light">
@@ -369,7 +380,9 @@
                                 <th>Mata Pelajaran</th>
                                 <th class="text-center">JP/Minggu</th>
                                 <th class="text-center">JP Efektif</th>
-                                <th class="text-center" title="Kriteria Ketercapaian Tujuan Pembelajaran (0-100)">N-KKTP</th>
+                                <th class="text-center" title="Asal mapel. Rapor mencetak blok Pondok lebih dulu, lalu Dinas.">Pondok/Dinas</th>
+                                <th class="text-center" title="Nomor urut mapel di rapor. Semua rombel pada tingkat yang sama memakai urutan ini.">Urutan</th>
+                                <th class="text-center" title="Kriteria Ketercapaian Tujuan Pembelajaran (0-100) — satu nilai untuk seluruh rombel di tingkat ini">N-KKTP</th>
                                 <th class="text-center">CP</th>
                                 <th class="text-center">TP</th>
                                 <th>ATP</th>
@@ -405,6 +418,47 @@
                                         @endif
                                     </td>
                                     <td class="text-center fw-semibold">{{ $row['jp_efektif'] }}</td>
+                                    <td class="text-center">
+                                        @if($canEditRapor ?? false)
+                                            <select form="strukturFormPeta"
+                                                    name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][sumber]"
+                                                    class="form-select form-select-sm rapor-source-select">
+                                                <option value="" {{ ! $row['subject_source'] ? 'selected' : '' }}>—</option>
+                                                <option value="pondok" {{ $row['subject_source'] === 'pondok' ? 'selected' : '' }}>Pondok</option>
+                                                <option value="dinas" {{ $row['subject_source'] === 'dinas' ? 'selected' : '' }}>Dinas</option>
+                                            </select>
+                                        @else
+                                            @php
+                                                $sumberBadge = match ($row['subject_source']) {
+                                                    'pondok' => 'bg-success-subtle text-success',
+                                                    'dinas' => 'bg-primary-subtle text-primary',
+                                                    default => 'bg-secondary-subtle text-secondary',
+                                                };
+                                                $sumberLabel = $row['subject_source']
+                                                    ? (\App\Models\GradeLevelSubject::SOURCE_OPTIONS[$row['subject_source']] ?? $row['subject_source'])
+                                                    : '—';
+                                            @endphp
+                                            <span class="badge {{ $sumberBadge }}">{{ $sumberLabel }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @if($canEditRapor ?? false)
+                                            <input type="number"
+                                                   form="strukturFormPeta"
+                                                   name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][urutan]"
+                                                   value="{{ $row['sort_order'] }}"
+                                                   min="1" max="999" step="1"
+                                                   placeholder="—"
+                                                   class="form-control form-control-sm text-center rapor-order-input"
+                                                   aria-label="Urutan rapor {{ $row['subject'] }} tingkat {{ $row['grade'] }}">
+                                            <input type="hidden"
+                                                   form="strukturFormPeta"
+                                                   name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][rapor]"
+                                                   value="{{ $row['is_rapor'] ? 1 : 0 }}">
+                                        @else
+                                            {{ $row['sort_order'] ?? '—' }}
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         @if($canEditKktp ?? false)
                                             <input type="number"
@@ -447,7 +501,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="11" class="text-center py-5">
+                                    <td colspan="13" class="text-center py-5">
                                         <div class="text-muted">
                                             <i class="ri-inbox-archive-line fs-1 d-block mb-2"></i>
                                             @if(($mapelFilter ?? 'all') === 'diampu')
@@ -464,16 +518,22 @@
                     </table>
                 </div>
 
-                @if(($canEditJp ?? false) || ($canEditKktp ?? false))
+                @if(($canEditJp ?? false) || ($canEditKktp ?? false) || ($canEditRapor ?? false))
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top">
                         <span class="text-muted small">
                             <i class="ri-information-line me-1"></i>
-                            JP di sini adalah sumber utama: perubahan otomatis menyinkron ke rombel dan pembagian tugas guru.
+                            JP, urutan, Pondok/Dinas, dan N-KKTP di sini adalah sumber utama: perubahannya ikut ke
+                            rombel, buku nilai, dan rapor semua rombel pada tingkat yang sama.
                         </span>
                         <div class="d-flex gap-2">
                             @if($canEditJp ?? false)
                                 <button type="submit" form="jpFormPeta" class="btn btn-primary btn-sm">
                                     <i class="ri-save-line me-1"></i>Simpan JP
+                                </button>
+                            @endif
+                            @if($canEditRapor ?? false)
+                                <button type="submit" form="strukturFormPeta" class="btn btn-outline-primary btn-sm">
+                                    <i class="ri-list-ordered me-1"></i>Simpan Urutan &amp; Pondok/Dinas
                                 </button>
                             @endif
                             @if($canEditKktp ?? false)

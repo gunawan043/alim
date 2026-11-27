@@ -25,13 +25,36 @@ class GradeLevelSubject extends Model
         'subject_id',
         'allocation_hours',
         'track',
+        'sort_order',
+        'subject_source',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'allocation_hours' => 'integer',
+        'sort_order' => 'integer',
     ];
+
+    /** Asal mapel. Rapor mencetak blok Pondok lebih dulu, lalu Dinas. */
+    public const SOURCE_PONDOK = 'pondok';
+
+    public const SOURCE_DINAS = 'dinas';
+
+    public const SOURCE_OPTIONS = [
+        self::SOURCE_PONDOK => 'Pondok',
+        self::SOURCE_DINAS => 'Dinas',
+    ];
+
+    /** Bobot urutan blok di rapor: pondok → dinas → belum ditandai. */
+    public static function sourceRank(?string $source): int
+    {
+        return match ($source) {
+            self::SOURCE_PONDOK => 0,
+            self::SOURCE_DINAS => 1,
+            default => 2,
+        };
+    }
 
     public function academicYear(): BelongsTo
     {

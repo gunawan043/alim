@@ -17,7 +17,9 @@ use App\Services\AcademicPeriodService;
 use App\Services\CurriculumProfileService;
 use App\Services\KurikulumAccess;
 use App\Services\PekanEfektifService;
+use App\Services\RaporSubjectOrderService;
 use App\Services\SubjectHoursSynchronizer;
+use App\Services\SubjectKktpService;
 use App\Services\TeachingHoursResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -225,6 +227,10 @@ class KurikulumController extends Controller
                         'atp_status' => $atp?->status,
                         'can_author_atp' => $authorablePairs === null
                             || in_array($subject->id.'|'.$grade->id, $authorablePairs, true),
+                        // Pengaturan rapor per tingkat: asal mapel & nomor urut.
+                        'subject_source' => $gradeSubject->subject_source,
+                        'sort_order' => $gradeSubject->sort_order,
+                        'is_rapor' => null,
                     ]);
                 }
             }
@@ -246,6 +252,22 @@ class KurikulumController extends Controller
             return $row;
         });
 
+        // ── Daftar mapel yang dicetak di rapor per TINGKAT ──
+        // Belum pernah diatur → semua mapel aktif dianggap masuk rapor.
+        $raporOrder = app(RaporSubjectOrderService::class);
+        $raporSelected = [];
+        foreach ($gradeLevelOptions as $grade) {
+            $selected = $raporOrder->reportSubjectIds($schoolId, $academicYearId, $semester, $grade->id);
+            $raporSelected[$grade->id] = $selected;
+        }
+
+        $rows = $rows->map(function ($row) use ($raporSelected) {
+            $selected = $raporSelected[$row['grade_level_id']] ?? null;
+            $row['is_rapor'] = $selected === null || in_array($row['subject_id'], $selected, true);
+
+            return $row;
+        });
+
         // Izin atur KKTP: tim kurikulum atau koordinator mapel.
         $isKoorMapelUser = (bool) optional($request->user()?->tugasTambahan)
             ->pluck('nama')
@@ -255,6 +277,12 @@ class KurikulumController extends Controller
         // JP adalah struktur operasional, bukan dokumen guru: tim/koordinator
         // kurikulum DAN Kepala/Wakil Satuan Pendidikan boleh mengubahnya.
         $canEditJp = $access->canManageSubjectHours($request->user()) && ! $isArchive;
+
+        // Susunan rapor (urutan, Pondok/Dinas, mapel yang dicetak) disimpan pada
+        // Peta dan berlaku untuk semua rombel di tingkat itu. Tim kurikulum —
+        // termasuk Wakil Kepala yang menjadi pengawas kurikulum — yang
+        // menetapkannya, dan hanya pada TA yang belum dikunci.
+        $canEditRapor = $access->isKurikulumTeam($request->user()) && ! $isArchive;
 
         // ── Total JP per tingkat (struktur periode terpilih, bukan baris tampil) ──
         $jpTotals = GradeLevelSubject::query()
@@ -296,6 +324,7 @@ class KurikulumController extends Controller
             'gradeLevelId',
             'canEditKktp',
             'canEditJp',
+            'canEditRapor',
             'canPrepare',
             'taughtSubjectIds',
             'taughtPairs',
@@ -563,41 +592,148 @@ class KurikulumController extends Controller
 
         app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'KKTP Peta Kurikulum');
 
+        $gradeLevelIds = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->whereIn('id', array_keys($data['kktp'] ?? []))
+            ->pluck('id')
+            ->all();
+
+        abort_if(($data['kktp'] ?? []) !== [] && $gradeLevelIds === [], 403, 'Tingkat yang dikirim bukan milik satuan pendidikan Anda.');
+
+        $kktpService = app(SubjectKktpService::class);
         $saved = 0;
+        $books = 0;
 
         foreach (($data['kktp'] ?? []) as $gradeLevelId => $subjects) {
-            foreach ((array) $subjects as $subjectId => $value) {
-                $query = SubjectKktp::query()
-                    ->where('subject_id', $subjectId)
-                    ->where('grade_level_id', $gradeLevelId)
-                    ->where('academic_year_id', $data['academic_year_id'])
-                    ->where('semester', $data['semester']);
+            if (! in_array($gradeLevelId, $gradeLevelIds, true)) {
+                continue;
+            }
 
-                if ($value === null || $value === '') {
-                    $query->delete();
+            $hasil = $kktpService->saveForGradeLevel(
+                $schoolId,
+                (string) $gradeLevelId,
+                $data['academic_year_id'],
+                $data['semester'],
+                (array) $subjects,
+                $user->id,
+            );
 
+            $saved += $hasil['saved'];
+            $books = $hasil['books'];
+        }
+
+        $pesan = "KKTP tersimpan ({$saved} mapel-tingkat) dan berlaku untuk semua rombel di tingkat tersebut.";
+        if ($books > 0) {
+            $pesan .= " {$books} buku nilai diselaraskan.";
+        }
+
+        return back()->with('success', $pesan);
+    }
+
+    /**
+     * Simpan pengaturan rapor per tingkat dari Peta Kurikulum:
+     * urutan cetak, status Pondok/Dinas, dan mapel mana yang masuk rapor.
+     *
+     * Format:
+     *   struktur[grade_level_id][subject_id][urutan] = nomor urut
+     *   struktur[grade_level_id][subject_id][sumber] = pondok|dinas|''
+     *   struktur[grade_level_id][subject_id][rapor]  = 1|0
+     */
+    public function saveStruktur(Request $request, string $userId)
+    {
+        $schoolId = $request->attributes->get('schoolContextId');
+        $user = $request->user();
+
+        abort_unless(
+            app(KurikulumAccess::class)->isKurikulumTeam($user),
+            403,
+            'Hanya tim kurikulum (termasuk Waka/Kepala) yang dapat mengatur urutan dan status mapel rapor.'
+        );
+
+        abort_if(
+            $request->input('academic_year_id') && app(AcademicPeriodService::class)->isLocked($request->input('academic_year_id')),
+            403,
+            'Tahun ajaran ini sudah dikunci; susunan rapor tidak dapat diubah.'
+        );
+
+        $data = $request->validate([
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester' => 'required|in:ganjil,genap',
+            'struktur' => 'nullable|array',
+            'struktur.*' => 'array',
+            'struktur.*.*' => 'array',
+            'struktur.*.*.urutan' => 'nullable|integer|min:1|max:999',
+            'struktur.*.*.sumber' => 'nullable|in:pondok,dinas',
+            'struktur.*.*.rapor' => 'nullable|in:0,1',
+        ]);
+
+        app(AcademicPeriodService::class)->assertNotLocked($data['academic_year_id'], 'Struktur Rapor Peta Kurikulum');
+
+        $gradeLevelIds = GradeLevel::query()
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->whereIn('id', array_keys($data['struktur'] ?? []))
+            ->pluck('id')
+            ->all();
+
+        abort_if(($data['struktur'] ?? []) !== [] && $gradeLevelIds === [], 403, 'Tingkat yang dikirim bukan milik satuan pendidikan Anda.');
+
+        $orderService = app(RaporSubjectOrderService::class);
+        $diubah = 0;
+
+        foreach (($data['struktur'] ?? []) as $gradeLevelId => $subjects) {
+            if (! in_array($gradeLevelId, $gradeLevelIds, true)) {
+                continue;
+            }
+
+            $subjectIds = array_keys((array) $subjects);
+
+            $structures = GradeLevelSubject::query()
+                ->where('grade_level_id', $gradeLevelId)
+                ->whereIn('subject_id', $subjectIds)
+                ->when($data['academic_year_id'], fn ($q, $ay) => $q->forAcademicYear($ay))
+                ->orderByAcademicYearFirst()
+                ->get()
+                ->unique('subject_id')
+                ->keyBy('subject_id');
+
+            $raporIds = [];
+
+            foreach ((array) $subjects as $subjectId => $input) {
+                $structure = $structures->get($subjectId);
+
+                if (! $structure) {
                     continue;
                 }
 
-                SubjectKktp::updateOrCreate(
-                    [
-                        'subject_id' => $subjectId,
-                        'grade_level_id' => $gradeLevelId,
-                        'academic_year_id' => $data['academic_year_id'],
-                        'semester' => $data['semester'],
-                    ],
-                    [
-                        'school_id' => $schoolId,
-                        'kktp_score' => $value,
-                        'kkm_score' => $value, // konvensi: kkm mirror KKTP
-                        'created_by' => $user->id,
-                    ]
-                );
+                $source = $input['sumber'] ?? null;
+                $structure->subject_source = in_array($source, ['pondok', 'dinas'], true) ? $source : null;
+                $structure->sort_order = isset($input['urutan']) && $input['urutan'] !== ''
+                    ? (int) $input['urutan']
+                    : null;
 
-                $saved++;
+                if ($structure->isDirty()) {
+                    $structure->save();
+                }
+
+                if ((string) ($input['rapor'] ?? '1') === '1') {
+                    $raporIds[] = $subjectId;
+                }
+
+                $diubah++;
             }
+
+            $orderService->saveReportSubjects(
+                $schoolId,
+                $data['academic_year_id'],
+                $data['semester'],
+                $gradeLevelId,
+                $raporIds,
+            );
         }
 
-        return back()->with('success', "KKTP tersimpan ({$saved} mapel-tingkat).");
+        return back()->with(
+            'success',
+            "Pengaturan rapor tersimpan ({$diubah} mapel-tingkat). Rapor semua rombel pada tingkat itu mengikuti urutan ini."
+        );
     }
 }
