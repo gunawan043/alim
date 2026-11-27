@@ -63,7 +63,9 @@
                                     @endif
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            {{-- JP manual disembunyikan untuk Guru Pendamping:
+                                 JP-nya dihitung dari Peta Kurikulum. --}}
+                            <div class="col-md-4" id="manualHoursField">
                                 <label class="form-label">Jam per Minggu (JP)</label>
                                 <input type="number" name="hours_per_week" class="form-control"
                                        value="{{ old('hours_per_week', $task->hours_per_week) }}" min="0" max="40">

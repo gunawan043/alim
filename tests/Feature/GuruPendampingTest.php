@@ -264,4 +264,38 @@ class GuruPendampingTest extends TestCase
             ->assertSee('build/js/guru-pendamping.js', false)
             ->assertSee('data-hours-url', false);
     }
+
+    public function test_form_menyediakan_pencarian_mapel(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->get(route('user.gtk-additional-tasks.create', ['userId' => $this->admin->id]));
+
+        $response->assertOk()
+            ->assertSee('gpSubjectSearch', false)
+            ->assertSee('Cari nama mapel');
+    }
+
+    public function test_jp_manual_disembunyikan_untuk_guru_pendamping(): void
+    {
+        // Isian JP tetap ada untuk tugas lain, tetapi punya wadah yang bisa
+        // disembunyikan script saat Guru Pendamping dipilih.
+        foreach (['create', 'edit'] as $page) {
+            $view = file_get_contents(resource_path("views/gtk-additional-tasks/{$page}.blade.php"));
+            $this->assertStringContainsString('id="manualHoursField"', $view, "Wadah JP manual hilang di form {$page}.");
+            $this->assertStringContainsString('name="hours_per_week"', $view);
+        }
+
+        $js = file_get_contents(public_path('build/js/guru-pendamping.js'));
+        $this->assertStringContainsString('manualHoursField', $js);
+    }
+
+    public function test_jp_tidak_ditampilkan_di_panel_guru_pendamping(): void
+    {
+        $view = file_get_contents(resource_path('views/gtk-additional-tasks/partials/guru-pendamping.blade.php'));
+
+        // Panel hanya berisi mapel + kelas, tanpa tabel JP.
+        $this->assertStringNotContainsString('gpHoursBox', $view);
+        $this->assertStringContainsString('gpSubjectSearch', $view);
+        $this->assertStringContainsString('gp-group', $view);
+    }
 }

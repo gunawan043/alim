@@ -38,14 +38,23 @@
                     <a href="{{ route('user.master-data.mata-pelajaran.index', ['userId' => $userId]) }}">Buka menu Mata Pelajaran</a> untuk menambahkannya.
                 </div>
             @else
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text bg-light"><i class="ri-search-line"></i></span>
+                    <input type="search" class="form-control" id="gpSubjectSearch"
+                           placeholder="Cari nama mapel…" autocomplete="off">
+                </div>
+                <div id="gpSubjectEmpty" class="alert alert-light border mb-2 small d-none">
+                    Tidak ada mapel yang cocok dengan pencarian.
+                </div>
                 <div class="border rounded p-2" style="max-height:240px;overflow:auto">
                     @foreach($subjects as $schoolName => $schoolSubjects)
+                        <div class="gp-subject-group">
                         @if($subjects->count() > 1)
                             <div class="text-muted small fw-semibold px-1 pt-1">{{ $schoolName }}</div>
                         @endif
                         <div class="row g-1">
                             @foreach($schoolSubjects as $subject)
-                                <div class="col-md-6">
+                                <div class="col-md-6 gp-subject-item" data-name="{{ \Illuminate\Support\Str::lower($subject->name.' '.$subject->code) }}">
                                     <label class="form-check mb-0">
                                         <input type="checkbox" class="form-check-input gp-subject" name="pendamping_subjects[]"
                                                value="{{ $subject->id }}" @checked(in_array((string) $subject->id, $gpSelectedSubjects, true))>
@@ -57,6 +66,7 @@
                                 </div>
                             @endforeach
                         </div>
+                        </div>
                     @endforeach
                 </div>
             @endif
@@ -64,7 +74,7 @@
 
         <div class="mb-2">
             <label class="form-label fw-semibold">Kelas yang Didampingi <span class="text-danger">*</span></label>
-            <p class="text-muted small mb-2">JP muncul otomatis dari Peta Kurikulum untuk mapel di atas.</p>
+            <p class="text-muted small mb-2">Pilih kelas tempat Anda mendampingi.</p>
             @if($studyGroups->isEmpty())
                 <div class="alert alert-warning mb-0 small">Belum ada kelas aktif di satuan pendidikan ini.</div>
             @else
@@ -82,10 +92,6 @@
                     </div>
                 </div>
             @endif
-        </div>
-
-        <div id="gpHoursBox" class="mt-3">
-            <div class="text-muted small">Pilih mapel dan kelas untuk melihat JP.</div>
         </div>
     </div>
 </div>

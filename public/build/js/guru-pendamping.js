@@ -1,9 +1,11 @@
 /**
  * Panel tugas tambahan "Guru Pendamping".
  *
- * Mapel + kelas wajib dipilih; JP diambil dari Peta Kurikulum lewat
- * endpoint data-hours-url. JP hasil hitungan mengisi hours_per_week
- * secara read-only karena sumbernya bukan isian manual.
+ * Pengguna hanya memilih MAPEL dan KELAS. JP tidak ditampilkan maupun
+ * diketik: nilainya dihitung di server dari Peta Kurikulum saat disimpan.
+ *
+ * Dropdown nama tugas memakai select2, yang tidak memicu event 'change'
+ * native — karena itu pemilihan juga ditangkap lewat select2:select.
  */
 (function () {
     'use strict';
@@ -14,135 +16,64 @@
         panel.dataset.gpInit = '1';
 
         var taskSelect = document.querySelector('select[name="nama_tugas"]');
-        var hoursInput = document.querySelector('input[name="hours_per_week"]');
-        var hoursBox = document.getElementById('gpHoursBox');
-        var hoursUrl = panel.dataset.hoursUrl;
-        var typeId = panel.dataset.typeId || '';
-        var petaUrl = panel.dataset.petaUrl || '#';
+        var manualHours = document.getElementById('manualHoursField');
+        var subjectSearch = document.getElementById('gpSubjectSearch');
+        var subjectEmpty = document.getElementById('gpSubjectEmpty');
 
         function isPendamping() {
             return taskSelect && String(taskSelect.value || '').trim().toLowerCase() === 'guru pendamping';
         }
 
-        function picked(selector) {
-            return Array.prototype.slice.call(document.querySelectorAll(selector + ':checked')).map(function (el) {
-                return el.value;
-            });
-        }
-
-        function setMessage(html, variant) {
-            hoursBox.innerHTML = '<div class="alert alert-' + (variant || 'light') + ' border mb-0 small">' + html + '</div>';
-        }
-
-        function render(data) {
-            if (! data.subjects || ! data.subjects.length) {
-                setMessage('Pilih minimal satu mapel terlebih dahulu.', 'warning');
-                return;
-            }
-            if (! data.groups || ! data.groups.length) {
-                setMessage('Pilih kelas untuk melihat JP tiap mapel.');
-                return;
-            }
-
-            var missing = false;
-            var rows = data.groups.map(function (group) {
-                var cells = data.subjects.map(function (subject) {
-                    var jp = group.subject_hours ? group.subject_hours[subject.id] : null;
-                    if (jp === null || jp === undefined) {
-                        missing = true;
-                        return '<td class="text-center text-danger">—</td>';
-                    }
-                    return '<td class="text-center">' + jp + '</td>';
-                }).join('');
-
-                return '<tr><td>' + group.group_name + '</td>' + cells +
-                    '<td class="text-center fw-semibold">' + group.total + '</td></tr>';
-            }).join('');
-
-            var head = data.subjects.map(function (s) {
-                return '<th class="text-center small">' + s.name + '</th>';
-            }).join('');
-
-            hoursBox.innerHTML =
-                '<div class="table-responsive">' +
-                '<table class="table table-sm table-bordered align-middle mb-2">' +
-                '<thead class="table-light"><tr><th>Kelas</th>' + head +
-                '<th class="text-center">JP Kelas</th></tr></thead>' +
-                '<tbody>' + rows + '</tbody></table></div>' +
-                '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-                '<span class="text-muted small">JP mengikuti Peta Kurikulum' +
-                (missing ? ' — sebagian mapel belum punya JP.' : '.') + '</span>' +
-                '<span class="badge bg-primary fs-6">Total ' + data.total + ' JP</span></div>' +
-                (missing ? '<div class="mt-2 small"><a href="' + petaUrl + '">Atur JP di Peta Kurikulum</a></div>' : '');
-
-            if (hoursInput) hoursInput.value = data.total;
-        }
-
-        function refresh() {
-            if (! isPendamping() || ! hoursUrl) return;
-
-            var subjectIds = picked('.gp-subject');
-            var groupIds = picked('.gp-group');
-
-            if (! subjectIds.length) {
-                setMessage('Pilih minimal satu mapel terlebih dahulu.', 'warning');
-                return;
-            }
-
-            var params = ['nama_tugas=' + encodeURIComponent('Guru Pendamping')];
-            if (typeId) params.push('task_type_id=' + encodeURIComponent(typeId));
-            groupIds.forEach(function (id) { params.push('group_ids[]=' + encodeURIComponent(id)); });
-            subjectIds.forEach(function (id) { params.push('subject_ids[]=' + encodeURIComponent(id)); });
-
-            fetch(hoursUrl + '?' + params.join('&'), { headers: { Accept: 'application/json' } })
-                .then(function (r) { return r.json(); })
-                .then(render)
-                .catch(function () {
-                    setMessage('Gagal menghitung JP. Muat ulang halaman lalu coba lagi.', 'danger');
-                });
+        function syncManualHours() {
+            // Untuk Guru Pendamping JP dihitung dari Peta Kurikulum, jadi
+            // isian JP manual tidak perlu ditampilkan sama sekali.
+            if (manualHours) manualHours.classList.toggle('d-none', isPendamping());
         }
 
         function togglePanel() {
             var active = isPendamping();
             panel.classList.toggle('d-none', ! active);
-
-            if (hoursInput) {
-                hoursInput.readOnly = active;
-                hoursInput.classList.toggle('bg-light', active);
-            }
-
-            if (active) refresh();
+            syncManualHours();
         }
 
-        function applySelection() {
-            // select2 tidak memicu event 'change' native saat memilih lewat UI,
-            // jadi panel bisa tetap tertutup walau nilainya sudah "Guru
-            // Pendamping". Baca nilai langsung setiap kali terjadi pemilihan.
-            if (isPendamping() && panel.classList.contains('d-none')) {
-                togglePanel();
-            } else if (! isPendamping() && ! panel.classList.contains('d-none')) {
-                togglePanel();
-            }
+        function filterSubjects() {
+            if (! subjectSearch) return;
+
+            var query = subjectSearch.value.trim().toLowerCase();
+            var items = document.querySelectorAll('.gp-subject-item');
+            var shown = 0;
+
+            items.forEach(function (item) {
+                var match = query === '' || (item.dataset.name || '').indexOf(query) !== -1;
+                item.classList.toggle('d-none', ! match);
+                if (match) shown++;
+            });
+
+            // Judul pengelompokan sekolah ikut disembunyikan bila kosong.
+            document.querySelectorAll('.gp-subject-group').forEach(function (group) {
+                var visible = group.querySelectorAll('.gp-subject-item:not(.d-none)').length;
+                group.classList.toggle('d-none', visible === 0);
+            });
+
+            if (subjectEmpty) subjectEmpty.classList.toggle('d-none', shown !== 0 || items.length === 0);
         }
 
-        // Select2 (dipakai dropdown tugas tambahan) memancarkan event
-        // jQuery: select2:select / select2:unselect. Tanpa ini panel tidak
-        // pernah terbuka di browser.
-        if (window.jQuery) {
-            window.jQuery(taskSelect).on('select2:select select2:unselect change', applySelection);
+        // Select2 memancarkan event jQuery; tanpa ini panel tidak terbuka
+        // walau "Guru Pendamping" sudah dipilih.
+        if (window.jQuery && taskSelect) {
+            window.jQuery(taskSelect).on('select2:select select2:unselect change', togglePanel);
         }
 
         if (taskSelect) {
             taskSelect.addEventListener('change', togglePanel);
-            // select2 menyembunyikan <select> asli; perubahan lewat API-nya
-            // tetap perlu ditangkap. Polling ringan hanya sebagai jaring
-            // pengaman terakhir bila event belum terpasang.
-            taskSelect.addEventListener('input', applySelection);
+            taskSelect.addEventListener('input', togglePanel);
         }
 
-        document.querySelectorAll('.gp-subject, .gp-group').forEach(function (el) {
-            el.addEventListener('change', refresh);
-        });
+        if (subjectSearch) {
+            subjectSearch.addEventListener('input', filterSubjects);
+            subjectSearch.addEventListener('search', filterSubjects);
+        }
+
         togglePanel();
     }
 
