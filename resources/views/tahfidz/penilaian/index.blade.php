@@ -5,8 +5,8 @@
         $userId = $userId ?? auth()->id();
         $books = $books ?? collect();
         $rows = $rows ?? collect();
-        $columns = $columns ?? ['ziyadah', 'rabt', 'sts', 'sas'];
-        $columnLabels = $columnLabels ?? ['ziyadah' => 'Ziyadah', 'rabt' => 'Rabt', 'sts' => 'STS', 'sas' => 'SAS'];
+        $columns = $columns ?? \App\Services\TahfidzGradebookCalculator::KEYS;
+        $columnLabels = $columnLabels ?? \App\Services\TahfidzLegerColumns::COLUMNS;
         $search = $search ?? '';
         $selectedGroupId = $group?->id;
         $selectedSubjectId = $book?->subject_id;

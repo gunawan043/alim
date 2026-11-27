@@ -150,13 +150,13 @@ class TahfidzPenilaianPageTest extends TestCase
                 'tahfidz_gradebook_id' => $book->id,
                 'semester' => 'ganjil',
                 'scores' => [$studentId => ['ziyadah' => 75]],
-                'weights' => ['ziyadah' => 60, 'rabt' => 20, 'sts' => 20, 'sas' => 20],
+                'weights' => ['npt' => 0, 'ziyadah' => 60, 'rabt' => 20, 'tikrar' => 0, 'sts' => 20, 'sas' => 20],
             ])
             ->assertStatus(422)
             ->assertJson(['success' => false]);
 
         $this->assertSame(75.0, TahfidzGradebook::find($book->id)->scores()->first()->ziyadah);
-        $this->assertSame(40.0, TahfidzGradebook::find($book->id)->weight_ziyadah);
+        $this->assertSame(30.0, TahfidzGradebook::find($book->id)->weight_ziyadah);
     }
 
     public function test_materi_ujian_sts_dan_sas_tersimpan_di_buku_halaqah(): void

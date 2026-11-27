@@ -30,15 +30,29 @@ class TahfidzGradebookService
     /**
      * Bobot awal NR Final format tahfidz.
      *
-     * Ziyadah (hafalan baru) paling besar karena menjadi capaian utama,
-     * sedangkan rabt, STS, dan SAS masing-masing menutup sisa bobot.
+     * Enam kolom, sama dengan leger tahfidz: NPT, Ziyadah, Rabt, Tikrar,
+     * STS, SAS. Ziyadah dan Tikrar paling besar karena menjadi capaian
+     * harian, sedangkan NPT, Rabt, serta STS/SAS melengkapinya.
      */
     public const DEFAULT_WEIGHTS = [
-        'ziyadah' => 40.0,
-        'rabt' => 20.0,
-        'sts' => 20.0,
-        'sas' => 20.0,
+        'npt' => 10.0,
+        'ziyadah' => 30.0,
+        'rabt' => 15.0,
+        'tikrar' => 15.0,
+        'sts' => 15.0,
+        'sas' => 15.0,
     ];
+
+    /** Kolom bobot bila baris buku perlu diselaraskan ke enam kolom. */
+    public static function weightAttributes(): array
+    {
+        $attributes = [];
+        foreach (TahfidzGradebookCalculator::KEYS as $key) {
+            $attributes['weight_'.$key] = self::DEFAULT_WEIGHTS[$key];
+        }
+
+        return $attributes;
+    }
 
     /**
      * Halaqah tempat guru ini mengajar, pada tahun ajaran aktif.
@@ -150,10 +164,7 @@ class TahfidzGradebookService
                         // Bobot awal ditulis eksplisit: kolom default database
                         // tidak ikut termuat pada model yang baru dibuat, dan
                         // bobot 0 membuat NR Final selalu kosong.
-                        'weight_ziyadah' => self::DEFAULT_WEIGHTS['ziyadah'],
-                        'weight_rabt' => self::DEFAULT_WEIGHTS['rabt'],
-                        'weight_sts' => self::DEFAULT_WEIGHTS['sts'],
-                        'weight_sas' => self::DEFAULT_WEIGHTS['sas'],
+                        ...self::weightAttributes(),
                     ],
                 );
 
@@ -188,10 +199,7 @@ class TahfidzGradebookService
                 [
                     'school_id' => $group->school_id,
                     'is_active' => true,
-                    'weight_ziyadah' => self::DEFAULT_WEIGHTS['ziyadah'],
-                    'weight_rabt' => self::DEFAULT_WEIGHTS['rabt'],
-                    'weight_sts' => self::DEFAULT_WEIGHTS['sts'],
-                    'weight_sas' => self::DEFAULT_WEIGHTS['sas'],
+                    ...self::weightAttributes(),
                 ],
             ))
             ->values();
@@ -278,7 +286,7 @@ class TahfidzGradebookService
     /**
      * Simpan nilai dari input guru.
      *
-     * @param  array<string, array{ziyadah?: mixed, rabt?: mixed, sts?: mixed, sas?: mixed, ket?: mixed}>  $rows
+     * @param  array<string, array{npt?: mixed, ziyadah?: mixed, rabt?: mixed, tikrar?: mixed, sts?: mixed, sas?: mixed, ket?: mixed}>  $rows
      * @param  Collection<int, array{student_id: string, study_group_id: ?string}>  $members
      */
     public function saveScores(TahfidzGradebook $book, array $rows, Collection $members): int
@@ -297,12 +305,10 @@ class TahfidzGradebookService
                 continue;
             }
 
-            $values = [
-                'ziyadah' => $this->numberOrNull($row['ziyadah'] ?? null),
-                'rabt' => $this->numberOrNull($row['rabt'] ?? null),
-                'sts' => $this->numberOrNull($row['sts'] ?? null),
-                'sas' => $this->numberOrNull($row['sas'] ?? null),
-            ];
+            $values = [];
+            foreach (TahfidzGradebookCalculator::KEYS as $key) {
+                $values[$key] = $this->numberOrNull($row[$key] ?? null);
+            }
 
             $existing = TahfidzGradebookScore::query()
                 ->where('tahfidz_gradebook_id', $book->id)
@@ -310,9 +316,9 @@ class TahfidzGradebookService
                 ->first();
 
             $hasValue = collect($values)->contains(fn ($v) => $v !== null);
-            $hasExistingValue = $existing && collect([
-                $existing->ziyadah, $existing->rabt, $existing->sts, $existing->sas,
-            ])->contains(fn ($v) => $v !== null);
+            $hasExistingValue = $existing && collect(
+                array_map(fn ($key) => $existing->{$key}, TahfidzGradebookCalculator::KEYS)
+            )->contains(fn ($v) => $v !== null);
 
             if (! $hasValue && ! $hasExistingValue) {
                 continue;

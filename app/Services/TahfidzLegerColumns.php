@@ -18,10 +18,11 @@ use Illuminate\Support\Collection;
  *   NPT | Ziyadah | Rabt | Tikrar | STS | SAS
  *
  * - NPT (Nilai Pencapaian Target) = capaian halaman ziyadah ÷ target halaman
- *   semester × 100, maksimal 100 (sumber: tahfidz_progress_recaps).
+ *   semester × 100, maksimal 100 (sumber: tahfidz_progress_recaps). Bila guru
+ *   mengisi NPT di buku halaqah, nilai guru yang dipakai.
  * - Ziyadah, Rabt, STS, SAS = nilai buku halaqah (diisi guru).
- * - Tikrar = rata-rata nilai tikrar dari setoran, sebagai angka pendamping
- *   (tidak dibobotkan ke NR Final karena buku halaqah belum punya kolomnya).
+ * - Tikrar = nilai tikrar di buku halaqah; bila belum diisi, rata-rata nilai
+ *   tikrar dari setoran.
  *
  * Semua kolom di sini hanya untuk mapel berformat tahfidz; mapel umum tetap
  * memakai komponen STS/SAS biasa.
@@ -57,6 +58,17 @@ class TahfidzLegerColumns
      * @param  Collection<int, TahfidzGradebookScore>  $scores  hasil query TahfidzGradebookScore
      * @return array<string, array<string, array<string, float|null>>> [$studentId][$bookId][$kolom]
      */
+    /**
+     * Tetapkan periode sebelum memanggil npt()/tikrarAverage() satu per satu.
+     */
+    public function forPeriod(?AcademicYear $academicYear, string $semester): static
+    {
+        $this->academicYear = $academicYear;
+        $this->semester = $semester;
+
+        return $this;
+    }
+
     public function valuesFor(
         Collection $tahfidzBooks,
         Collection $scores,
@@ -65,8 +77,7 @@ class TahfidzLegerColumns
         string $semester,
         bool $tikrarFromSetoran = true,
     ): array {
-        $this->academicYear = $academicYear;
-        $this->semester = $semester;
+        $this->forPeriod($academicYear, $semester);
 
         $scoreMap = [];
         foreach ($scores as $score) {
@@ -79,12 +90,16 @@ class TahfidzLegerColumns
                 $score = $scoreMap[$studentId][$book->subject_id] ?? null;
 
                 $values[$studentId][$book->id] = [
-                    'npt' => $this->npt($studentId),
+                    // NPT & Tikrar: nilai yang sudah disimpan guru di buku
+                    // halaqah menang; bila kosong, dihitung dari target/setoran.
+                    'npt' => $score?->npt !== null ? (float) $score->npt : $this->npt($studentId),
                     'ziyadah' => $score?->ziyadah !== null ? (float) $score->ziyadah : null,
                     'rabt' => $score?->rabt !== null ? (float) $score->rabt : null,
-                    'tikrar' => $tikrarFromSetoran
-                        ? $this->tikrarAverage($studentId, $score?->gradebook?->tahfidz_group_id)
-                        : null,
+                    'tikrar' => $score?->tikrar !== null
+                        ? (float) $score->tikrar
+                        : ($tikrarFromSetoran
+                            ? $this->tikrarAverage($studentId, $score?->gradebook?->tahfidz_group_id)
+                            : null),
                     'sts' => $score?->sts !== null ? (float) $score->sts : null,
                     'sas' => $score?->sas !== null ? (float) $score->sas : null,
                 ];

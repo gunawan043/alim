@@ -18,6 +18,9 @@ use App\Models\TahfidzGradebookScore;
  */
 class TahfidzGradebookCalculator
 {
+    /** Kolom nilai format tahfidz, dalam urutan tampil. */
+    public const KEYS = ['npt', 'ziyadah', 'rabt', 'tikrar', 'sts', 'sas'];
+
     /**
      * Terapkan nr_final ke baris nilai (tanpa menyimpan).
      */
@@ -25,8 +28,10 @@ class TahfidzGradebookCalculator
     {
         $score->nr_final = $this->calculate(
             [
+                'npt' => $score->npt,
                 'ziyadah' => $score->ziyadah,
                 'rabt' => $score->rabt,
+                'tikrar' => $score->tikrar,
                 'sts' => $score->sts,
                 'sas' => $score->sas,
             ],
@@ -76,7 +81,7 @@ class TahfidzGradebookCalculator
         $errors = [];
         $total = 0.0;
 
-        foreach (['ziyadah', 'rabt', 'sts', 'sas'] as $key) {
+        foreach (self::KEYS as $key) {
             $value = $weights[$key] ?? null;
 
             if (! is_numeric($value) || (float) $value < 0 || (float) $value > 100) {

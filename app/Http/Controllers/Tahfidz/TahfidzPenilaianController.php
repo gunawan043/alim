@@ -31,12 +31,14 @@ use Illuminate\Support\Facades\DB;
  */
 class TahfidzPenilaianController extends Controller
 {
-    /** Kolom nilai pada format tahfidz. */
-    private const COLUMNS = ['ziyadah', 'rabt', 'sts', 'sas'];
+    /** Kolom nilai pada format tahfidz — sama dengan leger. */
+    private const COLUMNS = ['npt', 'ziyadah', 'rabt', 'tikrar', 'sts', 'sas'];
 
     private const COLUMN_LABELS = [
+        'npt' => 'NPT',
         'ziyadah' => 'Ziyadah',
         'rabt' => 'Rabt',
+        'tikrar' => 'Tikrar',
         'sts' => 'STS',
         'sas' => 'SAS',
     ];
@@ -203,12 +205,10 @@ class TahfidzPenilaianController extends Controller
             return $redirect->with('success', 'Nilai tersimpan untuk '.$saved.' santri.');
         }
 
-        $weights = [
-            'ziyadah' => $request->input('weights.ziyadah'),
-            'rabt' => $request->input('weights.rabt'),
-            'sts' => $request->input('weights.sts'),
-            'sas' => $request->input('weights.sas'),
-        ];
+        $weights = [];
+        foreach (TahfidzGradebookCalculator::KEYS as $key) {
+            $weights[$key] = $request->input('weights.'.$key);
+        }
 
         $errors = $this->calculator->validateWeights($weights);
 
@@ -227,12 +227,11 @@ class TahfidzPenilaianController extends Controller
         }
 
         DB::transaction(function () use ($book, $weights) {
-            $book->update([
-                'weight_ziyadah' => (float) $weights['ziyadah'],
-                'weight_rabt' => (float) $weights['rabt'],
-                'weight_sts' => (float) $weights['sts'],
-                'weight_sas' => (float) $weights['sas'],
-            ]);
+            $attributes = [];
+            foreach (TahfidzGradebookCalculator::KEYS as $key) {
+                $attributes['weight_'.$key] = (float) $weights[$key];
+            }
+            $book->update($attributes);
 
             // Bobot baru harus langsung berlaku untuk nilai yang sudah ada,
             // agar rapor memakai angka terbaru tanpa menunggu input ulang.
@@ -365,8 +364,10 @@ class TahfidzPenilaianController extends Controller
             ->get()
             ->map(fn ($score) => [
                 'student_id' => (string) $score->student_id,
+                'npt' => $score->npt,
                 'ziyadah' => $score->ziyadah,
                 'rabt' => $score->rabt,
+                'tikrar' => $score->tikrar,
                 'sts' => $score->sts,
                 'sas' => $score->sas,
                 'nr_final' => $score->nr_final,

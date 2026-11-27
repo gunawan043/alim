@@ -192,9 +192,13 @@ class TahfidzGradebookHalaqahTest extends TestCase
     {
         $calc = app(TahfidzGradebookCalculator::class);
 
-        $this->assertSame([], $calc->validateWeights(['ziyadah' => 40, 'rabt' => 20, 'sts' => 20, 'sas' => 20]));
+        $this->assertSame([], $calc->validateWeights([
+            'npt' => 10, 'ziyadah' => 30, 'rabt' => 15, 'tikrar' => 15, 'sts' => 15, 'sas' => 15,
+        ]));
 
-        $errors = $calc->validateWeights(['ziyadah' => 50, 'rabt' => 20, 'sts' => 20, 'sas' => 20]);
+        $errors = $calc->validateWeights([
+            'npt' => 10, 'ziyadah' => 50, 'rabt' => 15, 'tikrar' => 15, 'sts' => 15, 'sas' => 15,
+        ]);
         $this->assertArrayHasKey('total', $errors);
     }
 

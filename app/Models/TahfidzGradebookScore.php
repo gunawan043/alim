@@ -25,12 +25,14 @@ class TahfidzGradebookScore extends Model
 
     protected $fillable = [
         'tahfidz_gradebook_id', 'student_id', 'study_group_id',
-        'ziyadah', 'rabt', 'sts', 'sas', 'nr_final', 'ket',
+        'npt', 'ziyadah', 'rabt', 'tikrar', 'sts', 'sas', 'nr_final', 'ket',
     ];
 
     protected $casts = [
+        'npt' => 'float',
         'ziyadah' => 'float',
         'rabt' => 'float',
+        'tikrar' => 'float',
         'sts' => 'float',
         'sas' => 'float',
         'nr_final' => 'float',

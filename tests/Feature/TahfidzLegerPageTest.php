@@ -121,7 +121,7 @@ class TahfidzLegerPageTest extends TestCase
     }
 
 
-    public function test_tab_mapel_tahfidz_memakai_empat_kolom_dan_menyimpan_ke_halaqah(): void
+    public function test_tab_mapel_tahfidz_memakai_enam_kolom_dan_menyimpan_ke_halaqah(): void
     {
         $tahfidz = $this->makeSubject('THF', "Tahfidzul Qur'an", TahfidzSubjectResolver::FORMAT_TAHFIDZ);
         $book = TeacherAdminBook::create([
@@ -163,6 +163,12 @@ class TahfidzLegerPageTest extends TestCase
             ->assertSee('NR Final')
             ->assertDontSee('Asesmen Sumatif Harian');
 
+        // Enam kolom, sama dengan leger.
+        foreach (['NPT', 'Ziyadah', 'Rabt', 'Tikrar', 'STS', 'SAS'] as $label) {
+            $response->assertSee($label);
+            $response->assertSee('name="weights['.strtolower($label).']"', false);
+        }
+
         // Simpan nilai: masuk ke buku halaqah santri tersebut.
         $this->actingAs($this->user)->post(
             route('user.schools.nilai-kelas.sts.store', ['userId' => $this->user->id, 'studyGroupId' => $this->class->id]),
@@ -171,8 +177,10 @@ class TahfidzLegerPageTest extends TestCase
                 'admin_book_id' => $book->id,
                 'semester' => 'ganjil',
                 'academic_year_id' => $this->year->id,
-                'weights' => ['ziyadah' => 40, 'rabt' => 20, 'sts' => 20, 'sas' => 20],
-                'nilai' => [$student->id => ['ziyadah' => 90, 'rabt' => 70, 'sts' => 80, 'sas' => 100]],
+                'weights' => ['npt' => 10, 'ziyadah' => 30, 'rabt' => 15, 'tikrar' => 15, 'sts' => 15, 'sas' => 15],
+                'nilai' => [$student->id => [
+                    'npt' => 100, 'ziyadah' => 90, 'rabt' => 70, 'tikrar' => 60, 'sts' => 80, 'sas' => 100,
+                ]],
             ],
             ['X-Requested-With' => 'XMLHttpRequest', 'Accept' => 'application/json'],
         )->assertOk()->assertJson(['success' => true]);
@@ -181,7 +189,16 @@ class TahfidzLegerPageTest extends TestCase
 
         $this->assertNotNull($score, 'Nilai tahfidz harus masuk ke buku halaqah.');
         $this->assertEqualsWithDelta(90, (float) $score->ziyadah, 0.01);
-        $this->assertEqualsWithDelta(86, (float) $score->nr_final, 0.01, '(90×40 + 70×20 + 80×20 + 100×20) ÷ 100 = 86.');
+        $this->assertEqualsWithDelta(100, (float) $score->npt, 0.01);
+        $this->assertEqualsWithDelta(60, (float) $score->tikrar, 0.01);
+
+        $gradebook->refresh();
+        // Bobot dikirim 10/30/15/15/15/15, total tetap 100.
+        $this->assertEqualsWithDelta(10, (float) $gradebook->weight_npt, 0.01);
+        $this->assertEqualsWithDelta(30, (float) $gradebook->weight_ziyadah, 0.01);
+        $this->assertEqualsWithDelta(15, (float) $gradebook->weight_tikrar, 0.01);
+        // (100×10 + 90×30 + 70×15 + 60×15 + 80×15 + 100×15) ÷ 100 = 83.5
+        $this->assertEqualsWithDelta(83.5, (float) $score->fresh()->nr_final, 0.01);
     }
 
     public function test_mapel_umum_tetap_memakai_sumatif_harian(): void

@@ -32,7 +32,7 @@ class TahfidzGradebook extends Model
 
     protected $fillable = [
         'tahfidz_group_id', 'subject_id', 'academic_year_id', 'school_id', 'semester',
-        'weight_ziyadah', 'weight_rabt', 'weight_sts', 'weight_sas', 'is_active',
+        'weight_npt', 'weight_ziyadah', 'weight_rabt', 'weight_tikrar', 'weight_sts', 'weight_sas', 'is_active',
         'sts_material', 'sts_surah_start', 'sts_ayah_start', 'sts_surah_end', 'sts_ayah_end',
         'sts_juz', 'sts_page_start', 'sts_line_start', 'sts_page_end', 'sts_line_end',
         'sas_material', 'sas_surah_start', 'sas_ayah_start', 'sas_surah_end', 'sas_ayah_end',
@@ -40,8 +40,10 @@ class TahfidzGradebook extends Model
     ];
 
     protected $casts = [
+        'weight_npt' => 'float',
         'weight_ziyadah' => 'float',
         'weight_rabt' => 'float',
+        'weight_tikrar' => 'float',
         'weight_sts' => 'float',
         'weight_sas' => 'float',
         'is_active' => 'boolean',
@@ -114,12 +116,14 @@ class TahfidzGradebook extends Model
         return $this->hasMany(TahfidzGradebookScore::class, 'tahfidz_gradebook_id');
     }
 
-    /** @return array{ziyadah: float, rabt: float, sts: float, sas: float} */
+    /** @return array{npt: float, ziyadah: float, rabt: float, tikrar: float, sts: float, sas: float} */
     public function weights(): array
     {
         $weights = [
+            'npt' => (float) $this->weight_npt,
             'ziyadah' => (float) $this->weight_ziyadah,
             'rabt' => (float) $this->weight_rabt,
+            'tikrar' => (float) $this->weight_tikrar,
             'sts' => (float) $this->weight_sts,
             'sas' => (float) $this->weight_sas,
         ];

@@ -634,14 +634,41 @@ class NilaiKelasController extends Controller
             ->get();
 
         $rows = $scores->keyBy('student_id')->map(fn ($score) => [
+            'npt' => $score->npt,
             'ziyadah' => $score->ziyadah,
             'rabt' => $score->rabt,
+            'tikrar' => $score->tikrar,
             'sts' => $score->sts,
             'sas' => $score->sas,
             'nr_final' => $score->nr_final,
             'ket' => $score->ket,
             'group_id' => $score->gradebook?->tahfidz_group_id,
         ])->all();
+
+        // NPT dan Tikrar punya sumber otomatis (target halaman & setoran tikrar).
+        // Nilai itu hanya jadi ANGKA AWAL selama guru belum mengisi kolomnya,
+        // agar guru tetap bisa mengoreksi.
+        $autoColumns = app(TahfidzLegerColumns::class);
+        if ($academicYearId) {
+            $autoColumns->forPeriod(\App\Models\AcademicYear::find($academicYearId), (string) $semester);
+        }
+
+        foreach ($studentIds as $studentId) {
+            $row = $rows[$studentId] ?? [];
+            if (($row['npt'] ?? null) === null) {
+                $npt = $autoColumns->npt($studentId);
+                if ($npt !== null) {
+                    $rows[$studentId]['npt'] = $npt;
+                }
+            }
+            if (($row['tikrar'] ?? null) === null) {
+                $groupId = $row['group_id'] ?? null;
+                $tikrar = $autoColumns->tikrarAverage($studentId, $groupId);
+                if ($tikrar !== null) {
+                    $rows[$studentId]['tikrar'] = $tikrar;
+                }
+            }
+        }
 
         $sampleBookId = $scores->first()?->tahfidz_gradebook_id;
         $weights = $sampleBookId
@@ -906,12 +933,11 @@ class NilaiKelasController extends Controller
 
                 DB::transaction(function () use ($touched, $weights) {
                     foreach ($touched as $book) {
-                        $book->update([
-                            'weight_ziyadah' => (float) $weights['ziyadah'],
-                            'weight_rabt' => (float) $weights['rabt'],
-                            'weight_sts' => (float) $weights['sts'],
-                            'weight_sas' => (float) $weights['sas'],
-                        ]);
+                        $attributes = [];
+                        foreach (\App\Services\TahfidzGradebookCalculator::KEYS as $key) {
+                            $attributes['weight_'.$key] = (float) ($weights[$key] ?? 0);
+                        }
+                        $book->update($attributes);
                         $book->refresh()->recalcAll();
                     }
                 });
