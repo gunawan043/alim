@@ -684,7 +684,7 @@
                                                 @if($thfCols !== [])
                                                     @foreach($thfCols as $thfKey => $thfLabel)
                                                         @php
-                                                            $thfVal = $tahfidzValues[$sid][$subject->id][$thfKey] ?? null;
+                                                            $thfVal = $tahfidzValues[$sid][$book?->id][$thfKey] ?? null;
                                                             $thfBelow = in_array($thfKey, ['npt', 'ziyadah', 'rabt', 'tikrar'], true)
                                                                 && $thfVal !== null && $thfVal < $kkm;
                                                         @endphp
@@ -773,7 +773,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $subjectMap->count() * 2 + ($isSasLeger ? 17 : 10) }}" class="text-center text-muted py-4">
+                                            <td colspan="{{ collect($subjectMap)->sum($legerSubjectCols) + ($isSasLeger ? 17 : 10) }}" class="text-center text-muted py-4">
                                                 <i class="ri-group-line me-1"></i>Tidak ada Santri.
                                             </td>
                                         </tr>
@@ -786,6 +786,10 @@
                             <small class="text-muted" style="font-size:12px;">
                                 <i class="ri-information-line me-1"></i>
                                 Leger bersifat <strong>baca-saja</strong> — nilai diambil otomatis dari <strong>tab Mapel</strong>. Input nilai (termasuk Nilai Murni STS/SAS) dilakukan di tab Mapel. Nilai Murni wajib diisi sebelum kolom STS/SAS.
+                                @if(! empty($tahfidzColumns))
+                                    <br><i class="ri-book-open-line me-1"></i>
+                                    Mapel tahfidz memakai kolom <strong>NPT · Ziyadah · Rabt · Tikrar · STS · SAS</strong>: NPT = capaian halaman ziyadah ÷ target semester, Ziyadah/Rabt/STS/SAS dari <strong>buku nilai halaqah</strong>, Tikrar = rata-rata nilai tikrar setoran.
+                                @endif
                             </small>
                         </div>
                     </form>
