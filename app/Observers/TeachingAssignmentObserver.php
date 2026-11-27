@@ -84,7 +84,13 @@ class TeachingAssignmentObserver
 
     /**
      * Pastikan buku nilai dimiliki guru yang masih aktif pada konteks ini.
-     * Buku TIDAK pernah direset — hanya teacher_id/teaching_id yang berpindah.
+     * Buku TIDAK pernah direset — hanya teacher_id yang berpindah.
+     *
+     * Hanya buku milik guru yang SEDANG DIGANTI yang ditangani. Buku milik
+     * guru lain pada konteks yang sama (mis. co-teacher atau buku yang sudah
+     * dibuat lebih dulu untuk guru pengganti) tidak boleh ikut dipindah:
+     * memindahkannya membuat dua buku dengan guru + konteks yang sama, yang
+     * melanggar unique_admin_book_per_teacher.
      */
     private function syncBookOwnership(TeachingAssignment $assignment): void
     {
@@ -92,34 +98,68 @@ class TeachingAssignmentObserver
             return;
         }
 
+        $outgoingTeacherId = $assignment->getOriginal('teacher_id') ?: $assignment->teacher_id;
+        $incomingTeacherId = $assignment->teacher_id;
+
+        // Tidak ada pergantian guru — kepemilikan buku tidak perlu disentuh.
+        if ((string) $outgoingTeacherId === (string) $incomingTeacherId) {
+            return;
+        }
+
+        // Guru lama ternyata masih mengajar konteks ini (multi-guru/tahfidz): biarkan.
+        $outgoingStillActive = TeachingAssignment::query()
+            ->where('teacher_id', $outgoingTeacherId)
+            ->where('subject_id', $assignment->subject_id)
+            ->where('study_group_id', $assignment->study_group_id)
+            ->where('academic_year_id', $assignment->academic_year_id)
+            ->where('status', 'active')
+            ->exists();
+
+        if ($outgoingStillActive) {
+            return;
+        }
+
         $books = TeacherAdminBook::query()
+            ->where('teacher_id', $outgoingTeacherId)
             ->where('subject_id', $assignment->subject_id)
             ->where('study_group_id', $assignment->study_group_id)
             ->where('academic_year_id', $assignment->academic_year_id)
             ->get();
 
         foreach ($books as $book) {
-            // Pemilik saat ini masih mengajar konteks ini (mis. multi-guru/tahfidz)? biarkan.
-            $currentStillActive = TeachingAssignment::query()
-                ->where('teacher_id', $book->teacher_id)
-                ->where('subject_id', $assignment->subject_id)
-                ->where('study_group_id', $assignment->study_group_id)
-                ->where('academic_year_id', $assignment->academic_year_id)
-                ->where('status', 'active')
-                ->exists();
+            // Guru pengganti sudah punya buku pada konteks ini. Buku lama tidak
+            // boleh ikut dipindah (melanggar aturan unik). Cukup nonaktifkan;
+            // nilai lama tetap tersimpan pada buku lama.
+            if ($this->hasBookFor($incomingTeacherId, $book, $book->id)) {
+                if ($book->is_active) {
+                    $book->forceFill(['is_active' => false])->save();
+                }
 
-            if ($currentStillActive) {
                 continue;
             }
 
-            if ((string) $book->teacher_id !== (string) $assignment->teacher_id) {
-                // Catatan: kolom teaching_id punya FK legacy ke tabel `teachings`
-                // (bukan teaching_assignments) — jangan diisi dengan id penugasan.
-                $book->forceFill([
-                    'teacher_id' => $assignment->teacher_id,
-                ])->save();
-            }
+            // Catatan: kolom teaching_id punya FK legacy ke tabel `teachings`
+            // (bukan teaching_assignments) — jangan diisi dengan id penugasan.
+            $book->forceFill([
+                'teacher_id' => $incomingTeacherId,
+            ])->save();
         }
+    }
+
+    /**
+     * Apakah guru ini sudah memiliki buku lain (selain $except) pada konteks
+     * buku yang diberikan (mapel + rombel + TA + semester).
+     */
+    private function hasBookFor(string $teacherId, TeacherAdminBook $book, ?string $exceptId = null): bool
+    {
+        return TeacherAdminBook::query()
+            ->where('teacher_id', $teacherId)
+            ->where('subject_id', $book->subject_id)
+            ->where('study_group_id', $book->study_group_id)
+            ->where('academic_year_id', $book->academic_year_id)
+            ->where('semester', $book->semester)
+            ->when($exceptId, fn ($q) => $q->whereKeyNot($exceptId))
+            ->exists();
     }
 
     /**
@@ -137,6 +177,7 @@ class TeachingAssignmentObserver
             ->where('study_group_id', $assignment->study_group_id)
             ->where('academic_year_id', $assignment->academic_year_id)
             ->where('status', 'active')
+            ->where('teacher_id', '!=', $assignment->teacher_id)
             ->first();
 
         if (! $replacement) {
@@ -149,9 +190,18 @@ class TeachingAssignmentObserver
             ->where('academic_year_id', $assignment->academic_year_id)
             ->where('teacher_id', $assignment->teacher_id)
             ->get()
-            ->each(fn ($book) => $book->forceFill([
-                'teacher_id' => $replacement->teacher_id,
-            ])->save());
+            ->each(function (TeacherAdminBook $book) use ($replacement) {
+                // Sama seperti syncBookOwnership: jangan tabrak aturan unik.
+                if ($this->hasBookFor($replacement->teacher_id, $book, $book->id)) {
+                    if ($book->is_active) {
+                        $book->forceFill(['is_active' => false])->save();
+                    }
+
+                    return;
+                }
+
+                $book->forceFill(['teacher_id' => $replacement->teacher_id])->save();
+            });
     }
 
     /**

@@ -293,6 +293,51 @@ class InstitutionDecreeActivationTest extends TestCase
         $this->assertSame(InstitutionDecree::STATUS_DRAFT, $decree->refresh()->status);
     }
 
+    public function test_halaman_edit_mengurutkan_gtk_berdasarkan_jabatan(): void
+    {
+        $decree = $this->decree('013/SK/2026', InstitutionDecree::STATUS_ACTIVE);
+
+        // Nama sengaja dibuat berlawanan dengan urutan jabatan: bila halaman
+        // mengurutkan berdasarkan nama, 'Ahmad Guru' akan tampil lebih dulu.
+        $kepala = User::create([
+            'name' => 'Zainal Kepala', 'email' => 'zainal.kepala@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+        $guru = User::create([
+            'name' => 'Ahmad Guru', 'email' => 'ahmad.guru@test.local',
+            'password' => bcrypt('password'), 'is_active' => true,
+        ]);
+
+        foreach ([
+            [$kepala, 'Pimpinan & Struktural Pendidikan', 'Kepala Satuan Pendidikan'],
+            [$guru, 'Pendidik / Guru', 'Guru Mapel'],
+        ] as [$user, $jenis, $jabatan]) {
+            DB::table('gtk_employments')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'school_id' => $this->school->id,
+                'status_kepegawaian' => 'GTY',
+                'jenis_gtk' => $jenis,
+                'jabatan' => $jabatan,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $response = $this->actingAs($this->waka)
+            ->get("/{$this->waka->id}/institution-decrees/{$decree->id}/edit")
+            ->assertOk();
+
+        $teachers = $response->viewData('teachers');
+        $names = $teachers->pluck('name')->all();
+
+        $this->assertLessThan(
+            array_search('Ahmad Guru', $names, true),
+            array_search('Zainal Kepala', $names, true),
+            'Kepala satuan pendidikan harus diurutkan sebelum guru mapel.'
+        );
+    }
+
     private function decree(string $number, string $status, string $type = 'SK Pembagian Tugas'): InstitutionDecree
     {
         $decree = InstitutionDecree::create([

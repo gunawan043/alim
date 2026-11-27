@@ -716,12 +716,29 @@ class InstitutionDecreeController extends Controller
             ->get();
 
         if ($missingTeachers->isNotEmpty()) {
-            $teachers = $teachers->merge($missingTeachers)->sortBy('name')->values();
+            // Gabungkan tanpa membuang urutan jabatan dari form tambah SK.
+            // GTK tambahan diurutkan dengan aturan yang sama, bukan nama saja.
+            $positionOrder = collect($data['positionOptions'] ?? [])->mapWithKeys(
+                fn ($position) => [mb_strtolower($position->name) => (int) $position->urutan]
+            );
 
             foreach ($missingTeachers as $teacher) {
                 $data['currentPositions'][$teacher->id] ??= 'GTK';
                 $data['currentPositionIds'][$teacher->id] ??= null;
             }
+
+            $teachers = $teachers->concat($missingTeachers)
+                ->sortBy(function ($teacher) use ($data, $positionOrder) {
+                    $position = $data['currentPositions'][$teacher->id] ?? '';
+
+                    return sprintf(
+                        '%d|%03d|%s',
+                        $this->matrixPositionRank($position),
+                        $positionOrder->get(mb_strtolower(trim((string) $position)), 999),
+                        mb_strtolower($teacher->name ?? '')
+                    );
+                })
+                ->values();
         }
 
         return $view->with(array_merge($data, [

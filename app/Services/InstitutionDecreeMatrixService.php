@@ -717,6 +717,21 @@ class InstitutionDecreeMatrixService
             'position' => $this->resolveTeacherPositions(collect([$teacher]), collect(), $decree, $decree->school)[$teacher->id] ?? 'GTK',
         ])->values()->all();
 
+        // Urutkan berdasarkan jabatan (Kepala > Wakil > Koordinator > ... > TU),
+        // lalu urutan jabatan di master, lalu nama — sama seperti form tambah SK.
+        [, $positionOrder] = $this->positionOrdering();
+        $teacherMeta = collect($teacherMeta)->sortBy(function (array $meta) use ($positionOrder) {
+            return sprintf(
+                '%d|%03d|%s',
+                $this->matrixPositionRank($meta['position'] ?? ''),
+                $positionOrder->get(mb_strtolower(trim((string) ($meta['position'] ?? ''))), 999),
+                mb_strtolower($meta['name'] ?? '')
+            );
+        })->values()->all();
+
+        $order = collect($teacherMeta)->pluck('id')->flip();
+        $teachers = $teachers->sortBy(fn ($teacher) => $order->get($teacher->id, PHP_INT_MAX))->values();
+
         return [
             'decree' => $decree,
             'teachers' => $teachers,
