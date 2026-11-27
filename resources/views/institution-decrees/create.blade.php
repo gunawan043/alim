@@ -16,6 +16,76 @@
     #matrixBody tr[id^="teacher-row-"] > td {
         vertical-align: top; padding-top: 0.75rem; padding-bottom: 0.75rem;
     }
+
+    /* ── Kolom rombel: beri ruang kiri-kanan agar kode kelas tidak rapat ── */
+    .matrix-table th.rombel-col,
+    .matrix-table td.rombel-col {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        min-width: 62px;
+    }
+
+    /* ── Grid pemisah: garis tipis antar sel + garis tegas antar tingkat ── */
+    .matrix-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .matrix-table th,
+    .matrix-table td {
+        border-right: 1px solid var(--bs-border-color);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .matrix-table thead th {
+        border-bottom: 1px solid var(--bs-border-color-translucent);
+    }
+    /* Garis tegas di awal kelompok kelas (1A, 2A, 3A, ...). */
+    .matrix-table .grade-start {
+        border-left: 2px solid var(--bs-secondary-border-subtle, var(--bs-border-color));
+    }
+    /* Selang-seling per tingkat kelas agar mudah dibedakan saat menggeser. */
+    .matrix-table .grade-odd {
+        background: var(--bs-tertiary-bg);
+    }
+    .matrix-table tbody tr:hover > td {
+        background: var(--bs-table-hover-bg);
+    }
+
+    /* ── Header tabel tetap terlihat saat menggulir ── */
+    .matrix-scroll {
+        max-height: calc(100vh - 220px);
+        overflow: auto;
+        position: relative;
+    }
+    .matrix-scroll thead th {
+        position: sticky;
+        z-index: 3;
+        background: var(--bs-tertiary-bg);
+        box-shadow: inset 0 -1px 0 var(--bs-border-color);
+    }
+    /* Dua baris header: baris 1 menempel paling atas, baris 2 di bawahnya. */
+    .matrix-scroll thead tr:nth-child(1) th { top: 0; }
+    .matrix-scroll thead tr:nth-child(2) th { top: var(--matrix-head-row2, 38px); }
+
+    /* Kolom identitas GTK dibekukan agar nama tetap terlihat saat menggeser.
+       Lebarnya dipatok agar posisi kiri kolom berikutnya bisa dihitung pasti. */
+    .matrix-scroll thead th.freeze-col,
+    .matrix-scroll tbody td.freeze-col {
+        position: sticky;
+        z-index: 2;
+        background: var(--bs-body-bg);
+        box-shadow: 1px 0 0 var(--bs-border-color);
+    }
+    .matrix-scroll thead th.freeze-col { z-index: 4; background: var(--bs-tertiary-bg); }
+    .matrix-scroll th.freeze-col:nth-child(1), .matrix-scroll td.freeze-col:nth-child(1) {
+        left: 0; min-width: 52px; max-width: 52px; width: 52px;
+    }
+    .matrix-scroll th.freeze-col:nth-child(2), .matrix-scroll td.freeze-col:nth-child(2) {
+        left: 52px; min-width: 160px; max-width: 160px; width: 160px;
+    }
+    .matrix-scroll th.freeze-col:nth-child(3), .matrix-scroll td.freeze-col:nth-child(3) {
+        left: 212px; min-width: 180px; max-width: 180px; width: 180px;
+        box-shadow: 2px 0 4px -2px rgba(0,0,0,.18);
+    }
 </style>
 @endsection
 
@@ -252,27 +322,26 @@
                         <i class="ri-information-line me-1"></i>
                         Nama, jabatan, mapel, dan tugas tambahan berada pada baris yang sama. Jika GTK mengajar lebih dari satu mapel atau memiliki lebih dari satu tugas, baris ditambah mengikuti jumlah terbanyak. Total jam dihitung otomatis.
                     </div>
-                    <div class="table-container" style="overflow-x:auto;">
-                        <table class="table table-hover table-sm align-middle table-freeze mb-0">
-                            <thead class="table-light text-center align-middle position-sticky top-0 z-2">
+                    <div class="table-container matrix-scroll">
+                        <table class="table table-hover table-sm align-middle table-freeze matrix-table mb-0">
+                            <thead class="table-light text-center align-middle">
                                 <tr>
-                                    <th rowspan="2" class="text-nowrap">No</th>
-                                    <th rowspan="2" class="text-nowrap">Nama</th>
-                                    <th rowspan="2" class="text-wrap">Jabatan</th>
+                                    <th rowspan="2" class="text-nowrap freeze-col">No</th>
+                                    <th rowspan="2" class="text-nowrap freeze-col">Nama</th>
+                                    <th rowspan="2" class="text-wrap freeze-col">Jabatan</th>
                                     <th rowspan="2" class="text-wrap">Mapel</th>
                                     <th rowspan="2" class="text-wrap">Tugas Tambahan</th>
                                     @foreach($byGrade as $level => $groups)
-                                        <th colspan="{{ $groups->count() }}" class="text-nowrap" style="min-width: 50px">
+                                        <th colspan="{{ $groups->count() }}" class="text-nowrap grade-start grade-{{ $loop->index % 2 === 0 ? 'odd' : 'even' }}">
                                             {{ $groups->first()->gradeLevel->name ?? "Kelas $level" }}
                                         </th>
-                                    @endforeach
-                                    <th rowspan="2" class="text-nowrap" style="min-width: 50px">JP</th>
+                                    @endforeach                                    <th rowspan="2" class="text-nowrap">JP</th>
                                     <th rowspan="2" class="text-nowrap">Total Jam</th>
                                 </tr>
                                 <tr>
                                     @foreach($byGrade as $level => $groups)
                                         @foreach($groups as $sg)
-                                            <th class="text-nowrap">{{ $sg->name }}</th>
+                                            <th class="text-nowrap rombel-col {{ $loop->first ? 'grade-start' : '' }} grade-{{ $loop->parent->index % 2 === 0 ? 'odd' : 'even' }}">{{ $sg->name }}</th>
                                         @endforeach
                                     @endforeach
                                 </tr>
@@ -458,6 +527,16 @@ const DRAFT_IGNORED_FIELDS = ['_token', '_method'];
 
 const gradeCols = studyGroups.map(sg => ({ id: sg.id, name: sg.name, level: sg.level }));
 
+/**
+ * Selang-seling warna per tingkat kelas. Peringkat level dipakai (bukan
+ * nilainya) supaya 1, 2, 3 … tetap bergantian walau ada level yang kosong.
+ */
+const gradeBands = [...new Set(gradeCols.map(sg => String(sg.level)))].sort((a, b) => Number(a) - Number(b));
+function gradeBand(level) {
+    const idx = gradeBands.indexOf(String(level));
+    return idx % 2 === 0 ? 'odd' : 'even';
+}
+
 let activeSubjects = {};
 let activeTasks    = {};
 let teacherCounter = 0;
@@ -474,6 +553,26 @@ function showWarning(message, title = 'Perhatian') {
     if (window.Swal) {
         Swal.fire({ icon: 'warning', title, text: message, confirmButtonText: 'Mengerti' });
     } else { alert(message); }
+}
+
+/**
+ * Notifikasi ringan tanpa tombol: cukup memberi tahu apa yang baru dipindah.
+ * Memakai toast SweetAlert agar tidak menghalangi pengisian matriks.
+ */
+function showSuccess(message) {
+    if (window.Swal && Swal.mixin) {
+        Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            timer: 2600,
+            showConfirmButton: false,
+            timerProgressBar: true,
+        }).fire({ title: message });
+        return;
+    }
+
+    showWarning(message, 'Berhasil');
 }
 
 function confirmRemoval(title, text, onConfirm) {
@@ -649,17 +748,17 @@ function renderTeacherRows(tbody, teacher, tid, number) {
         let cells = '';
 
         if (index === 0) {
-            cells += `<td rowspan="${rowCount}" class="text-center fw-semibold">${number}</td>`;
-            cells += `<td rowspan="${rowCount}" class="fw-semibold text-nowrap">
+            cells += `<td rowspan="${rowCount}" class="text-center fw-semibold freeze-col">${number}</td>`;
+            cells += `<td rowspan="${rowCount}" class="fw-semibold text-nowrap freeze-col">
                 ${escapeHtml(teacher.name)}
                 ${teacher.external ? `<div class="small text-info"><i class="ri-building-2-line me-1"></i>GTK Penugasan Pondok${teacher.home_work_unit ? ` · ${escapeHtml(teacher.home_work_unit)}` : ''}</div>` : ''}
             </td>`;
-            cells += `<td rowspan="${rowCount}" class="text-wrap">${positionControlHtml(teacher, tid)}</td>`;
+            cells += `<td rowspan="${rowCount}" class="text-wrap freeze-col">${positionControlHtml(teacher, tid)}</td>`;
         }
 
         cells += `<td class="text-wrap">${mapelCellHtml(tid, sub, index, subjects.length)}</td>`;
         cells += `<td class="text-wrap">${taskCellHtml(tid, task, index, tasks.length)}</td>`;
-        cells += gradeCols.map(sg => `<td class="text-center">${rombelCellHtml(tid, sub, sg)}</td>`).join('');
+        cells += gradeCols.map((sg, gi) => `<td class="text-center rombel-col ${gi > 0 && sg.level !== gradeCols[gi - 1].level ? 'grade-start' : ''} grade-${gradeBand(sg.level)}">${rombelCellHtml(tid, sub, sg)}</td>`).join('');
         cells += `<td class="text-center fw-semibold row-jp">${sub && sub.id ? subjectTotalHours(sub) : 0}</td>`;
 
         if (index === 0) {
@@ -808,11 +907,68 @@ function subjectIsTahfidz(sid) {
     return (subject?.name || '').toLowerCase().includes('tahfidz');
 }
 
-function subjectRombelTaken(toggle, sid, sgid) {
-    if (subjectIsTahfidz(sid)) return false;
-    return Array.from(document.querySelectorAll('.rombel-toggle:checked')).some(other =>
-        other !== toggle && String(other.dataset.sid) === String(sid) && String(other.dataset.sgid) === String(sgid)
-    );
+/**
+ * Cari toggle lain yang memegang mapel + rombel yang sama (GTK lain).
+ * Tahfidz dikecualikan karena boleh diampu lebih dari satu guru.
+ */
+function findRombelHolder(toggle, sid, sgid) {
+    if (subjectIsTahfidz(sid)) return null;
+
+    return Array.from(document.querySelectorAll('.rombel-toggle:checked')).find(other =>
+        other !== toggle
+        && String(other.dataset.sid) === String(sid)
+        && String(other.dataset.sgid) === String(sgid)
+    ) || null;
+}
+
+/**
+ * Pindahkan mapel + rombel dari GTK lain ke GTK yang baru dicentang.
+ * Nilai JP ikut dipindah agar guru baru tidak kehilangan jam yang sudah diisi.
+ */
+function moveSubjectToTeacher(holder, target, sid, sgid) {
+    const fromTid = holder.dataset.tid;
+    const toTid = target.dataset.tid;
+    if (String(fromTid) === String(toTid)) return;
+
+    const fromSub = (activeSubjects[fromTid] || []).find(s => String(s.id) === String(sid));
+    const hours = parseFloat(holder.dataset.hours) || parseFloat(holder.dataset.default) || 0;
+
+    const toSub = (activeSubjects[toTid] || []).find(s => String(s.id) === String(sid));
+    if (!toSub) {
+        const subject = subjects.find(s => String(s.id) === String(sid));
+        activeSubjects[toTid] = activeSubjects[toTid] || [];
+        activeSubjects[toTid].push({
+            id: sid,
+            name: subject?.name || fromSub?.name || '',
+            hours: { [sgid]: hours },
+        });
+    } else {
+        toSub.hours = toSub.hours || {};
+        toSub.hours[sgid] = hours;
+    }
+
+    // Lepas dari guru lama; baris mapelnya dibuang bila rombelnya sudah kosong.
+    if (fromSub?.hours) {
+        delete fromSub.hours[sgid];
+        if (!Object.keys(fromSub.hours).length) {
+            activeSubjects[fromTid] = (activeSubjects[fromTid] || []).filter(
+                s => String(s.id) !== String(sid)
+            );
+        }
+    }
+
+    const fromLabel = teachers.find(t => String(t.id) === String(fromTid))?.name || 'GTK lain';
+    const toLabel = teachers.find(t => String(t.id) === String(toTid))?.name || 'GTK ini';
+    showSuccess(`${subjectLabel(sid)} ${rombelLabel(sgid)} dipindahkan dari ${fromLabel} ke ${toLabel}.`);
+}
+
+function subjectLabel(sid) {
+    return subjects.find(s => String(s.id) === String(sid))?.name || 'Mapel';
+}
+
+function rombelLabel(sgid) {
+    const name = studyGroups.find(sg => String(sg.id) === String(sgid))?.name || '';
+    return name ? `(${name})` : '';
 }
 
 function toggleRombel(toggle) {
@@ -820,14 +976,11 @@ function toggleRombel(toggle) {
     const sid = toggle.dataset.sid;
     const sgid = toggle.dataset.sgid;
 
-    if (toggle.checked && subjectRombelTaken(toggle, sid, sgid)) {
-        toggle.checked = false;
-        toggle.dataset.active = '0';
-        const badge = toggle.closest('td')?.querySelector('.jp-badge');
-        if (badge) badge.classList.add('d-none');
-        showWarning('Mapel dan rombel ini sudah dipakai GTK lain. Khusus Tahfidz boleh lebih dari satu.');
-        return;
-    }
+    const holder = toggle.checked ? findRombelHolder(toggle, sid, sgid) : null;
+
+    // Mapel + rombel pindah ke GTK ini bila sudah dipegang GTK lain. Langkah ini
+    // juga membuat baris mapel pada GTK penerima bila belum ada.
+    if (holder) moveSubjectToTeacher(holder, toggle, sid, sgid);
 
     const sub = (activeSubjects[tid] || []).find(s => String(s.id) === String(sid));
     if (!sub) return;
@@ -847,7 +1000,13 @@ function toggleRombel(toggle) {
         if (badge) badge.classList.add('d-none');
     }
 
-    refreshTotal(tid);
+    if (holder) {
+        // Baris guru lama dan guru baru berubah, jadi tabel digambar ulang.
+        renderMatrix();
+    } else {
+        refreshTotal(tid);
+    }
+
     scheduleAutosave();
 }
 
@@ -1292,9 +1451,29 @@ setInterval(function () {
 /* =====================================================================
    INIT
    ===================================================================== */
+
+/**
+ * Baris kedua header (kode rombel) harus menempel tepat di bawah baris
+ * pertama. Tingginya berbeda menurut font/pembesaran pengguna, jadi diukur
+ * saat halaman dimuat dan setiap kali ukuran jendela berubah.
+ */
+function syncStickyHeaderOffset() {
+    const table = document.querySelector('.matrix-table');
+    if (!table) return;
+    const firstRow = table.querySelector('thead tr:nth-child(1)');
+    if (!firstRow) return;
+    const height = Math.ceil(firstRow.getBoundingClientRect().height);
+    if (height > 0) {
+        document.querySelector('.matrix-scroll')?.style.setProperty('--matrix-head-row2', height + 'px');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     matrixTeacherOrder = teachers.map(t => String(t.id));
     teacherCounter = matrixTeacherOrder.length;
+
+    syncStickyHeaderOffset();
+    window.addEventListener('resize', syncStickyHeaderOffset);
 
     teachers.forEach(teacher => {
         const subjectEntries = [];
