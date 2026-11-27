@@ -294,4 +294,16 @@ class DecreePendampingTaskTest extends TestCase
             'Bahasa Arab sengaja tidak terdaftar di master tipe tugas.'
         );
     }
+
+    public function test_form_sk_menyediakan_pencarian_mapel_dan_label_guru_pendamping(): void
+    {
+        $view = file_get_contents(resource_path('views/institution-decrees/create.blade.php'));
+
+        // Dropdown mapel harus bisa dicari (select2 via data-searchable),
+        // sama seperti pemilihan mapel pada tugas mengajar.
+        $this->assertStringContainsString('data-searchable data-placeholder="Cari mapel..."', $view);
+
+        // Label tugas tambahan menampilkan nama tugas + mapelnya.
+        $this->assertStringContainsString('| ${escapeHtml(subjectsLabel)}', $view);
+    }
 }

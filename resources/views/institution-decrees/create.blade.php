@@ -720,9 +720,19 @@ function mapelCellHtml(tid, sub, index, subjectCount) {
 
 function taskCellHtml(tid, task, index, taskCount) {
     if (task) {
+        // Guru Pendamping ditulis "Guru Pendamping | Matematika" agar mapel
+        // yang didampingi langsung terbaca tanpa baris tambahan.
+        const subjectsLabel = (task.pendamping || [])
+            .map(pair => pair.subject || subjectNameOf(pair.subject_id))
+            .filter(Boolean)
+            .join(', ');
+        const label = subjectsLabel
+            ? `${escapeHtml(task.name || '')} | ${escapeHtml(subjectsLabel)}`
+            : escapeHtml(task.name || '');
+
         return `<div class="d-flex align-items-center gap-1">
-            <span class="badge bg-info-subtle text-info text-nowrap flex-grow-1 text-start">
-                ${escapeHtml(task.name || '')}${task.hours ? ` · ${task.hours} JP` : ''}
+            <span class="badge bg-info-subtle text-info flex-grow-1 text-start">
+                ${label}${task.hours ? ` · ${task.hours} JP` : ''}
             </span>
             <button type="button" class="btn btn-sm btn-icon btn-soft-primary flex-shrink-0"
                     onclick="showAddTask('${tid}')" title="Tambah Tugas Tambahan">
@@ -1315,7 +1325,7 @@ function toggleTaskFields() {
 
     if (isPendamping) {
         resetPendampingPicker();
-        if (!pendampingPicks.length) addPendampingSlot();
+        if (!window.pendampingPicks.length) addPendampingSlot();
     }
 }
 
@@ -1325,7 +1335,8 @@ function toggleTaskFields() {
 // subjectId -> { label, groups: {groupId: name} }
 // Mapel yang didampingi. Kelasnya TIDAK dipilih di sini: diketikkan pada
 // kolom rombel di matriks, sama seperti tugas mengajar.
-let pendampingPicks = [];   // [{ subjectId }]
+// Sengaja properti window: handler onchange inline butuh akses global.
+window.pendampingPicks = [];
 
 function pendampingHoursFor(subjectId, sgId) {
     const sg = studyGroups.find(s => String(s.id) === String(sgId));
@@ -1340,45 +1351,65 @@ function subjectNameOf(id) {
 }
 
 function addPendampingSlot() {
-    pendampingPicks.push({ subjectId: '' });
-    renderPendampingPicker();
-}
-
-function removePendampingSlot(index) {
-    pendampingPicks.splice(index, 1);
-    renderPendampingPicker();
-}
-
-function resetPendampingPicker() {
-    pendampingPicks = [];
-    renderPendampingPicker();
-}
-
-function pendampingSubjectOptions(selectedId, index) {
-    const taken = pendampingPicks
-        .filter((_, i) => i !== index)
-        .map(p => String(p.subjectId));
-
-    return '<option value="">— Pilih Mapel —</option>'
-        + subjects
-            .filter(sub => !taken.includes(String(sub.id)))
-            .map(sub => `<option value="${sub.id}" ${String(sub.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(sub.name)}</option>`)
-            .join('');
-}
-
-function renderPendampingPicker() {
     const box = document.getElementById('pendampingTaskRows');
     if (!box) return;
 
-    if (!pendampingPicks.length) {
+    const index = window.pendampingPicks.length;
+    window.pendampingPicks.push({ subjectId: '' });
+
+    // Hanya TAMBAH baris baru: baris lama beserta pilihan dan select2-nya
+    // tidak disentuh, agar pilihan sebelumnya tidak hilang.
+    const empty = box.querySelector('.text-muted');
+    if (empty && !box.querySelector('.pendamping-task-subject')) empty.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'd-flex align-items-center gap-2';
+    wrap.innerHTML = `
+        <select class="form-select form-select-sm pendamping-task-subject flex-grow-1"
+                data-index="${index}" data-searchable data-placeholder="Cari mapel...">
+            ${pendampingSubjectOptions('', index)}
+        </select>
+        <button type="button" class="btn btn-sm btn-icon btn-soft-danger flex-shrink-0"
+                onclick="removePendampingSlot(${index})" title="Hapus Mapel">
+            <i class="ri-delete-bin-6-line"></i>
+        </button>`;
+    box.appendChild(wrap);
+
+    if (typeof window.initSearchableSelects === 'function') {
+        window.initSearchableSelects(wrap);
+    }
+    bindPendampingSelect(wrap.querySelector('.pendamping-task-subject'));
+    refreshPendampingOptions();
+}
+
+function removePendampingSlot(index) {
+    window.pendampingPicks.splice(index, 1);
+    lockPendampingRows();
+}
+
+function resetPendampingPicker() {
+    window.pendampingPicks = [];
+    lockPendampingRows();
+}
+
+/**
+ * Bangun ulang daftar baris mapel. Setiap dropdown dibuat "dikunci" pada
+ * index-nya sendiri (data-locked) dan hanya memuat pilihannya, sehingga
+ * select2 tidak perlu digambar ulang — dan pilihan tidak pernah hilang.
+ */
+function lockPendampingRows() {
+    const box = document.getElementById('pendampingTaskRows');
+    if (!box) return;
+
+    if (!window.pendampingPicks.length) {
         box.innerHTML = '<div class="text-muted small">Belum ada mapel. Klik "Tambah Mapel".</div>';
         return;
     }
 
-    box.innerHTML = pendampingPicks.map((pick, index) => `
+    box.innerHTML = window.pendampingPicks.map((pick, index) => `
         <div class="d-flex align-items-center gap-2">
-            <select class="form-select form-select-sm pendamping-task-subject"
-                    data-index="${index}" onchange="changePendampingSubject(this)">
+            <select class="form-select form-select-sm pendamping-task-subject flex-grow-1"
+                    data-index="${index}" data-searchable data-placeholder="Cari mapel...">
                 ${pendampingSubjectOptions(pick.subjectId, index)}
             </select>
             <button type="button" class="btn btn-sm btn-icon btn-soft-danger flex-shrink-0"
@@ -1390,14 +1421,72 @@ function renderPendampingPicker() {
     if (typeof window.initSearchableSelects === 'function') {
         window.initSearchableSelects(box);
     }
+    box.querySelectorAll('.pendamping-task-subject').forEach(bindPendampingSelect);
+}
+
+function pendampingSubjectOptions(selectedId, index) {
+    const taken = window.pendampingPicks
+        .filter((_, i) => i !== index)
+        .map(p => String(p.subjectId));
+
+    return '<option value="">— Pilih Mapel —</option>'
+        + subjects
+            .filter(sub => !taken.includes(String(sub.id)))
+            .map(sub => `<option value="${sub.id}" ${String(sub.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(sub.name)}</option>`)
+            .join('');
 }
 
 function changePendampingSubject(select) {
     const index = parseInt(select.dataset.index, 10) || 0;
-    if (!pendampingPicks[index]) return;
-    pendampingPicks[index].subjectId = select.value;
-    // Opsi dipilih ulang agar mapel yang sama tidak bisa dipilih dua kali.
-    renderPendampingPicker();
+    if (!window.pendampingPicks[index]) return;
+    window.pendampingPicks[index].subjectId = select.value;
+
+    // Jangan gambar ulang seluruh baris: select2 yang sedang dipakai akan
+    // terhapus di tengah event dan pilihannya hilang. Cukup perbarui opsi
+    // dropdown lain agar mapel yang sama tidak bisa dipilih dua kali.
+    refreshPendampingOptions();
+}
+
+/** Perbarui daftar opsi tiap dropdown tanpa mengganti elemen select2-nya. */
+function refreshPendampingOptions() {
+    const selects = [...document.querySelectorAll('.pendamping-task-subject')];
+
+    selects.forEach(select => {
+        const index = parseInt(select.dataset.index, 10) || 0;
+        // Pilihan dibaca dari DOM: window.pendampingPicks bisa tertinggal bila
+        // event change tidak sempat mengganti nilainya.
+        const current = select.value || '';
+        if (window.pendampingPicks[index]) window.pendampingPicks[index].subjectId = current;
+
+        const html = pendampingSubjectOptions(current, index);
+
+        if (select.innerHTML !== html) {
+            select.innerHTML = html;
+            // select2 memantau perubahan isi lewat event ini.
+            select.dataset.pendampingSyncing = '1';
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            delete select.dataset.pendampingSyncing;
+        }
+        select.value = current;
+        if (window.jQuery && window.jQuery(select).data('select2')) {
+            window.jQuery(select).trigger('change.select2');
+        }
+    });
+}
+
+// Select2 memicu 'change' native pada elemen aslinya, jadi delegation aman.
+/**
+ * Pasang pendengar pada satu dropdown mapel. select2 memancarkan 'change'
+ * hanya pada elemen aslinya, jadi delegation di document tidak cukup.
+ */
+function bindPendampingSelect(select) {
+    if (!select || select.dataset.pendampingBound === '1') return;
+    select.dataset.pendampingBound = '1';
+    select.addEventListener('change', function () {
+        // Abaikan perubahan dari penyegaran opsi agar tidak rekursi.
+        if (select.dataset.pendampingSyncing === '1') return;
+        changePendampingSubject(select);
+    });
 }
 
 
@@ -1419,8 +1508,10 @@ function addTaskFromModal() {
         // Guru Pendamping: cukup mapel. Kelasnya dicentang pada kolom rombel
         // di matriks (sama seperti tugas mengajar), dan JP dihitung server
         // dari Peta Kurikulum.
-        const subjectIds = pendampingPicks
-            .map(p => p.subjectId)
+        // Dibaca langsung dari DOM: nilai dropdown adalah sumber kebenaran,
+        // sehingga tidak bergantung pada event yang mungkin tidak merambat.
+        const subjectIds = [...document.querySelectorAll('.pendamping-task-subject')]
+            .map(select => select.value)
             .filter(Boolean);
 
         if (!subjectIds.length) {
