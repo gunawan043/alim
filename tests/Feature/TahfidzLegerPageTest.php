@@ -11,6 +11,7 @@ use App\Models\StudyGroup;
 use App\Models\Subject;
 use App\Models\TahfidzGradebook;
 use App\Models\TahfidzGroup;
+use App\Models\TahfidzGroupMember;
 use App\Models\TeacherAdminBook;
 use App\Models\User;
 use App\Models\WorkUnit;
@@ -117,6 +118,92 @@ class TahfidzLegerPageTest extends TestCase
             $response->assertSee($label);
         }
         $response->assertSee('Mapel tahfidz memakai kolom');
+    }
+
+
+    public function test_tab_mapel_tahfidz_memakai_empat_kolom_dan_menyimpan_ke_halaqah(): void
+    {
+        $tahfidz = $this->makeSubject('THF', "Tahfidzul Qur'an", TahfidzSubjectResolver::FORMAT_TAHFIDZ);
+        $book = TeacherAdminBook::create([
+            'school_id' => $this->school->id, 'teacher_id' => $this->user->id,
+            'subject_id' => $tahfidz->id, 'study_group_id' => $this->class->id,
+            'academic_year_id' => $this->year->id, 'semester' => 'ganjil', 'is_active' => true,
+        ]);
+
+        $group = TahfidzGroup::create([
+            'work_unit_id' => $this->school->work_unit_id, 'school_id' => $this->school->id,
+            'academic_year_id' => $this->year->id, 'name' => 'Halaqah Mapel',
+            'gender' => 'putra', 'teacher_id' => $this->user->id, 'is_active' => true,
+        ]);
+        $gradebook = TahfidzGradebook::create([
+            'school_id' => $this->school->id, 'tahfidz_group_id' => $group->id,
+            'subject_id' => $tahfidz->id, 'academic_year_id' => $this->year->id,
+            'semester' => 'ganjil', 'is_active' => true,
+        ]);
+
+        $student = Student::where('nis', 'PG-1')->first();
+        TahfidzGroupMember::create([
+            'tahfidz_group_id' => $group->id, 'student_id' => $student->id,
+            'academic_year_id' => $this->year->id, 'status' => 'aktif', 'join_date' => '2026-07-15',
+        ]);
+
+        // Halaman tab Mapel: format tahfidz, bukan Sumatif Harian S1–S6.
+        $response = $this->actingAs($this->user)->get(route('user.schools.nilai-kelas.sts', [
+            'userId' => $this->user->id,
+            'studyGroupId' => $this->class->id,
+            'academic_year_id' => $this->year->id,
+            'semester' => 'ganjil',
+            'tab' => 'mapel',
+            'admin_book_id' => $book->id,
+        ]));
+
+        $response->assertOk()
+            ->assertSee('Format Tahfidz: nilai per halaqah')
+            ->assertSee('Nilai Tahfidz', false)
+            ->assertSee('NR Final')
+            ->assertDontSee('Asesmen Sumatif Harian');
+
+        // Simpan nilai: masuk ke buku halaqah santri tersebut.
+        $this->actingAs($this->user)->post(
+            route('user.schools.nilai-kelas.sts.store', ['userId' => $this->user->id, 'studyGroupId' => $this->class->id]),
+            [
+                'tab' => 'mapel_tahfidz',
+                'admin_book_id' => $book->id,
+                'semester' => 'ganjil',
+                'academic_year_id' => $this->year->id,
+                'weights' => ['ziyadah' => 40, 'rabt' => 20, 'sts' => 20, 'sas' => 20],
+                'nilai' => [$student->id => ['ziyadah' => 90, 'rabt' => 70, 'sts' => 80, 'sas' => 100]],
+            ],
+            ['X-Requested-With' => 'XMLHttpRequest', 'Accept' => 'application/json'],
+        )->assertOk()->assertJson(['success' => true]);
+
+        $score = $gradebook->scores()->where('student_id', $student->id)->first();
+
+        $this->assertNotNull($score, 'Nilai tahfidz harus masuk ke buku halaqah.');
+        $this->assertEqualsWithDelta(90, (float) $score->ziyadah, 0.01);
+        $this->assertEqualsWithDelta(86, (float) $score->nr_final, 0.01, '(90×40 + 70×20 + 80×20 + 100×20) ÷ 100 = 86.');
+    }
+
+    public function test_mapel_umum_tetap_memakai_sumatif_harian(): void
+    {
+        $umum = $this->makeSubject('MTK', 'Matematika', TahfidzSubjectResolver::FORMAT_UMUM);
+        $book = TeacherAdminBook::create([
+            'school_id' => $this->school->id, 'teacher_id' => $this->user->id,
+            'subject_id' => $umum->id, 'study_group_id' => $this->class->id,
+            'academic_year_id' => $this->year->id, 'semester' => 'ganjil', 'is_active' => true,
+        ]);
+
+        $this->actingAs($this->user)->get(route('user.schools.nilai-kelas.sts', [
+            'userId' => $this->user->id,
+            'studyGroupId' => $this->class->id,
+            'academic_year_id' => $this->year->id,
+            'semester' => 'ganjil',
+            'tab' => 'mapel',
+            'admin_book_id' => $book->id,
+        ]))
+            ->assertOk()
+            ->assertSee('Asesmen Sumatif Harian')
+            ->assertDontSee('Format Tahfidz — nilai per halaqah');
     }
 
     private function makeSubject(string $code, string $name, string $format): Subject
