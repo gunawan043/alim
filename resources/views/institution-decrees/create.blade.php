@@ -66,8 +66,10 @@
     .matrix-scroll thead tr:nth-child(1) th { top: 0; }
     .matrix-scroll thead tr:nth-child(2) th { top: var(--matrix-head-row2, 38px); }
 
-    /* Kolom identitas GTK dibekukan agar nama tetap terlihat saat menggeser.
-       Lebarnya dipatok agar posisi kiri kolom berikutnya bisa dihitung pasti. */
+    /* Kolom identitas dibekukan agar nama tetap terlihat saat menggeser.
+       Lebar dipatok supaya posisi kiri kolom berikutnya bisa dihitung pasti.
+       Ditandai lewat class, bukan :nth-child, karena baris kedua header
+       punya kolom yang urutannya berbeda (tanpa No/Nama/Jabatan). */
     .matrix-scroll thead th.freeze-col,
     .matrix-scroll tbody td.freeze-col {
         position: sticky;
@@ -76,14 +78,18 @@
         box-shadow: 1px 0 0 var(--bs-border-color);
     }
     .matrix-scroll thead th.freeze-col { z-index: 4; background: var(--bs-tertiary-bg); }
-    .matrix-scroll th.freeze-col:nth-child(1), .matrix-scroll td.freeze-col:nth-child(1) {
-        left: 0; min-width: 52px; max-width: 52px; width: 52px;
+
+    .matrix-scroll .freeze-no {
+        left: 0;
+        min-width: 52px; max-width: 52px; width: 52px;
     }
-    .matrix-scroll th.freeze-col:nth-child(2), .matrix-scroll td.freeze-col:nth-child(2) {
-        left: 52px; min-width: 160px; max-width: 160px; width: 160px;
+    .matrix-scroll .freeze-nama {
+        left: 52px;
+        min-width: 160px; max-width: 160px; width: 160px;
     }
-    .matrix-scroll th.freeze-col:nth-child(3), .matrix-scroll td.freeze-col:nth-child(3) {
-        left: 212px; min-width: 180px; max-width: 180px; width: 180px;
+    .matrix-scroll .freeze-jabatan {
+        left: 212px;
+        min-width: 180px; max-width: 180px; width: 180px;
         box-shadow: 2px 0 4px -2px rgba(0,0,0,.18);
     }
 </style>
@@ -326,9 +332,9 @@
                         <table class="table table-hover table-sm align-middle table-freeze matrix-table mb-0">
                             <thead class="table-light text-center align-middle">
                                 <tr>
-                                    <th rowspan="2" class="text-nowrap freeze-col">No</th>
-                                    <th rowspan="2" class="text-nowrap freeze-col">Nama</th>
-                                    <th rowspan="2" class="text-wrap freeze-col">Jabatan</th>
+                                    <th rowspan="2" class="text-nowrap freeze-col freeze-no">No</th>
+                                    <th rowspan="2" class="text-nowrap freeze-col freeze-nama">Nama</th>
+                                    <th rowspan="2" class="text-wrap freeze-col freeze-jabatan">Jabatan</th>
                                     <th rowspan="2" class="text-wrap">Mapel</th>
                                     <th rowspan="2" class="text-wrap">Tugas Tambahan</th>
                                     @foreach($byGrade as $level => $groups)
@@ -748,12 +754,12 @@ function renderTeacherRows(tbody, teacher, tid, number) {
         let cells = '';
 
         if (index === 0) {
-            cells += `<td rowspan="${rowCount}" class="text-center fw-semibold freeze-col">${number}</td>`;
-            cells += `<td rowspan="${rowCount}" class="fw-semibold text-nowrap freeze-col">
+            cells += `<td rowspan="${rowCount}" class="text-center fw-semibold freeze-col freeze-no">${number}</td>`;
+            cells += `<td rowspan="${rowCount}" class="fw-semibold text-nowrap freeze-col freeze-nama">
                 ${escapeHtml(teacher.name)}
                 ${teacher.external ? `<div class="small text-info"><i class="ri-building-2-line me-1"></i>GTK Penugasan Pondok${teacher.home_work_unit ? ` · ${escapeHtml(teacher.home_work_unit)}` : ''}</div>` : ''}
             </td>`;
-            cells += `<td rowspan="${rowCount}" class="text-wrap freeze-col">${positionControlHtml(teacher, tid)}</td>`;
+            cells += `<td rowspan="${rowCount}" class="text-wrap freeze-col freeze-jabatan">${positionControlHtml(teacher, tid)}</td>`;
         }
 
         cells += `<td class="text-wrap">${mapelCellHtml(tid, sub, index, subjects.length)}</td>`;
@@ -770,6 +776,42 @@ function renderTeacherRows(tbody, teacher, tid, number) {
     }
 }
 
+/**
+ * Peringkat jabatan, cermin dari App\Services\DecreePositionOrdering agar
+ * urutan baris di layar sama dengan urutan matriks saat dicetak.
+ * 1 KSP, 2 Wakil, 3 Kepala unit, 4 Koordinator, 5 Guru, 6 Staf, 7 Tata Usaha.
+ */
+function jabatanRank(position) {
+    const name = String(position || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    if (!name) return 8;
+
+    const starts = prefix => name.startsWith(prefix);
+    const has = needle => name.includes(needle);
+    const isTu = has('tata usaha') || /\btu\b/.test(name);
+
+    if (starts('wakil') || starts('wadir') || starts('wakasek')) return 2;
+
+    const isKepala = starts('kepala') || starts('ketua');
+    if (isKepala && !isTu && (has('satuan pendidikan') || has('sekolah') || has('madrasah')
+        || starts('mudir') || starts('direktur') || starts('pengasuh'))) {
+        return 1;
+    }
+    if (starts('mudir') || starts('direktur')) return 1;
+
+    if (isTu && !isKepala && !starts('koordinator')) return 7;
+    if (isKepala) return 3;
+    if (starts('koordinator')) return 4;
+    if (starts('guru') || has(' guru')) return 5;
+    if (starts('staf') || starts('staff') || starts('tenaga') || isTu) return 6;
+
+    return 8;
+}
+
+function teacherSortKey(t) {
+    const position = currentPositions[t.id] || t.position || '';
+    return String(jabatanRank(position)).padStart(2, '0') + '|' + String(t.name || '').toLowerCase();
+}
+
 function renderMatrix() {
     const tbody = document.getElementById('matrixBody');
     if (!tbody) return;
@@ -783,10 +825,22 @@ function renderMatrix() {
         return;
     }
 
-    matrixTeacherOrder.forEach((tid, index) => {
-        const teacher = teachers.find(t => String(t.id) === String(tid));
-        if (!teacher) return;
-        renderTeacherRows(tbody, teacher, tid, index + 1);
+    // Baris selalu diurutkan berdasarkan jabatan (tertinggi lebih dulu), bukan
+    // urutan penambahan atau urutan draft. Nama hanya penentu bila jabatan sama.
+    // GTK yang tidak ditemukan pada daftar tetap dihitung agar Nomor tidak bolong.
+    const ordered = matrixTeacherOrder
+        .map(tid => ({ tid, teacher: teachers.find(t => String(t.id) === String(tid)) }))
+        .sort((a, b) => {
+            if (!a.teacher) return 1;
+            if (!b.teacher) return -1;
+            return teacherSortKey(a.teacher).localeCompare(teacherSortKey(b.teacher));
+        });
+
+    let number = 0;
+    ordered.forEach(entry => {
+        if (!entry.teacher) return;
+        number += 1;
+        renderTeacherRows(tbody, entry.teacher, entry.tid, number);
     });
 
     if (typeof window.initSearchableSelects === 'function') {
