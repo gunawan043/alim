@@ -158,10 +158,15 @@ class TahfidzLegerPageTest extends TestCase
         ]));
 
         $response->assertOk()
-            ->assertSee('Format Tahfidz: nilai per halaqah')
-            ->assertSee('Nilai Tahfidz', false)
+            ->assertSee('Kelola Bobot')
+            ->assertSee('Nilai Tahfidz')
             ->assertSee('NR Final')
             ->assertDontSee('Asesmen Sumatif Harian');
+
+        // Tampilan & fitur sama dengan mapel umum: tabel spreadsheet yang
+        // bisa tempel dari Excel (pemicu Undo/Redo dan pencarian nama).
+        $response->assertSee('id="tab-mapel" data-paste-grid', false);
+        $response->assertSee('title="Jumlah = NR Final × Bobot"', false);
 
         // Enam kolom, sama dengan leger.
         foreach (['NPT', 'Ziyadah', 'Rabt', 'Tikrar', 'STS', 'SAS'] as $label) {
