@@ -86,10 +86,6 @@
     .matrix-scroll .freeze-nama {
         left: 52px;
         min-width: 160px; max-width: 160px; width: 160px;
-    }
-    .matrix-scroll .freeze-jabatan {
-        left: 212px;
-        min-width: 180px; max-width: 180px; width: 180px;
         box-shadow: 2px 0 4px -2px rgba(0,0,0,.18);
     }
 </style>
@@ -334,7 +330,7 @@
                                 <tr>
                                     <th rowspan="2" class="text-nowrap freeze-col freeze-no">No</th>
                                     <th rowspan="2" class="text-nowrap freeze-col freeze-nama">Nama</th>
-                                    <th rowspan="2" class="text-wrap freeze-col freeze-jabatan">Jabatan</th>
+                                    <th rowspan="2" class="text-wrap">Jabatan</th>
                                     <th rowspan="2" class="text-wrap">Mapel</th>
                                     <th rowspan="2" class="text-wrap">Tugas Tambahan</th>
                                     @foreach($byGrade as $level => $groups)
@@ -523,7 +519,7 @@ const currentPositionIds = {!! json_encode($currentPositionIds) !!};
 const positionOptions    = {!! json_encode($positionOptions) !!};
 const jpDefaults         = {!! json_encode($jpDefaults) !!};
 const taskTypeOptions    = {!! json_encode($taskTypeOptions) !!};
-const draftStorageKey    = {!! json_encode('institution-decree-draft:v2:'.$userId.':'.($selectedSchoolId ?? 'none').':'.($selectedAyId ?? 'none').':'.($isEdit ? $decree->id : 'new')) !!};
+const draftStorageKey    = {!! json_encode('institution-decree-draft:v3:'.$userId.':'.($selectedSchoolId ?? 'none').':'.($selectedAyId ?? 'none').':'.($isEdit ? $decree->id : 'new')) !!};
 const AUTOSAVE_DELAY     = 2500;
 
 // Field yang tidak boleh ikut draft: token CSRF & method hanya berlaku untuk
@@ -759,7 +755,7 @@ function renderTeacherRows(tbody, teacher, tid, number) {
                 ${escapeHtml(teacher.name)}
                 ${teacher.external ? `<div class="small text-info"><i class="ri-building-2-line me-1"></i>GTK Penugasan Pondok${teacher.home_work_unit ? ` · ${escapeHtml(teacher.home_work_unit)}` : ''}</div>` : ''}
             </td>`;
-            cells += `<td rowspan="${rowCount}" class="text-wrap freeze-col freeze-jabatan">${positionControlHtml(teacher, tid)}</td>`;
+            cells += `<td rowspan="${rowCount}" class="text-wrap">${positionControlHtml(teacher, tid)}</td>`;
         }
 
         cells += `<td class="text-wrap">${mapelCellHtml(tid, sub, index, subjects.length)}</td>`;
@@ -1208,43 +1204,48 @@ function captureTableState() {
     const body = document.getElementById('matrixBody');
     if (!body) return null;
     return {
-        html: body.innerHTML,
         subjects: JSON.parse(JSON.stringify(activeSubjects)),
         tasks: JSON.parse(JSON.stringify(activeTasks)),
         order: matrixTeacherOrder.slice(),
         positions: { ...currentPositionIds },
         positionNames: { ...currentPositions },
-        counter: teacherCounter,
-        teacherCount: document.getElementById('teacherCount')?.textContent || '0',
-        selects: Array.from(body.querySelectorAll('select')).map(s => s.value),
-        toggles: Array.from(body.querySelectorAll('.rombel-toggle')).map(t => ({ checked: t.checked, active: t.dataset.active || '', hours: t.dataset.hours || '' })),
     };
 }
 
 function restoreTableState(state) {
     if (!state) return;
+    // Tabel SELALU digambar ulang dari data, bukan dari HTML snapshot:
+    // HTML lama bisa berasal dari roster yang berbeda (mis. sebelum GTK
+    // ditemukan) sehingga baris GTK baru tidak pernah muncul.
     const body = document.getElementById('matrixBody');
-    body.innerHTML = state.html;
-    body.querySelectorAll('select').forEach((s, i) => { if (state.selects[i] !== undefined) s.value = state.selects[i]; });
-    body.querySelectorAll('.rombel-toggle').forEach((t, i) => {
-        const snap = state.toggles[i];
-        if (!snap) return;
-        t.checked = snap.checked;
-        t.dataset.active = snap.active;
-        if (snap.hours !== '') t.dataset.hours = snap.hours;
-        const badge = t.closest('td')?.querySelector('.jp-badge');
-        if (badge) { badge.textContent = `${t.dataset.hours || 0} JP`; badge.classList.toggle('d-none', !t.checked); }
+    if (body) body.innerHTML = '';
+    activeSubjects = state.subjects || {};
+    activeTasks = state.tasks || {};
+
+    // GTK dari server menjadi dasar urutan; GTK tambahan pada snapshot
+    // disisipkan agar isian yang belum disimpan tidak hilang.
+    const knownIds = teachers.map(t => String(t.id));
+    const extraIds = (state.order || []).map(String).filter(id => !knownIds.includes(id));
+
+    matrixTeacherOrder = [
+        ...teachers.map(t => String(t.id)),
+        ...extraIds.filter(id => activeSubjects[id] || activeTasks[id]),
+    ];
+
+    // Setiap GTK pada daftar harus punya entri, walau kosong, supaya
+    // barisnya tetap tergambar saat draft belum memuatnya.
+    matrixTeacherOrder.forEach(id => {
+        if (!activeSubjects[id]) activeSubjects[id] = [];
+        if (!activeTasks[id]) activeTasks[id] = [];
     });
-    activeSubjects = state.subjects;
-    activeTasks = state.tasks;
-    matrixTeacherOrder = state.order || Object.keys(activeSubjects);
+
     Object.keys(currentPositionIds).forEach(key => delete currentPositionIds[key]);
     Object.assign(currentPositionIds, state.positions || {});
     Object.keys(currentPositions).forEach(key => delete currentPositions[key]);
     Object.assign(currentPositions, state.positionNames || {});
-    teacherCounter = state.counter;
-    document.getElementById('teacherCount').textContent = state.teacherCount;
-    refreshTotal();
+    teacherCounter = matrixTeacherOrder.length;
+
+    renderMatrix();
     updateHistoryButtons();
     scheduleAutosave();
 }
