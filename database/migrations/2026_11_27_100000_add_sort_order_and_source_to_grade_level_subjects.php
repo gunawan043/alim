@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * URUTAN & ASAL MAPEL DI RAPOR — diatur sekali di Peta Kurikulum per tingkat.
  *
  *  - sort_order     : nomor urut tampil di rapor (kecil di atas). null = belum diatur.
- *  - subject_source : 'pondok' | 'dinas'. Rapor mencetak blok Pondok lebih dulu,
+ *  - subject_source : 'pondok' | 'pondok_dinas' | 'dinas'. Rapor mencetak blok Pondok lebih dulu,
  *                     lalu blok Dinas; di dalam blok mengikuti sort_order.
  *
  * Ditempatkan pada struktur tingkat (bukan pada master mapel) karena satu mapel
@@ -27,7 +27,7 @@ return new class extends Migration
         if (! Schema::hasColumn('grade_level_subjects', 'subject_source')) {
             Schema::table('grade_level_subjects', function (Blueprint $table) {
                 $table->string('subject_source', 10)->nullable()->after('sort_order')
-                    ->comment('pondok | dinas');
+                    ->comment('pondok | dinas | pondok_dinas');
             });
         }
     }

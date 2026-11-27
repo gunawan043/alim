@@ -1234,6 +1234,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/jp', [KurikulumController::class, 'saveJp'])->name('jp.save');
                 Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
                 Route::post('/struktur-rapor', [KurikulumController::class, 'saveStruktur'])->name('struktur.save');
+                Route::post('/peta', [KurikulumController::class, 'savePeta'])->name('peta.save');
                 Route::get('/struktur-rapor/pindah', [KurikulumController::class, 'moveStruktur'])->name('struktur.move');
                 Route::post('/siapkan', [KurikulumController::class, 'siapkan'])->name('siapkan');
 

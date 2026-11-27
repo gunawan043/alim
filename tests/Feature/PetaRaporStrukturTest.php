@@ -298,4 +298,44 @@ class PetaRaporStrukturTest extends TestCase
         $this->move('MTK', 'down')->assertStatus(422);
         $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
     }
+
+    public function test_satu_tombol_menyimpan_jp_susunan_dan_kktp_sekaligus(): void
+    {
+        $response = $this->actingAs($this->kurikulum)->post(
+            '/'.$this->kurikulum->id.'/kurikulum/peta',
+            [
+                'academic_year_id' => $this->ay->id,
+                'semester' => 'ganjil',
+                'jp' => [
+                    $this->grade->id => [
+                        $this->subjects['MTK']->id => 5,
+                    ],
+                ],
+                'struktur' => [
+                    $this->grade->id => [
+                        $this->subjects['MTK']->id => ['urutan' => 3, 'sumber' => 'dinas', 'rapor' => '1'],
+                        $this->subjects['FQH']->id => ['urutan' => 1, 'sumber' => 'pondok_dinas', 'rapor' => '1'],
+                        $this->subjects['BAR']->id => ['urutan' => 2, 'sumber' => 'pondok', 'rapor' => '1'],
+                    ],
+                ],
+                'kktp' => [
+                    $this->grade->id => [
+                        $this->subjects['MTK']->id => 72,
+                    ],
+                ],
+            ]
+        );
+
+        $response->assertRedirect()->assertSessionHas('success');
+
+        $this->assertSame(5, (int) GradeLevelSubject::where('subject_id', $this->subjects['MTK']->id)->value('allocation_hours'));
+        $this->assertSame('pondok_dinas', GradeLevelSubject::where('subject_id', $this->subjects['FQH']->id)->value('subject_source'));
+        $this->assertSame(72, (int) SubjectKktp::where('subject_id', $this->subjects['MTK']->id)
+            ->where('grade_level_id', $this->grade->id)
+            ->value('kktp_score'));
+
+        // Pondok → Pondok + Dinas → Dinas.
+        $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupA));
+        $this->assertSame(['BAR', 'FQH', 'MTK'], $this->order($this->groupB));
+    }
 }

@@ -350,21 +350,10 @@
                     </div>
                 </div>
 
-                <form id="kktpFormPeta" method="POST" action="{{ route('user.kurikulum.kktp.save', ['userId' => $userId]) }}">
-                    @csrf
-                    <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
-                    <input type="hidden" name="semester" value="{{ $semester }}">
-                </form>
-
-                @if($canEditJp ?? false)
-                    <form id="jpFormPeta" method="POST" action="{{ route('user.kurikulum.jp.save', ['userId' => $userId]) }}">
-                        @csrf
-                        <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
-                    </form>
-                @endif
-
-                @if($canEditRapor ?? false)
-                    <form id="strukturFormPeta" method="POST" action="{{ route('user.kurikulum.struktur.save', ['userId' => $userId]) }}">
+                {{-- Satu form untuk semua pengaturan Peta: JP, urutan, Pondok/Dinas,
+                     dan N-KKTP disimpan bersama lewat satu tombol. --}}
+                @if(($canEditJp ?? false) || ($canEditKktp ?? false) || ($canEditRapor ?? false))
+                    <form id="petaForm" method="POST" action="{{ route('user.kurikulum.peta.save', ['userId' => $userId]) }}">
                         @csrf
                         <input type="hidden" name="academic_year_id" value="{{ $academicYearId }}">
                         <input type="hidden" name="semester" value="{{ $semester }}">
@@ -405,7 +394,7 @@
                                     <td class="text-center">
                                         @if($canEditJp ?? false)
                                             <input type="number"
-                                                   form="jpFormPeta"
+                                                   form="petaForm"
                                                    name="jp[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}]"
                                                    value="{{ $row['weekly_hours'] }}"
                                                    min="0" max="40" step="1"
@@ -420,17 +409,18 @@
                                     <td class="text-center fw-semibold">{{ $row['jp_efektif'] }}</td>
                                     <td class="text-center">
                                         @if($canEditRapor ?? false)
-                                            <select form="strukturFormPeta"
+                                            <select form="petaForm"
                                                     name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][sumber]"
                                                     class="form-select form-select-sm rapor-source-select">
-                                                <option value="" {{ ! $row['subject_source'] ? 'selected' : '' }}>—</option>
-                                                <option value="pondok" {{ $row['subject_source'] === 'pondok' ? 'selected' : '' }}>Pondok</option>
-                                                <option value="dinas" {{ $row['subject_source'] === 'dinas' ? 'selected' : '' }}>Dinas</option>
+                                                @foreach(\App\Models\GradeLevelSubject::SOURCE_OPTIONS as $value => $label)
+                                                    <option value="{{ $value }}" {{ $row['subject_source'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
                                             </select>
                                         @else
                                             @php
                                                 $sumberBadge = match ($row['subject_source']) {
                                                     'pondok' => 'bg-success-subtle text-success',
+                                                    'pondok_dinas' => 'bg-warning-subtle text-warning',
                                                     'dinas' => 'bg-primary-subtle text-primary',
                                                     default => 'bg-secondary-subtle text-secondary',
                                                 };
@@ -451,7 +441,7 @@
                                                     <i class="ri-arrow-up-s-line"></i>
                                                 </a>
                                                 <input type="number"
-                                                       form="strukturFormPeta"
+                                                       form="petaForm"
                                                        name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][urutan]"
                                                        value="{{ $row['sort_order'] }}"
                                                        min="1" max="999" step="1"
@@ -466,7 +456,7 @@
                                                 </a>
                                             </div>
                                             <input type="hidden"
-                                                   form="strukturFormPeta"
+                                                   form="petaForm"
                                                    name="struktur[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}][rapor]"
                                                    value="{{ $row['is_rapor'] ? 1 : 0 }}">
                                         @else
@@ -476,7 +466,7 @@
                                     <td class="text-center">
                                         @if($canEditKktp ?? false)
                                             <input type="number"
-                                                   form="kktpFormPeta"
+                                                   form="petaForm"
                                                    name="kktp[{{ $row['grade_level_id'] }}][{{ $row['subject_id'] }}]"
                                                    value="{{ $row['kktp'] ?? '' }}"
                                                    min="0" max="100" placeholder="—"
@@ -539,23 +529,9 @@
                             JP, urutan, Pondok/Dinas, dan N-KKTP di sini adalah sumber utama: perubahannya ikut ke
                             rombel, buku nilai, dan rapor semua rombel pada tingkat yang sama.
                         </span>
-                        <div class="d-flex gap-2">
-                            @if($canEditJp ?? false)
-                                <button type="submit" form="jpFormPeta" class="btn btn-primary btn-sm">
-                                    <i class="ri-save-line me-1"></i>Simpan JP
-                                </button>
-                            @endif
-                            @if($canEditRapor ?? false)
-                                <button type="submit" form="strukturFormPeta" class="btn btn-outline-primary btn-sm">
-                                    <i class="ri-list-ordered me-1"></i>Simpan Urutan &amp; Pondok/Dinas
-                                </button>
-                            @endif
-                            @if($canEditKktp ?? false)
-                                <button type="submit" form="kktpFormPeta" class="btn btn-success btn-sm">
-                                    <i class="ri-save-line me-1"></i>Simpan N-KKTP
-                                </button>
-                            @endif
-                        </div>
+                        <button type="submit" form="petaForm" class="btn btn-primary btn-sm">
+                            <i class="ri-save-line me-1"></i>Simpan Peta
+                        </button>
                     </div>
                 @endif
             </div>

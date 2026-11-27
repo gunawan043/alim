@@ -41,18 +41,23 @@ class GradeLevelSubject extends Model
 
     public const SOURCE_DINAS = 'dinas';
 
+    /** Mapel yang diajarkan pondok sekaligus dinas. */
+    public const SOURCE_PONDOK_DINAS = 'pondok_dinas';
+
     public const SOURCE_OPTIONS = [
         self::SOURCE_PONDOK => 'Pondok',
         self::SOURCE_DINAS => 'Dinas',
+        self::SOURCE_PONDOK_DINAS => 'Pondok + Dinas',
     ];
 
-    /** Bobot urutan blok di rapor: pondok → dinas → belum ditandai. */
+    /** Bobot urutan blok di rapor: pondok → pondok+dinas → dinas → belum ditandai. */
     public static function sourceRank(?string $source): int
     {
         return match ($source) {
             self::SOURCE_PONDOK => 0,
-            self::SOURCE_DINAS => 1,
-            default => 2,
+            self::SOURCE_PONDOK_DINAS => 1,
+            self::SOURCE_DINAS => 2,
+            default => 3,
         };
     }
 
