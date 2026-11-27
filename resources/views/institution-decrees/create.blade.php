@@ -85,7 +85,12 @@
     }
     .matrix-scroll .freeze-nama {
         left: 52px;
-        min-width: 160px; max-width: 160px; width: 160px;
+        /* Lebar mengikuti nama terpanjang, dihitung saat render. */
+        min-width: var(--name-col-width, 180px);
+        max-width: var(--name-col-width, 180px);
+        width: var(--name-col-width, 180px);
+        white-space: normal;
+        word-break: break-word;
         box-shadow: 2px 0 4px -2px rgba(0,0,0,.18);
     }
 </style>
@@ -751,7 +756,7 @@ function renderTeacherRows(tbody, teacher, tid, number) {
 
         if (index === 0) {
             cells += `<td rowspan="${rowCount}" class="text-center fw-semibold freeze-col freeze-no">${number}</td>`;
-            cells += `<td rowspan="${rowCount}" class="fw-semibold text-nowrap freeze-col freeze-nama">
+            cells += `<td rowspan="${rowCount}" class="fw-semibold freeze-col freeze-nama">
                 ${escapeHtml(teacher.name)}
                 ${teacher.external ? `<div class="small text-info"><i class="ri-building-2-line me-1"></i>GTK Penugasan Pondok${teacher.home_work_unit ? ` · ${escapeHtml(teacher.home_work_unit)}` : ''}</div>` : ''}
             </td>`;
@@ -843,9 +848,44 @@ function renderMatrix() {
         window.initSearchableSelects(tbody);
     }
 
+    fitNameColumn();
+    syncStickyHeaderOffset();
+
     document.getElementById('teacherCount').textContent = matrixTeacherOrder.length;
     refreshTotal();
     filterRoster();
+}
+
+/**
+ * Lebar kolom Nama mengikuti nama GTK terpanjang (termasuk keterangan
+ * "GTK Penugasan Pondok"), supaya nama tidak terpotong dan tidak menyisakan
+ * ruang kosong. Diukur dari teks dengan kanvas agar tidak memicu reflow
+ * berulang, lalu dipatok lewat variabel CSS.
+ */
+function fitNameColumn() {
+    const table = document.querySelector('.matrix-table');
+    if (!table) return;
+
+    const names = teachers.map(t => t.name || '').filter(Boolean);
+    if (!names.length) return;
+
+    // Ukur memakai font sel Nama agar hasilnya sama dengan tampilan.
+    const cell = table.querySelector('tbody td.freeze-nama');
+    const style = cell ? window.getComputedStyle(cell) : null;
+    const font = style ? `${style.fontWeight} ${style.fontSize} ${style.fontFamily}` : '600 14px sans-serif';
+
+    const canvas = fitNameColumn._canvas || (fitNameColumn._canvas = document.createElement('canvas'));
+    const ctx = canvas.getContext('2d');
+    ctx.font = font;
+
+    const PADDING = 46;   // padding sel + jarak aman
+    const MIN = 160;
+    const MAX = 340;      // batas agar tabel tidak melebar berlebihan
+
+    const widest = names.reduce((max, name) => Math.max(max, ctx.measureText(name).width), 0);
+    const width = Math.min(MAX, Math.max(MIN, Math.ceil(widest) + PADDING));
+
+    document.querySelector('.matrix-scroll')?.style.setProperty('--name-col-width', width + 'px');
 }
 
 function refreshTotal(tid) {
