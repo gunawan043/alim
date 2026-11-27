@@ -718,28 +718,31 @@ function mapelCellHtml(tid, sub, index, subjectCount) {
     return '';
 }
 
-function taskCellHtml(tid, task, index, taskCount) {
+function taskCellHtml(tid, task, index, taskCount, taskPair) {
     if (task) {
-        // Guru Pendamping ditulis "Guru Pendamping | Matematika" agar mapel
-        // yang didampingi langsung terbaca tanpa baris tambahan.
-        const subjectsLabel = (task.pendamping || [])
-            .map(pair => pair.subject || subjectNameOf(pair.subject_id))
-            .filter(Boolean)
-            .join(', ');
+        // Index asli pada activeTasks (baris bisa dipecah per mapel).
+        const removeIndex = activeTasks[tid] ? activeTasks[tid].indexOf(task) : index;
+        // Guru Pendamping ditulis "Guru Pendamping | Matematika" pada baris
+        // mapelnya, sejajar dengan rombel yang dicentang.
+        const subjectsLabel = taskPair
+            ? (taskPair.subject || subjectNameOf(taskPair.subject_id))
+            : '';
+        // Baris Guru Pendamping memakai JP mapelnya sendiri, bukan total tugas.
+        const hours = taskPair ? pendampingPairHours(taskPair) : task.hours;
         const label = subjectsLabel
             ? `${escapeHtml(task.name || '')} | ${escapeHtml(subjectsLabel)}`
             : escapeHtml(task.name || '');
 
         return `<div class="d-flex align-items-center gap-1">
             <span class="badge bg-info-subtle text-info flex-grow-1 text-start">
-                ${label}${task.hours ? ` · ${task.hours} JP` : ''}
+                ${label}${hours ? ` · ${hours} JP` : ''}
             </span>
             <button type="button" class="btn btn-sm btn-icon btn-soft-primary flex-shrink-0"
                     onclick="showAddTask('${tid}')" title="Tambah Tugas Tambahan">
                 <i class="ri-add-line"></i>
             </button>
             <button type="button" class="btn btn-sm btn-icon btn-soft-danger flex-shrink-0"
-                    onclick="removeActiveTask('${tid}', ${index})" title="Hapus tugas">
+                    onclick="removeActiveTask('${tid}', ${removeIndex})" title="Hapus tugas">
                 <i class="ri-delete-bin-6-line"></i>
             </button>
         </div>`;
@@ -777,13 +780,22 @@ function rombelCellHtml(tid, sub, sg) {
  * activeSubjects — JP dihitung dari Peta Kurikulum setelah kelas dicentang
  * pada kolom rombel, persis seperti tugas mengajar.
  */
-function pendampingRows(tasks) {
-    return tasks
-        .filter(task => Array.isArray(task.pendamping) && task.pendamping.length)
-        .flatMap(task => task.pendamping.map(pair => ({ task, pair })));
+function isPendampingTask(task) {
+    return !!task && Array.isArray(task.pendamping) && task.pendamping.length > 0;
 }
 
-function pendampingRombelCellHtml(tid, pair, sg) {
+/**
+ * Ubah daftar tugas menjadi baris: tugas biasa memakai satu baris, tugas Guru
+ * Pendamping dipecah per mapel sehingga rombel-nya sejajar dengan mapel itu.
+ */
+function pendampingTaskRows(tasks) {
+    return tasks.flatMap(task => {
+        if (!isPendampingTask(task)) return [{ task, pair: null }];
+        return task.pendamping.map(pair => ({ task, pair }));
+    });
+}
+
+function pendampingRombelCellHtml(tid, task, pair, sg) {
     const subjectId = pair.subject_id;
     if (!subjectId) return '';
 
@@ -841,14 +853,20 @@ function recalcPendampingHours(tid) {
 function renderTeacherRows(tbody, teacher, tid, number) {
     const subjects = activeSubjects[tid] || [];
     const tasks = activeTasks[tid] || [];
-    const rowCount = Math.max(subjects.length, tasks.length, 1);
+    // Tugas Guru Pendamping dipecah menjadi satu baris per mapel agar rombel
+    // yang dicentang sejajar dengan mapelnya, tanpa baris tambahan terpisah.
+    const taskRows = pendampingTaskRows(tasks);
+    const rowCount = Math.max(subjects.length, taskRows.length, 1);
 
     for (let index = 0; index < rowCount; index++) {
         const sub = subjects[index] || null;
-        const task = tasks[index] || null;
+        const task = taskRows[index] ? taskRows[index].task : null;
+        const taskPair = taskRows[index] ? taskRows[index].pair : null;
         const tr = document.createElement('tr');
         tr.dataset.teacher = tid;
         tr.dataset.rowIndex = index;
+        if (task && !taskPair) tr.dataset.taskIndex = index;
+        if (taskPair) { tr.dataset.pendampingSubject = taskPair.subject_id; tr.dataset.taskIndex = index; }
         if (index === 0) tr.id = `teacher-row-${tid}`;
         if (sub && sub.id) tr.dataset.subject = sub.id;
 
@@ -864,9 +882,18 @@ function renderTeacherRows(tbody, teacher, tid, number) {
         }
 
         cells += `<td class="text-wrap">${mapelCellHtml(tid, sub, index, subjects.length)}</td>`;
-        cells += `<td class="text-wrap">${taskCellHtml(tid, task, index, tasks.length)}</td>`;
-        cells += gradeCols.map((sg, gi) => `<td class="text-center rombel-col ${gi > 0 && sg.level !== gradeCols[gi - 1].level ? 'grade-start' : ''} grade-${gradeBand(sg.level)}">${rombelCellHtml(tid, sub, sg)}</td>`).join('');
-        cells += `<td class="text-center fw-semibold row-jp">${sub && sub.id ? subjectTotalHours(sub) : 0}</td>`;
+        cells += `<td class="text-wrap">${taskCellHtml(tid, task, index, taskRows.length, taskPair)}</td>`;
+        // Tugas Guru Pendamping memakai barisnya sendiri: kolom rombel menampilkan
+        // centang kelas untuk mapelnya, sejajar dengan label tugas — tanpa baris
+        // tambahan di bawahnya.
+        cells += gradeCols.map((sg, gi) => {
+            const cls = `text-center rombel-col ${gi > 0 && sg.level !== gradeCols[gi - 1].level ? 'grade-start' : ''} grade-${gradeBand(sg.level)}`;
+            if (taskPair) {
+                return `<td class="${cls}">${pendampingRombelCellHtml(tid, task, taskPair, sg)}</td>`;
+            }
+            return `<td class="${cls}">${rombelCellHtml(tid, sub, sg)}</td>`;
+        }).join('');
+        cells += `<td class="text-center fw-semibold row-jp">${taskPair ? pendampingPairHours(taskPair) : (sub && sub.id ? subjectTotalHours(sub) : 0)}</td>`;
 
         if (index === 0) {
             cells += `<td rowspan="${rowCount}" class="text-center fw-bold" id="teacher-total-${tid}">${teacherTotalHours(tid)}</td>`;
@@ -876,23 +903,6 @@ function renderTeacherRows(tbody, teacher, tid, number) {
         tbody.appendChild(tr);
     }
 
-    // Mapel Guru Pendamping mendapat baris sendiri agar kelasnya bisa
-    // dicentang pada kolom rombel, sama seperti tugas mengajar.
-    pendampingRows(tasks).forEach(({ task, pair }) => {
-        const tr = document.createElement('tr');
-        tr.dataset.teacher = tid;
-        tr.dataset.pendampingSubject = pair.subject_id || '';
-        tr.innerHTML = `
-            <td class="text-wrap">
-                <span class="badge bg-warning-subtle text-warning text-nowrap">${escapeHtml(pair.subject || pair.subject_id || '')}</span>
-                <span class="small text-muted ms-1">pendamping</span>
-            </td>
-            <td class="text-wrap"></td>
-            ${gradeCols.map((sg, gi) => `<td class="text-center rombel-col ${gi > 0 && sg.level !== gradeCols[gi - 1].level ? 'grade-start' : ''} grade-${gradeBand(sg.level)}">${pendampingRombelCellHtml(tid, pair, sg)}</td>`).join('')}
-            <td class="text-center fw-semibold row-jp">${pendampingPairHours(pair)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
 }
 
 /**
@@ -1018,13 +1028,13 @@ function refreshTotal(tid) {
             if (cell) cell.textContent = subjectTotalHours(sub);
         });
 
-        // Mapel Guru Pendamping punya baris sendiri; JP-nya dari pasangan
-        // mapel-kelas yang dicentang pada kolom rombel.
-        document.querySelectorAll(`tr[data-teacher="${t}"][data-pendamping-subject]`).forEach(row => {
-            const subjectId = row.dataset.pendampingSubject;
-            const pair = pendampingPairOf(t, subjectId);
+        // Tugas Guru Pendamping berada pada barisnya sendiri (kolom Mapel
+        // kosong); JP barisnya mengikuti kelas yang dicentang.
+        document.querySelectorAll(`tr[data-teacher="${t}"][data-task-index]`).forEach(row => {
+            const task = (activeTasks[t] || [])[parseInt(row.dataset.taskIndex, 10)];
+            if (!isPendampingTask(task)) return;
             const cell = row.querySelector('.row-jp');
-            if (cell) cell.textContent = pair ? pendampingPairHours(pair) : 0;
+            if (cell) cell.textContent = task.hours || 0;
         });
 
         const totalEl = document.getElementById(`teacher-total-${t}`);
