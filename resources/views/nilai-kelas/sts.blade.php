@@ -502,16 +502,12 @@
                                         @if($umumCount > 0)
                                             <th colspan="{{ collect(($legerSubjectMap ?? $subjectMap)->slice($agamaCount))->sum($legerSubjectCols) }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
+                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total" title="Jumlah = Σ (Nilai × Bobot)">Jumlah</th>
                                         @if($isSasLeger)
-                                            <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total">Jumlah</th>
-                                        @endif
-                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" @if($isSasLeger) title="Jumlah (Bobot × Nilai)" @endif>
-                                            @if($isSasLeger)
+                                            <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" title="Jumlah (Bobot × Nilai)">
                                                 Jumlah<br><small style="font-size:9px;font-weight:400;">B×N</small>
-                                            @else
-                                                Jumlah
-                                            @endif
-                                        </th>
+                                            </th>
+                                        @endif
                                         <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="avg">Rata-rata</th>
                                         <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="rank">Peringkat</th>
                                         <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="pred">Predikat</th>
@@ -622,6 +618,8 @@
                                             $avgVal = $legerAggMap[$sid] ?? null;
                                             $rankVal = $rankMap[$sid] ?? null;
                                             $pres = $presensiMap[$sid] ?? null;
+                                            // Kolom Jumlah = Σ (Nilai × Bobot) — aturan yang sama dengan
+                                            // perhitungan rata-rata di controller, jadi STS pun terbaca.
                                             $jumlahSts = 0; $countMapel = 0;
                                             foreach (($legerSubjectMap ?? $subjectMap) as $subject) {
                                                 $book = $bookMap[$subject->id] ?? null;
@@ -633,7 +631,7 @@
                                                     $val = $n->{$col};
                                                 }
                                                 if ($val !== null) {
-                                                    $jumlahSts += $val;
+                                                    $jumlahSts += (float) ($bobotMap[$subject->id] ?? 0) * (float) $val;
                                                     $countMapel++;
                                                 }
                                             }
@@ -715,11 +713,11 @@
                                                     </td>
                                                 @endif
                                             @endforeach
+                                            {{-- Jumlah berbobot (STS & SAS) --}}
+                                            <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
+                                                {{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}
+                                            </td>
                                             @if($isSasLeger)
-                                                {{-- Jumlah --}}
-                                                <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total">
-                                                    {{ $jumlahSts > 0 ? number_format($jumlahSts, 1) : '—' }}
-                                                </td>
                                                 {{-- Jumlah (Bobot × Nilai) --}}
                                                 <td class="text-center fw-semibold" style="color:var(--bs-body-color);" data-col="total_bobot">
                                                     {{ isset($legerJumlahMap[$sid]) ? number_format($legerJumlahMap[$sid], 1) : '—' }}
