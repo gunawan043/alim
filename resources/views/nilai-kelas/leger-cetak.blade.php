@@ -89,7 +89,7 @@
     $predicateNotesAr = $predicateNotesAr ?? [];
 
     // Hitung slot kolom: 1 kolom nilai akhir + kolom komponen (bila ada).
-    // Mapel tahfidz memakai slot yang sama; nilainya NR Final.
+    // Mapel tahfidz memakai slot yang sama; nilainya mengikuti periode dokumen.
     $subjectSlots = [];
     $slotCount = 0;
     $hasAnyComponent = false;

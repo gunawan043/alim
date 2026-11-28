@@ -440,6 +440,28 @@ class NilaiKelasController extends Controller
                 : null;
         }
 
+        // Nilai yang tampil di leger ini — satu sumber untuk kolom mapel, Jumlah,
+        // rata-rata, peringkat, dan predikat. Mode STS hanya memakai nilai STS
+        // (tidak boleh terpengaruh NR Final / nilai SAS), begitu pula sebaliknya.
+        $legerValueMap = [];
+        foreach ($students as $history) {
+            $sid = $history->student_id;
+            foreach ($legerSubjectMap as $subject) {
+                $book = $bookMap[$subject->id] ?? null;
+                if (! $book) {
+                    continue;
+                }
+                $val = app(TahfidzRaporService::class)->scoreFor(
+                    $sid, $book, $selectedAyId, $selectedSemester, $legerMode, $nilaiMap[$sid][$book->id] ?? null
+                );
+                if ($val === null) {
+                    $n = $nilaiMap[$sid][$book->id] ?? null;
+                    $val = $n && $n->{$legerCol} !== null ? (float) $n->{$legerCol} : null;
+                }
+                $legerValueMap[$sid][$book->id] = $val;
+            }
+        }
+
         $legerAggMap = [];
         $legerJumlahMap = [];
         foreach ($students as $history) {
@@ -453,11 +475,7 @@ class NilaiKelasController extends Controller
                 if (! $book) {
                     continue;
                 }
-                $n = $nilaiMap[$sid][$book->id] ?? null;
-                $val = $nilaiTahfidzMap[$sid][$book->id] ?? null;
-                if ($val === null && $n && $n->{$legerCol} !== null) {
-                    $val = $n->{$legerCol};
-                }
+                $val = $legerValueMap[$sid][$book->id] ?? null;
                 if ($val !== null) {
                     $total += $val;
                     $count++;
@@ -567,7 +585,7 @@ class NilaiKelasController extends Controller
             'selectedBookId', 'activeBook', 'isPrivileged',
             'presensiMap', 'presensiManualMap', 'legerAggMap', 'rankMap', 'columns', 'shMap', 'legerMode', 'formatifMap', 'penghargaanMap',
             'pembiasaanMap', 'tahfidzJuzMap', 'halaqohMap', 'jumlahJuzMap', 'nilaiTahfidzMap', 'schoolGroups', 'agamaCount', 'autoProvisionedBooks', 'rsDivisor',
-            'bobotMap', 'legerJumlahMap', 'bobotManualMap', 'bobotJpMap', 'kktpLevelMap', 'predicateNotes', 'predicateNotesAr',
+            'bobotMap', 'legerJumlahMap', 'legerValueMap', 'bobotManualMap', 'bobotJpMap', 'kktpLevelMap', 'predicateNotes', 'predicateNotesAr',
             'legerFilter', 'legerSubjectMap', 'legerSubjectIds', 'legerAgamaCount',
             'isArchiveAy', 'activeAyId', 'subjectSource', 'periodNotice', 'groupAyId', 'murniOptional',
             'stsColumns', 'sasColumns', 'stsComponentMap', 'sasComponentMap',

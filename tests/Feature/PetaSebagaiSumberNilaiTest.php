@@ -358,6 +358,51 @@ class PetaSebagaiSumberNilaiTest extends TestCase
         $this->assertSame(['Fiqih', 'Matematika'], $this->filteredSubjectNames('dinas'));
     }
 
+    public function test_leger_sts_tidak_terpengaruh_nilai_sas(): void
+    {
+        $student = Student::create([
+            'school_id' => $this->school->id,
+            'name' => 'SANTRI STS SAJA',
+            'gender' => 'L',
+            'status' => 'active',
+        ]);
+
+        StudentClassHistory::create([
+            'student_id' => $student->id,
+            'study_group_id' => $this->groupA->id,
+            'academic_year_id' => $this->ay->id,
+            'attendance_number' => 1,
+            'is_active' => true,
+        ]);
+
+        // Nilai STS 80, tetapi sudah ada NR Final 90 (jalur SAS) dengan SAS 95.
+        NilaiSumatif::create([
+            'admin_book_id' => $this->booksA['MTK']->id,
+            'student_id' => $student->id,
+            'academic_year_id' => $this->ay->id,
+            'semester' => 'ganjil',
+            'sts' => 80,
+            'sas' => 95,
+            'nr_final' => 90,
+        ]);
+
+        GradeLevelSubject::where('subject_id', $this->booksA['MTK']->subject_id)->update(['bobot' => 1]);
+
+        $leger = fn (string $mode) => $this->actingAs($this->user)->get(
+            '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts?tab=leger&leger='.$mode
+        )->assertOk();
+
+        $sts = $leger('sts');
+        $this->assertSame(80.0, $sts->viewData('legerValueMap')[$student->id][$this->booksA['MTK']->id]);
+        $this->assertSame(80.0, (float) $sts->viewData('legerAggMap')[$student->id]);
+        $this->assertSame(80.0, (float) $sts->viewData('legerJumlahMap')[$student->id]);
+        $this->assertSame(1, $sts->viewData('rankMap')[$student->id]);
+
+        $sas = $leger('sas');
+        $this->assertSame(90.0, $sas->viewData('legerValueMap')[$student->id][$this->booksA['MTK']->id]);
+        $this->assertSame(90.0, (float) $sas->viewData('legerAggMap')[$student->id]);
+    }
+
     public function test_kolom_jumlah_leger_sts_terbaca_dari_bobot(): void
     {
         $student = Student::create([

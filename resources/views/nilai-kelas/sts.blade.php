@@ -618,17 +618,19 @@
                                             $avgVal = $legerAggMap[$sid] ?? null;
                                             $rankVal = $rankMap[$sid] ?? null;
                                             $pres = $presensiMap[$sid] ?? null;
-                                            // Kolom Jumlah = Σ (Nilai × Bobot) — aturan yang sama dengan
-                                            // perhitungan rata-rata di controller, jadi STS pun terbaca.
+                                            // Kolom Jumlah = Σ (Nilai × Bobot) memakai nilai yang sama
+                                            // dengan yang tampil di kolom mapel leger ini. Rata-rata,
+                                            // peringkat, dan predikat dihitung di controller dari
+                                            // $legerValueMap + $legerSubjectMap dengan aturan yang sama.
                                             $jumlahSts = 0; $countMapel = 0;
                                             foreach (($legerSubjectMap ?? $subjectMap) as $subject) {
                                                 $book = $bookMap[$subject->id] ?? null;
                                                 if (!$book) continue;
-                                                $n = $nilaiMap[$sid][$book->id] ?? null;
                                                 $col = ($legerMode ?? 'sts') === 'sas' ? 'sas' : 'sts';
-                                                $val = $nilaiTahfidzMap[$sid][$book->id] ?? null;
-                                                if ($val === null && $n && $n->{$col} !== null) {
-                                                    $val = $n->{$col};
+                                                $val = ($legerValueMap ?? [])[$sid][$book->id] ?? null;
+                                                if ($val === null) {
+                                                    $n = $nilaiMap[$sid][$book->id] ?? null;
+                                                    $val = $n && $n->{$col} !== null ? $n->{$col} : null;
                                                 }
                                                 if ($val !== null) {
                                                     $jumlahSts += (float) ($bobotMap[$subject->id] ?? 0) * (float) $val;
@@ -686,8 +688,8 @@
                                                     $book = $bookMap[$subject->id] ?? null;
                                                     $n = $book ? ($nilaiMap[$student->id][$book->id] ?? null) : null;
                                                     $kkm = $book?->kktp?->kkm_score ?? 75;
-                                                    $stsVal = $nilaiTahfidzMap[$student->id][$book?->id] ?? null;
-                                                    if ($stsVal === null) {
+                                                    $stsVal = ($legerValueMap ?? [])[$student->id][$book?->id] ?? null;
+                                                    if ($stsVal === null && $book) {
                                                         $stsVal = $n ? (($legerMode ?? 'sts') === 'sas' ? $n->sas : $n->sts) : null;
                                                     }
                                                     $belowKkm = $stsVal !== null && $stsVal < $kkm;

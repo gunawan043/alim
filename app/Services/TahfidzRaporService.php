@@ -64,12 +64,22 @@ class TahfidzRaporService
             return null;
         }
 
-        // Leger menampilkan SATU angka untuk mapel tahfidz — NR Final —
-        // baik mode STS maupun SAS, agar sebanding dengan mapel umum.
-        // STS hanya dipakai bila NR Final belum terbentuk.
-        return $score->nr_final !== null
-            ? (float) $score->nr_final
-            : ($score->sts !== null ? (float) $score->sts : null);
+        // STS memakai kolom STS. SAS mengikuti AcademicNilai::resolveTampil():
+        // NR Final, fallback SAS. Kolom periode yang belum diisi jatuh ke NR
+        // Final supaya leger tetap sebanding dengan mapel umum.
+        if ($jenis === 'sas') {
+            if ($score->nr_final !== null) {
+                return (float) $score->nr_final;
+            }
+
+            return $score->sas !== null ? (float) $score->sas : null;
+        }
+
+        if ($score->sts !== null) {
+            return (float) $score->sts;
+        }
+
+        return $score->nr_final !== null ? (float) $score->nr_final : null;
     }
 
     public function jumlahJuz(string $studentId, string $academicYearId): int

@@ -142,8 +142,9 @@ class LegerPdfService
             }
         }
 
-        // Mapel tahfidz dicetak seperti mapel umum: satu kolom nilai (NR
-        // Final, lewat $nilaiResolved). Rincian kolom hanya di tab Mapel.
+        // Mapel tahfidz dicetak seperti mapel umum: satu kolom nilai sesuai
+        // periode dokumen (STS → nilai STS, SAS → NR Final). Rincian kolom
+        // hanya di tab Mapel.
 
         // Komponen STS/SAS per mapel (mis. Praktik & Tulis). Hanya mapel yang
         // punya komponen yang mendapat sub-kolom tambahan di leger.

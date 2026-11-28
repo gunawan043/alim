@@ -97,6 +97,9 @@ class TahfidzLegerRenderTest extends TestCase
 
         // Mapel tahfidz tidak lagi punya kolom sendiri di leger.
         $this->assertArrayNotHasKey('tahfidzColumns', $data);
+        // Leger STS memakai nilai STS tahfidz (82), bukan NR Final (86).
+        $bookThf = $data['bookMap']->first(fn ($b) => $b->subject_id === $tahfidz->id);
+        $this->assertSame(82.0, $data['nilaiResolved'][$student->id][$bookThf->id] ?? null);
 
         $html = view('nilai-kelas.leger-cetak', $data + ['userId' => null])->render();
 
@@ -108,12 +111,12 @@ class TahfidzLegerRenderTest extends TestCase
         // sel kosong (class="empty"), tahfidz terisi NR Final.
         $slots = substr_count($html, 'class="comp') + substr_count($html, 'class="below') + substr_count($html, 'class="empty');
         $this->assertSame(1, $slots, 'Leger hanya memuat satu sel nilai milik mapel umum (tahfidz terisi).');
-        // Nilai tahfidz di leger = NR Final.
+        // Baris santri memuat nilai tahfidz periode STS.
         $pos = strpos($html, 'Santri Render');
         $pos = strpos($html, 'Santri Render');
         $rowStart = strrpos(substr($html, 0, $pos), '<tr>');
         $rowHtml = substr($html, $rowStart);
         $rowHtml = substr($rowHtml, 0, strpos($rowHtml, '</tr>'));
-        $this->assertStringContainsString('86', $rowHtml, 'NR Final tahfidz harus tampil di baris santri.');
+        $this->assertStringContainsString('82', $rowHtml, 'Nilai STS tahfidz harus tampil di leger STS.');
     }
 }
