@@ -6,7 +6,24 @@
 @endsection
 
 @section('content')
-    @php $userId = $userId ?? auth()->id(); @endphp
+    @php
+        $userId = $userId ?? auth()->id();
+        $periodeLabel = trim(($selectedAy?->name ?? '').' '.($selectedAy?->semester_text ?? ucfirst($semester)));
+
+        // Ringkasan per asal mapel (Dinas / Pondok / Dinas + Pondok) — sama
+        // dengan kategori master mapel yang berlaku sekarang.
+        $jumlahAsal = ['pondok' => 0, 'pondok_dinas' => 0, 'dinas' => 0, 'belum' => 0];
+        foreach ($gradeLevelSubjects as $gls) {
+            $jumlahAsal[$gls->subject_source ?? 'belum'] = ($jumlahAsal[$gls->subject_source ?? 'belum'] ?? 0) + 1;
+        }
+
+        $badgeAsal = [
+            'pondok' => 'bg-success-subtle text-success',
+            'pondok_dinas' => 'bg-warning-subtle text-warning',
+            'dinas' => 'bg-primary-subtle text-primary',
+        ];
+        $labelAsal = \App\Models\GradeLevelSubject::SOURCE_OPTIONS;
+    @endphp
 
     @component('components.breadcrumb')
         @slot('li_1') <a href="{{ route('user.grade-levels.index', ['userId' => $userId]) }}">Data Kelas</a> @endslot
@@ -26,6 +43,41 @@
         </div>
     @endif
 
+    {{-- PERIODE ─────────────────────────────────────── --}}
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <form method="GET" class="row g-2 align-items-center mb-0">
+                <div class="col-auto">
+                    <span class="text-muted small fw-semibold"><i class="ri-calendar-event-line me-1"></i>Periode</span>
+                </div>
+                <div class="col-md-4 col-lg-3">
+                    <select name="ay_filter" class="form-select form-select-sm" onchange="this.form.submit()">
+                        @foreach($academicYears as $ay)
+                            <option value="{{ $ay->id }}" {{ ($selectedAy?->id ?? '') == $ay->id ? 'selected' : '' }}>
+                                {{ $ay->name }} ({{ $ay->semester_text ?? ucfirst($ay->semester ?? 'ganjil') }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-auto">
+                    @if($isArchive)
+                        <span class="badge bg-warning-subtle text-warning" title="Bukan tahun ajaran aktif — data lama, bukan struktur yang sedang berjalan">
+                            <i class="ri-archive-line me-1"></i>Arsip
+                        </span>
+                    @else
+                        <span class="badge bg-success-subtle text-success">Tahun ajaran aktif</span>
+                    @endif
+                </div>
+                <div class="col-auto ms-auto">
+                    <a href="{{ route('user.kurikulum.index', ['userId' => $userId, 'grade_level_id' => $gradeLevel->id, 'academic_year_id' => $selectedAy?->id, 'semester' => $semester]) }}"
+                       class="btn btn-soft-primary btn-sm">
+                        <i class="ri-route-line me-1"></i>Buka di Peta Kurikulum
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {{-- STATS RINGKASAN ─────────────────────────────── --}}
     <div class="row">
         <div class="col-xl-3 col-md-6">
@@ -40,7 +92,7 @@
                             <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->count() }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Alokasi mapel tingkat ini</p>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Mapel pada periode ini</p>
                 </div>
             </div>
         </div>
@@ -65,14 +117,14 @@
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-global-line text-info"></i></span>
+                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-home-4-line text-warning"></i></span>
                         </div>
                         <div class="flex-grow-1">
-                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mapel Nasional</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->filter(fn($g) => ($g->subject->category ?? '') === 'nasional')->count() }}</h3>
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mapel Pondok</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $jumlahAsal['pondok'] + $jumlahAsal['pondok_dinas'] }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-flag-2-line me-1"></i>Kurikulum nasional</p>
+                    <p class="text-muted mb-0 stat-label"><i class="ri-flag-2-line me-1"></i>Pondok {{ $jumlahAsal['pondok'] }} · Pondok + Dinas {{ $jumlahAsal['pondok_dinas'] }}</p>
                 </div>
             </div>
         </div>
@@ -81,14 +133,21 @@
                 <div class="card-body py-3">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning-subtle rounded fs-2"><i class="ri-home-line text-warning"></i></span>
+                            <span class="avatar-title bg-info-subtle rounded fs-2"><i class="ri-government-line text-info"></i></span>
                         </div>
                         <div class="flex-grow-1">
-                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Muatan Lokal</p>
-                            <h3 class="fw-bold ff-secondary mb-0">{{ $gradeLevelSubjects->filter(fn($g) => ($g->subject->category ?? '') !== 'nasional')->count() }}</h3>
+                            <p class="text-uppercase fw-medium text-muted mb-0 stat-label">Mapel Dinas</p>
+                            <h3 class="fw-bold ff-secondary mb-0">{{ $jumlahAsal['dinas'] }}</h3>
                         </div>
                     </div>
-                    <p class="text-muted mb-0 stat-label"><i class="ri-information-line me-1"></i>Mapel khas satuan pendidikan</p>
+                    <p class="text-muted mb-0 stat-label">
+                        <i class="ri-information-line me-1"></i>
+                        @if($jumlahAsal['belum'] > 0)
+                            {{ $jumlahAsal['belum'] }} belum ditandai di Peta
+                        @else
+                            Kurikulum Dinas
+                        @endif
+                    </p>
                 </div>
             </div>
         </div>
@@ -97,7 +156,7 @@
     <div class="row g-3">
         {{-- KOLOM INFO ─────────────────────────────── --}}
         <div class="col-lg-4">
-            <div class="card mb-0 h-100">
+            <div class="card mb-3">
                 <div class="card-header border-bottom-dashed">
                     <div class="d-flex align-items-center justify-content-between">
                         <h6 class="mb-0"><i class="ri-information-line text-primary me-1"></i>Informasi Tingkat</h6>
@@ -127,6 +186,13 @@
                             <tr><td class="text-muted py-2" style="font-size:0.82rem">Tingkat Angka</td>
                                 <td class="py-2"><span class="badge bg-dark">{{ $gradeLevel->level }}</span></td>
                             </tr>
+                            <tr><td class="text-muted py-2" style="font-size:0.82rem">Fase</td>
+                                <td class="py-2">
+                                    @if($gradeLevel->fase)
+                                        <span class="badge bg-info-subtle text-info">{{ $gradeLevel->fase }}</span>
+                                    @else <span class="text-muted">—</span> @endif
+                                </td>
+                            </tr>
                             <tr><td class="text-muted py-2" style="font-size:0.82rem">Sekolah</td>
                                 <td class="py-2" style="font-size:0.85rem">
                                     @if($gradeLevel->school)
@@ -146,21 +212,9 @@
                                     @endif
                                 </td>
                             </tr>
-                            <tr><td class="text-muted py-2" style="font-size:0.82rem">Rombel Aktif</td>
+                            <tr><td class="text-muted py-2" style="font-size:0.82rem">Rombel {{ $periodeLabel }}</td>
                                 <td class="py-2">
-                                    <span class="badge bg-primary-subtle text-primary">
-                                        {{ $gradeLevel->studyGroups->where('is_active', true)->count() }} rombel
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr><td class="text-muted py-2" style="font-size:0.82rem"> Wali Kelas</td>
-                                <td class="py-2" style="font-size:0.82rem">
-                                    @forelse($gradeLevel->studyGroups->where('is_active', true)->take(3)->filter(fn($sg) => $sg->homeroomTeacher) as $sg)
-                                        <div><i class="ri-user-follow-line text-muted me-1"></i>{{ $sg->homeroomTeacher->name }}</div>
-                                    @empty <span class="text-muted">-</span> @endforelse
-                                    @if($gradeLevel->studyGroups->where('is_active', true)->filter(fn($sg) => $sg->homeroomTeacher)->count() > 3)
-                                        <small class="text-muted">+{{ $gradeLevel->studyGroups->where('is_active', true)->filter(fn($sg) => $sg->homeroomTeacher)->count() - 3 }} lagi</small>
-                                    @endif
+                                    <span class="badge bg-primary-subtle text-primary">{{ $studyGroups->count() }} rombel</span>
                                 </td>
                             </tr>
                         </tbody>
@@ -173,6 +227,49 @@
                     </div>
                 </div>
             </div>
+
+            {{-- ROMBEL & JURUSAN ─────────────────────── --}}
+            <div class="card">
+                <div class="card-header border-bottom-dashed">
+                    <h6 class="mb-0"><i class="ri-team-line text-primary me-1"></i>Rombel &amp; Jurusan</h6>
+                    <p class="text-muted mb-0" style="font-size:0.78rem">
+                        Jurusan menentukan mapel apa yang diterima rombel: mapel bertanda jurusan hanya masuk ke rombel dengan jurusan itu.
+                    </p>
+                </div>
+                <div class="card-body p-0">
+                    @forelse($studyGroups as $sg)
+                        <div class="d-flex align-items-center gap-2 px-3 py-2 {{ ! $loop->last ? 'border-bottom' : '' }}">
+                            <div class="flex-grow-1">
+                                <a href="{{ route('user.study-groups.show', ['userId' => $userId, 'id' => $sg->id]) }}"
+                                   class="fw-semibold link-primary" style="font-size:0.88rem">{{ $sg->name }}</a>
+                                <div class="text-muted" style="font-size:0.75rem">
+                                    {{ $sg->homeroomTeacher?->name ?? 'Wali kelas belum diatur' }}
+                                </div>
+                            </div>
+                            <form method="POST"
+                                  action="{{ route('user.grade-levels.rombels.peminatan', ['userId' => $userId, 'id' => $gradeLevel->id, 'groupId' => $sg->id]) }}"
+                                  class="d-flex align-items-center gap-1">
+                                @csrf
+                                @method('PUT')
+                                <select name="peminatan" class="form-select form-select-sm" style="width:118px" onchange="this.form.submit()">
+                                    <option value="" {{ blank($sg->peminatan) ? 'selected' : '' }}>Tanpa jurusan</option>
+                                    @foreach(\App\Models\StudyGroup::PEMINATAN_OPTIONS as $value => $label)
+                                        <option value="{{ $value }}" {{ $sg->peminatan === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <noscript><button class="btn btn-sm btn-primary">Simpan</button></noscript>
+                            </form>
+                        </div>
+                    @empty
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-2" style="font-size:0.85rem">Belum ada rombel pada periode ini.</p>
+                            <a href="{{ route('user.study-groups.create', ['userId' => $userId]) }}" class="btn btn-soft-primary btn-sm">
+                                <i class="ri-add-line me-1"></i>Tambah Rombel
+                            </a>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
         </div>
 
         {{-- KOLOM MAPEL + KKTP ─────────────────────── --}}
@@ -183,11 +280,11 @@
                         <div class="col-sm">
                             <h6 class="mb-0">
                                 <i class="ri-book-2-line text-success me-1"></i>
-                                Mata Pelajaran & KKTP
+                                Mata Pelajaran &amp; KKTP
                                 <span class="badge bg-success rounded-pill ms-1">{{ $gradeLevelSubjects->count() }}</span>
                             </h6>
                             <p class="text-muted mb-0" style="font-size:0.78rem">
-                                {{ $gradeLevelSubjects->sum('allocation_hours') }} jp/minggu &mdash; Semester {{ $semester }} {{ $activeAy?->name ?? '' }}
+                                {{ $gradeLevelSubjects->sum('allocation_hours') }} jp/minggu &mdash; {{ $periodeLabel }}
                             </p>
                         </div>
                         <div class="col-sm-auto text-sm-end">
@@ -207,28 +304,12 @@
                                 </div>
                             </div>
                             <h5 class="text-muted">Belum ada mata pelajaran</h5>
-                            <p class="text-muted mb-3" style="font-size:0.85rem">Tambahkan mapel terlebih dahulu</p>
+                            <p class="text-muted mb-3" style="font-size:0.85rem">Tambahkan mapel terlebih dahulu pada periode {{ $periodeLabel }}</p>
                             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
                                 <i class="ri-add-circle-line me-1"></i>Tambah Mapel
                             </button>
                         </div>
                     @else
-                        {{-- FILTER TAHUN AJARAN & SEMESTER ─────────────── --}}
-                        <div class="px-3 pt-3 pb-2 border-bottom bg-light">
-                            <form method="GET" class="row g-2 align-items-end mb-0">
-                                <div class="col-md-4">
-                                    <label class="form-label" style="font-size:0.75rem">Tahun Ajaran</label>
-                                    <select name="ay_filter" class="form-select form-select-sm" onchange="this.form.submit()">
-                                        @foreach($academicYears as $ay)
-                                            <option value="{{ $ay->id }}" {{ ($activeAy?->id ?? '') == $ay->id ? 'selected' : '' }}>
-                                                {{ $ay->name }} ({{ $ay->semester_text ?? $ay->semester }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </form>
-                        </div>
-
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle table-freeze mb-0">
                                 <thead class="table-light text-muted" style="font-size:0.72rem">
@@ -236,7 +317,9 @@
                                         <th class="text-center text-uppercase" style="width:45px">#</th>
                                         <th class="text-uppercase">Kode</th>
                                         <th class="text-uppercase">Mata Pelajaran</th>
-                                        <th class="text-uppercase">Kategori</th>
+                                        <th class="text-center text-uppercase">Kategori</th>
+                                        <th class="text-center text-uppercase">Jurusan</th>
+                                        <th class="text-center text-uppercase">Urutan</th>
                                         <th class="text-center text-uppercase">Jam/Mg</th>
                                         <th class="text-center text-uppercase">KKTP</th>
                                         <th class="text-center text-uppercase">Aksi</th>
@@ -245,26 +328,39 @@
                                 <tbody>
                                     @foreach($gradeLevelSubjects as $i => $gls)
                                         @php
-                                            $cat = $gls->subject->category ?? 'nasional';
+                                            $asal = $gls->subject_source;
                                             $kktp = $kktpMap[$gls->subject_id] ?? null;
+                                            $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($gls->track);
                                         @endphp
                                         <tr>
                                             <td class="text-center text-muted">{{ $i + 1 }}</td>
                                             <td><code style="font-size:0.8rem">{{ $gls->subject->code ?? '-' }}</code></td>
                                             <td><span class="fw-semibold" style="font-size:0.88rem">{{ $gls->subject->name }}</span></td>
-                                            <td>
-                                                @if($cat === 'nasional')
-                                                    <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25">
-                                                        <i class="ri-global-line me-1"></i>Nasional
-                                                    </span>
-                                                @elseif($cat === 'muatan_lokal')
-                                                    <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-25">
-                                                        <i class="ri-home-4-line me-1"></i>Muatan Lokal
+                                            <td class="text-center">
+                                                @if($asal)
+                                                    <span class="badge {{ $badgeAsal[$asal] ?? 'bg-secondary-subtle text-secondary' }}">
+                                                        {{ $labelAsal[$asal] ?? $asal }}
                                                     </span>
                                                 @else
-                                                    <span class="badge bg-secondary-subtle text-secondary">
-                                                        <i class="ri-settings-line me-1"></i>Lokal
-                                                    </span>
+                                                    <a href="{{ route('user.kurikulum.index', ['userId' => $userId, 'grade_level_id' => $gradeLevel->id]) }}"
+                                                       class="badge bg-secondary-subtle text-secondary text-decoration-none"
+                                                       title="Asal mapel belum diatur — tetapkan di Peta Kurikulum">
+                                                        <i class="ri-link me-1"></i>Atur di Peta
+                                                    </a>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if($trackUmum)
+                                                    <span class="text-muted">Semua</span>
+                                                @else
+                                                    <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if($gls->sort_order !== null)
+                                                    {{ $gls->sort_order }}
+                                                @else
+                                                    <span class="text-muted" title="Belum bernomor — rapor mengurutkan berdasarkan nama">—</span>
                                                 @endif
                                             </td>
                                             <td class="text-center">
@@ -297,7 +393,7 @@
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <td colspan="4" class="text-end pe-3 fw-semibold text-muted" style="font-size:0.72rem;text-transform:uppercase">Total</td>
+                                        <td colspan="6" class="text-end pe-3 fw-semibold text-muted" style="font-size:0.72rem;text-transform:uppercase">Total</td>
                                         <td class="text-center"><span class="badge bg-dark rounded-pill">{{ $gradeLevelSubjects->sum('allocation_hours') }} jp</span></td>
                                         <td class="text-center">
                                             <span class="badge bg-success rounded-pill">{{ $kktpMap->count() }}/{{ $gradeLevelSubjects->count() }}</span>
@@ -309,13 +405,18 @@
                         </div>
 
                         {{-- TOMBOL ATUR KKTP / JP ────────────────────── --}}
-                        <div class="p-3 border-top bg-light d-flex flex-wrap gap-2">
+                        <div class="p-3 border-top bg-light d-flex flex-wrap gap-2 align-items-center">
                             <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#jpModal">
                                 <i class="ri-time-line me-1"></i>Atur JP
                             </button>
                             <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#kktpModal">
                                 <i class="ri-bar-chart-line me-1"></i>Atur KKTP
                             </button>
+                            <span class="text-muted ms-auto" style="font-size:0.75rem">
+                                <i class="ri-information-line me-1"></i>
+                                Urutan &amp; asal mapel diatur di
+                                <a href="{{ route('user.kurikulum.index', ['userId' => $userId, 'grade_level_id' => $gradeLevel->id]) }}" class="link-primary">Peta Kurikulum</a>.
+                            </span>
                         </div>
                     @endif
                 </div>
@@ -336,17 +437,22 @@
                 </div>
                 <form method="POST" action="{{ route('user.grade-levels.subjects.add', ['userId' => $userId, 'id' => $gradeLevel->id]) }}">
                     @csrf
+                    <input type="hidden" name="ay_filter" value="{{ $selectedAy?->id }}">
                     <div class="modal-body">
                         <div class="alert alert-info mb-3">
                             <i class="ri-information-line me-1"></i>
-                            Mapel yang sudah ditambahkan tidak akan tampil di daftar ini.
+                            Mapel ditambahkan untuk periode <strong>{{ $periodeLabel }}</strong>.
+                            @if($studyGroups->isNotEmpty())
+                                Mapel <strong>Semua</strong> masuk ke {{ $studyGroups->count() }} rombel;
+                                mapel berjurusan hanya masuk ke rombel jurusan itu.
+                            @endif
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold">Mata Pelajaran <span class="text-danger">*</span></label>
                                 <select name="subject_id" class="form-select" required>
                                     <option value="">-- Pilih Mapel --</option>
-                                    @php $assignedIds = $gradeLevelSubjects->pluck('subject_id')->toArray(); @endphp
+                                    @php $assignedIds = $gradeLevelSubjects->whereNull('track')->pluck('subject_id')->toArray(); @endphp
                                     @forelse($availableSubjects as $subj)
                                         @if(!in_array($subj->id, $assignedIds))
                                             <option value="{{ $subj->id }}">{{ $subj->name }}</option>
@@ -356,7 +462,16 @@
                                     @endforelse
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Jurusan</label>
+                                <select name="track" class="form-select">
+                                    <option value="">Semua rombel</option>
+                                    @foreach(\App\Models\StudyGroup::PEMINATAN_OPTIONS as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label fw-semibold">Alokasi Jam/Minggu</label>
                                 <div class="input-group">
                                     <input type="number" name="allocation_hours" class="form-control" value="2" min="0" max="40">
@@ -402,6 +517,7 @@
                 </div>
                 <form method="POST" action="{{ route('user.grade-levels.kktp.save', ['userId' => $userId, 'id' => $gradeLevel->id]) }}">
                     @csrf
+                    <input type="hidden" name="ay_filter" value="{{ $selectedAy?->id }}">
                     <div class="modal-body">
                         {{-- Info semester & tahun ajaran --}}
                         <div class="row">
@@ -409,7 +525,7 @@
                                 <label class="form-label fw-semibold">Tahun Ajaran</label>
                                 <select name="academic_year_id" class="form-select" required>
                                     @foreach($academicYears as $ay)
-                                        <option value="{{ $ay->id }}" {{ ($activeAy?->id ?? '') == $ay->id ? 'selected' : '' }}>
+                                        <option value="{{ $ay->id }}" {{ ($selectedAy?->id ?? '') == $ay->id ? 'selected' : '' }}>
                                             {{ $ay->name }}
                                         </option>
                                     @endforeach
@@ -444,7 +560,7 @@
                                 <tbody>
                                     @foreach($gradeLevelSubjects as $gls)
                                         @php
-                                            $cat = $gls->subject->category ?? 'nasional';
+                                            $asal = $gls->subject_source;
                                             $savedKktp = $kktpMap[$gls->subject_id]->kktp_score ?? $kktpMap[$gls->subject_id]->kkm_score ?? null;
                                         @endphp
                                         <tr>
@@ -453,10 +569,12 @@
                                                 <br><code class="text-muted" style="font-size:0.75rem">{{ $gls->subject->code ?? '-' }}</code>
                                             </td>
                                             <td class="text-center">
-                                                @if($cat === 'nasional')
-                                                    <span class="badge bg-primary-subtle text-primary">Nasional</span>
+                                                @if($asal)
+                                                    <span class="badge {{ $badgeAsal[$asal] ?? 'bg-secondary-subtle text-secondary' }}">
+                                                        {{ $labelAsal[$asal] ?? $asal }}
+                                                    </span>
                                                 @else
-                                                    <span class="badge bg-warning-subtle text-warning">Muatan Lokal</span>
+                                                    <span class="badge bg-secondary-subtle text-secondary">Belum ditandai</span>
                                                 @endif
                                             </td>
                                             <td class="text-center">
@@ -485,6 +603,7 @@
             </div>
         </div>
     </div>
+
     {{-- MODAL: ATUR JP PER MAPEL ─────────────────────── --}}
     <div class="modal fade" id="jpModal" tabindex="-1" aria-labelledby="jpModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -499,6 +618,7 @@
                 <form method="POST" action="{{ route('user.grade-levels.subjects.hours', ['userId' => $userId, 'id' => $gradeLevel->id]) }}">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="ay_filter" value="{{ $selectedAy?->id }}">
                     <div class="modal-body">
                         <div class="alert alert-light border mb-3">
                             <i class="ri-information-line me-1 text-muted"></i>
@@ -514,22 +634,35 @@
                                     <tr>
                                         <th class="text-uppercase">Mata Pelajaran</th>
                                         <th class="text-center text-uppercase">Kategori</th>
+                                        <th class="text-center text-uppercase">Jurusan</th>
                                         <th class="text-center text-uppercase" style="width:120px">JP / Minggu</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($gradeLevelSubjects as $gls)
-                                        @php $cat = $gls->subject->category ?? 'nasional'; @endphp
+                                        @php
+                                            $asal = $gls->subject_source;
+                                            $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($gls->track);
+                                        @endphp
                                         <tr>
                                             <td>
                                                 <span class="fw-semibold" style="font-size:0.88rem">{{ $gls->subject->name }}</span>
                                                 <br><code class="text-muted" style="font-size:0.75rem">{{ $gls->subject->code ?? '-' }}</code>
                                             </td>
                                             <td class="text-center">
-                                                @if($cat === 'nasional')
-                                                    <span class="badge bg-primary-subtle text-primary">Nasional</span>
+                                                @if($asal)
+                                                    <span class="badge {{ $badgeAsal[$asal] ?? 'bg-secondary-subtle text-secondary' }}">
+                                                        {{ $labelAsal[$asal] ?? $asal }}
+                                                    </span>
                                                 @else
-                                                    <span class="badge bg-warning-subtle text-warning">Muatan Lokal</span>
+                                                    <span class="badge bg-secondary-subtle text-secondary">Belum ditandai</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if($trackUmum)
+                                                    <span class="text-muted">Semua</span>
+                                                @else
+                                                    <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
                                                 @endif
                                             </td>
                                             <td class="text-center">
@@ -569,7 +702,7 @@
         icon="https://cdn.lordicon.com/tdrtiskw.json"
         primary-color="#f7b84b" secondary-color="#005981"
         title="Hapus Mapel dari Tingkat?"
-        message="Mapel <strong id=&quot;removeSubjectName&quot;>ini</strong> akan dihapus dari tingkat <strong>{{ $gradeLevel->name }}</strong> dan dinonaktifkan pada seluruh rombel tingkat ini. Riwayat nilai tetap aman."
+        message="Mapel <strong id=&quot;removeSubjectName&quot;>ini</strong> akan dihapus dari tingkat <strong>{{ $gradeLevel->name }}</strong> dan dinonaktifkan pada rombel yang menerimanya. Riwayat nilai tetap aman."
         form-id="removeSubjectForm"
         submit-label="Ya, Hapus"
         submit-icon="ri-delete-bin-2-line"

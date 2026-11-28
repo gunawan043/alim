@@ -230,6 +230,8 @@ class KurikulumController extends Controller
                         // Pengaturan rapor per tingkat: asal mapel & nomor urut.
                         'subject_source' => $gradeSubject->subject_source,
                         'sort_order' => $gradeSubject->sort_order,
+                        'track' => $gradeSubject->track,
+                        'structure_id' => $gradeSubject->id,
                         'is_rapor' => null,
                     ]);
                 }
@@ -665,6 +667,91 @@ class KurikulumController extends Controller
                 ? 'Tidak ada perubahan untuk disimpan.'
                 : 'Peta Kurikulum tersimpan: '.implode(', ', $pesan).'.'
         );
+    }
+
+    /**
+     * Tetapkan jurusan penerima satu baris mapel Peta Kurikulum.
+     *
+     * Kosong = mapel umum (semua rombel). Nilai jurusan = hanya rombel dengan
+     * jurusan itu yang menerima mapel, baik di buku nilai, jadwal, maupun
+     * rapor. Mapel yang dilepas dari sebuah rombel dinonaktifkan di rombel itu
+     * saja — nilai dan riwayat yang sudah ada tidak dihapus.
+     */
+    public function saveTrack(Request $request, string $userId)
+    {
+        $user = $request->user();
+
+        abort_unless(
+            app(KurikulumAccess::class)->isKurikulumTeam($user),
+            403,
+            'Hanya tim kurikulum (termasuk Waka/Kepala) yang dapat mengatur jurusan mapel.'
+        );
+
+        $data = $request->validate([
+            'structure_id' => 'required|exists:grade_level_subjects,id',
+            'track' => 'nullable|in:ipa,bahasa,ips',
+        ]);
+
+        $row = GradeLevelSubject::with('gradeLevel')->findOrFail($data['structure_id']);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $row->gradeLevel?->school_id !== $schoolId) {
+            abort(403, 'Mapel ini bukan milik satuan pendidikan Anda.');
+        }
+
+        app(AcademicPeriodService::class)->assertNotLocked($row->academic_year_id, 'Peta Kurikulum');
+
+        $track = $data['track'] ?: null;
+        $row->forceFill(['track' => $track])->save();
+
+        $provisioner = app(\App\Services\Academic\RombelSubjectProvisioner::class);
+
+        // Rombel pada tingkat & TA yang sama: yang kini menerima mapel
+        // diaktifkan, yang tidak lagi menerima dinonaktifkan.
+        $groups = StudyGroup::query()
+            ->where('grade_level_id', $row->grade_level_id)
+            ->where('is_active', true)
+            ->when($row->academic_year_id, fn ($q) => $q->where('academic_year_id', $row->academic_year_id))
+            ->get();
+
+        $diterima = 0;
+        $dilepas = 0;
+
+        foreach ($groups as $group) {
+            $subject = \App\Models\StudyGroupSubject::query()
+                ->where('study_group_id', $group->id)
+                ->where('subject_id', $row->subject_id)
+                ->first();
+
+            if ($provisioner->appliesTo($row, $group)) {
+                $diterima++;
+                if ($subject && ! $subject->is_active) {
+                    $subject->forceFill(['is_active' => true])->save();
+                }
+
+                continue;
+            }
+
+            if ($subject && $subject->is_active) {
+                $subject->forceFill(['is_active' => false])->save();
+                \App\Models\TeacherAdminBook::query()
+                    ->where('study_group_id', $group->id)
+                    ->where('subject_id', $row->subject_id)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
+                $dilepas++;
+            }
+        }
+
+        $label = $track ? strtoupper($track) : 'semua rombel';
+
+        $pesan = "Jurusan mapel tersimpan: berlaku untuk {$label} ({$diterima} rombel), dilepas dari {$dilepas} rombel.";
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $pesan]);
+        }
+
+        return back()->with('success', $pesan);
     }
 
     /**

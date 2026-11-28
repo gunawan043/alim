@@ -6,6 +6,7 @@ use App\Models\GradeLevelSubject;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\TeachingAssignment;
+use App\Services\Academic\RombelSubjectProvisioner;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -52,7 +53,7 @@ class SubjectHoursSynchronizer
                 'is_active' => true,
             ])->save();
 
-            return $this->propagate($row->academic_year_id, $subjectId, [$gradeLevelId], $hours);
+            return $this->propagate($row->academic_year_id, $subjectId, [$gradeLevelId], $hours, $row->track);
         });
     }
 
@@ -66,16 +67,19 @@ class SubjectHoursSynchronizer
      * @param  array<int, string>  $gradeLevelIds
      * @return array{rombel: int, guru: int}
      */
-    public function propagate(?string $academicYearId, string $subjectId, array $gradeLevelIds, int $hours): array
+    public function propagate(?string $academicYearId, string $subjectId, array $gradeLevelIds, int $hours, ?string $track = null): array
     {
         if ($academicYearId === null || $gradeLevelIds === []) {
             return ['rombel' => 0, 'guru' => 0];
         }
 
+        $trackScope = app(RombelSubjectProvisioner::class)->trackScope((string) $track);
+
         $groupQuery = StudyGroup::query()
             ->whereIn('grade_level_id', $gradeLevelIds)
             ->where('academic_year_id', $academicYearId)
             ->where('is_active', true);
+        $trackScope($groupQuery);
 
         $groupIds = $groupQuery->pluck('id');
 

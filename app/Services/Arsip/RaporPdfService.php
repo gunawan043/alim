@@ -163,6 +163,7 @@ class RaporPdfService
         string $selectedSem,
     ): array {
         $gradeLevelId = StudyGroup::query()->whereKey($studyGroupId)->value('grade_level_id');
+        $peminatan = StudyGroup::query()->whereKey($studyGroupId)->value('peminatan');
 
         $subjectMap = TeacherAdminBook::with('subject')
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
@@ -179,7 +180,7 @@ class RaporPdfService
             ->values();
 
         $orderService = app(RaporSubjectOrderService::class);
-        $subjectMap = $orderService->sortSubjects($subjectMap, $gradeLevelId, $selectedAyId);
+        $subjectMap = $orderService->sortSubjects($subjectMap, $gradeLevelId, $selectedAyId, $peminatan);
 
         // Kelas 11 & 12 memakai daftar per rombel (penjurusan), tingkat lain per tingkat.
         $reportSubjectIds = $orderService->reportSubjectIds($schoolId, $selectedAyId, $selectedSem, $gradeLevelId, $studyGroupId);
@@ -231,7 +232,7 @@ class RaporPdfService
             ->values();
 
         return app(RaporSubjectOrderService::class)
-            ->sortSubjects($subjects, $studyGroup->grade_level_id, $selectedAyId);
+            ->sortSubjects($subjects, $studyGroup->grade_level_id, $selectedAyId, $studyGroup->peminatan);
     }
 
     /**

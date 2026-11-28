@@ -8,6 +8,7 @@ use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\RaporSubject;
 use App\Models\Subject;
+use App\Services\Academic\RombelSubjectProvisioner;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -28,13 +29,13 @@ class RaporSubjectOrderService
      * @param  Collection<int, Subject>  $subjects
      * @return Collection<int, Subject>
      */
-    public function sortSubjects(Collection $subjects, ?string $gradeLevelId, ?string $academicYearId): Collection
+    public function sortSubjects(Collection $subjects, ?string $gradeLevelId, ?string $academicYearId, ?string $peminatan = null): Collection
     {
         if ($subjects->isEmpty()) {
             return $subjects;
         }
 
-        $meta = $this->structureMeta($gradeLevelId, $academicYearId, $subjects->pluck('id')->all());
+        $meta = $this->structureMeta($gradeLevelId, $academicYearId, $subjects->pluck('id')->all(), $peminatan);
 
         return $subjects
             ->sortBy(fn (Subject $subject) => $this->sortKey($subject, $meta->get($subject->id)))
@@ -211,16 +212,20 @@ class RaporSubjectOrderService
      * Metadata urutan + status pondok/dinas per mapel pada satu tingkat.
      *
      * Baris versi TA terpilih diprioritaskan; baris tanpa TA (lama) menjadi
-     * cadangan sehingga data lama tetap terbaca.
+     * cadangan sehingga data lama tetap terbaca. Bila rombel berjurusan dan
+     * mapel punya baris khusus jurusan itu, baris tersebut yang dipakai
+     * agar urutan/sumber rapor rombel mengikuti penyusunan untuk jurusannya.
      *
      * @param  array<int, string>  $subjectIds
      * @return Collection<string, GradeLevelSubject>
      */
-    public function structureMeta(?string $gradeLevelId, ?string $academicYearId, array $subjectIds): Collection
+    public function structureMeta(?string $gradeLevelId, ?string $academicYearId, array $subjectIds, ?string $peminatan = null): Collection
     {
         if (! $gradeLevelId || $subjectIds === []) {
             return collect();
         }
+
+        $peminatan = strtolower(trim((string) $peminatan));
 
         return GradeLevelSubject::query()
             ->where('grade_level_id', $gradeLevelId)
@@ -228,6 +233,12 @@ class RaporSubjectOrderService
             ->when($academicYearId, fn ($q) => $q->forAcademicYear($academicYearId))
             ->orderByAcademicYearFirst()
             ->get()
+            ->sortBy(fn (GradeLevelSubject $meta) => [
+                // Jurusan rombel didahulukan, lalu mapel umum, terakhir
+                // baris jurusan lain — yang hanya jadi cadangan tampilan.
+                ! RombelSubjectProvisioner::isTrackUmum($meta->track)
+                    && strtolower(trim((string) $meta->track)) === $peminatan ? 0 : 1,
+            ])
             ->unique('subject_id')
             ->keyBy('subject_id');
     }

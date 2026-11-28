@@ -94,7 +94,7 @@ class GradeLevelController extends Controller
             ->with('success', 'Tingkat kelas berhasil disimpan.');
     }
 
-    public function show(string $userId, string $id)
+    public function show(Request $request, string $userId, string $id)
     {
         $gradeLevel = GradeLevel::with('school')->findOrFail($id);
         $schoolId = request()->attributes->get('schoolContextId');
@@ -102,15 +102,19 @@ class GradeLevelController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $activeAy = AcademicYear::where('is_active', true)->first();
-        $semester = $activeAy?->semester ?? 'ganjil';
+        // Periode yang dilihat: pilihan pengguna, selain itu TA aktif.
+        $academicYears = AcademicYear::orderByDesc('start_date')->orderByDesc('created_at')->get();
+        $activeAy = $academicYears->firstWhere('is_active', true) ?? $academicYears->first();
+        $selectedAy = $academicYears->firstWhere('id', $request->input('ay_filter')) ?? $activeAy;
+        $isArchive = $activeAy && $selectedAy && (string) $selectedAy->id !== (string) $activeAy->id;
+        $semester = $selectedAy?->semester === 'genap' ? 'genap' : 'ganjil';
 
-        // ARSIP PERIODE: struktur versi TA aktif + baris lama (NULL) sebagai fallback.
+        // ARSIP PERIODE: struktur versi TA terpilih + baris lama (NULL) sebagai fallback.
         // Baris shadow nonaktif (mapel dihapus untuk TA ini) menutupi baris lama,
         // lalu dibuang dari tampilan.
         $gradeLevelSubjects = GradeLevelSubject::with('subject')
             ->where('grade_level_id', $id)
-            ->forAcademicYear($activeAy?->id)
+            ->forAcademicYear($selectedAy?->id)
             ->orderByAcademicYearFirst()
             ->orderBy('subject_id')
             ->get()
@@ -123,18 +127,25 @@ class GradeLevelController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Ambil KKTP per mapel untuk semester aktif
+        // KKTP per mapel untuk semester aktif
         $kktpMap = SubjectKktp::where('grade_level_id', $id)
-            ->when($activeAy, fn ($q) => $q->where('academic_year_id', $activeAy->id))
+            ->when($selectedAy, fn ($q) => $q->where('academic_year_id', $selectedAy->id))
             ->where('semester', $semester)
             ->get()
             ->keyBy('subject_id');
 
-        $academicYears = AcademicYear::orderBy('name', 'desc')->get();
+        // Rombel tingkat ini — jurusan diisi dari sini.
+        $studyGroups = StudyGroup::with('homeroomTeacher')
+            ->where('grade_level_id', $id)
+            ->where('school_id', $gradeLevel->school_id)
+            ->when($selectedAy, fn ($q) => $q->where('academic_year_id', $selectedAy->id))
+            ->orderBy('name')
+            ->get();
 
         return view('grade-levels.show', compact(
             'gradeLevel', 'userId', 'gradeLevelSubjects', 'availableSubjects',
-            'kktpMap', 'activeAy', 'semester', 'academicYears'
+            'kktpMap', 'activeAy', 'selectedAy', 'semester', 'academicYears',
+            'studyGroups', 'isArchive'
         ));
     }
 
@@ -155,14 +166,19 @@ class GradeLevelController extends Controller
                     ->where(fn ($q) => $q->where('school_id', $gradeLevel->school_id)->where('is_active', true)),
             ],
             'allocation_hours' => 'nullable|integer|min:0|max:40',
+            // Kosong = mapel umum (semua rombel). Nilai jurusan = hanya
+            // rombel dengan jurusan itu yang menerimanya.
+            'track' => 'nullable|in:ipa,bahasa,ips',
         ]);
 
         $weeklyHours = (int) ($validated['allocation_hours'] ?? 0);
-        $activeAy = AcademicYear::where('is_active', true)->first();
+        $track = $validated['track'] ?: null;
+        $activeAy = $this->periodFromRequest($request);
 
         $existing = GradeLevelSubject::query()
             ->where('grade_level_id', $id)
             ->where('subject_id', $validated['subject_id'])
+            ->where(fn ($q) => $q->where('track', $track)->orWhereNull('track'))
             ->forAcademicYear($activeAy?->id)
             ->orderByAcademicYearFirst()
             ->first();
@@ -170,9 +186,9 @@ class GradeLevelController extends Controller
         if ($existing) {
             // Baris versi TA berjalan yang pernah dinonaktifkan → aktifkan kembali (idempoten).
             if ($existing->academic_year_id && ! $existing->is_active) {
-                $existing->update(['is_active' => true, 'allocation_hours' => $weeklyHours]);
+                $existing->update(['is_active' => true, 'allocation_hours' => $weeklyHours, 'track' => $track]);
 
-                $propagated = $this->propagateSubjectToStudyGroups($gradeLevel, $existing->subject_id, $weeklyHours);
+                $propagated = $this->propagateSubjectToStudyGroups($gradeLevel, $existing->subject_id, $weeklyHours, $track);
 
                 return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $id])
                     ->with('success', "Mapel diaktifkan kembali untuk TA berjalan dan {$propagated} rombel aktif.");
@@ -187,34 +203,65 @@ class GradeLevelController extends Controller
             'grade_level_id' => $id,
             'subject_id' => $validated['subject_id'],
             'allocation_hours' => $weeklyHours,
+            'track' => $track,
         ]);
 
-        // Propagasi: mapel tingkat → seluruh rombel aktif pada tingkat yang sama,
-        // agar langsung muncul di Buku Nilai, Jadwal, Plotting, dan Leger.
-        $propagated = $this->propagateSubjectToStudyGroups($gradeLevel, $validated['subject_id'], $weeklyHours);
+        // Propagasi: mapel tingkat → rombel aktif pada tingkat yang sama
+        // (dan jurusannya), agar langsung muncul di Buku Nilai, Jadwal,
+        // Plotting, dan Leger.
+        $propagated = $this->propagateSubjectToStudyGroups($gradeLevel, $validated['subject_id'], $weeklyHours, $track);
+
+        $scope = $track ? ' ke rombel '.strtoupper($track) : '';
 
         return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $id])
             ->with('success', $propagated > 0
-                ? "Mapel berhasil ditambahkan ke tingkat ini dan {$propagated} rombel aktif."
+                ? "Mapel berhasil ditambahkan ke tingkat ini{$scope} dan {$propagated} rombel aktif."
                 : 'Mapel berhasil ditambahkan.');
     }
 
     /**
-     * Sinkronkan mapel tingkat ke seluruh rombel aktif pada tingkat yang sama.
-     * Baris yang pernah di-soft-delete dihidupkan kembali; jam mengajar yang
-     * sudah diatur di rombel tidak ditimpa.
+     * Periode yang sedang diatur: TA pilihan pengguna, selain itu TA aktif.
      */
-    protected function propagateSubjectToStudyGroups(GradeLevel $gradeLevel, string $subjectId, int $weeklyHours = 0): int
+    protected function periodFromRequest(Request $request): ?AcademicYear
     {
+        if ($request->filled('ay_filter')) {
+            $selected = AcademicYear::find($request->input('ay_filter'));
+
+            if ($selected) {
+                return $selected;
+            }
+        }
+
+        return AcademicYear::where('is_active', true)->first();
+    }
+
+    /**
+     * Sinkronkan mapel tingkat ke rombel aktif pada tingkat yang sama.
+     * Mapel bertanda jurusan hanya masuk ke rombel dengan jurusan itu;
+     * mapel umum masuk ke semua rombel. Baris yang pernah di-soft-delete
+     * dihidupkan kembali; jam mengajar yang sudah diatur tidak ditimpa.
+     */
+    protected function propagateSubjectToStudyGroups(GradeLevel $gradeLevel, string $subjectId, int $weeklyHours = 0, ?string $track = null): int
+    {
+        $academicYearId = $this->periodFromRequest(request())?->id;
+
         $groups = StudyGroup::query()
             ->where('grade_level_id', $gradeLevel->id)
             ->where('school_id', $gradeLevel->school_id)
+            ->when($academicYearId, fn ($q) => $q->where('academic_year_id', $academicYearId))
             ->where('is_active', true)
-            ->get(['id']);
+            ->get();
+
+        $provisioner = app(\App\Services\Academic\RombelSubjectProvisioner::class);
+        $row = new GradeLevelSubject(['track' => $track]);
 
         $count = 0;
 
         foreach ($groups as $group) {
+            if (! $provisioner->appliesTo($row, $group)) {
+                continue;
+            }
+
             $existing = StudyGroupSubject::withTrashed()
                 ->where('study_group_id', $group->id)
                 ->where('subject_id', $subjectId)
@@ -263,12 +310,6 @@ class GradeLevelController extends Controller
             'hours.*' => 'nullable|integer|min:0|max:40',
         ]);
 
-        $groupIds = StudyGroup::query()
-            ->where('grade_level_id', $gradeLevel->id)
-            ->where('school_id', $gradeLevel->school_id)
-            ->where('is_active', true)
-            ->pluck('id');
-
         $updated = 0;
 
         foreach ($validated['hours'] as $gradeLevelSubjectId => $hours) {
@@ -281,15 +322,14 @@ class GradeLevelController extends Controller
                 continue;
             }
 
-            $hours = (int) $hours;
-            $row->update(['allocation_hours' => $hours]);
-
-            if ($groupIds->isNotEmpty()) {
-                StudyGroupSubject::query()
-                    ->whereIn('study_group_id', $groupIds)
-                    ->where('subject_id', $row->subject_id)
-                    ->update(['weekly_hours' => $hours]);
-            }
+            // Satu sumber: JP tingkat disimpan lalu disebar ke rombel yang
+            // menerima mapel itu (mengikuti jurusan).
+            app(\App\Services\SubjectHoursSynchronizer::class)->applyGradeLevelHours(
+                $row->subject_id,
+                $row->grade_level_id,
+                $row->academic_year_id,
+                (int) $hours,
+            );
 
             $updated++;
         }
@@ -337,18 +377,66 @@ class GradeLevelController extends Controller
                 );
             }
 
-            // Nonaktifkan mapel pada rombel-rombel tingkat ini (riwayat nilai tidak dihapus).
-            $groupIds = StudyGroup::where('grade_level_id', $id)
-                ->where('school_id', $gradeLevel->school_id)
-                ->pluck('id');
-
-            StudyGroupSubject::whereIn('study_group_id', $groupIds)
+            // Nonaktifkan mapel pada rombel tingkat ini (riwayat nilai tidak dihapus).
+            // Mapel umum tidak boleh ikut mati bila masih ada baris jurusan lain
+            // dengan mapel yang sama pada tingkat ini.
+            $masihAdaBarisLain = GradeLevelSubject::query()
+                ->where('grade_level_id', $id)
                 ->where('subject_id', $subjectId)
-                ->update(['is_active' => false]);
+                ->where('is_active', true)
+                ->whereKeyNot($gls->id)
+                ->exists();
+
+            if (! $masihAdaBarisLain) {
+                $groupIds = StudyGroup::where('grade_level_id', $id)
+                    ->where('school_id', $gradeLevel->school_id)
+                    ->pluck('id');
+
+                StudyGroupSubject::whereIn('study_group_id', $groupIds)
+                    ->where('subject_id', $subjectId)
+                    ->update(['is_active' => false]);
+            }
         }
 
         return redirect()->route('user.grade-levels.show', ['userId' => $userId, 'id' => $id])
             ->with('success', 'Mapel berhasil dihapus.');
+    }
+
+    /**
+     * Tetapkan jurusan satu rombel pada tingkat ini.
+     *
+     * Perubahan jurusan langsung menyusun ulang mapel rombel sesuai Peta:
+     * mapel jurusan lama dilepas, mapel jurusan baru diaktifkan. Riwayat
+     * nilai tidak dihapus.
+     */
+    public function updateRombelPeminatan(Request $request, string $userId, string $id, string $groupId)
+    {
+        $gradeLevel = GradeLevel::findOrFail($id);
+        $schoolId = $request->attributes->get('schoolContextId');
+
+        if ($schoolId && $gradeLevel->school_id !== $schoolId) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $studyGroup = StudyGroup::query()
+            ->where('grade_level_id', $gradeLevel->id)
+            ->where('school_id', $gradeLevel->school_id)
+            ->findOrFail($groupId);
+
+        $validated = $request->validate([
+            'peminatan' => 'nullable|in:ipa,ips,bahasa',
+        ]);
+
+        $studyGroup->update(['peminatan' => $validated['peminatan'] ?: null]);
+
+        $hasil = app(\App\Services\Academic\RombelSubjectProvisioner::class)->provision($studyGroup);
+
+        return back()->with(
+            'success',
+            "Jurusan {$studyGroup->name} tersimpan"
+            .($studyGroup->peminatanLabel() ? ' ('.strtoupper($studyGroup->peminatanLabel()).')' : '')
+            .". {$hasil['assignments']} mapel diselaraskan."
+        );
     }
 
     public function saveKktp(Request $request, string $userId, string $id)

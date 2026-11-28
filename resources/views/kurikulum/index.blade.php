@@ -370,6 +370,7 @@
                                 <th class="text-center peta-col-jp" title="Jam pelajaran per minggu untuk mapel ini di tingkat tersebut">JP/Minggu</th>
                                 <th class="text-center peta-col-jp-efektif" title="JP mingguan dikali pekan efektif">JP Efektif</th>
                                 <th class="text-center" title="Asal mapel. Rapor mencetak blok Pondok lebih dulu, lalu Dinas.">Pondok/Dinas</th>
+                                <th class="text-center" title="Jurusan yang menerima mapel ini. Kosong = semua rombel tingkat ini (mapel umum).">Jurusan</th>
                                 <th class="text-center" title="Nomor urut mapel di rapor. Semua rombel pada tingkat yang sama memakai urutan ini.">Urutan</th>
                                 <th class="text-center" title="Kriteria Ketercapaian Tujuan Pembelajaran (0-100) — satu nilai untuk seluruh rombel di tingkat ini">N-KKTP</th>
                                 <th class="text-center">CP</th>
@@ -432,6 +433,24 @@
                                                     : '—';
                                             @endphp
                                             <span class="badge {{ $sumberBadge }}">{{ $sumberLabel }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @php $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($row['track'] ?? null); @endphp
+                                        @if($canEditRapor ?? false)
+                                            <select class="form-select form-select-sm"
+                                                    data-peta-track
+                                                    data-structure="{{ $row['structure_id'] }}"
+                                                    title="Rombel hanya menerima mapel yang sesuai jurusannya">
+                                                <option value="" {{ $trackUmum ? 'selected' : '' }}>Semua</option>
+                                                @foreach(\App\Models\StudyGroup::PEMINATAN_OPTIONS as $value => $label)
+                                                    <option value="{{ $value }}" {{ ($row['track'] ?? '') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <span class="badge {{ $trackUmum ? 'bg-secondary-subtle text-secondary' : 'bg-info-subtle text-info' }}">
+                                                {{ $trackUmum ? 'Semua' : strtoupper((string) $row['track']) }}
+                                            </span>
                                         @endif
                                     </td>
                                     <td class="text-center">
@@ -517,7 +536,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="13" class="text-center py-5">
+                                    <td colspan="14" class="text-center py-5">
                                         <div class="text-muted">
                                             <i class="ri-inbox-archive-line fs-1 d-block mb-2"></i>
                                             @if(($mapelFilter ?? 'all') === 'diampu')
@@ -565,6 +584,56 @@
 @push('scripts')
 <script>
 (function () {
+    // Jurusan simpan langsung saat dipilih: mapel jurusan hanya sampai ke
+    // rombel dengan jurusan itu, jadi tidak perlu menunggu "Simpan Peta".
+    document.addEventListener('change', async function (event) {
+        const select = event.target.closest('[data-peta-track]');
+        if (!select) {
+            return;
+        }
+
+        select.disabled = true;
+
+        try {
+            const body = new FormData();
+            body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}');
+            body.append('structure_id', select.dataset.structure);
+            body.append('track', select.value);
+
+            const response = await fetch('{{ route('user.kurikulum.peta.track', ['userId' => $userId]) }}', {
+                method: 'POST',
+                body,
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.message || ('HTTP ' + response.status));
+            }
+
+            showTrackNotice(data.message || 'Jurusan tersimpan.', true);
+        } catch (error) {
+            showTrackNotice(error.message || 'Jurusan gagal disimpan. Muat ulang halaman lalu coba lagi.', false);
+        } finally {
+            select.disabled = false;
+        }
+    });
+
+    function showTrackNotice(message, ok) {
+        let box = document.getElementById('petaTrackNotice');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'petaTrackNotice';
+            const table = document.querySelector('[data-peta-row]')?.closest('table');
+            table?.parentElement?.before(box);
+        }
+        box.className = 'alert alert-dismissible fade show mb-0 rounded-0 border-start-0 border-end-0 py-2 '
+            + (ok ? 'alert-success' : 'alert-danger');
+        box.textContent = message;
+    }
+
     // Panah urutan menyimpan lewat fetch lalu memindahkan baris di layar,
     // jadi halaman tidak dimuat ulang dan input yang sedang diisi tidak hilang.
     document.addEventListener('click', async function (event) {

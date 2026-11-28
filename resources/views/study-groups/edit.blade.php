@@ -110,6 +110,15 @@
                                     <option value="siang" {{ old('shift', $studyGroup->shift) === 'siang' ? 'selected' : '' }}>Siang</option>
                                 </select>
                             </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Jurusan</label>
+                                <select name="peminatan" class="form-select">
+                                    <option value="">— Tanpa jurusan —</option>
+                                    @foreach(\App\Models\StudyGroup::PEMINATAN_OPTIONS as $value => $label)
+                                        <option value="{{ $value }}" {{ old('peminatan', $studyGroup->peminatan) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="col-12">
                                 <label class="form-label">Catatan</label>
                                 <textarea name="notes" class="form-control" rows="2">{{ old('notes', $studyGroup->notes) }}</textarea>

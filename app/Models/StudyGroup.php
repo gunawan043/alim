@@ -23,7 +23,7 @@ class StudyGroup extends Model
     }
 
     protected $fillable = [
-        'school_id', 'unit_type', 'data_owner_school_id', 'academic_year_id', 'grade_level_id',
+        'school_id', 'unit_type', 'data_owner_school_id', 'academic_year_id', 'grade_level_id', 'peminatan',
         'homeroom_teacher_id', 'homeroom_name', 'name', 'code',
         'capacity', 'room', 'curriculum_type', 'shift',
         'is_active', 'notes',
@@ -34,6 +34,25 @@ class StudyGroup extends Model
         'is_active' => 'boolean',
         'unit_type' => 'string',
     ];
+
+    /**
+     * Jurusan rombel untuk Kelas 11 & 12. Kosong berarti rombel menerima
+     * seluruh mapel tingkat (tidak ada penjurusan). Nilai disimpan huruf
+     * kecil: ipa | bahasa | ips (ips dipertahankan agar data lama tetap valid).
+     */
+    public const PEMINATAN_OPTIONS = [
+        'ipa' => 'IPA',
+        'bahasa' => 'Bahasa',
+    ];
+
+    public function peminatanLabel(): ?string
+    {
+        if ($this->peminatan === null || $this->peminatan === '') {
+            return null;
+        }
+
+        return self::PEMINATAN_OPTIONS[$this->peminatan] ?? strtoupper((string) $this->peminatan);
+    }
 
     // ── Relationships ────────────────────────────────────────────
 

@@ -2,8 +2,7 @@
 
 namespace App\Services\Academic;
 
-use App\Models\AcademicYear;
-use App\Models\GradeLevelSubject;
+use App\Models\AcademicYear;use App\Models\GradeLevelSubject;
 use App\Models\StudyGroup;
 use App\Models\StudyGroupSubject;
 use App\Models\SubjectKktp;
@@ -25,7 +24,7 @@ use App\Observers\StudyGroupSubjectObserver;
 class RombelSubjectProvisioner
 {
     /**
-     * @return array{assignments:int, books:int}
+     * @return array{assignments:int, books:int, released:int}
      */
     public function provision(StudyGroup $group, bool $createBooks = true): array
     {
@@ -36,8 +35,12 @@ class RombelSubjectProvisioner
             : AcademicYear::where('is_active', true)->first();
 
         if (! $academicYear || ! $group->grade_level_id) {
-            return ['assignments' => 0, 'books' => 0];
+            return ['assignments' => 0, 'books' => 0, 'released' => 0];
         }
+
+        // Model ini bisa berasal dari event `updated` yang masih menyimpan
+        // atribut lama; baca ulang agar jurusan yang baru dipakai.
+        $group = StudyGroup::query()->with(['school'])->find($group->id) ?? $group;
 
         $rows = GradeLevelSubject::query()
             ->forAcademicYear($academicYear->id)
@@ -45,10 +48,14 @@ class RombelSubjectProvisioner
             ->where('grade_level_id', $group->grade_level_id)
             ->where('is_active', true)
             ->get()
+            // Mapel bertanda jurusan hanya untuk rombel dengan jurusan itu;
+            // baris tanpa jurusan berlaku untuk semua rombel tingkat.
+            ->filter(fn (GradeLevelSubject $row) => $this->appliesTo($row, $group))
+            ->values()
             ->unique('subject_id');
 
         if ($rows->isEmpty()) {
-            return ['assignments' => 0, 'books' => 0];
+            return ['assignments' => 0, 'books' => 0, 'released' => 0];
         }
 
         $fallbackTeacherId = $group->homeroom_teacher_id
@@ -155,7 +162,76 @@ class RombelSubjectProvisioner
             StudyGroupSubjectObserver::enable();
         }
 
-        return ['assignments' => $assignments, 'books' => $books];
+        // Mapel yang tidak lagi menjadi bagian rombel ini (mis. rombel
+        // berganti jurusan) dinonaktifkan — nilai & riwayat tetap tersimpan.
+        $subjectIds = $rows->pluck('subject_id')->all();
+
+        $dilepas = StudyGroupSubject::query()
+            ->where('study_group_id', $group->id)
+            ->where('academic_year_id', $academicYear->id)
+            ->where('is_active', true)
+            ->whereNotIn('subject_id', $subjectIds)
+            ->update(['is_active' => false]);
+
+        if ($dilepas > 0) {
+            TeacherAdminBook::query()
+                ->where('study_group_id', $group->id)
+                ->where('academic_year_id', $academicYear->id)
+                ->where('is_active', true)
+                ->whereNotIn('subject_id', $subjectIds)
+                ->update(['is_active' => false]);
+        }
+
+        return ['assignments' => $assignments, 'books' => $books, 'released' => (int) $dilepas];
+    }
+
+    /**
+     * Mapel tanpa jurusan (track kosong) berlaku untuk semua rombel.
+     */
+    public static function isTrackUmum(?string $track): bool
+    {
+        return strtolower(trim((string) $track)) === '';
+    }
+
+    /**
+     * Batasi query rombel pada jurusan tertentu. Mapel tanpa jurusan tidak
+     * membatasi apa pun.
+     */
+    public function trackScope(string $track): \Closure
+    {
+        $track = strtolower(trim($track));
+
+        return function ($query) use ($track) {
+            if (self::isTrackUmum($track)) {
+                return;
+            }
+
+            $query->whereRaw("LOWER(TRIM(COALESCE(peminatan, ''))) = ?", [$track]);
+        };
+    }
+
+    /**
+     * Apakah satu baris mapel tingkat berlaku untuk rombel tertentu.
+     *
+     * `track` kosong = mapel umum, diterima semua rombel. Selain itu hanya
+     * rombel dengan jurusan yang sama; rombel tanpa jurusan menerima semua.
+     */
+    public function appliesTo(GradeLevelSubject $row, StudyGroup $group): bool
+    {
+        $track = strtolower(trim((string) $row->track));
+
+        if ($track === '') {
+            return true;
+        }
+
+        $peminatan = strtolower(trim((string) $group->peminatan));
+
+        // Rombel tanpa jurusan (mis. kelas bawah) menerima semua mapel tingkat.
+        if ($peminatan === '') {
+            return true;
+        }
+
+        return $track === $peminatan;
     }
 
     /**

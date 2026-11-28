@@ -1237,6 +1237,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::post('/kktp', [KurikulumController::class, 'saveKktp'])->name('kktp.save');
                 Route::post('/struktur-rapor', [KurikulumController::class, 'saveStruktur'])->name('struktur.save');
                 Route::post('/peta', [KurikulumController::class, 'savePeta'])->name('peta.save');
+                Route::post('/peta/jurusan', [KurikulumController::class, 'saveTrack'])->name('peta.track');
                 Route::get('/struktur-rapor/pindah', [KurikulumController::class, 'moveStruktur'])->name('struktur.move');
                 Route::post('/siapkan', [KurikulumController::class, 'siapkan'])->name('siapkan');
 
@@ -1826,6 +1827,7 @@ Route::middleware(['auth', 'employee.access'])->group(function () {
                 Route::put('/{id}/subjects/hours', [GradeLevelController::class, 'updateSubjectHours'])->name('subjects.hours');
                 Route::delete('/{id}/subjects/remove', [GradeLevelController::class, 'removeSubject'])->name('subjects.remove');
                 Route::post('/{id}/kktp', [GradeLevelController::class, 'saveKktp'])->name('kktp.save');
+                Route::put('/{id}/rombels/{groupId}/jurusan', [GradeLevelController::class, 'updateRombelPeminatan'])->name('rombels.peminatan');
             });
 
             // ── SUBJECTS ───────────────────────────────────────────

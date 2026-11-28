@@ -146,6 +146,7 @@ class StudyGroupController extends Controller
         $rules = [
             'academic_year_id' => 'required|exists:academic_years,id',
             'grade_level_id' => 'required|exists:grade_levels,id',
+            'peminatan' => 'nullable|in:ipa,ips,bahasa',
             'homeroom_teacher_id' => 'nullable|exists:users,id',
             'name' => 'required|string|max:50',
             'code' => 'nullable|string|max:20',
@@ -259,6 +260,7 @@ class StudyGroupController extends Controller
         $rules = [
             'academic_year_id' => 'required|exists:academic_years,id',
             'grade_level_id' => 'required|exists:grade_levels,id',
+            'peminatan' => 'nullable|in:ipa,ips,bahasa',
             'homeroom_teacher_id' => 'nullable|exists:users,id',
             'name' => 'required|string|max:50',
             'code' => 'nullable|string|max:20',

@@ -53,7 +53,7 @@ class LegerPdfService
         // Urutan & daftar mapel mengikuti pengaturan TINGKAT di Peta Kurikulum
         // (Pondok → Dinas → nomor urut), sama dengan rapor.
         $orderService = app(RaporSubjectOrderService::class);
-        $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
+        $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId, $studyGroup->peminatan);
 
         $reportSubjectIds = $orderService->reportSubjectIds(
             $schoolId, $selectedAyId, $selectedSem, $studyGroup->grade_level_id, $studyGroup->id

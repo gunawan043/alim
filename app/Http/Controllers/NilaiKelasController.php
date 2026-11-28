@@ -190,7 +190,7 @@ class NilaiKelasController extends Controller
         // Susunan kolom mengikuti pengaturan TINGKAT di Peta Kurikulum:
         // blok Pondok lebih dulu, lalu Dinas, sesuai nomor urut.
         $orderService = app(\App\Services\RaporSubjectOrderService::class);
-        $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
+        $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId, $studyGroup->peminatan);
 
         // FALLBACK MAPEL: buku admin belum dibuat, tetapi rombel sudah punya
         // assignment mapel (study_group_subjects). Tampilkan kolom mapel agar
@@ -207,7 +207,7 @@ class NilaiKelasController extends Controller
                 ->values();
 
             $subjectMap = app(\App\Services\RaporSubjectOrderService::class)
-                ->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
+                ->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId, $studyGroup->peminatan);
 
             if ($subjectMap->isNotEmpty()) {
                 $subjectSource = 'rombel_assignment';
@@ -1502,7 +1502,7 @@ class NilaiKelasController extends Controller
         // Susunan kolom mengikuti pengaturan TINGKAT di Peta Kurikulum:
         // blok Pondok lebih dulu, lalu Dinas, sesuai nomor urut.
         $subjectMap = app(\App\Services\RaporSubjectOrderService::class)
-            ->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
+            ->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId, $studyGroup->peminatan);
 
         $bookMap = $subjectMap->mapWithKeys(fn ($s) => [
             $s->id => TeacherAdminBook::with('subject', 'kktp')
@@ -2642,6 +2642,7 @@ class NilaiKelasController extends Controller
                     \App\Models\Subject::query()->whereIn('id', $checked)->get(),
                     $studyGroup->grade_level_id,
                     (string) $validated['academic_year_id'],
+                    $studyGroup->peminatan,
                 )
                 ->pluck('id')
                 ->all();

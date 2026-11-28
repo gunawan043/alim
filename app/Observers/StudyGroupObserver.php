@@ -29,9 +29,9 @@ class StudyGroupObserver
 
     public function updated(StudyGroup $studyGroup): void
     {
-        if ($studyGroup->wasChanged(['grade_level_id', 'academic_year_id'])) {
-            // Rombel berpindah tingkat/TA: susun ulang mapel & buku nilai
-            // mengikuti struktur tingkat pada TA barunya.
+        if ($studyGroup->wasChanged(['grade_level_id', 'academic_year_id', 'peminatan'])) {
+            // Rombel berpindah tingkat/TA/jurusan: susun ulang mapel & buku
+            // nilai mengikuti struktur tingkat dan jurusan barunya.
             $this->subjects->provision($studyGroup);
         }
 
