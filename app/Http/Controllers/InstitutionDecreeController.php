@@ -149,6 +149,9 @@ class InstitutionDecreeController extends Controller
         $taskTypeOptions = collect();
         $pendampingSubjects = [];
         $pendampingHoursByGrade = [];
+        // SD IT kelas 1–3: Wali Kelas otomatis mengajar mapel ini di kelasnya
+        // dan menjadi Guru Pendamping mapel yang sama di rombel lain tingkat itu.
+        $autoWaliSubjects = $this->autoWaliSubjectsFor($selectedSchool);
         if ($teachers->isNotEmpty()) {
             $teacherIds = $teachers->pluck('id');
             $workUnitId = $selectedSchool?->work_unit_id;
@@ -343,8 +346,29 @@ class InstitutionDecreeController extends Controller
         return view('institution-decrees.create', compact(
             'userId', 'schools', 'academicYears', 'activeYear', 'signers',
             'selectedSchoolId', 'selectedAyId', 'selectedSchool',
-            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions', 'crossUnitByTeacher', 'pendampingSubjects', 'pendampingHoursByGrade'
+            'teachers', 'subjects', 'studyGroups', 'canSelectSchool', 'currentAssignments', 'currentTasks', 'currentPositions', 'currentPositionIds', 'positionOptions', 'jpDefaults', 'taskTypeOptions', 'crossUnitByTeacher', 'pendampingSubjects', 'pendampingHoursByGrade', 'autoWaliSubjects'
         ));
+    }
+
+    /**
+     * Aturan Wali Kelas otomatis per tingkat untuk SD IT kelas 1–3.
+     * Jenjang lain (SMP/SMA/PPS) dan kelas 4–6 tidak mendapat aturan apa pun.
+     *
+     * @return array<int, array{level:int, subjects:array<int,string>}>
+     */
+    private function autoWaliSubjectsFor(?School $school): array
+    {
+        if (! $school || $school->school_level !== 'sd') {
+            return [];
+        }
+
+        $kelas12 = ['Matematika', 'Seni Budaya', 'Bahasa Indonesia', 'PJOK'];
+
+        return [
+            ['level' => 1, 'subjects' => $kelas12],
+            ['level' => 2, 'subjects' => $kelas12],
+            ['level' => 3, 'subjects' => ['Matematika', 'Seni Budaya', 'Bahasa Indonesia', 'IPAS', 'PJOK']],
+        ];
     }
 
     public function store(Request $request, string $userId)
@@ -777,6 +801,7 @@ class InstitutionDecreeController extends Controller
             'selectedSchool' => $decree->school,
             'selectedSchoolId' => $decree->school_id,
             'selectedAyId' => $decree->academic_year_id,
+            'autoWaliSubjects' => $this->autoWaliSubjectsFor($decree->school),
             'teachers' => $teachers,
             'currentAssignments' => $currentAssignments,
             'currentTasks' => $currentTasks,

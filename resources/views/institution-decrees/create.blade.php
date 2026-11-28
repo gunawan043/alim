@@ -548,6 +548,8 @@ const taskTypeOptions    = {!! json_encode($taskTypeOptions) !!};
 // Peta Kurikulum (kunci "grade_level_id|subject_id").
 const pendampingSubjectIds     = {!! json_encode(array_values($pendampingSubjects ?? [])) !!};
 const pendampingHoursByGrade   = {!! json_encode($pendampingHoursByGrade ?? []) !!};
+// SD IT kelas 1–3: aturan mapel Wali Kelas otomatis. Kosong untuk jenjang lain.
+const autoWaliSubjects   = {!! json_encode($autoWaliSubjects ?? []) !!};
 const draftStorageKey    = {!! json_encode('institution-decree-draft:v3:'.$userId.':'.($selectedSchoolId ?? 'none').':'.($selectedAyId ?? 'none').':'.($isEdit ? $decree->id : 'new')) !!};
 const AUTOSAVE_DELAY     = 2500;
 
@@ -795,6 +797,61 @@ function pendampingTaskRows(tasks) {
     });
 }
 
+/**
+ * Susun baris tugas agar tiap pasangan Guru Pendamping duduk pada baris mapel
+ * yang sama (mapel | Guru Pendamping | Mapel | rombel). Tugas biasa ditaruh
+ * lebih dulu, lalu pasangan pendamping ditempatkan ke indeks mapelnya; sisa
+ * baris tanpa pasangan dibiarkan kosong agar jumlah baris tetap cukup.
+ */
+/**
+ * Susun baris tugas. Pasangan Guru Pendamping WAJIB duduk pada baris mapelnya
+ * (indeks mapel di kolom Mapel), supaya label "Guru Pendamping | Mapel" dan
+ * centang rombelnya sejajar dengan mapel itu. Tugas biasa (Wali Kelas, dll.)
+ * memakai baris kosong yang tersisa lebih dulu, lalu baris baru.
+ */
+function alignedTaskRows(tasks, subjects) {
+    const rows = [];
+    const ensure = index => { while (rows.length <= index) rows.push(null); };
+    const subjectIndex = pair => subjects.findIndex(s => s && String(s.id) === String(pair.subject_id));
+
+    // 1) Pasangan pendamping dikunci ke baris mapelnya.
+    tasks.forEach(task => {
+        if (!isPendampingTask(task)) return;
+        task.pendamping.forEach(pair => {
+            let at = subjectIndex(pair);
+            if (at === -1) {
+                at = 0;
+                while (rows[at]) at++;
+            }
+            ensure(at);
+            if (!rows[at]) rows[at] = { task, pair };
+        });
+    });
+
+    // 2) Tugas biasa memakai baris kosong lebih dulu agar tidak menambah baris.
+    tasks.forEach(task => {
+        if (isPendampingTask(task)) return;
+        ensure(0);
+        let at = rows.findIndex(r => !r);
+        if (at === -1) at = rows.length;
+        ensure(at);
+        rows[at] = { task, pair: null };
+    });
+
+    // 3) Pasangan yang tidak dapat baris mapel (mapelnya tidak terdaftar)
+    //    tetap harus tampil: taruh pada baris baru di akhir.
+    tasks.forEach(task => {
+        if (!isPendampingTask(task)) return;
+        task.pendamping.forEach(pair => {
+            const placed = rows.some(r => r && r.pair === pair);
+            if (placed) return;
+            rows.push({ task, pair });
+        });
+    });
+
+    return rows;
+}
+
 function pendampingRombelCellHtml(tid, task, pair, sg) {
     const subjectId = pair.subject_id;
     if (!subjectId) return '';
@@ -855,7 +912,7 @@ function renderTeacherRows(tbody, teacher, tid, number) {
     const tasks = activeTasks[tid] || [];
     // Tugas Guru Pendamping dipecah menjadi satu baris per mapel agar rombel
     // yang dicentang sejajar dengan mapelnya, tanpa baris tambahan terpisah.
-    const taskRows = pendampingTaskRows(tasks);
+    const taskRows = alignedTaskRows(tasks, subjects);
     const rowCount = Math.max(subjects.length, taskRows.length, 1);
 
     for (let index = 0; index < rowCount; index++) {
@@ -1033,8 +1090,12 @@ function refreshTotal(tid) {
         document.querySelectorAll(`tr[data-teacher="${t}"][data-task-index]`).forEach(row => {
             const task = (activeTasks[t] || [])[parseInt(row.dataset.taskIndex, 10)];
             if (!isPendampingTask(task)) return;
+            const pairSubject = row.dataset.pendampingSubject;
+            const pair = pairSubject
+                ? (task.pendamping || []).find(p => String(p.subject_id) === String(pairSubject))
+                : null;
             const cell = row.querySelector('.row-jp');
-            if (cell) cell.textContent = task.hours || 0;
+            if (cell) cell.textContent = pair ? pendampingPairHours(pair) : (task.hours || 0);
         });
 
         const totalEl = document.getElementById(`teacher-total-${t}`);
@@ -1260,10 +1321,250 @@ function changePosition(select) {
 }
 function removeActiveTask(tid, index) {
     if (!activeTasks[tid] || !activeTasks[tid][index]) return;
+    const removed = activeTasks[tid][index];
     pushHistory();
-    activeTasks[tid].splice(index, 1);
+    // Wali Kelas otomatis (SD IT kelas 1–3) meninggalkan jejak di tugas
+    // mengajar & Guru Pendamping: bersihkan hanya jejak yang dibuat otomatis.
+    if ((removed.code || '') === 'wali-kelas') removeAutoWali(tid, removed);
+    const at = activeTasks[tid].indexOf(removed);
+    if (at !== -1) activeTasks[tid].splice(at, 1);
     renderMatrix();
     scheduleAutosave();
+}
+
+/* =====================================================================
+   WALI KELAS OTOMATIS — SD IT KELAS 1–3
+   Wali Kelas 2B otomatis mengajar MTK/SBdP/B.Indo/PJOK di 2B, lalu menjadi
+   Guru Pendamping mapel yang sama di rombel lain tingkat 2 (kecuali 2B).
+   Hanya logika; tampilan matriks tidak berubah.
+   ===================================================================== */
+const AUTO_TEACHER_HEADER = 'autoTeacher';
+
+/** Aturan mapel untuk satu tingkat (kosong bila jenjang/tingkat tidak diatur). */
+function autoWaliSubjectsFor(level) {
+    const rule = autoWaliSubjects.find(r => Number(r.level) === Number(level));
+    return rule ? (rule.subjects || []) : [];
+}
+
+/** Normalisasi nama/kode mapel agar "B. Indo", "BINDO", "Bahasa Indonesia" sama. */
+function autoSubjectKey(value) {
+    return String(value ?? '').toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\b(mata pelajaran|mapel)\b/g, ' ')
+        .trim();
+}
+
+const AUTO_SUBJECT_ALIASES = {
+    'matematika': ['matematika', 'mtk', 'mat'],
+    'bahasa indonesia': ['bahasa indonesia', 'b indonesia', 'bindo', 'b indo', 'bin', 'indonesia'],
+    'seni budaya': ['seni budaya', 'sbdp', 'sbdb', 'sb', 'senbud', 'kesenian'],
+    'pjok': ['pjok', 'penjas', 'penjaskes', 'penjasorkes', 'olahraga'],
+    'ipas': ['ipas', 'ipa terpadu', 'ips terpadu'],
+};
+
+/** Cari mapel master sekolah yang cocok dengan nama aturan. */
+function autoSubjectFor(name) {
+    const target = autoSubjectKey(name);
+    if (!target) return null;
+
+    // Nama aturan bisa berupa singkatan ("B. Indo") atau nama panjang. Ambil
+    // semua padanan dari kamus alias, lalu cocokkan dengan nama/kode master.
+    let targets = [target];
+    Object.entries(AUTO_SUBJECT_ALIASES).forEach(([canonical, aliases]) => {
+        if (aliases.includes(target)) targets = aliases.concat(canonical);
+    });
+
+    return subjects.find(sub => {
+        const key = autoSubjectKey(sub.name);
+        const code = autoSubjectKey(sub.code);
+        return targets.includes(key) || (code && targets.includes(code));
+    }) || null;
+}
+
+/** JP mapel di satu rombel: pakai jpDefaults (Peta Kurikulum), cadangan per tingkat. */
+function autoHoursFor(subjectId, sgid) {
+    const direct = parseFloat(jpDefaults[`${subjectId}|${sgid}`]);
+    if (direct > 0) return direct;
+    const sg = studyGroups.find(g => String(g.id) === String(sgid));
+    return sg ? (pendampingHoursFor(subjectId, sg.id) || 0) : 0;
+}
+
+/** Rombel lain pada tingkat yang sama, tanpa rombel wali kelas itu sendiri. */
+function siblingGroupsFor(gradeLevelId, excludeId) {
+    return studyGroups.filter(sg => String(sg.gradeLevelId) === String(gradeLevelId)
+        && String(sg.id) !== String(excludeId));
+}
+
+/**
+ * Tambahkan pasangan mapel–kelas ke SATU entri Guru Pendamping milik GTK.
+ * Unique index menyimpan satu baris pendamping per guru per SK, jadi mapel
+ * digabung ke baris yang sudah ada — pendamping manual tidak ditimpa.
+ */
+function ensureAutoPendamping(tid, subjectIds, groupIds, rombelNames, waliRombelId) {
+    if (!subjectIds.length || !groupIds.length) return;
+
+    activeTasks[tid] = activeTasks[tid] || [];
+    let task = activeTasks[tid].find(isPendampingTask);
+
+    if (!task) {
+        const type = taskTypeOptions.find(t => t.pendamping);
+        if (!type) return;
+        task = {
+            name: type.nama, code: type.kode, hours: 0,
+            studyGroupId: null, rombel: null, pendamping: [], autoTeacher: waliRombelId,
+        };
+        activeTasks[tid].push(task);
+    } else if (task.autoTeacher && String(task.autoTeacher) !== String(waliRombelId)) {
+        // Wali kelas lama sudah diganti: jejak otomatis lama tidak berlaku.
+        removeAutoWali(tid, { studyGroupId: task.autoTeacher });
+        task = activeTasks[tid].find(isPendampingTask) || null;
+        if (!task) return ensureAutoPendamping(tid, subjectIds, groupIds, rombelNames, waliRombelId);
+    }
+
+    task.pendamping = Array.isArray(task.pendamping) ? task.pendamping : [];
+
+    subjectIds.forEach(subjectId => {
+        let pair = task.pendamping.find(p => String(p.subject_id) === String(subjectId));
+        if (!pair) {
+            pair = {
+                subject_id: subjectId,
+                subject: subjectNameOf(subjectId),
+                group_ids: [],
+                rombel: [],
+                [AUTO_TEACHER_HEADER]: waliRombelId,
+            };
+            task.pendamping.push(pair);
+        }
+        pair[AUTO_TEACHER_HEADER] = waliRombelId;
+        pair.group_ids = Array.isArray(pair.group_ids) ? pair.group_ids.map(String) : [];
+
+        groupIds.forEach(gid => {
+            if (!pair.group_ids.includes(String(gid))) pair.group_ids.push(String(gid));
+        });
+        pair.rombel = pair.group_ids.map(id => studyGroupName(id)).filter(Boolean);
+    });
+
+    recalcPendampingHours(tid);
+}
+
+function studyGroupName(id) {
+    return studyGroups.find(sg => String(sg.id) === String(id))?.name || '';
+}
+
+/**
+ * Bersihkan jejak otomatis milik satu Wali Kelas: centang mapelnya di rombel
+ * wali kelas, lalu pasangan pendamping yang dibuat otomasi. Jejak manual
+ * (tanpa penanda) dibiarkan.
+ */
+function removeAutoWali(tid, task) {
+    const sgid = task?.studyGroupId;
+    if (!sgid) return;
+
+    activeSubjects[tid] = (activeSubjects[tid] || []).filter(sub => {
+        if (!sub.id || !sub.auto || String(sub.auto) !== String(sgid)) return true;
+        delete (sub.hours || {})[sgid];
+        // Baris mapel tanpa jam tersisa tidak perlu dipertahankan.
+        return Object.keys(sub.hours || {}).length > 0;
+    });
+
+    (activeTasks[tid] || []).forEach(t => {
+        if (!Array.isArray(t.pendamping)) return;
+        t.pendamping = t.pendamping.filter(
+            pair => !pair[AUTO_TEACHER_HEADER] || String(pair[AUTO_TEACHER_HEADER]) !== String(sgid)
+        );
+    });
+
+    // Baris Guru Pendamping yang seluruh isinya hasil otomasi ikut dibuang.
+    activeTasks[tid] = (activeTasks[tid] || []).filter(t =>
+        !(Array.isArray(t.pendamping) && t.pendamping.length === 0 && t.autoTeacher)
+    );
+
+    recalcPendampingHours(tid);
+}
+
+/**
+ * Isi otomatis saat Wali Kelas SD IT kelas 1–3 ditambahkan: mapel diajarkan
+ * di rombelnya, lalu menjadi Guru Pendamping di rombel lain tingkat itu.
+ */
+function applyAutoWali(tid, rombel) {
+    const names = autoWaliSubjectsFor(rombel.level);
+    if (!names.length) return;
+
+    const missing = [];
+    const matched = names.map(name => {
+        const subject = autoSubjectFor(name);
+        if (!subject) missing.push(name);
+        return subject;
+    }).filter(Boolean);
+
+    if (!matched.length) {
+        if (missing.length) showWarning(`Mapel ${missing.join(', ')} tidak ditemukan di daftar mapel sekolah.`);
+        return;
+    }
+
+    activeSubjects[tid] = activeSubjects[tid] || [];
+    matched.forEach(subject => {
+        let sub = activeSubjects[tid].find(s => String(s.id) === String(subject.id));
+        if (!sub) {
+            sub = { id: String(subject.id), name: subject.name, hours: {} };
+            activeSubjects[tid].push(sub);
+        }
+        sub.hours = sub.hours || {};
+        // Jangan timpa JP yang sudah ada (mis. dipegang di rombel lain).
+        if (!(parseFloat(sub.hours[rombel.id]) > 0)) {
+            const hours = autoHoursFor(subject.id, rombel.id);
+            if (hours > 0) sub.hours[rombel.id] = hours;
+        }
+        sub.auto = rombel.id;
+    });
+
+    const siblings = siblingGroupsFor(rombel.gradeLevelId, rombel.id);
+    ensureAutoPendamping(
+        tid,
+        matched.map(s => String(s.id)),
+        siblings.map(sg => sg.id),
+        siblings.map(sg => sg.name),
+        rombel.id
+    );
+
+    renderMatrix();
+    scheduleAutosave();
+
+    if (missing.length) {
+        showWarning(`Wali Kelas ${rombel.name}: mapel ${missing.join(', ')} tidak ditemukan di daftar mapel sekolah, jadi dilewati.`);
+    }
+}
+
+/**
+ * Tandai pasangan pendamping yang berasal dari otomasi Wali Kelas, agar saat
+ * Wali Kelas itu dihapus hanya jejak otomatis yang ikut terbersihkan.
+ * Petunjuk: mapelnya termasuk aturan tingkat wali kelas dan kelasnya rombel
+ * lain pada tingkat yang sama. Bila tidak meyakinkan, jangan ditandai.
+ */
+function markAutoPendamping(pairs, tid) {
+    const waliTask = (currentTasks[tid] || []).find(t => t.code === 'wali-kelas');
+    const waliId = waliTask?.studyGroupId ?? waliTask?.study_group_id ?? null;
+    if (!waliId) return pairs;
+
+    const waliGroup = studyGroups.find(sg => String(sg.id) === String(waliId));
+    if (!waliGroup) return pairs;
+
+    const ruleIds = autoWaliSubjectsFor(waliGroup.level)
+        .map(name => autoSubjectFor(name)?.id)
+        .filter(Boolean)
+        .map(String);
+    if (!ruleIds.length) return pairs;
+
+    return pairs.map(pair => {
+        if (!ruleIds.includes(String(pair.subject_id))) return pair;
+        const groupIds = (pair.group_ids || []).map(String);
+        const allSiblings = groupIds.length > 0 && groupIds.every(gid => {
+            const group = studyGroups.find(sg => String(sg.id) === String(gid));
+            return group && String(group.gradeLevelId) === String(waliGroup.gradeLevelId)
+                && String(group.id) !== String(waliId);
+        });
+        return allSiblings ? { ...pair, [AUTO_TEACHER_HEADER]: waliId } : pair;
+    });
 }
 
 /* =====================================================================
@@ -1296,6 +1597,12 @@ function addActiveTask(tid, type, extra = {}) {
         name: extra.name || type.nama, code,
         hours: extra.hours ?? type.hours ?? 3, studyGroupId, rombel: extra.rombel || null,
     });
+    // SD IT kelas 1–3: wali kelas langsung mengajar & mendampingi mapel wajib.
+    if (code === 'wali-kelas' && studyGroupId) {
+        const waliGroup = studyGroups.find(sg => String(sg.id) === String(studyGroupId));
+        if (waliGroup) applyAutoWali(tid, waliGroup);
+        return true; // applyAutoWali sudah menggambar ulang tabel.
+    }
     renderMatrix();
     scheduleAutosave();
     return true;
@@ -1575,6 +1882,12 @@ function addTaskFromModal() {
     if (duplicate) { showWarning('Tugas tersebut sudah ada untuk GTK ini.'); return; }
 
     activeTasks[tid].push({ name: taskName, code: taskCode, hours, studyGroupId: rombelId, pendamping });
+
+    // SD IT kelas 1–3: wali kelas langsung mengajar & mendampingi mapel wajib.
+    if (selectedCode === 'wali-kelas' && rombelId) {
+        const waliGroup = studyGroups.find(sg => String(sg.id) === String(rombelId));
+        if (waliGroup) applyAutoWali(tid, waliGroup);
+    }
 
     document.getElementById('taskTypeSelect').value = '';
     toggleTaskFields();
@@ -1944,7 +2257,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hours: task.hours,
             studyGroupId: task.studyGroupId ?? task.study_group_id ?? null,
             rombel: task.rombel || null,
-            pendamping: task.pendamping || [],
+            pendamping: markAutoPendamping(task.pendamping || [], teacher.id),
         }));
     });
 
