@@ -181,7 +181,8 @@ class RaporPdfService
         $orderService = app(RaporSubjectOrderService::class);
         $subjectMap = $orderService->sortSubjects($subjectMap, $gradeLevelId, $selectedAyId);
 
-        $reportSubjectIds = $orderService->reportSubjectIds($schoolId, $selectedAyId, $selectedSem, $gradeLevelId);
+        // Kelas 11 & 12 memakai daftar per rombel (penjurusan), tingkat lain per tingkat.
+        $reportSubjectIds = $orderService->reportSubjectIds($schoolId, $selectedAyId, $selectedSem, $gradeLevelId, $studyGroupId);
 
         if ($reportSubjectIds !== null) {
             $subjectMap = $subjectMap
@@ -213,9 +214,24 @@ class RaporPdfService
         string $selectedAyId,
         string $selectedSem,
     ) {
-        [$subjects] = $this->subjectBooks($schoolId, $studyGroup->id, $selectedAyId, $selectedSem);
+        // Semua mapel yang punya buku aktif — termasuk yang sedang tidak
+        // dicentang, agar form pengaturan rapor tetap bisa mencentangnya.
+        $subjects = TeacherAdminBook::with('subject')
+            ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
+            ->where('study_group_id', $studyGroup->id)
+            ->where('academic_year_id', $selectedAyId)
+            ->where('semester', $selectedSem)
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('subject_id')
+            ->map(fn ($books) => $books->first())
+            ->values()
+            ->pluck('subject')
+            ->filter()
+            ->values();
 
-        return $subjects;
+        return app(RaporSubjectOrderService::class)
+            ->sortSubjects($subjects, $studyGroup->grade_level_id, $selectedAyId);
     }
 
     /**

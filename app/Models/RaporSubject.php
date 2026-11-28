@@ -36,6 +36,7 @@ class RaporSubject extends Model
         'school_id',
         'academic_year_id',
         'grade_level_id',
+        'study_group_id',
         'semester',
         'subject_id',
         'sort_order',
@@ -48,6 +49,11 @@ class RaporSubject extends Model
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class, 'subject_id');
+    }
+
+    public function studyGroup(): BelongsTo
+    {
+        return $this->belongsTo(StudyGroup::class, 'study_group_id');
     }
 
     public function gradeLevel(): BelongsTo

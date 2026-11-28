@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\GradeLevel;
 use App\Models\GradeLevelSubject;
 use App\Models\RaporSubject;
 use App\Models\Subject;
@@ -48,15 +49,34 @@ class RaporSubjectOrderService
      *
      * @return array<int, string>|null
      */
-    public function reportSubjectIds(?string $schoolId, ?string $academicYearId, ?string $semester, ?string $gradeLevelId): ?array
-    {
+    public function reportSubjectIds(
+        ?string $schoolId,
+        ?string $academicYearId,
+        ?string $semester,
+        ?string $gradeLevelId,
+        ?string $studyGroupId = null,
+    ): ?array {
         if (! $academicYearId || ! $semester || ! $gradeLevelId) {
             return null;
         }
 
-        $rows = RaporSubject::query()
-            ->forScope($schoolId, $academicYearId, $semester, $gradeLevelId)
-            ->get(['subject_id', 'sort_order']);
+        // Bila rombel punya daftar sendiri (Kelas 11 & 12 dengan penjurusan),
+        // pakai itu; selainnya berlaku pengaturan tingkat.
+        $useGroup = $studyGroupId && $this->perStudyGroup($gradeLevelId);
+
+        $rows = $useGroup
+            ? RaporSubject::query()
+                ->forScope($schoolId, $academicYearId, $semester, $gradeLevelId)
+                ->where('study_group_id', $studyGroupId)
+                ->get(['subject_id', 'sort_order'])
+            : collect();
+
+        if ($rows->isEmpty()) {
+            $rows = RaporSubject::query()
+                ->forScope($schoolId, $academicYearId, $semester, $gradeLevelId)
+                ->whereNull('study_group_id')
+                ->get(['subject_id', 'sort_order']);
+        }
 
         if ($rows->isEmpty()) {
             return null;
@@ -66,12 +86,32 @@ class RaporSubjectOrderService
     }
 
     /**
+     * Apakah daftar mapel rapor tingkat ini disimpan per rombel.
+     */
+    public function perStudyGroup(?string $gradeLevelId): bool
+    {
+        if (! $gradeLevelId) {
+            return false;
+        }
+
+        $level = GradeLevel::query()->whereKey($gradeLevelId)->value('level');
+
+        return $level !== null && (new GradeLevel(['level' => $level]))->raporSubjectsPerStudyGroup();
+    }
+
+    /**
      * Simpan daftar mapel rapor satu tingkat pada TA + semester.
      *
      * @param  array<int, string>  $subjectIds
      */
-    public function saveReportSubjects(?string $schoolId, ?string $academicYearId, ?string $semester, ?string $gradeLevelId, array $subjectIds): void
-    {
+    public function saveReportSubjects(
+        ?string $schoolId,
+        ?string $academicYearId,
+        ?string $semester,
+        ?string $gradeLevelId,
+        array $subjectIds,
+        ?string $studyGroupId = null,
+    ): void {
         if (! $schoolId || ! $academicYearId || ! $semester || ! $gradeLevelId) {
             return;
         }
@@ -79,17 +119,19 @@ class RaporSubjectOrderService
         $keep = array_values(array_unique(array_filter($subjectIds)));
         $now = now();
 
-        // Baris lama dihapus lebih dulu: baris tanpa mapel ini yang tidak ikut
-        // dipilih, sekaligus mencegah unik (tingkat, mapel) bentrok di SQLite.
-        RaporSubject::query()
-            ->forScope($schoolId, $academicYearId, $semester, $gradeLevelId)
-            ->when($keep !== [], fn ($q) => $q->whereNotIn('subject_id', $keep))
-            ->delete();
+        // Hanya Kelas 11 & 12 yang menyimpan daftar per rombel. Tingkat lain
+        // tetap satu daftar untuk seluruh rombel di tingkat itu.
+        $studyGroupId = $studyGroupId && $this->perStudyGroup($gradeLevelId) ? $studyGroupId : null;
 
-        $existing = $keep === [] ? [] : RaporSubject::query()
+        $scope = fn () => RaporSubject::query()
             ->forScope($schoolId, $academicYearId, $semester, $gradeLevelId)
-            ->pluck('subject_id')
-            ->all();
+            ->when($studyGroupId, fn ($q) => $q->where('study_group_id', $studyGroupId), fn ($q) => $q->whereNull('study_group_id'));
+
+        // Baris lama dihapus lebih dulu: baris tanpa mapel ini yang tidak ikut
+        // dipilih, sekaligus mencegah unik (tingkat/rombel, mapel) bentrok.
+        $scope()->when($keep !== [], fn ($q) => $q->whereNotIn('subject_id', $keep))->delete();
+
+        $existing = $keep === [] ? [] : $scope()->pluck('subject_id')->all();
 
         $insert = [];
         foreach ($keep as $index => $subjectId) {
@@ -102,6 +144,7 @@ class RaporSubjectOrderService
                 'school_id' => $schoolId,
                 'academic_year_id' => $academicYearId,
                 'grade_level_id' => $gradeLevelId,
+                'study_group_id' => $studyGroupId,
                 'semester' => $semester,
                 'subject_id' => $subjectId,
                 'sort_order' => $index + 1,

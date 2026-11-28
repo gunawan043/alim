@@ -60,6 +60,7 @@ class NilaiReminderService
                     $academicYear->id,
                     $semester,
                     $group->grade_level_id,
+                    $group->id,
                 );
 
                 $books = TeacherAdminBook::with('subject')

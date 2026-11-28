@@ -55,7 +55,9 @@ class LegerPdfService
         $orderService = app(RaporSubjectOrderService::class);
         $subjectMap = $orderService->sortSubjects($subjectMap, $studyGroup->grade_level_id, $selectedAyId);
 
-        $reportSubjectIds = $orderService->reportSubjectIds($schoolId, $selectedAyId, $selectedSem, $studyGroup->grade_level_id);
+        $reportSubjectIds = $orderService->reportSubjectIds(
+            $schoolId, $selectedAyId, $selectedSem, $studyGroup->grade_level_id, $studyGroup->id
+        );
         if ($reportSubjectIds !== null) {
             $subjectMap = $subjectMap
                 ->filter(fn ($subject) => in_array($subject->id, $reportSubjectIds, true))

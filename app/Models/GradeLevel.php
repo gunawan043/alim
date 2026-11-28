@@ -29,6 +29,15 @@ class GradeLevel extends Model
         'is_active' => 'boolean',
     ];
 
+    /**
+     * Daftar mapel rapor Kelas 11 & 12 disimpan per ROMBEL karena ada
+     * penjurusan; tingkat lain disimpan sekali per tingkat.
+     */
+    public function raporSubjectsPerStudyGroup(): bool
+    {
+        return in_array((int) $this->level, [11, 12], true);
+    }
+
     // ── Relationships ────────────────────────────────────────────
 
     public function school(): BelongsTo

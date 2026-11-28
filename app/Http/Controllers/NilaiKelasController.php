@@ -1678,7 +1678,20 @@ class NilaiKelasController extends Controller
         $availableSubjects = $selectedAyId
             ? $raporPdf->availableSubjects($schoolId, $studyGroup, (string) $selectedAyId, (string) $selectedSem)
             : collect();
-        $selectedSubjectIds = $availableSubjects->pluck('id')->all();
+
+        // Mapel yang dicetak: daftar pilihan per TINGKAT, kecuali Kelas 11 & 12
+        // yang disimpan per rombel (penjurusan). Belum diatur = semua mapel.
+        $raporOrderService = app(\App\Services\RaporSubjectOrderService::class);
+        $subjectSelectionPerGroup = $raporOrderService->perStudyGroup($studyGroup->grade_level_id);
+        $raporSubjectIds = $selectedAyId
+            ? $raporOrderService->reportSubjectIds(
+                $schoolId, (string) $selectedAyId, (string) $selectedSem,
+                $studyGroup->grade_level_id, $studyGroup->id
+            )
+            : null;
+        $selectedSubjectIds = $raporSubjectIds === null
+            ? $availableSubjects->pluck('id')->all()
+            : array_values(array_intersect($availableSubjects->pluck('id')->all(), $raporSubjectIds));
 
         // Nama Arab untuk form: master mapel dulu, lalu kamus otomatis.
         // Sumbernya sama dengan yang dipakai saat mencetak rapor.
@@ -1752,6 +1765,7 @@ class NilaiKelasController extends Controller
             'userId', 'studyGroup', 'academicYears', 'selectedAyId', 'selectedSem', 'selectedAy',
             'students', 'registrations', 'stats', 'distributionSetting', 'layout', 'variantLayouts', 'docJenis', 'docBahasa',
             'availableSubjects', 'selectedSubjectIds', 'summaries', 'canPublish', 'subjectBobotMap', 'subjectKktpMap', 'subjectArabicMap',
+            'raporSubjectIds', 'subjectSelectionPerGroup',
         ) + [
             // Urutan, daftar mapel, dan KKTP diatur di Peta Kurikulum untuk
             // tingkat rombel ini — bukan per rombel.
@@ -2022,12 +2036,13 @@ class NilaiKelasController extends Controller
             ->get();
 
         if (! $onlyBook) {
-            // Daftar mapel rapor kini ditetapkan per TINGKAT di Peta Kurikulum.
+            // Daftar mapel rapor: per TINGKAT, kecuali Kelas 11 & 12 per rombel.
             $subjectIds = app(\App\Services\RaporSubjectOrderService::class)->reportSubjectIds(
                 $studyGroup->school_id,
                 $academicYearId,
                 $semester,
                 $studyGroup->grade_level_id,
+                $studyGroup->id,
             );
 
             if ($subjectIds !== null) {
@@ -2564,6 +2579,10 @@ class NilaiKelasController extends Controller
             'subject_bobot' => 'nullable|array',
             'subject_name' => 'nullable|array',
             'subject_name_ar' => 'nullable|array',
+            // Centang mapel yang dicetak. Wajib dikirim agar daftar kosong
+            // (semua tidak dicentang) tetap bisa disimpan.
+            'rapor_subjects' => 'nullable|array',
+            'rapor_subjects.*' => 'string',
         ]);
 
         $available = app(RaporPdfService::class)
@@ -2609,10 +2628,42 @@ class NilaiKelasController extends Controller
             }
         }
 
+        // Daftar mapel yang dicetak: satu untuk seluruh rombel di tingkat itu,
+        // kecuali Kelas 11 & 12 yang disimpan per rombel karena penjurusan.
+        if ($request->has('rapor_subjects')) {
+            $checked = collect((array) $request->input('rapor_subjects', []))
+                ->filter(fn ($id) => in_array($id, $available, true))
+                ->values()
+                ->all();
+
+            // Simpan mengikuti urutan cetak (Peta Kurikulum) agar nomor urut rapor tetap.
+            $ordered = app(\App\Services\RaporSubjectOrderService::class)
+                ->sortSubjects(
+                    \App\Models\Subject::query()->whereIn('id', $checked)->get(),
+                    $studyGroup->grade_level_id,
+                    (string) $validated['academic_year_id'],
+                )
+                ->pluck('id')
+                ->all();
+
+            app(\App\Services\RaporSubjectOrderService::class)->saveReportSubjects(
+                $schoolId,
+                (string) $validated['academic_year_id'],
+                (string) $validated['semester'],
+                (string) $studyGroup->grade_level_id,
+                $ordered,
+                $studyGroup->id,
+            );
+        }
+
         // KKTP sengaja tidak diubah dari sini: nilainya satu untuk seluruh
         // rombel di tingkat itu dan diatur di Peta Kurikulum.
 
-        return back()->with('success', 'Bobot dan nama mapel rapor tersimpan. Bobot berlaku untuk seluruh rombel di tingkat ini; urutan, daftar mapel, dan KKTP diatur di Peta Kurikulum.');
+        $scopeNote = app(\App\Services\RaporSubjectOrderService::class)->perStudyGroup($studyGroup->grade_level_id)
+            ? 'Daftar mapel berlaku untuk rombel ini (Kelas 11/12 punya penjurusan).'
+            : 'Daftar mapel berlaku untuk seluruh rombel di tingkat ini.';
+
+        return back()->with('success', 'Pengaturan mapel rapor tersimpan. '.$scopeNote.' Urutan dan KKTP diatur di Peta Kurikulum.');
     }
 
     /**

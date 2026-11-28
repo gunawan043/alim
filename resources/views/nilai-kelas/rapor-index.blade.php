@@ -616,8 +616,14 @@
                         <div>
                             <h5 class="card-title mb-0"><i class="ri-book-open-line text-success me-1"></i>Mapel Rapor, Nama &amp; Bobot</h5>
                             <p class="text-muted mb-0 small">
-                                Daftar mapel, urutan, Pondok/Dinas, dan KKTP ditetapkan per
-                                <strong>tingkat</strong> sehingga sama untuk semua rombel.
+                                @if($subjectSelectionPerGroup ?? false)
+                                    Rombel <strong>{{ $studyGroup->name }}</strong> punya penjurusan, jadi daftar mapel rapor
+                                    diatur <strong>khusus untuk rombel ini</strong> dan tidak memengaruhi rombel lain.
+                                @else
+                                    Daftar mapel rapor ditetapkan per <strong>tingkat</strong>, sehingga rombel lain di
+                                    tingkat yang sama ikut memakai pilihan yang sama.
+                                @endif
+                                Urutan, Pondok/Dinas, dan KKTP tetap di Peta Kurikulum.
                             </p>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
@@ -646,6 +652,10 @@
                                 <table class="table table-sm table-hover align-middle mb-3">
                                     <thead class="table-light">
                                         <tr>
+                                            <th style="width:46px;" class="text-center" title="Centang = mapel dicetak di rapor">
+                                                <input type="checkbox" class="form-check-input" id="raporCheckAll"
+                                                       aria-label="Pilih semua mapel">
+                                            </th>
                                             <th style="width:60px;" class="text-center">No</th>
                                             <th style="min-width:340px;">Mata Pelajaran <span class="text-muted fw-normal">(Latin &amp; Arab)</span></th>
                                             <th style="width:100px;" class="text-center" title="Diatur di Peta Kurikulum untuk seluruh rombel tingkat ini">KKTP</th>
@@ -660,7 +670,16 @@
                                                     ? rtrim(rtrim(number_format((float) $kktpRow['score'], 2, '.', ''), '0'), '.')
                                                     : '';
                                             @endphp
+                                            @php
+                                                $isChecked = $raporSubjectIds === null || in_array($subject->id, $raporSubjectIds, true);
+                                            @endphp
                                             <tr class="subject-row" data-subject-id="{{ $subject->id }}">
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="form-check-input rapor-check"
+                                                           name="rapor_subjects[]" value="{{ $subject->id }}"
+                                                           @checked($isChecked)
+                                                           aria-label="Cetak {{ $subject->name }} di rapor">
+                                                </td>
                                                 <td class="text-center" title="Urutan cetak, mengikuti Peta Kurikulum tingkat ini">
                                                     <span class="badge bg-light text-dark">{{ $loop->iteration }}</span>
                                                 </td>
@@ -715,9 +734,9 @@
                             </div>
 
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <small class="text-muted"><i class="ri-information-line me-1"></i>Yang diatur di sini: nama Latin/Arab dan bobot. Bobot dan urutan berlaku untuk seluruh rombel di tingkat ini; bobot kosong = JP ÷ 2 (JP 1 tetap 1), boleh desimal (mis. 2,5). Nomor di kolom pertama adalah urutan cetak dari Peta Kurikulum; ubah urutan, Pondok/Dinas, daftar mapel, dan KKTP di sana.</small>
+                                <small class="text-muted"><i class="ri-information-line me-1"></i>Yang diatur di sini: mapel yang dicetak (centang), nama Latin/Arab, dan bobot. Bobot dan urutan berlaku untuk seluruh rombel di tingkat ini; bobot kosong = JP ÷ 2 (JP 1 tetap 1), boleh desimal (mis. 2,5). Nomor di kolom pertama adalah urutan cetak dari Peta Kurikulum; ubah urutan, Pondok/Dinas, daftar mapel, dan KKTP di sana.</small>
                                 <button type="submit" class="btn btn-primary btn-sm">
-                                    <i class="ri-save-3-line me-1"></i>Simpan Nama &amp; Bobot
+                                    <i class="ri-save-3-line me-1"></i>Simpan Pengaturan Mapel
                                 </button>
                             </div>
                         </form>
@@ -1542,6 +1561,25 @@ document.querySelectorAll('.js-note-inline').forEach(function (input) {
         refreshPreview();
         syncUrl();
     }
+})();
+
+/* Centang mapel rapor: "pilih semua" mengikuti status kotak di kepala tabel. */
+(function () {
+    var all = document.getElementById('raporCheckAll');
+    if (!all) return;
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.rapor-check'));
+
+    function syncAll() {
+        all.checked = boxes.length > 0 && boxes.every(function (b) { return b.checked; });
+        all.indeterminate = !all.checked && boxes.some(function (b) { return b.checked; });
+    }
+
+    all.addEventListener('change', function () {
+        boxes.forEach(function (b) { b.checked = all.checked; });
+        all.indeterminate = false;
+    });
+    boxes.forEach(function (b) { b.addEventListener('change', syncAll); });
+    syncAll();
 })();
 </script>
 @endpush

@@ -367,8 +367,8 @@
                                 <th>Jenjang</th>
                                 <th class="text-center">Fase</th>
                                 <th>Mata Pelajaran</th>
-                                <th class="text-center">JP/Minggu</th>
-                                <th class="text-center">JP Efektif</th>
+                                <th class="text-center peta-col-jp" title="Jam pelajaran per minggu untuk mapel ini di tingkat tersebut">JP/Minggu</th>
+                                <th class="text-center peta-col-jp-efektif" title="JP mingguan dikali pekan efektif">JP Efektif</th>
                                 <th class="text-center" title="Asal mapel. Rapor mencetak blok Pondok lebih dulu, lalu Dinas.">Pondok/Dinas</th>
                                 <th class="text-center" title="Nomor urut mapel di rapor. Semua rombel pada tingkat yang sama memakai urutan ini.">Urutan</th>
                                 <th class="text-center" title="Kriteria Ketercapaian Tujuan Pembelajaran (0-100) — satu nilai untuk seluruh rombel di tingkat ini">N-KKTP</th>
@@ -393,7 +393,7 @@
                                         @endif
                                     </td>
                                     <td class="text-center">{{ $row['subject'] }}</td>
-                                    <td class="text-center">
+                                    <td class="text-center peta-col-jp">
                                         @if($canEditJp ?? false)
                                             <input type="number"
                                                    form="petaForm"
@@ -409,7 +409,7 @@
                                             <span class="fw-semibold">{{ $row['weekly_hours'] }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-center fw-semibold">{{ $row['jp_efektif'] }}</td>
+                                    <td class="text-center fw-semibold peta-col-jp-efektif">{{ $row['jp_efektif'] }}</td>
                                     <td class="text-center">
                                         @if($canEditRapor ?? false)
                                             <select form="petaForm"
@@ -550,6 +550,17 @@
         </div>
     </div>
 @endsection
+
+@push('styles')
+<style>
+    /* Lebar kolom JP: cukup untuk input "40", tidak memakan ruang kolom lain. */
+    .table-freeze th.peta-col-jp,
+    .table-freeze td.peta-col-jp { width: 96px; min-width: 96px; max-width: 96px; }
+    .table-freeze th.peta-col-jp-efektif,
+    .table-freeze td.peta-col-jp-efektif { width: 92px; min-width: 92px; max-width: 92px; }
+    .table-freeze .jp-input { width: 76px !important; margin: 0 auto; }
+</style>
+@endpush
 
 @push('scripts')
 <script>
