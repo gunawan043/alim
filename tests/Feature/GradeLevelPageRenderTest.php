@@ -204,7 +204,8 @@ class GradeLevelPageRenderTest extends TestCase
         $this->actingAs($user)->get(route('user.grade-levels.show', ['userId' => $user->id, 'id' => $kelas11->id]))
             ->assertOk()
             ->assertSee('name="track"', false)
-            ->assertSee('<th class="text-center text-uppercase">Jurusan</th>', false);
+            ->assertSee('<th class="text-center text-uppercase">Jurusan</th>', false)
+            ->assertSee('<th class="text-center text-uppercase">Urutan</th>', false);
     }
 
     public function test_jurusan_ditolak_untuk_kelas_di_bawah_11(): void
@@ -245,5 +246,65 @@ class GradeLevelPageRenderTest extends TestCase
         ]), ['peminatan' => 'ipa'])->assertStatus(422);
 
         $this->assertNull($group->fresh()->peminatan);
+    }
+
+    public function test_kolom_jurusan_peta_tersembunyi_untuk_kelas_10(): void
+    {
+        $workUnitId = (string) Str::uuid();
+        DB::table('work_units')->insert([
+            'id' => $workUnitId, 'name' => 'Unit Peta', 'code' => 'UPT',
+            'is_active' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $school = School::create([
+            'work_unit_id' => $workUnitId, 'npsn' => '12340009',
+            'name' => 'Sekolah Peta', 'school_level' => 'sma', 'is_active' => true,
+        ]);
+
+        $year = AcademicYear::create([
+            'name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true,
+            'start_date' => '2026-07-01', 'end_date' => '2026-12-31',
+        ]);
+
+        $subject = Subject::create([
+            'school_id' => $school->id, 'code' => 'AQ', 'name' => 'Aqidah',
+            'category' => 'pondok', 'credit_hours' => 2,
+        ]);
+
+        $user = User::create([
+            'name' => 'Admin Peta', 'email' => 'admin.peta@test.local',
+            'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true,
+        ]);
+
+        $buat = function (int $level) use ($school, $year, $subject) {
+            $grade = GradeLevel::create([
+                'school_id' => $school->id, 'level' => $level,
+                'name' => 'Kelas '.$level, 'code' => (string) $level,
+            ]);
+            GradeLevelSubject::create([
+                'grade_level_id' => $grade->id, 'academic_year_id' => $year->id,
+                'subject_id' => $subject->id, 'allocation_hours' => 2,
+                'subject_source' => 'pondok', 'is_active' => true,
+            ]);
+
+            return $grade;
+        };
+
+        $kelas10 = $buat(10);
+        $kelas11 = $buat(11);
+
+        $peta = route('user.kurikulum.index', ['userId' => $user->id, 'academic_year_id' => $year->id]);
+
+        // Hanya Kelas 10: kolom Jurusan tidak dirender sama sekali.
+        $this->actingAs($user)->get($peta.'&grade_level_id='.$kelas10->id)
+            ->assertOk()
+            // Skrip halaman tetap memuat atribut ini; yang diperiksa adalah perenderan kolomnya.
+            ->assertDontSee('>Jurusan</th>', false)
+            ->assertDontSee('<span class="text-muted" title="Penjurusan hanya untuk Kelas 11 dan 12">', false);
+
+        // Hanya Kelas 11: kolom Jurusan muncul.
+        $this->actingAs($user)->get($peta.'&grade_level_id='.$kelas11->id)
+            ->assertOk()
+            ->assertSee('>Jurusan</th>', false);
     }
 }

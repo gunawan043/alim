@@ -646,9 +646,6 @@
                                     <tr>
                                         <th class="text-uppercase">Mata Pelajaran</th>
                                         <th class="text-center text-uppercase">Kategori</th>
-                                        @if($pakaiJurusan)
-                                            <th class="text-center text-uppercase">Jurusan</th>
-                                        @endif
                                         <th class="text-center text-uppercase" style="width:120px">JP / Minggu</th>
                                     </tr>
                                 </thead>
@@ -672,15 +669,6 @@
                                                     <span class="badge bg-secondary-subtle text-secondary">Belum ditandai</span>
                                                 @endif
                                             </td>
-                                            @if($pakaiJurusan)
-                                                <td class="text-center">
-                                                    @if($trackUmum)
-                                                        <span class="text-muted">Semua</span>
-                                                    @else
-                                                        <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
-                                                    @endif
-                                                </td>
-                                            @endif
                                             <td class="text-center">
                                                 <div class="input-group input-group-sm">
                                                     <input type="number" name="hours[{{ $gls->id }}]"

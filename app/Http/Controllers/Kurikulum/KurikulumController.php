@@ -233,6 +233,8 @@ class KurikulumController extends Controller
                         'sort_order' => $gradeSubject->sort_order,
                         'track' => $gradeSubject->track,
                         'structure_id' => $gradeSubject->id,
+                        // Kolom jurusan hanya dirender untuk tingkat 11 & 12.
+                        'pakai_jurusan' => $grade->raporSubjectsPerStudyGroup(),
                         'is_rapor' => null,
                     ]);
                 }

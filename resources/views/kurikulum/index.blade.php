@@ -370,7 +370,9 @@
                                 <th class="text-center peta-col-jp" title="Jam pelajaran per minggu untuk mapel ini di tingkat tersebut">JP/Minggu</th>
                                 <th class="text-center peta-col-jp-efektif" title="JP mingguan dikali pekan efektif">JP Efektif</th>
                                 <th class="text-center" title="Asal mapel. Rapor mencetak blok Pondok lebih dulu, lalu Dinas.">Pondok/Dinas</th>
-                                <th class="text-center" title="Jurusan yang menerima mapel ini. Kosong = semua rombel tingkat ini (mapel umum).">Jurusan</th>
+                                @if(($rows->contains('pakai_jurusan', true)) || ($gradeLevelOptions->contains(fn ($g) => (int) $g->level >= 11)))
+                                    <th class="text-center" title="Jurusan yang menerima mapel ini. Kosong = semua rombel tingkat ini (mapel umum).">Jurusan</th>
+                                @endif
                                 <th class="text-center" title="Nomor urut mapel di rapor. Semua rombel pada tingkat yang sama memakai urutan ini.">Urutan</th>
                                 <th class="text-center" title="Kriteria Ketercapaian Tujuan Pembelajaran (0-100) — satu nilai untuk seluruh rombel di tingkat ini">N-KKTP</th>
                                 <th class="text-center">CP</th>
@@ -435,15 +437,10 @@
                                             <span class="badge {{ $sumberBadge }}">{{ $sumberLabel }}</span>
                                         @endif
                                     </td>
+                                    @if($row['pakai_jurusan'])
                                     <td class="text-center">
-                                        @php
-                                            $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($row['track'] ?? null);
-                                            // Penjurusan hanya ada di Kelas 11 & 12.
-                                            $bolehJurusan = (new \App\Models\GradeLevel(['level' => (int) $row['level']]))->raporSubjectsPerStudyGroup();
-                                        @endphp
-                                        @if(! $bolehJurusan)
-                                            <span class="text-muted" title="Penjurusan hanya untuk Kelas 11 dan 12">&mdash;</span>
-                                        @elseif($canEditRapor ?? false)
+                                        @php $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($row['track'] ?? null); @endphp
+                                        @if($canEditRapor ?? false)
                                             <select class="form-select form-select-sm"
                                                     data-peta-track
                                                     data-structure="{{ $row['structure_id'] }}"
@@ -459,6 +456,7 @@
                                             </span>
                                         @endif
                                     </td>
+                                    @endif
                                     <td class="text-center">
                                         @if($canEditRapor ?? false)
                                             <div class="rapor-order-control">
