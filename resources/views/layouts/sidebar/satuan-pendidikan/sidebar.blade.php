@@ -681,13 +681,16 @@
 
             @if(($isKoorTahfidz || $isGuruHalaqah) && ! $teacherOnMapelTahfidz)
                 {{-- Guru halaqah membuka Buku Nilai Saya: isinya buku halaqah
-                     (Ziyadah, Rabt, STS, SAS), bukan buku mapel per rombel. --}}
+                     (Ziyadah, Rabt, STS, SAS), bukan buku mapel per rombel.
+                     Guru tahfidz sudah punya menunya di section atas. --}}
+                @if(! $showTahfidzTeacher)
                 <li class="nav-item">
                     <a class="nav-link menu-link{{ isActiveAny($currentRoute, ['user.tahfidz.penilaian.']) ? ' active' : '' }}"
                        href="{{ route('user.tahfidz.penilaian.index', ['userId' => $userId]) }}">
                         <i class="ri-file-list-3-line"></i><span>Buku Nilai Halaqah</span>
                     </a>
                 </li>
+                @endif
             @endif
 
             @include('layouts.sidebar.satuan-pendidikan.partials.modul-asesmen', ['asesmenFull' => true])

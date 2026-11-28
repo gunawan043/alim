@@ -87,6 +87,25 @@ class TahfidzPenilaianController extends Controller
                     'member' => $member,
                     'score' => $scores->get($member['student_id']),
                 ]);
+
+                // NPT & Tikrar bersumber otomatis (target halaman & setoran
+                // tikrar). Tampilkan angkanya supaya guru tahu apa yang masuk
+                // ke NR Final, tanpa menulis ke baris nilai — nilai tersimpan
+                // hanya berasal dari isian guru.
+                $autoColumns = app(\App\Services\TahfidzLegerColumns::class);
+                $autoColumns->forPeriod($academicYear, $semester);
+                $rows = $rows->map(function ($row) use ($autoColumns, $group) {
+                    $score = $row['score'];
+                    $sid = $row['member']['student_id'];
+                    $row['auto'] = [
+                        'npt' => $score?->npt !== null ? (float) $score->npt : $autoColumns->npt($sid),
+                        'tikrar' => $score?->tikrar !== null
+                            ? (float) $score->tikrar
+                            : $autoColumns->tikrarAverage($sid, $group->id),
+                    ];
+
+                    return $row;
+                });
             }
         }
 
@@ -165,6 +184,44 @@ class TahfidzPenilaianController extends Controller
             422,
             'Buku nilai tidak sesuai halaqah atau semester yang dipilih.',
         );
+
+        // Tanggal ujian: dipakai halaman "Materi Ujian STS/SAS" tanpa isian
+        // nilai, dan tidak perlu diwajibkan di modal nilai per santri.
+        if ($request->has('materi') && ! $request->has('scores')) {
+            if (is_array($request->input('materi'))) {
+                $this->saveExamMaterials($book, $request->input('materi'));
+            }
+
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => true, 'message' => 'Materi ujian tersimpan.'])
+                : redirect()
+                    ->route('user.tahfidz.penilaian.index', [
+                        'userId' => $userId,
+                        'group_id' => $group->id,
+                        'subject_id' => $book->subject_id,
+                        'semester' => $validated['semester'],
+                    ])
+                    ->with('success', 'Materi ujian tersimpan.');
+        }
+
+        // Materi ujian (modal "Materi Ujian STS/SAS") bisa dikirim tanpa nilai
+        // — guru menyusun materi lebih dulu, nilai diisi per santri kemudian.
+        if ($request->has('materi') && ! $request->has('scores')) {
+            if (is_array($request->input('materi'))) {
+                $this->saveExamMaterials($book, $request->input('materi'));
+            }
+
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => true, 'message' => 'Materi ujian tersimpan.'])
+                : redirect()
+                    ->route('user.tahfidz.penilaian.index', [
+                        'userId' => $userId,
+                        'group_id' => $group->id,
+                        'subject_id' => $book->subject_id,
+                        'semester' => $validated['semester'],
+                    ])
+                    ->with('success', 'Materi ujian tersimpan.');
+        }
 
         $academicYear = AcademicYear::where('is_active', true)->first();
         abort_unless($academicYear, 422, 'Belum ada tahun ajaran aktif.');

@@ -90,7 +90,10 @@ class TahfidzPenilaianPageTest extends TestCase
             ->assertSee('Santri Filter B')
             ->assertSee('Ziyadah')
             ->assertSee('Rabt')
-            ->assertSee('Bobot NR Final');
+            ->assertSee('Materi Ujian STS')
+            // Input nilai lewat modal per santri, bukan tabel isian panjang.
+            ->assertSee('data-bs-target="#modalNilai"', false)
+            ->assertSee('id="modalNilai"', false);
     }
 
     public function test_pencarian_menyaring_santri_di_server(): void
@@ -247,6 +250,32 @@ class TahfidzPenilaianPageTest extends TestCase
         $this->assertSame(15, $book->sts_line_end);
         $this->assertStringContainsString('An-Naba:1', (string) $book->sts_material);
         $this->assertStringContainsString('An-Nas:6', (string) $book->sts_material);
+    }
+
+    public function test_materi_ujian_tersimpan_tanpa_kirim_nilai(): void
+    {
+        $teacher = $this->makeTeacher('Guru Materi Saja', 'guru.materisaja@test.local');
+        $group = $this->makeGroup('Halaqah Materi Saja', $teacher, ['Santri Materi Saja']);
+
+        $book = app(TahfidzGradebookService::class)
+            ->booksForTeacher($teacher->id, $this->school->id, $this->year->id)->flatten()->first();
+
+        // Modal "Materi Ujian STS/SAS" mengirim materi saja (tanpa scores).
+        $this->actingAs($teacher)
+            ->postJson(route('user.tahfidz.penilaian.store', ['userId' => $teacher->id]), [
+                'tahfidz_group_id' => $group->id,
+                'tahfidz_gradebook_id' => $book->id,
+                'semester' => 'ganjil',
+                'materi' => [
+                    'sts' => ['surah_start' => 'An-Nas', 'ayah_start' => 1, 'juz' => 30],
+                ],
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertSame('An-Nas', $book->refresh()->sts_surah_start);
+        // Tidak ada baris nilai yang dibuat dari kiriman materi saja.
+        $this->assertSame(0, $book->scores()->count());
     }
 
     private function makeTeacher(string $name, string $email): User

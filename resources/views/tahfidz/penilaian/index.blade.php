@@ -15,6 +15,18 @@
         $filled = $rows->filter(fn ($row) => $row['score'] && $row['score']->nr_final !== null)->count();
         $avgFinal = $rows->map(fn ($row) => $row['score']?->nr_final)->filter(fn ($v) => $v !== null)->avg();
         $rombelNames = $rows->pluck('member.study_group_name')->filter()->unique()->values();
+
+        // Kolom yang diisi guru lewat modal; NPT & Tikrar berasal dari setoran
+        // harian, jadi hanya ditampilkan sebagai angka pendukung.
+        $manualColumns = ['ziyadah', 'rabt', 'sts', 'sas'];
+        $autoColumns = ['npt', 'tikrar'];
+        $weightText = function ($key) use ($weights) {
+            return rtrim(rtrim(number_format((float) ($weights[$key] ?? 0), 2, '.', ''), '0'), '.');
+        };
+        $examMaterials = [
+            'sts' => $book?->examMaterial('sts'),
+            'sas' => $book?->examMaterial('sas'),
+        ];
     @endphp
 
     @component('components.breadcrumb')
@@ -43,118 +55,57 @@
         </div>
     @endif
 
-    {{-- Stats Cards --}}
+    {{-- Ringkasan singkat: satu baris di HP, kartu di layar lebar --}}
     @if($academicYear)
-    <div class="row">
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-90">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-primary-subtle rounded fs-2">
-                                <i class="bx bx-group text-primary"></i>
-                            </span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Halaqah</p>
-                            <h3 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ $group?->name ?? 'Belum dipilih' }}</h3>
-                            @if($rombelNames->isNotEmpty())
-                                <small class="text-muted"><i class="ri-group-line me-1"></i>{{ $rombelNames->implode(', ') }}</small>
-                            @endif
-                        </div>
+        <div class="row g-2 g-md-3 mb-3">
+            <div class="col-6 col-lg-3">
+                <div class="card h-100">
+                    <div class="card-body py-2 py-md-3">
+                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;">Halaqah</p>
+                        <h6 class="fw-bold mb-0 text-truncate">{{ $group?->name ?? 'Belum dipilih' }}</h6>
+                        @if($rombelNames->isNotEmpty())
+                            <small class="text-muted d-block text-truncate">{{ $rombelNames->implode(', ') }}</small>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card h-100">
+                    <div class="card-body py-2 py-md-3">
+                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;">Tahun Ajaran</p>
+                        <h6 class="fw-bold mb-0 text-truncate">{{ $academicYear->name }}</h6>
+                        <small class="text-muted text-capitalize d-block">{{ $semester }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card h-100">
+                    <div class="card-body py-2 py-md-3">
+                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;">Santri Aktif</p>
+                        <h6 class="fw-bold mb-0">{{ $members->count() }}</h6>
+                        <small class="text-muted d-block">{{ $filled }} sudah dinilai</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card h-100">
+                    <div class="card-body py-2 py-md-3">
+                        <p class="text-uppercase fw-medium text-muted mb-1" style="font-size:10px;">Rata-rata NR</p>
+                        <h6 class="fw-bold mb-0">{{ $avgFinal !== null ? number_format($avgFinal, 1) : '—' }}</h6>
+                        <small class="text-muted d-block">{{ $books->count() }} buku mapel tahfidz</small>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-90">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-info-subtle rounded fs-2">
-                                <i class="ri-book-open-line text-info"></i>
-                            </span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Tahun Ajaran</p>
-                            <h3 class="fw-bold ff-secondary mb-0" style="font-size:16px;">{{ $academicYear->name }}</h3>
-                            <small class="text-muted text-capitalize">{{ $semester }}</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-90">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-success-subtle rounded fs-2">
-                                <i class="ri-user-3-line text-success"></i>
-                            </span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Santri Aktif</p>
-                            <h3 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ $members->count() }}</h3>
-                            <small class="text-muted">{{ $filled }} sudah dinilai</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card h-90">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="avatar-sm flex-shrink-0">
-                            <span class="avatar-title bg-warning-subtle rounded fs-2">
-                                <i class="ri-bar-chart-line text-warning"></i>
-                            </span>
-                        </div>
-                        <div>
-                            <p class="text-uppercase fw-medium text-muted mb-0" style="font-size:10px;">Rata-rata NR Final</p>
-                            <h3 class="fw-bold ff-secondary mb-0" style="font-size:18px;">{{ $avgFinal !== null ? number_format($avgFinal, 1) : '—' }}</h3>
-                            <small class="text-muted">{{ $books->count() }} buku mapel tahfidz</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     @endif
 
-    {{-- Main Card --}}
-    <div class="card" id="bukuHalaqah">
-        <div class="card-header border-bottom-dashed">
-            <div class="row g-3 align-items-center">
-                <div class="col-sm">
-                    <h5 class="card-title mb-0">
-                        <i class="ri-file-edit-line text-primary me-1"></i>
-                        Buku Nilai Halaqah{{ $group ? ' — '.$group->name : '' }}
-                    </h5>
-                    <p class="text-muted mb-0" style="font-size:12px;">
-                        Dinilai per halaqah dengan kolom Ziyadah, Rabt, STS, dan SAS.
-                        NR Final = jumlah (nilai &times; bobot) dibagi total bobot kolom yang terisi. Nilai tersimpan otomatis.
-                    </p>
-                </div>
-                <div class="col-sm-auto">
-                    @if($group)
-                        <span class="badge bg-{{ $semester === 'ganjil' ? 'info' : 'warning' }}-subtle text-{{ $semester === 'ganjil' ? 'info' : 'warning' }}" style="font-size:11px;padding:6px 10px;">
-                            <i class="ri-calendar-line me-1"></i>{{ ucfirst($semester) }} · {{ $academicYear?->name }}
-                        </span>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        {{-- Filter: halaqah dulu, baru data dimuat --}}
-        <div class="card-header py-2 bg-light border-bottom">
-            <form method="GET" class="d-flex align-items-center gap-3 flex-wrap">
-                <span class="text-muted fw-medium" style="font-size:12px;">
-                    <i class="ri-filter-line me-1"></i>Filter:
-                </span>
-                <div>
-                    <select name="group_id" class="form-select form-select-sm fw-semibold" style="min-width:200px;"
+    {{-- ── Filter ─────────────────────────────────────────────────────── --}}
+    <div class="card mb-3">
+        <div class="card-body py-3">
+            <form method="GET" class="row g-2 align-items-end">
+                <div class="col-12 col-md-6 col-xl-4">
+                    <label class="form-label small mb-1">Halaqah</label>
+                    <select name="group_id" class="form-select form-select-sm fw-semibold"
                             onchange="this.form.submit()" @disabled($groups->isEmpty())>
                         <option value="">{{ $groups->isEmpty() ? 'Belum ada halaqah' : 'Pilih Halaqah…' }}</option>
                         @foreach($groups as $g)
@@ -165,39 +116,62 @@
                     </select>
                 </div>
                 @if($books->count() > 1)
-                    <div>
-                        <select name="subject_id" class="form-select form-select-sm" style="min-width:150px;" onchange="this.form.submit()">
+                    <div class="col-6 col-md-3 col-xl-2">
+                        <label class="form-label small mb-1">Mapel</label>
+                        <select name="subject_id" class="form-select form-select-sm" onchange="this.form.submit()">
                             @foreach($books as $b)
                                 <option value="{{ $b->subject_id }}" @selected($selectedSubjectId === $b->subject_id)>{{ $b->subject?->name }}</option>
                             @endforeach
                         </select>
                     </div>
                 @endif
-                <div>
-                    <select name="semester" class="form-select form-select-sm" style="min-width:150px;" onchange="this.form.submit()">
-                        <option value="ganjil" @selected($semester === 'ganjil')>Semester Ganjil</option>
-                        <option value="genap" @selected($semester === 'genap')>Semester Genap</option>
+                <div class="col-6 col-md-3 col-xl-2">
+                    <label class="form-label small mb-1">Semester</label>
+                    <select name="semester" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="ganjil" @selected($semester === 'ganjil')>Ganjil</option>
+                        <option value="genap" @selected($semester === 'genap')>Genap</option>
                     </select>
                 </div>
-                <div>
-                    <input type="text" name="search" class="form-control form-control-sm" style="min-width:170px;"
-                           placeholder="Cari nama Santri / NIS…" value="{{ $search }}"
-                           @if($rows->isNotEmpty()) oninput="filterHalaqahRows(this.value)" @endif>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <label class="form-label small mb-1">Cari santri</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-transparent"><i class="ri-search-line"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Nama atau NIS"
+                               value="{{ $search }}" @if($group) oninput="filterSantriRows(this.value)" @endif>
+                        @if($group)
+                            <a href="{{ route('user.tahfidz.penilaian.index', ['userId' => $userId, 'group_id' => $group->id, 'semester' => $semester]) }}"
+                               class="btn btn-outline-secondary" title="Reset pencarian"><i class="ri-refresh-line"></i></a>
+                        @endif
+                    </div>
                 </div>
-                @if($group)
-                    <a href="{{ route('user.tahfidz.penilaian.index', ['userId' => $userId, 'group_id' => $group->id, 'semester' => $semester]) }}"
-                       class="btn btn-light btn-sm" title="Reset pencarian">
-                        <i class="ri-refresh-line"></i>
-                    </a>
-                @endif
-                <div class="ms-auto d-flex align-items-center gap-2">
-                    <span id="autosave-indicator" class="badge bg-light text-muted border d-flex align-items-center gap-1" style="font-size:.7rem;">
-                        <span id="autosave-dot" class="rounded-circle bg-secondary" style="width:7px;height:7px;display:inline-block;"></span>
-                        <span id="autosave-text">Menunggu…</span>
-                    </span>
-                    <span class="badge bg-primary-subtle text-primary" style="font-size:12px;">{{ $members->count() }} Santri</span>
+                <div class="col-12 col-xl-auto">
+                    <button class="btn btn-primary btn-sm w-100" type="submit"><i class="ri-filter-3-line me-1"></i>Terapkan</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- ── Daftar santri ──────────────────────────────────────────────── --}}
+    <div class="card">
+        <div class="card-header border-bottom-dashed d-flex flex-wrap align-items-center gap-2">
+            <div class="flex-grow-1">
+                <h5 class="card-title mb-0">
+                    <i class="ri-file-edit-line text-primary me-1"></i>
+                    Buku Nilai Halaqah{{ $group ? ' — '.$group->name : '' }}
+                </h5>
+                <p class="text-muted mb-0" style="font-size:12px;">
+                    Ketuk tombol <strong>Nilai</strong> untuk mengisi Ziyadah, Rabt, STS, dan SAS lewat jendela singkat.
+                    NPT dan Tikrar diambil otomatis dari setoran harian.
+                </p>
+            </div>
+            @if($group)
+                @if($book)
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMateri">
+                        <i class="ri-file-text-line me-1"></i>Materi Ujian STS/SAS
+                    </button>
+                @endif
+                <span class="badge bg-primary-subtle text-primary" style="font-size:12px;">{{ $members->count() }} Santri</span>
+            @endif
         </div>
 
         @if(! $academicYear)
@@ -228,7 +202,7 @@
                     </div>
                 </div>
                 <h6 class="text-muted">Pilih halaqah untuk mulai menilai</h6>
-                <p class="text-muted mb-0" style="font-size:12px;">Daftar santri dan kolom nilai dimuat setelah halaqah dipilih.</p>
+                <p class="text-muted mb-0" style="font-size:12px;">Daftar santri dimuat setelah halaqah dipilih.</p>
             </div>
         @elseif($books->isEmpty())
             <div class="p-4">
@@ -239,455 +213,541 @@
                     <a href="{{ route('user.tahfidz.format.index', ['userId' => $userId]) }}">Format Penilaian Mapel</a>.
                 </div>
             </div>
+        @elseif($rows->isEmpty())
+            <div class="text-center py-5">
+                <div class="avatar-lg mx-auto mb-3">
+                    <div class="avatar-title bg-light rounded-circle">
+                        <i class="ri-user-search-line fs-1 text-muted"></i>
+                    </div>
+                </div>
+                <h6 class="text-muted">{{ $search !== '' ? 'Santri tidak ditemukan' : 'Belum ada santri aktif' }}</h6>
+                <p class="text-muted mb-0" style="font-size:12px;">
+                    {{ $search !== '' ? 'Ubah kata kunci pencarian.' : 'Belum ada santri aktif di halaqah ini pada '.$academicYear->name.'.' }}
+                </p>
+            </div>
         @else
-            {{-- Panel bobot NR Final: setara "Pengaturan NR Final" buku nilai sumatif --}}
-            <form method="POST" action="{{ route('user.tahfidz.penilaian.store', ['userId' => $userId]) }}" id="formHalaqah">
-                @csrf
-                <input type="hidden" name="tahfidz_group_id" value="{{ $group->id }}">
-                <input type="hidden" name="tahfidz_gradebook_id" value="{{ $book->id }}">
-                <input type="hidden" name="semester" value="{{ $semester }}">
-
-                {{-- Ringkasan buku: sepadan dengan panel atas tab Mapel di buku nilai sumatif --}}
-                <div class="px-4 py-3" style="background:var(--bs-tertiary-bg);border-bottom:1px solid var(--bs-border-color);">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary text-white" style="font-size:12px;">
-                                <i class="ri-book-line me-1"></i>{{ $book->subject?->name ?? 'Tahfidz' }}
-                            </span>
-                            <span class="badge bg-secondary-subtle text-secondary text-capitalize">{{ $semester }}</span>
-                            <span class="badge bg-info-subtle text-info">
-                                <i class="ri-team-line me-1"></i>{{ $group->name }}
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2" style="font-size:12px;">
-                            <span class="badge bg-primary-subtle text-primary"><i class="ri-bookmark-line me-1"></i>Ziyadah</span>
-                            <span class="badge bg-success-subtle text-success"><i class="ri-link me-1"></i>Rabt</span>
-                            <span class="badge bg-warning-subtle text-warning"><i class="ri-edit-2-line me-1"></i>STS</span>
-                            <span class="badge bg-info-subtle text-info"><i class="ri-file-list-3-line me-1"></i>SAS</span>
-                            <span class="badge bg-secondary-subtle text-secondary"><i class="ri-calculator-line me-1"></i>NR Final &amp; Jumlah (otomatis)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="px-4 pt-3 pb-2">
-                    <div class="d-flex align-items-center gap-2 flex-wrap border rounded p-2" style="background:var(--bs-tertiary-bg);">
-                        <span class="fw-semibold" style="font-size:12px;">Bobot NR Final:</span>
-                        @foreach($columns as $key)
-                            <span class="badge bg-secondary-subtle text-secondary">
-                                {{ $columnLabels[$key] }} {{ rtrim(rtrim(number_format((float) ($weights[$key] ?? 0), 2, '.', ''), '0'), '.') }}%
-                            </span>
-                        @endforeach
-                        <span class="text-muted ms-auto" style="font-size:11px;">
-                            <i class="ri-lock-line me-1"></i>Bobot diatur Departemen Tahfidz dan tidak dapat diubah di sini.
-                        </span>
-                    </div>
-                </div>
-
-                {{-- Materi ujian STS & SAS. Disimpan per buku (halaqah + mapel
-                     + semester) karena satu halaqah diuji materi yang sama.
-                     Bentuk isian mengikuti setoran: surah, ayat, juz, halaman. --}}
-                @foreach(['sts' => 'STS', 'sas' => 'SAS'] as $jenisKey => $jenisLabel)
-                    @php $materi = $book->examMaterial($jenisKey); @endphp
-                    <div class="px-4 pt-3">
-                        <div class="border rounded p-3" style="background:var(--bs-tertiary-bg);">
-                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                                <div class="fw-semibold" style="font-size:13px;">
-                                    <i class="ri-file-text-line me-1 text-primary"></i>Materi Ujian {{ $jenisLabel }}
-                                </div>
-                                <span class="badge {{ $materi ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary' }} exam-preview" data-exam="{{ $jenisKey }}">
-                                    @if($materi)
-                                        {{ $materi['surah_start'] ?? '—' }}{{ $materi['ayah_start'] ? ':'.$materi['ayah_start'] : '' }}
-                                        @if($materi['surah_end'] || $materi['ayah_end'])
-                                            – {{ $materi['surah_end'] ?: $materi['surah_start'] }}{{ $materi['ayah_end'] ? ':'.$materi['ayah_end'] : '' }}
-                                        @endif
-                                        @if($materi['juz']) · Juz {{ $materi['juz'] }} @endif
-                                    @else
-                                        Belum diisi
-                                    @endif
-                                </span>
-                            </div>
-                            <div class="row g-2 align-items-end">
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Surah awal</label>
-                                    <select name="materi[{{ $jenisKey }}][surah_start]" class="form-select form-select-sm exam-surah"
-                                            data-exam="{{ $jenisKey }}" data-role="start">
-                                        <option value="">— Pilih surah —</option>
-                                        @foreach($surahs as $surah)
-                                            <option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}"
-                                                    @selected(($materi['surah_start'] ?? null) === $surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Ayat awal</label>
-                                    <input type="number" min="1" name="materi[{{ $jenisKey }}][ayah_start]"
-                                           class="form-control form-control-sm exam-ayat" data-exam="{{ $jenisKey }}" data-role="start"
-                                           value="{{ $materi['ayah_start'] ?? '' }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Surah akhir <span class="fw-normal text-muted">(kosongkan bila sama)</span></label>
-                                    <select name="materi[{{ $jenisKey }}][surah_end]" class="form-select form-select-sm exam-surah"
-                                            data-exam="{{ $jenisKey }}" data-role="end">
-                                        <option value="">— Sama dengan surah awal —</option>
-                                        @foreach($surahs as $surah)
-                                            <option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}"
-                                                    @selected(($materi['surah_end'] ?? null) === $surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Ayat akhir</label>
-                                    <input type="number" min="1" name="materi[{{ $jenisKey }}][ayah_end]"
-                                           class="form-control form-control-sm exam-ayat" data-exam="{{ $jenisKey }}" data-role="end"
-                                           value="{{ $materi['ayah_end'] ?? '' }}">
-                                </div>
-
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Juz</label>
-                                    <input type="number" min="1" max="30" name="materi[{{ $jenisKey }}][juz]"
-                                           class="form-control form-control-sm" value="{{ $materi['juz'] ?? '' }}">
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Halaman</label>
-                                    <input type="number" min="1" max="604" name="materi[{{ $jenisKey }}][page_start]"
-                                           id="page-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['page_start'] ?? '' }}">
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Baris</label>
-                                    <input type="number" min="1" max="15" name="materi[{{ $jenisKey }}][line_start]"
-                                           id="line-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['line_start'] ?? '' }}">
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Hal. akhir</label>
-                                    <input type="number" min="1" max="604" name="materi[{{ $jenisKey }}][page_end]"
-                                           id="pageend-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['page_end'] ?? '' }}">
-                                </div>
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label small mb-1">Baris akhir</label>
-                                    <input type="number" min="1" max="15" name="materi[{{ $jenisKey }}][line_end]"
-                                           id="lineend-{{ $jenisKey }}" class="form-control form-control-sm" value="{{ $materi['line_end'] ?? '' }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-text mb-0" id="hint-{{ $jenisKey }}">
-                                        <i class="ri-bookmark-line me-1"></i>Halaman dan baris terisi otomatis dari Mushaf Madinah.
+            {{-- Tabel ringkas: hanya pratinjau nilai; penyuntingan lewat modal.
+                 Di HP baris berubah menjadi kartu (lihat gaya .student-table). --}}
+            <div class="table-responsive">
+                <table id="tab-santri" class="table table-hover align-middle mb-0 student-table"
+                       data-total-weight="{{ $totalWeight }}">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-muted text-center" style="width:44px;">No</th>
+                            <th class="text-muted">Santri</th>
+                            @foreach($manualColumns as $key)
+                                <th class="text-center col-score" title="Nilai {{ $columnLabels[$key] }}">
+                                    {{ $columnLabels[$key] }}
+                                    <small class="fw-normal text-muted d-block">{{ $weightText($key) }}%</small>
+                                </th>
+                            @endforeach
+                            <th class="text-center col-score">NPT<small class="fw-normal text-muted d-block">{{ $weightText('npt') }}%</small></th>
+                            <th class="text-center col-score">Tikrar<small class="fw-normal text-muted d-block">{{ $weightText('tikrar') }}%</small></th>
+                            <th class="text-center">NR Final</th>
+                            <th class="text-center col-score">Jumlah</th>
+                            <th class="text-end" style="width:96px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($rows as $i => $row)
+                            @php
+                                $member = $row['member'];
+                                $score = $row['score'];
+                                $sid = $member['student_id'];
+                                $jumlah = $score?->nr_final !== null ? (float) $score->nr_final * $totalWeight / 100 : null;
+                                $filledCount = collect($manualColumns)->filter(fn ($k) => $score?->{$k} !== null)->count();
+                            @endphp
+                            <tr data-name="{{ mb_strtolower($member['name']) }}|{{ mb_strtolower((string) $member['nis']) }}">
+                                <td class="text-center text-muted fw-semibold" data-label="No">{{ $i + 1 }}</td>
+                                <td data-label="Santri">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-xs flex-shrink-0">
+                                            <span class="avatar-title rounded-circle bg-primary-subtle text-primary fw-bold">
+                                                {{ mb_strtoupper(mb_substr($member['name'], 0, 1)) }}
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="fw-medium text-truncate">{{ $member['name'] }}</div>
+                                            <small class="text-muted">
+                                                {{ $member['nis'] ?? '—' }}
+                                                @if($member['study_group_name']) · {{ $member['study_group_name'] }} @endif
+                                            </small>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-
-                @if($rows->isEmpty())
-                    <div class="text-center py-5">
-                        <div class="avatar-lg mx-auto mb-3">
-                            <div class="avatar-title bg-light rounded-circle">
-                                <i class="ri-user-search-line fs-1 text-muted"></i>
-                            </div>
-                        </div>
-                        <h6 class="text-muted">{{ $search !== '' ? 'Santri tidak ditemukan' : 'Belum ada santri aktif' }}</h6>
-                        <p class="text-muted mb-0" style="font-size:12px;">
-                            {{ $search !== '' ? 'Ubah kata kunci pencarian.' : 'Belum ada santri aktif di halaqah ini pada '.$academicYear->name.'.' }}
-                        </p>
-                    </div>
-                @else
-                    <div class="table-responsive" style="max-height:72vh;overflow:auto;">
-                        <table id="tab-halaqah" class="table table-bordered table-nowrap align-middle mb-0">
-                            <thead class="table-light text-center">
-                                <tr>
-                                    <th rowspan="2" class="align-middle text-muted" style="width:50px;background:var(--bs-tertiary-bg);">No</th>
-                                    <th rowspan="2" class="align-middle text-muted" style="width:90px;background:var(--bs-tertiary-bg);">NIS</th>
-                                    <th rowspan="2" class="align-middle text-muted text-start" style="min-width:230px;background:var(--bs-tertiary-bg);">
-                                        <i class="ri-user-line me-1"></i>Nama Santri
-                                    </th>
-                                    <th rowspan="2" class="align-middle" style="width:96px;">Rombel</th>
-                                    <th colspan="{{ count($columns) }}" class="align-middle">Nilai Tahfidz</th>
-                                    <th rowspan="2" class="align-middle bg-success-subtle" style="width:92px;">NR Final</th>
-                                    <th rowspan="2" class="align-middle bg-secondary-subtle" style="width:92px;" title="Jumlah = NR Final × Bobot">Jumlah</th>
-                                    <th rowspan="2" class="align-middle bg-secondary-subtle" style="width:150px;">Keterangan</th>
-                                </tr>
-                                <tr>
-                                    @foreach($columns as $key)
-                                        <th style="width:88px;min-width:88px;" title="Nilai {{ $columnLabels[$key] }}">
-                                            {{ $columnLabels[$key] }}<br>
-                                            <small class="fw-normal text-muted">({{ rtrim(rtrim(number_format((float) ($weights[$key] ?? 0), 2, '.', ''), '0'), '.') }}%)</small>
-                                        </th>
-                                    @endforeach
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($rows as $i => $row)
-                                    @php
-                                        $member = $row['member'];
-                                        $score = $row['score'];
-                                        $sid = $member['student_id'];
-                                        $jumlah = $score?->nr_final !== null ? (float) $score->nr_final * $totalWeight / 100 : null;
-                                    @endphp
-                                    <tr data-name="{{ mb_strtolower($member['name']) }}|{{ mb_strtolower((string) $member['nis']) }}">
-                                        <td class="text-center text-muted fw-semibold" data-col="no">{{ $i + 1 }}</td>
-                                        <td class="text-center" data-col="nis">{{ $member['nis'] ?? '—' }}</td>
-                                        <td class="text-start" data-col="name">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <div class="avatar-xs">
-                                                    <span class="avatar-title rounded-circle bg-primary text-white">
-                                                        {{ mb_strtoupper(mb_substr($member['name'], 0, 1)) }}
-                                                    </span>
-                                                </div>
-                                                <span class="fw-medium">{{ $member['name'] }}</span>
-                                            </div>
-                                        </td>
-                                        <td class="text-center text-muted">{{ $member['study_group_name'] ?? '—' }}</td>
-                                        @foreach($columns as $key)
-                                            <td class="p-0" data-col="{{ $key }}">
-                                                <input type="number" step="0.01" min="0" max="100"
-                                                       class="sheet-input score-input"
-                                                       name="scores[{{ $sid }}][{{ $key }}]"
-                                                       data-student="{{ $sid }}"
-                                                       value="{{ $score?->{$key} !== null ? rtrim(rtrim(number_format((float) $score->{$key}, 2, '.', ''), '0'), '.') : '' }}"
-                                                       placeholder="---"
-                                                       oninput="if(this.value > 100) this.value = 100; if(this.value < 0) this.value = 0;">
-                                            </td>
-                                        @endforeach
-                                        <td class="text-center fw-bold" id="nrf-{{ $sid }}">{{ $score?->nr_final !== null ? number_format((float) $score->nr_final, 1) : '---' }}</td>
-                                        <td class="text-center fw-semibold bg-light" id="jml-{{ $sid }}">{{ $jumlah !== null ? number_format($jumlah, 1) : '---' }}</td>
-                                        <td class="p-0">
-                                            <input type="text" maxlength="100" class="sheet-input"
-                                                   name="scores[{{ $sid }}][ket]" data-student="{{ $sid }}"
-                                                   value="{{ $score?->ket }}" placeholder="Catatan (opsional)">
-                                        </td>
-                                    </tr>
+                                </td>
+                                @foreach($manualColumns as $key)
+                                    <td class="text-center col-score" data-label="{{ $columnLabels[$key] }}">
+                                        <span class="score-cell {{ $score?->{$key} !== null ? '' : 'text-muted' }}"
+                                              data-score="{{ $sid }}.{{ $key }}">
+                                            {{ $score?->{$key} !== null ? rtrim(rtrim(number_format((float) $score->{$key}, 2, '.', ''), '0'), '.') : '—' }}
+                                        </span>
+                                    </td>
                                 @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="card-footer border-top-dashed px-4 py-3">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                            <div class="text-muted" style="font-size:12px;">
-                                <span class="badge bg-primary-subtle text-primary">Ziyadah</span>
-                                <span class="me-2">hafalan baru.</span>
-                                <span class="badge bg-success-subtle text-success">Rabt</span>
-                                <span class="me-2">penyambung hafalan.</span>
-                                <span class="badge bg-warning-subtle text-warning">STS</span> /
-                                <span class="badge bg-info-subtle text-info">SAS</span>
-                                <span>sumatif. Kosongkan kolom yang belum dinilai.</span>
-                            </div>
-                            <button class="btn btn-success btn-sm" type="submit"><i class="ri-save-line me-1"></i>Simpan Nilai &amp; Bobot</button>
-                        </div>
-                    </div>
-                @endif
-            </form>
+                                @foreach($autoColumns as $key)
+                                    @php $autoValue = $row['auto'][$key] ?? null; @endphp
+                                    <td class="text-center col-score text-muted" data-label="{{ $columnLabels[$key] }}"
+                                        title="Diambil otomatis dari setoran harian">
+                                        {{ $autoValue !== null ? rtrim(rtrim(number_format((float) $autoValue, 2, '.', ''), '0'), '.') : '—' }}
+                                    </td>
+                                @endforeach
+                                <td class="text-center" data-label="NR Final">
+                                    <span class="badge {{ $score?->nr_final !== null ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' }} fs-6"
+                                          data-nr="{{ $sid }}">
+                                        {{ $score?->nr_final !== null ? number_format((float) $score->nr_final, 1) : '—' }}
+                                    </span>
+                                </td>
+                                <td class="text-center col-score fw-semibold text-muted" data-label="Jumlah" data-jml="{{ $sid }}">
+                                    {{ $jumlah !== null ? number_format($jumlah, 1) : '—' }}
+                                </td>
+                                <td class="text-end" data-label="Aksi">
+                                    <button type="button" class="btn btn-sm {{ $filledCount > 0 ? 'btn-outline-primary' : 'btn-primary' }}"
+                                            data-bs-toggle="modal" data-bs-target="#modalNilai"
+                                            data-student="{{ $sid }}"
+                                            data-name="{{ $member['name'] }}"
+                                            data-nis="{{ $member['nis'] ?? '' }}"
+                                            data-rombel="{{ $member['study_group_name'] ?? '' }}"
+                                            data-filled="{{ $filledCount }}">
+                                        <i class="ri-edit-2-line"></i>
+                                        <span class="d-none d-lg-inline ms-1">Nilai</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer border-top-dashed">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 text-muted" style="font-size:12px;">
+                    <span>
+                        <i class="ri-information-line me-1"></i>
+                        NR Final = jumlah (nilai × bobot) dibagi total bobot kolom yang terisi.
+                        Bobot diatur Departemen Tahfidz.
+                    </span>
+                    <span><i class="ri-lock-line me-1"></i>Perubahan tersimpan otomatis saat modal ditutup.</span>
+                </div>
+            </div>
         @endif
     </div>
+
+    @if($group && $book && $rows->isNotEmpty())
+        {{-- ── Modal materi ujian (per halaqah, berlaku semua santri) ───── --}}
+        <div class="modal fade" id="modalMateri" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title mb-0">Materi Ujian STS &amp; SAS</h5>
+                            <small class="text-muted">Berlaku untuk seluruh santri di halaqah {{ $group->name }}.</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ul class="nav nav-pills nav-sm mb-3 gap-1" role="tablist">
+                            @foreach(['sts' => 'STS', 'sas' => 'SAS'] as $jenisKey => $jenisLabel)
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link {{ $loop->first ? 'active' : '' }}" type="button"
+                                            data-bs-toggle="pill" data-bs-target="#materi-{{ $jenisKey }}"
+                                            role="tab">{{ $jenisLabel }}</button>
+                                </li>
+                            @endforeach
+                        </ul>
+
+                        @foreach(['sts' => 'STS', 'sas' => 'SAS'] as $jenisKey => $jenisLabel)
+                            @php $materi = $examMaterials[$jenisKey]; @endphp
+                            <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="materi-{{ $jenisKey }}" role="tabpanel">
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small mb-1">Surah awal</label>
+                                        <select name="materi[{{ $jenisKey }}][surah_start]" class="form-select exam-surah"
+                                                data-exam="{{ $jenisKey }}" data-role="start">
+                                            <option value="">— Pilih surah —</option>
+                                            @foreach($surahs as $surah)
+                                                <option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}"
+                                                        @selected(($materi['surah_start'] ?? null) === $surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Ayat awal</label>
+                                        <input type="number" min="1" name="materi[{{ $jenisKey }}][ayah_start]"
+                                               class="form-control exam-ayat" data-exam="{{ $jenisKey }}" data-role="start"
+                                               value="{{ $materi['ayah_start'] ?? '' }}">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Juz</label>
+                                        <input type="number" min="1" max="30" name="materi[{{ $jenisKey }}][juz]"
+                                               class="form-control" value="{{ $materi['juz'] ?? '' }}">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small mb-1">Surah akhir <span class="fw-normal text-muted">(boleh sama)</span></label>
+                                        <select name="materi[{{ $jenisKey }}][surah_end]" class="form-select exam-surah"
+                                                data-exam="{{ $jenisKey }}" data-role="end">
+                                            <option value="">— Sama dengan surah awal —</option>
+                                            @foreach($surahs as $surah)
+                                                <option value="{{ $surah->name_latin }}" data-number="{{ $surah->number }}"
+                                                        @selected(($materi['surah_end'] ?? null) === $surah->name_latin)>{{ $surah->number }}. {{ $surah->name_latin }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label small mb-1">Ayat akhir</label>
+                                        <input type="number" min="1" name="materi[{{ $jenisKey }}][ayah_end]"
+                                               class="form-control exam-ayat" data-exam="{{ $jenisKey }}" data-role="end"
+                                               value="{{ $materi['ayah_end'] ?? '' }}">
+                                    </div>
+                                </div>
+
+                                <hr class="my-3">
+                                <p class="text-muted small mb-2">
+                                    <i class="ri-bookmark-line me-1"></i>Halaman &amp; baris terisi otomatis dari Mushaf Madinah; ubah bila perlu.
+                                </p>
+                                <div class="row g-2">
+                                    @foreach([['page_start', 'page-'.$jenisKey, 'Halaman awal', 604], ['line_start', 'line-'.$jenisKey, 'Baris awal', 15], ['page_end', 'pageend-'.$jenisKey, 'Halaman akhir', 604], ['line_end', 'lineend-'.$jenisKey, 'Baris akhir', 15]] as [$field, $fid, $flabel, $fmax])
+                                        <div class="col-6 col-md-3">
+                                            <label class="form-label small mb-1">{{ $flabel }}</label>
+                                            <input type="number" min="1" max="{{ $fmax }}" name="materi[{{ $jenisKey }}][{{ $field }}]"
+                                                   id="{{ $fid }}" class="form-control" value="{{ $materi[$field] ?? '' }}">
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="form-text mt-2" id="hint-{{ $jenisKey }}">
+                                    <i class="ri-information-line me-1"></i>Pilih surah dan ayat awal untuk mengisi posisi otomatis.
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-primary" id="btnSimpanMateri">
+                            <i class="ri-save-line me-1"></i>Simpan Materi
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── Modal input nilai satu santri ────────────────────────────── --}}
+        <div class="modal fade" id="modalNilai" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header align-items-start">
+                        <div class="min-w-0">
+                            <h5 class="modal-title mb-1 text-truncate" id="modalSantriNama">Nilai Santri</h5>
+                            <div class="text-muted small text-truncate" id="modalSantriInfo"></div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    </div>
+                    <div class="modal-body" id="formNilai">
+                        <div class="row g-3">
+                            @foreach($manualColumns as $key)
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold mb-1" for="inp-{{ $key }}">
+                                        {{ $columnLabels[$key] }}
+                                        <span class="badge bg-secondary-subtle text-secondary ms-1">{{ $weightText($key) }}%</span>
+                                    </label>
+                                    <input type="number" step="0.01" min="0" max="100" inputmode="decimal"
+                                           class="form-control form-control-lg text-center nilai-input"
+                                           id="inp-{{ $key }}" data-key="{{ $key }}" placeholder="—">
+                                </div>
+                            @endforeach
+                            @if($examMaterials['sts'] || $examMaterials['sas'])
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach(['sts' => 'STS', 'sas' => 'SAS'] as $jenisKey => $jenisLabel)
+                                            <span class="badge {{ $examMaterials[$jenisKey] ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary' }} exam-preview"
+                                                  data-exam="{{ $jenisKey }}">
+                                                <i class="ri-file-text-line me-1"></i>Materi {{ $jenisLabel }}:
+                                                @if($examMaterials[$jenisKey])
+                                                    {{ $examMaterials[$jenisKey]['surah_start'] ?? '—' }}{{ $examMaterials[$jenisKey]['ayah_start'] ? ':'.$examMaterials[$jenisKey]['ayah_start'] : '' }}
+                                                    @if($examMaterials[$jenisKey]['surah_end'] || $examMaterials[$jenisKey]['ayah_end'])
+                                                        – {{ $examMaterials[$jenisKey]['surah_end'] ?: $examMaterials[$jenisKey]['surah_start'] }}{{ $examMaterials[$jenisKey]['ayah_end'] ? ':'.$examMaterials[$jenisKey]['ayah_end'] : '' }}
+                                                    @endif
+                                                    @if($examMaterials[$jenisKey]['juz']) · Juz {{ $examMaterials[$jenisKey]['juz'] }} @endif
+                                                @else
+                                                    belum diisi
+                                                @endif
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                            <div class="col-12">
+                                <label class="form-label fw-semibold mb-1" for="inp-ket">Keterangan <span class="fw-normal text-muted">(opsional)</span></label>
+                                <input type="text" maxlength="100" class="form-control" id="inp-ket" placeholder="Catatan singkat">
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between mt-3 p-3 rounded bg-success-subtle">
+                            <div>
+                                <div class="text-muted" style="font-size:11px;">NR Final (otomatis)</div>
+                                <div class="fw-bold fs-4 text-success" id="modalNr">—</div>
+                            </div>
+                            <div class="text-end" style="font-size:12px;">
+                                <div class="text-muted">Jumlah (NR × bobot)</div>
+                                <div class="fw-semibold" id="modalJumlah">—</div>
+                            </div>
+                        </div>
+                        <div class="form-text mt-2">
+                            NPT dan Tikrar diisi otomatis dari setoran harian. Nilai tersimpan otomatis saat modal ditutup.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <span class="me-auto small text-muted" id="modalStatus"></span>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-primary" id="btnSimpanNilai">
+                            <i class="ri-save-line me-1"></i>Simpan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 @endsection
 
 @section('script')
 <style>
-    #tab-halaqah { font-size: 12px; }
-    #tab-halaqah thead th { font-size: 12px; font-weight: 600; }
-    #tab-halaqah thead th[colspan] { font-size: 11px; letter-spacing: .4px; }
-    #tab-halaqah thead th small { font-size: 10px; }
-    #tab-halaqah tbody td { font-size: 12px; }
-    #tab-halaqah tbody tr { transition: background-color .12s; }
-    #tab-halaqah tbody tr:hover td { background: rgba(var(--bs-primary-rgb), .05); }
+    .student-table .badge.fs-6 { font-size: .8rem !important; }
 
-    /* Gaya spreadsheet: input tanpa border, fokus hanya latar halus */
-    #tab-halaqah td.p-0 { padding: 0; }
-    #tab-halaqah input.sheet-input {
-        width: 100%; height: 30px; padding: 0 4px;
-        border: 0; border-radius: 0; box-shadow: none;
-        background: transparent; color: var(--bs-body-color);
-        font-size: 12px; text-align: center;
+    /* HP: baris tabel berubah menjadi kartu agar tidak perlu geser horizontal. */
+    @media (max-width: 767.98px) {
+        .student-table { display: block; width: 100%; }
+        .student-table thead { display: none; }
+        .student-table tbody { display: block; width: 100%; }
+        .student-table tbody tr {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: .25rem .75rem;
+            width: 100%;
+            padding: .75rem;
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+        .student-table tbody td { display: block; border: 0 !important; padding: .1rem 0; min-width: 0; }
+        .student-table tbody td[data-label="No"] { display: none; }
+        .student-table tbody td[data-label="Santri"] { grid-column: 1 / -1; }
+        .student-table tbody td[data-label="NR Final"] { grid-column: 1; }
+        .student-table tbody td[data-label="Aksi"] { grid-column: 2; text-align: right; }
+        .student-table tbody td[data-label="Aksi"] .btn { width: 100%; }
+        .student-table tbody td.col-score::before {
+            content: attr(data-label) ": ";
+            color: var(--bs-secondary-color);
+            font-size: 11px;
+        }
+        .student-table tbody td[data-label="Jumlah"]::before { content: "Jumlah: "; font-size: 11px; }
+        .student-table tbody td[data-label="NR Final"]::before { content: "NR: "; font-size: 11px; }
     }
-    #tab-halaqah input.sheet-input[type="text"] { text-align: left; }
-    #tab-halaqah input.sheet-input:focus { outline: none; border: 0; box-shadow: none; background: rgba(var(--bs-primary-rgb), .06); }
-    #tab-halaqah input.sheet-input::placeholder { color: var(--bs-secondary-color); opacity: .6; }
-    #tab-halaqah input.score-input::placeholder { text-align: center; opacity: .45; }
-
-    /* Header beku */
-    #tab-halaqah thead th { position: sticky; top: 0; z-index: 20; background: var(--bs-tertiary-bg); }
-    #tab-halaqah thead tr:nth-child(2) th { top: 40px; }
-
-    @media (max-width: 991.98px) {
-        #tab-halaqah thead th { position: static; }
+    @media (min-width: 768px) {
+        .student-table { table-layout: fixed; width: 100%; }
     }
 </style>
 
+@if($group && $book && $rows->isNotEmpty())
 <script>
-    function filterHalaqahRows(query) {
-        var q = (query || '').toLowerCase().trim();
-        document.querySelectorAll('#tab-halaqah tbody tr[data-name]').forEach(function (row) {
-            var hay = row.getAttribute('data-name') || '';
-            row.style.display = (q === '' || hay.indexOf(q) !== -1) ? '' : 'none';
-        });
-        renumberHalaqahRows();
-    }
-
-    function renumberHalaqahRows() {
-        var n = 0;
-        document.querySelectorAll('#tab-halaqah tbody tr[data-name]').forEach(function (row) {
-            if (row.style.display === 'none') return;
-            n++;
-            var cell = row.querySelector('[data-col="no"]');
-            if (cell) cell.textContent = n;
-        });
-    }
-
     (function () {
-        // Navigasi Enter / ↑ / ↓ antar sel nilai (seperti buku nilai sumatif).
-        var table = document.getElementById('tab-halaqah');
-        if (table) {
-            table.addEventListener('keydown', function (e) {
-                if (!e.target.classList || !e.target.classList.contains('score-input')) return;
-                if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        var GROUP_ID = @json($group->id);
+        var BOOK_ID = @json($book->id);
+        var SEMESTER = @json($semester);
+        var TOTAL_WEIGHT = @json($totalWeight);
+        var STORE_URL = @json(route('user.tahfidz.penilaian.store', ['userId' => $userId]));
+        var CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
-                var input = e.target;
-                var col = Array.prototype.indexOf.call(
-                    input.closest('tr').querySelectorAll('input.score-input'), input
-                );
-                var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-name]'))
-                    .filter(function (r) { return r.style.display !== 'none'; });
-                var rowIndex = rows.indexOf(input.closest('tr'));
-                var next = rows[rowIndex + (e.key === 'ArrowUp' ? -1 : 1)];
-                if (!next) return;
+        var modalEl = document.getElementById('modalNilai');
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        var namaEl = document.getElementById('modalSantriNama');
+        var infoEl = document.getElementById('modalSantriInfo');
+        var nrEl = document.getElementById('modalNr');
+        var jmlEl = document.getElementById('modalJumlah');
+        var statusEl = document.getElementById('modalStatus');
+        var inputs = Array.prototype.slice.call(modalEl.querySelectorAll('.nilai-input'));
+        var ketInput = document.getElementById('inp-ket');
+        var currentStudent = null;
+        var eksisting = {};   // nilai santri saat modal dibuka
 
-                var target = next.querySelectorAll('input.score-input')[col];
-                if (target) {
-                    e.preventDefault();
-                    target.focus();
-                    if (target.select) target.select();
-                }
+        function fmt(v) {
+            if (v === null || v === undefined || v === '') return '—';
+            return Number(v).toFixed(1);
+        }
+
+        function setStatus(msg, cls) {
+            statusEl.textContent = msg;
+            statusEl.className = 'me-auto small ' + (cls || 'text-muted');
+        }
+
+        // ── Buka modal dengan data baris ─────────────────────────────
+        modalEl.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+
+            currentStudent = btn.getAttribute('data-student');
+            namaEl.textContent = btn.getAttribute('data-name');
+            infoEl.textContent = [btn.getAttribute('data-nis'), btn.getAttribute('data-rombel')]
+                .filter(Boolean).join(' · ');
+            setStatus('', 'text-muted');
+
+            eksisting = {};
+            inputs.forEach(function (input) {
+                var cell = document.querySelector('[data-score="' + currentStudent + '.' + input.dataset.key + '"]');
+                var raw = cell ? cell.textContent.trim() : '';
+                eksisting[input.dataset.key] = (raw === '—' || raw === '') ? '' : raw;
+                input.value = eksisting[input.dataset.key];
             });
+            ketInput.value = btn.getAttribute('data-ket') || '';
+            hitung();
+            // Fokus ke kolom pertama yang masih kosong supaya guru bisa
+            // langsung mengetik.
+            var kosong = inputs.find(function (i) { return i.value === ''; }) || inputs[0];
+            if (kosong) setTimeout(function () { kosong.focus(); kosong.select && kosong.select(); }, 250);
+        });
+
+        function nilaiTerisi() {
+            return inputs
+                .map(function (i) { return i.value === '' ? null : parseFloat(i.value); })
+                .filter(function (v) { return v !== null && !isNaN(v); });
         }
 
-        // ─── Autosave nilai (pola sama dengan buku nilai sumatif) ─────
-        var form = document.getElementById('formHalaqah');
-        if (!form) return;
-
-        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-        var dot = document.getElementById('autosave-dot');
-        var text = document.getElementById('autosave-text');
-        var timer = null;
-        var inFlight = false;
-        var dirty = false;
-
-        function setIndicator(cls, msg) {
-            if (dot) dot.className = 'rounded-circle ' + cls;
-            if (text) text.textContent = msg;
-        }
-
-        function showSuccess() {
-            var time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            setIndicator('bg-success', 'Tersimpan ' + time);
-            setTimeout(function () { setIndicator('bg-secondary', 'Menunggu…'); }, 3000);
-        }
-
-        function showError(msg) {
-            setIndicator('bg-danger', msg || 'Gagal menyimpan');
-            setTimeout(function () { setIndicator('bg-secondary', 'Menunggu…'); }, 4000);
-        }
-
-        function applyRows(rows) {
-            (rows || []).forEach(function (row) {
-                if (row.nr_final !== null && row.nr_final !== undefined) {
-                    var finalCell = document.getElementById('nrf-' + row.student_id);
-                    if (finalCell) finalCell.textContent = Number(row.nr_final).toFixed(1);
-                }
-                var sumCell = document.getElementById('jml-' + row.student_id);
-                if (sumCell) {
-                    sumCell.textContent = (row.weighted === null || row.weighted === undefined)
-                        ? '---' : Number(row.weighted).toFixed(1);
-                }
+        // Pratinjau NR Final memakai bobot kolom yang isinya ada di modal.
+        // Angka pastinya tetap dihitung server (NPT & Tikrar ikut masuk).
+        function hitung() {
+            var semua = {};
+            inputs.forEach(function (i) { semua[i.dataset.key] = i.value === '' ? null : parseFloat(i.value); });
+            var weights = @json($weights);
+            var sum = 0, wsum = 0;
+            Object.keys(semua).forEach(function (k) {
+                if (semua[k] === null || isNaN(semua[k])) return;
+                var w = parseFloat(weights[k] || 0);
+                sum += semua[k] * w;
+                wsum += w;
             });
+            if (wsum === 0) { nrEl.textContent = '—'; jmlEl.textContent = '—'; return; }
+            var nr = sum / wsum;
+            nrEl.textContent = nr.toFixed(1);
+            jmlEl.textContent = (nr * TOTAL_WEIGHT / 100).toFixed(1);
         }
 
-        function save() {
-            if (inFlight) return;
-            inFlight = true;
-            dirty = false;
-            setIndicator('bg-warning', 'Menyimpan…');
+        inputs.forEach(function (input) {
+            input.addEventListener('input', function () {
+                if (this.value !== '' && !isNaN(this.value)) {
+                    if (parseFloat(this.value) > 100) this.value = '100';
+                    if (parseFloat(this.value) < 0) this.value = '0';
+                }
+                hitung();
+                setStatus('Belum disimpan', 'text-warning');
+            });
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); simpan(); }
+            });
+        });
+        ketInput.addEventListener('input', function () { setStatus('Belum disimpan', 'text-warning'); });
 
-            fetch(form.action, {
+        // ── Kirim satu santri lewat endpoint yang sama dengan autosave ──
+        function payload(extra) {
+            var body = {
+                tahfidz_group_id: GROUP_ID,
+                tahfidz_gradebook_id: BOOK_ID,
+                semester: SEMESTER,
+            };
+            if (extra === 'materi') {
+                body.materi = bacaMateri();
+            } else {
+                var row = { ket: ketInput.value };
+                inputs.forEach(function (i) { row[i.dataset.key] = i.value === '' ? null : i.value; });
+                body.scores = {};
+                body.scores[currentStudent] = row;
+                body.materi = bacaMateri();
+            }
+            return body;
+        }
+
+        function simpan() {
+            if (!currentStudent) return;
+            setStatus('Menyimpan…', 'text-muted');
+            return fetch(STORE_URL, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
+                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': csrfToken,
+                    'X-CSRF-TOKEN': CSRF,
                 },
-                body: new FormData(form),
+                body: JSON.stringify(payload()),
             })
-            .then(function (res) {
-                inFlight = false;
-                return res.json().catch(function () {
-                    return { success: false, message: 'Sesi berakhir — muat ulang halaman (Ctrl+Shift+R).' };
-                });
-            })
+            .then(function (res) { return res.json().catch(function () { return { success: false }; }); })
             .then(function (data) {
-                applyRows(data && data.saved_rows);
-                if (data && data.success === true) {
-                    showSuccess();
-                } else {
-                    showError((data && data.message) ? data.message : 'Gagal menyimpan');
+                if (!data || data.success !== true) {
+                    setStatus(data && data.message ? data.message : 'Gagal menyimpan', 'text-danger');
+                    return;
                 }
+                perbaruiBaris(currentStudent, data.saved_rows || []);
+                setStatus('Tersimpan', 'text-success');
             })
-            .catch(function () {
-                inFlight = false;
-                showError('Gagal menyimpan');
-            });
-
-            // Isian baru selama permintaan berjalan perlu dikirim lagi.
-            if (dirty && !timer) timer = setTimeout(function () { timer = null; save(); }, 1200);
+            .catch(function () { setStatus('Gagal menyimpan — periksa koneksi', 'text-danger'); });
         }
 
-        form.querySelectorAll('input.sheet-input').forEach(function (el) {
-            var onChange = function () {
-                dirty = true;
-                clearTimeout(timer);
-                timer = setTimeout(function () { timer = null; save(); }, 1500);
-            };
-            el.addEventListener('input', onChange);
-            el.addEventListener('change', onChange);
-        });
+        function perbaruiBaris(studentId, rows) {
+            var row = rows.find(function (r) { return String(r.student_id) === String(studentId); });
+            if (!row) return;
 
-        // Materi ujian ikut tersimpan lewat autosave yang sama.
-        form.querySelectorAll('.exam-surah, .exam-ayat, input[name^="materi["]').forEach(function (el) {
-            el.addEventListener('change', function () {
-                dirty = true;
-                clearTimeout(timer);
-                timer = setTimeout(function () { timer = null; save(); }, 1500);
+            inputs.forEach(function (i) {
+                var cell = document.querySelector('[data-score="' + studentId + '.' + i.dataset.key + '"]');
+                if (!cell) return;
+                var v = row[i.dataset.key];
+                cell.textContent = (v === null || v === undefined || v === '') ? '—' : v;
+                cell.classList.toggle('text-muted', v === null || v === undefined || v === '');
             });
+
+            var nr = document.querySelector('[data-nr="' + studentId + '"]');
+            if (nr) {
+                nr.textContent = fmt(row.nr_final);
+                nr.className = 'badge fs-6 ' + (row.nr_final !== null ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary');
+            }
+            var jml = document.querySelector('[data-jml="' + studentId + '"]');
+            if (jml) jml.textContent = fmt(row.weighted);
+
+            var btn = document.querySelector('#tab-santri button[data-student="' + studentId + '"]');
+            if (btn) {
+                var adaNilai = ['ziyadah', 'rabt', 'sts', 'sas'].filter(function (k) {
+                    return row[k] !== null && row[k] !== undefined;
+                }).length;
+                btn.className = 'btn btn-sm ' + (adaNilai > 0 ? 'btn-outline-primary' : 'btn-primary');
+            }
+        }
+
+        // Simpan saat modal ditutup bila ada perubahan.
+        modalEl.addEventListener('hide.bs.modal', function () {
+            if (statusEl.classList.contains('text-warning')) simpan();
         });
 
-        // Nilai tetap tersimpan sebelum halaman ditinggalkan.
-        window.addEventListener('beforeunload', function () {
-            if (dirty) save();
+        document.getElementById('btnSimpanNilai').addEventListener('click', function () {
+            simpan().then(function () { setTimeout(function () { modal.hide(); }, 300); });
         });
-    })();
 
-    // ── Materi ujian STS/SAS: halaman & baris otomatis ───────────────────
-    (function () {
+        // ── Materi ujian STS/SAS ────────────────────────────────────────
+        var materiModalEl = document.getElementById('modalMateri');
         var positionUrl = @json(route('user.tahfidz.quran-position', ['userId' => $userId]));
 
-        document.querySelectorAll('.exam-surah').forEach(function (select) {
-            select.addEventListener('change', function () {
-                fillExam(this.dataset.exam);
+        function bacaMateri() {
+            var materi = {};
+            ['sts', 'sas'].forEach(function (jenis) {
+                var out = {};
+                ['surah_start', 'ayah_start', 'surah_end', 'ayah_end', 'juz', 'page_start', 'line_start', 'page_end', 'line_end']
+                    .forEach(function (field) {
+                        var el = materiModalEl.querySelector('[name="materi[' + jenis + '][' + field + ']"]');
+                        if (el) out[field] = el.value;
+                    });
+                materi[jenis] = out;
             });
-        });
-        document.querySelectorAll('.exam-ayat').forEach(function (input) {
-            input.addEventListener('change', function () {
-                fillExam(this.dataset.exam);
-            });
-        });
+            return materi;
+        }
 
         function fillExam(jenis) {
-            var startSelect = document.querySelector('.exam-surah[data-exam="' + jenis + '"][data-role="start"]');
-            var endSelect = document.querySelector('.exam-surah[data-exam="' + jenis + '"][data-role="end"]');
-            var startAyah = document.querySelector('.exam-ayat[data-exam="' + jenis + '"][data-role="start"]');
-            var endAyah = document.querySelector('.exam-ayat[data-exam="' + jenis + '"][data-role="end"]');
+            var startSelect = materiModalEl.querySelector('.exam-surah[data-exam="' + jenis + '"][data-role="start"]');
+            var endSelect = materiModalEl.querySelector('.exam-surah[data-exam="' + jenis + '"][data-role="end"]');
+            var startAyah = materiModalEl.querySelector('.exam-ayat[data-exam="' + jenis + '"][data-role="start"]');
+            var endAyah = materiModalEl.querySelector('.exam-ayat[data-exam="' + jenis + '"][data-role="end"]');
             var hint = document.getElementById('hint-' + jenis);
 
             var s = startSelect && startSelect.selectedOptions[0] && startSelect.selectedOptions[0].dataset.number;
             var a = startAyah && startAyah.value;
-            if (! s || ! a) return;
+            if (!s || !a) return;
 
             var es = (endSelect && endSelect.selectedOptions[0] && endSelect.selectedOptions[0].dataset.number) || s;
             var ea = (endAyah && endAyah.value) || a;
@@ -701,31 +761,94 @@
             fetch(url, { headers: { Accept: 'application/json' } })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (! data.found || ! data.position) {
+                    if (!data.found || !data.position) {
                         if (hint) hint.innerHTML = '<i class="ri-error-warning-line me-1 text-warning"></i>Posisi ayat tidak ditemukan, isi halaman dan baris manual.';
                         return;
                     }
-                    document.getElementById('page-' + jenis).value = data.position.page_start;
-                    document.getElementById('line-' + jenis).value = data.position.line_start;
-                    document.getElementById('pageend-' + jenis).value = data.position.page_end;
-                    document.getElementById('lineend-' + jenis).value = data.position.line_end;
+                    materiModalEl.querySelector('[name="materi[' + jenis + '][page_start]"]').value = data.position.page_start;
+                    materiModalEl.querySelector('[name="materi[' + jenis + '][line_start]"]').value = data.position.line_start;
+                    materiModalEl.querySelector('[name="materi[' + jenis + '][page_end]"]').value = data.position.page_end;
+                    materiModalEl.querySelector('[name="materi[' + jenis + '][line_end]"]').value = data.position.line_end;
                     if (hint) {
-                        hint.innerHTML = '<i class="ri-bookmark-line me-1"></i>Halaman ' + data.position.page_start + '–'
+                        hint.innerHTML = '<i class="ri-bookmark-line me-1 text-success"></i>Halaman ' + data.position.page_start + '–'
                             + data.position.page_end + ' · baris ' + data.position.line_start + '–' + data.position.line_end;
                     }
-                    // Ringkasan materi ikut diperbarui tanpa menunggu simpan.
-                    var badge = document.querySelector('.exam-preview[data-exam="' + jenis + '"]');
-                    if (badge) {
-                        var surahName = startSelect.selectedOptions[0].textContent.trim();
-                        var endName = (endSelect && endSelect.value) ? endSelect.value : surahName;
-                        badge.textContent = surahName + ':' + a + (endName !== surahName || ea !== a ? ' – ' + endName + ':' + ea : '');
-                        badge.className = 'badge bg-primary-subtle text-primary exam-preview';
-                    }
+                    perbaruiBadgeMateri(jenis);
                 })
                 .catch(function () {
                     if (hint) hint.innerHTML = '<i class="ri-error-warning-line me-1 text-warning"></i>Gagal mengambil posisi ayat, isi halaman dan baris manual.';
                 });
         }
+
+        function perbaruiBadgeMateri(jenis) {
+            var surah = materiModalEl.querySelector('[name="materi[' + jenis + '][surah_start]"]');
+            var ayah = materiModalEl.querySelector('[name="materi[' + jenis + '][ayah_start]"]').value;
+            var surahAkhir = materiModalEl.querySelector('[name="materi[' + jenis + '][surah_end]"]').value;
+            var ayahAkhir = materiModalEl.querySelector('[name="materi[' + jenis + '][ayah_end]"]').value;
+            var badge = document.querySelector('.exam-preview[data-exam="' + jenis + '"]');
+            if (!badge || !surah || !surah.value) return;
+
+            var label = 'Materi ' + jenis.toUpperCase() + ': ' + surah.value + ':' + ayah;
+            if (surahAkhir && surahAkhir !== surah.value) label += ' – ' + surahAkhir + (ayahAkhir ? ':' + ayahAkhir : '');
+            badge.innerHTML = '<i class="ri-file-text-line me-1"></i>' + label;
+            badge.className = 'badge bg-primary-subtle text-primary exam-preview';
+        }
+
+        materiModalEl.querySelectorAll('.exam-surah, .exam-ayat').forEach(function (el) {
+            el.addEventListener('change', function () { fillExam(this.dataset.exam); });
+        });
+
+        document.getElementById('btnSimpanMateri').addEventListener('click', function () {
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan…';
+            fetch(STORE_URL, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': CSRF,
+                },
+                body: JSON.stringify({
+                    tahfidz_group_id: GROUP_ID,
+                    tahfidz_gradebook_id: BOOK_ID,
+                    semester: SEMESTER,
+                    materi: bacaMateri(),
+                }),
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-check-line me-1"></i>Tersimpan';
+                if (!data.success) {
+                    btn.innerHTML = '<i class="ri-save-line me-1"></i>Simpan Materi';
+                    alert(data.message || 'Gagal menyimpan materi.');
+                    return;
+                }
+                perbaruiBadgeMateri('sts');
+                perbaruiBadgeMateri('sas');
+                setTimeout(function () {
+                    bootstrap.Modal.getOrCreateInstance(materiModalEl).hide();
+                    btn.innerHTML = '<i class="ri-save-line me-1"></i>Simpan Materi';
+                }, 700);
+            })
+            .catch(function () {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-save-line me-1"></i>Simpan Materi';
+                alert('Gagal menyimpan materi — periksa koneksi.');
+            });
+        });
+
+        // ── Filter pencarian di sisi klien ─────────────────────────────
+        window.filterSantriRows = function (query) {
+            var q = (query || '').toLowerCase().trim();
+            document.querySelectorAll('#tab-santri tbody tr[data-name]').forEach(function (row) {
+                var hay = row.getAttribute('data-name') || '';
+                row.style.display = (q === '' || hay.indexOf(q) !== -1) ? '' : 'none';
+            });
+        };
     })();
 </script>
+@endif
 @endsection
