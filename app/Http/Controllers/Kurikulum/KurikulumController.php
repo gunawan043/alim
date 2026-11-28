@@ -213,6 +213,7 @@ class KurikulumController extends Controller
                     $rows->push([
                         'grade_level_id' => $grade->id,
                         'grade' => $grade->name,
+                        'level' => (int) $grade->level,
                         'fase' => $fase,
                         'subject_id' => $subject->id,
                         'subject' => $subject->name,
@@ -700,6 +701,13 @@ class KurikulumController extends Controller
         }
 
         app(AcademicPeriodService::class)->assertNotLocked($row->academic_year_id, 'Peta Kurikulum');
+
+        // Penjurusan hanya berlaku untuk Kelas 11 & 12.
+        abort_unless(
+            $row->gradeLevel && $row->gradeLevel->raporSubjectsPerStudyGroup(),
+            422,
+            'Jurusan hanya berlaku untuk Kelas 11 dan 12.'
+        );
 
         $track = $data['track'] ?: null;
         $row->forceFill(['track' => $track])->save();

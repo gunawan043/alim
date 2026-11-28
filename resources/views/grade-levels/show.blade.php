@@ -23,6 +23,10 @@
             'dinas' => 'bg-primary-subtle text-primary',
         ];
         $labelAsal = \App\Models\GradeLevelSubject::SOURCE_OPTIONS;
+
+        // Penjurusan hanya berlaku untuk Kelas 11 & 12; tingkat lain tidak
+        // menampilkan kolom/pilihan jurusan sama sekali.
+        $pakaiJurusan = $gradeLevel->raporSubjectsPerStudyGroup();
     @endphp
 
     @component('components.breadcrumb')
@@ -228,7 +232,8 @@
                 </div>
             </div>
 
-            {{-- ROMBEL & JURUSAN ─────────────────────── --}}
+            {{-- ROMBEL & JURUSAN — hanya Kelas 11 & 12 ────── --}}
+            @if($pakaiJurusan)
             <div class="card">
                 <div class="card-header border-bottom-dashed">
                     <h6 class="mb-0"><i class="ri-team-line text-primary me-1"></i>Rombel &amp; Jurusan</h6>
@@ -270,6 +275,7 @@
                     @endforelse
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- KOLOM MAPEL + KKTP ─────────────────────── --}}
@@ -318,7 +324,9 @@
                                         <th class="text-uppercase">Kode</th>
                                         <th class="text-uppercase">Mata Pelajaran</th>
                                         <th class="text-center text-uppercase">Kategori</th>
-                                        <th class="text-center text-uppercase">Jurusan</th>
+                                        @if($pakaiJurusan)
+                                            <th class="text-center text-uppercase">Jurusan</th>
+                                        @endif
                                         <th class="text-center text-uppercase">Urutan</th>
                                         <th class="text-center text-uppercase">Jam/Mg</th>
                                         <th class="text-center text-uppercase">KKTP</th>
@@ -349,13 +357,15 @@
                                                     </a>
                                                 @endif
                                             </td>
-                                            <td class="text-center">
-                                                @if($trackUmum)
-                                                    <span class="text-muted">Semua</span>
-                                                @else
-                                                    <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
-                                                @endif
-                                            </td>
+                                            @if($pakaiJurusan)
+                                                <td class="text-center">
+                                                    @if($trackUmum)
+                                                        <span class="text-muted">Semua</span>
+                                                    @else
+                                                        <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
+                                                    @endif
+                                                </td>
+                                            @endif
                                             <td class="text-center">
                                                 @if($gls->sort_order !== null)
                                                     {{ $gls->sort_order }}
@@ -393,7 +403,7 @@
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <td colspan="6" class="text-end pe-3 fw-semibold text-muted" style="font-size:0.72rem;text-transform:uppercase">Total</td>
+                                        <td colspan="{{ $pakaiJurusan ? 6 : 5 }}" class="text-end pe-3 fw-semibold text-muted" style="font-size:0.72rem;text-transform:uppercase">Total</td>
                                         <td class="text-center"><span class="badge bg-dark rounded-pill">{{ $gradeLevelSubjects->sum('allocation_hours') }} jp</span></td>
                                         <td class="text-center">
                                             <span class="badge bg-success rounded-pill">{{ $kktpMap->count() }}/{{ $gradeLevelSubjects->count() }}</span>
@@ -442,7 +452,7 @@
                         <div class="alert alert-info mb-3">
                             <i class="ri-information-line me-1"></i>
                             Mapel ditambahkan untuk periode <strong>{{ $periodeLabel }}</strong>.
-                            @if($studyGroups->isNotEmpty())
+                            @if($pakaiJurusan && $studyGroups->isNotEmpty())
                                 Mapel <strong>Semua</strong> masuk ke {{ $studyGroups->count() }} rombel;
                                 mapel berjurusan hanya masuk ke rombel jurusan itu.
                             @endif
@@ -462,15 +472,17 @@
                                     @endforelse
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">Jurusan</label>
-                                <select name="track" class="form-select">
-                                    <option value="">Semua rombel</option>
-                                    @foreach(\App\Models\StudyGroup::PEMINATAN_OPTIONS as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                            @if($pakaiJurusan)
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Jurusan</label>
+                                    <select name="track" class="form-select">
+                                        <option value="">Semua rombel</option>
+                                        @foreach(\App\Models\StudyGroup::PEMINATAN_OPTIONS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
                             <div class="col-md-3">
                                 <label class="form-label fw-semibold">Alokasi Jam/Minggu</label>
                                 <div class="input-group">
@@ -634,7 +646,9 @@
                                     <tr>
                                         <th class="text-uppercase">Mata Pelajaran</th>
                                         <th class="text-center text-uppercase">Kategori</th>
-                                        <th class="text-center text-uppercase">Jurusan</th>
+                                        @if($pakaiJurusan)
+                                            <th class="text-center text-uppercase">Jurusan</th>
+                                        @endif
                                         <th class="text-center text-uppercase" style="width:120px">JP / Minggu</th>
                                     </tr>
                                 </thead>
@@ -658,13 +672,15 @@
                                                     <span class="badge bg-secondary-subtle text-secondary">Belum ditandai</span>
                                                 @endif
                                             </td>
-                                            <td class="text-center">
-                                                @if($trackUmum)
-                                                    <span class="text-muted">Semua</span>
-                                                @else
-                                                    <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
-                                                @endif
-                                            </td>
+                                            @if($pakaiJurusan)
+                                                <td class="text-center">
+                                                    @if($trackUmum)
+                                                        <span class="text-muted">Semua</span>
+                                                    @else
+                                                        <span class="badge bg-info-subtle text-info">{{ strtoupper($gls->track) }}</span>
+                                                    @endif
+                                                </td>
+                                            @endif
                                             <td class="text-center">
                                                 <div class="input-group input-group-sm">
                                                     <input type="number" name="hours[{{ $gls->id }}]"

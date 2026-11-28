@@ -145,4 +145,105 @@ class GradeLevelPageRenderTest extends TestCase
             ->assertOk()
             ->assertSee('Bahasa');
     }
+
+    /**
+     * Kolom dan pilihan jurusan hanya muncul di Kelas 11 & 12.
+     */
+    public function test_kolom_jurusan_hanya_untuk_kelas_11_dan_12(): void
+    {
+        $workUnitId = (string) Str::uuid();
+        DB::table('work_units')->insert([
+            'id' => $workUnitId, 'name' => 'Unit Jenjang', 'code' => 'UJN',
+            'is_active' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $school = School::create([
+            'work_unit_id' => $workUnitId, 'npsn' => '99887766',
+            'name' => 'Sekolah Jenjang', 'school_level' => 'sma', 'is_active' => true,
+        ]);
+
+        $year = AcademicYear::create([
+            'name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true,
+            'start_date' => '2026-07-01', 'end_date' => '2026-12-31',
+        ]);
+
+        $subject = Subject::create([
+            'school_id' => $school->id, 'code' => 'FQ', 'name' => 'Fiqih',
+            'category' => 'pondok', 'credit_hours' => 3,
+        ]);
+
+        $user = User::create([
+            'name' => 'Admin Jenjang', 'email' => 'admin.jenjang@test.local',
+            'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true,
+        ]);
+
+        $buatTingkat = function (int $level) use ($school, $year, $subject) {
+            $grade = GradeLevel::create([
+                'school_id' => $school->id, 'level' => $level,
+                'name' => 'Kelas '.$level, 'code' => (string) $level,
+            ]);
+            GradeLevelSubject::create([
+                'grade_level_id' => $grade->id, 'academic_year_id' => $year->id,
+                'subject_id' => $subject->id, 'allocation_hours' => 3,
+                'subject_source' => 'pondok', 'is_active' => true,
+            ]);
+
+            return $grade;
+        };
+
+        // Kelas 10: tidak ada kolom jurusan, tidak ada pilihan jurusan.
+        $kelas10 = $buatTingkat(10);
+        $this->actingAs($user)->get(route('user.grade-levels.show', ['userId' => $user->id, 'id' => $kelas10->id]))
+            ->assertOk()
+            ->assertDontSee('name="track"', false)
+            ->assertDontSee('Rombel &amp; Jurusan', false)
+            ->assertSee('<th class="text-center text-uppercase">Urutan</th>', false);
+
+        // Kelas 11: kolom jurusan ada.
+        $kelas11 = $buatTingkat(11);
+        $this->actingAs($user)->get(route('user.grade-levels.show', ['userId' => $user->id, 'id' => $kelas11->id]))
+            ->assertOk()
+            ->assertSee('name="track"', false)
+            ->assertSee('<th class="text-center text-uppercase">Jurusan</th>', false);
+    }
+
+    public function test_jurusan_ditolak_untuk_kelas_di_bawah_11(): void
+    {
+        $workUnitId = (string) Str::uuid();
+        DB::table('work_units')->insert([
+            'id' => $workUnitId, 'name' => 'Unit Tolak', 'code' => 'UTL',
+            'is_active' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $school = School::create([
+            'work_unit_id' => $workUnitId, 'npsn' => '44332211',
+            'name' => 'Sekolah Tolak', 'school_level' => 'sma', 'is_active' => true,
+        ]);
+
+        $year = AcademicYear::create([
+            'name' => '2026/2027', 'semester' => 'ganjil', 'is_active' => true,
+            'start_date' => '2026-07-01', 'end_date' => '2026-12-31',
+        ]);
+
+        $grade = GradeLevel::create([
+            'school_id' => $school->id, 'level' => 10, 'name' => 'Kelas 10', 'code' => '10',
+        ]);
+
+        $group = StudyGroup::create([
+            'school_id' => $school->id, 'academic_year_id' => $year->id,
+            'grade_level_id' => $grade->id, 'name' => '10A', 'code' => '10A',
+            'capacity' => 30, 'is_active' => true,
+        ]);
+
+        $user = User::create([
+            'name' => 'Admin Tolak', 'email' => 'admin.tolak@test.local',
+            'password' => bcrypt('password'), 'is_active' => true, 'is_system_admin' => true,
+        ]);
+
+        $this->actingAs($user)->put(route('user.grade-levels.rombels.peminatan', [
+            'userId' => $user->id, 'id' => $grade->id, 'groupId' => $group->id,
+        ]), ['peminatan' => 'ipa'])->assertStatus(422);
+
+        $this->assertNull($group->fresh()->peminatan);
+    }
 }

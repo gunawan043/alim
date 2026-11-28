@@ -146,7 +146,8 @@ class StudyGroupController extends Controller
         $rules = [
             'academic_year_id' => 'required|exists:academic_years,id',
             'grade_level_id' => 'required|exists:grade_levels,id',
-            'peminatan' => 'nullable|in:ipa,ips,bahasa',
+            // Penjurusan hanya untuk Kelas 11 & 12.
+            'peminatan' => ['nullable', 'in:ipa,ips,bahasa', $this->jurusanHanyaKelasAtas()],
             'homeroom_teacher_id' => 'nullable|exists:users,id',
             'name' => 'required|string|max:50',
             'code' => 'nullable|string|max:20',
@@ -260,7 +261,8 @@ class StudyGroupController extends Controller
         $rules = [
             'academic_year_id' => 'required|exists:academic_years,id',
             'grade_level_id' => 'required|exists:grade_levels,id',
-            'peminatan' => 'nullable|in:ipa,ips,bahasa',
+            // Penjurusan hanya untuk Kelas 11 & 12.
+            'peminatan' => ['nullable', 'in:ipa,ips,bahasa', $this->jurusanHanyaKelasAtas()],
             'homeroom_teacher_id' => 'nullable|exists:users,id',
             'name' => 'required|string|max:50',
             'code' => 'nullable|string|max:20',
@@ -347,5 +349,30 @@ class StudyGroupController extends Controller
                 ],
             );
         }
+    }
+
+    /**
+     * Penjurusan hanya berlaku untuk Kelas 11 & 12. Tingkat lain yang
+     * mengirim jurusan ditolak agar kolomnya tidak pernah terisi.
+     */
+    protected function jurusanHanyaKelasAtas(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) {
+            if (blank($value)) {
+                return;
+            }
+
+            $level = GradeLevel::query()
+                ->whereKey(request()->input('grade_level_id'))
+                ->value('level');
+
+            if ($level === null) {
+                return;
+            }
+
+            if (! (new GradeLevel(['level' => (int) $level]))->raporSubjectsPerStudyGroup()) {
+                $fail('Jurusan hanya berlaku untuk Kelas 11 dan 12.');
+            }
+        };
     }
 }

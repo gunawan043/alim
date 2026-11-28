@@ -172,7 +172,8 @@ class GradeLevelController extends Controller
         ]);
 
         $weeklyHours = (int) ($validated['allocation_hours'] ?? 0);
-        $track = $validated['track'] ?: null;
+        // Penjurusan hanya untuk Kelas 11 & 12; tingkat lain selalu mapel umum.
+        $track = $gradeLevel->raporSubjectsPerStudyGroup() ? ($validated['track'] ?: null) : null;
         $activeAy = $this->periodFromRequest($request);
 
         $existing = GradeLevelSubject::query()
@@ -417,6 +418,13 @@ class GradeLevelController extends Controller
         if ($schoolId && $gradeLevel->school_id !== $schoolId) {
             abort(403, 'Akses ditolak.');
         }
+
+        // Penjurusan hanya ada di Kelas 11 & 12.
+        abort_unless(
+            $gradeLevel->raporSubjectsPerStudyGroup(),
+            422,
+            'Jurusan hanya berlaku untuk Kelas 11 dan 12.'
+        );
 
         $studyGroup = StudyGroup::query()
             ->where('grade_level_id', $gradeLevel->id)

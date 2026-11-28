@@ -436,8 +436,14 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        @php $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($row['track'] ?? null); @endphp
-                                        @if($canEditRapor ?? false)
+                                        @php
+                                            $trackUmum = \App\Services\Academic\RombelSubjectProvisioner::isTrackUmum($row['track'] ?? null);
+                                            // Penjurusan hanya ada di Kelas 11 & 12.
+                                            $bolehJurusan = (new \App\Models\GradeLevel(['level' => (int) $row['level']]))->raporSubjectsPerStudyGroup();
+                                        @endphp
+                                        @if(! $bolehJurusan)
+                                            <span class="text-muted" title="Penjurusan hanya untuk Kelas 11 dan 12">&mdash;</span>
+                                        @elseif($canEditRapor ?? false)
                                             <select class="form-select form-select-sm"
                                                     data-peta-track
                                                     data-structure="{{ $row['structure_id'] }}"

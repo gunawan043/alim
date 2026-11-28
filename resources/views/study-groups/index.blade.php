@@ -182,7 +182,6 @@
                                 <th>Rombel</th>
                                 <th>Tahun Ajaran</th>
                                 <th>Tingkat</th>
-                                <th class="text-center">Jurusan</th>
                                 <th>Santri</th>
                                 <th>Ruang</th>
                                 <th>Wali Kelas</th>
@@ -216,13 +215,6 @@
                                         </span>
                                     </td>
                                     <td>{{ $sg->gradeLevel?->name ?? '-' }}</td>
-                                    <td class="text-center">
-                                        @if($sg->peminatanLabel())
-                                            <span class="badge bg-primary-subtle text-primary">{{ $sg->peminatanLabel() }}</span>
-                                        @else
-                                            <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
                                     <td>
                                         @php
                                             $filled = $sg->studentCount ?? 0;
@@ -294,7 +286,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isGlobalView ? '11' : '10' }}" class="text-center py-5">
+                                    <td colspan="{{ $isGlobalView ? '10' : '9' }}" class="text-center py-5">
                                         <div class="avatar-lg mx-auto mb-3">
                                             <div class="avatar-title bg-light rounded-circle">
                                                 <i class="ri-group-line fs-1 text-muted"></i>
