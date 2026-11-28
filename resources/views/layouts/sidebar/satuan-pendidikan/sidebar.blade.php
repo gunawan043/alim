@@ -179,13 +179,27 @@
 
     // Guru pengajar halaqah (bukan koordinator) tetap butuh pintu ke buku
     // nilainya sendiri, karena buku tahfidz diikat ke halaqah — bukan rombel.
-    $isGuruHalaqah = \App\Models\TahfidzGroup::query()
+    $isGuruHalaqah = $userId && \App\Models\TahfidzGroup::query()
         ->where('is_active', true)
         ->where(fn ($q) => $q
-            ->where('teacher_id', auth()->id())
-            ->orWhere('coordinator_id', auth()->id())
-            ->orWhereHas('teachers', fn ($t) => $t->where('user_id', auth()->id())->where('is_active', true)))
+            ->where('teacher_id', $userId)
+            ->orWhere('coordinator_id', $userId)
+            ->orWhereHas('teachers', fn ($t) => $t->where('user_id', $userId)->where('is_active', true)))
         ->exists();
+
+    // Guru mapel yang mengampu mapel bertanda tahfidz (mis. Tahfidzul Qur'an)
+    // tetap perlu menu tahfidz: bukunya buku mapel per rombel, bukan halaqah,
+    // sehingga menu halaqah miliknya disembunyikan ($teacherOnMapelTahfidz).
+    $teacherMapelBooks = ($userId && $hasTeacherBooks)
+        ? \App\Models\TeacherAdminBook::query()
+            ->forTeacherWorkspace($userId)
+            ->where('is_active', true)
+            ->when($activeAcademicYearId, fn ($q) => $q->where('academic_year_id', $activeAcademicYearId))
+            ->with('subject')
+            ->get()
+        : collect();
+    $teacherOnMapelTahfidz = $teacherMapelBooks->isNotEmpty()
+        && $teacherMapelBooks->contains(fn ($book) => app(\App\Services\TahfidzRaporService::class)->isTahfidzSubject($book->subject));
 
     $isKoorMapel       = $isKoorGuruUmum || $isKoorGuruAgama || $isKoorGuruHadits || $isKoorGuruArab || $isKoorGuruTahfidz;
 
@@ -523,15 +537,31 @@
     // Menu Guru = topi pendidik. Pemegang jabatan struktural hanya melihatnya
     // bila benar-benar punya penugasan mengajar aktif (bukan sekadar teks
     // jabatan "Guru"), supaya tidak muncul menu kosong.
-    $showMengajar   = $showAll || $hasTeachingAssignments || $hasTeacherBooks
-        || ($isGuru && ! $isStruktural && ! $isAdminTU && ! $isKoordinator);
+    // Sidebar guru tahfidz: jabatan Guru Tahfidz, memegang halaqah, atau
+    // mengampu mapel bertanda tahfidz. Koordinator guru tahfidz memakai menu
+    // jabatannya (mode manage), bukan menu guru.
+    $showTahfidzTeacher = ! $isKoorGuruTahfidz
+        && ($isGuruTahfidz || $isGuruHalaqah || $teacherOnMapelTahfidz);
+
+    // Menu harian tahfidz berdiri sendiri di level atas; guru tahfidz tidak
+    // perlu menu guru umum (jadwal mapel, jurnal, asesmen) kecuali memang
+    // memegang SK mengajar mapel non-tahfidz.
+    $tahfidzOwnsTeacherMenus = $showTahfidzTeacher
+        && ! $hasTeachingAssignments
+        && ! $teacherOnMapelTahfidz;
 
     // Label section mengikuti peran yang sedang dipakai, supaya GTK yang
     // merangkap Waka + Wali Kelas + Guru Mapel melihat batas yang jelas.
-    $mengajarLabel  = ($hasTeachingAssignments || $hasTeacherBooks) ? 'Mengajar · Guru Mapel' : 'Mengajar · Guru';
+    $mengajarLabel  = $tahfidzOwnsTeacherMenus
+        ? 'Menu Guru Tahfidz'
+        : 'Mengajar · Guru Mapel';
     $managementLabel = $hasStructuralPosition
         ? 'Jabatan'.($structuralLabel !== '' ? ' · '.$structuralLabel : '')
         : 'Tugas Tambahan'.($additionalTaskLabel !== '' ? ' · '.$additionalTaskLabel : '');
+
+    $showMengajar   = $showAll || $hasTeachingAssignments || $hasTeacherBooks
+        || $showTahfidzTeacher
+        || ($isGuru && ! $isStruktural && ! $isAdminTU && ! $isKoordinator);
 
     $showKesiswaan = $manageSchool || $isKoorKesiswa || $isTimKesiswaan || $isGuruBK
         || $isKoorEkskul || $isPembinaEkskul || $isKoorAlumni;
@@ -585,17 +615,18 @@
 @if($showMengajar)
     <li class="menu-title"><span>{{ $mengajarLabel }}</span></li>
 
-    @if($isGuruTahfidz && ! $isKoorGuruTahfidz)
-        {{-- Guru Tahfidz: menu harian (absensi, setoran, monitoring, nilai)
-             ditampilkan terbuka di paling atas — tidak dibungkus grup —
-             karena dipakai setiap hari. Menu pendukung baru dikelompokkan. --}}
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-absensi', ['absensiMode' => 'self'])
-        @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', ['tahfidzMode' => 'teacher'])
+    @if($showTahfidzTeacher)
+        @include('layouts.sidebar.satuan-pendidikan.partials.modul-tahfidz', [
+            'tahfidzMode' => 'teacher',
+            'showHalaqahMenus' => ! $teacherOnMapelTahfidz,
+        ])
     @endif
 
-    {{-- Guru Tahfidz yang juga memegang SK mengajar mapel tetap mendapat menu
-         pendidik lainnya; guru tahfidz murni tidak perlu section kosong. --}}
-    @if(! ($isGuruTahfidz && ! $isKoorGuruTahfidz) || $hasTeachingAssignments)
+    {{-- Guru umum / guru mapel. Guru tahfidz murni tidak perlu section ini. --}}
+    @if(! $tahfidzOwnsTeacherMenus)
+        @if($showTahfidzTeacher)
+            <li class="menu-title"><span>Menu Guru Mapel</span></li>
+        @endif
         {{-- Absensi: jadwal mengajar, kehadiran guru, dan absensi kelas --}}
         <x-sidebar-section id="sp_sec_guru_absensi" label="Absensi" icon="ri-calendar-check-line"
             :open="$sectionOpen(['user.jadwal-kbm.for-teacher', 'user.teacher-qr.', 'user.absensi.harian.'])">
@@ -648,7 +679,7 @@
                     <i class="ri-book-3-line"></i><span>Buku Nilai Saya</span>@include('layouts.sidebar.partials.indicator-badge', ['key' => 'nilai_guru', 'title' => 'Buku nilai yang belum lengkap'])</a>
             </li>
 
-            @if($isKoorTahfidz || $isGuruHalaqah)
+            @if(($isKoorTahfidz || $isGuruHalaqah) && ! $teacherOnMapelTahfidz)
                 {{-- Guru halaqah membuka Buku Nilai Saya: isinya buku halaqah
                      (Ziyadah, Rabt, STS, SAS), bukan buku mapel per rombel. --}}
                 <li class="nav-item">

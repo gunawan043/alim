@@ -279,11 +279,12 @@ class SatuanPendidikanSidebarTest extends TestCase
 
         $response->assertOk();
 
-        // Menu guru tampil sebagai topik "Mengajar · ...", bukan "Menu Guru".
-        $response->assertSee('Mengajar · Guru');
+        // Menu guru tahfidz punya section sendiri, bukan "Mengajar · ...".
+        $response->assertSee('Menu Guru Tahfidz');
+        $response->assertDontSee('Mengajar ·');
 
-        // Menu harian berdiri sendiri — tidak dibungkus grup Tahfidz lagi.
-        foreach (['Absensi Halaqah', 'Input Setoran Harian', 'Lembar Monitoring', 'Buku Nilai'] as $label) {
+        // Pekerjaan harian berdiri sendiri di level atas — tidak dibungkus grup.
+        foreach (['Buku Kerja', 'Absensi Halaqah', 'Input Setoran Harian', 'Lembar Monitoring', 'Buku Nilai Tahfidz'] as $label) {
             $response->assertSee($label);
         }
         $response->assertDontSee('id="sp_sec_guru_tahfidz"', false);
@@ -291,6 +292,11 @@ class SatuanPendidikanSidebarTest extends TestCase
         // Menu pendukung dikelompokkan per fungsi.
         $response->assertSee('id="sp_sec_guru_tahfidz_santri"', false);
         $response->assertSee('id="sp_sec_guru_tahfidz_nilai"', false);
+
+        // Format penilaian & bobot milik departemen/koordinator, bukan guru.
+        $response->assertDontSee('Format Penilaian Mapel');
+        $response->assertDontSee('id="sp_sec_guru_absensi"', false);
+        $response->assertDontSee('>Jurnal Pembelajaran<');
 
         // Menu harian harus muncul sebelum grup pendukungnya.
         $html = $response->getContent();
@@ -301,11 +307,13 @@ class SatuanPendidikanSidebarTest extends TestCase
         );
         $this->assertLessThan(
             strpos($html, 'sp_sec_guru_tahfidz_nilai'),
-            strpos($html, 'Lembar Monitoring'),
-            'Lembar Monitoring harus tampil sebelum grup Nilai & Ujian.'
+            strpos($html, 'Buku Nilai Tahfidz'),
+            'Buku Nilai Tahfidz harus tampil sebelum grup Ujian & Laporan.'
         );
 
         // Tidak ada tautan ganda untuk menu harian.
         $this->assertSame(1, substr_count($html, '>Input Setoran Harian<'));
+        $this->assertSame(1, substr_count($html, '>Buku Nilai Tahfidz<'));
+        $this->assertSame(1, substr_count($html, '>Buku Nilai Halaqah<'));
     }
 }
