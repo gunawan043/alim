@@ -730,7 +730,7 @@ function taskCellHtml(tid, task, index, taskCount, taskPair) {
             ? (taskPair.subject || subjectNameOf(taskPair.subject_id))
             : '';
         // Baris Guru Pendamping memakai JP mapelnya sendiri, bukan total tugas.
-        const hours = taskPair ? pendampingPairHours(taskPair) : task.hours;
+        const hours = taskPair ? pendampingPairHours(taskPair, tid) : task.hours;
         const label = subjectsLabel
             ? `${escapeHtml(task.name || '')} | ${escapeHtml(subjectsLabel)}`
             : escapeHtml(task.name || '');
@@ -901,9 +901,9 @@ function togglePendampingRombel(toggle) {
 function recalcPendampingHours(tid) {
     (activeTasks[tid] || []).forEach(task => {
         if (!Array.isArray(task.pendamping) || !task.pendamping.length) return;
-        task.hours = task.pendamping.reduce(
-            (sum, pair) => sum + (pair.group_ids || []).reduce(
-                (acc, gid) => acc + pendampingHoursFor(pair.subject_id, gid), 0), 0);
+        // Kelas yang sudah dihitung sebagai mapel ajar tidak dihitung lagi di
+        // sini, sama seperti JP barisnya — agar Total Jam tidak dobel.
+        task.hours = task.pendamping.reduce((sum, pair) => sum + pendampingPairHours(pair, tid), 0);
     });
 }
 
@@ -952,7 +952,7 @@ function renderTeacherRows(tbody, teacher, tid, number) {
         // + tugas (pendamping memakai JP mapel-kelasnya).
         const rowMapelHours = sub && sub.id ? subjectTotalHours(sub) : 0;
         const rowTaskHours = task
-            ? (taskPair ? pendampingPairHours(taskPair) : (parseFloat(task.hours) || 0))
+            ? (taskPair ? pendampingPairHours(taskPair, tid) : (parseFloat(task.hours) || 0))
             : 0;
         cells += `<td class="text-center fw-semibold row-jp">${rowMapelHours + rowTaskHours}</td>`;
 
@@ -1092,7 +1092,7 @@ function refreshTotal(tid) {
             const entry = taskRows[index] || null;
             const mapelHours = sub && sub.id ? subjectTotalHours(sub) : 0;
             const taskHours = entry
-                ? (entry.pair ? pendampingPairHours(entry.pair) : (parseFloat(entry.task.hours) || 0))
+                ? (entry.pair ? pendampingPairHours(entry.pair, t) : (parseFloat(entry.task.hours) || 0))
                 : 0;
 
             const cell = row.querySelector('.row-jp');
@@ -1114,8 +1114,20 @@ function pendampingPairOf(tid, subjectId) {
     return null;
 }
 
-function pendampingPairHours(pair) {
-    return (pair.group_ids || []).reduce((acc, gid) => acc + pendampingHoursFor(pair.subject_id, gid), 0);
+/**
+ * JP pasangan mapel–kelas. Kelas yang sudah dihitung sebagai mapel ajar milik
+ * GTK yang sama tidak dihitung lagi, agar JP wali kelas di kelasnya sendiri
+ * tidak dobel dengan baris pendamping (centangnya tetap tampil).
+ */
+function pendampingPairHours(pair, tid) {
+    const taughtHours = tid
+        ? ((activeSubjects[tid] || []).find(s => String(s.id) === String(pair.subject_id))?.hours || {})
+        : {};
+
+    return (pair.group_ids || []).reduce((acc, gid) => {
+        if (parseFloat(taughtHours[gid]) > 0) return acc;
+        return acc + pendampingHoursFor(pair.subject_id, gid);
+    }, 0);
 }
 
 function refreshSubjectRepeater() {
@@ -1390,10 +1402,13 @@ function autoHoursFor(subjectId, sgid) {
     return sg ? (pendampingHoursFor(subjectId, sg.id) || 0) : 0;
 }
 
-/** Rombel lain pada tingkat yang sama, tanpa rombel wali kelas itu sendiri. */
-function siblingGroupsFor(gradeLevelId, excludeId) {
-    return studyGroups.filter(sg => String(sg.gradeLevelId) === String(gradeLevelId)
-        && String(sg.id) !== String(excludeId));
+/**
+ * Seluruh rombel pada satu tingkat — termasuk rombel wali kelas itu sendiri.
+ * Mapel yang diajar wali kelas di kelasnya juga dihitung sebagai pendamping
+ * pada rombel itu, sehingga centang 1A ikut terisi seperti 1B–1D.
+ */
+function siblingGroupsFor(gradeLevelId) {
+    return studyGroups.filter(sg => String(sg.gradeLevelId) === String(gradeLevelId));
 }
 
 /**
@@ -1519,7 +1534,7 @@ function applyAutoWali(tid, rombel) {
         sub.auto = rombel.id;
     });
 
-    const siblings = siblingGroupsFor(rombel.gradeLevelId, rombel.id);
+    const siblings = siblingGroupsFor(rombel.gradeLevelId);
     ensureAutoPendamping(
         tid,
         matched.map(s => String(s.id)),
@@ -1559,10 +1574,10 @@ function markAutoPendamping(pairs, tid) {
     return pairs.map(pair => {
         if (!ruleIds.includes(String(pair.subject_id))) return pair;
         const groupIds = (pair.group_ids || []).map(String);
+        // Semua kelas pada tingkat wali kelas ikut dihitung, termasuk kelasnya.
         const allSiblings = groupIds.length > 0 && groupIds.every(gid => {
             const group = studyGroups.find(sg => String(sg.id) === String(gid));
-            return group && String(group.gradeLevelId) === String(waliGroup.gradeLevelId)
-                && String(group.id) !== String(waliId);
+            return group && String(group.gradeLevelId) === String(waliGroup.gradeLevelId);
         });
         return allSiblings ? { ...pair, [AUTO_TEACHER_HEADER]: waliId } : pair;
     });
