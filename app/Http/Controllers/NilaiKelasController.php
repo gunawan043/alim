@@ -479,13 +479,18 @@ class NilaiKelasController extends Controller
                 if ($val !== null) {
                     $total += $val;
                     $count++;
-                    $bobot = (float) ($bobotMap[$subject->id] ?? 0);
-                    $bobotTerisi += $bobot;
-                    $tertimbang += $bobot * (float) $val;
+                    // Bobot hanya berlaku untuk SAS. Leger STS memakai nilai
+                    // kolom STS apa adanya, tanpa pengali.
+                    if ($legerMode === 'sas') {
+                        $bobot = (float) ($bobotMap[$subject->id] ?? 0);
+                        $bobotTerisi += $bobot;
+                        $tertimbang += $bobot * (float) $val;
+                    }
                 }
             }
 
-            $legerJumlahMap[$sid] = $tertimbang;
+            // STS: jumlah nilai apa adanya (tanpa bobot). SAS: Σ(bobot × nilai).
+            $legerJumlahMap[$sid] = $legerMode === 'sas' ? $tertimbang : $total;
 
             if ($legerMode === 'sas' && $bobotTerisi > 0) {
                 // Rata-rata SAS berbobot, sejalan dengan rapor: Σ(bobot×nilai) ÷ Σbobot.

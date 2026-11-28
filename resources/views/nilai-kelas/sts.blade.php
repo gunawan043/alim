@@ -502,7 +502,7 @@
                                         @if($umumCount > 0)
                                             <th colspan="{{ collect(($legerSubjectMap ?? $subjectMap)->slice($agamaCount))->sum($legerSubjectCols) }}" class="align-middle bg-primary-subtle text-primary" style="letter-spacing:0.5px;">UMUM</th>
                                         @endif
-                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total" title="Jumlah = Σ (Nilai × Bobot)">Jumlah</th>
+                                        <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total" title="{{ $isSasLeger ? 'Jumlah = Σ (Nilai × Bobot)' : 'Jumlah = jumlah nilai STS seluruh mapel (tanpa bobot)' }}">Jumlah</th>
                                         @if($isSasLeger)
                                             <th rowspan="{{ $headerTailSpan }}" style="background:var(--bs-secondary-bg);" class="text-dark align-middle" data-sort="total_bobot" title="Jumlah (Bobot × Nilai)">
                                                 Jumlah<br><small style="font-size:9px;font-weight:400;">B×N</small>
@@ -618,22 +618,24 @@
                                             $avgVal = $legerAggMap[$sid] ?? null;
                                             $rankVal = $rankMap[$sid] ?? null;
                                             $pres = $presensiMap[$sid] ?? null;
-                                            // Kolom Jumlah = Σ (Nilai × Bobot) memakai nilai yang sama
-                                            // dengan yang tampil di kolom mapel leger ini. Rata-rata,
-                                            // peringkat, dan predikat dihitung di controller dari
-                                            // $legerValueMap + $legerSubjectMap dengan aturan yang sama.
+                                            // Kolom Jumlah memakai nilai yang sama dengan kolom mapel.
+                                            // STS = jumlah nilai apa adanya (tanpa bobot);
+                                            // SAS = Σ (Nilai × Bobot).
                                             $jumlahSts = 0; $countMapel = 0;
+                                            $isSasMode = ($legerMode ?? 'sts') === 'sas';
                                             foreach (($legerSubjectMap ?? $subjectMap) as $subject) {
                                                 $book = $bookMap[$subject->id] ?? null;
                                                 if (!$book) continue;
-                                                $col = ($legerMode ?? 'sts') === 'sas' ? 'sas' : 'sts';
                                                 $val = ($legerValueMap ?? [])[$sid][$book->id] ?? null;
                                                 if ($val === null) {
                                                     $n = $nilaiMap[$sid][$book->id] ?? null;
+                                                    $col = $isSasMode ? 'sas' : 'sts';
                                                     $val = $n && $n->{$col} !== null ? $n->{$col} : null;
                                                 }
                                                 if ($val !== null) {
-                                                    $jumlahSts += (float) ($bobotMap[$subject->id] ?? 0) * (float) $val;
+                                                    $jumlahSts += $isSasMode
+                                                        ? (float) ($bobotMap[$subject->id] ?? 0) * (float) $val
+                                                        : (float) $val;
                                                     $countMapel++;
                                                 }
                                             }

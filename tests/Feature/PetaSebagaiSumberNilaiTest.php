@@ -403,7 +403,7 @@ class PetaSebagaiSumberNilaiTest extends TestCase
         $this->assertSame(90.0, (float) $sas->viewData('legerAggMap')[$student->id]);
     }
 
-    public function test_kolom_jumlah_leger_sts_terbaca_dari_bobot(): void
+    public function test_kolom_jumlah_leger_sts_tanpa_pengali_bobot(): void
     {
         $student = Student::create([
             'school_id' => $this->school->id,
@@ -427,21 +427,28 @@ class PetaSebagaiSumberNilaiTest extends TestCase
                 'academic_year_id' => $this->ay->id,
                 'semester' => 'ganjil',
                 'sts' => $score,
+                'sas' => $score,
             ]);
         }
 
         GradeLevelSubject::whereIn('subject_id', collect($this->booksA)->pluck('subject_id'))
             ->update(['bobot' => 2]);
 
-        $html = $this->actingAs($this->user)->get(
+        // STS tanpa pengali: 60 + 90 + 30 = 180, walaupun bobot 2.
+        $sts = $this->actingAs($this->user)->get(
             '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts?tab=leger&leger=sts'
-        )->assertOk()->getContent();
-
-        // Σ(nilai × bobot) = (60 + 90 + 30) × 2 = 360,0 — bukan jumlah mentah 180.
+        )->assertOk();
+        $this->assertSame(180.0, (float) $sts->viewData('legerJumlahMap')[$student->id]);
         $this->assertMatchesRegularExpression(
-            '/data-col="total"[^>]*>\s*360,0\s*</',
-            str_replace('.', ',', $html)
+            '/data-col="total"[^>]*>\s*180,0\s*</',
+            str_replace('.', ',', $sts->getContent())
         );
+
+        // SAS tetap berbobot: (60 + 90 + 30) × 2 = 360.
+        $sas = $this->actingAs($this->user)->get(
+            '/'.$this->user->id.'/schools/nilai-kelas/'.$this->groupA->id.'/sts?tab=leger&leger=sas'
+        )->assertOk();
+        $this->assertSame(360.0, (float) $sas->viewData('legerJumlahMap')[$student->id]);
     }
 
     private function filteredSubjectNames(string $sumber): array
