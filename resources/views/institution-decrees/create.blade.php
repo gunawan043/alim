@@ -917,15 +917,13 @@ function renderTeacherRows(tbody, teacher, tid, number) {
 
     for (let index = 0; index < rowCount; index++) {
         const sub = subjects[index] || null;
-        const task = taskRows[index] ? taskRows[index].task : null;
-        const taskPair = taskRows[index] ? taskRows[index].pair : null;
+        const rowEntry = taskRows[index] || null;
+        const task = rowEntry ? rowEntry.task : null;
+        const taskPair = rowEntry ? rowEntry.pair : null;
         const tr = document.createElement('tr');
         tr.dataset.teacher = tid;
         tr.dataset.rowIndex = index;
-        if (task && !taskPair) tr.dataset.taskIndex = index;
-        if (taskPair) { tr.dataset.pendampingSubject = taskPair.subject_id; tr.dataset.taskIndex = index; }
         if (index === 0) tr.id = `teacher-row-${tid}`;
-        if (sub && sub.id) tr.dataset.subject = sub.id;
 
         let cells = '';
 
@@ -950,7 +948,13 @@ function renderTeacherRows(tbody, teacher, tid, number) {
             }
             return `<td class="${cls}">${rombelCellHtml(tid, sub, sg)}</td>`;
         }).join('');
-        cells += `<td class="text-center fw-semibold row-jp">${taskPair ? pendampingPairHours(taskPair) : (sub && sub.id ? subjectTotalHours(sub) : 0)}</td>`;
+        // JP baris = total semua yang tercantum di baris itu: mapel (kalau ada)
+        // + tugas (pendamping memakai JP mapel-kelasnya).
+        const rowMapelHours = sub && sub.id ? subjectTotalHours(sub) : 0;
+        const rowTaskHours = task
+            ? (taskPair ? pendampingPairHours(taskPair) : (parseFloat(task.hours) || 0))
+            : 0;
+        cells += `<td class="text-center fw-semibold row-jp">${rowMapelHours + rowTaskHours}</td>`;
 
         if (index === 0) {
             cells += `<td rowspan="${rowCount}" class="text-center fw-bold" id="teacher-total-${tid}">${teacherTotalHours(tid)}</td>`;
@@ -1077,25 +1081,22 @@ function refreshTotal(tid) {
     const tids = tid ? [tid] : matrixTeacherOrder;
 
     tids.forEach(t => {
-        (activeSubjects[t] || []).forEach(sub => {
-            if (!sub.id) return;
-            const row = document.querySelector(`tr[data-teacher="${t}"][data-subject="${sub.id}"]`);
-            if (!row) return;
-            const cell = row.querySelector('.row-jp');
-            if (cell) cell.textContent = subjectTotalHours(sub);
-        });
+        const subjects = activeSubjects[t] || [];
+        const taskRows = alignedTaskRows(activeTasks[t] || [], subjects);
 
-        // Tugas Guru Pendamping berada pada barisnya sendiri (kolom Mapel
-        // kosong); JP barisnya mengikuti kelas yang dicentang.
-        document.querySelectorAll(`tr[data-teacher="${t}"][data-task-index]`).forEach(row => {
-            const task = (activeTasks[t] || [])[parseInt(row.dataset.taskIndex, 10)];
-            if (!isPendampingTask(task)) return;
-            const pairSubject = row.dataset.pendampingSubject;
-            const pair = pairSubject
-                ? (task.pendamping || []).find(p => String(p.subject_id) === String(pairSubject))
-                : null;
+        // JP baris = mapel + tugas yang berada pada baris yang sama. Dihitung
+        // dari baris yang sudah disusun agar hasilnya sama dengan render.
+        document.querySelectorAll(`tr[data-teacher="${t}"][data-row-index]`).forEach(row => {
+            const index = parseInt(row.dataset.rowIndex, 10);
+            const sub = subjects[index] || null;
+            const entry = taskRows[index] || null;
+            const mapelHours = sub && sub.id ? subjectTotalHours(sub) : 0;
+            const taskHours = entry
+                ? (entry.pair ? pendampingPairHours(entry.pair) : (parseFloat(entry.task.hours) || 0))
+                : 0;
+
             const cell = row.querySelector('.row-jp');
-            if (cell) cell.textContent = pair ? pendampingPairHours(pair) : (task.hours || 0);
+            if (cell) cell.textContent = mapelHours + taskHours;
         });
 
         const totalEl = document.getElementById(`teacher-total-${t}`);
